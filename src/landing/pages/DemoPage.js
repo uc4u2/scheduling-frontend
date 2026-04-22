@@ -59,7 +59,7 @@ const DEMO_VIDEO_INVITES_SRC =
   "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/invitations.schedulaa.mp4";
 const ANDROID_APK_URL =
   process.env.REACT_APP_ANDROID_APK_URL ||
-  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-22.apk";
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/schedulaa-staff-latest.apk";
 
 const QUICK_ACTIONS = [
 ];
