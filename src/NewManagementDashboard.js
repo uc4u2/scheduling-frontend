@@ -3452,7 +3452,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     height: `calc(100vh - ${headerOffset}px)`,
     borderRight: "1px solid",
     borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.1),
-    background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.12 : 0.045)} 0%, ${theme.palette.background.paper} 24%, ${theme.palette.background.paper} 100%)`,
+    backgroundColor: theme.palette.background.paper,
+    backgroundImage: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.12 : 0.045)} 0%, ${alpha(theme.palette.background.paper, 0.995)} 20%, ${theme.palette.background.paper} 100%)`,
+    backdropFilter: "none",
+    opacity: 1,
+    boxShadow: `0 22px 54px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.42 : 0.16)}`,
   };
 
   const drawerContent = (
@@ -3617,7 +3621,15 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             variant="temporary"
             open={mobileDrawerOpen}
             onClose={toggleDrawer}
-            ModalProps={{ keepMounted: true }}
+            ModalProps={{
+              keepMounted: true,
+              BackdropProps: {
+                sx: {
+                  backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.58 : 0.28),
+                  backdropFilter: "blur(2px)",
+                },
+              },
+            }}
             sx={{
               display: { xs: "block", lg: "none" },
               "& .MuiDrawer-paper": {
