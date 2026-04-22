@@ -2,24 +2,42 @@
 
 ## Mobile App Mode (React)
 
-- Mobile app shell is mounted on `/app/*`.
-- Mobile mode is active when either:
+- Native runtime should start on the same current route tree as the web app:
+  - Manager: `/manager/dashboard`
+  - Employee / recruiter: `/employee/my-time`
+  - Client: `/dashboard`
+- `/app/*` is now a legacy compatibility path only.
+- The legacy `/app/*` paths must redirect into current maintained routes instead of rendering a separate mobile shell.
+- Mobile mode still means:
   - Native runtime is detected (`Capacitor` / `capacitor:` protocol), or
   - Viewport is mobile (`max-width: 900px`).
-- In mobile mode, `/app/*` uses `MobileLayout`:
-  - Bottom tabs: `Today`, `Calendar`, `Shifts`, `Bookings`, `More`
-  - `More` opens a drawer with links to existing modules.
-- On desktop screens, `/app/*` routes redirect to existing desktop pages.
-- Non-`/app/*` routes are unchanged.
+- Non-`/app/*` routes remain the source of truth for current dashboards and website flows.
 
 ### Key files
 
 - `src/utils/runtime.js`
-- `src/components/mobile/MobileLayout.jsx`
-- `src/components/mobile/MobileDrawer.jsx`
-- `src/components/mobile/MobileTodayPage.jsx`
-- `src/components/mobile/MobileMorePage.jsx`
 - `src/App.js` (routing + chrome gate for mobile mode)
+- `src/ManagerDashboard.js`
+- `src/NewManagementDashboard.js`
+- `src/RecruiterDashboard.js`
+
+### Legacy `/app/*` redirect map
+
+- `/app`, `/app/today`
+  - Manager -> `/manager/dashboard`
+  - Employee / recruiter -> `/employee/my-time`
+- `/app/calendar`
+  - Manager -> `/manager/dashboard?view=master-calendar`
+  - Employee / recruiter -> `/employee/my-calendar`
+- `/app/shifts`
+  - Manager -> `/manager/dashboard?view=team`
+  - Employee / recruiter -> `/employee/my-time`
+- `/app/bookings`
+  - Manager -> `/manager/dashboard?view=booking-checkout`
+  - Employee / recruiter -> `/employee/upcoming-meetings`
+- `/app/more`
+  - Manager -> `/manager/dashboard?view=settings`
+  - Employee / recruiter -> `/employee`
 
 ## Mobile Compliance Mode (Play Store)
 
@@ -51,6 +69,6 @@
 
 ### Extending later
 
-- Add dedicated mobile-first screens for each tab route.
-- Make drawer items fully role-aware with permission checks.
-- Add native-only enhancements (push/deeplinks) without changing web routes.
+- If a dedicated native shell is reintroduced, it should wrap current dashboard views instead of creating a separate route tree.
+- Keep Android/iOS startup aligned with the same maintained route tree used by web.
+- Add native-only enhancements (push/deeplinks) without forking core dashboard navigation.

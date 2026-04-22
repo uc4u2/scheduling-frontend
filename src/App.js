@@ -208,9 +208,6 @@ import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 import { buildMarketingUrl } from "./config/origins";
 import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
-import MobileLayout from "./components/mobile/MobileLayout";
-import MobileTodayPage from "./components/mobile/MobileTodayPage";
-import MobileMorePage from "./components/mobile/MobileMorePage";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -388,35 +385,43 @@ const RequireAuthRoute = ({ children }) => {
   return <>{children}</>;
 };
 
-const MobileShiftsRoute = ({ token }) => {
-  const role = (localStorage.getItem("role") || "").toLowerCase();
-  if (role === "employee" || role === "recruiter") {
-    return <RecruiterMyTimePage token={token} />;
-  }
-  return <EmployeeShiftView />;
-};
-
-const MobileBookingsRoute = ({ token }) => {
-  const role = (localStorage.getItem("role") || "").toLowerCase();
-  if (role === "employee" || role === "recruiter") {
-    return <RecruiterUpcomingMeetingsPage token={token} />;
-  }
-  return <CandidateManagement token={token} />;
-};
-
 const MobileAppGate = () => {
-  const location = useLocation();
   if (isMobileAppMode()) return <Outlet />;
+  return <Navigate to="/manager/dashboard" replace />;
+};
 
-  const map = {
-    "/app/today": "/manager/dashboard",
-    "/app/calendar": "/calendar",
-    "/app/shifts": "/manager/employee-shift-view",
-    "/app/bookings": "/manager/candidates",
-    "/app/more": "/manager/dashboard",
-    "/app": "/manager/dashboard",
-  };
-  return <Navigate to={map[location.pathname] || "/manager/dashboard"} replace />;
+const LegacyMobileAppRedirect = () => {
+  const location = useLocation();
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  const isEmployee = role === "employee" || role === "recruiter";
+
+  const redirectTarget = (() => {
+    switch (location.pathname) {
+      case "/app":
+      case "/app/today":
+        return isEmployee ? "/employee/my-time" : "/manager/dashboard";
+      case "/app/calendar":
+        return isEmployee
+          ? "/employee/my-calendar"
+          : "/manager/dashboard?view=master-calendar";
+      case "/app/shifts":
+        return isEmployee
+          ? "/employee/my-time"
+          : "/manager/dashboard?view=team";
+      case "/app/bookings":
+        return isEmployee
+          ? "/employee/upcoming-meetings"
+          : "/manager/dashboard?view=booking-checkout";
+      case "/app/more":
+        return isEmployee
+          ? "/employee"
+          : "/manager/dashboard?view=settings";
+      default:
+        return isEmployee ? "/employee/my-time" : "/manager/dashboard";
+    }
+  })();
+
+  return <Navigate to={redirectTarget} replace />;
 };
 
 
@@ -975,7 +980,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manager/payroll/raw" element={<PayrollRawPage />} />
           <Route path="/manager/payroll/audit" element={<PayrollAuditPage />} />
 
-          {/* Mobile app mode shell (/app/*) */}
+          {/* Legacy mobile shell compatibility redirects (/app/*) */}
           <Route
             path="/app"
             element={
@@ -984,14 +989,12 @@ const AppContent = ({ token, setToken }) => {
               </RequireAuthRoute>
             }
           >
-            <Route element={<MobileLayout />}>
-              <Route index element={<Navigate to="today" replace />} />
-              <Route path="today" element={<MobileTodayPage />} />
-              <Route path="calendar" element={<CalendarView />} />
-              <Route path="shifts" element={<MobileShiftsRoute token={token} />} />
-              <Route path="bookings" element={<MobileBookingsRoute token={token} />} />
-              <Route path="more" element={<MobileMorePage />} />
-            </Route>
+            <Route index element={<LegacyMobileAppRedirect />} />
+            <Route path="today" element={<LegacyMobileAppRedirect />} />
+            <Route path="calendar" element={<LegacyMobileAppRedirect />} />
+            <Route path="shifts" element={<LegacyMobileAppRedirect />} />
+            <Route path="bookings" element={<LegacyMobileAppRedirect />} />
+            <Route path="more" element={<LegacyMobileAppRedirect />} />
           </Route>
 
           {/* Misc */}
