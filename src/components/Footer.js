@@ -86,6 +86,7 @@ const sections = [
       { label: "Terms of Service", to: "/terms" },
       { label: "User Agreement", to: "/user-agreement" },
       { label: "Privacy Policy", to: "/privacy" },
+      { label: "Account deletion", to: "/account-deletion" },
       { label: "Cookie Policy", to: "/cookie" },
       { label: "Acceptable Use Policy", to: "/acceptable-use" },
       { label: "Data Processing Addendum", to: "/data-processing" },

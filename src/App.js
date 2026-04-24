@@ -94,6 +94,7 @@ import SalesInboundWorkspacePage from "./sales/pages/SalesInboundWorkspacePage";
 import SalesRepProfilePage from "./admin/pages/SalesRepProfilePage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
+import AccountDeletionPage from "./landing/pages/legal/AccountDeletionPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
 import AcceptableUsePage from "./landing/pages/legal/AcceptableUsePage";
 import DataProcessingAddendumPage from "./landing/pages/legal/DataProcessingAddendumPage";
@@ -267,6 +268,7 @@ const MARKETING_PATHS = [
   '/compare/gusto',
   '/about',
   '/contact',
+  '/account-deletion',
   '/demo',
   '/faq',
   '/docs',
@@ -770,6 +772,7 @@ const AppContent = ({ token, setToken }) => {
                 <Route path="/status" element={<StatusPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/account-deletion" element={<AccountDeletionPage />} />
                 <Route path="/demo" element={<DemoPage />} />
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/terms" element={<TermsPage />} />

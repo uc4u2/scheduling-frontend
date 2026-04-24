@@ -83,6 +83,7 @@ module.exports = {
     { path: "/blog/category/automation", changefreq: "monthly", priority: "0.5" },
     { path: "/blog/category/payroll", changefreq: "monthly", priority: "0.5" },
     { path: "/status", changefreq: "daily", priority: "0.2" },
+    { path: "/account-deletion", changefreq: "yearly", priority: "0.2" },
     { path: "/terms", changefreq: "yearly", priority: "0.2" },
     { path: "/privacy", changefreq: "yearly", priority: "0.2" },
     { path: "/cookie", changefreq: "yearly", priority: "0.2" },
