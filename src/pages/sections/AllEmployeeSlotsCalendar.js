@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Collapse,
 } from "@mui/material";
 import { ToggleButtonGroup, ToggleButton } from "@mui/material";
 import GlobalStyles from "@mui/material/GlobalStyles";
@@ -152,7 +153,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   });
 
   // enterprise calendar options
-  const [calendarView, setCalendarView] = useState("dayGridMonth"); // "timeGridWeek" | "timeGridDay"
+  const [calendarView, setCalendarView] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 600 ? "timeGridDay" : "dayGridMonth"
+  ); // "timeGridWeek" | "timeGridDay"
   const [showWeekends, setShowWeekends] = useState(true);
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
@@ -160,6 +163,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const [timeFmt12h, setTimeFmt12h] = useState(false);
   // statusFilter: "available" and/or "booked" (empty = both)
   const [statusFilter, setStatusFilter] = useState([]);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // permissions (manager OR company policy)
   const [isManagerUser, setIsManagerUser] = useState(false);
@@ -196,6 +200,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     start: "",
     end: "",
   });
+
+  useEffect(() => {
+    if (isSmDown) {
+      setCalendarView((current) => (current === "dayGridMonth" ? "timeGridDay" : current));
+    }
+  }, [isSmDown]);
 
   /* ------------------------- data-fetch helpers ------------------------ */
   const fetchDepartments = async () => {
@@ -1163,6 +1173,28 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         }}
         elevation={0}
       >
+        {isSmDown ? (
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: mobileFiltersOpen ? 1.5 : 0 }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Filters & View
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Day view is default on mobile
+              </Typography>
+            </Box>
+            <Button size="small" variant="outlined" onClick={() => setMobileFiltersOpen((prev) => !prev)}>
+              {mobileFiltersOpen ? "Hide" : "Show"}
+            </Button>
+          </Stack>
+        ) : null}
+        <Collapse in={!isSmDown || mobileFiltersOpen}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }} useFlexGap flexWrap="wrap">
           <FormControl sx={{ minWidth: 200, flex: 1 }}>
           <InputLabel>Department</InputLabel>
@@ -1259,6 +1291,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             )}
           </Stack>
         </Stack>
+        </Collapse>
       </Paper>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: "auto", md: "calc(100vh - 260px)" } }}>

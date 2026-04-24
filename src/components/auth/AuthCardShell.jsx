@@ -9,11 +9,12 @@ export const authInputSx = {
     fontWeight: 500,
   },
   "& .MuiFormHelperText-root": {
-    mx: 0.5,
-    mt: 0.85,
+    mx: 0.25,
+    mt: { xs: 0.55, sm: 0.85 },
+    lineHeight: 1.45,
   },
   "& .MuiOutlinedInput-root": {
-    borderRadius: 999,
+    borderRadius: { xs: 3, sm: 999 },
     backgroundColor: "rgba(255,255,255,0.9)",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7), 0 10px 20px rgba(148,163,184,0.12)",
     transition: "box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease",
@@ -32,7 +33,7 @@ export const authInputSx = {
       borderColor: "#f97316",
     },
     "& .MuiOutlinedInput-input": {
-      py: 1.55,
+      py: { xs: 1.28, sm: 1.55 },
     },
   },
 };
@@ -88,7 +89,7 @@ export default function AuthCardShell({
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
-        py: { xs: 4, md: 6 },
+        py: { xs: 1.5, sm: 2.5, md: 6 },
         px: { xs: 1.5, sm: 2.5, md: 3.5 },
         background:
           "radial-gradient(circle at 12% 18%, rgba(249,115,22,0.12), transparent 34%), radial-gradient(circle at 88% 14%, rgba(251,191,36,0.12), transparent 28%), linear-gradient(180deg, #f8fafc 0%, #f7f5f2 46%, #eef2f7 100%)",
@@ -101,7 +102,7 @@ export default function AuthCardShell({
             gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.92fr) minmax(360px, 1.08fr)" },
             gap: { xs: 0, lg: 0 },
             alignItems: "stretch",
-            borderRadius: { xs: 4, lg: 5 },
+            borderRadius: { xs: 3, sm: 4, lg: 5 },
             overflow: "hidden",
             border: "1px solid rgba(255,255,255,0.64)",
             boxShadow: "0 30px 60px rgba(15,23,42,0.14), 0 8px 26px rgba(15,23,42,0.08)",
@@ -112,7 +113,7 @@ export default function AuthCardShell({
           <Paper
             elevation={0}
             sx={(theme) => ({
-              p: { xs: 3, sm: 4, lg: 5.25 },
+              p: { xs: 2, sm: 3.25, lg: 5.25 },
               borderRadius: 0,
               minHeight: { xs: "auto", lg: 760 },
               display: "flex",
@@ -125,7 +126,7 @@ export default function AuthCardShell({
               borderRight: { xs: "none", lg: `1px solid ${alpha(theme.palette.common.white, 0.44)}` },
             })}
           >
-            <Stack spacing={3}>
+            <Stack spacing={{ xs: 2, sm: 3 }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Chip
                   label={eyebrow}
@@ -139,19 +140,24 @@ export default function AuthCardShell({
                     backgroundColor: "rgba(255,255,255,0.74)",
                     border: "1px solid rgba(148,163,184,0.24)",
                     boxShadow: "0 10px 24px rgba(148,163,184,0.12)",
+                    height: { xs: 28, sm: 32 },
+                    "& .MuiChip-label": {
+                      px: { xs: 1, sm: 1.5 },
+                      fontSize: { xs: "0.68rem", sm: "0.74rem" },
+                    },
                   }}
                 />
                 <Avatar
                   sx={{
-                    width: 52,
-                    height: 52,
+                    width: { xs: 42, sm: 52 },
+                    height: { xs: 42, sm: 52 },
                     bgcolor: "rgba(255,255,255,0.82)",
                     color: "#6b7280",
                     boxShadow: "0 14px 26px rgba(148,163,184,0.18)",
                     border: "1px solid rgba(255,255,255,0.68)",
                   }}
                 >
-                  <LockOutlinedIcon />
+                  <LockOutlinedIcon fontSize="small" />
                 </Avatar>
               </Stack>
 
@@ -159,21 +165,21 @@ export default function AuthCardShell({
                 sx={{
                   display: { xs: "block", lg: "none" },
                   position: "relative",
-                  minHeight: 180,
-                  borderRadius: 4,
+                  minHeight: { xs: 118, sm: 152 },
+                  borderRadius: 3,
                   overflow: "hidden",
                   backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.2), rgba(15,23,42,0.46)), url(${heroImage})`,
                   backgroundSize: "contain",
                   backgroundRepeat: "no-repeat",
                   backgroundPosition: "center 25%",
-                  boxShadow: "0 18px 34px rgba(15,23,42,0.14)",
+                  boxShadow: "0 14px 28px rgba(15,23,42,0.12)",
                 }}
               >
                 <Box
                   sx={{
                     position: "absolute",
                     inset: 0,
-                    p: 2.25,
+                    p: { xs: 1.35, sm: 2 },
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
@@ -188,13 +194,26 @@ export default function AuthCardShell({
                       bgcolor: "rgba(249,115,22,0.94)",
                       color: "#f8fafc",
                       fontWeight: 700,
+                      height: 24,
+                      "& .MuiChip-label": {
+                        px: 1,
+                        fontSize: "0.65rem",
+                      },
                     }}
                   />
                   <Box>
-                    <Typography variant="h6" fontWeight={800}>
+                    <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.2 }}>
                       {heroTitle}
                     </Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5, color: "rgba(255,250,240,0.84)" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 0.35,
+                        color: "rgba(255,250,240,0.84)",
+                        fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                        display: { xs: "none", sm: "block" },
+                      }}
+                    >
                       {heroSubtitle}
                     </Typography>
                   </Box>
@@ -209,8 +228,8 @@ export default function AuthCardShell({
                   sx={{
                     letterSpacing: "-0.03em",
                     color: "#1f2937",
-                    fontSize: { xs: "2rem", md: "2.55rem" },
-                    lineHeight: 1.05,
+                    fontSize: { xs: "1.7rem", sm: "2rem", md: "2.55rem" },
+                    lineHeight: { xs: 1.08, sm: 1.05 },
                   }}
                 >
                   {title}
@@ -219,14 +238,19 @@ export default function AuthCardShell({
                   <Typography
                     variant="body1"
                     color="text.secondary"
-                    sx={{ mt: 1.2, maxWidth: 470, lineHeight: 1.7 }}
+                    sx={{
+                      mt: { xs: 0.75, sm: 1.2 },
+                      maxWidth: 470,
+                      lineHeight: { xs: 1.55, sm: 1.7 },
+                      fontSize: { xs: "0.92rem", sm: "1rem" },
+                    }}
                   >
                     {subtitle}
                   </Typography>
                 ) : null}
               </Box>
 
-              <Box sx={{ maxWidth: 470 }}>{children}</Box>
+              <Box sx={{ maxWidth: 470, pb: { xs: 0.5, sm: 0 } }}>{children}</Box>
             </Stack>
           </Paper>
 

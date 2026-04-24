@@ -71,6 +71,7 @@ import {
   Business,
   Paid,
   Summarize,
+  HomeOutlined,
   FolderShared,
   EventAvailable,
   OpenInFull,
@@ -79,6 +80,7 @@ import {
   InfoOutlined,
   HelpOutline as HelpOutlineIcon,
   PhotoCamera as PhotoCameraIcon,
+  SwapHoriz as SwapHorizIcon,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
@@ -135,6 +137,7 @@ import RecruiterAvailabilityTracker from "./RecruiterAvailabilityTracker";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
 import EmployeeManagementHelpDrawer from "./pages/sections/management/components/EmployeeManagementHelpDrawer";
+import MobileManagerHome from "./components/manager/MobileManagerHome";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -1610,6 +1613,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
 const NewManagementDashboard = ({ token, initialView, sectionOnly = false, supportMode = false }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
   const tManager = (key, fallback) => t(key, { defaultValue: fallback });
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
@@ -1711,6 +1715,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     keys.add("payments-hub");
     // Allow settings view even when it is hidden from the sidebar.
     keys.add("settings");
+    // Allow the mobile manager home landing route.
+    keys.add("__landing__");
     // Allow shift/availability views that are launched from the group header.
     keys.add("available-slots");
     keys.add("available-shifts");
@@ -1796,10 +1802,20 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
   useEffect(() => {
     if (supportMode) return;
-    if (isManager && selectedView === "__landing__") {
+    if (isManager && !isMobileViewport && selectedView === "__landing__") {
       setSelectedView("employee-management");
     }
-  }, [isManager, selectedView, supportMode]);
+  }, [isManager, isMobileViewport, selectedView, supportMode]);
+
+  useEffect(() => {
+    if (supportMode) return;
+    if (!isManager || !isMobileViewport) return;
+    if (initialView) return;
+    if (location.pathname !== "/manager/dashboard") return;
+    if (selectedView !== "__landing__") {
+      setSelectedView("__landing__");
+    }
+  }, [initialView, isManager, isMobileViewport, location.pathname, selectedView, supportMode]);
 
   useEffect(() => {
     if (initialView && initialView !== selectedView) {
@@ -2242,6 +2258,18 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       : allowedViewKeys[0] || selectedView;
     switch (effectiveView) {
       case "__landing__":
+        if (isManager && isMobileViewport) {
+          return (
+            <MobileManagerHome
+              currentUserInfo={currentUserInfo}
+              swapRequests={swapRequests}
+              allowedViewKeys={allowedViewKeys}
+              onOpenView={handleNavSelect}
+              onEmployeeView={() => navigate("/employee/my-time")}
+              canUseEmployeeView={isManager}
+            />
+          );
+        }
         return (
           <ManagementFrame>
             <Accordion defaultExpanded>
@@ -3480,6 +3508,24 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       <Divider sx={{ borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.1) }} />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", pt: 0.75 }}>
         <List>
+          {isMobileViewport && isManager && (
+            <ListItemButton
+              selected={selectedView === "__landing__"}
+              onClick={() => handleNavSelect("__landing__")}
+              sx={navItemSx(selectedView === "__landing__")}
+            >
+              <ListItemIcon sx={navIconSx(selectedView === "__landing__")}>
+                <HomeOutlined />
+              </ListItemIcon>
+              {drawerExpanded && (
+                <ListItemText
+                  primary="Manager Home"
+                  primaryTypographyProps={{ sx: { whiteSpace: "nowrap", overflow: "visible" } }}
+                  sx={{ pr: 1 }}
+                />
+              )}
+            </ListItemButton>
+          )}
           {menuItems.map((item) => {
             const hasChildren = Array.isArray(item.children) && item.children.length > 0;
             const itemActive = selectedView === item.key;

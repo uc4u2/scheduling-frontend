@@ -11,7 +11,9 @@ import {
   Checkbox,
   CircularProgress,
   Link as MuiLink,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
 import RoleSelect from "./components/RoleSelect";
@@ -81,6 +83,8 @@ const getAuthErrorMessage = (err, fallback) => {
 const Login = ({ setToken, slugOverride = "" }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [authChecking, setAuthChecking] = useState(true);
 
   const [email, setEmail] = useState("");
@@ -460,8 +464,16 @@ const Login = ({ setToken, slugOverride = "" }) => {
 
           {step === 1 ? (
             <Box component="form" onSubmit={handleLoginSubmit} noValidate>
-              <Stack spacing={2.5}>
-                <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+              <Stack spacing={{ xs: 1.5, sm: 2.5 }}>
+                <Typography
+                  variant="overline"
+                  sx={{
+                    color: "text.secondary",
+                    letterSpacing: 1.2,
+                    lineHeight: 1,
+                    display: { xs: "none", sm: "block" },
+                  }}
+                >
                   Account access
                 </Typography>
                 <TextField
@@ -497,7 +509,7 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   direction={{ xs: "column", sm: "row" }}
                   justifyContent="space-between"
                   alignItems={{ xs: "flex-start", sm: "center" }}
-                  spacing={1}
+                  spacing={{ xs: 0.25, sm: 1 }}
                 >
                   <FormControlLabel
                     control={
@@ -507,6 +519,13 @@ const Login = ({ setToken, slugOverride = "" }) => {
                       />
                     }
                     label="Remember this device for 30 days"
+                    sx={{
+                      ml: -0.25,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: { xs: "0.88rem", sm: "0.95rem" },
+                        lineHeight: 1.35,
+                      },
+                    }}
                   />
                   <Button
                     size="small"
@@ -518,6 +537,7 @@ const Login = ({ setToken, slugOverride = "" }) => {
                           : "/forgot-password"
                       )
                     }
+                    sx={{ px: 0.5, minHeight: 32 }}
                   >
                     Forgot password?
                   </Button>
@@ -533,7 +553,7 @@ const Login = ({ setToken, slugOverride = "" }) => {
                 />
 
                 {selectedRole === "customer" ? (
-                  <Stack spacing={1}>
+                  <Stack spacing={{ xs: 0.75, sm: 1 }}>
                     <Alert severity="info">
                       Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
                     </Alert>
@@ -567,11 +587,11 @@ const Login = ({ setToken, slugOverride = "" }) => {
 
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
-                  spacing={0.75}
+                  spacing={{ xs: 0.35, sm: 0.75 }}
                   justifyContent="center"
                   alignItems="center"
                   sx={{
-                    pt: 1,
+                    pt: { xs: 0.75, sm: 1 },
                     borderTop: "1px solid rgba(226,232,240,0.9)",
                   }}
                 >
@@ -598,8 +618,16 @@ const Login = ({ setToken, slugOverride = "" }) => {
             </Box>
           ) : (
             <Box component="form" onSubmit={handleOTPSubmit} noValidate>
-              <Stack spacing={2.5}>
-                <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+              <Stack spacing={{ xs: 1.5, sm: 2.5 }}>
+                <Typography
+                  variant="overline"
+                  sx={{
+                    color: "text.secondary",
+                    letterSpacing: 1.2,
+                    lineHeight: 1,
+                    display: { xs: "none", sm: "block" },
+                  }}
+                >
                   Secure verification
                 </Typography>
                 <Typography variant="body2" color="text.secondary">

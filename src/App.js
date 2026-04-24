@@ -119,6 +119,7 @@ import RecruiterQuestionnairesPage from "./pages/recruiter/RecruiterQuestionnair
 import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMeetingsPage";
 import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
+import RecruiterHomePage from "./pages/recruiter/RecruiterHomePage";
 import RecruiterMyTrainingPage from "./pages/recruiter/RecruiterMyTrainingPage";
 import RecruiterCommunicationsPage from "./pages/recruiter/RecruiterCommunicationsPage";
 import RecruiterMyCalendarPage from "./pages/recruiter/RecruiterMyCalendarPage";
@@ -866,6 +867,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/employee/candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
         <Route path="/recruiter/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
+        <Route path="/recruiter/home" element={<RecruiterHomePage token={token} />} />
+        <Route path="/employee/home" element={<RecruiterHomePage token={token} />} />
         <Route path="/recruiter/my-training" element={<RecruiterMyTrainingPage token={token} />} />
         <Route path="/employee/my-training" element={<RecruiterMyTrainingPage token={token} />} />
         <Route path="/recruiter/communications" element={<RecruiterCommunicationsPage token={token} />} />

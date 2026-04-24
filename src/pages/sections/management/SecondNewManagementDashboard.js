@@ -776,6 +776,7 @@ const panels = useMemo(
 
       {/* Header */}
 
+      {!isCompactTabs ? (
       <Paper
 
         elevation={0}
@@ -880,12 +881,13 @@ const panels = useMemo(
         </Stack>
 
       </Paper>
+      ) : null}
 
 
 
       {/* Stripe Connect status */}
 
-      {connectLoading ? (
+      {!isCompactTabs && connectLoading ? (
 
         <Alert severity="info" sx={{ mb: 2 }}>
 
@@ -998,7 +1000,7 @@ const panels = useMemo(
 
       )}
 
-      {connectError ? (
+      {!isCompactTabs && connectError ? (
 
         <Alert severity="error" sx={{ mb: 2 }}>
 

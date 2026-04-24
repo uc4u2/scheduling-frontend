@@ -1,9 +1,25 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { Box, Tabs, Tab } from "@mui/material";
+import {
+  Box,
+  Tabs,
+  Tab,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemText,
+  Paper,
+  Stack,
+  Typography,
+  Chip,
+  useMediaQuery,
+} from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 
 const TAB_CONFIG = [
   { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar" },
@@ -25,6 +41,9 @@ const TAB_CONFIG = [
 const LOCAL_TABS = new Set(["availability", "calendar"]);
 
 const getPathValue = (locationPathname, searchParams, fallback) => {
+  if (locationPathname.startsWith("/recruiter/home") || locationPathname.startsWith("/employee/home")) {
+    return "home";
+  }
   if (locationPathname.startsWith("/recruiter/invitations")) {
     const section = searchParams.get("section");
     return section === "forms" ? "candidate-forms" : "invitations";
@@ -67,6 +86,40 @@ const HR_ONLY_TABS = new Set([
   "job-postings",
 ]);
 
+const resolveTabPath = (tabValue, locationPathname) => {
+  const isEmployeeWorkspace = locationPathname.startsWith("/employee");
+  const basePath = isEmployeeWorkspace ? "/employee" : "/recruiter";
+
+  switch (tabValue) {
+    case "invitations":
+      return `${basePath}/invitations`;
+    case "candidate-forms":
+      return `${basePath}/invitations?section=forms`;
+    case "questionnaires":
+      return `${basePath}/questionnaires`;
+    case "upcoming-meetings":
+      return `${basePath}/upcoming-meetings`;
+    case "my-time":
+      return `${basePath}/my-time`;
+    case "my-training":
+      return `${basePath}/my-training`;
+    case "communications":
+      return `${basePath}/communications`;
+    case "my-calendar":
+      return `${basePath}/my-calendar`;
+    case "field-photos":
+      return `${basePath}/field-photos`;
+    case "candidate-search":
+      return isEmployeeWorkspace ? "/employee/candidate-search" : "/recruiter/candidate-search";
+    case "public-link":
+      return `${basePath}/public-link`;
+    default: {
+      const config = TAB_CONFIG.find((tab) => tab.value === tabValue);
+      return config?.path || "/";
+    }
+  }
+};
+
 const RecruiterTabs = ({
   localTab = "calendar",
   onLocalTabChange,
@@ -77,8 +130,10 @@ const RecruiterTabs = ({
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hrAccess =
     allowHrAccess !== null && allowHrAccess !== undefined
       ? Boolean(allowHrAccess)
@@ -119,12 +174,152 @@ const RecruiterTabs = ({
     }
 
     if (config.path) {
-      navigate(config.path);
+      navigate(resolveTabPath(newValue, location.pathname));
     }
   };
 
   if (isLoading) {
     return <Box sx={{ mb: 3, minHeight: 48 }} />;
+  }
+
+  if (isMobile) {
+    const activeTab = tabs.find((tab) => tab.value === resolvedValue) || tabs[0];
+    const basePath = location.pathname.startsWith("/employee") ? "/employee" : "/recruiter";
+    const isHomeRoute = location.pathname.startsWith("/employee/home") || location.pathname.startsWith("/recruiter/home");
+    const activeLabel = isHomeRoute
+      ? "Employee Home"
+      : activeTab?.labelKey
+      ? t(activeTab.labelKey)
+      : activeTab?.label || "";
+
+    return (
+      <>
+        <Paper
+          variant="outlined"
+          sx={{
+            mb: 2,
+            p: 1,
+            borderRadius: 1,
+            borderColor: alpha(theme.palette.primary.main, 0.18),
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(
+              theme.palette.background.paper,
+              0.98
+            )})`,
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <IconButton
+              color="primary"
+              onClick={() => setMobileMenuOpen(true)}
+              sx={{
+                width: 42,
+                height: 42,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+                bgcolor: alpha(theme.palette.background.paper, 0.9),
+              }}
+              aria-label="Open employee workspace menu"
+            >
+              <MenuIcon />
+            </IconButton>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" fontWeight={800}>
+                Employee Menu
+              </Typography>
+              <Chip
+                size="small"
+                label={activeLabel}
+                sx={{
+                  mt: 0.35,
+                  fontWeight: 700,
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  color: theme.palette.primary.main,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                }}
+              />
+            </Box>
+          </Stack>
+        </Paper>
+
+        <Drawer
+          anchor="left"
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+          PaperProps={{
+            sx: {
+              width: 280,
+              p: 1.5,
+              background: theme.palette.background.paper,
+            },
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1" fontWeight={800}>
+              Employee Workspace
+            </Typography>
+            <IconButton onClick={() => setMobileMenuOpen(false)} aria-label="Close employee workspace menu">
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          <List disablePadding>
+            <ListItemButton
+              selected={isHomeRoute}
+              onClick={() => {
+                navigate(`${basePath}/home`);
+                setMobileMenuOpen(false);
+              }}
+              sx={{
+                borderRadius: 1,
+                mb: 1,
+                border: `1px solid ${
+                  isHomeRoute ? alpha(theme.palette.primary.main, 0.35) : alpha(theme.palette.divider, 0.9)
+                }`,
+                backgroundColor: isHomeRoute
+                  ? alpha(theme.palette.primary.main, 0.1)
+                  : alpha(theme.palette.background.paper, 0.85),
+              }}
+            >
+              <ListItemText
+                primary="Employee Home"
+                primaryTypographyProps={{
+                  fontWeight: isHomeRoute ? 800 : 600,
+                  color: isHomeRoute ? theme.palette.primary.main : theme.palette.text.primary,
+                }}
+              />
+            </ListItemButton>
+            {tabs.map((tab) => {
+              const label = tab.labelKey ? t(tab.labelKey) : tab.label;
+              const selected = resolvedValue === tab.value;
+              return (
+                <ListItemButton
+                  key={tab.value}
+                  selected={selected}
+                  onClick={(event) => {
+                    handleChange(event, tab.value);
+                    setMobileMenuOpen(false);
+                  }}
+                  sx={{
+                    borderRadius: 1,
+                    mb: 0.5,
+                    border: `1px solid ${selected ? alpha(theme.palette.primary.main, 0.35) : alpha(theme.palette.divider, 0.9)}`,
+                    backgroundColor: selected
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : alpha(theme.palette.background.paper, 0.85),
+                  }}
+                >
+                  <ListItemText
+                    primary={label}
+                    primaryTypographyProps={{
+                      fontWeight: selected ? 800 : 600,
+                      color: selected ? theme.palette.primary.main : theme.palette.text.primary,
+                    }}
+                  />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        </Drawer>
+      </>
+    );
   }
 
   return (

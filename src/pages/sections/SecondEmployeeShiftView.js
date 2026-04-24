@@ -2,6 +2,7 @@
 //  SecondEmployeeShiftView.js  •  Employee self-service: Shifts + Leave + Swap + Manager Approvals
 // ─────────────────────────────────────────────────────────────────────────
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -214,6 +215,8 @@ const readableLightChipSx = (theme) => ({
 const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const navigate = useNavigate();
+  const location = useLocation();
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("userRole") || ""; // Example role storage
@@ -221,6 +224,7 @@ const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const isManager = userRole.toLowerCase() === "manager";
   const [optOut, setOptOut] = useState(false);
   const viewerTimezone = getUserTimezone();
+  const employeeBasePath = location.pathname.startsWith("/recruiter") ? "/recruiter" : "/employee";
 
   // ──────────────── Shift / leave states ────────────────
   const [shifts, setShifts] = useState([]);
@@ -1695,14 +1699,16 @@ const polishedPanelSx = employeePolish
         alignItems={{ xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
       >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            My Time
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Track your shifts, breaks, and approvals in one view.
-          </Typography>
-        </Box>
+        {!isSmDown && (
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              My Time
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Track your shifts, breaks, and approvals in one view.
+            </Typography>
+          </Box>
+        )}
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <Chip
             size="small"
@@ -1717,29 +1723,135 @@ const polishedPanelSx = employeePolish
           )}
         </Stack>
       </Stack>
-      <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
-        {availabilityPolicyLoaded && !hideAvailabilityTab && (
+      {isSmDown ? (
+        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
           <Button
-            variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+            fullWidth
+            variant="outlined"
+            startIcon={<CalendarMonthIcon />}
+            onClick={() => navigate(`${employeeBasePath}/dashboard?tab=calendar`)}
+            sx={{
+              minHeight: 52,
+              justifyContent: "flex-start",
+              px: 1.5,
+              borderRadius: 1,
+              fontWeight: 700,
+            }}
+          >
+            Calendar
+          </Button>
+        <Grid container spacing={1.25}>
+          {availabilityPolicyLoaded && !hideAvailabilityTab && (
+            <Grid item xs={6}>
+              <Button
+                fullWidth
+                variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+                startIcon={<EventAvailableIcon />}
+                onClick={() => {
+                  setDrawerPanel("availability");
+                  setDrawerOpen(true);
+                }}
+                sx={{
+                  minHeight: 56,
+                  justifyContent: "flex-start",
+                  px: 1.5,
+                  borderRadius: 1,
+                  fontWeight: 700,
+                }}
+              >
+                Availability
+              </Button>
+            </Grid>
+          )}
+          <Grid item xs={availabilityPolicyLoaded && !hideAvailabilityTab ? 6 : 12}>
+            <Button
+              fullWidth
+              variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
+              startIcon={<CalendarMonthIcon />}
+              onClick={() => {
+                setDrawerPanel("shifts");
+                setDrawerOpen(true);
+              }}
+              sx={{
+                minHeight: 56,
+                justifyContent: "flex-start",
+                px: 1.5,
+                borderRadius: 1,
+                fontWeight: 700,
+              }}
+            >
+              My Shift
+            </Button>
+          </Grid>
+          <Grid item xs={6}>
+            <Button
+              fullWidth
+              variant={canClockIn ? "contained" : "outlined"}
+              color={canClockIn ? "primary" : "secondary"}
+              startIcon={<AccessTimeFilledIcon />}
+              disabled={clocking || (!canClockIn && !canClockOut)}
+              onClick={() => handleClockAction(canClockIn ? "in" : "out")}
+              sx={{
+                minHeight: 56,
+                justifyContent: "flex-start",
+                px: 1.5,
+                borderRadius: 1,
+                fontWeight: 700,
+              }}
+            >
+              {canClockIn ? "Clock In" : "Clock Out"}
+            </Button>
+          </Grid>
+          <Grid item xs={6}>
+            <Button
+              fullWidth
+              variant={breakInProgress ? "contained" : "outlined"}
+              color="warning"
+              startIcon={<LocalCafeIcon />}
+              disabled={
+                breakSubmitting ||
+                (!breakInProgress && !canStartBreak) ||
+                (breakInProgress && !canEndBreak)
+              }
+              onClick={() => handleBreakAction(breakInProgress ? "end" : "start")}
+              sx={{
+                minHeight: 56,
+                justifyContent: "flex-start",
+                px: 1.5,
+                borderRadius: 1,
+                fontWeight: 700,
+              }}
+            >
+              {breakInProgress ? "End Break" : "Start Break"}
+            </Button>
+          </Grid>
+        </Grid>
+        </Stack>
+      ) : (
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
+          {availabilityPolicyLoaded && !hideAvailabilityTab && (
+            <Button
+              variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+              onClick={() => {
+                setDrawerPanel("availability");
+                setDrawerOpen(true);
+              }}
+            >
+              Availability
+            </Button>
+          )}
+          <Button
+            variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
+            startIcon={<CalendarMonthIcon />}
             onClick={() => {
-              setDrawerPanel("availability");
+              setDrawerPanel("shifts");
               setDrawerOpen(true);
             }}
           >
-            Shift Availability
+            My Shift
           </Button>
-        )}
-        <Button
-          variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
-          startIcon={<CalendarMonthIcon />}
-          onClick={() => {
-            setDrawerPanel("shifts");
-            setDrawerOpen(true);
-          }}
-        >
-          View My Shifts
-        </Button>
-      </Stack>
+        </Stack>
+      )}
     </Paper>
 
     <Paper
@@ -2270,6 +2382,7 @@ const polishedPanelSx = employeePolish
                   )}
                 </Box>
               )}
+              {!isSmDown && (
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={1.5}
@@ -2312,12 +2425,13 @@ const polishedPanelSx = employeePolish
                 <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
               )}
               </Stack>
+              )}
               {locationCaptureMessage && (
                 <Alert severity={locationCaptureMessage.includes("could not") ? "warning" : "info"} sx={{ mt: 1 }}>
                   {locationCaptureMessage}
                 </Alert>
               )}
-              {isInProgress && (
+              {isInProgress && !isSmDown && (
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1.5}
@@ -2443,7 +2557,7 @@ const polishedPanelSx = employeePolish
         }}
       >
         <Typography variant="h6" fontWeight={700}>
-          {drawerPanel === "availability" && availabilityPolicyLoaded && !hideAvailabilityTab ? "Shift Availability" : "My Shifts"}
+          {drawerPanel === "availability" && availabilityPolicyLoaded && !hideAvailabilityTab ? "Availability" : "My Shift"}
         </Typography>
         <IconButton onClick={() => setDrawerOpen(false)}>
           <CloseIcon />
@@ -2459,9 +2573,9 @@ const polishedPanelSx = employeePolish
           onChange={(_, v) => v && (!hideAvailabilityTab || v !== "availability") && setDrawerPanel(v)}
         >
           {availabilityPolicyLoaded && !hideAvailabilityTab && (
-            <ToggleButton value="availability">Shift Availability</ToggleButton>
+            <ToggleButton value="availability">Availability</ToggleButton>
           )}
-          <ToggleButton value="shifts">My Shifts</ToggleButton>
+          <ToggleButton value="shifts">My Shift</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
