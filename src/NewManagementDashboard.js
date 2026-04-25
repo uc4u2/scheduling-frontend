@@ -1,5 +1,5 @@
 // src/pages/NewManagementDashboard.js
-import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppBar,
@@ -1723,6 +1723,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
   // Sidebar state
   const [selectedView, setSelectedView] = useState(getInitialSelectedView);
+  const [timeTrackingViewNonce, setTimeTrackingViewNonce] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [overviewOpen, setOverviewOpen] = useState(false); // legacy for overview; kept for compatibility
   const [openGroups, setOpenGroups] = useState(() => {
@@ -1760,9 +1761,17 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
   const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
+  const previousSelectedViewRef = useRef(selectedView);
 
   useEffect(() => {
     localStorage.setItem("manager_selected_view", selectedView);
+  }, [selectedView]);
+
+  useEffect(() => {
+    if (selectedView === "time-tracking" && previousSelectedViewRef.current !== "time-tracking") {
+      setTimeTrackingViewNonce((prev) => prev + 1);
+    }
+    previousSelectedViewRef.current = selectedView;
   }, [selectedView]);
 
   useEffect(() => {
@@ -3140,7 +3149,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
               p: { xs: 1.5, md: 2.5 },
             }}
           >
-            <TimeEntriesPanel />
+            <TimeEntriesPanel key={`time-tracking-${timeTrackingViewNonce}`} />
           </ManagementFrame>
         );
 
