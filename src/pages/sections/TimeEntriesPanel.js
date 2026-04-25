@@ -47,7 +47,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LogoutIcon from "@mui/icons-material/Logout";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import EditIcon from "@mui/icons-material/Edit";
+import HistoryIcon from "@mui/icons-material/History";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import BlockIcon from "@mui/icons-material/Block";
 import {
@@ -107,6 +107,16 @@ const SummaryCard = ({ label, value, icon }) => {
 };
 
 const formatTimeInsightHours = (value) => `${Number(value || 0).toFixed(1)} h`;
+
+const isEntryApprovable = (entry) =>
+  Boolean(
+    entry &&
+      !isLeaveEntry(entry) &&
+      entry.status === "completed" &&
+      !entry.is_locked &&
+      !entry.deleted &&
+      !entry.deleted_at
+  );
 
 const getAttestationBadgeLabel = (status, fallbackLabel) => {
   const normalized = String(status || "").toLowerCase();
@@ -841,10 +851,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   const [detailEntries, setDetailEntries] = useState([]);
   const [detailSummary, setDetailSummary] = useState(null);
   const [detailFilters, setDetailFilters] = useState(() => {
-    const today = new Date();
-    const end = today.toISOString().slice(0, 10);
-    const start = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    return { startDate: start, endDate: end, status: "all" };
+    const today = DateTime.local().toISODate();
+    return { startDate: today, endDate: today, status: "all" };
   });
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -886,6 +894,18 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     [entries]
   );
   const selectableEntries = useMemo(() => entries.filter((entry) => !isLeaveEntry(entry)), [entries]);
+  const selectedEntries = useMemo(
+    () => entries.filter((entry) => selectedIds.includes(entry.id)),
+    [entries, selectedIds]
+  );
+  const selectedApprovableEntries = useMemo(
+    () => selectedEntries.filter(isEntryApprovable),
+    [selectedEntries]
+  );
+  const selectedApprovableIds = useMemo(
+    () => selectedApprovableEntries.map((entry) => entry.id),
+    [selectedApprovableEntries]
+  );
   const leaveRows = useMemo(() => entries.filter(isLeaveEntry), [entries]);
   const ptoHoursRange = useMemo(
     () => leaveRows.reduce((sum, entry) => sum + leaveHours(entry), 0),
@@ -997,6 +1017,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     }));
   };
   const selectedCount = selectedIds.length;
+  const selectedApprovableCount = selectedApprovableIds.length;
   const handleSelectAll = (event) => {
     if (event.target.checked) {
       const allIds = selectableEntries.map((entry) => entry.id);
@@ -1011,6 +1032,24 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     } else {
       setSelectedIds((prev) => prev.filter((id) => id !== entryId));
     }
+  };
+
+  const applyDetailDatePreset = (preset) => {
+    const now = DateTime.local();
+    let start = now;
+    let end = now;
+    if (preset === "this_week") {
+      start = now.startOf("week");
+      end = now.endOf("week");
+    } else if (preset === "last_week") {
+      start = now.startOf("week").minus({ weeks: 1 });
+      end = start.endOf("week");
+    }
+    setDetailFilters((prev) => ({
+      ...prev,
+      startDate: start.toISODate(),
+      endDate: end.toISODate(),
+    }));
   };
 
   const fetchEntries = async () => {
@@ -1626,11 +1665,18 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   };
 
   const bulkApproveSelected = async () => {
-    if (!selectedCount) return;
+    if (!selectedApprovableCount) return;
     setBulkSubmitting(true);
     try {
-      await Promise.all(selectedIds.map((id) => timeTracking.approveEntry(id)));
-      setSnackbar({ open: true, severity: "success", message: "Selected entries approved." });
+      await Promise.all(selectedApprovableIds.map((id) => timeTracking.approveEntry(id)));
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message:
+          selectedApprovableCount === selectedCount
+            ? "Selected entries approved."
+            : `${selectedApprovableCount} selected entr${selectedApprovableCount === 1 ? "y was" : "ies were"} approved.`,
+      });
       setSelectedIds([]);
       fetchEntries();
     } catch (err) {
@@ -1826,10 +1872,15 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 }}
               >
                 <Typography variant="body2" fontWeight={600}>
-                  {selectedCount} selected
+                  {selectedCount} selected{selectedApprovableCount !== selectedCount ? ` · ${selectedApprovableCount} approvable` : ""}
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Button size="small" variant="outlined" onClick={bulkApproveSelected}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={bulkApproveSelected}
+                    disabled={bulkSubmitting || selectedApprovableCount === 0}
+                  >
                     Approve selected
                   </Button>
                   <Button size="small" variant="outlined" color="error" onClick={bulkRejectSelected}>
@@ -2184,12 +2235,12 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           }}
         >
           <ListItemIcon>
-            <EditIcon fontSize="small" />
+            <HistoryIcon fontSize="small" />
           </ListItemIcon>
-          Edit
+          View history
         </MenuItem>
         <MenuItem
-          disabled={!rowMenuEntry || rowMenuEntry.status !== "completed" || rowMenuEntry.is_locked}
+          disabled={!rowMenuEntry || !isEntryApprovable(rowMenuEntry)}
           onClick={() => {
             if (rowMenuEntry?.id) handleApprove(rowMenuEntry.id);
             setRowMenuAnchor(null);
@@ -2581,6 +2632,19 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 <MenuItem value="rejected">Rejected</MenuItem>
                 <MenuItem value="in_progress">In progress</MenuItem>
               </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button size="small" variant="outlined" onClick={() => applyDetailDatePreset("today")}>
+                  Today
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => applyDetailDatePreset("this_week")}>
+                  This week
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => applyDetailDatePreset("last_week")}>
+                  Last week
+                </Button>
+              </Stack>
             </Grid>
           </Grid>
 
