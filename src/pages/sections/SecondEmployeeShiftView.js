@@ -281,6 +281,10 @@ const SecondEmployeeShiftView = ({ employeePolish = false }) => {
 
   // Snackbar feedback (shared)
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
+  const [attestationQueue, setAttestationQueue] = useState([]);
+  const [attestationForm, setAttestationForm] = useState({ response_value: "", comment: "" });
+  const [attestationSubmitting, setAttestationSubmitting] = useState(false);
+  const [attestationError, setAttestationError] = useState("");
   const [clocking, setClocking] = useState(false);
   const [breakSubmitting, setBreakSubmitting] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -673,6 +677,25 @@ const loadSmartShiftPolicy = async () => {
     setAvailabilityPolicyLoaded(true);
   }
 };
+
+const openAttestationQueue = (items = []) => {
+  if (!Array.isArray(items) || !items.length) return;
+  setAttestationQueue(items);
+  setAttestationForm({ response_value: "", comment: "" });
+  setAttestationError("");
+};
+
+const loadPendingAttestations = useCallback(async (shiftId) => {
+  if (!shiftId) return;
+  try {
+    const res = await timeTracking.pendingShiftAttestations(shiftId);
+    if (Array.isArray(res?.pending_attestations) && res.pending_attestations.length) {
+      setAttestationQueue((prev) => (prev.length ? prev : res.pending_attestations));
+    }
+  } catch {
+    // Keep attestation UX non-blocking.
+  }
+}, []);
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
@@ -1103,6 +1126,13 @@ useEffect(() => {
 useEffect(() => {
   setTodayCardCollapsed(false);
 }, [todayShift?.id]);
+
+useEffect(() => {
+  if (!todayShift?.id) return;
+  if (!["in_progress", "completed", "approved"].includes(todayShift?.status || "")) return;
+  loadPendingAttestations(todayShift.id);
+}, [todayShift?.id, todayShift?.status, loadPendingAttestations]);
+
   const formatHoursValue = useCallback((value) => `${Number(value || 0).toFixed(1)}h`, []);
   const summaryMetrics = useMemo(() => {
     if (!timeSummary) return [];
@@ -1341,11 +1371,12 @@ useEffect(() => {
         setLocationCaptureMessage("Getting location evidence...");
       }
       const punchPayload = await getPunchLocationPayload();
+      let res;
       if (action === "in") {
-        await timeTracking.clockIn(todayShift.id, punchPayload);
+        res = await timeTracking.clockIn(todayShift.id, punchPayload);
         setSnackbar({ open: true, msg: "Clock-in recorded.", error: false });
       } else {
-        await timeTracking.clockOut(todayShift.id, punchPayload);
+        res = await timeTracking.clockOut(todayShift.id, punchPayload);
         setSnackbar({ open: true, msg: "Clock-out recorded.", error: false });
       }
       if (punchPayload?.location?.permission_state === "timeout") {
@@ -1355,6 +1386,9 @@ useEffect(() => {
       }
       await loadShifts();
       await loadTimeSummary();
+      if (Array.isArray(res?.pending_attestations) && res.pending_attestations.length) {
+        openAttestationQueue(res.pending_attestations);
+      }
     } catch (err) {
       setSnackbar({
         open: true,
@@ -1647,15 +1681,19 @@ const polishedPanelSx = employeePolish
     if (!todayShift) return;
     setBreakSubmitting(true);
     try {
+      let res;
       if (action === "start") {
-        await timeTracking.startBreak(todayShift.id);
+        res = await timeTracking.startBreak(todayShift.id);
         setSnackbar({ open: true, msg: "Break started.", error: false });
       } else {
-        await timeTracking.endBreak(todayShift.id);
+        res = await timeTracking.endBreak(todayShift.id);
         setSnackbar({ open: true, msg: "Break ended.", error: false });
       }
       await loadShifts();
       await loadTimeSummary();
+      if (Array.isArray(res?.pending_attestations) && res.pending_attestations.length) {
+        openAttestationQueue(res.pending_attestations);
+      }
     } catch (err) {
       setSnackbar({
         open: true,
@@ -1664,6 +1702,27 @@ const polishedPanelSx = employeePolish
       });
     } finally {
       setBreakSubmitting(false);
+    }
+  };
+
+  const currentAttestation = attestationQueue[0] || null;
+
+  const submitCurrentAttestation = async () => {
+    if (!currentAttestation?.id) return;
+    setAttestationSubmitting(true);
+    setAttestationError("");
+    try {
+      const res = await timeTracking.submitShiftAttestation(currentAttestation.id, attestationForm);
+      const remaining = Array.isArray(res?.pending_attestations) ? res.pending_attestations : [];
+      setAttestationQueue(remaining);
+      setAttestationForm({ response_value: "", comment: "" });
+      if (!remaining.length) {
+        setSnackbar({ open: true, msg: "Attestation submitted.", error: false });
+      }
+    } catch (err) {
+      setAttestationError(err?.response?.data?.error || "Unable to submit attestation.");
+    } finally {
+      setAttestationSubmitting(false);
     }
   };
 
@@ -3932,6 +3991,63 @@ const polishedPanelSx = employeePolish
           <Button onClick={() => setPhotoUploadShift(null)} disabled={photoUploading}>Cancel</Button>
           <Button variant="contained" onClick={submitFieldPhotoUpload} disabled={photoUploading || !photoUploadFiles.length} startIcon={photoUploading ? <CircularProgress size={16} color="inherit" /> : <UploadFileIcon />}>
             {photoUploading ? "Uploading..." : `Upload${photoUploadFiles.length > 1 ? ` ${photoUploadFiles.length}` : ""}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(currentAttestation)} maxWidth="xs" fullWidth>
+        <DialogTitle>Shift attestation</DialogTitle>
+        <DialogContent dividers>
+          {currentAttestation && (
+            <Stack spacing={2} sx={{ pt: 0.5 }}>
+              <Typography variant="body2">{currentAttestation.prompt_text}</Typography>
+              <TextField
+                select
+                fullWidth
+                label={currentAttestation.response_type === "yes_no" ? "Confirmation" : "Response"}
+                value={attestationForm.response_value}
+                onChange={(event) =>
+                  setAttestationForm((prev) => ({ ...prev, response_value: event.target.value }))
+                }
+              >
+                {(currentAttestation.options || []).map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                label="Comment"
+                value={attestationForm.comment}
+                onChange={(event) =>
+                  setAttestationForm((prev) => ({ ...prev, comment: event.target.value }))
+                }
+                helperText={
+                  currentAttestation.trigger_type === "injury_free" &&
+                  String(attestationForm.response_value || "").toLowerCase() === "no"
+                    ? "Comment is required when you answer No."
+                    : "Optional unless the selected response needs more detail."
+                }
+              />
+              {attestationError && <Alert severity="error">{attestationError}</Alert>}
+              {attestationQueue.length > 1 && (
+                <Typography variant="caption" color="text.secondary">
+                  {attestationQueue.length} pending attestations remain for this shift.
+                </Typography>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={submitCurrentAttestation}
+            disabled={attestationSubmitting || !attestationForm.response_value}
+          >
+            {attestationSubmitting ? "Submitting..." : "Submit"}
           </Button>
         </DialogActions>
       </Dialog>

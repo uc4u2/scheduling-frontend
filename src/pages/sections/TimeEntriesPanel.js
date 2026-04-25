@@ -535,6 +535,246 @@ const TimeInsightsPanel = ({
   );
 };
 
+const AttestationsPanel = ({
+  filters,
+  attestationFilters,
+  setAttestationFilters,
+  handleChange,
+  handleDepartmentChange,
+  applyDatePreset,
+  fetchAttestations,
+  loading,
+  departmentOptions,
+  visibleEmployees,
+  includeArchived,
+  setIncludeArchived,
+  recruiterMap,
+  items,
+  summary,
+  setSnackbar,
+}) => {
+  const triggerOptions = [
+    { value: "all", label: "All triggers" },
+    { value: "missed_break", label: "Missed break" },
+    { value: "short_break", label: "Short break" },
+    { value: "early_clock_out", label: "Early clock-out" },
+    { value: "injury_free", label: "Injury-free" },
+  ];
+  const statusOptions = [
+    { value: "all", label: "All statuses" },
+    { value: "pending", label: "Pending" },
+    { value: "submitted", label: "Submitted" },
+    { value: "reviewed", label: "Reviewed" },
+  ];
+
+  const exportCsv = async () => {
+    try {
+      const params = new URLSearchParams({
+        start_date: filters.startDate,
+        end_date: filters.endDate,
+        trigger_type: attestationFilters.triggerType,
+        status: attestationFilters.status,
+      });
+      if (filters.recruiterId) params.set("recruiter_id", filters.recruiterId);
+      if (filters.departmentId) params.set("department_id", filters.departmentId);
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
+      const res = await api.get(`/manager/time-entries/attestations/export?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `shift_attestations_${filters.startDate}_${filters.endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setSnackbar({ open: true, severity: "error", message: "Unable to export attestations." });
+    }
+  };
+
+  const reviewAttestation = async (id) => {
+    try {
+      await timeTracking.reviewAttestation(id);
+      setSnackbar({ open: true, severity: "success", message: "Attestation reviewed." });
+      fetchAttestations();
+    } catch (err) {
+      setSnackbar({ open: true, severity: "error", message: err?.response?.data?.error || "Unable to review attestation." });
+    }
+  };
+
+  return (
+    <Stack spacing={2} sx={{ mt: 2 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, borderColor: "rgba(148, 163, 184, 0.24)", boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)" }}>
+        <Stack spacing={1.75}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900}>Attestation controls</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Review clock-out and break attestations using the same employee, department, and date filters as Time Tracking.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button size="small" variant="outlined" onClick={fetchAttestations} disabled={loading}>Refresh</Button>
+              <Button size="small" variant="outlined" onClick={exportCsv} disabled={loading}>Export CSV</Button>
+            </Stack>
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("today")}>Today</Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("this_week")}>This week</Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("last_week")}>Last week</Button>
+          </Stack>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={2.4}>
+              <TextField
+                select
+                fullWidth
+                label="Status"
+                value={attestationFilters.status}
+                onChange={(event) => setAttestationFilters((prev) => ({ ...prev, status: event.target.value }))}
+              >
+                {statusOptions.map((opt) => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth label="Department" value={filters.departmentId} onChange={handleDepartmentChange}>
+                <MenuItem value="">All departments</MenuItem>
+                {departmentOptions.map((dept) => <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth label="Employee" value={filters.recruiterId} onChange={handleChange("recruiterId")}>
+                <MenuItem value="">All employees</MenuItem>
+                {visibleEmployees.map((rec) => {
+                  const displayName = rec.name || rec.full_name || [rec.first_name, rec.last_name].filter(Boolean).join(" ") || rec.email || `#${rec.id}`;
+                  return <MenuItem key={rec.id} value={rec.id}>{displayName}</MenuItem>;
+                })}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField
+                select
+                fullWidth
+                label="Trigger"
+                value={attestationFilters.triggerType}
+                onChange={(event) => setAttestationFilters((prev) => ({ ...prev, triggerType: event.target.value }))}
+              >
+                {triggerOptions.map((opt) => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={1.2}>
+              <ThemedDateField fullWidth label="From" value={filters.startDate} onChange={handleChange("startDate")} />
+            </Grid>
+            <Grid item xs={12} md={1.2}>
+              <ThemedDateField fullWidth label="To" value={filters.endDate} onChange={handleChange("endDate")} />
+            </Grid>
+            <Grid item xs={12} md={1.2}>
+              <FormControlLabel control={<Switch checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />} label="Archived" />
+            </Grid>
+          </Grid>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip size="small" variant="outlined" label={`Pending ${summary?.pending || 0}`} />
+            <Chip size="small" variant="outlined" label={`Submitted ${summary?.submitted || 0}`} />
+            <Chip size="small" variant="outlined" label={`Reviewed ${summary?.reviewed || 0}`} />
+            <Chip size="small" variant="outlined" color={(summary?.missed_break || 0) ? "warning" : "default"} label={`Missed break ${summary?.missed_break || 0}`} />
+            <Chip size="small" variant="outlined" color={(summary?.short_break || 0) ? "warning" : "default"} label={`Short break ${summary?.short_break || 0}`} />
+            <Chip size="small" variant="outlined" color={(summary?.early_clock_out || 0) ? "warning" : "default"} label={`Early clock-out ${summary?.early_clock_out || 0}`} />
+            <Chip size="small" variant="outlined" color={(summary?.injury_free || 0) ? "info" : "default"} label={`Injury-free ${summary?.injury_free || 0}`} />
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
+        <Table size="small" stickyHeader>
+          <TableHead>
+            <TableRow>
+              <TableCell>Employee</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Trigger</TableCell>
+              <TableCell>Shift time</TableCell>
+              <TableCell>Breaks</TableCell>
+              <TableCell>Response</TableCell>
+              <TableCell>Comment</TableCell>
+              <TableCell>Submitted</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={10}>
+                  <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+                </TableCell>
+              </TableRow>
+            ) : !items.length ? (
+              <TableRow>
+                <TableCell colSpan={10}>
+                  <Typography variant="body2" color="text.secondary">No attestations found for this filter.</Typography>
+                </TableCell>
+              </TableRow>
+            ) : items.map((item) => {
+              const recruiter = recruiterMap[item.recruiter_id] || item.employee || {};
+              return (
+                <TableRow key={item.id} hover>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Avatar src={recruiter.profile_image_url || recruiter.avatar || undefined}>
+                        {(item.employee_name || "E").charAt(0)}
+                      </Avatar>
+                      <Typography fontWeight={600}>{item.employee_name || recruiter.name || `#${item.recruiter_id}`}</Typography>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>{item.date || "—"}</TableCell>
+                  <TableCell>
+                    <Chip size="small" variant="outlined" label={item.trigger_label || item.trigger_type} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {item.actual_start_local ? `In ${item.actual_start_local}` : "—"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.actual_end_local ? `Out ${item.actual_end_local}` : "—"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" variant="outlined" label={`${item.break_recorded_minutes || 0}m / ${item.break_expected_minutes || 0}m`} />
+                  </TableCell>
+                  <TableCell>{item.response_value ? String(item.response_value).replace(/_/g, " ") : "Pending"}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">{item.comment || "—"}</Typography>
+                  </TableCell>
+                  <TableCell>{item.submitted_at ? new Date(item.submitted_at).toLocaleString() : "—"}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={item.status}
+                      color={item.status === "pending" ? "warning" : item.status === "submitted" ? "info" : "success"}
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={item.status === "reviewed"}
+                      onClick={() => reviewAttestation(item.id)}
+                    >
+                      Review
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Stack>
+  );
+};
+
 const TimeEntriesPanel = ({ recruiters = [] }) => {
   const theme = useTheme();
   const viewerTimezone = getUserTimezone();
@@ -550,8 +790,15 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     startDate: today.toISOString().slice(0, 10),
     endDate: today.toISOString().slice(0, 10),
   });
+  const [attestationFilters, setAttestationFilters] = useState({
+    status: "all",
+    triggerType: "all",
+  });
   const [entries, setEntries] = useState([]);
+  const [attestations, setAttestations] = useState([]);
+  const [attestationSummary, setAttestationSummary] = useState({});
   const [loading, setLoading] = useState(false);
+  const [attestationLoading, setAttestationLoading] = useState(false);
   const [actionId, setActionId] = useState(null);
   const [error, setError] = useState("");
   const [snackbar, setSnackbar] = useState({
@@ -778,10 +1025,43 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     }
   };
 
+  const fetchAttestations = async () => {
+    setAttestationLoading(true);
+    try {
+      const params = {};
+      if (filters.recruiterId) params.recruiter_id = filters.recruiterId;
+      if (filters.departmentId) params.department_id = filters.departmentId;
+      if (filters.startDate) params.start_date = filters.startDate;
+      if (filters.endDate) params.end_date = filters.endDate;
+      if (attestationFilters.status && attestationFilters.status !== "all") {
+        params.status = attestationFilters.status;
+      }
+      if (attestationFilters.triggerType && attestationFilters.triggerType !== "all") {
+        params.trigger_type = attestationFilters.triggerType;
+      }
+      const data = await timeTracking.listAttestations(params);
+      setAttestations(Array.isArray(data?.items) ? data.items : []);
+      setAttestationSummary(data?.summary || {});
+    } catch (err) {
+      setAttestations([]);
+      setAttestationSummary({});
+      setSnackbar({ open: true, severity: "error", message: err?.response?.data?.error || "Failed to load attestations." });
+    } finally {
+      setAttestationLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.status, filters.startDate, filters.endDate, filters.recruiterId, filters.departmentId]);
+
+  useEffect(() => {
+    if (activeTab === "attestations") {
+      fetchAttestations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, filters.startDate, filters.endDate, filters.recruiterId, filters.departmentId, attestationFilters.status, attestationFilters.triggerType]);
 
   useEffect(() => {
     if (!entries.length) {
@@ -1374,6 +1654,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         >
           <Tab value="approvals" label="Approvals" />
           <Tab value="insights" label="Time Insights" />
+          <Tab value="attestations" label="Attestations" />
         </Tabs>
       </Paper>
 
@@ -1825,12 +2106,28 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                             </Stack>
                           </TableCell>
                           <TableCell>
-                            <Chip
-                              label={entryIsLeave ? leaveMeta.payrollLabel : entry.status}
-                              size="small"
-                              color={entryIsLeave ? leaveMeta.payrollColor : statusColor[entry.status] || "default"}
-                              variant="outlined"
-                            />
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              <Chip
+                                label={entryIsLeave ? leaveMeta.payrollLabel : entry.status}
+                                size="small"
+                                color={entryIsLeave ? leaveMeta.payrollColor : statusColor[entry.status] || "default"}
+                                variant="outlined"
+                              />
+                              {!entryIsLeave && entry.attestation_summary?.badge_label && (
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  color={
+                                    entry.attestation_summary?.badge_status === "pending"
+                                      ? "warning"
+                                      : entry.attestation_summary?.badge_status === "submitted"
+                                      ? "info"
+                                      : "success"
+                                  }
+                                  label={entry.attestation_summary.badge_label}
+                                />
+                              )}
+                            </Stack>
                           </TableCell>
                           <TableCell align="right">
                             <IconButton
@@ -2181,6 +2478,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       </Paper>
       </>
       ) : (
+      activeTab === "insights" ? (
         <TimeInsightsPanel
           entries={entries}
           roster={roster}
@@ -2197,6 +2495,26 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           setIncludeArchived={setIncludeArchived}
           recruiterMap={recruiterMap}
         />
+      ) : (
+        <AttestationsPanel
+          filters={filters}
+          attestationFilters={attestationFilters}
+          setAttestationFilters={setAttestationFilters}
+          handleChange={handleChange}
+          handleDepartmentChange={handleDepartmentChange}
+          applyDatePreset={applyDatePreset}
+          fetchAttestations={fetchAttestations}
+          loading={attestationLoading}
+          departmentOptions={departmentOptions}
+          visibleEmployees={visibleEmployees}
+          includeArchived={includeArchived}
+          setIncludeArchived={setIncludeArchived}
+          recruiterMap={recruiterMap}
+          items={attestations}
+          summary={attestationSummary}
+          setSnackbar={setSnackbar}
+        />
+      )
       )}
 
       <Snackbar
@@ -2412,12 +2730,28 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          size="small"
-                          label={entryIsLeave ? leaveMeta.payrollLabel : entry.status}
-                          color={entryIsLeave ? leaveMeta.payrollColor : "default"}
-                          variant="outlined"
-                        />
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                          <Chip
+                            size="small"
+                            label={entryIsLeave ? leaveMeta.payrollLabel : entry.status}
+                            color={entryIsLeave ? leaveMeta.payrollColor : "default"}
+                            variant="outlined"
+                          />
+                          {!entryIsLeave && entry.attestation_summary?.badge_label && (
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              color={
+                                entry.attestation_summary?.badge_status === "pending"
+                                  ? "warning"
+                                  : entry.attestation_summary?.badge_status === "submitted"
+                                  ? "info"
+                                  : "success"
+                              }
+                              label={entry.attestation_summary.badge_label}
+                            />
+                          )}
+                        </Stack>
                         {entry.approved_by_name && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                             By {entry.approved_by_name}

@@ -441,10 +441,20 @@ export const timeTracking = {
     api.post(`/employee/shifts/${shiftId}/break-start`, {}, config).then((r) => r.data),
   endBreak: (shiftId, config = {}) =>
     api.post(`/employee/shifts/${shiftId}/break-end`, {}, config).then((r) => r.data),
+  pendingShiftAttestations: (shiftId, config = {}) =>
+    api.get(`/employee/shifts/${shiftId}/attestations/pending`, config).then((r) => r.data),
+  submitShiftAttestation: (id, payload = {}, config = {}) =>
+    api.post(`/employee/shift-attestations/${id}/submit`, payload, config).then((r) => r.data),
   listEntries: (params = {}, config = {}) =>
     api.get("/manager/time-entries", { params, ...config }).then((r) => r.data),
   listPunchLocations: (params = {}, config = {}) =>
     api.get("/manager/time-entries/locations", { params, ...config }).then((r) => r.data),
+  listAttestations: (params = {}, config = {}) =>
+    api.get("/manager/time-entries/attestations", { params, ...config }).then((r) => r.data),
+  exportAttestations: (params = {}, config = {}) =>
+    api.get("/manager/time-entries/attestations/export", { params, ...config }).then((r) => r.data),
+  reviewAttestation: (id, config = {}) =>
+    api.post(`/manager/time-entries/attestations/${id}/review`, {}, config).then((r) => r.data),
   managerHistory: (params = {}, config = {}) =>
     api.get("/manager/time-entries/history", { params, ...config }).then((r) => r.data),
   approveEntry: (id, config = {}) =>
