@@ -6,6 +6,8 @@ import { api } from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
+import { APP_ORIGIN } from "../../config/origins";
+import { isNativeRuntime } from "../../utils/runtime";
 
 export default function RecruiterPublicLinkPage({ token }) {
   const [loading, setLoading] = useState(true);
@@ -78,10 +80,11 @@ export default function RecruiterPublicLinkPage({ token }) {
     fetchMe();
   }, []);
 
-  const origin =
+  const browserOrigin =
     (typeof window !== "undefined" && window.location.origin) ||
     (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
-    "http://localhost:3000";
+    APP_ORIGIN;
+  const origin = isNativeRuntime() ? APP_ORIGIN : String(browserOrigin).replace(/\/$/, "");
   const link = slug && (publicToken || rid) ? `${origin}/${slug}/meet/${publicToken || rid}` : "";
 
   const regenerate = async () => {
