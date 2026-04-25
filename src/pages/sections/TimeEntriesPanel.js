@@ -889,6 +889,14 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     const onBreak = roster.filter((person) => person.break_in_progress).length;
     return { active, onBreak };
   }, [roster]);
+  const rosterByEntryId = useMemo(() => {
+    const map = {};
+    roster.forEach((person) => {
+      if (!person?.id) return;
+      map[String(person.id)] = person;
+    });
+    return map;
+  }, [roster]);
   const pendingCount = useMemo(
     () => entries.filter((e) => !isLeaveEntry(e) && e.status === "completed").length,
     [entries]
@@ -1934,6 +1942,11 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     {entries.map((entry) => {
                       const entryIsLeave = isLeaveEntry(entry);
                       const leaveMeta = entryIsLeave ? getLeaveReviewVisibility(entry) : null;
+                      const liveRosterState = rosterByEntryId[String(entry.id)] || null;
+                      const breakInProgress = Boolean(liveRosterState?.break_in_progress);
+                      const breakElapsedLabel = Number.isFinite(liveRosterState?.break_elapsed_minutes)
+                        ? `${liveRosterState.break_elapsed_minutes}m`
+                        : null;
                       const r =
                         entry.recruiter ||
                         recruiterMap[entry.recruiter_id] ||
@@ -2178,6 +2191,14 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                                 color={entryIsLeave ? leaveMeta.payrollColor : statusColor[entry.status] || "default"}
                                 variant="outlined"
                               />
+                              {!entryIsLeave && breakInProgress && (
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  color="warning"
+                                  label={breakElapsedLabel ? `On break · ${breakElapsedLabel}` : "On break"}
+                                />
+                              )}
                               {!entryIsLeave && entry.attestation_summary?.badge_label && (
                                 <Chip
                                   size="small"
