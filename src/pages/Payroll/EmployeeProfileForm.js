@@ -36,6 +36,8 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { api, API_BASE_URL } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
+import { APP_ORIGIN } from "../../config/origins";
+import { isNativeRuntime } from "../../utils/runtime";
 import UploadIcon from "@mui/icons-material/Upload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useTranslation } from "react-i18next";
@@ -173,10 +175,13 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [totalPages, setTotalPages] = useState(1);
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
-const FRONTEND_ORIGIN =
-  (typeof window !== "undefined" && window.location.origin) ||
-  (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
-  "http://localhost:3000";
+const FRONTEND_ORIGIN = (() => {
+  const browserOrigin =
+    (typeof window !== "undefined" && window.location.origin) ||
+    (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
+    APP_ORIGIN;
+  return (isNativeRuntime() ? APP_ORIGIN : browserOrigin).replace(/\/$/, "");
+})();
 
 
   useEffect(() => {

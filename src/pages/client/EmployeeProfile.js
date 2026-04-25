@@ -15,6 +15,8 @@ import {
   Divider,
   Chip,
 } from "@mui/material";
+import { APP_ORIGIN } from "../../config/origins";
+import { isNativeRuntime } from "../../utils/runtime";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
 import { getTenantHostMode } from "../../utils/tenant";
@@ -149,7 +151,12 @@ const EmployeeProfile = ({ slugOverride }) => {
     );
   } else {
     const providerName = profile.full_name || profile.name;
-    const bookingUrl = `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`;
+    const bookingOrigin = isNativeRuntime()
+      ? APP_ORIGIN
+      : ((typeof window !== "undefined" && window.location.origin) ||
+        (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
+        APP_ORIGIN);
+    const bookingUrl = `${String(bookingOrigin).replace(/\/$/, "")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`;
 
     body = (
       <Stack spacing={3.5}>

@@ -1661,6 +1661,9 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         <Tabs
           value={activeTab}
           onChange={(_, value) => setActiveTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{ px: 2, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}
         >
           <Tab value="approvals" label="Approvals" />
