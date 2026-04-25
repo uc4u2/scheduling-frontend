@@ -2439,7 +2439,7 @@ const polishedPanelSx = employeePolish
                       variant={timelineMeta.breakDeficit > 0 ? "filled" : "outlined"}
                       label={
                         timelineMeta.breakDeficit > 0
-                          ? `Break overdue · ${timelineMeta.breakDeficit}m required`
+                          ? `Break overdue · ${formatBreakMinutesLabel(timelineMeta.breakDeficit, true)} required`
                           : `Break compliant (${formatBreakMinutesLabel(totalBreakMinutes, true)} logged)`
                       }
                       sx={{
