@@ -1660,8 +1660,6 @@ const breakTimelineMeta = useMemo(() => {
 
 const polishedWorkspaceSx = employeePolish
   ? {
-      maxWidth: 1480,
-      mx: "auto",
       width: "100%",
       display: "flex",
       flexDirection: "column",
@@ -1710,6 +1708,14 @@ const polishedPanelSx = employeePolish
   };
 
   const currentAttestation = attestationQueue[0] || null;
+  const desktopClockAction = canClockIn ? "clock_in" : canClockOut ? "clock_out" : null;
+  const desktopBreakAction = breakInProgress
+    ? canEndBreak
+      ? "end_break"
+      : null
+    : canStartBreak
+    ? "start_break"
+    : null;
 
   const submitCurrentAttestation = async () => {
     if (!currentAttestation?.id) return;
@@ -2436,53 +2442,63 @@ const polishedPanelSx = employeePolish
                           ? `Break overdue · ${timelineMeta.breakDeficit}m required`
                           : `Break compliant (${formatBreakMinutesLabel(totalBreakMinutes, true)} logged)`
                       }
-                      sx={{ mt: 1, width: "fit-content" }}
+                      sx={{
+                        mt: 1,
+                        width: "fit-content",
+                        ...(timelineMeta.breakDeficit > 0
+                          ? {
+                              bgcolor: "error.main",
+                              color: "error.contrastText",
+                              fontWeight: 800,
+                              borderColor: "error.main",
+                              "& .MuiChip-label": {
+                                color: "inherit",
+                              },
+                            }
+                          : {}),
+                      }}
                     />
                   )}
                 </Box>
               )}
               {!isSmDown && (
               <Stack
-                direction={{ xs: "column", sm: "row" }}
+                direction="row"
                 spacing={1.5}
-                alignItems={{ xs: "stretch", sm: "center" }}
+                alignItems="center"
+                flexWrap="wrap"
+                useFlexGap
                 mt={2}
               >
-                <Button
-                  variant="contained"
-                  disabled={!canClockIn || clocking}
-                  onClick={() => handleClockAction("in")}
-                  fullWidth={isSmDown}
-                  sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
-                >
-                  Clock In
-                </Button>
-                <Tooltip
-                  title={
-                    !canClockOut
-                      ? hasClockedOut
-                        ? "Already clocked out for this shift."
-                        : "Clock out becomes available after you clock in and the shift is active."
-                      : ""
-                  }
-                  arrow
-                >
-                  <span>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      disabled={!canClockOut || clocking}
-                      onClick={() => handleClockAction("out")}
-                      fullWidth={isSmDown}
-                      sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
-                    >
-                      Clock Out
-                    </Button>
-                  </span>
-                </Tooltip>
-              {isClocked && !isInProgress && !isCompleted && (
-                <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
-              )}
+                {desktopClockAction && (
+                  <Button
+                    variant={desktopClockAction === "clock_in" ? "contained" : "outlined"}
+                    color={desktopClockAction === "clock_in" ? "primary" : "secondary"}
+                    disabled={clocking}
+                    onClick={() => handleClockAction(desktopClockAction === "clock_in" ? "in" : "out")}
+                    sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
+                  >
+                    {desktopClockAction === "clock_in" ? "Clock In" : "Clock Out"}
+                  </Button>
+                )}
+                {desktopBreakAction && (
+                  <Button
+                    variant={desktopBreakAction === "end_break" ? "contained" : "outlined"}
+                    size="small"
+                    color="warning"
+                    onClick={() => handleBreakAction(desktopBreakAction === "end_break" ? "end" : "start")}
+                    disabled={breakSubmitting}
+                    sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
+                  >
+                    {desktopBreakAction === "end_break" ? "End Break" : "Start Break"}
+                  </Button>
+                )}
+                {isClocked && !isInProgress && !isCompleted && (
+                  <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  Breaks logged: {formatBreakMinutesLabel(totalBreakMinutes)} {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
+                </Typography>
               </Stack>
               )}
               {locationCaptureMessage && (
@@ -2490,36 +2506,14 @@ const polishedPanelSx = employeePolish
                   {locationCaptureMessage}
                 </Alert>
               )}
-              {isInProgress && !isSmDown && (
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1.5}
-                  alignItems={{ xs: "stretch", sm: "center" }}
-                  mt={1}
-                >
-                  <Button
-                    variant={canStartBreak ? "outlined" : "text"}
-                    size="small"
-                    onClick={() => handleBreakAction("start")}
-                    disabled={!canStartBreak || breakSubmitting}
-                    fullWidth={isSmDown}
-                  >
-                    Start Break
-                  </Button>
-                  <Button
-                    variant={canEndBreak ? "contained" : "text"}
-                    size="small"
-                    color="warning"
-                    onClick={() => handleBreakAction("end")}
-                    disabled={!canEndBreak}
-                    fullWidth={isSmDown}
-                  >
-                    End Break
-                  </Button>
-                  <Typography variant="caption" color="text.secondary">
-                    Breaks logged: {formatBreakMinutesLabel(totalBreakMinutes)} {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
-                  </Typography>
-                </Stack>
+              {isInProgress && !isSmDown && !desktopBreakAction && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                  {breakInProgress
+                    ? "Break can be ended once the current break session is active."
+                    : canStartBreak
+                    ? ""
+                    : "Break actions will appear here when your break window opens."}
+                </Typography>
               )}
             {breakTimelineMeta && (
               <Box mt={2}>

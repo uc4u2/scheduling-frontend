@@ -48,16 +48,37 @@ const RecruiterHomePage = () => {
     let mounted = true;
     const loadIdentity = async () => {
       try {
-        const [meRes, profileRes] = await Promise.allSettled([
+        const [meRes, profileRes, recruiterRes] = await Promise.allSettled([
           api.get("/auth/me", { noCompanyHeader: true }),
           api.get("/profile"),
+          api.get("/recruiter/profile"),
         ]);
         if (!mounted) return;
 
         const me = meRes.status === "fulfilled" ? meRes.value?.data || {} : {};
         const profile = profileRes.status === "fulfilled" ? profileRes.value?.data || {} : {};
+        const recruiterLite =
+          recruiterRes.status === "fulfilled"
+            ? recruiterRes.value?.data?.recruiter || recruiterRes.value?.data || {}
+            : {};
+        let recruiterFull = {};
+
+        if (me?.id) {
+          try {
+            const recruiterFullRes = await api.get(`/api/recruiters/${me.id}`);
+            recruiterFull = recruiterFullRes?.data || {};
+          } catch {
+            recruiterFull = {};
+          }
+        }
 
         const resolvedName =
+          [recruiterFull.first_name, recruiterFull.last_name].filter(Boolean).join(" ").trim() ||
+          recruiterFull.full_name ||
+          recruiterFull.name ||
+          [recruiterLite.first_name, recruiterLite.last_name].filter(Boolean).join(" ").trim() ||
+          recruiterLite.full_name ||
+          recruiterLite.name ||
           [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() ||
           profile.full_name ||
           profile.name ||
@@ -68,8 +89,12 @@ const RecruiterHomePage = () => {
           "Employee";
 
         const resolvedImage = normalizeApiUrl(
+          recruiterFull.profile_image_url ||
+          recruiterLite.profile_image_url ||
           profile.profile_image_url ||
           me.profile_image_url ||
+          recruiterFull.avatar ||
+          recruiterLite.avatar ||
           profile.avatar ||
           me.avatar ||
           ""
