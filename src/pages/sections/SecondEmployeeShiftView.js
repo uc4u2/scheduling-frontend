@@ -55,6 +55,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DownloadIcon from "@mui/icons-material/Download";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import api from "../../utils/api";
 import { STATUS } from "../../utils/shiftSwap";
@@ -1679,6 +1680,37 @@ const polishedPanelSx = employeePolish
     }
   : {};
 
+  const desktopBreakStatusChip = useMemo(() => {
+    if (isSmDown) return null;
+    if (breakInProgress && breakTargetMinutes) {
+      const remaining = Math.max(Math.round((breakTargetMinutes || 0) - currentBreakMinutes), 0);
+      return {
+        color: remaining > 0 ? "warning" : "error",
+        variant: remaining > 0 ? "outlined" : "filled",
+        label: remaining > 0
+          ? `Break target · ${remaining}m remaining`
+          : `Break overdue · ${formatBreakMinutesLabel(Math.abs((breakTargetMinutes || 0) - currentBreakMinutes), true)} over`,
+      };
+    }
+    if (timelineMeta?.needsBreak) {
+      return {
+        color: timelineMeta.breakDeficit > 0 ? "error" : "success",
+        variant: timelineMeta.breakDeficit > 0 ? "filled" : "outlined",
+        label: timelineMeta.breakDeficit > 0
+          ? `Break overdue · ${formatBreakMinutesLabel(timelineMeta.breakDeficit, true)} required`
+          : `Break compliant · ${formatBreakMinutesLabel(totalBreakMinutes, true)} logged`,
+      };
+    }
+    return null;
+  }, [
+    isSmDown,
+    breakInProgress,
+    breakTargetMinutes,
+    currentBreakMinutes,
+    timelineMeta,
+    totalBreakMinutes,
+  ]);
+
   const handleBreakAction = async (action) => {
     if (!todayShift) return;
     setBreakSubmitting(true);
@@ -2015,28 +2047,24 @@ const polishedPanelSx = employeePolish
         ...polishedPanelSx,
       }}
     >
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", sm: "center" }}
-        sx={{ textAlign: { xs: "center", sm: "left" } }}
-      >
-        <Box>
+      <Stack spacing={1.25} sx={{ textAlign: { xs: "center", sm: "left" } }}>
+        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap sx={{ minWidth: 0 }}>
           <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
             Time history
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            View past shifts, breaks, and approvals.
-          </Typography>
-        </Box>
+          <Tooltip title="View past shifts, breaks, and approvals.">
+            <IconButton size="small" sx={{ p: 0.25 }}>
+              <HelpOutlineIcon fontSize="inherit" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={1}
           useFlexGap
           alignItems="center"
           sx={{
-            width: { xs: "100%", sm: "auto" },
+            width: "100%",
             ...(employeePolish
               ? {
                   p: 1,
@@ -2107,28 +2135,12 @@ const polishedPanelSx = employeePolish
             Download CSV
           </Button>
         </Stack>
-      </Stack>
-
-      <Stack direction="row" spacing={2} mt={2} flexWrap="wrap" useFlexGap>
-        <Chip
-          label={`Hours: ${historySummary?.hours_worked ?? 0}`}
-          variant="outlined"
-          color="primary"
-        />
-        <Chip
-          label={`Overtime: ${historySummary?.overtime_hours ?? 0}`}
-          variant="outlined"
-          color={historySummary?.overtime_hours ? "warning" : "default"}
-        />
-        <Chip
-          label={`Break minutes: ${historySummary?.break_minutes ?? 0}`}
-          variant="outlined"
-        />
-        <Chip
-          label={`Missed breaks: ${historySummary?.missed_breaks ?? 0}`}
-          variant="outlined"
-          color={historySummary?.missed_breaks ? "error" : "default"}
-        />
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip label={`Hours: ${historySummary?.hours_worked ?? 0}`} variant="outlined" color="primary" />
+          <Chip label={`Overtime: ${historySummary?.overtime_hours ?? 0}`} variant="outlined" color={historySummary?.overtime_hours ? "warning" : "default"} />
+          <Chip label={`Break minutes: ${historySummary?.break_minutes ?? 0}`} variant="outlined" />
+          <Chip label={`Missed breaks: ${historySummary?.missed_breaks ?? 0}`} variant="outlined" color={historySummary?.missed_breaks ? "error" : "default"} />
+        </Stack>
       </Stack>
 
       {historyError && (
@@ -2201,15 +2213,14 @@ const polishedPanelSx = employeePolish
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        In: {formatClockLocal(entry.clock_in, entry.timezone)}
-                      </Typography>
-                      <Typography variant="body2">
-                        Out: {formatClockLocal(entry.clock_out, entry.timezone)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
-                      </Typography>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 0.25, md: 1.25 }} useFlexGap flexWrap="wrap">
+                        <Typography variant="body2">
+                          In: {formatClockLocal(entry.clock_in, entry.timezone)}
+                        </Typography>
+                        <Typography variant="body2">
+                          Out: {formatClockLocal(entry.clock_out, entry.timezone)}
+                        </Typography>
+                      </Stack>
                     </TableCell>
                     <TableCell>{entry.hours_worked_rounded ?? entry.hours_worked}h</TableCell>
                     <TableCell>
@@ -2218,6 +2229,17 @@ const polishedPanelSx = employeePolish
                         label={`${entry.break_minutes || 0}m`}
                         color={entry.break_non_compliant ? "error" : "default"}
                         variant={entry.break_non_compliant ? "filled" : "outlined"}
+                        sx={
+                          entry.break_non_compliant
+                            ? undefined
+                            : {
+                                bgcolor: "action.hover",
+                                borderColor: "divider",
+                                color: "text.primary",
+                                fontWeight: 700,
+                                "& .MuiChip-label": { color: "inherit" },
+                              }
+                        }
                       />
                       {entry.break_missing_minutes > 0 && (
                         <Typography variant="caption" color="error.main" sx={{ display: "block" }}>
@@ -2281,9 +2303,6 @@ const polishedPanelSx = employeePolish
               />
             )}
           </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Your live clock, break window, and shift timeline.
-          </Typography>
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Tooltip title={todayCardCollapsed ? "Expand shift card" : "Collapse shift card"}>
@@ -2297,29 +2316,39 @@ const polishedPanelSx = employeePolish
         <Box mt={2}>
           {todayShift ? (
             <>
-              <Typography
-                variant={employeePolish ? "h5" : "h6"}
-                fontWeight={700}
+              <Stack
+                direction={{ xs: "column", lg: "row" }}
+                spacing={{ xs: 0.5, lg: 2 }}
+                alignItems={{ xs: "flex-start", lg: "baseline" }}
+                justifyContent="space-between"
                 sx={{ textAlign: { xs: "center", sm: "left" } }}
               >
-                {shiftDateLabel} · {shiftStartLabel} – {shiftEndLabel}
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ textAlign: { xs: "center", sm: "left" } }}
-              >
-                {isClocked
-                  ? `Clocked in: ${clockInDt?.toFormat("HH:mm")}${
-                      breakInProgress && breakStartDt ? ` • On break since: ${breakStartDt.toFormat("HH:mm")}` : ""
-                    }${isCompleted && clockOutDt ? ` • Clocked out: ${clockOutDt.toFormat("HH:mm")}` : ""}`
-                  : "Not clocked in yet."}
-              </Typography>
-              {isClocked && (
-                <Typography variant="body2" color="text.secondary">
-                  Time on shift: {formatElapsed(elapsedSeconds)}
+                <Typography
+                  variant={employeePolish ? "h5" : "h6"}
+                  fontWeight={700}
+                >
+                  {shiftDateLabel} · {shiftStartLabel} – {shiftEndLabel}
                 </Typography>
-              )}
+                <Stack
+                  direction={{ xs: "column", lg: "row" }}
+                  spacing={{ xs: 0.25, lg: 1.5 }}
+                  alignItems={{ xs: "flex-start", lg: "center" }}
+                  sx={{ minWidth: 0 }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    {isClocked
+                      ? `Clocked in: ${clockInDt?.toFormat("HH:mm")}${
+                          breakInProgress && breakStartDt ? ` • On break since: ${breakStartDt.toFormat("HH:mm")}` : ""
+                        }${isCompleted && clockOutDt ? ` • Clocked out: ${clockOutDt.toFormat("HH:mm")}` : ""}`
+                      : "Not clocked in yet."}
+                  </Typography>
+                  {isClocked && (
+                    <Typography variant="body2" color="text.secondary">
+                      Time on shift: {formatElapsed(elapsedSeconds)}
+                    </Typography>
+                  )}
+                </Stack>
+              </Stack>
               {resolvedBreakWindow && (
                 <Stack
                   direction="row"
@@ -2432,7 +2461,7 @@ const polishedPanelSx = employeePolish
                       {shiftEndLabel}
                     </Typography>
                   </Stack>
-                  {timelineMeta.needsBreak && (
+                  {timelineMeta.needsBreak && isSmDown && (
                     <Chip
                       size="small"
                       color={timelineMeta.breakDeficit > 0 ? "error" : "success"}
@@ -2495,6 +2524,28 @@ const polishedPanelSx = employeePolish
                 )}
                 {isClocked && !isInProgress && !isCompleted && (
                   <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
+                )}
+                {desktopBreakStatusChip && (
+                  <Chip
+                    size="small"
+                    color={desktopBreakStatusChip.color}
+                    variant={desktopBreakStatusChip.variant}
+                    label={desktopBreakStatusChip.label}
+                    sx={{
+                      width: "fit-content",
+                      ...(desktopBreakStatusChip.color === "error"
+                        ? {
+                            bgcolor: "error.main",
+                            color: "error.contrastText",
+                            fontWeight: 800,
+                            borderColor: "error.main",
+                            "& .MuiChip-label": {
+                              color: "inherit",
+                            },
+                          }
+                        : {}),
+                    }}
+                  />
                 )}
                 <Typography variant="caption" color="text.secondary">
                   Breaks logged: {formatBreakMinutesLabel(totalBreakMinutes)} {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
