@@ -19,12 +19,26 @@ Source file:
 Behavior:
 
 - Reads `timeSummary.policy.punch_location_mode`.
-- If mode is `off`, it does not call `navigator.geolocation`.
-- If mode is `optional`, it attempts one location capture inside the Clock In / Clock Out click handler.
+- If mode is `off`, it does not attempt location capture.
+- If mode is `optional`, it attempts one foreground location capture inside the Clock In / Clock Out click handler.
 - It does not request location on page load.
 - It does not use `watchPosition`.
 - It does not request background location.
 - It always continues the punch even when location fails.
+
+Native Android behavior:
+
+- Android uses `@capacitor/geolocation` instead of relying only on browser geolocation.
+- The app checks native permission first and requests it during punch capture when needed.
+- If the user denied permission once, the app can request again on a later punch.
+- If the user permanently denies location via Android system choice, Android stops re-prompting and the user must re-enable permission in app settings.
+- Android manifest must include:
+  - `android.permission.ACCESS_COARSE_LOCATION`
+  - `android.permission.ACCESS_FINE_LOCATION`
+
+Web behavior:
+
+- Web continues to use `navigator.geolocation.getCurrentPosition(...)`.
 
 Geolocation options:
 
@@ -36,6 +50,8 @@ Employee messages:
 
 - `Getting location evidence...`
 - `Location could not be verified in time. Your punch was still recorded.`
+- `Location permission denied. Your punch was still recorded. The app can request location again on a future punch.`
+- `Location services are unavailable. Your punch was still recorded.`
 
 Payload sent to backend:
 
@@ -162,10 +178,12 @@ Preferred language:
 
 When this UI changes, manually test:
 
-- mode `off`: no browser location prompt and punches still work
+- mode `off`: no location prompt and punches still work
 - mode `optional`: one foreground prompt during punch
 - permission granted: coordinates appear in Punch Locations
 - permission denied: punch succeeds and state appears
+- permission denied once on Android: app can request again on a later punch
+- permanently denied on Android: punch succeeds, denied state appears, Android no longer re-prompts until settings are changed
 - timeout: punch succeeds and timeout state appears
 - unsupported browser: punch succeeds and unsupported state appears
 - weak accuracy: punch succeeds and evidence is still review-only
