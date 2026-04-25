@@ -1461,6 +1461,10 @@ useEffect(() => {
   const requiredBreakMinutes = timeSummary?.policy?.required_break_minutes || 0;
   const breakTargetMinutes =
     requiredBreakMinutes || todayShift?.break_minutes || 15;
+  const remainingBreakTargetMinutes = Math.max(
+    (breakTargetMinutes || 0) - breakMinutesLogged,
+    0
+  );
   const breakPolicy = todayShift?.break_policy || {};
   const generatedSlot = breakPolicy?.generated_slot;
   const resolvedBreakWindow = useMemo(() => {
@@ -1481,10 +1485,13 @@ useEffect(() => {
   const breakWindowDescriptor =
     resolvedBreakWindow?.source === "slot" ? "Break slot" : "Break window";
   const breakCountdownMinutes = useMemo(() => {
-    if (!breakInProgress || !breakTargetMinutes) return null;
-    const remaining = Math.max(Math.round(breakTargetMinutes - currentBreakMinutes), 0);
+    if (!breakInProgress || !remainingBreakTargetMinutes) return null;
+    const remaining = Math.max(
+      Math.round(remainingBreakTargetMinutes - currentBreakMinutes),
+      0
+    );
     return remaining;
-  }, [breakInProgress, breakTargetMinutes, currentBreakMinutes]);
+  }, [breakInProgress, remainingBreakTargetMinutes, currentBreakMinutes]);
 
   const canStartBreak = useMemo(() => {
     if (!(isInProgress && !breakInProgress && !isCompleted)) return false;
@@ -1524,10 +1531,10 @@ useEffect(() => {
       const now = DateTime.now().setZone(shiftTimezone);
       if (breakInProgress) {
         const remaining = Math.max(
-          Math.round((breakTargetMinutes || 0) - currentBreakMinutes),
+          Math.round((remainingBreakTargetMinutes || 0) - currentBreakMinutes),
           0
         );
-        if (!breakTargetMinutes) {
+        if (!remainingBreakTargetMinutes) {
           return null;
         }
         return {
@@ -1573,7 +1580,7 @@ useEffect(() => {
     shiftDateIso,
     shiftTimezone,
     breakInProgress,
-    breakTargetMinutes,
+    remainingBreakTargetMinutes,
     currentBreakMinutes,
     countdownTick,
   ]);
@@ -1637,10 +1644,10 @@ const lastUpdatedLabel = useMemo(() => {
   }
 }, [lastUpdated, shiftTimezone, viewerTimezone]);
 
-const breakTimelineMeta = useMemo(() => {
-  if (!breakStartDt) return null;
-  try {
-    const target = Math.max(breakTargetMinutes || 15, 5);
+  const breakTimelineMeta = useMemo(() => {
+    if (!breakStartDt) return null;
+    try {
+    const target = Math.max(remainingBreakTargetMinutes || 0, 0);
     const plannedEnd = breakStartDt.plus({ minutes: target });
     const actualEnd = breakEndDt || plannedEnd;
     const totalMinutes = Math.max(actualEnd.diff(breakStartDt, "minutes").minutes, 1);
@@ -1657,7 +1664,7 @@ const breakTimelineMeta = useMemo(() => {
   } catch {
     return null;
   }
-}, [breakStartDt, breakEndDt, breakTargetMinutes, shiftTimezone]);
+}, [breakStartDt, breakEndDt, remainingBreakTargetMinutes, shiftTimezone]);
 
 const polishedWorkspaceSx = employeePolish
   ? {
@@ -1682,14 +1689,17 @@ const polishedPanelSx = employeePolish
 
   const desktopBreakStatusChip = useMemo(() => {
     if (isSmDown) return null;
-    if (breakInProgress && breakTargetMinutes) {
-      const remaining = Math.max(Math.round((breakTargetMinutes || 0) - currentBreakMinutes), 0);
+    if (breakInProgress && remainingBreakTargetMinutes) {
+      const remaining = Math.max(
+        Math.round((remainingBreakTargetMinutes || 0) - currentBreakMinutes),
+        0
+      );
       return {
         color: remaining > 0 ? "warning" : "error",
         variant: remaining > 0 ? "outlined" : "filled",
         label: remaining > 0
           ? `Break target · ${remaining}m remaining`
-          : `Break overdue · ${formatBreakMinutesLabel(Math.abs((breakTargetMinutes || 0) - currentBreakMinutes), true)} over`,
+          : `Break overdue · ${formatBreakMinutesLabel(Math.abs((remainingBreakTargetMinutes || 0) - currentBreakMinutes), true)} over`,
       };
     }
     if (timelineMeta?.needsBreak) {
@@ -1705,7 +1715,7 @@ const polishedPanelSx = employeePolish
   }, [
     isSmDown,
     breakInProgress,
-    breakTargetMinutes,
+    remainingBreakTargetMinutes,
     currentBreakMinutes,
     timelineMeta,
     totalBreakMinutes,
