@@ -20,6 +20,23 @@ It records:
 
 This is meant to reduce repeat confusion for future Android updates and to make the later iOS rollout easier.
 
+# Current native plugin dependencies
+
+The Android app now includes native Capacitor plugin dependencies in addition to the web bundle.
+
+Current relevant native plugin:
+
+- `@capacitor/geolocation`
+
+Why this matters:
+
+- adding a new Capacitor plugin is not just a frontend source change
+- the Windows repo must have the dependency installed with `npm install`
+- the Android project must be refreshed with `npx cap sync android`
+- the signed APK must be rebuilt after the sync
+
+If the Windows repo has the updated source but stale `node_modules`, `npm run build` can fail with `Module not found` errors even though the Linux repo is correct.
+
 # Current architecture
 
 There are two frontend copies involved during Android work:
@@ -407,6 +424,16 @@ rg -n "MobileLayout|MobileTodayPage|MobileMorePage|LegacyMobileAppRedirect|path=
 
 If you used `sync-frontend-from-wsl.ps1 -RunBuild -RunCapSync`, this step is already handled.
 
+Important exception:
+
+- if the Linux repo added a new npm / Capacitor dependency, run `npm install` in the Windows repo first
+- the sync script intentionally does not copy `node_modules`
+
+```powershell
+cd C:\Users\youse\StudioProjects\schedulaa-frontend
+npm install
+```
+
 ## 4. Build signed release APK
 
 ```powershell
@@ -579,6 +606,29 @@ Lesson:
   - `android/upload-keystore.jks`
   - `android/key.properties`
 
+## 7. Native punch-location support needs plugin + manifest + rebuild
+
+Problem:
+
+- Android punch-location capture was reporting `denied` without ever prompting the user
+- the app was using web geolocation only
+- the Android manifest did not declare location permissions
+
+Lesson:
+
+- Android punch-location capture now depends on all of the following:
+  - `@capacitor/geolocation`
+  - `android.permission.ACCESS_COARSE_LOCATION`
+  - `android.permission.ACCESS_FINE_LOCATION`
+  - `npx cap sync android`
+  - rebuilt signed APK
+
+- punch-location behavior on Android is now:
+  - permission is requested during punch capture when mode is `optional`
+  - if denied once, the app can request again on a later punch
+  - if permanently denied by Android system choice, the user must re-enable it in app settings
+  - punching still never blocks
+
 # Current known-good state
 
 Source repo commit with signed Android delivery support:
@@ -596,6 +646,10 @@ Current archived APK URL:
 Current latest archived APK URL:
 
 - `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+
+Current latest archived APK URL after native geolocation release:
+
+- `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-25-v6.apk`
 
 Current signed artifact path:
 
