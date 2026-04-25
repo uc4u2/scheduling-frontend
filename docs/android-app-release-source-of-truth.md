@@ -452,14 +452,25 @@ Windows repo usage:
 
 ```powershell
 cd C:\Users\youse\StudioProjects\schedulaa-frontend
-powershell -ExecutionPolicy Bypass -File .\scripts\release-android-apk-to-r2.ps1 -ReleaseKeySuffix YYYY-MM-DD-v1 -AwsProfile r2-public
+powershell -ExecutionPolicy Bypass -File .\scripts\release-android-apk-to-r2.ps1 -ReleaseKeySuffix YYYY-MM-DD-v1
 ```
 
 If you are already inside the Android folder:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ..\scripts\release-android-apk-to-r2.ps1 -ReleaseKeySuffix YYYY-MM-DD-v1 -AwsProfile r2-public
+powershell -ExecutionPolicy Bypass -File ..\scripts\release-android-apk-to-r2.ps1 -ReleaseKeySuffix YYYY-MM-DD-v1
 ```
+
+One-time Windows AWS profile setup:
+
+```powershell
+aws configure set aws_access_key_id <PUBLIC_ASSETS_ACCESS_KEY_ID> --profile r2-public
+aws configure set aws_secret_access_key <PUBLIC_ASSETS_SECRET_ACCESS_KEY> --profile r2-public
+aws configure set region auto --profile r2-public
+aws configure set output json --profile r2-public
+```
+
+After that one-time setup, the release script defaults to `r2-public`, so future uploads do not need repeated authentication flags.
 
 ## 7. Verify both public URLs
 

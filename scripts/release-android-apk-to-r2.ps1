@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ReleaseKeySuffix,
-    [string]$AwsProfile = "",
+    [string]$AwsProfile = "r2-public",
     [string]$EndpointUrl = "https://78218658b96663f211820a2c34ea89bb.r2.cloudflarestorage.com",
     [string]$Bucket = "schedulaa-public-assets",
     [string]$ApkPath = "C:\Users\youse\StudioProjects\schedulaa-frontend\android\app\build\outputs\apk\release\app-release.apk",
@@ -81,9 +81,9 @@ function Verify-PublicUrl {
     }
 
     $headers = $headerText -split "`r?`n" | Where-Object { $_ -ne "" }
-    Assert-Header -Headers $headers -Pattern '^HTTP/\d+(\.\d+)? 200\b' -Message "Verification failed for $Url: expected HTTP 200"
-    Assert-Header -Headers $headers -Pattern '^Content-Type:\s*application/vnd\.android\.package-archive\b' -Message "Verification failed for $Url: expected APK content type"
-    Assert-Header -Headers $headers -Pattern ('^Content-Disposition:.*' + [regex]::Escape($ExpectedFileName)) -Message "Verification failed for $Url: expected Content-Disposition filename $ExpectedFileName"
+    Assert-Header -Headers $headers -Pattern '^HTTP/\d+(\.\d+)? 200\b' -Message "Verification failed for ${Url}: expected HTTP 200"
+    Assert-Header -Headers $headers -Pattern '^Content-Type:\s*application/vnd\.android\.package-archive\b' -Message "Verification failed for ${Url}: expected APK content type"
+    Assert-Header -Headers $headers -Pattern ('^Content-Disposition:.*' + [regex]::Escape($ExpectedFileName)) -Message "Verification failed for ${Url}: expected Content-Disposition filename $ExpectedFileName"
 
     Write-Host "Verified: $Url" -ForegroundColor Green
     $headers | ForEach-Object { Write-Host "  $_" }
@@ -96,6 +96,26 @@ if (-not (Test-Path $ApkPath)) {
 $awsCmd = Get-Command aws.exe -ErrorAction SilentlyContinue
 if (-not $awsCmd) {
     throw "aws.exe not found on PATH. Install AWS CLI or add it to PATH."
+}
+
+if ($AwsProfile) {
+    $awsProfileList = aws.exe configure list-profiles 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to read AWS CLI profiles. Ensure aws.exe is installed correctly."
+    }
+    if (-not ($awsProfileList | Where-Object { $_ -eq $AwsProfile })) {
+        throw @"
+AWS CLI profile '$AwsProfile' was not found.
+
+Configure it once on Windows:
+  aws configure set aws_access_key_id <PUBLIC_ASSETS_ACCESS_KEY_ID> --profile $AwsProfile
+  aws configure set aws_secret_access_key <PUBLIC_ASSETS_SECRET_ACCESS_KEY> --profile $AwsProfile
+  aws configure set region auto --profile $AwsProfile
+  aws configure set output json --profile $AwsProfile
+
+Then rerun this script.
+"@
+    }
 }
 
 $curlCmd = Get-Command curl.exe -ErrorAction SilentlyContinue
