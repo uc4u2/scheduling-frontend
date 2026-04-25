@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Geolocation } from "@capacitor/geolocation";
 import {
   Box,
   Typography,
@@ -86,6 +87,7 @@ import { formatLeaveApiError } from "./utils/leaveErrors";
 import { LEAVE_TYPE_OPTIONS, formatLeaveTypeLabel } from "./utils/leaveSettings";
 import { formatBalanceHours, normalizeLeaveBalanceSummary } from "./utils/leaveBalances";
 import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDateField";
+import { isNativeRuntime } from "../../utils/runtime";
 
 const statusColor = {
   assigned: "default",
@@ -210,6 +212,15 @@ const readableLightChipSx = (theme) => ({
     fontWeight: 800,
   },
 });
+
+const mapLocationPermissionState = (state) => {
+  const normalized = String(state || "").toLowerCase();
+  if (normalized === "granted") return "granted";
+  if (normalized === "prompt-with-rationale") return "prompt";
+  if (normalized === "prompt") return "prompt";
+  if (normalized === "denied") return "denied";
+  return "unavailable";
+};
 
 /* eslint-disable react-hooks/exhaustive-deps */
 
@@ -1306,6 +1317,53 @@ useEffect(() => {
   const getPunchLocationPayload = useCallback(async () => {
     const mode = timeSummary?.policy?.punch_location_mode || "off";
     if (mode !== "optional") return {};
+
+    if (isNativeRuntime()) {
+      let permissionState = "prompt";
+      try {
+        const current = await Geolocation.checkPermissions();
+        permissionState = current?.location || current?.coarseLocation || permissionState;
+
+        if (permissionState !== "granted") {
+          const requested = await Geolocation.requestPermissions({ permissions: ["location"] });
+          permissionState = requested?.location || requested?.coarseLocation || permissionState;
+        }
+
+        if (permissionState !== "granted") {
+          return { location: { permission_state: mapLocationPermissionState(permissionState) } };
+        }
+
+        const captureStartedAt = Date.now();
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+        const coords = position?.coords;
+        const captureDelayMs = Date.now() - captureStartedAt;
+        if (!coords) {
+          return { location: { permission_state: "unavailable", capture_delay_ms: captureDelayMs } };
+        }
+        const accuracy = Number(coords.accuracy);
+        return {
+          location: {
+            lat: coords.latitude,
+            lng: coords.longitude,
+            accuracy_m: Number.isFinite(accuracy) ? accuracy : undefined,
+            captured_at: new Date(position.timestamp || Date.now()).toISOString(),
+            permission_state: Number.isFinite(accuracy) && accuracy > 500 ? "weak_accuracy" : "granted",
+            capture_delay_ms: captureDelayMs,
+          },
+        };
+      } catch (error) {
+        const message = String(error?.message || "").toLowerCase();
+        if (message.includes("location services are not enabled") || message.includes("location services are disabled")) {
+          return { location: { permission_state: "unavailable" } };
+        }
+        return { location: { permission_state: mapLocationPermissionState(permissionState) } };
+      }
+    }
+
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       return { location: { permission_state: "unsupported" } };
     }
@@ -1386,6 +1444,10 @@ useEffect(() => {
       }
       if (punchPayload?.location?.permission_state === "timeout") {
         setLocationCaptureMessage("Location could not be verified in time. Your punch was still recorded.");
+      } else if (punchPayload?.location?.permission_state === "denied") {
+        setLocationCaptureMessage("Location permission denied. Your punch was still recorded. The app can request location again on a future punch.");
+      } else if (punchPayload?.location?.permission_state === "unavailable") {
+        setLocationCaptureMessage("Location services are unavailable. Your punch was still recorded.");
       } else {
         setLocationCaptureMessage("");
       }

@@ -6,6 +6,7 @@
     "@capacitor/android": "^8.1.0",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
+    "@capacitor/geolocation": "^8.2.0",
     "@emotion/react": "11.11.4",
     "@emotion/styled": "11.11.5",
     "@fullcalendar/core": "^6.1.19",
