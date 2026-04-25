@@ -2,6 +2,7 @@
 //  SecondEmployeeShiftView.js  •  Employee self-service: Shifts + Leave + Swap + Manager Approvals
 // ─────────────────────────────────────────────────────────────────────────
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -214,6 +215,8 @@ const readableLightChipSx = (theme) => ({
 const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const navigate = useNavigate();
+  const location = useLocation();
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("userRole") || ""; // Example role storage
@@ -221,6 +224,7 @@ const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const isManager = userRole.toLowerCase() === "manager";
   const [optOut, setOptOut] = useState(false);
   const viewerTimezone = getUserTimezone();
+  const employeeBasePath = location.pathname.startsWith("/recruiter") ? "/recruiter" : "/employee";
 
   // ──────────────── Shift / leave states ────────────────
   const [shifts, setShifts] = useState([]);
@@ -1656,8 +1660,6 @@ const breakTimelineMeta = useMemo(() => {
 
 const polishedWorkspaceSx = employeePolish
   ? {
-      maxWidth: 1480,
-      mx: "auto",
       width: "100%",
       display: "flex",
       flexDirection: "column",
@@ -1706,6 +1708,14 @@ const polishedPanelSx = employeePolish
   };
 
   const currentAttestation = attestationQueue[0] || null;
+  const desktopClockAction = canClockIn ? "clock_in" : canClockOut ? "clock_out" : null;
+  const desktopBreakAction = breakInProgress
+    ? canEndBreak
+      ? "end_break"
+      : null
+    : canStartBreak
+    ? "start_break"
+    : null;
 
   const submitCurrentAttestation = async () => {
     if (!currentAttestation?.id) return;
@@ -1754,14 +1764,16 @@ const polishedPanelSx = employeePolish
         alignItems={{ xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
       >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            My Time
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Track your shifts, breaks, and approvals in one view.
-          </Typography>
-        </Box>
+        {!isSmDown && (
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              My Time
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Track your shifts, breaks, and approvals in one view.
+            </Typography>
+          </Box>
+        )}
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <Chip
             size="small"
@@ -1776,29 +1788,135 @@ const polishedPanelSx = employeePolish
           )}
         </Stack>
       </Stack>
-      <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
-        {availabilityPolicyLoaded && !hideAvailabilityTab && (
+      {isSmDown ? (
+        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
           <Button
-            variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+            fullWidth
+            variant="outlined"
+            startIcon={<CalendarMonthIcon />}
+            onClick={() => navigate(`${employeeBasePath}/dashboard?tab=calendar`)}
+            sx={{
+              minHeight: 52,
+              justifyContent: "flex-start",
+              px: 1.5,
+              borderRadius: 1,
+              fontWeight: 700,
+            }}
+          >
+            Calendar
+          </Button>
+        <Grid container spacing={1.25}>
+          {availabilityPolicyLoaded && !hideAvailabilityTab && (
+            <Grid item xs={6}>
+              <Button
+                fullWidth
+                variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+                startIcon={<EventAvailableIcon />}
+                onClick={() => {
+                  setDrawerPanel("availability");
+                  setDrawerOpen(true);
+                }}
+                sx={{
+                  minHeight: 56,
+                  justifyContent: "flex-start",
+                  px: 1.5,
+                  borderRadius: 1,
+                  fontWeight: 700,
+                }}
+              >
+                Availability
+              </Button>
+            </Grid>
+          )}
+          <Grid item xs={availabilityPolicyLoaded && !hideAvailabilityTab ? 6 : 12}>
+            <Button
+              fullWidth
+              variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
+              startIcon={<CalendarMonthIcon />}
+              onClick={() => {
+                setDrawerPanel("shifts");
+                setDrawerOpen(true);
+              }}
+              sx={{
+                minHeight: 56,
+                justifyContent: "flex-start",
+                px: 1.5,
+                borderRadius: 1,
+                fontWeight: 700,
+              }}
+            >
+              My Shift
+            </Button>
+          </Grid>
+          <Grid item xs={6}>
+            <Button
+              fullWidth
+              variant={canClockIn ? "contained" : "outlined"}
+              color={canClockIn ? "primary" : "secondary"}
+              startIcon={<AccessTimeFilledIcon />}
+              disabled={clocking || (!canClockIn && !canClockOut)}
+              onClick={() => handleClockAction(canClockIn ? "in" : "out")}
+              sx={{
+                minHeight: 56,
+                justifyContent: "flex-start",
+                px: 1.5,
+                borderRadius: 1,
+                fontWeight: 700,
+              }}
+            >
+              {canClockIn ? "Clock In" : "Clock Out"}
+            </Button>
+          </Grid>
+          <Grid item xs={6}>
+            <Button
+              fullWidth
+              variant={breakInProgress ? "contained" : "outlined"}
+              color="warning"
+              startIcon={<LocalCafeIcon />}
+              disabled={
+                breakSubmitting ||
+                (!breakInProgress && !canStartBreak) ||
+                (breakInProgress && !canEndBreak)
+              }
+              onClick={() => handleBreakAction(breakInProgress ? "end" : "start")}
+              sx={{
+                minHeight: 56,
+                justifyContent: "flex-start",
+                px: 1.5,
+                borderRadius: 1,
+                fontWeight: 700,
+              }}
+            >
+              {breakInProgress ? "End Break" : "Start Break"}
+            </Button>
+          </Grid>
+        </Grid>
+        </Stack>
+      ) : (
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
+          {availabilityPolicyLoaded && !hideAvailabilityTab && (
+            <Button
+              variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+              onClick={() => {
+                setDrawerPanel("availability");
+                setDrawerOpen(true);
+              }}
+            >
+              Availability
+            </Button>
+          )}
+          <Button
+            variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
+            startIcon={<CalendarMonthIcon />}
             onClick={() => {
-              setDrawerPanel("availability");
+              setDrawerPanel("shifts");
               setDrawerOpen(true);
             }}
           >
-            Shift Availability
+            My Shift
           </Button>
-        )}
-        <Button
-          variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
-          startIcon={<CalendarMonthIcon />}
-          onClick={() => {
-            setDrawerPanel("shifts");
-            setDrawerOpen(true);
-          }}
-        >
-          View My Shifts
-        </Button>
-      </Stack>
+        </Stack>
+      )}
     </Paper>
 
     <Paper
@@ -2324,88 +2442,78 @@ const polishedPanelSx = employeePolish
                           ? `Break overdue · ${timelineMeta.breakDeficit}m required`
                           : `Break compliant (${formatBreakMinutesLabel(totalBreakMinutes, true)} logged)`
                       }
-                      sx={{ mt: 1, width: "fit-content" }}
+                      sx={{
+                        mt: 1,
+                        width: "fit-content",
+                        ...(timelineMeta.breakDeficit > 0
+                          ? {
+                              bgcolor: "error.main",
+                              color: "error.contrastText",
+                              fontWeight: 800,
+                              borderColor: "error.main",
+                              "& .MuiChip-label": {
+                                color: "inherit",
+                              },
+                            }
+                          : {}),
+                      }}
                     />
                   )}
                 </Box>
               )}
+              {!isSmDown && (
               <Stack
-                direction={{ xs: "column", sm: "row" }}
+                direction="row"
                 spacing={1.5}
-                alignItems={{ xs: "stretch", sm: "center" }}
+                alignItems="center"
+                flexWrap="wrap"
+                useFlexGap
                 mt={2}
               >
-                <Button
-                  variant="contained"
-                  disabled={!canClockIn || clocking}
-                  onClick={() => handleClockAction("in")}
-                  fullWidth={isSmDown}
-                  sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
-                >
-                  Clock In
-                </Button>
-                <Tooltip
-                  title={
-                    !canClockOut
-                      ? hasClockedOut
-                        ? "Already clocked out for this shift."
-                        : "Clock out becomes available after you clock in and the shift is active."
-                      : ""
-                  }
-                  arrow
-                >
-                  <span>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      disabled={!canClockOut || clocking}
-                      onClick={() => handleClockAction("out")}
-                      fullWidth={isSmDown}
-                      sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
-                    >
-                      Clock Out
-                    </Button>
-                  </span>
-                </Tooltip>
-              {isClocked && !isInProgress && !isCompleted && (
-                <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
-              )}
+                {desktopClockAction && (
+                  <Button
+                    variant={desktopClockAction === "clock_in" ? "contained" : "outlined"}
+                    color={desktopClockAction === "clock_in" ? "primary" : "secondary"}
+                    disabled={clocking}
+                    onClick={() => handleClockAction(desktopClockAction === "clock_in" ? "in" : "out")}
+                    sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
+                  >
+                    {desktopClockAction === "clock_in" ? "Clock In" : "Clock Out"}
+                  </Button>
+                )}
+                {desktopBreakAction && (
+                  <Button
+                    variant={desktopBreakAction === "end_break" ? "contained" : "outlined"}
+                    size="small"
+                    color="warning"
+                    onClick={() => handleBreakAction(desktopBreakAction === "end_break" ? "end" : "start")}
+                    disabled={breakSubmitting}
+                    sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
+                  >
+                    {desktopBreakAction === "end_break" ? "End Break" : "Start Break"}
+                  </Button>
+                )}
+                {isClocked && !isInProgress && !isCompleted && (
+                  <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  Breaks logged: {formatBreakMinutesLabel(totalBreakMinutes)} {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
+                </Typography>
               </Stack>
+              )}
               {locationCaptureMessage && (
                 <Alert severity={locationCaptureMessage.includes("could not") ? "warning" : "info"} sx={{ mt: 1 }}>
                   {locationCaptureMessage}
                 </Alert>
               )}
-              {isInProgress && (
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1.5}
-                  alignItems={{ xs: "stretch", sm: "center" }}
-                  mt={1}
-                >
-                  <Button
-                    variant={canStartBreak ? "outlined" : "text"}
-                    size="small"
-                    onClick={() => handleBreakAction("start")}
-                    disabled={!canStartBreak || breakSubmitting}
-                    fullWidth={isSmDown}
-                  >
-                    Start Break
-                  </Button>
-                  <Button
-                    variant={canEndBreak ? "contained" : "text"}
-                    size="small"
-                    color="warning"
-                    onClick={() => handleBreakAction("end")}
-                    disabled={!canEndBreak}
-                    fullWidth={isSmDown}
-                  >
-                    End Break
-                  </Button>
-                  <Typography variant="caption" color="text.secondary">
-                    Breaks logged: {formatBreakMinutesLabel(totalBreakMinutes)} {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
-                  </Typography>
-                </Stack>
+              {isInProgress && !isSmDown && !desktopBreakAction && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                  {breakInProgress
+                    ? "Break can be ended once the current break session is active."
+                    : canStartBreak
+                    ? ""
+                    : "Break actions will appear here when your break window opens."}
+                </Typography>
               )}
             {breakTimelineMeta && (
               <Box mt={2}>
@@ -2502,7 +2610,7 @@ const polishedPanelSx = employeePolish
         }}
       >
         <Typography variant="h6" fontWeight={700}>
-          {drawerPanel === "availability" && availabilityPolicyLoaded && !hideAvailabilityTab ? "Shift Availability" : "My Shifts"}
+          {drawerPanel === "availability" && availabilityPolicyLoaded && !hideAvailabilityTab ? "Availability" : "My Shift"}
         </Typography>
         <IconButton onClick={() => setDrawerOpen(false)}>
           <CloseIcon />
@@ -2518,9 +2626,9 @@ const polishedPanelSx = employeePolish
           onChange={(_, v) => v && (!hideAvailabilityTab || v !== "availability") && setDrawerPanel(v)}
         >
           {availabilityPolicyLoaded && !hideAvailabilityTab && (
-            <ToggleButton value="availability">Shift Availability</ToggleButton>
+            <ToggleButton value="availability">Availability</ToggleButton>
           )}
-          <ToggleButton value="shifts">My Shifts</ToggleButton>
+          <ToggleButton value="shifts">My Shift</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
