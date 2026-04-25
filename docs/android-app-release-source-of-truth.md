@@ -258,6 +258,10 @@ Archived release key:
 
 `assets/apk/releases/schedulaa-staff-2026-04-22.apk`
 
+Latest archived release key:
+
+`assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+
 Stable latest key:
 
 `assets/apk/schedulaa-staff-latest.apk`
@@ -268,9 +272,24 @@ Archived:
 
 `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-22.apk`
 
+Latest archived:
+
+`https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+
 Stable:
 
 `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/schedulaa-staff-latest.apk`
+
+## Required R2 APK metadata
+
+If this metadata is missing, Android browsers may download the file as `.apk.zip` or try to extract it instead of installing it.
+
+Required headers:
+
+- `Content-Type: application/vnd.android.package-archive`
+- `Content-Disposition: attachment; filename=schedulaa-staff-latest.apk`
+
+For archived builds, set `Content-Disposition` to the archived APK filename.
 
 ## Why Windows upload was used for the final signed release
 
@@ -281,11 +300,14 @@ Failures seen:
 - multipart `?uploads` endpoint failures
 - SSL EOF / endpoint connection failures
 - bucket-internal copy attempts failing intermittently
+- Android download behavior breaking when the object was left with generic zip metadata
 
 The reliable solution was:
 
-- use Windows `aws.exe`
-- upload the signed release APK from the Windows repo directly
+- use Windows `aws.exe` for the large binary upload
+- use direct `put-object` when multipart upload keeps failing
+- use bucket-side `copy-object` to refresh `schedulaa-staff-latest.apk`
+- explicitly set APK metadata on the object
 
 This avoided the unstable Linux-to-R2 path.
 
@@ -301,6 +323,35 @@ The final working pattern used:
 The important operational rule is:
 
 - for large signed APK uploads, prefer Windows `aws.exe` if Linux/WSL R2 uploads start failing
+
+## April 24, 2026 v2 release
+
+This was the second same-day Android direct-download release.
+
+Why it was needed:
+
+- the earlier APK did not include the later employee-home profile image fix
+- the APK objects also needed corrected R2 metadata so Android downloads as `.apk` instead of `.apk.zip`
+
+Release details:
+
+- archived key:
+  - `assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+- stable key refreshed:
+  - `assets/apk/schedulaa-staff-latest.apk`
+- verified signed artifact:
+  - `versionCode: 10000`
+  - `versionName: 1.0.0`
+
+Working upload pattern used:
+
+1. rebuild signed release APK on Windows with:
+   - `JAVA_HOME=C:\Program Files\Android\Android Studio\jbr`
+2. upload archived build with direct `put-object`
+3. refresh stable latest with bucket-side `copy-object`
+4. verify public headers return:
+   - `Content-Type: application/vnd.android.package-archive`
+   - `Content-Disposition: attachment; filename=...apk`
 
 # Demo page / frontend download wiring
 
@@ -336,10 +387,12 @@ Use this exact order for future Android releases.
 
 ## 1. Sync source into the Windows Android Studio copy
 
+Recommended script:
+
+- `frontend/scripts/sync-frontend-from-wsl.ps1`
+
 ```powershell
-cd C:\Users\youse\StudioProjects\schedulaa-frontend
-git stash push -u -m "before-sync-from-linux-source-YYYY-MM-DD"
-robocopy "\\wsl$\Ubuntu\home\uc4u2\work\scheduler2\frontend" "C:\Users\youse\StudioProjects\schedulaa-frontend" /E /R:2 /W:2 /XD .git node_modules build android\app\build android\.gradle /XF npm-debug.log yarn-error.log
+powershell -ExecutionPolicy Bypass -File "\\wsl$\Ubuntu\home\uc4u2\work\scheduler2\frontend\scripts\sync-frontend-from-wsl.ps1" -RunBuild -RunCapSync
 ```
 
 ## 2. Verify the expected source arrived
@@ -352,12 +405,7 @@ rg -n "MobileLayout|MobileTodayPage|MobileMorePage|LegacyMobileAppRedirect|path=
 
 ## 3. Build the web assets and sync Capacitor
 
-```powershell
-cd C:\Users\youse\StudioProjects\schedulaa-frontend
-npm install
-npm run build
-npx cap sync android
-```
+If you used `sync-frontend-from-wsl.ps1 -RunBuild -RunCapSync`, this step is already handled.
 
 ## 4. Build signed release APK
 
@@ -380,6 +428,49 @@ Preferred operational method:
 - use Windows `aws.exe`
 - upload the signed `app-release.apk`
 - write both the archived key and the stable latest key
+- if multipart upload fails, use:
+  - `aws s3api put-object` for the archived build
+  - `aws s3api copy-object` to refresh `schedulaa-staff-latest.apk`
+- ensure APK metadata is set:
+  - `Content-Type: application/vnd.android.package-archive`
+  - `Content-Disposition: attachment; filename=...apk`
+
+Recommended script:
+
+- `frontend/scripts/release-android-apk-to-r2.ps1`
+
+What this script does:
+
+- does not build the APK
+- only uploads the existing signed `app-release.apk`
+- uses `s3api put-object` and `copy-object`
+- sets APK metadata to avoid `.apk.zip` downloads
+- verifies public URLs unless `-SkipVerify` is passed
+- does not hardcode secrets
+
+Windows repo usage:
+
+```powershell
+cd C:\Users\youse\StudioProjects\schedulaa-frontend
+powershell -ExecutionPolicy Bypass -File .\scripts\release-android-apk-to-r2.ps1 -ReleaseKeySuffix YYYY-MM-DD-v1
+```
+
+If you are already inside the Android folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ..\scripts\release-android-apk-to-r2.ps1 -ReleaseKeySuffix YYYY-MM-DD-v1
+```
+
+One-time Windows AWS profile setup:
+
+```powershell
+aws configure set aws_access_key_id <PUBLIC_ASSETS_ACCESS_KEY_ID> --profile r2-public
+aws configure set aws_secret_access_key <PUBLIC_ASSETS_SECRET_ACCESS_KEY> --profile r2-public
+aws configure set region auto --profile r2-public
+aws configure set output json --profile r2-public
+```
+
+After that one-time setup, the release script defaults to `r2-public`, so future uploads do not need repeated authentication flags.
 
 ## 7. Verify both public URLs
 
@@ -391,6 +482,11 @@ curl.exe -I "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/sche
 Both must return:
 
 - `HTTP/1.1 200 OK`
+- `Content-Type: application/vnd.android.package-archive`
+
+And the latest key should return:
+
+- `Content-Disposition: attachment; filename=schedulaa-staff-latest.apk`
 
 ## 8. Verify demo page env/fallback still points to stable
 
@@ -447,12 +543,31 @@ Problem:
 - multipart upload init failures
 - SSL EOF issues
 - intermittent endpoint connection failures
+- repeated EOF failures on both Linux and Windows multipart paths for large APK uploads
 
 Lesson:
 
 - for large signed APK uploads, use Windows `aws.exe` if needed
+- if `s3 cp` keeps failing, switch to:
+  - `s3api put-object`
+  - then `s3api copy-object`
 
-## 5. Never lose the keystore
+## 5. APK metadata matters for Android installs
+
+Problem:
+
+- R2 object was valid but served as generic zip
+- Android downloaded `.apk.zip`
+- user had to rename the file manually before install
+
+Lesson:
+
+- always verify the public APK headers after upload
+- set:
+  - `Content-Type: application/vnd.android.package-archive`
+  - `Content-Disposition: attachment; filename=...apk`
+
+## 6. Never lose the keystore
 
 Problem:
 
@@ -477,6 +592,10 @@ Current stable APK URL:
 Current archived APK URL:
 
 - `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-22.apk`
+
+Current latest archived APK URL:
+
+- `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
 
 Current signed artifact path:
 
