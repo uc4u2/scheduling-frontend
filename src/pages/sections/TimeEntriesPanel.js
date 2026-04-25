@@ -118,6 +118,16 @@ const isEntryApprovable = (entry) =>
       !entry.deleted_at
   );
 
+const isEntryRejectable = (entry) =>
+  Boolean(
+    entry &&
+      !isLeaveEntry(entry) &&
+      entry.status === "completed" &&
+      !entry.is_locked &&
+      !entry.deleted &&
+      !entry.deleted_at
+  );
+
 const getAttestationBadgeLabel = (status, fallbackLabel) => {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "pending") return "Attestation pending";
@@ -915,6 +925,14 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     () => selectedApprovableEntries.map((entry) => entry.id),
     [selectedApprovableEntries]
   );
+  const selectedRejectableEntries = useMemo(
+    () => selectedEntries.filter(isEntryRejectable),
+    [selectedEntries]
+  );
+  const selectedRejectableIds = useMemo(
+    () => selectedRejectableEntries.map((entry) => entry.id),
+    [selectedRejectableEntries]
+  );
   const leaveRows = useMemo(() => entries.filter(isLeaveEntry), [entries]);
   const ptoHoursRange = useMemo(
     () => leaveRows.reduce((sum, entry) => sum + leaveHours(entry), 0),
@@ -1027,6 +1045,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   };
   const selectedCount = selectedIds.length;
   const selectedApprovableCount = selectedApprovableIds.length;
+  const selectedRejectableCount = selectedRejectableIds.length;
   const handleSelectAll = (event) => {
     if (event.target.checked) {
       const allIds = selectableEntries.map((entry) => entry.id);
@@ -1595,11 +1614,30 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   };
 
   const openRejectDialog = (entryId) => {
+    const entry = entries.find((item) => String(item.id) === String(entryId));
+    if (!isEntryRejectable(entry)) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Only completed entries awaiting review can be rejected.",
+      });
+      return;
+    }
     setRejectState({ open: true, entryId, reason: "" });
   };
 
   const submitReject = async () => {
     if (!rejectState.entryId) return;
+    const entry = entries.find((item) => String(item.id) === String(rejectState.entryId));
+    if (!isEntryRejectable(entry)) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "This entry can no longer be rejected.",
+      });
+      setRejectState({ open: false, entryId: null, reason: "" });
+      return;
+    }
     setActionId(rejectState.entryId);
     try {
       await timeTracking.rejectEntry(rejectState.entryId, {
@@ -1700,12 +1738,19 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   };
 
   const bulkRejectSelected = async () => {
-    if (!selectedCount) return;
+    if (!selectedRejectableCount) return;
     setBulkSubmitting(true);
     setBulkAction("reject");
     try {
-      await Promise.all(selectedIds.map((id) => timeTracking.rejectEntry(id, {})));
-      setSnackbar({ open: true, severity: "success", message: "Selected entries rejected." });
+      await Promise.all(selectedRejectableIds.map((id) => timeTracking.rejectEntry(id, {})));
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message:
+          selectedRejectableCount === selectedCount
+            ? "Selected entries rejected."
+            : `${selectedRejectableCount} selected entr${selectedRejectableCount === 1 ? "y was" : "ies were"} rejected.`,
+      });
       setSelectedIds([]);
       await fetchEntries();
     } catch (err) {
@@ -1887,7 +1932,9 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 }}
               >
                 <Typography variant="body2" fontWeight={600}>
-                  {selectedCount} selected{selectedApprovableCount !== selectedCount ? ` · ${selectedApprovableCount} approvable` : ""}
+                  {selectedCount} selected
+                  {selectedApprovableCount !== selectedCount ? ` · ${selectedApprovableCount} approvable` : ""}
+                  {selectedRejectableCount !== selectedCount ? ` · ${selectedRejectableCount} rejectable` : ""}
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   <Button
@@ -1904,7 +1951,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     variant="outlined"
                     color="error"
                     onClick={bulkRejectSelected}
-                    disabled={bulkSubmitting}
+                    disabled={bulkSubmitting || selectedRejectableCount === 0}
                     startIcon={bulkSubmitting && bulkAction === "reject" ? <CircularProgress size={14} /> : null}
                   >
                     {bulkSubmitting && bulkAction === "reject" ? "Rejecting..." : "Reject selected"}
@@ -2295,7 +2342,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           {actionId === rowMenuEntry?.id ? "Approving..." : "Approve"}
         </MenuItem>
         <MenuItem
-          disabled={!rowMenuEntry || rowMenuEntry.is_locked || actionId === rowMenuEntry?.id}
+          disabled={!rowMenuEntry || !isEntryRejectable(rowMenuEntry) || actionId === rowMenuEntry?.id}
           onClick={() => {
             if (rowMenuEntry?.id) openRejectDialog(rowMenuEntry.id);
             setRowMenuAnchor(null);
