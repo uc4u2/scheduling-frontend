@@ -836,6 +836,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   const [templates, setTemplates] = useState([]);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkAction, setBulkAction] = useState("");
   const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
   const [rowMenuEntry, setRowMenuEntry] = useState(null);
   const [bulkForm, setBulkForm] = useState({
@@ -1318,7 +1319,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         severity: "success",
         message: "Time entry approved.",
       });
-      fetchEntries();
+      await fetchEntries();
     } catch (err) {
       setSnackbar({
         open: true,
@@ -1362,7 +1363,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         severity: "warning",
         message: "Clock-out forced.",
       });
-      fetchEntries();
+      await fetchEntries();
     } catch (err) {
       setSnackbar({
         open: true,
@@ -1610,7 +1611,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         message: "Time entry rejected.",
       });
       setRejectState({ open: false, entryId: null, reason: "" });
-      fetchEntries();
+      await fetchEntries();
     } catch (err) {
       setSnackbar({
         open: true,
@@ -1651,6 +1652,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     }
 
     setBulkSubmitting(true);
+    setBulkAction("template");
     try {
       await timeTracking.bulkAdjustEntries(payload);
       setSnackbar({
@@ -1669,12 +1671,14 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       });
     } finally {
       setBulkSubmitting(false);
+      setBulkAction("");
     }
   };
 
   const bulkApproveSelected = async () => {
     if (!selectedApprovableCount) return;
     setBulkSubmitting(true);
+    setBulkAction("approve");
     try {
       await Promise.all(selectedApprovableIds.map((id) => timeTracking.approveEntry(id)));
       setSnackbar({
@@ -1686,26 +1690,29 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
             : `${selectedApprovableCount} selected entr${selectedApprovableCount === 1 ? "y was" : "ies were"} approved.`,
       });
       setSelectedIds([]);
-      fetchEntries();
+      await fetchEntries();
     } catch (err) {
       setSnackbar({ open: true, severity: "error", message: err?.response?.data?.error || "Bulk approve failed." });
     } finally {
       setBulkSubmitting(false);
+      setBulkAction("");
     }
   };
 
   const bulkRejectSelected = async () => {
     if (!selectedCount) return;
     setBulkSubmitting(true);
+    setBulkAction("reject");
     try {
       await Promise.all(selectedIds.map((id) => timeTracking.rejectEntry(id, {})));
       setSnackbar({ open: true, severity: "success", message: "Selected entries rejected." });
       setSelectedIds([]);
-      fetchEntries();
+      await fetchEntries();
     } catch (err) {
       setSnackbar({ open: true, severity: "error", message: err?.response?.data?.error || "Bulk reject failed." });
     } finally {
       setBulkSubmitting(false);
+      setBulkAction("");
     }
   };
 
@@ -1888,13 +1895,21 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     variant="outlined"
                     onClick={bulkApproveSelected}
                     disabled={bulkSubmitting || selectedApprovableCount === 0}
+                    startIcon={bulkSubmitting && bulkAction === "approve" ? <CircularProgress size={14} /> : null}
                   >
-                    Approve selected
+                    {bulkSubmitting && bulkAction === "approve" ? "Approving..." : "Approve selected"}
                   </Button>
-                  <Button size="small" variant="outlined" color="error" onClick={bulkRejectSelected}>
-                    Reject selected
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={bulkRejectSelected}
+                    disabled={bulkSubmitting}
+                    startIcon={bulkSubmitting && bulkAction === "reject" ? <CircularProgress size={14} /> : null}
+                  >
+                    {bulkSubmitting && bulkAction === "reject" ? "Rejecting..." : "Reject selected"}
                   </Button>
-                  <Button size="small" variant="contained" onClick={() => setBulkDialogOpen(true)}>
+                  <Button size="small" variant="contained" onClick={() => setBulkDialogOpen(true)} disabled={bulkSubmitting}>
                     Apply template
                   </Button>
                   <Button size="small" onClick={() => setSelectedIds([])}>
@@ -2216,17 +2231,23 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                             </Stack>
                           </TableCell>
                           <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              aria-label="Row actions"
-                              disabled={entryIsLeave}
-                              onClick={(e) => {
-                                setRowMenuAnchor(e.currentTarget);
-                                setRowMenuEntry(entry);
-                              }}
-                            >
-                              <MoreVertIcon fontSize="small" />
-                            </IconButton>
+                            {actionId === entry.id ? (
+                              <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 32 }}>
+                                <CircularProgress size={18} />
+                              </Box>
+                            ) : (
+                              <IconButton
+                                size="small"
+                                aria-label="Row actions"
+                                disabled={entryIsLeave}
+                                onClick={(e) => {
+                                  setRowMenuAnchor(e.currentTarget);
+                                  setRowMenuEntry(entry);
+                                }}
+                              >
+                                <MoreVertIcon fontSize="small" />
+                              </IconButton>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -2261,20 +2282,20 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           View history
         </MenuItem>
         <MenuItem
-          disabled={!rowMenuEntry || !isEntryApprovable(rowMenuEntry)}
-          onClick={() => {
-            if (rowMenuEntry?.id) handleApprove(rowMenuEntry.id);
+          disabled={!rowMenuEntry || !isEntryApprovable(rowMenuEntry) || actionId === rowMenuEntry?.id}
+          onClick={async () => {
+            if (rowMenuEntry?.id) await handleApprove(rowMenuEntry.id);
             setRowMenuAnchor(null);
             setRowMenuEntry(null);
           }}
         >
           <ListItemIcon>
-            <CheckCircleOutlineIcon fontSize="small" />
+            {actionId === rowMenuEntry?.id ? <CircularProgress size={16} /> : <CheckCircleOutlineIcon fontSize="small" />}
           </ListItemIcon>
-          Approve
+          {actionId === rowMenuEntry?.id ? "Approving..." : "Approve"}
         </MenuItem>
         <MenuItem
-          disabled={!rowMenuEntry || rowMenuEntry.is_locked}
+          disabled={!rowMenuEntry || rowMenuEntry.is_locked || actionId === rowMenuEntry?.id}
           onClick={() => {
             if (rowMenuEntry?.id) openRejectDialog(rowMenuEntry.id);
             setRowMenuAnchor(null);
@@ -2288,32 +2309,32 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         </MenuItem>
         {rowMenuEntry?.status === "in_progress" && (
           <MenuItem
-            disabled={rowMenuEntry.is_locked}
-            onClick={() => {
-              if (rowMenuEntry?.id) handleForceClockOut(rowMenuEntry.id);
+            disabled={rowMenuEntry.is_locked || actionId === rowMenuEntry?.id}
+            onClick={async () => {
+              if (rowMenuEntry?.id) await handleForceClockOut(rowMenuEntry.id);
               setRowMenuAnchor(null);
               setRowMenuEntry(null);
             }}
           >
             <ListItemIcon>
-              <LogoutIcon fontSize="small" />
+              {actionId === rowMenuEntry?.id ? <CircularProgress size={16} /> : <LogoutIcon fontSize="small" />}
             </ListItemIcon>
-            Force clock-out
+            {actionId === rowMenuEntry?.id ? "Forcing clock-out..." : "Force clock-out"}
           </MenuItem>
         )}
         <MenuItem
-          disabled={!rowMenuEntry || rowMenuEntry.is_locked}
-          onClick={() => {
-            if (rowMenuEntry?.id) handleDelete(rowMenuEntry.id);
+          disabled={!rowMenuEntry || rowMenuEntry.is_locked || actionId === rowMenuEntry?.id}
+          onClick={async () => {
+            if (rowMenuEntry?.id) await handleDelete(rowMenuEntry.id);
             setRowMenuAnchor(null);
             setRowMenuEntry(null);
           }}
           sx={{ color: "error.main" }}
         >
           <ListItemIcon sx={{ color: "error.main" }}>
-            <DeleteIcon fontSize="small" />
+            {actionId === rowMenuEntry?.id ? <CircularProgress size={16} /> : <DeleteIcon fontSize="small" />}
           </ListItemIcon>
-          Delete
+          {actionId === rowMenuEntry?.id ? "Deleting..." : "Delete"}
         </MenuItem>
       </Menu>
 
@@ -2343,9 +2364,10 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
             color="error"
             variant="contained"
             onClick={submitReject}
-            disabled={!rejectState.entryId}
+            disabled={!rejectState.entryId || actionId === rejectState.entryId}
+            startIcon={actionId === rejectState.entryId ? <CircularProgress size={16} /> : null}
           >
-            Reject entry
+            {actionId === rejectState.entryId ? "Rejecting..." : "Reject entry"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2398,8 +2420,9 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
             variant="contained"
             disabled={bulkSubmitting || !selectedCount}
             onClick={submitBulkAdjust}
+            startIcon={bulkSubmitting && bulkAction === "template" ? <CircularProgress size={16} /> : null}
           >
-            {bulkSubmitting ? "Applying..." : "Apply"}
+            {bulkSubmitting && bulkAction === "template" ? "Applying..." : "Apply"}
           </Button>
         </DialogActions>
       </Dialog>
