@@ -108,6 +108,14 @@ const SummaryCard = ({ label, value, icon }) => {
 
 const formatTimeInsightHours = (value) => `${Number(value || 0).toFixed(1)} h`;
 
+const getAttestationBadgeLabel = (status, fallbackLabel) => {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "pending") return "Attestation pending";
+  if (normalized === "submitted") return "Attestation submitted";
+  if (normalized === "reviewed") return "Attestation reviewed";
+  return fallbackLabel || "Attestation";
+};
+
 const hasTimeAnomaly = (entry) =>
   Boolean(
     entry?.device_new ||
@@ -615,6 +623,9 @@ const AttestationsPanel = ({
               <Typography variant="body2" color="text.secondary">
                 Review clock-out and break attestations using the same employee, department, and date filters as Time Tracking.
               </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+                Marking an attestation as reviewed only confirms you saw the employee&apos;s response. It does not approve or change the time entry.
+              </Typography>
             </Box>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button size="small" variant="outlined" onClick={fetchAttestations} disabled={loading}>Refresh</Button>
@@ -762,7 +773,7 @@ const AttestationsPanel = ({
                       disabled={item.status === "reviewed"}
                       onClick={() => reviewAttestation(item.id)}
                     >
-                      Review
+                      Mark reviewed
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -2124,7 +2135,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                                       ? "info"
                                       : "success"
                                   }
-                                  label={entry.attestation_summary.badge_label}
+                                  label={getAttestationBadgeLabel(entry.attestation_summary?.badge_status, entry.attestation_summary?.badge_label)}
                                 />
                               )}
                             </Stack>
@@ -2748,7 +2759,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                                   ? "info"
                                   : "success"
                               }
-                              label={entry.attestation_summary.badge_label}
+                              label={getAttestationBadgeLabel(entry.attestation_summary?.badge_status, entry.attestation_summary?.badge_label)}
                             />
                           )}
                         </Stack>
