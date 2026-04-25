@@ -21,6 +21,7 @@ const numericFields = [
   { key: "allow_early_clock_in_minutes", label: "Early clock-in window (minutes)", helper: "How many minutes before a shift starts an employee can clock in." },
   { key: "allow_late_clock_in_minutes", label: "Grace period for clock-in (minutes)", helper: "How long after the scheduled start they can still clock in without a manager." },
   { key: "allow_late_clock_out_minutes", label: "Grace period for clock-out (minutes)", helper: "How long after the scheduled end they can clock out." },
+  { key: "attestation_early_clock_out_threshold_minutes", label: "Early clock-out attestation threshold (minutes)", helper: "Only ask for an early clock-out reason when the employee clocks out earlier than this threshold." },
   { key: "rounding_minutes", label: "Rounding interval (minutes)", helper: "Rounding applied to approved entries (e.g., 15 = quarter hour)." },
   { key: "unpaid_break_minutes_over_6h", label: "Automatic unpaid break (>6h)", helper: "Minutes deducted automatically when approved hours exceed 6h." },
 ];
@@ -40,9 +41,12 @@ const SettingsTimeTracking = () => {
       const data = await timeTracking.getSettings();
       setPolicy({
         enable_time_tracking: data.enable_time_tracking ?? true,
+        enable_shift_attestations: data.enable_shift_attestations ?? false,
+        require_injury_free_attestation: data.require_injury_free_attestation ?? false,
         allow_early_clock_in_minutes: data.allow_early_clock_in_minutes ?? 15,
         allow_late_clock_in_minutes: data.allow_late_clock_in_minutes ?? 60,
         allow_late_clock_out_minutes: data.allow_late_clock_out_minutes ?? 60,
+        attestation_early_clock_out_threshold_minutes: data.attestation_early_clock_out_threshold_minutes ?? 5,
         rounding_minutes: data.rounding_minutes ?? 15,
         unpaid_break_minutes_over_6h: data.unpaid_break_minutes_over_6h ?? 30,
         require_manager_approval: data.require_manager_approval ?? true,
@@ -131,7 +135,32 @@ const SettingsTimeTracking = () => {
             }
             label={t("settings.timeTracking.requireApproval", "Require manager approval before payroll")}
           />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(policy.enable_shift_attestations)}
+                onChange={handleToggle("enable_shift_attestations")}
+              />
+            }
+            label={t("settings.timeTracking.enableAttestations", "Enable shift attestations")}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(policy.require_injury_free_attestation)}
+                onChange={handleToggle("require_injury_free_attestation")}
+                disabled={!policy.enable_shift_attestations}
+              />
+            }
+            label={t("settings.timeTracking.injuryFreeAttestation", "Ask injury-free confirmation on clock out")}
+          />
         </Stack>
+
+        {policy.enable_shift_attestations && (
+          <Alert severity="info" sx={{ py: 0.5 }}>
+            Employees only see attestation prompts after clock out or end break when a configured exception is detected.
+          </Alert>
+        )}
 
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
