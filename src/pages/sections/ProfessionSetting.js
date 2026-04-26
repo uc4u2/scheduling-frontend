@@ -17,7 +17,6 @@ import { settingsApi } from "../../utils/api";
 
 const ProfessionSettings = ({ variant = "standalone" } = {}) => {
   const [profession, setProfession] = useState("");
-  const [effectiveProfession, setEffectiveProfession] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -33,9 +32,6 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
         const data = await settingsApi.get();
         if (!active) return;
         setProfession(data?.default_profession ?? "");
-        const resolved =
-          data?.effective_profession ?? data?.default_profession ?? data?.profession ?? "";
-        setEffectiveProfession(resolved);
         setIsManager(Boolean(data?.is_manager));
         setError("");
       } catch (err) {
@@ -69,12 +65,6 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
       await settingsApi.update({ default_profession: profession || null });
       const refreshed = await settingsApi.get();
       setProfession(refreshed?.default_profession ?? "");
-      const resolved =
-        refreshed?.effective_profession ??
-        refreshed?.default_profession ??
-        refreshed?.profession ??
-        "";
-      setEffectiveProfession(resolved);
       setMessage("Default profession updated.");
       setError("");
     } catch (err) {
@@ -100,7 +90,6 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
     return professionLabelMap.get(value) || value;
   };
   const currentDefaultLabel = resolveLabel(profession);
-  const currentEffectiveLabel = resolveLabel(effectiveProfession);
   const canEdit = isManager && !loading;
   const titleVariant = variant === "embedded" ? "subtitle1" : "h6";
 
@@ -112,7 +101,7 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
             Company Default Industry
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Employees will see <strong>{currentEffectiveLabel}</strong> by default. Personal preferences still override the company default when set in the workspace tab.
+            This controls the default profession/use case for invitations, candidate forms, and industry filtering.
           </Typography>
           {!isManager && !loading && (
             <Alert sx={{ mt: 2 }} severity="info">
@@ -144,9 +133,6 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
           <Typography variant="body2" color="text.secondary">
             Current company default: <strong>{currentDefaultLabel}</strong>
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Effective for you right now: <strong>{currentEffectiveLabel}</strong>
-          </Typography>
         </Stack>
 
         <Button
@@ -154,7 +140,7 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
           onClick={handleSave}
           disabled={saving || loading || !isManager}
         >
-          {saving ? "Saving..." : "Save Default Profession"}
+          {saving ? "Saving..." : "Save Company Default Industry"}
         </Button>
       </Stack>
 

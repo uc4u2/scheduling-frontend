@@ -37,6 +37,7 @@ import {
   reorderQuestionnaireAssignments,
 } from "./utils/questionnaireAssignments";
 import { PROFESSION_OPTIONS } from "./constants/professions";
+import { buildTemplateCreatePayloadFromBlueprint } from "./candidateForms/templateBlueprintHelpers";
 
 // Profession list and template defaults
 const PROFESSION_TEMPLATES = {
@@ -426,11 +427,34 @@ Best regards,
 {sender_company_name}`;
 
 
-const EnhancedInvitationForm = ({ token, embedded = false }) => {
+const DOCUMENT_UPLOAD_MODE_OPTIONS = [
+  { value: "hidden", label: "Hidden" },
+  { value: "optional", label: "Optional" },
+  { value: "required", label: "Required" },
+];
+
+const BOOKING_CAPTURED_FIELD_KEYS = new Set([
+  "candidate_name",
+  "full_name",
+  "name",
+  "candidate_email",
+  "email",
+  "email_address",
+  "candidate_phone",
+  "phone",
+  "phone_number",
+  "candidate_position",
+  "job_title",
+  "linkedin",
+  "resume",
+]);
+
+const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate }) => {
   const theme = useTheme();
+  const [isInitialising, setIsInitialising] = useState(true);
 
   // NEW: Profession state and dynamic template
-  const [profession, setProfession] = useState("recruiter");
+  const [profession, setProfession] = useState("");
 
   const professionOptions = useMemo(() => {
     const base = [...PROFESSION_OPTIONS];
@@ -442,7 +466,8 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
   }, [profession]);
 
   const hasManualProfessionChange = useRef(false);
-  const [template, setTemplate] = useState(PROFESSION_TEMPLATES["recruiter"]);
+  const selectedTemplateIdRef = useRef("");
+  const [template, setTemplate] = useState("");
   const handleSnackbarClose = (_event, reason) => {
     if (reason === "clickaway") {
       return;
@@ -455,12 +480,18 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
   const [templatesError, setTemplatesError] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [documentUploadMode, setDocumentUploadMode] = useState("optional");
+  const [sendWithoutForm, setSendWithoutForm] = useState(false);
+  const [creatingDefaultTemplate, setCreatingDefaultTemplate] = useState(false);
   const [lastInviteLink, setLastInviteLink] = useState("");
   const [availableQuestionnaires, setAvailableQuestionnaires] = useState([]);
   const [loadingQuestionnaires, setLoadingQuestionnaires] = useState(false);
   const [questionnaireError, setQuestionnaireError] = useState("");
   const [selectedQuestionnaires, setSelectedQuestionnaires] = useState([]);
   const isCustomProfession = profession === "custom";
+  const professionLabel = professionOptions.find((option) => option.value === profession)?.label || profession;
+  const selectedDocumentUploadLabel =
+    DOCUMENT_UPLOAD_MODE_OPTIONS.find((option) => option.value === documentUploadMode)?.label || "Optional";
 
 
   // Updated formData with all profession fields (as you requested)
@@ -631,6 +662,23 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
     return variables;
   };
 
+  const templateQuestionnaireCount = useMemo(() => {
+    if (profession !== "doctor") {
+      return 0;
+    }
+    return selectedQuestionnaires.length;
+  }, [profession, selectedQuestionnaires]);
+
+  const requiredVisibleFieldLabels = useMemo(() => {
+    const fields = Array.isArray(selectedTemplate?.fields) ? selectedTemplate.fields : [];
+    return fields
+      .filter((field) => field?.is_required)
+      .filter((field) => !BOOKING_CAPTURED_FIELD_KEYS.has(String(field?.key || "").trim().toLowerCase()))
+      .map((field) => field?.label || field?.key)
+      .filter(Boolean)
+      .slice(0, 4);
+  }, [selectedTemplate]);
+
   const extractSubjectAndBody = (rawTemplate) => {
     if (!rawTemplate || typeof rawTemplate !== "string") {
       return { subject: "", body: "" };
@@ -666,11 +714,111 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
 
   const [guideOpen, setGuideOpen] = useState(false);
 
+  useEffect(() => {
+    selectedTemplateIdRef.current = selectedTemplateId;
+  }, [selectedTemplateId]);
+
+  const loadRecruiterProfile = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const res = await api.get(`/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const user = res.data;
+      setFormData((prev) => ({
+        ...prev,
+        recruiterName: user.full_name || user.first_name || "",
+        recruiterEmail: user.email || "",
+        recruiterPhone: user.phone || "",
+        senderCompanyName: user.companyName || "",
+        companyName: user.targetCompanyName || "",
+        companyWebsite: user.companyWebsite || "",
+        companyAddress: user.companyAddress || "",
+        companyLogo: user.companyLogo || ""
+      }));
+    } catch (e) {
+      // ignore error
+    }
+  }, [token]);
+
+  const loadTemplateOptionsForProfession = useCallback(async (professionKey, explicitSelection = "") => {
+    if (!token || !professionKey || professionKey === "custom") {
+      setAvailableTemplates([]);
+      setSelectedTemplateId("");
+      setSelectedTemplate(null);
+      setTemplatesError("");
+      setTemplatesLoading(false);
+      return { eligible: [], selectedId: "" };
+    }
+
+    setTemplatesLoading(true);
+    setTemplatesError("");
+    setSelectedTemplate(null);
+    try {
+      const params = new URLSearchParams({
+        profession: professionKey,
+      });
+      const response = await api.get(`/api/form-templates?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const list = Array.isArray(response.data) ? response.data : [];
+      const eligible = list.filter(
+        (tpl) => ["active", "published"].includes((tpl.status || "").toLowerCase())
+      );
+      const nextSelectedId =
+        explicitSelection && eligible.some((item) => item.id === explicitSelection)
+          ? explicitSelection
+          : eligible[0]?.id || "";
+      setAvailableTemplates(eligible);
+      setSelectedTemplateId(nextSelectedId);
+      if (!nextSelectedId) {
+        setSelectedTemplate(null);
+      }
+      return { eligible, selectedId: nextSelectedId };
+    } catch (err) {
+      setAvailableTemplates([]);
+      setSelectedTemplateId("");
+      setSelectedTemplate(null);
+      const detail =
+        err.response?.data?.error ||
+        "Unable to load templates for this profession.";
+      setTemplatesError(detail);
+      return { eligible: [], selectedId: "" };
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, [token]);
+
+  const loadSelectedTemplateDetails = useCallback(async (templateId) => {
+    if (!templateId || !token) {
+      setSelectedTemplate(null);
+      return null;
+    }
+    try {
+      const res = await api.get(`/api/form-templates/${templateId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const full = res?.data || null;
+      setSelectedTemplate(full);
+      const nextTemplate = buildTemplateFromFormTemplate(full);
+      if (nextTemplate) {
+        setTemplate(nextTemplate);
+      }
+      return full;
+    } catch {
+      setSelectedTemplate(null);
+      return null;
+    }
+  }, [token]);
+
   // On load: load defaults and templates
   useEffect(() => {
     let active = true;
 
     const initialiseInvitationForm = async () => {
+      setIsInitialising(true);
       let nextProfession = "recruiter";
 
       try {
@@ -725,6 +873,33 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
         }
       }
 
+      await loadRecruiterProfile();
+
+      if (!active) {
+        return;
+      }
+
+      if (nextProfession && nextProfession !== "custom") {
+        const { selectedId } = await loadTemplateOptionsForProfession(nextProfession);
+        if (!active) {
+          return;
+        }
+        if (selectedId) {
+          await loadSelectedTemplateDetails(selectedId);
+        } else {
+          setSelectedTemplate(null);
+        }
+      } else {
+        setAvailableTemplates([]);
+        setSelectedTemplateId("");
+        setSelectedTemplate(null);
+        setTemplatesError("");
+      }
+
+      if (active) {
+        setIsInitialising(false);
+      }
+
     };
 
     initialiseInvitationForm();
@@ -732,7 +907,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadRecruiterProfile, loadSelectedTemplateDetails, loadTemplateOptionsForProfession]);
 
 
   // When profession changes, update template
@@ -741,6 +916,8 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
       setTemplate("");
       return;
     }
+
+    setSendWithoutForm(false);
 
     const savedTemplate = localStorage.getItem(`invitationTemplate_${profession}`);
     if (savedTemplate) {
@@ -856,85 +1033,40 @@ const handlePreview = () => {
   const contactInfoTitle = 'Contact Info';
   const emailLabel = 'Client Email';
 
-  // Fetch profile (kept from your original)
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get(`/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const user = res.data;
-        setFormData((prev) => ({
-          ...prev,
-          recruiterName: user.full_name || user.first_name || "",
-          recruiterEmail: user.email || "",
-          recruiterPhone: user.phone || "",
-          senderCompanyName: user.companyName || "",
-          companyName: user.targetCompanyName || "",
-          companyWebsite: user.companyWebsite || "",
-          companyAddress: user.companyAddress || "",
-          companyLogo: user.companyLogo || ""
-        }));
-      } catch (e) {
-        // ignore error
-      }
-    };
-    fetchProfile();
-
-    const saved = localStorage.getItem("recruiterDefaults");
-    if (saved) {
-      setFormData((prev) => ({ ...prev, ...JSON.parse(saved) }));
-    }
-  }, [token]);
-
   const fetchTemplatesForProfession = useCallback(async () => {
-    if (!token || !profession || profession === "custom") {
+    if (sendWithoutForm) {
       setAvailableTemplates([]);
       setSelectedTemplateId("");
+      setSelectedTemplate(null);
       setTemplatesError("");
-      setTemplatesLoading(false);
       return;
     }
-    setTemplatesLoading(true);
-    setTemplatesError("");
-    try {
-      const params = new URLSearchParams({
-        profession: profession,
-      });
-      const response = await api.get(`/api/form-templates?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const list = Array.isArray(response.data) ? response.data : [];
-      const eligible = list.filter(
-        (tpl) => ["active", "published"].includes((tpl.status || "").toLowerCase())
-      );
-      setAvailableTemplates(eligible);
-      if (eligible.length > 0) {
-        setSelectedTemplateId((prev) =>
-          prev && eligible.some((item) => item.id === prev) ? prev : eligible[0].id
-        );
-      } else {
-        setSelectedTemplateId("");
-      }
-    } catch (err) {
-      setAvailableTemplates([]);
-      setSelectedTemplateId("");
-      const detail =
-        err.response?.data?.error ||
-        "Unable to load templates for this profession.";
-      setTemplatesError(detail);
-    } finally {
-      setTemplatesLoading(false);
-    }
-  }, [token, profession]);
+    return loadTemplateOptionsForProfession(profession, selectedTemplateIdRef.current);
+  }, [loadTemplateOptionsForProfession, profession, sendWithoutForm]);
 
   useEffect(() => {
+    if (isInitialising) {
+      return;
+    }
     fetchTemplatesForProfession();
-  }, [fetchTemplatesForProfession]);
+  }, [fetchTemplatesForProfession, isInitialising]);
 
   useEffect(() => {
     const onTemplatesUpdated = () => fetchTemplatesForProfession();
+    const onTemplateCreated = (event) => {
+      const createdId = event?.detail?.id;
+      const createdProfession = event?.detail?.professionKey;
+      if (createdProfession && createdProfession !== profession) {
+        return;
+      }
+      setSendWithoutForm(false);
+      fetchTemplatesForProfession();
+      if (createdId) {
+        setSelectedTemplateId(createdId);
+      }
+    };
     window.addEventListener("candidate-templates-updated", onTemplatesUpdated);
+    window.addEventListener("candidate-template-created", onTemplateCreated);
     const onStorage = (event) => {
       if (event.key === "candidate_form_templates_updated") {
         fetchTemplatesForProfession();
@@ -943,9 +1075,10 @@ const handlePreview = () => {
     window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener("candidate-templates-updated", onTemplatesUpdated);
+      window.removeEventListener("candidate-template-created", onTemplateCreated);
       window.removeEventListener("storage", onStorage);
     };
-  }, [fetchTemplatesForProfession]);
+  }, [fetchTemplatesForProfession, profession]);
 
   useEffect(() => {
     if (!selectedTemplateId || profession === "custom") return;
@@ -972,6 +1105,13 @@ const handlePreview = () => {
       active = false;
     };
   }, [selectedTemplateId, profession, token]);
+
+  useEffect(() => {
+    if (sendWithoutForm) {
+      setSelectedTemplateId("");
+      setSelectedTemplate(null);
+    }
+  }, [sendWithoutForm]);
 
   useEffect(() => {
     if (profession !== "doctor") {
@@ -1037,6 +1177,49 @@ const handlePreview = () => {
     );
   };
 
+  const handleSendWithoutFormSelection = useCallback(() => {
+    setSendWithoutForm(true);
+    setSelectedTemplateId("");
+    setSelectedTemplate(null);
+    setTemplatesError("");
+  }, []);
+
+  const handleCreateDefaultTemplate = useCallback(async () => {
+    const payload = buildTemplateCreatePayloadFromBlueprint(profession);
+    if (!payload) {
+      onOpenCreateTemplate?.(profession);
+      return;
+    }
+    try {
+      setCreatingDefaultTemplate(true);
+      setError("");
+      const response = await api.post("/api/form-templates", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const created = response?.data || {};
+      try {
+        localStorage.setItem("candidate_form_templates_updated", Date.now().toString());
+        window.dispatchEvent(new Event("candidate-templates-updated"));
+      } catch {}
+      setSendWithoutForm(false);
+      await fetchTemplatesForProfession();
+      if (created?.id) {
+        setSelectedTemplateId(created.id);
+      }
+      setMessage(`${professionLabel} candidate form created.`);
+    } catch (err) {
+      const detail = err.response?.data?.error || err.message || "Failed to create template.";
+      setError(detail);
+    } finally {
+      setCreatingDefaultTemplate(false);
+    }
+  }, [fetchTemplatesForProfession, onOpenCreateTemplate, profession, professionLabel, token]);
+
+  const handleOpenCustomTemplate = useCallback(() => {
+    setSendWithoutForm(false);
+    onOpenCreateTemplate?.(profession);
+  }, [onOpenCreateTemplate, profession]);
+
   // Send invitation logic
   const handleSendInvitation = async () => {
     const required = (requiredFieldsByProfession[profession] || []).filter((field) => {
@@ -1056,10 +1239,10 @@ const handlePreview = () => {
       return;
     }
 
-    const useCandidateFormsFlow = !isCustomProfession && selectedTemplateId !== "";
+    const useCandidateFormsFlow = !isCustomProfession && (selectedTemplateId !== "" || sendWithoutForm);
 
-    if (!isCustomProfession && selectedTemplateId === "") {
-      setError("No active template is available for this profession. Please create one in the Candidate Forms tab or switch to Custom.");
+    if (!isCustomProfession && selectedTemplateId === "" && !sendWithoutForm) {
+      setError("No active template is available for this profession. Create one, choose Send without form, or switch to Custom.");
       return;
     }
 
@@ -1073,16 +1256,22 @@ const handlePreview = () => {
       const inviteNameValue = resolveInviteName();
 
       if (useCandidateFormsFlow) {
-        const numericTemplateId = Number(selectedTemplateId);
         const payload = {
-          template_id: Number.isNaN(numericTemplateId) ? selectedTemplateId : numericTemplateId,
           profession_key: profession,
           invite_email: formData.candidateEmail,
+          document_upload_mode: documentUploadMode,
         };
+
+        if (sendWithoutForm) {
+          payload.send_without_form = true;
+        } else {
+          const numericTemplateId = Number(selectedTemplateId);
+          payload.template_id = Number.isNaN(numericTemplateId) ? selectedTemplateId : numericTemplateId;
+        }
 
         payload.invite_name = inviteNameValue || 'Candidate';
 
-        const selectedTemplateForSend = selectedTemplate;
+        const selectedTemplateForSend = sendWithoutForm ? null : selectedTemplate;
         const selectedStatus = (selectedTemplateForSend?.status || "").toLowerCase();
         if (selectedTemplateForSend && !["active", "published"].includes(selectedStatus)) {
           setError("Template must be active");
@@ -1138,6 +1327,7 @@ const handlePreview = () => {
         if (intakeUrl) {
           setLastInviteLink(intakeUrl);
         }
+        setSendWithoutForm(false);
         setFormData((prev) => ({ ...prev, candidateName: "", candidateEmail: "" }));
         return;
       }
@@ -1733,6 +1923,17 @@ const handlePreview = () => {
   // Main content JSX
   const content = (
     <>
+      {isInitialising ? (
+        <Paper variant="outlined" sx={{ p: 3, mb: 2 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="text.secondary">
+              Loading invitation setup...
+            </Typography>
+          </Stack>
+        </Paper>
+      ) : (
+        <>
       <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
         <Button variant="outlined" onClick={() => setGuideOpen(true)}>
           Help / Examples
@@ -1755,69 +1956,183 @@ const handlePreview = () => {
         </Alert>
       )}
 
-      {/* Profession selection */}
-<TextField
-  select
-  label="Profession / Use Case"
-  value={profession}
-  onChange={(e) => handleProfessionSelect(e.target.value)}
-  fullWidth
-  sx={{ mb: 2 }}
->
-  {professionOptions.map((option) => (
-    <MenuItem key={option.value} value={option.value}>
-      {option.label}
-    </MenuItem>
-  ))}
-</TextField>
-
-{!isCustomProfession && (
-  <Box sx={{ width: '100%', mb: 2 }}>
-    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
-      <Typography variant="caption" color="text.secondary">
-        Candidate Form Template
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Invite setup
       </Typography>
-      <Tooltip
-        title="This controls the intake form fields and questionnaires shown after the candidate clicks the invite link. It does not change the email content unless you choose to override it."
+      <TextField
+        select
+        label="Profession / Use Case"
+        value={profession}
+        onChange={(e) => handleProfessionSelect(e.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
       >
-        <IconButton size="small">
-          <InfoOutlinedIcon fontSize="inherit" />
-        </IconButton>
-      </Tooltip>
-    </Stack>
-    <TextField
-      select
-      fullWidth
-      label={templatesLoading ? 'Loading templates' : 'Candidate Form Template'}
-      value={selectedTemplateId || ''}
-      onChange={(e) => {
-        const value = Number(e.target.value);
-        setSelectedTemplateId(Number.isNaN(value) ? null : value);
-      }}
-      disabled={templatesLoading || availableTemplates.length === 0}
-    >
-      {availableTemplates.map((templateOption) => (
-        <MenuItem key={templateOption.id} value={templateOption.id}>
-          {templateOption.name}
-          {templateOption.version ? ` (v${templateOption.version})` : ''}
-        </MenuItem>
-      ))}
-    </TextField>
-    {templatesError && (
-      <Alert severity="warning" sx={{ mt: 1 }}>
-        {templatesError}
-      </Alert>
-    )}
-    {!templatesLoading && !templatesError && availableTemplates.length === 0 && profession !== "custom" && (
-      <Alert severity="info" sx={{ mt: 1 }}>
-        No saved candidate forms for this profession yet. You can still edit and send this invitation, or add a questionnaire in the Candidate Forms tab.
-      </Alert>
-    )}
-  </Box>
-)}
+        {professionOptions.map((option) => (
+          <MenuItem key={option.value} value={option.value}>
+            {option.label}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* Profession-aware Employee/Professional Info */}
+      {renderProfessionalInfo()}
+
+      {!isCustomProfession && (
+        <>
+          <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+            Candidate experience
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Stack spacing={2}>
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Candidate Form Template
+                  </Typography>
+                  <Tooltip title="This controls the intake form fields and questionnaires shown after the candidate clicks the invite link. It does not change the email content unless you choose to override it.">
+                    <IconButton size="small">
+                      <InfoOutlinedIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+                {availableTemplates.length > 0 ? (
+                  <TextField
+                    select
+                    fullWidth
+                    label={templatesLoading ? "Loading templates" : "Candidate Form Template"}
+                    value={sendWithoutForm ? "" : selectedTemplateId || ""}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setSendWithoutForm(false);
+                      setSelectedTemplateId(Number.isNaN(value) ? "" : value);
+                    }}
+                    disabled={templatesLoading}
+                  >
+                    {availableTemplates.map((templateOption) => (
+                      <MenuItem key={templateOption.id} value={templateOption.id}>
+                        {templateOption.name}
+                        {templateOption.version ? ` (v${templateOption.version})` : ""}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <Alert
+                    severity="info"
+                    action={
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: { xs: 1, sm: 0 } }}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={handleCreateDefaultTemplate}
+                          disabled={creatingDefaultTemplate || templatesLoading}
+                          startIcon={creatingDefaultTemplate ? <CircularProgress size={14} /> : null}
+                        >
+                          {creatingDefaultTemplate ? "Creating..." : `Create ${professionLabel} default form`}
+                        </Button>
+                        <Button size="small" variant="outlined" onClick={handleOpenCustomTemplate}>
+                          Create custom form
+                        </Button>
+                        <Button size="small" variant="text" onClick={handleSendWithoutFormSelection}>
+                          Send without form
+                        </Button>
+                      </Stack>
+                    }
+                    sx={{ alignItems: "flex-start" }}
+                  >
+                    {`No active ${professionLabel} candidate form yet.`}
+                  </Alert>
+                )}
+                {templatesError && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    {templatesError}
+                  </Alert>
+                )}
+              </Box>
+
+              <TextField
+                select
+                label="Candidate document upload"
+                value={documentUploadMode}
+                onChange={(e) => setDocumentUploadMode(e.target.value)}
+                fullWidth
+              >
+                {DOCUMENT_UPLOAD_MODE_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "grey.50",
+                }}
+              >
+                <Stack spacing={1.25}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Candidate will see
+                  </Typography>
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Chip size="small" label={`Profession: ${professionLabel}`} />
+                    <Chip
+                      size="small"
+                      label={`Candidate form: ${sendWithoutForm ? "None" : (selectedTemplate?.name || "None")}`}
+                      sx={
+                        sendWithoutForm
+                          ? undefined
+                          : {
+                              backgroundColor: "primary.50",
+                              borderColor: "primary.200",
+                              color: "primary.dark",
+                              fontWeight: 600,
+                            }
+                      }
+                      variant={sendWithoutForm ? "filled" : "outlined"}
+                    />
+                    <Chip size="small" label={`Document upload: ${selectedDocumentUploadLabel}`} />
+                    <Chip
+                      size="small"
+                      label="Booking link: Yes"
+                      sx={{
+                        backgroundColor: "success.50",
+                        borderColor: "success.200",
+                        color: "success.dark",
+                        fontWeight: 600,
+                      }}
+                      variant="outlined"
+                    />
+                    <Chip
+                      size="small"
+                      label="Email includes booking/profile link: Yes"
+                      sx={{
+                        backgroundColor: "success.50",
+                        borderColor: "success.200",
+                        color: "success.dark",
+                        fontWeight: 600,
+                      }}
+                      variant="outlined"
+                    />
+                    {templateQuestionnaireCount > 0 && (
+                      <Chip size="small" label={`Questionnaires: ${templateQuestionnaireCount}`} />
+                    )}
+                    {requiredVisibleFieldLabels.length > 0 && (
+                      <Chip size="small" label={`Required fields: ${requiredVisibleFieldLabels.join(", ")}`} />
+                    )}
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Stack>
+          </Paper>
+        </>
+      )}
 
 
       {/* Variable insertion */}
+      <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+        Email message
+      </Typography>
       <Box sx={{ mb: 2 }}>
         <Typography variant="caption">Insert variable:</Typography>
         {professionVariables.map(v => (
@@ -1854,9 +2169,6 @@ const handlePreview = () => {
         fullWidth
         sx={{ mb: 2 }}
       />
-
-      {/* Profession-aware Employee/Professional Info */}
-      {renderProfessionalInfo()}
 
       {/* Job Info only for recruiter */}
       {profession === "recruiter" && (
@@ -2167,22 +2479,25 @@ const handlePreview = () => {
           </Stack>
         </Paper>
       )}
+        </>
+      )}
 
-      {/* Buttons */}
-      <Box sx={{ mt: 3, display: "flex", gap: 2, flexWrap: "wrap" }}>
-        <Button variant="outlined" onClick={handleSaveDefaults}>
-          Save Defaults
-        </Button>
-        <Button variant="outlined" onClick={handleSaveTemplate} disabled={disableTemplateEditor}>
-          Save Template
-        </Button>
-        <Button variant="contained" onClick={handlePreview} disabled={disableTemplateEditor}>
-          Preview Template
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleSendInvitation} disabled={isSubmitting} endIcon={isSubmitting ? <CircularProgress size={16} /> : null}>
-          Send Invitation
-        </Button>
-      </Box>
+      {!isInitialising && (
+        <Box sx={{ mt: 3, display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <Button variant="outlined" onClick={handleSaveDefaults}>
+            Save Defaults
+          </Button>
+          <Button variant="outlined" onClick={handleSaveTemplate} disabled={disableTemplateEditor}>
+            Save Template
+          </Button>
+          <Button variant="contained" onClick={handlePreview} disabled={disableTemplateEditor}>
+            Preview Template
+          </Button>
+          <Button variant="contained" color="primary" onClick={handleSendInvitation} disabled={isSubmitting} endIcon={isSubmitting ? <CircularProgress size={16} /> : null}>
+            Send Invitation
+          </Button>
+        </Box>
+      )}
 
       {/* Help Guide Drawer */}
       {/* Help Guide Drawer */}

@@ -202,6 +202,8 @@ const CandidateIntakePage = () => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const [resumeFile, setResumeFile] = useState(null);
+  const [documentUploadMode, setDocumentUploadMode] = useState("optional");
+  const [hasExistingDocument, setHasExistingDocument] = useState(false);
   const [candidateBasics, setCandidateBasics] = useState({
     candidateName: "",
     candidateEmail: "",
@@ -256,6 +258,8 @@ const CandidateIntakePage = () => {
       const files = Array.isArray(data.submission?.files) ? data.submission.files : [];
       setSubmissionFiles(files);
       setUploadStates({});
+      setDocumentUploadMode(data.document_upload_mode || data.submission?.document_upload_mode || "optional");
+      setHasExistingDocument(Boolean(data.has_existing_document));
       const submissionResponses = data.submission?.responses || {};
       setResponses(submissionResponses);
       const confirmed = Boolean(submissionResponses.booking_confirmed);
@@ -666,6 +670,9 @@ const CandidateIntakePage = () => {
       setSlots((prev) => prev.filter((slot) => slot.id !== (slotSummary?.id ?? slotDetails.id)));
       setSelectedSlotId(null);
       setResumeFile(null);
+      if (resumeFile) {
+        setHasExistingDocument(true);
+      }
       setBookingToast({ open: true, severity: "success", message: data.message || "Interview slot booked successfully." });
       setBookedSlotInfo(
         slotSummary
@@ -738,6 +745,11 @@ const CandidateIntakePage = () => {
       return;
     }
 
+    if (documentUploadMode === "required" && !resumeFile && !hasExistingDocument) {
+      setError("Please upload the required document before submitting.");
+      return;
+    }
+
     const mergedResponses = {
       ...responses,
       ...(candidateBasics.candidateName ? { full_name: candidateBasics.candidateName, name: candidateBasics.candidateName } : {}),
@@ -773,6 +785,7 @@ const CandidateIntakePage = () => {
       }
       if (resumeFile) {
         setResumeFile(null);
+        setHasExistingDocument(true);
       }
       if (Array.isArray(data?.questionnaires)) {
         setQuestionnaires(data.questionnaires);
@@ -789,7 +802,7 @@ const CandidateIntakePage = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [token, responses, bookingRequired, bookingSuccess, isReadOnly, questionnaires, submissionFiles]);
+  }, [token, responses, bookingRequired, bookingSuccess, isReadOnly, questionnaires, submissionFiles, documentUploadMode, resumeFile, hasExistingDocument]);
 
   const heading = submission?.invite_name || template?.name || "Candidate intake";
   const description = template?.description || "Please complete the following information.";
@@ -1254,17 +1267,29 @@ const CandidateIntakePage = () => {
                   fullWidth
                   disabled={bookingSaving || bookingSuccess}
                 />
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Resume / document (optional)
-                  </Typography>
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.txt"
-                    onChange={(event) => setResumeFile(event.target.files?.[0] || null)}
-                    disabled={bookingSaving || bookingSuccess}
-                  />
-                </Box>
+                {documentUploadMode !== "hidden" && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      {`Resume / document${documentUploadMode === "required" ? " *" : " (optional)"}`}
+                    </Typography>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.txt"
+                      onChange={(event) => setResumeFile(event.target.files?.[0] || null)}
+                      disabled={bookingSaving || bookingSuccess}
+                    />
+                    {documentUploadMode === "required" && !resumeFile && !hasExistingDocument && (
+                      <Typography variant="caption" color="error" display="block" sx={{ mt: 0.5 }}>
+                        Please upload the required document before submitting.
+                      </Typography>
+                    )}
+                    {hasExistingDocument && !resumeFile && (
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                        A document is already on file for this invitation.
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Stack>
             </Box>
 

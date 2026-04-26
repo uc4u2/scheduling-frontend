@@ -111,6 +111,10 @@ const sanitiseFieldOrder = (items = []) =>
 
 const TemplateFieldBuilder = ({ fields = [], onChange, reservedKeys = [] }) => {
   const orderedFields = useMemo(() => sanitiseFieldOrder(fields), [fields]);
+  const availableFieldTypes = useMemo(
+    () => FIELD_TYPES.filter((option) => option.value !== "file"),
+    []
+  );
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorIndex, setEditorIndex] = useState(null);
   const [fieldState, setFieldState] = useState(defaultFieldState);
@@ -414,12 +418,20 @@ const TemplateFieldBuilder = ({ fields = [], onChange, reservedKeys = [] }) => {
               select
               fullWidth
             >
-              {FIELD_TYPES.map((option) => (
+              {availableFieldTypes.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
               ))}
+              {fieldState.type === "file" && (
+                <MenuItem value="file" disabled>
+                  File Upload (legacy)
+                </MenuItem>
+              )}
             </TextField>
+            <Alert severity="info">
+              Document upload is controlled from the invitation page for now.
+            </Alert>
             <TextField
               label="Required"
               value={fieldState.is_required ? "yes" : "no"}
@@ -461,17 +473,6 @@ const TemplateFieldBuilder = ({ fields = [], onChange, reservedKeys = [] }) => {
                 fullWidth
               />
             )}
-
-            {fieldState.type === "file" && (
-              <TextField
-                label="Accepted Types"
-                value={fieldState.accept}
-                onChange={(event) => handleFieldChange("accept", event.target.value)}
-                helperText="Comma-separated MIME types or extensions (e.g. image/png,.pdf)"
-                fullWidth
-              />
-            )}
-
             {MAX_LENGTH_TYPES.has(fieldState.type) && (
               <TextField
                 label="Max Length"
