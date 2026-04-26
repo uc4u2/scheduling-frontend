@@ -44,7 +44,7 @@ import {
   ToggleButtonGroup,
   ToggleButton,
 } from "@mui/material";
-import { format, parseISO, differenceInMinutes, addDays, startOfDay } from "date-fns";
+import { format, parseISO, differenceInMinutes, addDays, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -293,7 +293,7 @@ const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const [showSwapApprovals, setShowSwapApprovals] = useState(false);
 
   // Employee “My Swap Requests” toggle moved inside drawer
-  const [showMySwapRequests, setShowMySwapRequests] = useState(false);
+  const [myShiftSubview, setMyShiftSubview] = useState("shifts");
 
   // Snackbar feedback (shared)
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
@@ -2795,21 +2795,23 @@ const polishedPanelSx = employeePolish
       <Box sx={{ px: 2, mt: 2 }}>
         <ToggleButtonGroup
           size="small"
-          value={showMySwapRequests ? "swaps" : "shifts"}
+          value={myShiftSubview}
           exclusive
           onChange={(_, v) => {
             if (!v) return;
-            setShowMySwapRequests(v === "swaps");
+            setMyShiftSubview(v);
           }}
           fullWidth
         >
           <ToggleButton value="shifts">Shifts</ToggleButton>
+          <ToggleButton value="leave-requests">Leave requests</ToggleButton>
           <ToggleButton value="swaps">My swap requests</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
       <Divider sx={{ my: 2 }} />
 
+      {myShiftSubview === "shifts" && (
       <Box sx={{ px: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap" useFlexGap>
           <Button size="small" variant="outlined" onClick={() => {
@@ -2830,6 +2832,15 @@ const polishedPanelSx = employeePolish
           }}>
             Next 7 days
           </Button>
+          <Button size="small" variant="outlined" onClick={() => {
+            const today = new Date();
+            setShiftRange({
+              startDate: format(startOfMonth(today), "yyyy-MM-dd"),
+              endDate: format(endOfMonth(today), "yyyy-MM-dd"),
+            });
+          }}>
+            This month
+          </Button>
           <ThemedDateField
             size="small"
             label="From"
@@ -2844,7 +2855,9 @@ const polishedPanelSx = employeePolish
           />
         </Stack>
       </Box>
+      )}
 
+      {myShiftSubview !== "swaps" && (
       <Box sx={{ px: 2, mb: 2 }}>
         <Button
           fullWidth
@@ -2854,9 +2867,10 @@ const polishedPanelSx = employeePolish
           Request time off
         </Button>
       </Box>
+      )}
 
       {/* Shifts list, loading & error blocks */}
-      {showMySwapRequests ? (
+      {myShiftSubview === "swaps" ? (
         <Box sx={{ px: 2 }}>
           {pendingSwaps.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
@@ -2880,6 +2894,109 @@ const polishedPanelSx = employeePolish
                   )}
                 </Paper>
               ))}
+            </Stack>
+          )}
+        </Box>
+      ) : myShiftSubview === "leave-requests" ? (
+        <Box sx={{ px: 2, pb: 2 }}>
+          {leaveHistoryLoading ? (
+            <Box display="flex" justifyContent="center" py={2}>
+              <CircularProgress size={22} />
+            </Box>
+          ) : employeeLeaveRequests.length === 0 ? (
+            <Stack spacing={0.5}>
+              <Typography variant="body2" color="text.secondary">
+                No leave requests yet.
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Submitted time-off requests will appear here with status, approved hours, manager comments, and any supporting document.
+              </Typography>
+            </Stack>
+          ) : (
+            <Stack spacing={1}>
+              {employeeLeaveRequests.map((leave) => {
+                const status = String(leave.status || "pending").toLowerCase();
+                const statusColor =
+                  status === "approved"
+                    ? "success"
+                    : status === "pending"
+                    ? "warning"
+                    : status === "withdrawn" || status === "cancelled"
+                    ? "default"
+                    : "error";
+                return (
+                  <Paper key={leave.id} variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Typography variant="body2" fontWeight={800}>
+                          {leave.leave_type}
+                          {leave.leave_subtype ? ` · ${leave.leave_subtype}` : ""}
+                        </Typography>
+                        <Chip size="small" color={statusColor} label={status} sx={statusChipSx(status)} />
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          label={leave.is_paid_leave ? "Paid leave" : "Unpaid leave"}
+                        />
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        Dates: {leave.start_date || "—"}
+                        {leave.end_date && leave.end_date !== leave.start_date ? ` → ${leave.end_date}` : ""}
+                        {" · "}
+                        Duration: {formatLeaveDurationMode(leave.duration_mode)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatLeaveHours(leave) || (String(leave.status || "").toLowerCase() === "approved" ? "Approved; payroll hours not confirmed" : "Manager must confirm payroll-ready hours")}
+                      </Typography>
+                      {leave.balance_impact?.balance_managed && (
+                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <Chip
+                            size="small"
+                            color={balanceImpactSeverity(leave.balance_impact)}
+                            variant="outlined"
+                            label={balancePolicyActionLabel(leave.balance_impact.policy_action)}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            Projected balance: {formatBalanceHours(leave.balance_impact.projected_balance_hours)}
+                          </Typography>
+                        </Stack>
+                      )}
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Chip
+                          size="small"
+                          icon={<UploadFileIcon />}
+                          variant="outlined"
+                          label={attachmentLabel(normalizeLeaveAttachment(leave))}
+                        />
+                      </Stack>
+                      {leave.review_comment && (
+                        <Typography variant="caption" color="text.secondary">
+                          Manager comment: {leave.review_comment}
+                        </Typography>
+                      )}
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => openEmployeeLeaveDetail(leave)}
+                        >
+                          Details
+                        </Button>
+                        {canWithdrawEmployeeLeave(leave) && (
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            onClick={() => withdrawLeaveRequest(leave.id)}
+                          >
+                            Withdraw
+                          </Button>
+                        )}
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                );
+              })}
             </Stack>
           )}
         </Box>
@@ -3260,117 +3377,6 @@ const polishedPanelSx = employeePolish
                 </Grid>
               ))}
             </Grid>
-          )}
-        </Box>
-        <Divider sx={{ my: 2 }} />
-        <Box sx={{ px: 2, pb: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Leave requests
-            </Typography>
-            <Button size="small" onClick={loadEmployeeLeaveRequests}>
-              Refresh
-            </Button>
-          </Stack>
-          {leaveHistoryLoading ? (
-            <Box display="flex" justifyContent="center" py={2}>
-              <CircularProgress size={22} />
-            </Box>
-          ) : employeeLeaveRequests.length === 0 ? (
-            <Stack spacing={0.5}>
-              <Typography variant="body2" color="text.secondary">
-                No leave requests yet.
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Submitted time-off requests will appear here with status, approved hours, manager comments, and any supporting document.
-              </Typography>
-            </Stack>
-          ) : (
-            <Stack spacing={1}>
-              {employeeLeaveRequests.map((leave) => {
-                const status = String(leave.status || "pending").toLowerCase();
-                const statusColor =
-                  status === "approved"
-                    ? "success"
-                    : status === "pending"
-                    ? "warning"
-                    : status === "withdrawn" || status === "cancelled"
-                    ? "default"
-                    : "error";
-                return (
-                  <Paper key={leave.id} variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
-                    <Stack spacing={0.75}>
-                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <Typography variant="body2" fontWeight={800}>
-                          {leave.leave_type}
-                          {leave.leave_subtype ? ` · ${leave.leave_subtype}` : ""}
-                        </Typography>
-                        <Chip size="small" color={statusColor} label={status} sx={statusChipSx(status)} />
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          label={leave.is_paid_leave ? "Paid leave" : "Unpaid leave"}
-                        />
-                      </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        Dates: {leave.start_date || "—"}
-                        {leave.end_date && leave.end_date !== leave.start_date ? ` → ${leave.end_date}` : ""}
-                        {" · "}
-                        Duration: {formatLeaveDurationMode(leave.duration_mode)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatLeaveHours(leave) || (String(leave.status || "").toLowerCase() === "approved" ? "Approved; payroll hours not confirmed" : "Manager must confirm payroll-ready hours")}
-                      </Typography>
-                      {leave.balance_impact?.balance_managed && (
-                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                          <Chip
-                            size="small"
-                            color={balanceImpactSeverity(leave.balance_impact)}
-                            variant="outlined"
-                            label={balancePolicyActionLabel(leave.balance_impact.policy_action)}
-                          />
-                          <Typography variant="caption" color="text.secondary">
-                            Projected balance: {formatBalanceHours(leave.balance_impact.projected_balance_hours)}
-                          </Typography>
-                        </Stack>
-                      )}
-                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <Chip
-                          size="small"
-                          icon={<UploadFileIcon />}
-                          variant="outlined"
-                          label={attachmentLabel(normalizeLeaveAttachment(leave))}
-                        />
-                      </Stack>
-                      {leave.review_comment && (
-                        <Typography variant="caption" color="text.secondary">
-                          Manager comment: {leave.review_comment}
-                        </Typography>
-                      )}
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => openEmployeeLeaveDetail(leave)}
-                        >
-                          Details
-                        </Button>
-                        {canWithdrawEmployeeLeave(leave) && (
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            onClick={() => withdrawLeaveRequest(leave.id)}
-                          >
-                            Withdraw
-                          </Button>
-                        )}
-                      </Stack>
-                    </Stack>
-                  </Paper>
-                );
-              })}
-            </Stack>
           )}
         </Box>
         </>

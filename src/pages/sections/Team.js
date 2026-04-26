@@ -1675,7 +1675,6 @@ const asLocalDate = (ymd) => {
       note: s.note || "",
     }));
   }, [shifts, recruiters]);
-
   // search filter (employee / date / status / note)
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -1831,6 +1830,17 @@ const [templateFormData, setTemplateFormData] = useState({
   const [editingShift, setEditingShift] = useState(null);
   const [leaveDetailOpen, setLeaveDetailOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
+  const editingShiftRecruiter = useMemo(() => {
+    if (!editingShift) return null;
+    const recruiter = recruiters.find((r) => String(r.id) === String(editingShift.recruiter_id));
+    if (recruiter) return recruiter;
+    return {
+      id: editingShift.recruiter_id,
+      name: editingShift.recruiter_name || `Employee ${editingShift.recruiter_id}`,
+      profile_image_url: editingShift.profile_image_url || editingShift.avatar || null,
+      avatar: editingShift.avatar || null,
+    };
+  }, [editingShift, recruiters]);
 const [formData, setFormData] = useState({
   date: "",
   startTime: "",
@@ -3825,7 +3835,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     <Box
       sx={{
         bgcolor: { xs: "transparent", md: "background.default" },
-        pt: { xs: 1, md: 2 },
+        pt: { xs: 7, md: 2 },
         mt: 0,
         px: { xs: 1, md: 2 },
         pb: { xs: 1, md: 2 },
@@ -4543,16 +4553,24 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           sx={{
             position: "relative",
             p: { xs: 2.5, sm: 4 },
-            bgcolor: "background.paper",
+            bgcolor: theme.palette.mode === "dark" ? "#111827" : "#f8fbff",
+            backgroundImage: `linear-gradient(180deg, ${
+              theme.palette.mode === "dark" ? "#1b2940" : "#eaf3ff"
+            } 0%, ${theme.palette.mode === "dark" ? "#111827" : "#f8fbff"} 20%, ${
+              theme.palette.mode === "dark" ? "#111827" : "#f8fbff"
+            } 100%)`,
             width: { xs: "calc(100% - 24px)", sm: 520 },
             maxWidth: 640,
             mx: "auto",
-            mt: { xs: "5vh", sm: "10%" },
+            mt: { xs: 1.5, sm: 3 },
             borderRadius: 1,
-            boxShadow: 6,
-            maxHeight: "90vh",
+            border: "1px solid",
+            borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.16),
+            boxShadow: `0 24px 60px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.42 : 0.16)}`,
+            maxHeight: { xs: "calc(100vh - 24px)", sm: "calc(100vh - 48px)" },
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
           }}
         >
           {isSubmitting ? (
@@ -4562,8 +4580,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 inset: 0,
                 zIndex: 3,
                 borderRadius: 1,
-                backgroundColor: "rgba(255,255,255,0.82)",
-                backdropFilter: "blur(2px)",
+                backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.88 : 0.9),
+                backdropFilter: "blur(4px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -4578,8 +4596,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   p: 2.5,
                   borderRadius: 1,
                   border: "1px solid",
-                  borderColor: "primary.light",
-                  boxShadow: "0 18px 40px rgba(37,99,235,0.12)",
+                  borderColor: alpha(theme.palette.primary.main, 0.28),
+                  bgcolor: theme.palette.mode === "dark" ? "#162133" : "#f7fbff",
+                  backgroundImage: `linear-gradient(145deg, ${
+                    theme.palette.mode === "dark" ? "#223552" : "#edf5ff"
+                  }, ${theme.palette.mode === "dark" ? "#162133" : "#f7fbff"})`,
+                  boxShadow: `0 18px 40px ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.12)}`,
                 }}
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
@@ -4596,10 +4618,60 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               </Paper>
             </Box>
           ) : null}
-          <Box sx={{ overflowY: "auto", pr: { xs: 0, sm: 1 } }}>
-            <Typography variant="h6" gutterBottom>
-              {editingShift ? "Edit Shift" : "Add New Shift"}
-            </Typography>
+          <Box sx={{ overflowY: "auto", pr: { xs: 0, sm: 1 }, flex: "1 1 auto", minHeight: 0 }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                mb: 2,
+                p: 1.75,
+                borderRadius: 1,
+                borderColor: alpha(theme.palette.primary.main, 0.16),
+                bgcolor: theme.palette.mode === "dark" ? "#162133" : "#f6faff",
+                backgroundImage: `linear-gradient(145deg, ${
+                  theme.palette.mode === "dark" ? "#20314c" : "#eef6ff"
+                }, ${theme.palette.mode === "dark" ? "#162133" : "#f6faff"})`,
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: editingShift && editingShiftRecruiter ? 1.5 : 0 }}>
+                {editingShift ? "Edit Shift" : "Add New Shift"}
+              </Typography>
+            {editingShift && editingShiftRecruiter ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1,
+                  borderColor: alpha(theme.palette.primary.main, 0.14),
+                  bgcolor: theme.palette.mode === "dark" ? "#0f1726" : "#ffffff",
+                }}
+              >
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                  <Avatar
+                    src={editingShiftRecruiter.profile_image_url || editingShiftRecruiter.avatar || undefined}
+                    alt={editingShiftRecruiter.name || "Employee"}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      fontWeight: 800,
+                      border: "1px solid",
+                      borderColor: alpha(theme.palette.primary.main, 0.18),
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                    }}
+                  >
+                    {(editingShiftRecruiter.name || "E").charAt(0)}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="subtitle2" fontWeight={800} noWrap>
+                      {editingShiftRecruiter.name || `Employee ${editingShift.recruiter_id}`}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Shift owner
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            ) : null}
+            </Paper>
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={4}>
@@ -5201,6 +5273,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               bottom: 0,
               zIndex: 1,
               pt: 1.5,
+              px: 0.25,
               pb: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
               backgroundColor: "background.paper",
               borderTop: "1px solid",
