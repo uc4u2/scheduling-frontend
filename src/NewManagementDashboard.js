@@ -1873,8 +1873,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
   // Employee management data loading
   useEffect(() => {
-    if (token) fetchDepartments();
-  }, [token]);
+    if (token && selectedView === "employee-management") {
+      fetchDepartments();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, selectedView]);
 
   useEffect(() => {
     if (token && selectedView === "employee-management") fetchEmployees();

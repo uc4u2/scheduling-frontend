@@ -40,7 +40,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import { timeTracking } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
-import ThemedDateField from "../../components/ui/ThemedDateField";
+import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDateField";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -50,6 +50,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import HistoryIcon from "@mui/icons-material/History";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import BlockIcon from "@mui/icons-material/Block";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import {
   formatLeaveWarningReason,
   getLeaveReviewVisibility,
@@ -114,6 +115,7 @@ const isEntryApprovable = (entry) =>
   Boolean(
     entry &&
       !isLeaveEntry(entry) &&
+      !entry.is_scheduled_only &&
       entry.status === "completed" &&
       !entry.is_locked &&
       !entry.deleted &&
@@ -124,6 +126,7 @@ const isEntryRejectable = (entry) =>
   Boolean(
     entry &&
       !isLeaveEntry(entry) &&
+      !entry.is_scheduled_only &&
       entry.status === "completed" &&
       !entry.is_locked &&
       !entry.deleted &&
@@ -137,6 +140,18 @@ const getAttestationBadgeLabel = (status, fallbackLabel) => {
   if (normalized === "reviewed") return "Attestation reviewed";
   return fallbackLabel || "Attestation";
 };
+
+const isEntryCorrectable = (entry) =>
+  Boolean(
+    entry &&
+      !isLeaveEntry(entry) &&
+      !entry.deleted &&
+      !entry.deleted_at &&
+      !entry.is_locked &&
+      entry.status !== "approved"
+  );
+
+const getCorrectionReason = (entry) => entry?.punch_correction?.reason || "";
 
 const hasTimeAnomaly = (entry) =>
   Boolean(
@@ -302,8 +317,25 @@ const readableRosterChipSx = (theme) => ({
 });
 
 const isLeaveEntry = (entry) => entry?.entry_type === "leave";
+const isScheduledOnlyEntry = (entry) => Boolean(entry && !isLeaveEntry(entry) && entry.is_scheduled_only);
 const leaveKindLabel = (entry) => getLeaveReviewVisibility(entry).payShortLabel;
 const leaveHours = (entry) => Number(entry?.paid_leave_hours || entry?.unpaid_leave_hours || entry?.hours_worked_rounded || 0);
+const formatScheduledClock = (iso, tz) => {
+  if (!iso) return "";
+  try {
+    return DateTime.fromISO(String(iso), { zone: "utc" })
+      .setZone(tz || getUserTimezone())
+      .toFormat("MMM d, yyyy, hh:mm:ss a");
+  } catch {
+    return String(iso);
+  }
+};
+const formatScheduledRange = (entry) => {
+  const start = formatScheduledClock(entry?.scheduled_start, entry?.timezone);
+  const end = formatScheduledClock(entry?.scheduled_end, entry?.timezone);
+  if (!start && !end) return "Scheduled only";
+  return `Scheduled: ${start || "—"} - ${end || "—"}`;
+};
 
 const TimeInsightsPanel = ({
   entries,
@@ -321,7 +353,14 @@ const TimeInsightsPanel = ({
   setIncludeArchived,
   recruiterMap,
 }) => {
-  const shiftEntries = useMemo(() => entries.filter((entry) => !isLeaveEntry(entry)), [entries]);
+  const shiftEntries = useMemo(
+    () => entries.filter((entry) => !isLeaveEntry(entry) && !isScheduledOnlyEntry(entry)),
+    [entries]
+  );
+  const scheduledOnlyRows = useMemo(
+    () => entries.filter((entry) => isScheduledOnlyEntry(entry)),
+    [entries]
+  );
   const leaveRows = useMemo(() => entries.filter(isLeaveEntry), [entries]);
   const byDay = useMemo(() => {
     const map = new Map();
@@ -388,6 +427,7 @@ const TimeInsightsPanel = ({
   const breakIssues = shiftEntries.filter((entry) => entry.break_non_compliant || Number(entry.break_missing_minutes || 0) > 0);
   const anomalyEntries = shiftEntries.filter(hasTimeAnomaly);
   const missingLocationCount = shiftEntries.filter(hasMissingLocationEvidence).length;
+  const missingPunches = scheduledOnlyRows.filter((entry) => entry.missing_punch || entry.missing_clock_in).length;
   const clockedInNow = roster.length;
   const onBreakNow = roster.filter((person) => person.break_in_progress).length;
   const maxBreakMissing = breakIssues.reduce((max, entry) => Math.max(max, Number(entry.break_missing_minutes || 0)), 0);
@@ -480,6 +520,7 @@ const TimeInsightsPanel = ({
         <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Break issues" value={breakIssues.length} help={`Max missing ${maxBreakMissing}m`} tone={breakIssues.length ? "warning" : "success"} /></Grid>
         <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Anomaly events" value={anomalyEntries.length} help="Device, location, IP, or unusual clock signals" tone={anomalyEntries.length ? "danger" : "success"} /></Grid>
         <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Location evidence" value={missingLocationCount} help="Missing location evidence signals" tone={missingLocationCount ? "warning" : "success"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Missing punches" value={missingPunches} help="Scheduled rows without a real clock-in yet" tone={missingPunches ? "warning" : "success"} /></Grid>
       </Grid>
 
       <Grid container spacing={2}>
@@ -844,6 +885,16 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
     entryId: null,
     reason: "",
   });
+  const [correctState, setCorrectState] = useState({
+    open: false,
+    entry: null,
+    clockInDate: "",
+    clockInTime: "",
+    clockOutDate: "",
+    clockOutTime: "",
+    reason: "",
+    error: "",
+  });
   const [selectedIds, setSelectedIds] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -911,10 +962,17 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
     return map;
   }, [roster]);
   const pendingCount = useMemo(
-    () => entries.filter((e) => !isLeaveEntry(e) && e.status === "completed").length,
+    () => entries.filter((e) => !isLeaveEntry(e) && !isScheduledOnlyEntry(e) && e.status === "completed").length,
     [entries]
   );
-  const selectableEntries = useMemo(() => entries.filter((entry) => !isLeaveEntry(entry)), [entries]);
+  const missingPunchCount = useMemo(
+    () => entries.filter((entry) => isScheduledOnlyEntry(entry) && (entry.missing_punch || entry.missing_clock_in)).length,
+    [entries]
+  );
+  const selectableEntries = useMemo(
+    () => entries.filter((entry) => !isLeaveEntry(entry) && !isScheduledOnlyEntry(entry)),
+    [entries]
+  );
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selectedIds.includes(entry.id)),
     [entries, selectedIds]
@@ -1426,6 +1484,131 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
     setDetailOpen(true);
   };
 
+  const toEntryLocalDateTimeValue = (entry, isoValue, fallbackPlusHours = 0) => {
+    if (isoValue) {
+      try {
+        return DateTime.fromISO(String(isoValue), { zone: "utc" })
+          .setZone(entry?.timezone || viewerTimezone)
+          .toFormat("yyyy-LL-dd'T'HH:mm");
+      } catch {
+        // no-op
+      }
+    }
+    if (entry?.clock_in) {
+      try {
+        return DateTime.fromISO(String(entry.clock_in), { zone: "utc" })
+          .setZone(entry?.timezone || viewerTimezone)
+          .plus({ hours: fallbackPlusHours })
+          .toFormat("yyyy-LL-dd'T'HH:mm");
+      } catch {
+        // no-op
+      }
+    }
+    return DateTime.now().setZone(entry?.timezone || viewerTimezone).toFormat("yyyy-LL-dd'T'HH:mm");
+  };
+
+  const splitDateTimeValue = (value) => {
+    if (!value || !String(value).includes("T")) {
+      return { date: "", time: "" };
+    }
+    const [datePart, timePart] = String(value).split("T");
+    return { date: datePart || "", time: (timePart || "").slice(0, 5) };
+  };
+
+  const openCorrectDialog = (entry) => {
+    if (!isEntryCorrectable(entry)) return;
+    const clockInValue = toEntryLocalDateTimeValue(entry, entry.scheduled_start || entry.clock_in, 0);
+    const clockOutValue = toEntryLocalDateTimeValue(entry, entry.scheduled_end || entry.clock_out, 1);
+    const clockInParts = splitDateTimeValue(clockInValue);
+    const clockOutParts = splitDateTimeValue(clockOutValue);
+    setCorrectState({
+      open: true,
+      entry,
+      clockInDate: clockInParts.date,
+      clockInTime: clockInParts.time,
+      clockOutDate: clockOutParts.date,
+      clockOutTime: clockOutParts.time,
+      reason: "",
+      error: "",
+    });
+  };
+
+  const closeCorrectDialog = () => {
+    setCorrectState({
+      open: false,
+      entry: null,
+      clockInDate: "",
+      clockInTime: "",
+      clockOutDate: "",
+      clockOutTime: "",
+      reason: "",
+      error: "",
+    });
+  };
+
+  const submitPunchCorrection = async () => {
+    const entryId = correctState.entry?.id;
+    if (!entryId) return;
+
+    const clockInDate = (correctState.clockInDate || "").trim();
+    const clockInTime = (correctState.clockInTime || "").trim();
+    const clockOutDate = (correctState.clockOutDate || "").trim();
+    const clockOutTime = (correctState.clockOutTime || "").trim();
+    const reason = (correctState.reason || "").trim();
+
+    if (!clockInDate || !clockInTime) {
+      setCorrectState((prev) => ({ ...prev, error: "Clock in is required." }));
+      return;
+    }
+    if (!clockOutDate || !clockOutTime) {
+      setCorrectState((prev) => ({ ...prev, error: "Clock out is required." }));
+      return;
+    }
+    if (!reason) {
+      setCorrectState((prev) => ({ ...prev, error: "Manager reason is required." }));
+      return;
+    }
+
+    const clockIn = `${clockInDate}T${clockInTime}`;
+    const clockOut = `${clockOutDate}T${clockOutTime}`;
+    const inDt = DateTime.fromISO(clockIn);
+    const outDt = DateTime.fromISO(clockOut);
+    if (!inDt.isValid || !outDt.isValid) {
+      setCorrectState((prev) => ({ ...prev, error: "Enter valid clock-in and clock-out times." }));
+      return;
+    }
+    if (outDt <= inDt) {
+      setCorrectState((prev) => ({ ...prev, error: "Clock out must be after clock in." }));
+      return;
+    }
+
+    setActionId(entryId);
+    try {
+      await timeTracking.correctPunch(entryId, {
+        clock_in: clockIn,
+        clock_out: clockOut,
+        manager_note: reason,
+      });
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "Punch corrected. Payroll will use the updated worked times.",
+      });
+      closeCorrectDialog();
+      await fetchEntries();
+      if (detailOpen && detailEmployee?.id) {
+        await loadDetailHistory();
+      }
+    } catch (err) {
+      setCorrectState((prev) => ({
+        ...prev,
+        error: err?.response?.data?.error || "Failed to save punch correction.",
+      }));
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const handleDetailFilterChange = (key) => (event) => {
     const value = event.target.value;
     setDetailFilters((prev) => ({ ...prev, [key]: value }));
@@ -1794,6 +1977,7 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
             <SummaryCard label="Clocked in now" value={clockedInCount} />
             <SummaryCard label="On break now" value={onBreakCount} />
             <SummaryCard label="Pending approvals" value={pendingCount} />
+            <SummaryCard label="Missing punches" value={missingPunchCount} />
             <SummaryCard label="Hours (range)" value={hoursToday.toFixed(2)} />
             <SummaryCard label="PTO / time off" value={`${ptoHoursRange.toFixed(2)}h`} />
           </Stack>
@@ -2093,7 +2277,7 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                         <TableRow key={entry.id} hover selected={selectedIds.includes(entry.id)}>
                           <TableCell padding="checkbox">
                             <Checkbox
-                              disabled={entryIsLeave}
+                              disabled={entryIsLeave || isScheduledOnlyEntry(entry)}
                               checked={selectedIds.includes(entry.id)}
                               onChange={handleSelectOne(entry.id)}
                             />
@@ -2170,40 +2354,74 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                               </Stack>
                             ) : (
                               <Stack spacing={0.5}>
-                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                  <Chip size="small" variant="outlined" label="In" />
-                                  <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
-                                  {entry.clock_in_ip && (
-                                    <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
-                                      <Chip
-                                        label={entry.clock_in_ip}
-                                        color={entry.clock_in_unusual ? "error" : "default"}
-                                        size="small"
-                                        variant={entry.clock_in_unusual ? "filled" : "outlined"}
-                                      />
-                                    </Tooltip>
-                                  )}
-                                </Stack>
-                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                  <Chip size="small" variant="outlined" label="Out" />
-                                  <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
-                                  {entry.clock_out_ip && (
-                                    <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
-                                      <Chip
-                                        label={entry.clock_out_ip}
-                                        color={entry.clock_out_unusual ? "error" : "default"}
-                                        size="small"
-                                        variant={entry.clock_out_unusual ? "filled" : "outlined"}
-                                      />
-                                    </Tooltip>
-                                  )}
-                                </Stack>
+                                {isScheduledOnlyEntry(entry) ? (
+                                  <>
+                                    <Typography variant="body2">{formatScheduledRange(entry)}</Typography>
+                                    <Typography variant="caption" color="warning.main">
+                                      No clock-in recorded
+                                    </Typography>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                      <Chip size="small" variant="outlined" label="In" />
+                                      <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
+                                      {entry.clock_in_ip && (
+                                        <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
+                                          <Chip
+                                            label={entry.clock_in_ip}
+                                            color={entry.clock_in_unusual ? "error" : "default"}
+                                            size="small"
+                                            variant={entry.clock_in_unusual ? "filled" : "outlined"}
+                                          />
+                                        </Tooltip>
+                                      )}
+                                    </Stack>
+                                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                      <Chip size="small" variant="outlined" label="Out" />
+                                      <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
+                                      {entry.clock_out_ip && (
+                                        <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
+                                          <Chip
+                                            label={entry.clock_out_ip}
+                                            color={entry.clock_out_unusual ? "error" : "default"}
+                                            size="small"
+                                            variant={entry.clock_out_unusual ? "filled" : "outlined"}
+                                          />
+                                        </Tooltip>
+                                      )}
+                                    </Stack>
+                                  </>
+                                )}
                               </Stack>
                             )}
                           </TableCell>
                           <TableCell>
                             <Stack spacing={0.5}>
-                              <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                              {entryIsLeave ? (
+                                <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                              ) : isScheduledOnlyEntry(entry) ? (
+                                <>
+                                  <Typography color="text.secondary">—</Typography>
+                                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                    <Chip
+                                      size="small"
+                                      variant="outlined"
+                                      label={`Scheduled ${Number(entry.scheduled_hours || 0).toFixed(2)}h`}
+                                      sx={{ width: "fit-content" }}
+                                    />
+                                    <Chip
+                                      size="small"
+                                      variant="outlined"
+                                      color="warning"
+                                      label="Not worked yet"
+                                      sx={{ width: "fit-content" }}
+                                    />
+                                  </Stack>
+                                </>
+                              ) : (
+                                <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                              )}
                               {entryIsLeave ? (
                                 <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                                   <Chip
@@ -2261,6 +2479,13 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                                 color={entryIsLeave ? leaveMeta.payrollColor : statusColor[entry.status] || "default"}
                                 variant="outlined"
                               />
+                              {!entryIsLeave && isScheduledOnlyEntry(entry) && (
+                                <>
+                                  <Chip size="small" variant="outlined" color="warning" label="Missing punch" />
+                                  <Chip size="small" variant="outlined" label="Scheduled only" />
+                                  <Chip size="small" variant="outlined" color="default" label="Not payroll-ready" />
+                                </>
+                              )}
                               {!entryIsLeave && breakInProgress && (
                                 <Chip
                                   size="small"
@@ -2268,6 +2493,16 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                                   color="warning"
                                   label={breakElapsedLabel ? `On break · ${breakElapsedLabel}` : "On break"}
                                 />
+                              )}
+                              {!entryIsLeave && entry.is_corrected && (
+                                <Tooltip title={getCorrectionReason(entry) || "Manager corrected this punch."}>
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    color="info"
+                                    label="Corrected"
+                                  />
+                                </Tooltip>
                               )}
                               {!entryIsLeave && entry.attestation_summary?.badge_label && (
                                 <Chip
@@ -2362,6 +2597,19 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
           </ListItemIcon>
           Reject
         </MenuItem>
+        <MenuItem
+          disabled={!rowMenuEntry || !isEntryCorrectable(rowMenuEntry) || actionId === rowMenuEntry?.id}
+          onClick={() => {
+            if (rowMenuEntry) openCorrectDialog(rowMenuEntry);
+            setRowMenuAnchor(null);
+            setRowMenuEntry(null);
+          }}
+        >
+          <ListItemIcon>
+            <EditOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Correct punch
+        </MenuItem>
         {rowMenuEntry?.status === "in_progress" && (
           <MenuItem
             disabled={rowMenuEntry.is_locked || actionId === rowMenuEntry?.id}
@@ -2423,6 +2671,82 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
             startIcon={actionId === rejectState.entryId ? <CircularProgress size={16} /> : null}
           >
             {actionId === rejectState.entryId ? "Rejecting..." : "Reject entry"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={correctState.open} onClose={closeCorrectDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Correct employee punch</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Use this when an employee forgot to clock in/out or the recorded punch time is wrong. Payroll will use the corrected times.
+          </DialogContentText>
+          <Stack spacing={2}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <ThemedDateField
+                  label="Clock in date"
+                  fullWidth
+                  value={correctState.clockInDate}
+                  onChange={(e) =>
+                    setCorrectState((prev) => ({ ...prev, clockInDate: e.target.value, error: "" }))
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <ThemedTimeField
+                  label="Clock in time"
+                  fullWidth
+                  value={correctState.clockInTime}
+                  onChange={(e) =>
+                    setCorrectState((prev) => ({ ...prev, clockInTime: e.target.value, error: "" }))
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <ThemedDateField
+                  label="Clock out date"
+                  fullWidth
+                  value={correctState.clockOutDate}
+                  onChange={(e) =>
+                    setCorrectState((prev) => ({ ...prev, clockOutDate: e.target.value, error: "" }))
+                  }
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <ThemedTimeField
+                  label="Clock out time"
+                  fullWidth
+                  value={correctState.clockOutTime}
+                  onChange={(e) =>
+                    setCorrectState((prev) => ({ ...prev, clockOutTime: e.target.value, error: "" }))
+                  }
+                />
+              </Grid>
+            </Grid>
+            <TextField
+              label="Manager reason / note"
+              fullWidth
+              multiline
+              minRows={3}
+              required
+              value={correctState.reason}
+              onChange={(e) => setCorrectState((prev) => ({ ...prev, reason: e.target.value, error: "" }))}
+              placeholder="Example: Employee forgot to clock out before leaving."
+              helperText="Required for audit history."
+            />
+            {correctState.error && <Alert severity="error">{correctState.error}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeCorrectDialog}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={submitPunchCorrection}
+            disabled={!correctState.entry?.id || actionId === correctState.entry?.id}
+            startIcon={actionId === correctState.entry?.id ? <CircularProgress size={16} /> : null}
+          >
+            {actionId === correctState.entry?.id ? "Saving..." : "Save correction"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2844,20 +3168,40 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                           </>
                         ) : (
                           <>
-                            <Typography variant="body2">
-                              In: {formatClockShort(entry.clock_in, entry.timezone)}
-                            </Typography>
-                            <Typography variant="body2">
-                              Out: {formatClockShort(entry.clock_out, entry.timezone)}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
-                            </Typography>
+                            {isScheduledOnlyEntry(entry) ? (
+                              <>
+                                <Typography variant="body2">{formatScheduledRange(entry)}</Typography>
+                                <Typography variant="caption" color="warning.main">
+                                  No clock-in recorded
+                                </Typography>
+                              </>
+                            ) : (
+                              <>
+                                <Typography variant="body2">
+                                  In: {formatClockShort(entry.clock_in, entry.timezone)}
+                                </Typography>
+                                <Typography variant="body2">
+                                  Out: {formatClockShort(entry.clock_out, entry.timezone)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
+                                </Typography>
+                              </>
+                            )}
                           </>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                        {isScheduledOnlyEntry(entry) ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                              Scheduled {Number(entry.scheduled_hours || 0).toFixed(2)}h
+                            </Typography>
+                          </>
+                        ) : (
+                          <Typography variant="body2">{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                        )}
                         {entryIsLeave && leaveMeta.estimated && (
                           <Chip size="small" variant="outlined" color="warning" label="Estimated" sx={{ mt: 0.5 }} />
                         )}
@@ -2914,6 +3258,13 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                             color={entryIsLeave ? leaveMeta.payrollColor : "default"}
                             variant="outlined"
                           />
+                          {!entryIsLeave && isScheduledOnlyEntry(entry) && (
+                            <>
+                              <Chip size="small" variant="outlined" color="warning" label="Missing punch" />
+                              <Chip size="small" variant="outlined" label="Scheduled only" />
+                              <Chip size="small" variant="outlined" label="Not payroll-ready" />
+                            </>
+                          )}
                           {!entryIsLeave && entry.attestation_summary?.badge_label && (
                             <Chip
                               size="small"
@@ -2928,10 +3279,23 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                               label={getAttestationBadgeLabel(entry.attestation_summary?.badge_status, entry.attestation_summary?.badge_label)}
                             />
                           )}
+                          {!entryIsLeave && entry.is_corrected && (
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              color="info"
+                              label="Corrected"
+                            />
+                          )}
                         </Stack>
                         {entry.approved_by_name && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                             By {entry.approved_by_name}
+                          </Typography>
+                        )}
+                        {!entryIsLeave && getCorrectionReason(entry) && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            Correction: {getCorrectionReason(entry)}
                           </Typography>
                         )}
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>

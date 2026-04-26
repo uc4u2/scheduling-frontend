@@ -461,6 +461,8 @@ export const timeTracking = {
     api.post(`/manager/time-entries/${id}/approve`, {}, config).then((r) => r.data),
   rejectEntry: (id, payload = {}, config = {}) =>
     api.post(`/manager/time-entries/${id}/reject`, payload, config).then((r) => r.data),
+  correctPunch: (id, payload = {}, config = {}) =>
+    api.post(`/manager/time-entries/${id}/correct-punch`, payload, config).then((r) => r.data),
   forceClockOut: (id, payload = {}, config = {}) =>
     api.post(`/manager/time-entries/${id}/force-clock-out`, payload, config).then((r) => r.data),
   deleteEntry: (id, config = {}) =>
