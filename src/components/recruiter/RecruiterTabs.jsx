@@ -1,14 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
   Tabs,
   Tab,
+  Button,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Typography,
@@ -22,18 +25,18 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 
 const TAB_CONFIG = [
-  { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar" },
-  { value: "availability", labelKey: "recruiter.tabs.availability", path: "/employee?tab=availability" },
-  { value: "invitations", labelKey: "recruiter.tabs.invitations", path: "/recruiter/invitations" },
-  { value: "upcoming-meetings", labelKey: "recruiter.tabs.upcomingMeetings", path: "/recruiter/upcoming-meetings" },
-  { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time" },
-  { value: "my-training", labelKey: "recruiter.tabs.myTraining", path: "/recruiter/my-training" },
-  { value: "communications", label: "Communications", path: "/recruiter/communications" },
-  { value: "my-calendar", label: "Google Calendar", path: "/recruiter/my-calendar" },
-  { value: "field-photos", label: "Field Photos", path: "/recruiter/field-photos" },
-  { value: "candidate-search", labelKey: "recruiter.tabs.candidateSearch", path: "/employee/candidate-search" },
-  { value: "public-link", labelKey: "recruiter.tabs.publicLink", path: "/recruiter/public-link" },
-  { value: "job-postings", labelKey: "recruiter.tabs.jobPostings", path: "/manager/job-openings" },
+  { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar", primary: true },
+  { value: "availability", label: "Availability", path: "/employee?tab=availability", primary: true },
+  { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time", primary: true },
+  { value: "my-training", label: "Training", path: "/recruiter/my-training", primary: true },
+  { value: "communications", label: "Communications", path: "/recruiter/communications", primary: true },
+  { value: "field-photos", label: "Field Photos", path: "/recruiter/field-photos", primary: true },
+  { value: "invitations", labelKey: "recruiter.tabs.invitations", path: "/recruiter/invitations", hrOnly: true, secondary: true },
+  { value: "upcoming-meetings", label: "Meetings", path: "/recruiter/upcoming-meetings", hrOnly: true, secondary: true },
+  { value: "my-calendar", label: "Google Calendar", path: "/recruiter/my-calendar", secondary: true },
+  { value: "candidate-search", labelKey: "recruiter.tabs.candidateSearch", path: "/employee/candidate-search", hrOnly: true, secondary: true },
+  { value: "public-link", label: "Booking Link", path: "/recruiter/public-link", hrOnly: true, secondary: true },
+  { value: "job-postings", labelKey: "recruiter.tabs.jobPostings", path: "/manager/job-openings", hrOnly: true, secondary: true },
 ];
 
 const LOCAL_TABS = new Set(["availability", "calendar"]);
@@ -68,15 +71,6 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   }
   return fallback;
 };
-
-const HR_ONLY_TABS = new Set([
-  "availability",
-  "invitations",
-  "upcoming-meetings",
-  "candidate-search",
-  "public-link",
-  "job-postings",
-]);
 
 const resolveTabPath = (tabValue, locationPathname) => {
   const isEmployeeWorkspace = locationPathname.startsWith("/employee");
@@ -122,16 +116,16 @@ const RecruiterTabs = ({
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreAnchorEl, setMoreAnchorEl] = useState(null);
   const hrAccess =
     allowHrAccess !== null && allowHrAccess !== undefined
       ? Boolean(allowHrAccess)
       : Boolean(allowCandidateSearch);
   const tabs = useMemo(() => {
-    if (hrAccess) return TAB_CONFIG;
-    return TAB_CONFIG.filter((tab) =>
-      ["calendar", "my-time", "my-training", "communications", "my-calendar", "field-photos"].includes(tab.value)
-    );
+    return TAB_CONFIG.filter((tab) => !tab.hrOnly || hrAccess);
   }, [hrAccess]);
+  const primaryTabs = useMemo(() => tabs.filter((tab) => tab.primary), [tabs]);
+  const secondaryTabs = useMemo(() => tabs.filter((tab) => tab.secondary), [tabs]);
 
   const value = useMemo(() => {
     return getPathValue(location.pathname, searchParams, localTab);
@@ -142,6 +136,16 @@ const RecruiterTabs = ({
     }
     return tabs[0]?.value || value;
   }, [tabs, value]);
+  const selectedSecondaryTab = useMemo(
+    () => secondaryTabs.find((tab) => tab.value === value) || null,
+    [secondaryTabs, value]
+  );
+  const selectedPrimaryValue = useMemo(() => {
+    if (primaryTabs.some((tab) => tab.value === value)) {
+      return value;
+    }
+    return false;
+  }, [primaryTabs, value]);
 
   const handleChange = (_event, newValue) => {
     const config = TAB_CONFIG.find((tab) => tab.value === newValue);
@@ -165,6 +169,15 @@ const RecruiterTabs = ({
       navigate(resolveTabPath(newValue, location.pathname));
     }
   };
+
+  useEffect(() => {
+    const isKnownTab = TAB_CONFIG.some((tab) => tab.value === value);
+    const isAllowedTab = tabs.some((tab) => tab.value === value);
+    if (!isLoading && isKnownTab && !isAllowedTab) {
+      const localBasePath = location.pathname.startsWith("/recruiter") ? "/recruiter/dashboard" : "/employee/dashboard";
+      navigate(`${localBasePath}?tab=calendar`, { replace: true });
+    }
+  }, [isLoading, location.pathname, navigate, tabs, value]);
 
   if (isLoading) {
     return <Box sx={{ mb: 3, minHeight: 48 }} />;
@@ -324,62 +337,112 @@ const RecruiterTabs = ({
         boxShadow: `0 12px 30px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.22 : 0.05)}`,
       }}
     >
-      <Tabs
-        value={resolvedValue}
-        onChange={handleChange}
-        variant="scrollable"
-        scrollButtons="auto"
-        allowScrollButtonsMobile
-        aria-label="Employee dashboard tabs"
-        sx={{
-          minHeight: 40,
-          "& .MuiTabs-flexContainer": {
-            flexWrap: "nowrap",
-            gap: 0.5,
-          },
-          "& .MuiTabs-indicator": {
-            display: "none",
-          },
-          "& .MuiTabs-scrollButtons": {
-            display: { xs: "flex", md: "flex" },
-          },
-        }}
-      >
-      {tabs.map((tab) => (
-        <Tab
-          key={tab.value}
-          value={tab.value}
-          label={tab.labelKey ? t(tab.labelKey) : tab.label}
-          aria-label={tab.labelKey ? t(tab.labelKey) : tab.label}
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+        <Tabs
+          value={selectedPrimaryValue}
+          onChange={handleChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          aria-label="Employee dashboard tabs"
           sx={{
-            minHeight: 36,
-            minWidth: "auto",
-            px: 2.5,
-            borderRadius: "6px",
-            textTransform: "none",
-            fontWeight: 600,
-            color: theme.palette.text.primary,
-            border: `1px solid ${alpha(theme.palette.text.primary, 0.14)}`,
-            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.22 : 0.58),
-            "&.Mui-selected": {
-              color: theme.palette.mode === "dark" ? theme.palette.primary.light : theme.palette.primary.dark || theme.palette.primary.main,
-              borderColor: alpha(theme.palette.primary.main, 0.5),
-              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.13),
-              boxShadow: `inset 0 -2px 0 ${alpha(theme.palette.primary.main, 0.75)}`,
-              fontWeight: 700,
+            minHeight: 40,
+            flex: 1,
+            minWidth: 0,
+            "& .MuiTabs-flexContainer": {
+              flexWrap: "nowrap",
+              gap: 0.5,
             },
-            "&:hover": {
-              borderColor: alpha(theme.palette.primary.main, 0.4),
-              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+            "& .MuiTabs-indicator": {
+              display: "none",
             },
-            "&:focus-visible": {
-              outline: `2px solid ${theme.palette.primary.main}`,
-              outlineOffset: 2,
+            "& .MuiTabs-scrollButtons": {
+              display: { xs: "flex", md: "flex" },
             },
           }}
-        />
-      ))}
-      </Tabs>
+        >
+          {primaryTabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              value={tab.value}
+              label={tab.labelKey ? t(tab.labelKey) : tab.label}
+              aria-label={tab.labelKey ? t(tab.labelKey) : tab.label}
+              sx={{
+                minHeight: 36,
+                minWidth: "auto",
+                px: 2.5,
+                borderRadius: "6px",
+                textTransform: "none",
+                fontWeight: 600,
+                color: theme.palette.text.primary,
+                border: `1px solid ${alpha(theme.palette.text.primary, 0.14)}`,
+                backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.22 : 0.58),
+                "&.Mui-selected": {
+                  color:
+                    theme.palette.mode === "dark" ? theme.palette.primary.light : theme.palette.primary.dark || theme.palette.primary.main,
+                  borderColor: alpha(theme.palette.primary.main, 0.5),
+                  backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.13),
+                  boxShadow: `inset 0 -2px 0 ${alpha(theme.palette.primary.main, 0.75)}`,
+                  fontWeight: 700,
+                },
+                "&:hover": {
+                  borderColor: alpha(theme.palette.primary.main, 0.4),
+                  backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+                },
+                "&:focus-visible": {
+                  outline: `2px solid ${theme.palette.primary.main}`,
+                  outlineOffset: 2,
+                },
+              }}
+            />
+          ))}
+        </Tabs>
+        {secondaryTabs.length > 0 ? (
+          <>
+            <Button
+              onClick={(event) => setMoreAnchorEl(event.currentTarget)}
+              variant={selectedSecondaryTab ? "contained" : "outlined"}
+              color="primary"
+              sx={{
+                minWidth: 88,
+                alignSelf: "stretch",
+                borderRadius: "6px",
+                textTransform: "none",
+                fontWeight: selectedSecondaryTab ? 700 : 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {selectedSecondaryTab ? `More: ${selectedSecondaryTab.labelKey ? t(selectedSecondaryTab.labelKey) : selectedSecondaryTab.label}` : "More"}
+            </Button>
+            <Menu
+              anchorEl={moreAnchorEl}
+              open={Boolean(moreAnchorEl)}
+              onClose={() => setMoreAnchorEl(null)}
+              keepMounted
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              {secondaryTabs.map((tab) => {
+                const label = tab.labelKey ? t(tab.labelKey) : tab.label;
+                const selected = value === tab.value;
+                return (
+                  <MenuItem
+                    key={tab.value}
+                    selected={selected}
+                    onClick={(event) => {
+                      handleChange(event, tab.value);
+                      setMoreAnchorEl(null);
+                    }}
+                    sx={{ minWidth: 220, fontWeight: selected ? 700 : 500 }}
+                  >
+                    {label}
+                  </MenuItem>
+                );
+              })}
+            </Menu>
+          </>
+        ) : null}
+      </Stack>
     </Box>
   );
 };
