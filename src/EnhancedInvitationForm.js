@@ -42,31 +42,14 @@ import { buildTemplateCreatePayloadFromBlueprint } from "./candidateForms/templa
 // Profession list and template defaults
 const PROFESSION_TEMPLATES = {
   recruiter: 
-`Subject: Interview Invitation – {job_title} at {company_name}
+`Subject: You're invited to complete your {profession_label} profile
 
 Hello {candidate_name},
 
-We are pleased to invite you to interview for the position of {job_title} at {company_name}. My name is {recruiter_name}, and I represent {sender_company_name}.
-
-Interview Details:
-- Position: {job_title}
-- Location: {location}
-- Company: {company_name}
-- Contract Duration: {duration}
-- Key Skills: {primary_skills}
-- Required Skills: {mandatory_skills}
-- Additional Skills: {secondary_skills}
-
-{additional_message}
-
-To select a convenient time, please use the link below to book your interview slot:
+Thank you for your interest in our {profession_label} opportunity. To help us move forward, please complete your profile and choose a time that works for you:
 {booking_link}
 
-If you have questions or require special accommodations, feel free to reply to this email.
-
-Best regards,
-{recruiter_name}
-{custom_signature}`,
+We look forward to speaking with you.`,
 
   teacher:
 `Subject: Invitation to Discuss {student_name} – Parent-Teacher Meeting with {teacher_name}
@@ -406,25 +389,42 @@ Best regards,
 
   // fallback
   custom:
-`Hello,
+`Subject: You're invited to complete your {profession_label} profile
 
-You are invited to book a meeting. Please use the following link:
+Hello {candidate_name},
+
+Thank you for your interest in our {profession_label} opportunity. To help us move forward, please complete your profile and choose a time that works for you:
 {booking_link}
 
-Best regards,`
+We look forward to speaking with you.`
 };
 
-const GENERIC_TEMPLATE = `Subject: Book Your Next Appointment
+const GENERIC_TEMPLATE = `Subject: You're invited to complete your {profession_label} profile
 
-Hello {client_name},
+Hello {candidate_name},
 
-Please use the link below to choose a time that works for you:
+Thank you for your interest in our {profession_label} opportunity. To help us move forward, please complete your profile and choose a time that works for you:
 {booking_link}
 
-If you have notes or preferences, include them in your booking.
+We look forward to speaking with you.`;
 
-Best regards,
-{sender_company_name}`;
+const DEFAULT_EMAIL_SUBJECT =
+  "You're invited to complete your {profession_label} profile";
+const DEFAULT_EMAIL_BODY = `Hello {candidate_name},
+
+Thank you for your interest in our {profession_label} opportunity. To help us move forward, please complete your profile and choose a time that works for you:
+
+{booking_link}
+
+We look forward to speaking with you.`;
+
+const EMAIL_PREVIEW_DEFAULTS = {
+  candidate_name: "Sarah Candidate",
+  candidate_email: "candidate@example.com",
+  recruiter_name: "Alex Recruiter",
+  sender_company_name: "Schedulaa Company",
+  booking_link: "https://app.schedulaa.com/booking-link-preview",
+};
 
 
 const DOCUMENT_UPLOAD_MODE_OPTIONS = [
@@ -488,10 +488,14 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
   const [loadingQuestionnaires, setLoadingQuestionnaires] = useState(false);
   const [questionnaireError, setQuestionnaireError] = useState("");
   const [selectedQuestionnaires, setSelectedQuestionnaires] = useState([]);
+  const [candidatePreviewExpanded, setCandidatePreviewExpanded] = useState(false);
   const isCustomProfession = profession === "custom";
   const professionLabel = professionOptions.find((option) => option.value === profession)?.label || profession;
   const selectedDocumentUploadLabel =
     DOCUMENT_UPLOAD_MODE_OPTIONS.find((option) => option.value === documentUploadMode)?.label || "Optional";
+  const candidatePreviewSummary = sendWithoutForm
+    ? `Candidate form not attached · Document upload ${selectedDocumentUploadLabel.toLowerCase()}`
+    : `Candidate form selected · Document upload ${selectedDocumentUploadLabel.toLowerCase()}`;
 
 
   // Updated formData with all profession fields (as you requested)
@@ -695,6 +699,21 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
     return { subject, body };
   };
 
+  const composeTemplateFromSubjectAndBody = (subject, body) => {
+    const safeSubject = String(subject || "").trim();
+    const safeBody = String(body || "").trim();
+    if (!safeSubject && !safeBody) {
+      return "";
+    }
+    if (!safeSubject) {
+      return safeBody;
+    }
+    if (!safeBody) {
+      return `Subject: ${safeSubject}`;
+    }
+    return `Subject: ${safeSubject}\n\n${safeBody}`;
+  };
+
   const buildTemplateFromFormTemplate = (formTemplate) => {
     if (!formTemplate) return "";
     const subject = (formTemplate.email_subject || "").trim();
@@ -708,6 +727,9 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [activeComposerField, setActiveComposerField] = useState("body");
   const [snackbarState, setSnackbarState] = useState({ open: false, severity: "success", message: "" });
   // Candidate info states moved into formData.candidateName etc.
   // So no separate state needed here.
@@ -927,6 +949,17 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
     }
   }, [profession]);
 
+  useEffect(() => {
+    const { subject, body } = extractSubjectAndBody(template);
+    setEmailSubject((prev) => (prev === subject ? prev : subject));
+    setEmailBody((prev) => (prev === body ? prev : body));
+  }, [template]);
+
+  useEffect(() => {
+    const nextTemplate = composeTemplateFromSubjectAndBody(emailSubject, emailBody);
+    setTemplate((prev) => (prev === nextTemplate ? prev : nextTemplate));
+  }, [emailBody, emailSubject]);
+
   // Handle input changes for all fields
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -990,23 +1023,22 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
   // Save template for this profession
   const handleSaveTemplate = () => {
     localStorage.setItem(`invitationTemplate_${profession}`, template);
-    setMessage("Template saved for " + (professionOptions.find((o) => o.value === profession)?.label || profession));
+    setMessage("Email template saved for " + (professionOptions.find((o) => o.value === profession)?.label || profession));
   };
 
-  // Preview template with sample data
+// Preview template with sample data
 const handlePreview = () => {
-  // Build previewVars with all fields from formData as snake_case
-  const previewVars = {};
-  Object.keys(formData).forEach((key) => {
-    previewVars[toSnakeCase(key)] = formData[key] || "";
-  });
-  previewVars.booking_link = "https://booking-link.example.com"; // Always present
-
-  // Replace variables in template
-  let html = template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, v) => previewVars[v] || "");
-  html = html.replace(/\n/g, "<br />");
+  const renderedSubject = renderTemplatePreviewText(emailSubject || DEFAULT_EMAIL_SUBJECT);
+  const renderedBody = renderTemplatePreviewText(emailBody || DEFAULT_EMAIL_BODY);
+  const html = `
+    <div style="font-family:sans-serif;padding:24px;font-size:16px;line-height:1.6">
+      <div style="margin-bottom:12px;color:#667085"><strong>To:</strong> ${formData.candidateEmail || "candidate@example.com"}</div>
+      <div style="margin-bottom:16px"><strong>Subject:</strong> ${renderedSubject}</div>
+      <div>${renderedBody.replace(/\n/g, "<br />")}</div>
+    </div>
+  `;
   const w = window.open();
-  w.document.write(`<div style="font-family:sans-serif;padding:24px;font-size:16px">${html}</div>`);
+  w.document.write(html);
   w.document.close();
 };
 
@@ -1028,10 +1060,60 @@ const handlePreview = () => {
     custom: ["candidate_name", "booking_link"],
   };
   const professionVariables = VARIABLE_OPTIONS[profession] || ['candidate_name', 'booking_link'];
+  const variableDisplayLabels = {
+    candidate_name: "Candidate name",
+    booking_link: "Booking link",
+    profession_label: "Profession",
+    sender_company_name: "Company name",
+    recruiter_name: "Recruiter name",
+    job_title: "Job title",
+    candidate_email: "Candidate email",
+    client_name: "Client name",
+    doctor_name: "Doctor name",
+    patient_name: "Patient name",
+    parent_name: "Parent name",
+    teacher_name: "Teacher name",
+  };
 
   const showCandidateNameField = true; // always collect a name for templates
-  const contactInfoTitle = 'Contact Info';
-  const emailLabel = 'Client Email';
+  const contactInfoTitle = 'Contact info';
+  const emailLabel = 'Candidate Email';
+
+  const insertVariableToken = useCallback((variableName) => {
+    const tokenValue = `{${variableName}}`;
+    if (activeComposerField === "subject") {
+      setEmailSubject((prev) => `${prev}${tokenValue}`);
+      return;
+    }
+    setEmailBody((prev) => `${prev}${tokenValue}`);
+  }, [activeComposerField]);
+
+  const previewVariables = useMemo(() => {
+    const base = buildTemplateVariables();
+    const candidateName = EMAIL_PREVIEW_DEFAULTS.candidate_name;
+    const recruiterName = EMAIL_PREVIEW_DEFAULTS.recruiter_name;
+    const companyName = EMAIL_PREVIEW_DEFAULTS.sender_company_name;
+    const resolvedProfessionLabel = (professionLabel || "profile").trim();
+    return {
+      ...base,
+      candidate_name: candidateName,
+      client_name: base.client_name || candidateName,
+      name: candidateName,
+      candidate_email: EMAIL_PREVIEW_DEFAULTS.candidate_email,
+      recruiter_name: recruiterName,
+      sender_company_name: companyName,
+      profession_label: resolvedProfessionLabel,
+      booking_link: EMAIL_PREVIEW_DEFAULTS.booking_link,
+      link: EMAIL_PREVIEW_DEFAULTS.booking_link,
+    };
+  }, [buildTemplateVariables, professionLabel]);
+
+  const renderTemplatePreviewText = useCallback((value) => {
+    return String(value || "").replace(/\{([a-zA-Z0-9_]+)\}/g, (_, tokenName) => {
+      const resolved = previewVariables[tokenName];
+      return resolved === undefined || resolved === null || resolved === "" ? `{${tokenName}}` : resolved;
+    });
+  }, [previewVariables]);
 
   const fetchTemplatesForProfession = useCallback(async () => {
     if (sendWithoutForm) {
@@ -1373,8 +1455,8 @@ const handlePreview = () => {
       case "recruiter":
         return (
           <>
-            <Typography variant="h6" mt={2}>
-              Employee Info
+            <Typography variant="subtitle1" mt={0} sx={{ fontWeight: 700 }}>
+              Company & sender details
             </Typography>
             <TextField
               name="recruiterName"
@@ -1975,7 +2057,31 @@ const handlePreview = () => {
       </TextField>
 
       {/* Profession-aware Employee/Professional Info */}
-      {renderProfessionalInfo()}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          mb: 2,
+          borderColor: "divider",
+          backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "grey.50",
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {contactInfoTitle}
+            </Typography>
+            <Tooltip title="These details are used to personalize the invitation and booking link.">
+              <IconButton size="small">
+                <InfoOutlinedIcon fontSize="inherit" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+          <Box sx={{ "& .MuiTextField-root": { mt: 0.5 } }}>
+            {renderProfessionalInfo()}
+          </Box>
+        </Stack>
+      </Paper>
 
       {!isCustomProfession && (
         <>
@@ -1987,7 +2093,7 @@ const handlePreview = () => {
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
                   <Typography variant="caption" color="text.secondary">
-                    Candidate Form Template
+                    Candidate form
                   </Typography>
                   <Tooltip title="This controls the intake form fields and questionnaires shown after the candidate clicks the invite link. It does not change the email content unless you choose to override it.">
                     <IconButton size="small">
@@ -1999,7 +2105,7 @@ const handlePreview = () => {
                   <TextField
                     select
                     fullWidth
-                    label={templatesLoading ? "Loading templates" : "Candidate Form Template"}
+                    label={templatesLoading ? "Loading candidate forms" : "Select candidate form"}
                     value={sendWithoutForm ? "" : selectedTemplateId || ""}
                     onChange={(e) => {
                       const value = Number(e.target.value);
@@ -2063,17 +2169,29 @@ const handlePreview = () => {
                 ))}
               </TextField>
 
-              <Paper
-                variant="outlined"
+              <Accordion
+                expanded={candidatePreviewExpanded}
+                onChange={(_event, expanded) => setCandidatePreviewExpanded(expanded)}
+                disableGutters
+                elevation={0}
                 sx={{
-                  p: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 1,
+                  "&:before": { display: "none" },
                   backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "grey.50",
                 }}
               >
-                <Stack spacing={1.25}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    Candidate will see
-                  </Typography>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack spacing={0.25}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Candidate preview
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {candidatePreviewSummary}
+                    </Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
                   <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                     <Chip size="small" label={`Profession: ${professionLabel}`} />
                     <Chip
@@ -2121,54 +2239,100 @@ const handlePreview = () => {
                       <Chip size="small" label={`Required fields: ${requiredVisibleFieldLabels.join(", ")}`} />
                     )}
                   </Stack>
-                </Stack>
-              </Paper>
+                </AccordionDetails>
+              </Accordion>
             </Stack>
           </Paper>
         </>
       )}
 
 
-      {/* Variable insertion */}
-      <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
-        Email message
+      <Typography variant="h6" sx={{ mt: 3, mb: 0.5 }}>
+        Email invitation message
       </Typography>
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="caption">Insert variable:</Typography>
-        {professionVariables.map(v => (
-          <Button
-            key={v}
-            size="small"
-            onClick={() => setTemplate(t => t + `{${v}}`)}
-            sx={{ mr: 1, mb: 1, fontSize: "0.85em" }}
-            variant="outlined"
-          >
-            {v}
-          </Button>
-        ))}
-      </Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        This is the email the candidate will receive. The booking/profile link is inserted automatically.
+      </Typography>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          mb: 2,
+          borderColor: "divider",
+        }}
+      >
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              Insert variable
+            </Typography>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              {professionVariables.map((variableName) => (
+                <Button
+                  key={variableName}
+                  size="small"
+                  onClick={() => insertVariableToken(variableName)}
+                  sx={{ fontSize: "0.8rem" }}
+                  variant="outlined"
+                >
+                  {variableDisplayLabels[variableName] || variableName.replace(/_/g, " ")}
+                </Button>
+              ))}
+            </Stack>
+          </Box>
 
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-        <Typography variant="caption" color="text.secondary">
-          Invitation Email Body
-        </Typography>
-        <Tooltip
-          title="This is the email your candidate receives. You can save a custom version per profession using the Save Defaults button."
-        >
-          <IconButton size="small">
-            <InfoOutlinedIcon fontSize="inherit" />
-          </IconButton>
-        </Tooltip>
-      </Stack>
-      <TextField
-        label="Invitation Template"
-        multiline
-        minRows={6}
-        value={template}
-        onChange={e => setTemplate(e.target.value)}
-        fullWidth
-        sx={{ mb: 2 }}
-      />
+          <TextField
+            label="Subject"
+            value={emailSubject}
+            onChange={(e) => setEmailSubject(e.target.value)}
+            onFocus={() => setActiveComposerField("subject")}
+            fullWidth
+          />
+
+          <TextField
+            label="Email body"
+            multiline
+            minRows={8}
+            value={emailBody}
+            onChange={(e) => setEmailBody(e.target.value)}
+            onFocus={() => setActiveComposerField("body")}
+            fullWidth
+          />
+
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderColor: "divider",
+              backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.02)" : "grey.50",
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Email preview
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                To: {formData.candidateEmail || "candidate@example.com"}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Subject:</strong> {renderTemplatePreviewText(emailSubject || DEFAULT_EMAIL_SUBJECT)}
+              </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderColor: "divider",
+                  backgroundColor: theme.palette.background.paper,
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.7,
+                }}
+              >
+                {renderTemplatePreviewText(emailBody || DEFAULT_EMAIL_BODY)}
+              </Paper>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Paper>
 
       {/* Job Info only for recruiter */}
       {profession === "recruiter" && (
@@ -2363,7 +2527,7 @@ const handlePreview = () => {
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Attach Questionnaires
               </Typography>
-              <Button component={RouterLink} to="/recruiter/questionnaires" size="small">
+              <Button component={RouterLink} to="/recruiter/invitations?section=forms" size="small">
                 Open Builder
               </Button>
             </Box>
@@ -2488,10 +2652,10 @@ const handlePreview = () => {
             Save Defaults
           </Button>
           <Button variant="outlined" onClick={handleSaveTemplate} disabled={disableTemplateEditor}>
-            Save Template
+            Save Email Template
           </Button>
           <Button variant="contained" onClick={handlePreview} disabled={disableTemplateEditor}>
-            Preview Template
+            Preview Email
           </Button>
           <Button variant="contained" color="primary" onClick={handleSendInvitation} disabled={isSubmitting} endIcon={isSubmitting ? <CircularProgress size={16} /> : null}>
             Send Invitation
@@ -2526,7 +2690,12 @@ const handlePreview = () => {
       </li>
       <li>
         <Typography variant="body2" component="span">
-          <strong>Attach a candidate form (optional).</strong> Pick an active template if you want the candidate to fill out questionnaires. You can create new ones in the Candidate Forms tab.
+          <strong>Set the candidate experience.</strong> Choose an active candidate form, create the recommended default form, create a custom form, or explicitly send without a form when you only need the booking/basic intake flow.
+        </Typography>
+      </li>
+      <li>
+        <Typography variant="body2" component="span">
+          <strong>Choose candidate document upload.</strong> Set it to Hidden, Optional, or Required depending on whether the candidate should upload a CV, document, or supporting file.
         </Typography>
       </li>
       <li>
@@ -2536,7 +2705,12 @@ const handlePreview = () => {
       </li>
       <li>
         <Typography variant="body2" component="span">
-          <strong>Preview and send.</strong> Use Preview to review the message, then Send Invitation to deliver the email and generate the booking link.
+          <strong>Check the Candidate will see card.</strong> Review the selected profession, form, document upload mode, booking link, and visible requirements before you send.
+        </Typography>
+      </li>
+      <li>
+        <Typography variant="body2" component="span">
+          <strong>Preview and send.</strong> Use Preview to review the message, then Send Invitation to deliver the email and generate the booking/profile link.
         </Typography>
       </li>
     </Box>
@@ -2557,7 +2731,17 @@ const handlePreview = () => {
       </li>
       <li>
         <Typography variant="body2" component="span">
-          Candidate Form Templates live under the Candidate Forms tab. Publish at least one template per profession if you want to collect questionnaires automatically.
+          If no active form exists for the selected profession, use the inline actions near Candidate Form Template instead of scrolling down to Templates &amp; Submissions.
+        </Typography>
+      </li>
+      <li>
+        <Typography variant="body2" component="span">
+          Candidate document uploads follow company storage and antivirus limits.
+        </Typography>
+      </li>
+      <li>
+        <Typography variant="body2" component="span">
+          Send without form keeps the invitation simple: the candidate gets booking and the basic intake flow without extra questionnaire fields.
         </Typography>
       </li>
       <li>

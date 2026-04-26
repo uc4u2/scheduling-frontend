@@ -25,13 +25,11 @@ const TAB_CONFIG = [
   { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar" },
   { value: "availability", labelKey: "recruiter.tabs.availability", path: "/employee?tab=availability" },
   { value: "invitations", labelKey: "recruiter.tabs.invitations", path: "/recruiter/invitations" },
-  { value: "candidate-forms", labelKey: "recruiter.tabs.candidateForms", path: "/recruiter/invitations?section=forms" },
-  { value: "questionnaires", labelKey: "recruiter.tabs.questionnaires", path: "/recruiter/questionnaires" },
   { value: "upcoming-meetings", labelKey: "recruiter.tabs.upcomingMeetings", path: "/recruiter/upcoming-meetings" },
   { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time" },
   { value: "my-training", labelKey: "recruiter.tabs.myTraining", path: "/recruiter/my-training" },
   { value: "communications", label: "Communications", path: "/recruiter/communications" },
-  { value: "my-calendar", label: "My Calendar", path: "/recruiter/my-calendar" },
+  { value: "my-calendar", label: "Google Calendar", path: "/recruiter/my-calendar" },
   { value: "field-photos", label: "Field Photos", path: "/recruiter/field-photos" },
   { value: "candidate-search", labelKey: "recruiter.tabs.candidateSearch", path: "/employee/candidate-search" },
   { value: "public-link", labelKey: "recruiter.tabs.publicLink", path: "/recruiter/public-link" },
@@ -45,11 +43,7 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
     return "home";
   }
   if (locationPathname.startsWith("/recruiter/invitations")) {
-    const section = searchParams.get("section");
-    return section === "forms" ? "candidate-forms" : "invitations";
-  }
-  if (locationPathname.startsWith("/recruiter/questionnaires")) {
-    return "questionnaires";
+    return "invitations";
   }
   if (locationPathname.startsWith("/recruiter/upcoming-meetings")) {
     return "upcoming-meetings";
@@ -78,8 +72,6 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
 const HR_ONLY_TABS = new Set([
   "availability",
   "invitations",
-  "candidate-forms",
-  "questionnaires",
   "upcoming-meetings",
   "candidate-search",
   "public-link",
@@ -93,10 +85,6 @@ const resolveTabPath = (tabValue, locationPathname) => {
   switch (tabValue) {
     case "invitations":
       return `${basePath}/invitations`;
-    case "candidate-forms":
-      return `${basePath}/invitations?section=forms`;
-    case "questionnaires":
-      return `${basePath}/questionnaires`;
     case "upcoming-meetings":
       return `${basePath}/upcoming-meetings`;
     case "my-time":
