@@ -63,6 +63,8 @@ const statusColor = {
   rejected: "error",
 };
 
+const EMPTY_RECRUITERS = [];
+
 const SummaryCard = ({ label, value, icon }) => {
   const theme = useTheme();
   return (
@@ -806,7 +808,7 @@ const AttestationsPanel = ({
   );
 };
 
-const TimeEntriesPanel = ({ recruiters = [] }) => {
+const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
   const theme = useTheme();
   const viewerTimezone = getUserTimezone();
   const today = useMemo(() => new Date(), []);
@@ -1167,6 +1169,13 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       }
     };
 
+    loadDepartments();
+  }, []);
+
+  useEffect(() => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
     const loadEmployees = async () => {
       try {
         const res = await api.get(`/manager/recruiters`, {
@@ -1193,7 +1202,6 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       }
     };
 
-    loadDepartments();
     loadEmployees();
   }, [recruiters, includeArchived]);
 
