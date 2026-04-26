@@ -1,5 +1,5 @@
 // src/candidateForms/CandidateFormsPanel.js
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -185,7 +185,7 @@ const formatBytes = (bytes) => {
   return `${display} ${units[index]}`;
 };
 
-  const CandidateFormsPanel = ({ token, apiUrl }) => {
+const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
   const { enqueueSnackbar } = useSnackbar();
   const baseUrl = apiUrl || process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -220,6 +220,7 @@ const formatBytes = (bytes) => {
   const [defaultProfessionKey, setDefaultProfessionKey] = useState("");
   const [effectiveProfessionKey, setEffectiveProfessionKey] = useState("");
   const [settingsError, setSettingsError] = useState("");
+  const [settingsInitialised, setSettingsInitialised] = useState(false);
 
   const handleTemplateFieldsChange = useCallback((nextFields) => {
     const source = Array.isArray(nextFields) ? nextFields : [];
@@ -288,6 +289,10 @@ const formatBytes = (bytes) => {
           err?.message ||
           "";
         setSettingsError(detail || "Unable to load company default profession.");
+      } finally {
+        if (active) {
+          setSettingsInitialised(true);
+        }
       }
     };
 
@@ -484,6 +489,20 @@ const formatBytes = (bytes) => {
     }
 
   }, [authHeaders, enqueueSnackbar, submissionProfession, submissionStatus, token]);
+
+  useEffect(() => {
+    if (!settingsInitialised) {
+      return;
+    }
+    fetchTemplates();
+  }, [fetchTemplates, settingsInitialised]);
+
+  useEffect(() => {
+    if (!settingsInitialised) {
+      return;
+    }
+    fetchSubmissions();
+  }, [fetchSubmissions, settingsInitialised]);
 
 
 
@@ -878,6 +897,32 @@ const formatBytes = (bytes) => {
     setTemplateDialogOpen(true);
   };
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      openCreateTemplateForProfession(professionKey = "") {
+        if (professionKey) {
+          setTemplateProfession((prev) => prev || professionKey);
+        }
+        const seededProfession =
+          professionKey || templateProfession || effectiveProfessionKey || defaultProfessionKey || "";
+        const nextForm = { ...emptyTemplateForm, professionKey: seededProfession };
+        setTemplateDialogMode("create");
+        setTemplateForm(nextForm);
+        setTemplateDialogError("");
+        setTemplateDialogLoading(false);
+        const result = parseTemplateFields(nextForm.fieldsText);
+        setTemplateFields(result.fields);
+        settemplateFieldMap(result.map || new Map());
+        setTemplateFieldsError("");
+        setShowAdvancedFields(false);
+        setShowAdvancedSchema(false);
+        setTemplateDialogOpen(true);
+      },
+    }),
+    [defaultProfessionKey, effectiveProfessionKey, templateProfession]
+  );
+
   const openEditTemplate = async (template) => {
     if (!template?.id) {
       enqueueSnackbar("Template id missing", { variant: "error" });
@@ -1097,8 +1142,19 @@ const formatBytes = (bytes) => {
         );
         enqueueSnackbar("Template updated", { variant: "success" });
       } else {
-        await api.post(`${baseUrl}/api/form-templates`, payload, { headers: authHeaders });
+        const response = await api.post(`${baseUrl}/api/form-templates`, payload, { headers: authHeaders });
+        const createdTemplate = response?.data || null;
         enqueueSnackbar("Template created", { variant: "success" });
+        try {
+          window.dispatchEvent(
+            new CustomEvent("candidate-template-created", {
+              detail: {
+                id: createdTemplate?.id ?? null,
+                professionKey: createdTemplate?.profession_key || payload.profession_key || "",
+              },
+            })
+          );
+        } catch {}
       }
 
       handleTemplateDialogClose();
@@ -1243,6 +1299,17 @@ const formatBytes = (bytes) => {
                         size="small"
                         label={template.status}
                         color={templateStatusColor(template.status)}
+                        sx={
+                          template.status === "active"
+                            ? {
+                                backgroundColor: "success.50",
+                                borderColor: "success.200",
+                                color: "success.dark",
+                                fontWeight: 600,
+                              }
+                            : undefined
+                        }
+                        variant={template.status === "active" ? "outlined" : "filled"}
                       />
                     </TableCell>
                     <TableCell align="center">{template.fields ?? 0}</TableCell>
@@ -1796,14 +1863,9 @@ const formatBytes = (bytes) => {
       </Dialog>
     </Stack>
   );
-};
+  });
 
 export default CandidateFormsPanel;
-
-
-
-
-
 
 
 

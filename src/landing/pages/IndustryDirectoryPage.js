@@ -344,7 +344,7 @@ const IndustryDirectoryPage = () => {
               <Card sx={{ p: 3 }}>
                 <Typography variant="h6">No businesses yet for this industry.</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Managers can set their industry in Settings → Workspace to appear here.
+                  Managers can set their industry in Settings → Profession to appear here.
                 </Typography>
               </Card>
             </Grid>

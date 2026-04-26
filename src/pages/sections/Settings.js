@@ -54,7 +54,6 @@ import SettingsBookingReminders from "./SettingsBookingReminders";
 import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettingsPanel";
 
 import SectionCard from "../../components/ui/SectionCard";
-import { PROFESSION_OPTIONS } from "../../constants/professions";
 import TabShell from "../../components/ui/TabShell";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -110,9 +109,6 @@ const Settings = () => {
   }, [tabParam]);
 
   /* ---------- state ---------- */
-  const [profession, setProfession] = useState("");
-  const [defaultProfession, setDefaultProfession] = useState("");
-  const [effectiveProfession, setEffectiveProfession] = useState("");
   const [workspaceName, setWorkspaceName] = useState("prefs");
   const [language, setLanguage] = useState("en");
   const [theme, setTheme] = useState("light");
@@ -121,8 +117,6 @@ const Settings = () => {
   const [embedPrimary, setEmbedPrimary] = useState("#1976d2");
   const [embedText, setEmbedText] = useState("light");
   const [embedDialog, setEmbedDialog] = useState(false);
-
-  const professionLabelMap = useMemo(() => new Map(PROFESSION_OPTIONS.map((option) => [option.value, option.label])), []);
 
   const billingDefault = useMemo(() => {
     if (tabParam === "stripe" || tabParam === "stripe-hub") return "stripe";
@@ -287,10 +281,6 @@ const Settings = () => {
         const { data } = await api.get(`/settings`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setProfession(data.profession || "general");
-        setDefaultProfession(data.default_profession || "general");
-        const effective = data.effective_profession ?? data.default_profession ?? "";
-        setEffectiveProfession(effective || "general");
         setWorkspaceName(data.workspace_name ?? "prefs");
         setTheme(data.theme ?? "light");
         setLanguage(data.language ?? "en");
@@ -323,7 +313,6 @@ const Settings = () => {
       await api.post(
         `/settings`,
         {
-          profession,
           workspace_name: workspaceName || "prefs",
           language,
           theme,
@@ -410,16 +399,6 @@ const Settings = () => {
     return extractIframeSrc(target);
   }, [rewriteIframeSnippet, embedMode]);
 
-  const notSetLabel = t("settings.general.profession.notSet", { defaultValue: "Not set" });
-
-  const resolveProfessionLabel = (value) => {
-    if (!value) return "";
-    return professionLabelMap.get(value) || value;
-  };
-
-  const companyProfessionLabel = resolveProfessionLabel(defaultProfession) || notSetLabel;
-  const effectiveProfessionLabel = resolveProfessionLabel(effectiveProfession) || companyProfessionLabel;
-
   const CancellationCard = (
     <SectionCard
       title={t("settings.workspace.cancellation.title", "Cancellation & Reschedule")}
@@ -463,41 +442,6 @@ const Settings = () => {
   );
 
   /* ---------- sections ---------- */
-  const GeneralCard = (
-      <SectionCard
-      title={t("settings.general.title", { defaultValue: "Industry" })}
-      description={t("settings.general.description", { defaultValue: "Choose the industry that best fits your workspace." })}
-      actions={
-        <Button variant="contained" onClick={save} disabled={saving}>
-          {saving ? t("settings.common.saving") : t("settings.general.actions.save")}
-        </Button>
-      }
-    >
-      <Stack spacing={2}>
-        <Alert severity="info" variant="outlined">
-          {t("settings.general.profession.helper", {
-          defaultValue: "Optional but recommended: choose an industry so clients can find your business in the right category and book you faster.",
-            company: companyProfessionLabel,
-            effective: effectiveProfessionLabel,
-          })}
-        </Alert>
-        <FormControl fullWidth>
-          <InputLabel>Industry</InputLabel>
-          <Select
-            label="Industry"
-            value={profession}
-            onChange={(e) => setProfession(e.target.value)}
-          >
-            {PROFESSION_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Stack>
-    </SectionCard>
-  );
   const PolicyCard = (
     <SectionCard
       title={t("settings.policy.title")}
@@ -756,7 +700,6 @@ const Settings = () => {
       label: t("settings.tabs.workspace"),
       content: (
         <Stack spacing={2}>
-          {GeneralCard}
           {PolicyCard}
           <SettingsTimeTracking />
           <SettingsBookingReminders />

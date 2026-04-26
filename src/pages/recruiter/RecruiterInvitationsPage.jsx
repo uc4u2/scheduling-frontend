@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Stack,
@@ -25,6 +25,7 @@ const RecruiterInvitationsPage = ({ token }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [searchParams] = useSearchParams();
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
+  const candidateFormsRef = useRef(null);
 
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -94,14 +95,20 @@ const RecruiterInvitationsPage = ({ token }) => {
           <Stack spacing={2.5}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Custom Job Invitation
+                Send Invitation
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Use tailored templates, booking links, and automated messaging to invite candidates.
               </Typography>
             </Box>
             <Divider />
-            <EnhancedInvitationForm token={token} embedded={true} />
+            <EnhancedInvitationForm
+              token={token}
+              embedded={true}
+              onOpenCreateTemplate={(professionKey) =>
+                candidateFormsRef.current?.openCreateTemplateForProfession?.(professionKey)
+              }
+            />
           </Stack>
         </Paper>
 
@@ -163,7 +170,7 @@ const RecruiterInvitationsPage = ({ token }) => {
                 Manage active form templates and review candidate submissions.
               </Typography>
             </Box>
-            <CandidateFormsPanel token={token} apiUrl={API_BASE_URL} />
+            <CandidateFormsPanel ref={candidateFormsRef} token={token} apiUrl={API_BASE_URL} />
           </Stack>
         </Paper>
       </Stack>
