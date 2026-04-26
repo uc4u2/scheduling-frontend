@@ -135,11 +135,6 @@ const PunchLocationsPanel = () => {
   };
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
