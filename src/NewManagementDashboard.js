@@ -135,6 +135,8 @@ import RecruiterAvailabilityTracker from "./RecruiterAvailabilityTracker";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
 import EmployeeManagementHelpDrawer from "./pages/sections/management/components/EmployeeManagementHelpDrawer";
+import MobileManagerHome from "./components/manager/MobileManagerHome";
+import BusinessFinanceShell from "./pages/finance/BusinessFinanceShell";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -217,6 +219,20 @@ const menuConfig = [
       { labelKey: "manager.menu.payrollRaw", key: "payroll-raw", icon: <ReceiptLong /> },
       { labelKey: "manager.menu.payrollAudit", key: "payroll-audit", icon: <History /> },
       { labelKey: "manager.menu.invoices", key: "invoices", icon: <ReceiptLong /> },
+    ],
+  },
+
+  {
+    label: "Business Finance",
+    key: "finance-group",
+    icon: <ReceiptLong />,
+    tooltip: "Daily quote, estimate, invoice, expense, and export workflows.",
+    children: [
+      { label: "Overview", key: "finance-overview", icon: <Dashboard /> },
+      { label: "Quotes", key: "finance-quotes", icon: <Article /> },
+      { label: "Estimates", key: "finance-estimates", icon: <ReceiptLong /> },
+      { label: "Expenses", key: "finance-expenses", icon: <Paid /> },
+      { label: "Reports", key: "finance-reports", icon: <Summarize /> },
     ],
   },
 
@@ -3377,6 +3393,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
       case "invoices":
         return <ManagerInvoicesPage />;
+
+      case "finance-overview":
+      case "finance-quotes":
+      case "finance-estimates":
+      case "finance-expenses":
+      case "finance-reports":
+        return <BusinessFinanceShell viewKey={effectiveView} onNavigate={setSelectedView} />;
 
       case "zapier":
         return <ZapierIntegrationPage />;

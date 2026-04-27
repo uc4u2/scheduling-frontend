@@ -92,7 +92,7 @@ export default function ManagerManualPayments() {
     setClientsLoaded(false);
     setClientsError("");
     try {
-      const res = await api.get("/api/manager/clients");
+      const res = await api.get("/booking/clients");
       const raw = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.items)
@@ -586,4 +586,3 @@ export default function ManagerManualPayments() {
     </>
   );
 }
-
