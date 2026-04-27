@@ -277,7 +277,7 @@ Archived release key:
 
 Latest archived release key:
 
-`assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+`assets/apk/releases/schedulaa-staff-2026-04-26-v1.apk`
 
 Stable latest key:
 
@@ -291,7 +291,7 @@ Archived:
 
 Latest archived:
 
-`https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+`https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-26-v1.apk`
 
 Stable:
 
@@ -308,67 +308,61 @@ Required headers:
 
 For archived builds, set `Content-Disposition` to the archived APK filename.
 
-## Why Windows upload was used for the final signed release
+## Current reliable upload pattern
 
-The Linux/WSL path to the R2 S3 endpoint was unstable for large APK uploads.
+The signed APK upload path had two separate failure modes:
 
-Failures seen:
+- `aws.exe` / AWS CLI multipart uploads to R2 could fail mid-transfer with TLS EOF errors
+- reusing the stable `schedulaa-staff-latest.apk` URL could make Android/browser caching confusing during verification
 
-- multipart `?uploads` endpoint failures
-- SSL EOF / endpoint connection failures
-- bucket-internal copy attempts failing intermittently
-- Android download behavior breaking when the object was left with generic zip metadata
+The final reliable solution was:
 
-The reliable solution was:
+- keep building the signed release APK on Windows
+- upload the APK bytes to `schedulaa-public-assets` with a direct multipart client that retries individual parts
+- write the archived release key first
+- then bucket-side copy that archived object to `assets/apk/schedulaa-staff-latest.apk`
+- verify both public URLs and APK headers after upload
 
-- use Windows `aws.exe` for the large binary upload
-- use direct `put-object` when multipart upload keeps failing
-- use bucket-side `copy-object` to refresh `schedulaa-staff-latest.apk`
-- explicitly set APK metadata on the object
+Important operational rule:
 
-This avoided the unstable Linux-to-R2 path.
+- validate a new Android release from the archived versioned URL first
+- use the stable `latest` URL only after the archived build is confirmed downloadable/installable
+- the public `latest` URL is still correct for the landing/demo page
 
-## Windows upload pattern
+## April 26, 2026 v1 release
 
-The final working pattern used:
+This is the current validated Android direct-download release.
 
-- signed artifact from:
-  - `C:\Users\youse\StudioProjects\schedulaa-frontend\android\app\build\outputs\apk\release\app-release.apk`
-- credentials sourced from the backend `.env` source of truth
-- upload executed with Windows `aws.exe`
+Why it mattered:
 
-The important operational rule is:
-
-- for large signed APK uploads, prefer Windows `aws.exe` if Linux/WSL R2 uploads start failing
-
-## April 24, 2026 v2 release
-
-This was the second same-day Android direct-download release.
-
-Why it was needed:
-
-- the earlier APK did not include the later employee-home profile image fix
-- the APK objects also needed corrected R2 metadata so Android downloads as `.apk` instead of `.apk.zip`
+- it includes the later employee mobile updates such as the My Shift drawer changes
+- the archived and stable public APK objects were revalidated after repeated CLI transport failures
 
 Release details:
 
 - archived key:
-  - `assets/apk/releases/schedulaa-staff-2026-04-24-v2.apk`
+  - `assets/apk/releases/schedulaa-staff-2026-04-26-v1.apk`
+- archived public URL:
+  - `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-26-v1.apk`
 - stable key refreshed:
   - `assets/apk/schedulaa-staff-latest.apk`
+- stable public URL:
+  - `https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/schedulaa-staff-latest.apk`
 - verified signed artifact:
   - `versionCode: 10000`
   - `versionName: 1.0.0`
+- verified APK SHA256:
+  - `91538499c34a26196edcc4ceaec0ccfae3ed90bd5d5303ccbf86146631835332`
 
-Working upload pattern used:
+Final working upload pattern used:
 
-1. rebuild signed release APK on Windows with:
-   - `JAVA_HOME=C:\Program Files\Android\Android Studio\jbr`
-2. upload archived build with direct `put-object`
+1. rebuild signed release APK on Windows
+2. upload archived build to `schedulaa-public-assets` with a direct multipart uploader that retries per part
 3. refresh stable latest with bucket-side `copy-object`
 4. verify public headers return:
    - `Content-Type: application/vnd.android.package-archive`
    - `Content-Disposition: attachment; filename=...apk`
+5. verify the public archived object hash matches the local signed APK
 
 # Demo page / frontend download wiring
 
@@ -452,15 +446,17 @@ Get-Content C:\Users\youse\StudioProjects\schedulaa-frontend\android\app\build\o
 
 Preferred operational method:
 
-- use Windows `aws.exe`
-- upload the signed `app-release.apk`
-- write both the archived key and the stable latest key
-- if multipart upload fails, use:
-  - `aws s3api put-object` for the archived build
-  - `aws s3api copy-object` to refresh `schedulaa-staff-latest.apk`
+- build the signed `app-release.apk` on Windows
+- upload the archived key first
+- refresh the stable latest key second
 - ensure APK metadata is set:
   - `Content-Type: application/vnd.android.package-archive`
   - `Content-Disposition: attachment; filename=...apk`
+
+Current fallback rule:
+
+- if AWS CLI multipart upload to R2 fails mid-transfer with SSL EOF errors, use a direct multipart uploader with per-part retries instead of restarting the whole release flow
+- do not assume a successful local rebuild means the stable public URL is refreshed
 
 Recommended script:
 
@@ -515,7 +511,19 @@ And the latest key should return:
 
 - `Content-Disposition: attachment; filename=schedulaa-staff-latest.apk`
 
-## 8. Verify demo page env/fallback still points to stable
+## 8. Validate from the archived URL first
+
+For real-device validation:
+
+- first download and install from the archived versioned URL
+- only use `schedulaa-staff-latest.apk` after the archived file is confirmed
+
+Why:
+
+- Android browsers and download managers can cache `schedulaa-staff-latest.apk`
+- a fresh archived filename avoids false negatives when checking whether the new build is live
+
+## 9. Verify demo page env/fallback still points to stable
 
 Use:
 
@@ -523,7 +531,7 @@ Use:
 
 or keep the code fallback on the stable latest URL.
 
-## 9. Deploy frontend
+## 10. Deploy frontend
 
 Deploy the frontend commit that contains the latest demo page / APK CTA state.
 
