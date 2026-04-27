@@ -120,7 +120,7 @@ export default function WorkOrderMaterialsPanel({ workOrder, onChanged }) {
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
         <Box>
           <Typography variant="h6" fontWeight={800}>Planned Materials</Typography>
-          <Typography variant="body2" color="text.secondary">Inventory deduction is not active yet. These are planned materials only.</Typography>
+          <Typography variant="body2" color="text.secondary">These are planned materials only. Inventory changes happen later through manager review approval.</Typography>
         </Box>
         <Button variant="outlined" onClick={openAdd}>Add Planned Material</Button>
       </Stack>

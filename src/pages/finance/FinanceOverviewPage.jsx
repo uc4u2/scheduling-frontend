@@ -80,6 +80,10 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                       <Link component="button" type="button" underline="hover" onClick={() => onNavigate?.("finance-work-orders")}>
                         Open Work Orders
                       </Link>
+                    ) : action.type === "field_report" ? (
+                      <Link component="button" type="button" underline="hover" onClick={() => onNavigate?.("finance-field-reports")}>
+                        Open Field Reports
+                      </Link>
                     ) : null
                   }
                 />
@@ -146,6 +150,74 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
               accent="secondary"
             />
           </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Inventory value estimate"
+              value={formatCurrency(overview?.inventory_value_estimate || summary?.inventory_value_estimate || 0)}
+              helper="Current stock multiplied by cost per unit."
+              accent="info"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Approved material cost"
+              value={formatCurrency(summary?.approved_material_cost || 0)}
+              helper="Materials made official through manager review."
+              accent="error"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Low stock items"
+              value={String(overview?.low_stock_count ?? 0)}
+              helper="Items at or below the reorder level."
+              accent="warning"
+              action={
+                <Button size="small" onClick={() => onNavigate?.("finance-inventory")}>
+                  Open Materials
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Field reports need review"
+              value={String(overview?.field_reports_pending_review_count ?? 0)}
+              helper="Submitted or clarification-requested reports."
+              accent="primary"
+              action={
+                <Button size="small" onClick={() => onNavigate?.("finance-field-reports")}>
+                  Open Field Reports
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Work orders pending review"
+              value={String(overview?.work_orders_pending_review_count ?? 0)}
+              helper="Completed jobs that still need manager approval."
+              accent="secondary"
+              action={
+                <Button size="small" onClick={() => onNavigate?.("finance-reviews")}>
+                  Open Reviews
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Month-end missing items"
+              value={String(overview?.month_end_missing_items_count ?? 0)}
+              helper="Missing receipts, low stock, or pending approvals."
+              accent="warning"
+              action={
+                <Button size="small" onClick={() => onNavigate?.("finance-month-end")}>
+                  Open Month-End
+                </Button>
+              }
+            />
+          </Grid>
         </Grid>
         {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
           <Alert severity="info" sx={{ mt: 2 }}>
@@ -164,13 +236,14 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
             <Button variant="contained" onClick={() => onQuickAction?.("estimate")}>New Estimate</Button>
             <Button variant="contained" onClick={() => onQuickAction?.("work-order")}>New Work Order</Button>
             <Button variant="contained" onClick={() => onQuickAction?.("expense")}>Add Expense</Button>
+            <Button variant="outlined" onClick={() => onNavigate?.("finance-purchases")}>Create Purchase</Button>
             <Button variant="outlined" onClick={() => onNavigate?.("finance-reports")}>Export CSV</Button>
           </Stack>
         </Stack>
       </Paper>
 
-      <Alert severity="warning" sx={{ borderRadius: 1, backgroundColor: theme.palette.background.paper }}>
-        Materials & Supplies, inventory deduction, and employee field reports are coming in later phases.
+      <Alert severity="info" sx={{ borderRadius: 1, backgroundColor: theme.palette.background.paper }}>
+        Team members report what happened on site. Managers review it before inventory is deducted or invoice extras are made official.
       </Alert>
     </Stack>
   );

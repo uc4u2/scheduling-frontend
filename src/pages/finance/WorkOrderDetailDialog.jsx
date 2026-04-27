@@ -131,6 +131,9 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
               <Grid item xs={12} md={4}><FinanceMetricCard label="Planned labor hours" value={String(workOrder.planned_labor_hours ?? 0)} accent="primary" /></Grid>
               <Grid item xs={12} md={4}><FinanceMetricCard label="Planned labor cost" value={formatCurrency(workOrder.planned_labor_cost || 0)} accent="secondary" /></Grid>
               <Grid item xs={12} md={4}><FinanceMetricCard label="Assignments" value={String(workOrder.assignment_count ?? 0)} helper="Daily rows assigned to the team." accent="success" /></Grid>
+              <Grid item xs={12} md={4}><FinanceMetricCard label="Field reports" value={String(workOrder.field_report_count ?? 0)} helper="Reports submitted from the field." accent="info" /></Grid>
+              <Grid item xs={12} md={4}><FinanceMetricCard label="Pending review" value={String(workOrder.pending_review_count ?? 0)} helper="Manager follow-up still needed." accent="warning" /></Grid>
+              <Grid item xs={12} md={4}><FinanceMetricCard label="Approved material cost" value={formatCurrency(workOrder.approved_material_cost || 0)} helper="Official after manager approval." accent="error" /></Grid>
             </Grid>
 
             <WorkOrderAssignmentsPanel workOrder={workOrder} onChanged={async () => { await load(); onChanged?.(); }} />
@@ -173,7 +176,7 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
               )}
             </Paper>
 
-            <Alert severity="info">Employees cannot submit field reports yet. That comes in the next phase.</Alert>
+            <Alert severity="info">Employees can submit field reports now. Inventory and invoice changes only happen after manager review approval.</Alert>
           </Stack>
         ) : null}
       </DialogContent>

@@ -11,6 +11,8 @@ const STATUS_MAP = {
   sent: { label: "Sent", color: "info" },
   viewed: { label: "Viewed", color: "secondary" },
   approved: { label: "Approved", color: "success" },
+  submitted: { label: "Submitted", color: "info" },
+  clarification_requested: { label: "Clarification Requested", color: "warning" },
   scheduled: { label: "Scheduled", color: "info" },
   in_progress: { label: "In Progress", color: "warning" },
   completed: { label: "Completed", color: "success" },

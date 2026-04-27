@@ -228,14 +228,22 @@ const menuConfig = [
     label: "Business Finance",
     key: "finance-group",
     icon: <ReceiptLong />,
-    tooltip: "Daily quote, estimate, invoice, expense, and export workflows.",
+    tooltip: "Daily quote, job, purchasing, review, and month-end workflows.",
     children: [
       { label: "Overview", key: "finance-overview", icon: <Dashboard /> },
       { label: "Quotes", key: "finance-quotes", icon: <Article /> },
       { label: "Estimates", key: "finance-estimates", icon: <ReceiptLong /> },
       { label: "Work Orders", key: "finance-work-orders", icon: <Assignment /> },
+      { label: "Materials & Supplies", key: "finance-inventory", icon: <Business /> },
+      { label: "Vendors", key: "finance-vendors", icon: <People /> },
+      { label: "Purchases", key: "finance-purchases", icon: <Paid /> },
+      { label: "Field Reports", key: "finance-field-reports", icon: <Article /> },
+      { label: "Reviews", key: "finance-reviews", icon: <History /> },
+      { label: "Profitability", key: "finance-profitability", icon: <Summarize /> },
+      { label: "Tax Summary", key: "finance-tax-summary", icon: <Paid /> },
       { label: "Expenses", key: "finance-expenses", icon: <Paid /> },
       { label: "Reports", key: "finance-reports", icon: <Summarize /> },
+      { label: "Month-End", key: "finance-month-end", icon: <EventNote /> },
     ],
   },
 
@@ -3426,8 +3434,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "finance-quotes":
       case "finance-estimates":
       case "finance-work-orders":
+      case "finance-inventory":
+      case "finance-vendors":
+      case "finance-purchases":
+      case "finance-field-reports":
+      case "finance-reviews":
+      case "finance-profitability":
+      case "finance-tax-summary":
       case "finance-expenses":
       case "finance-reports":
+      case "finance-month-end":
         return <BusinessFinanceShell viewKey={effectiveView} onNavigate={setSelectedView} />;
 
       case "zapier":

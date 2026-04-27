@@ -82,6 +82,82 @@ export const updateWorkOrderMaterial = (id, payload) =>
   unwrap(api.patch(`/finance/work-order-materials/${id}`, payload));
 export const deleteWorkOrderMaterial = (id) => unwrap(api.delete(`/finance/work-order-materials/${id}`));
 
+export const listInventoryCategories = () => unwrap(api.get("/finance/inventory/categories"));
+export const createInventoryCategory = (payload) =>
+  unwrap(api.post("/finance/inventory/categories", payload));
+export const updateInventoryCategory = (id, payload) =>
+  unwrap(api.patch(`/finance/inventory/categories/${id}`, payload));
+export const deleteInventoryCategory = (id) =>
+  unwrap(api.delete(`/finance/inventory/categories/${id}`));
+
+export const listInventoryItems = (params = {}) =>
+  unwrap(api.get("/finance/inventory/items", { params }));
+export const createInventoryItem = (payload) =>
+  unwrap(api.post("/finance/inventory/items", payload));
+export const updateInventoryItem = (id, payload) =>
+  unwrap(api.patch(`/finance/inventory/items/${id}`, payload));
+export const deleteInventoryItem = (id) =>
+  unwrap(api.delete(`/finance/inventory/items/${id}`));
+export const adjustInventoryItem = (id, payload) =>
+  unwrap(api.post(`/finance/inventory/items/${id}/adjust`, payload));
+export const listInventoryTransactions = (params = {}) =>
+  unwrap(api.get("/finance/inventory/transactions", { params }));
+
+export const listVendors = () => unwrap(api.get("/finance/vendors"));
+export const createVendor = (payload) => unwrap(api.post("/finance/vendors", payload));
+export const updateVendor = (id, payload) => unwrap(api.patch(`/finance/vendors/${id}`, payload));
+export const deleteVendor = (id) => unwrap(api.delete(`/finance/vendors/${id}`));
+
+export const listPurchases = (params = {}) => unwrap(api.get("/finance/purchases", { params }));
+export const createPurchase = (payload) => unwrap(api.post("/finance/purchases", payload));
+export const updatePurchase = (id, payload) => unwrap(api.patch(`/finance/purchases/${id}`, payload));
+export const deletePurchase = (id) => unwrap(api.delete(`/finance/purchases/${id}`));
+export const voidPurchase = (id, payload = {}) =>
+  unwrap(api.post(`/finance/purchases/${id}/void`, payload));
+
+export const listMyWorkOrders = () => unwrap(api.get("/finance/my-work-orders"));
+export const getMyWorkOrder = (id) => unwrap(api.get(`/finance/my-work-orders/${id}`));
+export const submitMyFieldReport = (id, payload) =>
+  unwrap(api.post(`/finance/my-work-orders/${id}/field-report`, payload));
+export const listMyFieldReports = () => unwrap(api.get("/finance/my-field-reports"));
+export const getFieldReport = (id) => unwrap(api.get(`/finance/field-reports/${id}`));
+export const listWorkOrderFieldReports = (workOrderId) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/field-reports`));
+export const getPlanVsReported = (fieldReportId) =>
+  unwrap(api.get(`/finance/field-reports/${fieldReportId}/plan-vs-reported`));
+export const requestFieldReportClarification = (fieldReportId) =>
+  unwrap(api.post(`/finance/field-reports/${fieldReportId}/clarification`));
+export const rejectFieldReport = (fieldReportId) =>
+  unwrap(api.post(`/finance/field-reports/${fieldReportId}/reject`));
+
+export const listWorkOrderReviews = (workOrderId) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/reviews`));
+export const createWorkOrderReview = (workOrderId, payload) =>
+  unwrap(api.post(`/finance/work-orders/${workOrderId}/reviews`, payload));
+export const getWorkOrderReview = (reviewId) =>
+  unwrap(api.get(`/finance/work-order-reviews/${reviewId}`));
+export const updateWorkOrderReview = (reviewId, payload) =>
+  unwrap(api.patch(`/finance/work-order-reviews/${reviewId}`, payload));
+export const approveWorkOrderReview = (reviewId, payload) =>
+  unwrap(api.post(`/finance/work-order-reviews/${reviewId}/approve`, payload));
+export const requestReviewClarification = (reviewId) =>
+  unwrap(api.post(`/finance/work-order-reviews/${reviewId}/request-clarification`));
+export const rejectWorkOrderReview = (reviewId) =>
+  unwrap(api.post(`/finance/work-order-reviews/${reviewId}/reject`));
+
+export const getWorkOrderProfitability = (workOrderId) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/profitability`));
+export const getFinanceProfitabilityReport = (params = {}) =>
+  unwrap(api.get("/finance/reports/profitability", { params }));
+export const getFinanceTaxSummary = (params = {}) =>
+  unwrap(api.get("/finance/reports/tax-summary", { params }));
+export const getFinanceMissingData = (params = {}) =>
+  unwrap(api.get("/finance/reports/missing-data", { params }));
+export const getFinanceMonthEnd = (params = {}) =>
+  unwrap(api.get("/finance/month-end", { params }));
+export const exportFinanceMonthEndCsv = (payload) =>
+  api.post("/finance/month-end/export", payload, { responseType: "blob" });
+
 export const listExpenseCategories = () => unwrap(api.get("/finance/expense-categories"));
 export const getExpenseCategory = (id) => unwrap(api.get(`/finance/expense-categories/${id}`));
 export const createExpenseCategory = (payload) => unwrap(api.post("/finance/expense-categories", payload));
