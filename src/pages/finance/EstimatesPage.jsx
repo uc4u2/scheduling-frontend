@@ -20,7 +20,9 @@ import {
 import { useSnackbar } from "notistack";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+import { formatCurrency } from "../../utils/formatters";
 import EstimateEditorDialog from "./EstimateEditorDialog";
+import WorkOrderEditorDialog from "./WorkOrderEditorDialog";
 import {
   convertEstimateToInvoice,
   createEstimateTemplate,
@@ -33,14 +35,7 @@ import {
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 
-const formatMoney = (value, currency = "USD") =>
-  new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
-
-export default function EstimatesPage({ createNonce }) {
+export default function EstimatesPage({ createNonce, onNavigate }) {
   const { enqueueSnackbar } = useSnackbar();
   const timezone = useMemo(() => getUserTimezone(), []);
   const [items, setItems] = useState([]);
@@ -52,6 +47,8 @@ export default function EstimatesPage({ createNonce }) {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [workOrderDialogOpen, setWorkOrderDialogOpen] = useState(false);
+  const [workOrderSeed, setWorkOrderSeed] = useState(null);
   const [templateName, setTemplateName] = useState("");
 
   const load = async () => {
@@ -117,7 +114,8 @@ export default function EstimatesPage({ createNonce }) {
   const handleDuplicate = async (item) => {
     try {
       const res = await duplicateEstimate(item.id);
-      enqueueSnackbar(`Estimate duplicated${res?.estimate_number ? `: ${res.estimate_number}` : ""}.`, { variant: "success" });
+      const estimateNumber = res?.estimate?.estimate_number || res?.estimate_number;
+      enqueueSnackbar(`Estimate duplicated${estimateNumber ? `: ${estimateNumber}` : ""}.`, { variant: "success" });
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to duplicate estimate.", { variant: "error" });
@@ -136,6 +134,11 @@ export default function EstimatesPage({ createNonce }) {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to convert estimate to invoice.", { variant: "error" });
     }
+  };
+
+  const handleCreateWorkOrder = (item) => {
+    setWorkOrderSeed(item);
+    setWorkOrderDialogOpen(true);
   };
 
   return (
@@ -214,7 +217,7 @@ export default function EstimatesPage({ createNonce }) {
                     <Typography variant="body2" color="text.secondary">{item.client_email || ""}</Typography>
                   </TableCell>
                   <TableCell><FinanceStatusChip status={item.status} /></TableCell>
-                  <TableCell>{formatMoney(item.total, item.currency)}</TableCell>
+                  <TableCell>{formatCurrency(item.total, item.currency)}</TableCell>
                   <TableCell>{item.issue_date || "-"}</TableCell>
                   <TableCell>{item.sent_at ? formatDateTimeInTz(item.sent_at, timezone) : "-"}</TableCell>
                   <TableCell>{item.line_count ?? 0}</TableCell>
@@ -222,6 +225,7 @@ export default function EstimatesPage({ createNonce }) {
                   <TableCell align="right">
                     <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
                       <Button size="small" onClick={() => { setEditing(item); setDialogOpen(true); }}>Edit</Button>
+                      <Button size="small" onClick={() => handleCreateWorkOrder(item)}>Create Work Order</Button>
                       <Button size="small" onClick={() => handleDuplicate(item)}>Duplicate</Button>
                       <Button size="small" onClick={() => handleSend(item)} disabled={item.status === "converted_to_invoice"}>Mark Sent</Button>
                       <Button size="small" variant="contained" onClick={() => handleConvert(item)} disabled={item.status === "converted_to_invoice"}>
@@ -246,6 +250,19 @@ export default function EstimatesPage({ createNonce }) {
         estimate={editing}
         clients={clients}
         templates={templates}
+      />
+      <WorkOrderEditorDialog
+        open={workOrderDialogOpen}
+        onClose={() => setWorkOrderDialogOpen(false)}
+        onSaved={async () => {
+          setWorkOrderDialogOpen(false);
+          enqueueSnackbar("Work order created from estimate.", { variant: "success" });
+          await load();
+          onNavigate?.("finance-work-orders");
+        }}
+        clients={clients}
+        estimates={items}
+        prefillEstimate={workOrderSeed}
       />
     </Stack>
   );
