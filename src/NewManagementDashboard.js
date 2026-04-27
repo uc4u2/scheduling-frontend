@@ -233,6 +233,7 @@ const menuConfig = [
       { label: "Overview", key: "finance-overview", icon: <Dashboard /> },
       { label: "Quotes", key: "finance-quotes", icon: <Article /> },
       { label: "Estimates", key: "finance-estimates", icon: <ReceiptLong /> },
+      { label: "Work Orders", key: "finance-work-orders", icon: <Assignment /> },
       { label: "Expenses", key: "finance-expenses", icon: <Paid /> },
       { label: "Reports", key: "finance-reports", icon: <Summarize /> },
     ],
@@ -3424,6 +3425,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "finance-overview":
       case "finance-quotes":
       case "finance-estimates":
+      case "finance-work-orders":
       case "finance-expenses":
       case "finance-reports":
         return <BusinessFinanceShell viewKey={effectiveView} onNavigate={setSelectedView} />;

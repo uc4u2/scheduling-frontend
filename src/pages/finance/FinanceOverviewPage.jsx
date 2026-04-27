@@ -5,21 +5,16 @@ import {
   Button,
   CircularProgress,
   Grid,
+  Link,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { formatCurrency } from "../../utils/formatters";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import { getFinanceOverview, getFinanceSummary } from "./financeApi";
-
-const formatMoney = (value) =>
-  new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
 export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   const theme = useTheme();
@@ -80,6 +75,13 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                   value={String(action.count ?? 0)}
                   helper="Open the related tab to handle it."
                   accent="warning"
+                  action={
+                    action.type === "work_order" ? (
+                      <Link component="button" type="button" underline="hover" onClick={() => onNavigate?.("finance-work-orders")}>
+                        Open Work Orders
+                      </Link>
+                    ) : null
+                  }
                 />
               </Grid>
             ))}
@@ -98,22 +100,51 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Estimate total" value={formatMoney(summary?.estimate_total)} accent="primary" />
+            <FinanceMetricCard label="Estimate total" value={formatCurrency(summary?.estimate_total)} accent="primary" />
           </Grid>
           <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Invoice total" value={formatMoney(summary?.invoice_total)} accent="secondary" />
+            <FinanceMetricCard label="Invoice total" value={formatCurrency(summary?.invoice_total)} accent="secondary" />
           </Grid>
           <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Expense total" value={formatMoney(summary?.expense_total)} accent="error" />
+            <FinanceMetricCard label="Expense total" value={formatCurrency(summary?.expense_total)} accent="error" />
           </Grid>
           <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Tax collected" value={formatMoney(summary?.tax_collected)} accent="info" />
+            <FinanceMetricCard label="Tax collected" value={formatCurrency(summary?.tax_collected)} accent="info" />
           </Grid>
           <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Tax paid on expenses" value={formatMoney(summary?.tax_paid_on_expenses)} accent="success" />
+            <FinanceMetricCard label="Tax paid on expenses" value={formatCurrency(summary?.tax_paid_on_expenses)} accent="success" />
           </Grid>
           <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Estimated net tax" value={formatMoney(summary?.estimated_net_tax)} accent="warning" />
+            <FinanceMetricCard label="Estimated net tax" value={formatCurrency(summary?.estimated_net_tax)} accent="warning" />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Active jobs"
+              value={String(overview?.work_orders_active_count ?? 0)}
+              helper="Scheduled or in progress."
+              accent="primary"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Work orders need scheduling"
+              value={String(overview?.work_orders_needing_scheduling_count ?? 0)}
+              helper="Draft jobs or jobs with no team assigned yet."
+              accent="warning"
+              action={
+                <Button size="small" onClick={() => onNavigate?.("finance-work-orders")}>
+                  Open Work Orders
+                </Button>
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={4}>
+            <FinanceMetricCard
+              label="Planned labor this month"
+              value={formatCurrency(overview?.planned_labor_cost_this_month || 0)}
+              helper="Work order planning only."
+              accent="secondary"
+            />
           </Grid>
         </Grid>
         {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
@@ -131,6 +162,7 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
             <Button variant="contained" onClick={() => onQuickAction?.("quote")}>New Quote</Button>
             <Button variant="contained" onClick={() => onQuickAction?.("estimate")}>New Estimate</Button>
+            <Button variant="contained" onClick={() => onQuickAction?.("work-order")}>New Work Order</Button>
             <Button variant="contained" onClick={() => onQuickAction?.("expense")}>Add Expense</Button>
             <Button variant="outlined" onClick={() => onNavigate?.("finance-reports")}>Export CSV</Button>
           </Stack>
@@ -138,7 +170,7 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
       </Paper>
 
       <Alert severity="warning" sx={{ borderRadius: 1, backgroundColor: theme.palette.background.paper }}>
-        Work Orders, Materials & Supplies, and Field Reports are coming in later phases.
+        Materials & Supplies, inventory deduction, and employee field reports are coming in later phases.
       </Alert>
     </Stack>
   );

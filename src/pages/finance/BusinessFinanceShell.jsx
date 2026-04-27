@@ -6,11 +6,13 @@ import QuoteRequestsPage from "./QuoteRequestsPage";
 import EstimatesPage from "./EstimatesPage";
 import ExpensesPage from "./ExpensesPage";
 import FinanceReportsPage from "./FinanceReportsPage";
+import WorkOrdersPage from "./WorkOrdersPage";
 
 const TAB_KEYS = [
   "finance-overview",
   "finance-quotes",
   "finance-estimates",
+  "finance-work-orders",
   "finance-expenses",
   "finance-reports",
 ];
@@ -46,6 +48,11 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
       handleNavigate("finance-expenses");
       return;
     }
+    if (action === "work-order") {
+      setQuickAction({ type: "work-order", nonce: Date.now() });
+      handleNavigate("finance-work-orders");
+      return;
+    }
     handleNavigate("finance-reports");
   };
 
@@ -54,7 +61,15 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
       case "finance-quotes":
         return <QuoteRequestsPage createNonce={quickAction?.type === "quote" ? quickAction.nonce : 0} onNavigate={handleNavigate} />;
       case "finance-estimates":
-        return <EstimatesPage createNonce={quickAction?.type === "estimate" ? quickAction.nonce : 0} />;
+        return <EstimatesPage createNonce={quickAction?.type === "estimate" ? quickAction.nonce : 0} onNavigate={handleNavigate} />;
+      case "finance-work-orders":
+        return (
+          <WorkOrdersPage
+            createNonce={quickAction?.type === "work-order" ? quickAction.nonce : 0}
+            createSeed={quickAction?.type === "work-order" ? quickAction.payload || null : null}
+            onNavigate={handleNavigate}
+          />
+        );
       case "finance-expenses":
         return <ExpensesPage createNonce={quickAction?.type === "expense" ? quickAction.nonce : 0} />;
       case "finance-reports":
@@ -82,13 +97,14 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
           <Tab value="finance-overview" label="Overview" />
           <Tab value="finance-quotes" label="Quotes" />
           <Tab value="finance-estimates" label="Estimates" />
+          <Tab value="finance-work-orders" label="Work Orders" />
           <Tab value="finance-expenses" label="Expenses" />
           <Tab value="finance-reports" label="Reports" />
         </Tabs>
       </Box>
       {activeTab !== "finance-overview" ? (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Keep daily work simple: quotes, estimates, expenses, and CSV exports are ready now. Work execution tools come later.
+          Keep daily work simple: quotes, estimates, jobs, expenses, and CSV exports are ready now. Field reports and inventory deduction come later.
         </Alert>
       ) : null}
       {content}
