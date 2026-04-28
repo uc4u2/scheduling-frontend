@@ -72,7 +72,16 @@ export default function MonthEndReviewPage() {
   };
 
   const checklist = review?.checklist || review?.checklist_json || {};
+  const checklistReasons = review?.checklist_reasons || {};
   const summary = review?.summary || review?.summary_json || {};
+  const renderChecklistLine = (label, key) => (
+    <Stack spacing={0.25}>
+      <Typography variant="body2">{label}: {checklist[key] ? "Ready" : "Needs attention"}</Typography>
+      {checklistReasons[key] ? (
+        <Typography variant="caption" color="text.secondary">{checklistReasons[key]}</Typography>
+      ) : null}
+    </Stack>
+  );
 
   return (
     <Stack spacing={2.5}>
@@ -101,13 +110,13 @@ export default function MonthEndReviewPage() {
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Checklist</Typography>
             <Stack spacing={1}>
-              <Typography variant="body2">Invoices reviewed: {checklist.invoices_reviewed ? "Ready" : "Needs attention"}</Typography>
-              <Typography variant="body2">Payments recorded: {checklist.payments_recorded ? "Ready" : "Needs attention"}</Typography>
-              <Typography variant="body2">Expenses categorized: {checklist.expenses_categorized ? "Ready" : "Needs attention"}</Typography>
-              <Typography variant="body2">Receipts uploaded: {checklist.receipts_uploaded ? "Ready" : "Needs attention"}</Typography>
-              <Typography variant="body2">Field reports approved: {checklist.field_reports_approved ? "Ready" : "Needs attention"}</Typography>
-              <Typography variant="body2">Inventory usage reviewed: {checklist.inventory_usage_reviewed ? "Ready" : "Needs attention"}</Typography>
-              <Typography variant="body2">Tax summary ready: {checklist.tax_summary_ready ? "Ready" : "Needs attention"}</Typography>
+              {renderChecklistLine("Invoices reviewed", "invoices_reviewed")}
+              {renderChecklistLine("Payments recorded", "payments_recorded")}
+              {renderChecklistLine("Expenses categorized", "expenses_categorized")}
+              {renderChecklistLine("Receipts uploaded", "receipts_uploaded")}
+              {renderChecklistLine("Field reports approved", "field_reports_approved")}
+              {renderChecklistLine("Inventory usage reviewed", "inventory_usage_reviewed")}
+              {renderChecklistLine("Tax summary ready", "tax_summary_ready")}
             </Stack>
           </Paper>
 
