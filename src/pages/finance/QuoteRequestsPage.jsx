@@ -281,7 +281,6 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                     >
                       <Button size="small" onClick={() => openEdit(item)}>Edit</Button>
                       <Button size="small" onClick={() => patchStatus(item, "reviewed")}>Mark Reviewed</Button>
-<<<<<<< HEAD
                       <Button size="small" onClick={() => openLinkClientDialog(item, !item.client_id)}>Link or Create Client</Button>
                       {item.status === "estimate_created" ? (
                         <Button size="small" variant="outlined" onClick={() => onNavigate?.("finance-estimates")}>
