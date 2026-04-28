@@ -65,7 +65,7 @@ const buildAttentionCards = (overview = {}, actions = []) => {
     {
       key: "missing-receipts",
       label: "Missing receipts",
-      count: Number(overview?.missing_receipts_count ?? 0),
+      count: Number(overview?.expenses_missing_receipt_count ?? overview?.missing_receipts_count ?? 0),
       helper: "Capture the missing proof before month-end handoff.",
       target: "finance-expenses",
       accent: "info",
