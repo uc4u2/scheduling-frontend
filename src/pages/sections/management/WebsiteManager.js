@@ -22,6 +22,7 @@ import {
   Alert,
   CircularProgress,
   Link,
+  Snackbar,
   Tooltip,
   Chip,
   useMediaQuery,
@@ -116,6 +117,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const [chatbotPrimaryCtaHref, setChatbotPrimaryCtaHref] = useState("");
   const [chatbotSecondaryCtaLabel, setChatbotSecondaryCtaLabel] = useState("");
   const [chatbotSecondaryCtaHref, setChatbotSecondaryCtaHref] = useState("");
+  const [chatbotToastOpen, setChatbotToastOpen] = useState(false);
 
   const applySettingsPayload = useCallback((payload) => {
     if (!payload) return;
@@ -468,12 +470,19 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
       setChatbotSecondaryCtaLabel(data.secondary_cta?.label || "");
       setChatbotSecondaryCtaHref(data.secondary_cta?.href || "");
       setChatbotMsg("Chatbot settings saved.");
+      setChatbotToastOpen(true);
     } catch (error) {
       const message = error?.displayMessage || error?.response?.data?.error || "Unable to save chatbot settings.";
       setChatbotErr(message);
+      setChatbotToastOpen(true);
     } finally {
       setChatbotSaving(false);
     }
+  };
+
+  const handleChatbotToastClose = (_, reason) => {
+    if (reason === "clickaway") return;
+    setChatbotToastOpen(false);
   };
 
   const refreshPages = async () => {
@@ -758,13 +767,6 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
             {chatbotLoading && <CircularProgress size={20} />}
           </Stack>
 
-          {(chatbotMsg || chatbotErr) && (
-            <Box>
-              {chatbotMsg && <Alert severity="success">{chatbotMsg}</Alert>}
-              {chatbotErr && <Alert severity="error" sx={{ mt: chatbotMsg ? 1 : 0 }}>{chatbotErr}</Alert>}
-            </Box>
-          )}
-
           <FormControlLabel
             control={
               <Switch
@@ -861,6 +863,22 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
           </Stack>
         </Stack>
       </Paper>
+
+      <Snackbar
+        open={chatbotToastOpen && Boolean(chatbotMsg || chatbotErr)}
+        autoHideDuration={4000}
+        onClose={handleChatbotToastClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleChatbotToastClose}
+          severity={chatbotErr ? "error" : "success"}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {chatbotErr || chatbotMsg}
+        </Alert>
+      </Snackbar>
 
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack
