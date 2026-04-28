@@ -5,7 +5,6 @@ import {
   Button,
   CircularProgress,
   Grid,
-  Link,
   Paper,
   Stack,
   Typography,
@@ -15,6 +14,105 @@ import { formatCurrency } from "../../utils/formatters";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import { getFinanceOverview, getFinanceSummary } from "./financeApi";
+
+const buildAttentionCards = (overview = {}, actions = []) => {
+  const actionMap = new Map(actions.map((row) => [row.type, row]));
+  return [
+    {
+      key: "quote",
+      label: actionMap.get("quote")?.label || "New quotes",
+      count: actionMap.get("quote")?.count ?? actionMap.get("quote_request")?.count ?? 0,
+      helper: "Capture new requests before they go stale.",
+      target: "finance-quotes",
+      accent: "warning",
+      actionLabel: "Open Quotes",
+    },
+    {
+      key: "estimate",
+      label: "Draft estimates",
+      count: Number(overview?.estimate_counts?.draft ?? 0),
+      helper: "Finish pricing before the job moves forward.",
+      target: "finance-estimates",
+      accent: "primary",
+      actionLabel: "Open Estimates",
+    },
+    {
+      key: "work-order",
+      label: "Work orders need scheduling",
+      count: Number(overview?.work_orders_needing_scheduling_count ?? 0),
+      helper: "Draft jobs or jobs still missing team assignments.",
+      target: "finance-work-orders",
+      accent: "warning",
+      actionLabel: "Open Work Orders",
+    },
+    {
+      key: "field-report",
+      label: "Field reports need review",
+      count: Number(overview?.field_reports_pending_review_count ?? 0),
+      helper: "Submitted work needs manager review before it becomes official.",
+      target: "finance-field-reports",
+      accent: "secondary",
+      actionLabel: "Open Field Reports",
+    },
+    {
+      key: "low-stock",
+      label: "Low stock items",
+      count: Number(overview?.low_stock_count ?? 0),
+      helper: "Check materials before the next job starts.",
+      target: "finance-inventory",
+      accent: "error",
+      actionLabel: "Open Materials",
+    },
+    {
+      key: "missing-receipts",
+      label: "Missing receipts",
+      count: Number(overview?.missing_receipts_count ?? 0),
+      helper: "Capture the missing proof before month-end handoff.",
+      target: "finance-expenses",
+      accent: "info",
+      actionLabel: "Open Expenses",
+    },
+    {
+      key: "month-end",
+      label: "Month-end missing items",
+      count: Number(overview?.month_end_missing_items_count ?? 0),
+      helper: "Review gaps before exporting for the accountant.",
+      target: "finance-month-end",
+      accent: "warning",
+      actionLabel: "Open Month-End",
+    },
+  ];
+};
+
+const workflowGroups = [
+  {
+    title: "Start a job",
+    helper: "Open a new request, price it, or create a work order when the plan is ready.",
+    items: [
+      { label: "New Quote", action: "quote" },
+      { label: "New Estimate", action: "estimate" },
+      { label: "New Work Order", action: "work-order" },
+    ],
+  },
+  {
+    title: "Run the job",
+    helper: "Move from planning into team assignment, materials, and field updates.",
+    items: [
+      { label: "Assign Team", target: "finance-work-orders" },
+      { label: "Materials & Supplies", target: "finance-inventory" },
+      { label: "Field Reports", target: "finance-field-reports" },
+    ],
+  },
+  {
+    title: "Close the loop",
+    helper: "Approve field work, review job performance, and finish month-end follow-up.",
+    items: [
+      { label: "Reviews", target: "finance-reviews" },
+      { label: "Profitability", target: "finance-profitability" },
+      { label: "Month-End", target: "finance-month-end" },
+    ],
+  },
+];
 
 export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   const theme = useTheme();
@@ -47,6 +145,14 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   }, []);
 
   const actions = useMemo(() => Array.isArray(overview?.today_action_list) ? overview.today_action_list : [], [overview]);
+  const attentionCards = useMemo(() => buildAttentionCards(overview || {}, actions), [overview, actions]);
+
+  const renderActionButton = (item) => {
+    if (item.action) {
+      return <Button size="small" onClick={() => onQuickAction?.(item.action)}>{item.label}</Button>;
+    }
+    return <Button size="small" onClick={() => onNavigate?.(item.target)}>{item.label}</Button>;
+  };
 
   if (loading) {
     return (
@@ -62,90 +168,88 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
 
   return (
     <Stack spacing={3}>
-      <Box>
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>
-          Today needs your review
-        </Typography>
-        {actions.length ? (
+      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="h6" fontWeight={900} sx={{ mb: 0.75 }}>
+              Today needs your attention
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Start here when you want to know what should be handled next.
+            </Typography>
+          </Box>
+
+          {attentionCards.some((card) => Number(card.count) > 0) ? (
+            <Grid container spacing={2}>
+              {attentionCards.map((card) => (
+                <Grid item xs={12} sm={6} lg={4} key={card.key}>
+                  <FinanceMetricCard
+                    label={card.label}
+                    value={String(card.count ?? 0)}
+                    helper={card.helper}
+                    accent={card.accent}
+                    action={<Button size="small" onClick={() => onNavigate?.(card.target)}>{card.actionLabel}</Button>}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <FinanceEmptyState
+              title="Nothing urgent is waiting right now"
+              description="Quotes, jobs, receipts, and month-end follow-up are all in a good spot at the moment."
+            />
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="h6" fontWeight={900} sx={{ mb: 0.75 }}>
+              Continue the workflow
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Pick the stage you are in and jump straight to the right workspace.
+            </Typography>
+          </Box>
           <Grid container spacing={2}>
-            {actions.map((action, index) => (
-              <Grid item xs={12} md={6} lg={3} key={`${action.type || 'action'}-${index}`}>
-                <FinanceMetricCard
-                  label={action.label || "Action"}
-                  value={String(action.count ?? 0)}
-                  helper="Open the related tab to handle it."
-                  accent="warning"
-                  action={
-                    action.type === "work_order" ? (
-                      <Link component="button" type="button" underline="hover" onClick={() => onNavigate?.("finance-work-orders")}>
-                        Open Work Orders
-                      </Link>
-                    ) : null
-                  }
-                />
+            {workflowGroups.map((group) => (
+              <Grid item xs={12} lg={4} key={group.title}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 1.5,
+                    borderColor: theme.palette.divider,
+                    backgroundColor: theme.palette.background.paper,
+                    height: "100%",
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle1" fontWeight={900}>{group.title}</Typography>
+                    <Typography variant="body2" color="text.secondary">{group.helper}</Typography>
+                    <Stack direction={{ xs: "column", sm: "row", lg: "column" }} spacing={1} flexWrap="wrap">
+                      {group.items.map((item) => renderActionButton(item))}
+                    </Stack>
+                  </Stack>
+                </Paper>
               </Grid>
             ))}
           </Grid>
-        ) : (
-          <FinanceEmptyState
-            title="No finance tasks need attention right now"
-            description="Quotes, estimates, invoices, and expenses are all up to date for the moment."
-          />
-        )}
-      </Box>
+        </Stack>
+      </Paper>
 
       <Box>
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>
+        <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
           Money snapshot
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Estimate total" value={formatCurrency(summary?.estimate_total)} accent="primary" />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Invoice total" value={formatCurrency(summary?.invoice_total)} accent="secondary" />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Expense total" value={formatCurrency(summary?.expense_total)} accent="error" />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Tax collected" value={formatCurrency(summary?.tax_collected)} accent="info" />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Tax paid on expenses" value={formatCurrency(summary?.tax_paid_on_expenses)} accent="success" />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard label="Estimated net tax" value={formatCurrency(summary?.estimated_net_tax)} accent="warning" />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard
-              label="Active jobs"
-              value={String(overview?.work_orders_active_count ?? 0)}
-              helper="Scheduled or in progress."
-              accent="primary"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard
-              label="Work orders need scheduling"
-              value={String(overview?.work_orders_needing_scheduling_count ?? 0)}
-              helper="Draft jobs or jobs with no team assigned yet."
-              accent="warning"
-              action={
-                <Button size="small" onClick={() => onNavigate?.("finance-work-orders")}>
-                  Open Work Orders
-                </Button>
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} lg={4}>
-            <FinanceMetricCard
-              label="Planned labor this month"
-              value={formatCurrency(overview?.planned_labor_cost_this_month || 0)}
-              helper="Work order planning only."
-              accent="secondary"
-            />
-          </Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatCurrency(summary?.estimate_total)} accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Invoice total" value={formatCurrency(summary?.invoice_total)} accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Expense total" value={formatCurrency(summary?.expense_total)} accent="error" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax collected" value={formatCurrency(summary?.tax_collected)} accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatCurrency(summary?.tax_paid_on_expenses)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax" value={formatCurrency(summary?.estimated_net_tax)} accent="warning" /></Grid>
         </Grid>
         {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
           <Alert severity="info" sx={{ mt: 2 }}>
@@ -154,23 +258,20 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
         ) : null}
       </Box>
 
-      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1 }}>
-        <Stack spacing={2}>
-          <Typography variant="h6" fontWeight={800}>
-            Quick actions
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
-            <Button variant="contained" onClick={() => onQuickAction?.("quote")}>New Quote</Button>
-            <Button variant="contained" onClick={() => onQuickAction?.("estimate")}>New Estimate</Button>
-            <Button variant="contained" onClick={() => onQuickAction?.("work-order")}>New Work Order</Button>
-            <Button variant="contained" onClick={() => onQuickAction?.("expense")}>Add Expense</Button>
-            <Button variant="outlined" onClick={() => onNavigate?.("finance-reports")}>Export CSV</Button>
-          </Stack>
-        </Stack>
-      </Paper>
+      <Box>
+        <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
+          Operations snapshot
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Active jobs" value={String(overview?.work_orders_active_count ?? 0)} helper="Scheduled or in progress." accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Planned labor this month" value={formatCurrency(overview?.planned_labor_cost_this_month || 0)} helper="Work order planning only." accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Inventory value estimate" value={formatCurrency(overview?.inventory_value_estimate || summary?.inventory_value_estimate || 0)} helper="Current stock multiplied by cost per unit." accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Approved material cost" value={formatCurrency(summary?.approved_material_cost || 0)} helper="Materials made official through manager review." accent="error" /></Grid>
+        </Grid>
+      </Box>
 
-      <Alert severity="warning" sx={{ borderRadius: 1, backgroundColor: theme.palette.background.paper }}>
-        Materials & Supplies, inventory deduction, and employee field reports are coming in later phases.
+      <Alert severity="info" sx={{ borderRadius: 1.5, backgroundColor: theme.palette.background.paper }}>
+        Employees report what happened on site. Managers review it before inventory is deducted or invoice extras are made official.
       </Alert>
     </Stack>
   );
