@@ -127,6 +127,7 @@ import RecruiterFieldPhotosPage from "./pages/recruiter/RecruiterFieldPhotosPage
 import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
 import EmployeeWorkOrdersPage from "./pages/finance/employee/EmployeeWorkOrdersPage";
 import EmployeeFieldReportsPage from "./pages/finance/employee/EmployeeFieldReportsPage";
+import PublicEstimatePage from "./pages/finance/public/PublicEstimatePage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
 import CancelBooking from "./CancelBooking";
@@ -705,6 +706,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/appointment-cancel/:bookingId" element={<ClientCancelBooking slugOverride={tenantSlug} />} />
               <Route path="/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking slugOverride={tenantSlug} />} />
               <Route path="/pay/:appointmentId" element={<PublicAppointmentPayPage slugOverride={tenantSlug} />} />
+              <Route path="/estimate/:token" element={<PublicEstimatePage />} />
               <Route path="/meet/:artistId" element={<MeetWithArtistPage slugOverride={tenantSlug} />} />
               <Route path="/reviews" element={<PublicReviewList slugOverride={tenantSlug} />} />
               <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
@@ -838,6 +840,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />
           <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
           <Route path="/:slug/pay/:appointmentId" element={<PublicAppointmentPayPage />} />
+          <Route path="/estimate/:token" element={<PublicEstimatePage />} />
           <Route path="/book-slot/:recruiterId/:token" element={<CandidateBooking />} />
           <Route path="/:slug/meet/:artistId" element={<MeetWithArtistPage />} />
           <Route path="/settings/payments/stripe/return" element={<StripeConnectReturn />} />
