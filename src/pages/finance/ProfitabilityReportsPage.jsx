@@ -73,6 +73,9 @@ export default function ProfitabilityReportsPage() {
             <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Linked expenses" value={formatMoney(report?.linked_expense_total)} accent="info" /></Grid>
             <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin" value={formatMoney(report?.estimated_margin)} accent="success" /></Grid>
           </Grid>
+          <Typography variant="body2" color="text.secondary">
+            Calculated per work order using invoice total when available, otherwise estimate total, minus planned labor, approved materials, and linked expenses.
+          </Typography>
         </>
       )}
     </Stack>

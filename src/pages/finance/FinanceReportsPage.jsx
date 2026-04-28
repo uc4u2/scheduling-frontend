@@ -45,7 +45,7 @@ export default function FinanceReportsPage() {
       setLoading(true);
       setError("");
       try {
-        const data = await getFinanceSummary();
+        const data = await getFinanceSummary({ date_from: dateFrom, date_to: dateTo });
         if (mounted) setSummary(data || {});
       } catch (err) {
         if (mounted) setError(err?.response?.data?.error || err?.message || "Unable to load finance reports.");
@@ -57,7 +57,7 @@ export default function FinanceReportsPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const downloadCsv = async () => {
     setDownloading(true);
