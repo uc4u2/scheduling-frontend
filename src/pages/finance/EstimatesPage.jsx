@@ -4,6 +4,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -23,6 +27,9 @@ import { useSnackbar } from "notistack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LaunchIcon from "@mui/icons-material/Launch";
 import LinkIcon from "@mui/icons-material/Link";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
+import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
@@ -32,12 +39,15 @@ import {
   convertEstimateToInvoice,
   createEstimateTemplate,
   createEstimateShareLink,
+  createFinanceInvoicePaymentLink,
   duplicateEstimate,
   getEstimate,
   listEstimateTemplates,
   listEstimates,
   listManagerClients,
+  reopenEstimateResponse,
   sendEstimate,
+  sendEstimateEmail,
   updateEstimate,
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
@@ -63,6 +73,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [workOrderSeed, setWorkOrderSeed] = useState(null);
   const [templateName, setTemplateName] = useState("");
   const [linkBusyId, setLinkBusyId] = useState(null);
+  const [paymentLinkBusyId, setPaymentLinkBusyId] = useState(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailTarget, setEmailTarget] = useState(null);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -179,6 +195,97 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open estimate link.", { variant: "error" });
     } finally {
       setLinkBusyId(null);
+    }
+  };
+
+  const openSendEmailDialog = (item) => {
+    setEmailTarget(item);
+    setEmailTo(item?.client_email || "");
+    setEmailMessage("");
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailTarget) return;
+    if (!String(emailTo || "").trim()) {
+      enqueueSnackbar("Enter an email address first.", { variant: "warning" });
+      return;
+    }
+    try {
+      setEmailSending(true);
+      await sendEstimateEmail(emailTarget.id, { email: emailTo.trim(), message: emailMessage.trim() || undefined });
+      enqueueSnackbar("Estimate email sent.", { variant: "success" });
+      setEmailDialogOpen(false);
+      setEmailTarget(null);
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to send estimate email.", { variant: "error" });
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const handlePrintEstimate = async (item) => {
+    try {
+      setLinkBusyId(item.id);
+      const publicUrl = item.public_url || (await ensureShareLink(item)).publicUrl;
+      window.open(`${publicUrl}${publicUrl.includes("?") ? "&" : "?"}print=1`, "_blank", "noopener,noreferrer");
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open print view.", { variant: "error" });
+    } finally {
+      setLinkBusyId(null);
+    }
+  };
+
+  const ensurePaymentLink = async (item) => {
+    if (!item?.converted_invoice_id) {
+      throw new Error("Convert the estimate to an invoice first.");
+    }
+    const payload = await createFinanceInvoicePaymentLink(item.converted_invoice_id);
+    const publicUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url;
+    if (!publicUrl) {
+      throw new Error("Payment link is not available.");
+    }
+    return { payload, publicUrl };
+  };
+
+  const handleCopyPaymentLink = async (item) => {
+    try {
+      setPaymentLinkBusyId(item.id);
+      const { publicUrl } = await ensurePaymentLink(item);
+      await navigator.clipboard.writeText(publicUrl);
+      enqueueSnackbar("Payment link copied.", { variant: "success" });
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create payment link.", { variant: "error" });
+    } finally {
+      setPaymentLinkBusyId(null);
+    }
+  };
+
+  const handleOpenPaymentLink = async (item) => {
+    try {
+      setPaymentLinkBusyId(item.id);
+      const publicUrl = item.converted_invoice_hosted_invoice_url || (await ensurePaymentLink(item)).publicUrl;
+      window.open(publicUrl, "_blank", "noopener,noreferrer");
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open payment link.", { variant: "error" });
+    } finally {
+      setPaymentLinkBusyId(null);
+    }
+  };
+
+  const handleReopenResponse = async (item) => {
+    try {
+      await reopenEstimateResponse(item.id);
+      enqueueSnackbar("Estimate reopened for revision.", { variant: "success" });
+      await load();
+      setEditing(item);
+      setDialogOpen(true);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to reopen estimate.", { variant: "error" });
     }
   };
 
@@ -322,8 +429,14 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                     <Stack spacing={0.75} alignItems="flex-start">
                       <FinanceStatusChip status={item.status} />
                       {item.public_url ? <Chip size="small" variant="outlined" label="Share link ready" /> : null}
+                      {item.public_viewed_at && !item.client_accepted_at && !item.client_rejected_at ? (
+                        <Chip size="small" color="info" variant="outlined" label="Viewed by client" />
+                      ) : null}
                       {item.client_accepted_at ? <Chip size="small" color="success" variant="outlined" label="Accepted by client" /> : null}
                       {item.client_rejected_at ? <Chip size="small" color="warning" variant="outlined" label="Rejected by client" /> : null}
+                      {item.converted_invoice_hosted_invoice_url ? (
+                        <Chip size="small" color="secondary" variant="outlined" label="Payment link ready" />
+                      ) : null}
                     </Stack>
                   </TableCell>
                   <TableCell>{formatCurrency(item.total, item.currency)}</TableCell>
@@ -355,6 +468,18 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                             disabled={linkBusyId === item.id}
                           >
                             Open Link
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Send the public estimate link by email using the existing mail system.">
+                        <span>
+                          <Button
+                            size="small"
+                            startIcon={<EmailOutlinedIcon />}
+                            onClick={() => openSendEmailDialog(item)}
+                            disabled={linkBusyId === item.id}
+                          >
+                            Send Estimate
                           </Button>
                         </span>
                       </Tooltip>
@@ -393,6 +518,46 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                       <Button size="small" variant="contained" onClick={() => handleConvert(item)} disabled={item.status === "converted_to_invoice"}>
                         Convert to Invoice
                       </Button>
+                      <Tooltip title="Create or reuse the hosted payment link for the invoice created from this estimate.">
+                        <span>
+                          <Button
+                            size="small"
+                            startIcon={<PaymentOutlinedIcon />}
+                            onClick={() => handleCopyPaymentLink(item)}
+                            disabled={!item.converted_invoice_id || paymentLinkBusyId === item.id}
+                          >
+                            Create / Copy Payment Link
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Open the hosted payment link for this finance invoice.">
+                        <span>
+                          <Button
+                            size="small"
+                            onClick={() => handleOpenPaymentLink(item)}
+                            disabled={!item.converted_invoice_id || paymentLinkBusyId === item.id}
+                          >
+                            Open Payment Link
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Open a clean print view. You can save it as PDF from the browser print dialog.">
+                        <span>
+                          <Button
+                            size="small"
+                            startIcon={<LocalPrintshopOutlinedIcon />}
+                            onClick={() => handlePrintEstimate(item)}
+                            disabled={linkBusyId === item.id}
+                          >
+                            Print / PDF
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      {(item.client_accepted_at || item.client_rejected_at) ? (
+                        <Button size="small" color="warning" onClick={() => handleReopenResponse(item)}>
+                          Revise and Resend
+                        </Button>
+                      ) : null}
                       <Button size="small" onClick={() => handleCreateWorkOrder(item)}>Create Work Order</Button>
                     </Stack>
                   </TableCell>
@@ -438,6 +603,32 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         estimates={items}
         prefillEstimate={workOrderSeed}
       />
+      <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Send Estimate</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <TextField
+              label="Recipient email"
+              value={emailTo}
+              onChange={(event) => setEmailTo(event.target.value)}
+            />
+            <TextField
+              label="Message (optional)"
+              multiline
+              minRows={4}
+              value={emailMessage}
+              onChange={(event) => setEmailMessage(event.target.value)}
+              helperText="The estimate link and totals will be added automatically."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmailDialogOpen(false)} disabled={emailSending}>Cancel</Button>
+          <Button variant="contained" onClick={handleSendEmail} disabled={emailSending}>
+            {emailSending ? "Sending..." : "Send"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

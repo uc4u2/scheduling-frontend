@@ -17,7 +17,8 @@ import {
   Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import { formatCurrency } from "../../../utils/formatters";
 import { getPublicEstimate, respondPublicEstimate } from "../financeApi";
 
@@ -48,6 +49,7 @@ function EstimateTotals({ estimate }) {
 export default function PublicEstimatePage() {
   const theme = useTheme();
   const { token } = useParams();
+  const [searchParams] = useSearchParams();
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -59,6 +61,7 @@ export default function PublicEstimatePage() {
     () => Boolean(estimate?.client_accepted_at || estimate?.client_rejected_at),
     [estimate]
   );
+  const printMode = searchParams.get("print") === "1";
 
   const loadEstimate = async () => {
     setLoading(true);
@@ -82,6 +85,12 @@ export default function PublicEstimatePage() {
   useEffect(() => {
     loadEstimate();
   }, [token]);
+
+  useEffect(() => {
+    if (!printMode || !estimate || typeof window === "undefined") return;
+    const timer = window.setTimeout(() => window.print(), 350);
+    return () => window.clearTimeout(timer);
+  }, [printMode, estimate]);
 
   const handleRespond = async (decision) => {
     try {
@@ -136,6 +145,16 @@ export default function PublicEstimatePage() {
               <Typography color="text.secondary">
                 {estimate?.estimate_number || ""}
               </Typography>
+              <Stack direction="row" spacing={1} sx={{ pt: 0.5 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LocalPrintshopOutlinedIcon />}
+                  onClick={() => window.print()}
+                >
+                  Print / Save PDF
+                </Button>
+              </Stack>
             </Stack>
 
             {error ? <Alert severity="error">{error}</Alert> : null}
@@ -200,45 +219,49 @@ export default function PublicEstimatePage() {
               </Stack>
             ) : null}
 
-            <Divider />
+            {!printMode ? (
+              <>
+                <Divider />
 
-            <Stack spacing={1.5}>
-              <Typography fontWeight={700}>Respond to this estimate</Typography>
-              <TextField
-                label="Your name"
-                value={form.name}
-                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-              />
-              <TextField
-                label="Your email"
-                value={form.email}
-                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-              />
-              <TextField
-                label="Note (optional)"
-                multiline
-                minRows={3}
-                value={form.note}
-                onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
-              />
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                <Button
-                  variant="contained"
-                  onClick={() => handleRespond("accept")}
-                  disabled={submitting || alreadyResponded}
-                >
-                  Accept Estimate
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="warning"
-                  onClick={() => handleRespond("reject")}
-                  disabled={submitting || alreadyResponded}
-                >
-                  Reject Estimate
-                </Button>
-              </Stack>
-            </Stack>
+                <Stack spacing={1.5}>
+                  <Typography fontWeight={700}>Respond to this estimate</Typography>
+                  <TextField
+                    label="Your name"
+                    value={form.name}
+                    onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                  <TextField
+                    label="Your email"
+                    value={form.email}
+                    onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                  />
+                  <TextField
+                    label="Note (optional)"
+                    multiline
+                    minRows={3}
+                    value={form.note}
+                    onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
+                  />
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                    <Button
+                      variant="contained"
+                      onClick={() => handleRespond("accept")}
+                      disabled={submitting || alreadyResponded}
+                    >
+                      Accept Estimate
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      onClick={() => handleRespond("reject")}
+                      disabled={submitting || alreadyResponded}
+                    >
+                      Reject Estimate
+                    </Button>
+                  </Stack>
+                </Stack>
+              </>
+            ) : null}
           </Stack>
         </Paper>
       </Container>
