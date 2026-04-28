@@ -9,7 +9,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import { formatCurrency } from "../../utils/formatters";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
@@ -84,38 +83,7 @@ const buildAttentionCards = (overview = {}, actions = []) => {
   ];
 };
 
-const workflowGroups = [
-  {
-    title: "Start a job",
-    helper: "Open a new request, price it, or create a work order when the plan is ready.",
-    items: [
-      { label: "New Quote", action: "quote" },
-      { label: "New Estimate", action: "estimate" },
-      { label: "New Work Order", action: "work-order" },
-    ],
-  },
-  {
-    title: "Run the job",
-    helper: "Move from planning into team assignment, materials, and field updates.",
-    items: [
-      { label: "Assign Team", target: "finance-work-orders" },
-      { label: "Materials & Supplies", target: "finance-inventory" },
-      { label: "Field Reports", target: "finance-field-reports" },
-    ],
-  },
-  {
-    title: "Close the loop",
-    helper: "Approve field work, review job performance, and finish month-end follow-up.",
-    items: [
-      { label: "Reviews", target: "finance-reviews" },
-      { label: "Profitability", target: "finance-profitability" },
-      { label: "Month-End", target: "finance-month-end" },
-    ],
-  },
-];
-
 export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
-  const theme = useTheme();
   const [overview, setOverview] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -147,13 +115,6 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   const actions = useMemo(() => Array.isArray(overview?.today_action_list) ? overview.today_action_list : [], [overview]);
   const attentionCards = useMemo(() => buildAttentionCards(overview || {}, actions), [overview, actions]);
 
-  const renderActionButton = (item) => {
-    if (item.action) {
-      return <Button size="small" onClick={() => onQuickAction?.(item.action)}>{item.label}</Button>;
-    }
-    return <Button size="small" onClick={() => onNavigate?.(item.target)}>{item.label}</Button>;
-  };
-
   if (loading) {
     return (
       <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
@@ -170,14 +131,9 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
     <Stack spacing={3}>
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
         <Stack spacing={2}>
-          <Box>
-            <Typography variant="h6" fontWeight={900} sx={{ mb: 0.75 }}>
-              Today needs your attention
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Start here when you want to know what should be handled next.
-            </Typography>
-          </Box>
+          <Typography variant="h6" fontWeight={900}>
+            Today needs your attention
+          </Typography>
 
           {attentionCards.some((card) => Number(card.count) > 0) ? (
             <Grid container spacing={2}>
@@ -199,43 +155,6 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
               description="Quotes, jobs, receipts, and month-end follow-up are all in a good spot at the moment."
             />
           )}
-        </Stack>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
-        <Stack spacing={2}>
-          <Box>
-            <Typography variant="h6" fontWeight={900} sx={{ mb: 0.75 }}>
-              Continue the workflow
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Pick the stage you are in and jump straight to the right workspace.
-            </Typography>
-          </Box>
-          <Grid container spacing={2}>
-            {workflowGroups.map((group) => (
-              <Grid item xs={12} lg={4} key={group.title}>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 1.5,
-                    borderColor: theme.palette.divider,
-                    backgroundColor: theme.palette.background.paper,
-                    height: "100%",
-                  }}
-                >
-                  <Stack spacing={1.5}>
-                    <Typography variant="subtitle1" fontWeight={900}>{group.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">{group.helper}</Typography>
-                    <Stack direction={{ xs: "column", sm: "row", lg: "column" }} spacing={1} flexWrap="wrap">
-                      {group.items.map((item) => renderActionButton(item))}
-                    </Stack>
-                  </Stack>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
         </Stack>
       </Paper>
 
@@ -270,9 +189,6 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
         </Grid>
       </Box>
 
-      <Alert severity="info" sx={{ borderRadius: 1.5, backgroundColor: theme.palette.background.paper }}>
-        Employees report what happened on site. Managers review it before inventory is deducted or invoice extras are made official.
-      </Alert>
     </Stack>
   );
 }

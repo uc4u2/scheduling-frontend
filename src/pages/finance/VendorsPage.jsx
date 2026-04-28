@@ -154,7 +154,7 @@ export default function VendorsPage() {
       ) : filtered.length === 0 ? (
         <FinanceEmptyState
           title="No vendors yet"
-          description="Track supplier contacts here so purchases and stock-in records stay organized."
+          description="Add your first vendor."
           actionLabel="Add vendor"
           onAction={() => { setSelectedVendor(null); setEditorOpen(true); }}
         />

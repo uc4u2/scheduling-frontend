@@ -433,7 +433,7 @@ export default function ReviewApprovalPage() {
       ) : reviews.length === 0 ? (
         <FinanceEmptyState
           title="No reviews yet"
-          description="Create manager reviews here after field reports come in from the job site."
+          description="No reviews created yet."
           actionLabel="Create review"
           onAction={handleCreateReview}
         />

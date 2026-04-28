@@ -58,7 +58,6 @@ export default function ProfitabilityReportsPage() {
           <Button variant="contained" onClick={load}>Refresh</Button>
         </Stack>
       </Paper>
-      <Alert severity="info">Review job performance before month-end.</Alert>
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
@@ -74,7 +73,6 @@ export default function ProfitabilityReportsPage() {
             <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Linked expenses" value={formatMoney(report?.linked_expense_total)} accent="info" /></Grid>
             <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin" value={formatMoney(report?.estimated_margin)} accent="success" /></Grid>
           </Grid>
-          <Alert severity="info">Review this with your operating numbers first, then use month-end exports for accountant handoff.</Alert>
         </>
       )}
     </Stack>

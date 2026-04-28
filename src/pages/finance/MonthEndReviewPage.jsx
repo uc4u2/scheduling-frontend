@@ -84,7 +84,6 @@ export default function MonthEndReviewPage() {
           <Button variant="outlined" onClick={handleExport} disabled={exporting}>{exporting ? "Preparing CSV..." : "Download CSV"}</Button>
         </Stack>
       </Paper>
-      <Alert severity="info">Checklist and CSV export pack for accountant handoff.</Alert>
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
