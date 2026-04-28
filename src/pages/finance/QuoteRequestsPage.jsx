@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   Grid,
   InputLabel,
@@ -20,10 +23,12 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useTheme } from "@mui/material/styles";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import {
@@ -51,6 +56,33 @@ const blankForm = {
   internal_notes: "",
 };
 
+const normalizeText = (value) => String(value || "").trim().toLowerCase();
+
+const formatSourceLabel = (requestType, sourceType) => {
+  const raw = normalizeText(requestType || sourceType);
+  if (!raw) return "Manual entry";
+  if (raw === "whatsapp") return "WhatsApp note";
+  if (raw === "phone") return "Phone call";
+  if (raw === "instagram") return "Instagram/DM";
+  if (raw === "manual") return "Manual entry";
+  if (raw === "website" || raw === "website form" || raw === "website_form") return "Website form";
+  return String(requestType || sourceType || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const hasEmailMismatch = (item) =>
+  normalizeText(item?.contact_email) && normalizeText(item?.client_email) &&
+  normalizeText(item.contact_email) !== normalizeText(item.client_email);
+
+const hasNameMismatch = (item) => {
+  const contact = normalizeText(item?.contact_name);
+  const client = normalizeText(item?.client_name);
+  if (!contact || !client) return false;
+  if (contact === client) return false;
+  return !contact.includes(client) && !client.includes(contact);
+};
+
 export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
@@ -71,6 +103,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const [linkTarget, setLinkTarget] = useState(null);
   const [linkClientId, setLinkClientId] = useState("");
   const [newClient, setNewClient] = useState({ name: "", email: "", phone: "" });
+  const [confirmEstimateTarget, setConfirmEstimateTarget] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -130,6 +163,18 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     setDialogOpen(true);
   };
 
+  const prefillClientFromContact = (item) => ({
+    name: item?.contact_name || "",
+    email: item?.contact_email || "",
+    phone: item?.contact_phone || "",
+  });
+
+  const openLinkClientDialog = (item, preferCreate = false) => {
+    setLinkTarget(item);
+    setLinkClientId(preferCreate ? "" : item?.client_id ? String(item.client_id) : "");
+    setNewClient(prefillClientFromContact(item));
+  };
+
   const saveQuote = async () => {
     if (!form.title) {
       enqueueSnackbar("Title is required.", { variant: "error" });
@@ -164,15 +209,30 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     }
   };
 
-  const handleCreateEstimate = async (item) => {
+  const createEstimateForQuote = async (item) => {
     try {
       const res = await createEstimateFromQuote(item.id);
-      enqueueSnackbar(`Estimate created${res?.estimate_number ? `: ${res.estimate_number}` : ""}.`, { variant: "success" });
+      const estimate = res?.estimate || {};
+      const clientName = item?.client_name || estimate?.client_name || "the linked client";
+      enqueueSnackbar(`Estimate created for ${clientName}.`, { variant: "success" });
       await load();
       onNavigate?.("finance-estimates");
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create estimate.", { variant: "error" });
     }
+  };
+
+  const handleCreateEstimate = async (item) => {
+    if (!item?.client_id) {
+      enqueueSnackbar("Link or create a client before creating an estimate.", { variant: "warning" });
+      openLinkClientDialog(item, true);
+      return;
+    }
+    if (hasEmailMismatch(item) || hasNameMismatch(item)) {
+      setConfirmEstimateTarget(item);
+      return;
+    }
+    await createEstimateForQuote(item);
   };
 
   const submitLinkClient = async () => {
@@ -242,8 +302,16 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
               <TableRow>
                 <TableCell>Title</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Client</TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="inherit">Source</Typography>
+                    <Tooltip title="This is a source label unless automation is connected.">
+                      <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
+                <TableCell>Request Contact</TableCell>
+                <TableCell>Linked Client</TableCell>
                 <TableCell>Timeline</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell>Description</TableCell>
@@ -259,12 +327,35 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                   </TableCell>
                   <TableCell><FinanceStatusChip status={item.status} /></TableCell>
                   <TableCell>
-                    <Typography variant="body2">{item.contact_name || "-"}</Typography>
-                    <Typography variant="body2" color="text.secondary">{item.contact_email || item.contact_phone || "-"}</Typography>
+                    <Typography variant="body2">{formatSourceLabel(item.request_type, item.source_type)}</Typography>
+                    {item.source_ref ? <Typography variant="body2" color="text.secondary">{item.source_ref}</Typography> : null}
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{item.client_name || "Not linked"}</Typography>
-                    <Typography variant="body2" color="text.secondary">{item.client_email || ""}</Typography>
+                    <Typography variant="body2">{item.contact_name || "-"}</Typography>
+                    <Typography variant="body2" color="text.secondary">{item.contact_email || "-"}</Typography>
+                    <Typography variant="body2" color="text.secondary">{item.contact_phone || "-"}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Stack spacing={0.75}>
+                      <Box>
+                        <Typography variant="body2">{item.client_name || "Not linked"}</Typography>
+                        <Typography variant="body2" color="text.secondary">{item.client_email || ""}</Typography>
+                      </Box>
+                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          color={item.client_id ? "success" : "default"}
+                          label={item.client_id ? "Linked" : "Not linked"}
+                        />
+                        {hasEmailMismatch(item) ? (
+                          <Chip size="small" variant="outlined" color="warning" label="Contact differs from client" />
+                        ) : null}
+                        {hasNameMismatch(item) ? (
+                          <Chip size="small" variant="outlined" color="warning" label="Check client match" />
+                        ) : null}
+                      </Stack>
+                    </Stack>
                   </TableCell>
                   <TableCell>{item.preferred_timeline || "-"}</TableCell>
                   <TableCell>{item.created_at ? formatDateTimeInTz(item.created_at, timezone) : "-"}</TableCell>
@@ -275,8 +366,10 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                     <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
                       <Button size="small" onClick={() => openEdit(item)}>Edit</Button>
                       <Button size="small" onClick={() => patchStatus(item, "reviewed")}>Mark Reviewed</Button>
-                      <Button size="small" onClick={() => setLinkTarget(item)}>Link Client</Button>
-                      <Button size="small" variant="contained" onClick={() => handleCreateEstimate(item)}>Create Estimate</Button>
+                      <Button size="small" onClick={() => openLinkClientDialog(item, !item.client_id)}>Link or Create Client</Button>
+                      <Button size="small" variant="contained" onClick={() => handleCreateEstimate(item)} disabled={!item.client_id}>
+                        Create Estimate
+                      </Button>
                       <Button size="small" color="warning" onClick={() => patchStatus(item, "closed")}>Close</Button>
                       <Button size="small" color="error" onClick={() => patchStatus(item, "rejected")}>Reject</Button>
                     </Stack>
@@ -302,18 +395,71 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>{editing ? "Edit quote request" : "New quote request"}</DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Title" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Request type" value={form.request_type} onChange={(e) => setForm((prev) => ({ ...prev, request_type: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Contact name" value={form.contact_name} onChange={(e) => setForm((prev) => ({ ...prev, contact_name: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Contact email" value={form.contact_email} onChange={(e) => setForm((prev) => ({ ...prev, contact_email: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Contact phone" value={form.contact_phone} onChange={(e) => setForm((prev) => ({ ...prev, contact_phone: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Preferred timeline" value={form.preferred_timeline} onChange={(e) => setForm((prev) => ({ ...prev, preferred_timeline: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Service address" value={form.service_address} onChange={(e) => setForm((prev) => ({ ...prev, service_address: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Description" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} multiline minRows={3} /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Visible notes" value={form.visible_notes} onChange={(e) => setForm((prev) => ({ ...prev, visible_notes: e.target.value }))} multiline minRows={2} /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Internal notes" value={form.internal_notes} onChange={(e) => setForm((prev) => ({ ...prev, internal_notes: e.target.value }))} multiline minRows={2} /></Grid>
-          </Grid>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>Request details</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}><TextField fullWidth label="Title" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label="Source" value={form.request_type} onChange={(e) => setForm((prev) => ({ ...prev, request_type: e.target.value }))} helperText="Examples: Phone call, WhatsApp note, Website form." /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label="Preferred timeline" value={form.preferred_timeline} onChange={(e) => setForm((prev) => ({ ...prev, preferred_timeline: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label="Service address" value={form.service_address} onChange={(e) => setForm((prev) => ({ ...prev, service_address: e.target.value }))} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Description" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} multiline minRows={3} /></Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>Request contact</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}><TextField fullWidth label="Contact name" value={form.contact_name} onChange={(e) => setForm((prev) => ({ ...prev, contact_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth label="Contact email" value={form.contact_email} onChange={(e) => setForm((prev) => ({ ...prev, contact_email: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth label="Contact phone" value={form.contact_phone} onChange={(e) => setForm((prev) => ({ ...prev, contact_phone: e.target.value }))} /></Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>Linked client</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Contact is who requested the quote. Client is the official customer record used for estimates, invoices, and work orders.
+              </Typography>
+              <Paper variant="outlined" sx={{ mt: 1.25, p: 1.5, borderColor: theme.palette.divider }}>
+                {editing?.client_id ? (
+                  <Stack spacing={1}>
+                    <Typography variant="body2" fontWeight={700}>{editing.client_name || "Linked client"}</Typography>
+                    <Typography variant="body2" color="text.secondary">{editing.client_email || "-"}</Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Chip size="small" variant="outlined" color="success" label="Linked" />
+                      {hasEmailMismatch(editing) ? <Chip size="small" variant="outlined" color="warning" label="Contact differs from client" /> : null}
+                      {hasNameMismatch(editing) ? <Chip size="small" variant="outlined" color="warning" label="Check client match" /> : null}
+                    </Stack>
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    {editing ? "No client linked yet." : "Save the quote first, then link or create the client."}
+                  </Typography>
+                )}
+              </Paper>
+              {editing ? (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.25 }}>
+                  <Button variant="outlined" onClick={() => openLinkClientDialog(editing, false)}>Link existing client</Button>
+                  <Button variant="outlined" onClick={() => openLinkClientDialog(editing, true)}>Create client from contact</Button>
+                </Stack>
+              ) : null}
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>Notes</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}><TextField fullWidth label="Visible notes" value={form.visible_notes} onChange={(e) => setForm((prev) => ({ ...prev, visible_notes: e.target.value }))} multiline minRows={2} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Internal notes" value={form.internal_notes} onChange={(e) => setForm((prev) => ({ ...prev, internal_notes: e.target.value }))} multiline minRows={2} /></Grid>
+              </Grid>
+            </Box>
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
@@ -322,10 +468,10 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       </Dialog>
 
       <Dialog open={Boolean(linkTarget)} onClose={() => setLinkTarget(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Link client</DialogTitle>
+        <DialogTitle>Link or Create Client</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
-            <Alert severity="info">Link an existing client or create a simple client record for this quote request.</Alert>
+            <Alert severity="info">Link an existing client or create a client from the request contact.</Alert>
             <FormControl fullWidth>
               <InputLabel>Existing client</InputLabel>
               <Select label="Existing client" value={linkClientId} onChange={(e) => setLinkClientId(e.target.value)}>
@@ -351,6 +497,40 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
         <DialogActions>
           <Button onClick={() => setLinkTarget(null)}>Cancel</Button>
           <Button variant="contained" onClick={submitLinkClient}>Link client</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(confirmEstimateTarget)} onClose={() => setConfirmEstimateTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm client for estimate</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Typography variant="body2">
+              The request contact is different from the linked client. Continue using this client for the estimate?
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">Request contact</Typography>
+              <Typography variant="body2">{confirmEstimateTarget?.contact_name || "-"}</Typography>
+              <Typography variant="body2" color="text.secondary">{confirmEstimateTarget?.contact_email || confirmEstimateTarget?.contact_phone || "-"}</Typography>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">Linked client</Typography>
+              <Typography variant="body2">{confirmEstimateTarget?.client_name || "-"}</Typography>
+              <Typography variant="body2" color="text.secondary">{confirmEstimateTarget?.client_email || "-"}</Typography>
+            </Paper>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmEstimateTarget(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const target = confirmEstimateTarget;
+              setConfirmEstimateTarget(null);
+              if (target) await createEstimateForQuote(target);
+            }}
+          >
+            Continue
+          </Button>
         </DialogActions>
       </Dialog>
     </Stack>

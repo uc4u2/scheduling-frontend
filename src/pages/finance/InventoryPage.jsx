@@ -22,12 +22,14 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useSnackbar } from "notistack";
 import {
   adjustInventoryItem,
+  createInventoryCategory,
   createInventoryItem,
   deleteInventoryItem,
   listInventoryCategories,
@@ -58,6 +60,11 @@ const blankAdjustmentForm = {
   note: "",
 };
 
+const blankCategoryForm = {
+  name: "",
+  is_active: true,
+};
+
 const parseNumber = (value, fallback = 0) => {
   if (value === "" || value === null || value === undefined) return fallback;
   const parsed = Number(value);
@@ -71,7 +78,51 @@ const formatMoney = (value) =>
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
-function InventoryItemDialog({ open, onClose, onSubmit, categories, initialValues }) {
+function InventoryCategoryDialog({ open, onClose, onSubmit }) {
+  const [form, setForm] = useState(blankCategoryForm);
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(blankCategoryForm);
+  }, [open]);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Add Materials Category</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2} sx={{ mt: 0.25 }}>
+          <Tooltip title="Used to organize stock items, not expense reporting.">
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ width: "fit-content" }}>
+              <Typography variant="caption" color="text.secondary">Materials categories</Typography>
+              <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+            </Stack>
+          </Tooltip>
+          <TextField
+            fullWidth
+            label="Materials category name"
+            value={form.name}
+            onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={form.is_active}
+                onChange={(e) => setForm((current) => ({ ...current, is_active: e.target.checked }))}
+              />
+            }
+            label="Active materials category"
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" onClick={() => onSubmit({ ...form, parent_group: "materials" })}>Create materials category</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function InventoryItemDialog({ open, onClose, onSubmit, categories, initialValues, suggestedCategoryId, onOpenCategoryDialog }) {
   const [form, setForm] = useState(blankItemForm);
 
   useEffect(() => {
@@ -79,14 +130,19 @@ function InventoryItemDialog({ open, onClose, onSubmit, categories, initialValue
     setForm({
       ...blankItemForm,
       ...initialValues,
-      category_id: initialValues?.category_id ?? "",
+      category_id: suggestedCategoryId ?? initialValues?.category_id ?? "",
       cost_per_unit: initialValues?.cost_per_unit ?? "0",
       optional_sell_price: initialValues?.optional_sell_price ?? "",
       low_stock_threshold: initialValues?.low_stock_threshold ?? "",
       taxable: Boolean(initialValues?.taxable),
       is_active: initialValues?.is_active !== false,
     });
-  }, [open, initialValues]);
+  }, [open, initialValues, suggestedCategoryId]);
+
+  useEffect(() => {
+    if (!open || suggestedCategoryId == null || suggestedCategoryId === "") return;
+    setForm((current) => ({ ...current, category_id: suggestedCategoryId }));
+  }, [open, suggestedCategoryId]);
 
   const handleChange = (field, value) => setForm((current) => ({ ...current, [field]: value }));
 
@@ -100,9 +156,9 @@ function InventoryItemDialog({ open, onClose, onSubmit, categories, initialValue
           </Grid>
           <Grid item xs={12} md={6}>
             <FormControl fullWidth>
-              <InputLabel>Category</InputLabel>
+              <InputLabel>Materials Category</InputLabel>
               <Select
-                label="Category"
+                label="Materials Category"
                 value={form.category_id}
                 onChange={(e) => handleChange("category_id", e.target.value)}
               >
@@ -112,6 +168,12 @@ function InventoryItemDialog({ open, onClose, onSubmit, categories, initialValue
                 ))}
               </Select>
             </FormControl>
+            <Tooltip title="Used to organize stock items, not expense reporting.">
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                Used to organize stock items, not expense reporting.
+              </Typography>
+            </Tooltip>
+            <Button size="small" sx={{ mt: 1 }} onClick={onOpenCategoryDialog}>Add Materials Category</Button>
           </Grid>
           <Grid item xs={12} md={6}><TextField fullWidth label="SKU" value={form.sku} onChange={(e) => handleChange("sku", e.target.value)} /></Grid>
           <Grid item xs={12} md={6}><TextField fullWidth label="Unit" value={form.unit} onChange={(e) => handleChange("unit", e.target.value)} /></Grid>
@@ -243,7 +305,6 @@ function InventoryTransactionsDialog({ open, onClose, item, transactions }) {
 }
 
 export default function InventoryPage() {
-  const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
@@ -257,9 +318,11 @@ export default function InventoryPage() {
   const [categoryId, setCategoryId] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [editorCategoryId, setEditorCategoryId] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -276,7 +339,7 @@ export default function InventoryPage() {
           per_page: perPage,
         }),
       ]);
-      setCategories(Array.isArray(categoriesRes?.items) ? categoriesRes.items : []);
+      setCategories(Array.isArray(categoriesRes?.items) ? categoriesRes.items : Array.isArray(categoriesRes) ? categoriesRes : []);
       setItems(Array.isArray(itemsRes?.items) ? itemsRes.items : []);
       setPagination(itemsRes?.pagination || null);
     } catch (err) {
@@ -338,6 +401,21 @@ export default function InventoryPage() {
     }
   };
 
+  const handleCreateCategory = async (payload) => {
+    try {
+      const res = await createInventoryCategory(payload);
+      const createdCategory = res?.category || null;
+      enqueueSnackbar("Category added.", { variant: "success" });
+      setCategoryDialogOpen(false);
+      await load();
+      if (createdCategory?.id) {
+        setEditorCategoryId(createdCategory.id);
+      }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to add category.", { variant: "error" });
+    }
+  };
+
   const handleAdjust = async (payload) => {
     try {
       await adjustInventoryItem(selectedItem.id, payload);
@@ -373,9 +451,9 @@ export default function InventoryPage() {
               }}
             />
             <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel>Category</InputLabel>
-              <Select label="Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
-                <MenuItem value="">All categories</MenuItem>
+              <InputLabel>Materials Category</InputLabel>
+              <Select label="Materials Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
+                <MenuItem value="">All materials categories</MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>
                 ))}
@@ -383,11 +461,13 @@ export default function InventoryPage() {
             </FormControl>
             <FormControlLabel control={<Checkbox checked={lowStockOnly} onChange={(e) => { setLowStockOnly(e.target.checked); setPage(1); }} />} label="Low stock only" />
             <Button variant="outlined" onClick={load}>Refresh</Button>
+            <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>Add Materials Category</Button>
           </Stack>
           <Button
             variant="contained"
             onClick={() => {
               setSelectedItem(null);
+              setEditorCategoryId("");
               setEditorOpen(true);
             }}
           >
@@ -407,6 +487,7 @@ export default function InventoryPage() {
           actionLabel="Add item"
           onAction={() => {
             setSelectedItem(null);
+            setEditorCategoryId("");
             setEditorOpen(true);
           }}
         />
@@ -471,10 +552,18 @@ export default function InventoryPage() {
 
       <InventoryItemDialog
         open={editorOpen}
-        onClose={() => { setEditorOpen(false); setSelectedItem(null); }}
+        onClose={() => { setEditorOpen(false); setSelectedItem(null); setEditorCategoryId(""); }}
         onSubmit={handleSaveItem}
         categories={categories.filter((category) => category.is_active !== false)}
         initialValues={selectedItem}
+        suggestedCategoryId={editorCategoryId}
+        onOpenCategoryDialog={() => setCategoryDialogOpen(true)}
+      />
+
+      <InventoryCategoryDialog
+        open={categoryDialogOpen}
+        onClose={() => setCategoryDialogOpen(false)}
+        onSubmit={handleCreateCategory}
       />
 
       <InventoryAdjustmentDialog

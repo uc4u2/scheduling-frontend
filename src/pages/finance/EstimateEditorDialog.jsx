@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -201,6 +202,12 @@ export default function EstimateEditorDialog({
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+            {estimate?.quote_request_id ? <Chip size="small" variant="outlined" color="info" label="Created from quote request" /> : null}
+            <Typography variant="caption" color="text.secondary">
+              Estimate is the proposed price. Convert it to an invoice when payment is needed, or create a work order when the job is ready to schedule.
+            </Typography>
+          </Stack>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>

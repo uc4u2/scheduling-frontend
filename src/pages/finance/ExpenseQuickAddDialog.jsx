@@ -15,7 +15,10 @@ import {
   Switch,
   FormControlLabel,
   TextField,
+  Tooltip,
+  Typography,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { createExpense, updateExpense } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
@@ -88,7 +91,7 @@ export default function ExpenseQuickAddDialog({
       return;
     }
     if (!form.category_id) {
-      setError("Choose a category.");
+      setError("Choose an expense category.");
       return;
     }
     setLoading(true);
@@ -140,8 +143,8 @@ export default function ExpenseQuickAddDialog({
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select label="Category" value={form.category_id} onChange={(e) => setField("category_id", e.target.value)}>
+                <InputLabel>Expense Category</InputLabel>
+                <Select label="Expense Category" value={form.category_id} onChange={(e) => setField("category_id", e.target.value)}>
                   {categories.map((category) => (
                     <MenuItem key={category.id} value={category.id}>
                       {category.name}
@@ -149,6 +152,12 @@ export default function ExpenseQuickAddDialog({
                   ))}
                 </Select>
               </FormControl>
+              <Tooltip title="Used for expense reports and accountant exports.">
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1, width: "fit-content" }}>
+                  <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">Used for expense reports and accountant exports.</Typography>
+                </Stack>
+              </Tooltip>
             </Grid>
             <Grid item xs={12} md={3}>
               <ThemedDateField

@@ -20,8 +20,10 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useSnackbar } from "notistack";
 import ExpenseQuickAddDialog from "./ExpenseQuickAddDialog";
 import ThemedDateField from "../../components/ui/ThemedDateField";
@@ -104,7 +106,7 @@ export default function ExpensesPage({ createNonce }) {
 
   const saveCategory = async () => {
     if (!newCategory.name || !newCategory.slug) {
-      enqueueSnackbar("Category name and slug are required.", { variant: "error" });
+      enqueueSnackbar("Expense category name and slug are required.", { variant: "error" });
       return;
     }
     try {
@@ -114,7 +116,7 @@ export default function ExpensesPage({ createNonce }) {
       setNewCategory({ name: "", slug: "", parent_group: "operations" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create category.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create expense category.", { variant: "error" });
     }
   };
 
@@ -147,9 +149,9 @@ export default function ExpensesPage({ createNonce }) {
             }}
           />
           <FormControl size="small" sx={{ minWidth: 190 }}>
-            <InputLabel>Category</InputLabel>
-            <Select label="Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
-              <MenuItem value="">All categories</MenuItem>
+            <InputLabel>Expense Category</InputLabel>
+            <Select label="Expense Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
+              <MenuItem value="">All expense categories</MenuItem>
               {categories.map((category) => (
                 <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>
               ))}
@@ -167,7 +169,7 @@ export default function ExpensesPage({ createNonce }) {
           <Button variant="outlined" onClick={load}>Refresh</Button>
         </Stack>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-          <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>Add category</Button>
+          <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>Add Expense Category</Button>
           <Button variant="contained" onClick={() => { setEditing(null); setDialogOpen(true); }}>Add Expense</Button>
         </Stack>
       </Stack>
@@ -192,7 +194,7 @@ export default function ExpensesPage({ createNonce }) {
                 <TableCell>Date</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Vendor</TableCell>
-                <TableCell>Category</TableCell>
+                <TableCell>Expense Category</TableCell>
                 <TableCell>Amount</TableCell>
                 <TableCell>Tax</TableCell>
                 <TableCell>Total</TableCell>
@@ -274,15 +276,22 @@ export default function ExpensesPage({ createNonce }) {
       </Dialog>
 
       <Dialog open={categoryDialogOpen} onClose={() => setCategoryDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Add expense category</DialogTitle>
+        <DialogTitle>Add Expense Category</DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}><TextField fullWidth label="Category name" value={newCategory.name} onChange={(e) => setNewCategory((prev) => ({ ...prev, name: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField fullWidth label="Slug" value={newCategory.slug} onChange={(e) => setNewCategory((prev) => ({ ...prev, slug: e.target.value }))} helperText="Use lowercase words with dashes." /></Grid>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            <Tooltip title="Used for expense reports and accountant exports.">
+              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ width: "fit-content" }}>
+                <Typography variant="caption" color="text.secondary">Expense categories</Typography>
+                <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              </Stack>
+            </Tooltip>
+            <Grid container spacing={2}>
+              <Grid item xs={12}><TextField fullWidth label="Expense category name" value={newCategory.name} onChange={(e) => setNewCategory((prev) => ({ ...prev, name: e.target.value }))} /></Grid>
+              <Grid item xs={12}><TextField fullWidth label="Slug" value={newCategory.slug} onChange={(e) => setNewCategory((prev) => ({ ...prev, slug: e.target.value }))} helperText="Use lowercase words with dashes." /></Grid>
             <Grid item xs={12}>
               <FormControl fullWidth>
-                <InputLabel>Parent group</InputLabel>
-                <Select label="Parent group" value={newCategory.parent_group} onChange={(e) => setNewCategory((prev) => ({ ...prev, parent_group: e.target.value }))}>
+                <InputLabel>Expense group</InputLabel>
+                <Select label="Expense group" value={newCategory.parent_group} onChange={(e) => setNewCategory((prev) => ({ ...prev, parent_group: e.target.value }))}>
                   <MenuItem value="utilities_telecom">Utilities & Telecom</MenuItem>
                   <MenuItem value="travel_meals">Travel & Meals</MenuItem>
                   <MenuItem value="office_admin">Office & Admin</MenuItem>
@@ -294,11 +303,12 @@ export default function ExpensesPage({ createNonce }) {
                 </Select>
               </FormControl>
             </Grid>
-          </Grid>
+            </Grid>
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCategoryDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={saveCategory}>Create category</Button>
+          <Button variant="contained" onClick={saveCategory}>Create expense category</Button>
         </DialogActions>
       </Dialog>
     </Stack>

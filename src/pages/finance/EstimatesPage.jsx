@@ -15,9 +15,11 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
@@ -27,10 +29,12 @@ import {
   convertEstimateToInvoice,
   createEstimateTemplate,
   duplicateEstimate,
+  getEstimate,
   listEstimateTemplates,
   listEstimates,
   listManagerClients,
   sendEstimate,
+  updateEstimate,
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
@@ -109,10 +113,20 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const handleSend = async (item) => {
     try {
       await sendEstimate(item.id);
-      enqueueSnackbar("Estimate marked as sent.", { variant: "success" });
+      enqueueSnackbar("Estimate marked as sent manually.", { variant: "success" });
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to mark estimate as sent.", { variant: "error" });
+    }
+  };
+
+  const handleManualStatus = async (item, nextStatus, successMessage) => {
+    try {
+      await updateEstimate(item.id, { status: nextStatus });
+      enqueueSnackbar(successMessage, { variant: "success" });
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to update estimate status.", { variant: "error" });
     }
   };
 
@@ -132,12 +146,51 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       const res = await convertEstimateToInvoice(item.id);
       const invoiceNumber = res?.invoice?.invoice_number || res?.invoice_number || res?.invoice?.number;
       enqueueSnackbar(
-        invoiceNumber ? `Estimate converted to invoice ${invoiceNumber}.` : "Estimate converted to invoice.",
+        invoiceNumber ? `Invoice created: ${invoiceNumber}.` : "Invoice created.",
         { variant: "success" }
       );
+      enqueueSnackbar("Hosted payment link creation for finance invoices is not available yet. Use invoice records for now.", {
+        variant: "info",
+      });
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to convert estimate to invoice.", { variant: "error" });
+    }
+  };
+
+  const handleCopySummary = async (item) => {
+    try {
+      const detail = await getEstimate(item.id);
+      const estimate = detail?.estimate || detail || item;
+      const lines = Array.isArray(estimate?.line_items) ? estimate.line_items : [];
+      const summary = [
+        `Estimate ${estimate.estimate_number || `#${estimate.id}`}`,
+        estimate.title || "",
+        estimate.client_name ? `Client: ${estimate.client_name}` : "",
+        estimate.client_email ? `Email: ${estimate.client_email}` : "",
+        "",
+        "Items:",
+        ...(lines.length
+          ? lines.map((line) => {
+              const quantity = Number(line.quantity || 0);
+              const price = formatCurrency(line.unit_price || 0, estimate.currency);
+              return `- ${line.description || "Line item"}${quantity ? ` • Qty ${quantity}` : ""}${price ? ` • ${price}` : ""}`;
+            })
+          : ["- Line items are not available in this summary."]),
+        "",
+        `Subtotal: ${formatCurrency(estimate.subtotal || 0, estimate.currency)}`,
+        `Tax: ${formatCurrency(estimate.tax_total || 0, estimate.currency)}`,
+        `Total: ${formatCurrency(estimate.total || 0, estimate.currency)}`,
+        estimate.visible_notes || estimate.notes ? "" : null,
+        estimate.visible_notes ? `Notes: ${estimate.visible_notes}` : null,
+        !estimate.visible_notes && estimate.notes ? `Notes: ${estimate.notes}` : null,
+        "",
+        "Reply to this message to approve or request changes.",
+      ].filter(Boolean).join("\n");
+      await navigator.clipboard.writeText(summary);
+      enqueueSnackbar("Estimate summary copied.", { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to copy estimate summary.", { variant: "error" });
     }
   };
 
@@ -233,12 +286,42 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <TableCell align="right">
                     <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
                       <Button size="small" onClick={() => { setEditing(item); setDialogOpen(true); }}>Edit</Button>
-                      <Button size="small" onClick={() => handleCreateWorkOrder(item)}>Create Work Order</Button>
+                      <Button size="small" startIcon={<ContentCopyIcon />} onClick={() => handleCopySummary(item)}>Copy Summary</Button>
+                      <Tooltip title="Use this after you send the estimate by email, WhatsApp, or another channel.">
+                        <span>
+                          <Button size="small" onClick={() => handleSend(item)} disabled={item.status === "converted_to_invoice"}>
+                            Mark Sent Manually
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Manual manager status only. This is not a customer approval link.">
+                        <span>
+                          <Button
+                            size="small"
+                            onClick={() => handleManualStatus(item, "approved", "Estimate marked accepted manually.")}
+                            disabled={item.status === "converted_to_invoice"}
+                          >
+                            Mark Accepted
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Manual manager status only. This is not a customer rejection workflow.">
+                        <span>
+                          <Button
+                            size="small"
+                            color="warning"
+                            onClick={() => handleManualStatus(item, "rejected", "Estimate marked rejected manually.")}
+                            disabled={item.status === "converted_to_invoice"}
+                          >
+                            Mark Rejected
+                          </Button>
+                        </span>
+                      </Tooltip>
                       <Button size="small" onClick={() => handleDuplicate(item)}>Duplicate</Button>
-                      <Button size="small" onClick={() => handleSend(item)} disabled={item.status === "converted_to_invoice"}>Mark Sent</Button>
                       <Button size="small" variant="contained" onClick={() => handleConvert(item)} disabled={item.status === "converted_to_invoice"}>
                         Convert to Invoice
                       </Button>
+                      <Button size="small" onClick={() => handleCreateWorkOrder(item)}>Create Work Order</Button>
                     </Stack>
                   </TableCell>
                 </TableRow>
