@@ -57,6 +57,7 @@ export default function TaxSummaryPage() {
           <Button variant="contained" onClick={load}>Refresh</Button>
         </Stack>
       </Paper>
+      <Alert severity="info">Estimated tax collected and paid on expenses. Review with your accountant.</Alert>
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
@@ -69,7 +70,7 @@ export default function TaxSummaryPage() {
             <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatMoney(report?.tax_paid_on_expenses)} accent="secondary" /></Grid>
             <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax" value={formatMoney(report?.estimated_net_tax)} accent="warning" /></Grid>
           </Grid>
-          <Alert severity="info">Estimated tax summary for accountant review.</Alert>
+          <Alert severity="info">This is an estimated tax summary for accountant review, not a filing workflow.</Alert>
         </>
       )}
     </Stack>

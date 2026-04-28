@@ -106,9 +106,9 @@ export default function FinanceReportsPage() {
 
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1 }}>
         <Stack spacing={2}>
-          <Typography variant="h6" fontWeight={800}>Send to Accountant</Typography>
+          <Typography variant="h6" fontWeight={800}>Reports</Typography>
           <Typography variant="body2" color="text.secondary">
-            Download a CSV export for expenses, invoices, or a simple summary. CSV is the only export format in this phase.
+            Export invoices, expenses, and summaries for your accountant. CSV exports are available now.
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={3}>

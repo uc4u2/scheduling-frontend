@@ -238,7 +238,7 @@ function PurchaseDetailDialog({ open, onClose, purchase }) {
   );
 }
 
-export default function PurchasesPage() {
+export default function PurchasesPage({ createNonce = 0 }) {
   const { enqueueSnackbar } = useSnackbar();
   const [vendors, setVendors] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -272,6 +272,12 @@ export default function PurchasesPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (createNonce) {
+      setEditorOpen(true);
+    }
+  }, [createNonce]);
 
   const totalSpend = purchases.reduce((sum, row) => sum + Number(row.total || 0), 0);
 

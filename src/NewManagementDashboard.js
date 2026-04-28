@@ -228,22 +228,13 @@ const menuConfig = [
     label: "Business Finance",
     key: "finance-group",
     icon: <ReceiptLong />,
-    tooltip: "Daily quote, job, purchasing, review, and month-end workflows.",
+    tooltip: "Daily operations, field work, and accountant-ready reporting.",
     children: [
       { label: "Overview", key: "finance-overview", icon: <Dashboard /> },
-      { label: "Quotes", key: "finance-quotes", icon: <Article /> },
-      { label: "Estimates", key: "finance-estimates", icon: <ReceiptLong /> },
-      { label: "Work Orders", key: "finance-work-orders", icon: <Assignment /> },
-      { label: "Materials & Supplies", key: "finance-inventory", icon: <Business /> },
-      { label: "Vendors", key: "finance-vendors", icon: <People /> },
-      { label: "Purchases", key: "finance-purchases", icon: <Paid /> },
-      { label: "Field Reports", key: "finance-field-reports", icon: <Article /> },
-      { label: "Reviews", key: "finance-reviews", icon: <History /> },
-      { label: "Profitability", key: "finance-profitability", icon: <Summarize /> },
-      { label: "Tax Summary", key: "finance-tax-summary", icon: <Paid /> },
-      { label: "Expenses", key: "finance-expenses", icon: <Paid /> },
-      { label: "Reports", key: "finance-reports", icon: <Summarize /> },
-      { label: "Month-End", key: "finance-month-end", icon: <EventNote /> },
+      { label: "Daily Operations", key: "finance-group-daily", icon: <Assignment /> },
+      { label: "Field Work & Reviews", key: "finance-group-field", icon: <Article /> },
+      { label: "Accounting & Reports", key: "finance-group-reports", icon: <Summarize /> },
+      { label: "Setup", key: "finance-group-setup", icon: <Business /> },
     ],
   },
 
@@ -3431,6 +3422,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         return <ManagerInvoicesPage />;
 
       case "finance-overview":
+      case "finance-group-daily":
+      case "finance-group-field":
+      case "finance-group-reports":
+      case "finance-group-setup":
       case "finance-quotes":
       case "finance-estimates":
       case "finance-work-orders":
