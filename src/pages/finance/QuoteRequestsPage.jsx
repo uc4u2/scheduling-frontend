@@ -272,11 +272,26 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                     <Typography variant="body2" color="text.secondary">{item.description || "-"}</Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      justifyContent="flex-end"
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       <Button size="small" onClick={() => openEdit(item)}>Edit</Button>
                       <Button size="small" onClick={() => patchStatus(item, "reviewed")}>Mark Reviewed</Button>
-                      <Button size="small" onClick={() => setLinkTarget(item)}>Link Client</Button>
-                      <Button size="small" variant="contained" onClick={() => handleCreateEstimate(item)}>Create Estimate</Button>
+<<<<<<< HEAD
+                      <Button size="small" onClick={() => openLinkClientDialog(item, !item.client_id)}>Link or Create Client</Button>
+                      {item.status === "estimate_created" ? (
+                        <Button size="small" variant="outlined" onClick={() => onNavigate?.("finance-estimates")}>
+                          Open Estimates
+                        </Button>
+                      ) : (
+                        <Button size="small" variant="contained" onClick={() => handleCreateEstimate(item)} disabled={!item.client_id}>
+                          Create Estimate
+                        </Button>
+                      )}
                       <Button size="small" color="warning" onClick={() => patchStatus(item, "closed")}>Close</Button>
                       <Button size="small" color="error" onClick={() => patchStatus(item, "rejected")}>Reject</Button>
                     </Stack>
