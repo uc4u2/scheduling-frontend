@@ -57,6 +57,10 @@ const startServer = (preferredPort) =>
 const runSnap = async () => {
   installLogFilter();
   let server;
+  const isRender = Boolean(
+    String(process.env.RENDER || "").trim() ||
+    String(process.env.RENDER_SERVICE_ID || "").trim()
+  );
   const isIgnorableSnapError = (err) => {
     const text = String(err && (err.stack || err.message || err));
     return (
@@ -90,8 +94,12 @@ const runSnap = async () => {
   process.on("unhandledRejection", handleGlobalFailure);
   process.on("uncaughtException", handleGlobalFailure);
   try {
-    if (String(process.env.SKIP_REACT_SNAP || "").trim() === "1") {
-      console.warn("react-snap skipped via SKIP_REACT_SNAP=1");
+    if (String(process.env.SKIP_REACT_SNAP || "").trim() === "1" || isRender) {
+      console.warn(
+        String(process.env.SKIP_REACT_SNAP || "").trim() === "1"
+          ? "react-snap skipped via SKIP_REACT_SNAP=1"
+          : "react-snap skipped on Render build"
+      );
       process.exit(0);
       return;
     }

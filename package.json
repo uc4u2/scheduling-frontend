@@ -75,7 +75,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build": "node scripts/run-react-build.js",
     "build:seo": "npm run generate:seo && npm run generate:react-snap && npm run build",
     "postbuild": "node scripts/run-react-snap.js",
     "test": "react-scripts test",
