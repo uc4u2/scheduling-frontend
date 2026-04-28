@@ -321,9 +321,6 @@ export default function PurchasesPage({ createNonce = 0 }) {
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
-            Purchases increase stock and can create a linked expense record when needed.
-          </Typography>
           <Button variant="contained" onClick={() => setEditorOpen(true)}>Create purchase</Button>
         </Stack>
       </Paper>
@@ -335,7 +332,7 @@ export default function PurchasesPage({ createNonce = 0 }) {
       ) : purchases.length === 0 ? (
         <FinanceEmptyState
           title="No purchases yet"
-          description="Create stock-in purchases here so materials, supplies, and expense records stay connected."
+          description="Create your first purchase."
           actionLabel="Create purchase"
           onAction={() => setEditorOpen(true)}
         />

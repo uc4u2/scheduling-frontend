@@ -257,7 +257,7 @@ export default function FieldReportsPage({ onNavigate }) {
       ) : reports.length === 0 ? (
         <FinanceEmptyState
           title="No field reports for this work order"
-          description="Field reports appear here after assigned team members submit the job reality from the field."
+          description="No reports submitted yet."
         />
       ) : (
         <Paper variant="outlined" sx={{ overflowX: "auto" }}>

@@ -346,10 +346,6 @@ export default function InventoryPage() {
         <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Inventory value estimate" value={formatMoney(metrics.inventoryValue)} accent="secondary" helper="Based on current quantity and cost per unit." /></Grid>
       </Grid>
 
-      <Alert severity="info" sx={{ backgroundColor: theme.palette.background.paper }}>
-        Use stock adjustments instead of editing quantity directly. Every stock change is recorded as a transaction for audit.
-      </Alert>
-
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
@@ -393,7 +389,7 @@ export default function InventoryPage() {
       ) : items.length === 0 ? (
         <FinanceEmptyState
           title="No stock items yet"
-          description="Add materials and supplies so managers can plan purchases and review stock with one source of truth."
+          description="Add your first stock item."
           actionLabel="Add item"
           onAction={() => {
             setSelectedItem(null);
