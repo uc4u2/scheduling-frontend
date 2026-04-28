@@ -297,9 +297,6 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         invoiceNumber ? `Invoice created: ${invoiceNumber}.` : "Invoice created.",
         { variant: "success" }
       );
-      enqueueSnackbar("Hosted payment link creation for finance invoices is not available yet. Use invoice records for now.", {
-        variant: "info",
-      });
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to convert estimate to invoice.", { variant: "error" });
