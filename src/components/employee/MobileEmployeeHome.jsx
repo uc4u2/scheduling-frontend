@@ -18,6 +18,8 @@ import BeachAccessOutlinedIcon from "@mui/icons-material/BeachAccessOutlined";
 import SwapHorizOutlinedIcon from "@mui/icons-material/SwapHorizOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import ForumOutlinedIcon from "@mui/icons-material/ForumOutlined";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 
 const resolveGreeting = (date = new Date()) => {
   const hour = date.getHours();
@@ -179,6 +181,8 @@ export const employeeShortcutIconMap = {
   "shift-swap": <SwapHorizOutlinedIcon fontSize="small" />,
   training: <SchoolOutlinedIcon fontSize="small" />,
   communications: <ForumOutlinedIcon fontSize="small" />,
+  "work-orders": <AssignmentOutlinedIcon fontSize="small" />,
+  "field-reports": <ArticleOutlinedIcon fontSize="small" />,
 };
 
 export default MobileEmployeeHome;

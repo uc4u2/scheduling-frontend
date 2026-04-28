@@ -125,6 +125,8 @@ import RecruiterCommunicationsPage from "./pages/recruiter/RecruiterCommunicatio
 import RecruiterMyCalendarPage from "./pages/recruiter/RecruiterMyCalendarPage";
 import RecruiterFieldPhotosPage from "./pages/recruiter/RecruiterFieldPhotosPage";
 import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
+import EmployeeWorkOrdersPage from "./pages/finance/employee/EmployeeWorkOrdersPage";
+import EmployeeFieldReportsPage from "./pages/finance/employee/EmployeeFieldReportsPage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
 import CancelBooking from "./CancelBooking";
@@ -877,6 +879,10 @@ const AppContent = ({ token, setToken }) => {
         <Route path="/employee/my-calendar" element={<RecruiterMyCalendarPage token={token} />} />
         <Route path="/recruiter/field-photos" element={<RecruiterFieldPhotosPage token={token} />} />
         <Route path="/employee/field-photos" element={<RecruiterFieldPhotosPage token={token} />} />
+        <Route path="/recruiter/work-orders" element={<EmployeeWorkOrdersPage token={token} />} />
+        <Route path="/employee/work-orders" element={<EmployeeWorkOrdersPage token={token} />} />
+        <Route path="/recruiter/field-reports" element={<EmployeeFieldReportsPage token={token} />} />
+        <Route path="/employee/field-reports" element={<EmployeeFieldReportsPage token={token} />} />
         <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
         <Route path="/employee/my-shifts" element={<Navigate to="/employee/my-time" replace />} />
         <Route
