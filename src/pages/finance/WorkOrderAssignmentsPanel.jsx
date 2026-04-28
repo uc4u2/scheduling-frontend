@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -41,6 +42,7 @@ import FinanceEmptyState from "./components/FinanceEmptyState";
 
 const buildBlankForm = (timezone) => ({
   recruiter_id: "",
+  recruiter_ids: [],
   work_date: "",
   start_time: "",
   end_time: "",
@@ -83,6 +85,8 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [mode, setMode] = useState("single");
+  const [bulkFailures, setBulkFailures] = useState([]);
 
   const items = useMemo(() => Array.isArray(workOrder?.assignments) ? workOrder.assignments : [], [workOrder]);
 
@@ -115,6 +119,8 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const openAdd = () => {
     setEditingId(null);
     setError("");
+    setBulkFailures([]);
+    setMode("single");
     setShowAdvanced(false);
     setForm(buildBlankForm(workOrder?.timezone));
     setFormOpen(true);
@@ -123,6 +129,8 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const openEdit = (row) => {
     setEditingId(row.id);
     setError("");
+    setBulkFailures([]);
+    setMode("single");
     setShowAdvanced(Boolean(row.can_submit_report || row.can_report_materials || row.can_upload_files || row.is_lead_reporter));
     setForm({
       recruiter_id: row.recruiter_id || "",
@@ -141,7 +149,8 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   };
 
   const validate = () => {
-    if (!form.recruiter_id) return "Choose a team member.";
+    if (mode === "single" && !form.recruiter_id) return "Choose a team member.";
+    if (mode === "bulk" && !(Array.isArray(form.recruiter_ids) && form.recruiter_ids.length)) return "Choose at least one team member.";
     if (!form.work_date) return "Choose a work date.";
     if (!form.start_time && !form.end_time && !form.planned_hours) return "Enter planned hours or choose a start and end time.";
     if ((form.start_time && !form.end_time) || (!form.start_time && form.end_time)) return "Choose both a start time and an end time.";
@@ -158,8 +167,8 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     }
     setSaving(true);
     setError("");
+    setBulkFailures([]);
     const payload = {
-      recruiter_id: form.recruiter_id,
       work_date: form.work_date,
       start_time: form.start_time || null,
       end_time: form.end_time || null,
@@ -175,12 +184,45 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
       if (editingId) {
         await updateWorkOrderAssignment(editingId, payload);
         enqueueSnackbar("Assignment updated.", { variant: "success" });
+      } else if (mode === "bulk") {
+        const uniqueRecruiterIds = Array.from(new Set((form.recruiter_ids || []).filter(Boolean)));
+        let successCount = 0;
+        const failures = [];
+        for (const recruiterId of uniqueRecruiterIds) {
+          try {
+            await createWorkOrderAssignment(workOrder.id, {
+              ...payload,
+              recruiter_id: recruiterId,
+              planned_hours: payload.planned_hours || null,
+            });
+            successCount += 1;
+          } catch (err) {
+            const recruiter = recruiters.find((row) => String(row.id) === String(recruiterId));
+            failures.push({
+              recruiterId,
+              name: recruiter?.name || recruiter?.email || `Team member #${recruiterId}`,
+              message: mapAssignmentError(err),
+            });
+          }
+        }
+        setBulkFailures(failures);
+        if (successCount > 0 && failures.length === 0) {
+          enqueueSnackbar(`Added ${successCount} team member${successCount === 1 ? "" : "s"}.`, { variant: "success" });
+        } else if (successCount > 0) {
+          enqueueSnackbar(`Added ${successCount} team member${successCount === 1 ? "" : "s"}. ${failures.length} could not be added.`, { variant: "warning" });
+        } else {
+          setError("No team members could be added.");
+        }
+        if (successCount > 0) {
+          setFormOpen(false);
+          await onChanged?.();
+        }
       } else {
-        await createWorkOrderAssignment(workOrder.id, payload);
+        await createWorkOrderAssignment(workOrder.id, { ...payload, recruiter_id: form.recruiter_id });
         enqueueSnackbar("Team member assigned.", { variant: "success" });
+        setFormOpen(false);
+        await onChanged?.();
       }
-      setFormOpen(false);
-      onChanged?.();
     } catch (err) {
       setError(mapAssignmentError(err));
     } finally {
@@ -203,7 +245,7 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
         <Box>
           <Typography variant="h6" fontWeight={800}>Assign Team</Typography>
-          <Typography variant="body2" color="text.secondary">Plan each day by team member. Daily rows keep job scheduling clear and avoid overlaps.</Typography>
+          <Typography variant="body2" color="text.secondary">Plan each day by team member.</Typography>
         </Box>
         <Button variant="contained" onClick={openAdd}>Add Team Member</Button>
       </Stack>
@@ -222,31 +264,101 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
         >
           <Stack spacing={2}>
             {error ? <Alert severity="error">{error}</Alert> : null}
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-              <FormControl fullWidth>
-                <InputLabel>Team member</InputLabel>
-                <Select
-                  label="Team member"
-                  value={form.recruiter_id || ""}
-                  onChange={(e) => setForm((current) => ({ ...current, recruiter_id: e.target.value }))}
-                  disabled={loadingRecruiters || saving}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+              <Typography variant="subtitle2" fontWeight={700}>Mode</Typography>
+              <Stack direction="row" spacing={1} useFlexGap>
+                <Button
+                  size="small"
+                  variant={mode === "single" ? "contained" : "outlined"}
+                  onClick={() => {
+                    setMode("single");
+                    setBulkFailures([]);
+                    setForm((current) => ({ ...current, recruiter_ids: [] }));
+                  }}
                 >
-                  <MenuItem value="">Select team member</MenuItem>
-                  {recruiters.map((row) => (
-                    <MenuItem key={row.id} value={row.id}>
-                      {row.name}{row.hourly_rate != null ? ` • ${row.hourly_rate}/hr` : ""}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <ThemedDateField
-                label="Work date"
-                name="work_date"
-                value={form.work_date}
-                onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
-                fullWidth
-              />
+                  One team member
+                </Button>
+                <Button
+                  size="small"
+                  variant={mode === "bulk" ? "contained" : "outlined"}
+                  onClick={() => {
+                    setMode("bulk");
+                    setBulkFailures([]);
+                    setForm((current) => ({ ...current, recruiter_id: "" }));
+                  }}
+                >
+                  Multiple team members
+                </Button>
+              </Stack>
             </Stack>
+
+            {mode === "bulk" ? (
+              <Alert severity="info">Use bulk assignment when several team members share the same date and time.</Alert>
+            ) : null}
+
+            {bulkFailures.length ? (
+              <Alert severity="warning">
+                <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>Could not add:</Typography>
+                {bulkFailures.map((failure) => (
+                  <Typography key={`${failure.recruiterId}-${failure.name}`} variant="body2">
+                    - {failure.name}: {failure.message}
+                  </Typography>
+                ))}
+              </Alert>
+            ) : null}
+
+            {mode === "single" ? (
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                <FormControl fullWidth>
+                  <InputLabel>Team member</InputLabel>
+                  <Select
+                    label="Team member"
+                    value={form.recruiter_id || ""}
+                    onChange={(e) => setForm((current) => ({ ...current, recruiter_id: e.target.value }))}
+                    disabled={loadingRecruiters || saving}
+                  >
+                    <MenuItem value="">Select team member</MenuItem>
+                    {recruiters.map((row) => (
+                      <MenuItem key={row.id} value={row.id}>
+                        {row.name}{row.hourly_rate != null ? ` • ${row.hourly_rate}/hr` : ""}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <ThemedDateField
+                  label="Work date"
+                  name="work_date"
+                  value={form.work_date}
+                  onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
+                  fullWidth
+                />
+              </Stack>
+            ) : (
+              <Stack spacing={2}>
+                <Autocomplete
+                  multiple
+                  options={recruiters}
+                  value={recruiters.filter((row) => (form.recruiter_ids || []).includes(row.id))}
+                  onChange={(_, value) => {
+                    setForm((current) => ({
+                      ...current,
+                      recruiter_ids: Array.from(new Set(value.map((row) => row.id))),
+                    }));
+                  }}
+                  getOptionLabel={(option) => option?.email ? `${option.name}${option.hourly_rate != null ? ` • ${option.hourly_rate}/hr` : ""} • ${option.email}` : option?.name || ""}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  renderInput={(params) => <TextField {...params} label="Team members" placeholder="Select team members" />}
+                  disabled={loadingRecruiters || saving}
+                />
+                <ThemedDateField
+                  label="Work date"
+                  name="work_date"
+                  value={form.work_date}
+                  onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
+                  fullWidth
+                />
+              </Stack>
+            )}
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <ThemedTimeField
@@ -327,7 +439,7 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
             <Stack direction="row" spacing={1.5} justifyContent="flex-end">
               <Button onClick={() => setFormOpen(false)} disabled={saving}>Cancel</Button>
               <Button variant="contained" onClick={handleSave} disabled={saving}>
-                {editingId ? "Save Assignment" : "Add Assignment"}
+                {editingId ? "Save Assignment" : mode === "bulk" ? "Add selected team members" : "Add Assignment"}
               </Button>
             </Stack>
           </Stack>

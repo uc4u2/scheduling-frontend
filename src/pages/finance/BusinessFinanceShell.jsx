@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box,
   Button,
   Stack,
   Tab,
@@ -155,31 +154,18 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
 
   return (
     <ManagementFrame
-      title="Business Finance"
-      subtitle="Operations, field work, and reports."
+      title={null}
+      subtitle={null}
       fullWidth
       contentSx={{ p: { xs: 1.5, md: 2.5 } }}
     >
       <Stack spacing={2}>
-        <Stack direction={{ xs: "column", xl: "row" }} spacing={1.5} justifyContent="space-between">
-          <Box>
-            <Typography variant="h5" fontWeight={900}>Business Finance</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-              Operations, field work, and reports.
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
-            <Tooltip title="See how quotes, jobs, field reports, reviews, and month-end fit together.">
-              <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
-                How it works
-              </Button>
-            </Tooltip>
-            <Button variant="contained" onClick={() => handleQuickAction("quote")}>New Quote</Button>
-            <Button variant="contained" onClick={() => handleQuickAction("estimate")}>New Estimate</Button>
-            <Button variant="contained" onClick={() => handleQuickAction("work-order")}>New Work Order</Button>
-            <Button variant="outlined" onClick={() => handleQuickAction("expense")}>Add Expense</Button>
-            <Button variant="outlined" onClick={() => handleQuickAction("purchase")}>Create Purchase</Button>
-          </Stack>
+        <Stack direction="row" justifyContent="flex-start">
+          <Tooltip title="See how quotes, jobs, field reports, reviews, and month-end fit together.">
+            <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
+              How it works
+            </Button>
+          </Tooltip>
         </Stack>
 
         <Tabs

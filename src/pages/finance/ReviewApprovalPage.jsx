@@ -38,6 +38,7 @@ import {
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceStatusChip from "./components/FinanceStatusChip";
+import FinancePagination from "./components/FinancePagination";
 
 const decisionOptions = ["approve", "adjust", "reject", "client_provided"];
 const billingOptions = ["internal_cost_only", "add_to_invoice", "ignore", "client_provided"];
@@ -304,6 +305,9 @@ export default function ReviewApprovalPage() {
   const [fieldReports, setFieldReports] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [selectedFieldReportId, setSelectedFieldReportId] = useState("");
   const [selectedReview, setSelectedReview] = useState(null);
@@ -314,8 +318,8 @@ export default function ReviewApprovalPage() {
 
   const loadBase = async () => {
     const [workOrdersRes, inventoryRes] = await Promise.all([
-      listWorkOrders({ limit: 100 }),
-      listInventoryItems({ active: true }),
+      listWorkOrders({ per_page: 100 }),
+      listInventoryItems({ active: true, per_page: 100 }),
     ]);
     const workOrderRows = Array.isArray(workOrdersRes?.items) ? workOrdersRes.items : [];
     setWorkOrders(workOrderRows);
@@ -334,11 +338,12 @@ export default function ReviewApprovalPage() {
       return;
     }
     const [reportsRes, reviewsRes] = await Promise.all([
-      listWorkOrderFieldReports(workOrderIdArg),
-      listWorkOrderReviews(workOrderIdArg),
+      listWorkOrderFieldReports(workOrderIdArg, { per_page: 100 }),
+      listWorkOrderReviews(workOrderIdArg, { page, per_page: perPage }),
     ]);
     setFieldReports(Array.isArray(reportsRes?.items) ? reportsRes.items : []);
     setReviews(Array.isArray(reviewsRes?.items) ? reviewsRes.items : []);
+    setPagination(reviewsRes?.pagination || null);
   };
 
   const loadAll = async () => {
@@ -364,7 +369,7 @@ export default function ReviewApprovalPage() {
         setError(err?.response?.data?.error || err?.message || "Unable to load reviews.");
       });
     }
-  }, [selectedWorkOrderId]);
+  }, [selectedWorkOrderId, page, perPage]);
 
   const openReview = async (reviewId) => {
     try {
@@ -403,7 +408,7 @@ export default function ReviewApprovalPage() {
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
             <FormControl size="small" sx={{ minWidth: 280 }}>
               <InputLabel>Work order</InputLabel>
-              <Select label="Work order" value={selectedWorkOrderId} onChange={(e) => setSelectedWorkOrderId(e.target.value)}>
+              <Select label="Work order" value={selectedWorkOrderId} onChange={(e) => { setSelectedWorkOrderId(e.target.value); setPage(1); }}>
                 {workOrders.map((row) => (
                   <MenuItem key={row.id} value={row.id}>{row.work_order_number} • {row.title}</MenuItem>
                 ))}
@@ -463,6 +468,17 @@ export default function ReviewApprovalPage() {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <ReviewDetailDialog
         open={detailOpen}

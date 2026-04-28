@@ -24,6 +24,7 @@ import { useSnackbar } from "notistack";
 import { createVendor, deleteVendor, listVendors, updateVendor } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinancePagination from "./components/FinancePagination";
 
 const blankVendor = {
   name: "",
@@ -70,6 +71,9 @@ function VendorDialog({ open, onClose, initialValues, onSubmit }) {
 export default function VendorsPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [vendors, setVendors] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -80,9 +84,10 @@ export default function VendorsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await listVendors();
+      const res = await listVendors({ q: search || undefined, page, per_page: perPage });
       const rows = Array.isArray(res?.items) ? res.items : [];
       setVendors(rows);
+      setPagination(res?.pagination || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load vendors.");
     } finally {
@@ -92,13 +97,7 @@ export default function VendorsPage() {
 
   useEffect(() => {
     load();
-  }, []);
-
-  const filtered = vendors.filter((vendor) => {
-    const query = search.trim().toLowerCase();
-    if (!query) return true;
-    return [vendor.name, vendor.email, vendor.phone].some((value) => String(value || "").toLowerCase().includes(query));
-  });
+  }, [page, perPage]);
 
   const handleSave = async (payload) => {
     try {
@@ -140,7 +139,13 @@ export default function VendorsPage() {
             size="small"
             label="Search vendors"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") load();
+            }}
             sx={{ minWidth: { md: 300 } }}
           />
           <Button variant="contained" onClick={() => { setSelectedVendor(null); setEditorOpen(true); }}>Add vendor</Button>
@@ -151,7 +156,7 @@ export default function VendorsPage() {
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
-      ) : filtered.length === 0 ? (
+      ) : vendors.length === 0 ? (
         <FinanceEmptyState
           title="No vendors yet"
           description="Add your first vendor."
@@ -172,7 +177,7 @@ export default function VendorsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.map((vendor) => (
+              {vendors.map((vendor) => (
                 <TableRow key={vendor.id} hover>
                   <TableCell><Typography variant="body2" fontWeight={700}>{vendor.name}</Typography></TableCell>
                   <TableCell>
@@ -194,6 +199,17 @@ export default function VendorsPage() {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <VendorDialog
         open={editorOpen}

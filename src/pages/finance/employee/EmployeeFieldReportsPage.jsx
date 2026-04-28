@@ -22,6 +22,7 @@ import ManagementFrame from "../../../components/ui/ManagementFrame";
 import useRecruiterTabsAccess from "../../../components/recruiter/useRecruiterTabsAccess";
 import { getFieldReport, listMyFieldReports } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
+import FinancePagination from "../components/FinancePagination";
 import EmployeeFinanceEmptyState from "./EmployeeFinanceEmptyState";
 
 function FieldReportDetailDialog({ open, onClose, report }) {
@@ -86,6 +87,9 @@ export default function EmployeeFieldReportsPage() {
   const managerViewingEmployee = role === "manager" && location.pathname.startsWith("/employee");
   const { allowHrAccess, isLoading: tabsLoading } = useRecruiterTabsAccess();
   const [reports, setReports] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
@@ -100,8 +104,9 @@ export default function EmployeeFieldReportsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await listMyFieldReports();
+      const res = await listMyFieldReports({ page, per_page: perPage });
       setReports(Array.isArray(res?.items) ? res.items : []);
+      setPagination(res?.pagination || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load your field reports.");
     } finally {
@@ -111,7 +116,7 @@ export default function EmployeeFieldReportsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page, perPage]);
 
   const openDetail = async (reportId) => {
     try {
@@ -163,6 +168,16 @@ export default function EmployeeFieldReportsPage() {
           </Paper>
         )}
       </Stack>
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
       <FieldReportDetailDialog open={detailOpen} onClose={() => setDetailOpen(false)} report={selectedReport} />
     </ManagementFrame>
   );

@@ -36,6 +36,7 @@ import {
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import FinancePagination from "./components/FinancePagination";
 
 const blankForm = {
   title: "",
@@ -56,6 +57,9 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const timezone = useMemo(() => getUserTimezone(), []);
   const [items, setItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -73,10 +77,16 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     setError("");
     try {
       const [quotes, managerClients] = await Promise.all([
-        listQuoteRequests({ status: status || undefined, q: search || undefined, limit: 100 }),
+        listQuoteRequests({
+          status: status || undefined,
+          q: search || undefined,
+          page,
+          per_page: perPage,
+        }),
         listManagerClients(),
       ]);
       setItems(Array.isArray(quotes?.items) ? quotes.items : Array.isArray(quotes) ? quotes : []);
+      setPagination(quotes?.pagination || null);
       setClients(managerClients);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load quote requests.");
@@ -87,7 +97,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
 
   useEffect(() => {
     load();
-  }, [status]);
+  }, [status, page, perPage]);
 
   useEffect(() => {
     if (createNonce) {
@@ -190,14 +200,17 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
             size="small"
             label="Search quotes"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") load();
             }}
           />
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>Status</InputLabel>
-            <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
               <MenuItem value="">All statuses</MenuItem>
               <MenuItem value="new">New</MenuItem>
               <MenuItem value="reviewed">Reviewed</MenuItem>
@@ -274,6 +287,17 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>{editing ? "Edit quote request" : "New quote request"}</DialogTitle>
