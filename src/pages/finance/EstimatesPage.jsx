@@ -442,7 +442,13 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <TableCell>{item.line_count ?? 0}</TableCell>
                   <TableCell>{item.converted_invoice_number || "-"}</TableCell>
                   <TableCell align="right">
-                    <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      justifyContent="flex-end"
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       <Button size="small" onClick={() => { setEditing(item); setDialogOpen(true); }}>Edit</Button>
                       <Tooltip title="Create a public estimate link, then copy it to email, WhatsApp, or another channel.">
                         <span>

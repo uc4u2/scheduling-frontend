@@ -160,9 +160,27 @@ export default function PublicEstimatePage() {
             {error ? <Alert severity="error">{error}</Alert> : null}
             {success ? <Alert severity="success">{success}</Alert> : null}
             {alreadyResponded ? (
-              <Alert severity="info">
-                {estimate?.client_accepted_at ? "This estimate has already been accepted." : "This estimate has already been rejected."}
-              </Alert>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: theme.palette.action.hover,
+                }}
+              >
+                <Stack spacing={0.75}>
+                  <Typography fontWeight={700}>
+                    {estimate?.client_accepted_at
+                      ? "This estimate has already been accepted."
+                      : "This estimate has already been rejected."}
+                  </Typography>
+                  <Typography color="text.secondary">
+                    {estimate?.client_accepted_at
+                      ? "Thank you - the business will follow up with the next step."
+                      : "Thank you - the business has received your response."}
+                  </Typography>
+                </Stack>
+              </Paper>
             ) : null}
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={3} justifyContent="space-between">
@@ -219,7 +237,7 @@ export default function PublicEstimatePage() {
               </Stack>
             ) : null}
 
-            {!printMode ? (
+            {!printMode && !alreadyResponded ? (
               <>
                 <Divider />
 
