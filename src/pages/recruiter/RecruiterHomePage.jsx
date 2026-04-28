@@ -125,6 +125,8 @@ const RecruiterHomePage = () => {
     { label: "My Shift", icon: employeeShortcutIconMap["my-shift"], onClick: () => navigate(`${basePath}/my-time`) },
     { label: "Time Off", icon: employeeShortcutIconMap["time-off"], onClick: () => navigate(`${basePath}/my-time`) },
     { label: "Shift Swap", icon: employeeShortcutIconMap["shift-swap"], onClick: () => navigate(`${basePath}/my-time`) },
+    { label: "My Work Orders", icon: employeeShortcutIconMap["work-orders"], onClick: () => navigate(`${basePath}/work-orders`) },
+    { label: "My Field Reports", icon: employeeShortcutIconMap["field-reports"], onClick: () => navigate(`${basePath}/field-reports`) },
     { label: "Training", icon: employeeShortcutIconMap.training, onClick: () => navigate(`${basePath}/my-training`) },
     { label: "Communications", icon: employeeShortcutIconMap.communications, onClick: () => navigate(`${basePath}/communications`) },
   ], [allowHrAccess, basePath, navigate]);

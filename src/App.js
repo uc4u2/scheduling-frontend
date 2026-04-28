@@ -119,11 +119,14 @@ import RecruiterQuestionnairesPage from "./pages/recruiter/RecruiterQuestionnair
 import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMeetingsPage";
 import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
+import RecruiterHomePage from "./pages/recruiter/RecruiterHomePage";
 import RecruiterMyTrainingPage from "./pages/recruiter/RecruiterMyTrainingPage";
 import RecruiterCommunicationsPage from "./pages/recruiter/RecruiterCommunicationsPage";
 import RecruiterMyCalendarPage from "./pages/recruiter/RecruiterMyCalendarPage";
 import RecruiterFieldPhotosPage from "./pages/recruiter/RecruiterFieldPhotosPage";
 import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
+import EmployeeWorkOrdersPage from "./pages/finance/employee/EmployeeWorkOrdersPage";
+import EmployeeFieldReportsPage from "./pages/finance/employee/EmployeeFieldReportsPage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
 import CancelBooking from "./CancelBooking";
@@ -866,6 +869,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/employee/candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
         <Route path="/recruiter/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
+        <Route path="/recruiter/home" element={<RecruiterHomePage token={token} />} />
+        <Route path="/employee/home" element={<RecruiterHomePage token={token} />} />
         <Route path="/recruiter/my-training" element={<RecruiterMyTrainingPage token={token} />} />
         <Route path="/employee/my-training" element={<RecruiterMyTrainingPage token={token} />} />
         <Route path="/recruiter/communications" element={<RecruiterCommunicationsPage token={token} />} />
@@ -874,6 +879,10 @@ const AppContent = ({ token, setToken }) => {
         <Route path="/employee/my-calendar" element={<RecruiterMyCalendarPage token={token} />} />
         <Route path="/recruiter/field-photos" element={<RecruiterFieldPhotosPage token={token} />} />
         <Route path="/employee/field-photos" element={<RecruiterFieldPhotosPage token={token} />} />
+        <Route path="/recruiter/work-orders" element={<EmployeeWorkOrdersPage token={token} />} />
+        <Route path="/employee/work-orders" element={<EmployeeWorkOrdersPage token={token} />} />
+        <Route path="/recruiter/field-reports" element={<EmployeeFieldReportsPage token={token} />} />
+        <Route path="/employee/field-reports" element={<EmployeeFieldReportsPage token={token} />} />
         <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
         <Route path="/employee/my-shifts" element={<Navigate to="/employee/my-time" replace />} />
         <Route

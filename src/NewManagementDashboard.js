@@ -1736,6 +1736,27 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     keys.add("available-slots");
     keys.add("available-shifts");
     keys.add("available-shifts-fullscreen");
+    // Allow direct Business Finance section routing inside the grouped shell.
+    [
+      "finance-overview",
+      "finance-group-daily",
+      "finance-group-field",
+      "finance-group-reports",
+      "finance-group-setup",
+      "finance-quotes",
+      "finance-estimates",
+      "finance-work-orders",
+      "finance-inventory",
+      "finance-vendors",
+      "finance-purchases",
+      "finance-field-reports",
+      "finance-reviews",
+      "finance-profitability",
+      "finance-tax-summary",
+      "finance-expenses",
+      "finance-reports",
+      "finance-month-end",
+    ].forEach((key) => keys.add(key));
     return Array.from(keys);
   }, [filteredMenuConfig, supportMode]);
   const getInitialSelectedView = () => initialView || localStorage.getItem("manager_selected_view") || "__landing__";
@@ -3439,7 +3460,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "finance-expenses":
       case "finance-reports":
       case "finance-month-end":
-        return <BusinessFinanceShell viewKey={effectiveView} onNavigate={setSelectedView} />;
+        return <BusinessFinanceShell viewKey={effectiveView} onNavigate={handleNavSelect} />;
 
       case "zapier":
         return <ZapierIntegrationPage />;

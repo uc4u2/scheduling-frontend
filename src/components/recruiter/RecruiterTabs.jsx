@@ -23,11 +23,15 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 
 const TAB_CONFIG = [
   { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar", primary: true },
   { value: "availability", label: "Availability", path: "/employee?tab=availability", primary: true },
   { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time", primary: true },
+  { value: "work-orders", label: "My Work Orders", path: "/recruiter/work-orders", primary: true, mobileIcon: <AssignmentOutlinedIcon fontSize="small" /> },
+  { value: "field-reports", label: "My Field Reports", path: "/recruiter/field-reports", primary: true, mobileIcon: <ArticleOutlinedIcon fontSize="small" /> },
   { value: "my-training", label: "Training", path: "/recruiter/my-training", primary: true },
   { value: "communications", label: "Communications", path: "/recruiter/communications", primary: true },
   { value: "field-photos", label: "Field Photos", path: "/recruiter/field-photos", primary: true },
@@ -53,6 +57,12 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   }
   if (locationPathname.startsWith("/recruiter/my-time") || locationPathname.startsWith("/employee/my-time")) {
     return "my-time";
+  }
+  if (locationPathname.startsWith("/recruiter/work-orders") || locationPathname.startsWith("/employee/work-orders")) {
+    return "work-orders";
+  }
+  if (locationPathname.startsWith("/recruiter/field-reports") || locationPathname.startsWith("/employee/field-reports")) {
+    return "field-reports";
   }
   if (locationPathname.startsWith("/recruiter/my-training") || locationPathname.startsWith("/employee/my-training")) {
     return "my-training";
@@ -83,6 +93,10 @@ const resolveTabPath = (tabValue, locationPathname) => {
       return `${basePath}/upcoming-meetings`;
     case "my-time":
       return `${basePath}/my-time`;
+    case "work-orders":
+      return `${basePath}/work-orders`;
+    case "field-reports":
+      return `${basePath}/field-reports`;
     case "my-training":
       return `${basePath}/my-training`;
     case "communications":
