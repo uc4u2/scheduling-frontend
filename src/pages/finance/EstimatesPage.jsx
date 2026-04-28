@@ -34,6 +34,7 @@ import {
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import FinancePagination from "./components/FinancePagination";
 
 export default function EstimatesPage({ createNonce, onNavigate }) {
   const { enqueueSnackbar } = useSnackbar();
@@ -41,6 +42,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [items, setItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -56,11 +60,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     setError("");
     try {
       const [estimates, managerClients, templateList] = await Promise.all([
-        listEstimates({ status: status || undefined, q: search || undefined, limit: 100 }),
+        listEstimates({ status: status || undefined, q: search || undefined, page, per_page: perPage }),
         listManagerClients(),
         listEstimateTemplates(),
       ]);
       setItems(Array.isArray(estimates?.items) ? estimates.items : Array.isArray(estimates) ? estimates : []);
+      setPagination(estimates?.pagination || null);
       setClients(managerClients);
       setTemplates(Array.isArray(templateList?.items) ? templateList.items : Array.isArray(templateList) ? templateList : []);
     } catch (err) {
@@ -72,7 +77,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
   useEffect(() => {
     load();
-  }, [status]);
+  }, [status, page, perPage]);
 
   useEffect(() => {
     if (createNonce) {
@@ -149,14 +154,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
             size="small"
             label="Search estimates"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") load();
             }}
           />
           <FormControl size="small" sx={{ minWidth: 190 }}>
             <InputLabel>Status</InputLabel>
-            <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
               <MenuItem value="">All statuses</MenuItem>
               <MenuItem value="draft">Draft</MenuItem>
               <MenuItem value="sent">Sent</MenuItem>
@@ -239,6 +247,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <EstimateEditorDialog
         open={dialogOpen}

@@ -65,8 +65,8 @@ export const updateWorkOrderStatus = (id, status) =>
   unwrap(api.post(`/finance/work-orders/${id}/status`, { status }));
 export const getWorkOrdersSummary = () => unwrap(api.get("/finance/work-orders/summary"));
 
-export const listWorkOrderAssignments = (workOrderId) =>
-  unwrap(api.get(`/finance/work-orders/${workOrderId}/assignments`));
+export const listWorkOrderAssignments = (workOrderId, params = {}) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/assignments`, { params }));
 export const createWorkOrderAssignment = (workOrderId, payload) =>
   unwrap(api.post(`/finance/work-orders/${workOrderId}/assignments`, payload));
 export const getWorkOrderAssignment = (id) => unwrap(api.get(`/finance/work-order-assignments/${id}`));
@@ -74,15 +74,15 @@ export const updateWorkOrderAssignment = (id, payload) =>
   unwrap(api.patch(`/finance/work-order-assignments/${id}`, payload));
 export const deleteWorkOrderAssignment = (id) => unwrap(api.delete(`/finance/work-order-assignments/${id}`));
 
-export const listWorkOrderMaterials = (workOrderId) =>
-  unwrap(api.get(`/finance/work-orders/${workOrderId}/materials`));
+export const listWorkOrderMaterials = (workOrderId, params = {}) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/materials`, { params }));
 export const createWorkOrderMaterial = (workOrderId, payload) =>
   unwrap(api.post(`/finance/work-orders/${workOrderId}/materials`, payload));
 export const updateWorkOrderMaterial = (id, payload) =>
   unwrap(api.patch(`/finance/work-order-materials/${id}`, payload));
 export const deleteWorkOrderMaterial = (id) => unwrap(api.delete(`/finance/work-order-materials/${id}`));
 
-export const listInventoryCategories = () => unwrap(api.get("/finance/inventory/categories"));
+export const listInventoryCategories = (params = {}) => unwrap(api.get("/finance/inventory/categories", { params }));
 export const createInventoryCategory = (payload) =>
   unwrap(api.post("/finance/inventory/categories", payload));
 export const updateInventoryCategory = (id, payload) =>
@@ -103,7 +103,7 @@ export const adjustInventoryItem = (id, payload) =>
 export const listInventoryTransactions = (params = {}) =>
   unwrap(api.get("/finance/inventory/transactions", { params }));
 
-export const listVendors = () => unwrap(api.get("/finance/vendors"));
+export const listVendors = (params = {}) => unwrap(api.get("/finance/vendors", { params }));
 export const createVendor = (payload) => unwrap(api.post("/finance/vendors", payload));
 export const updateVendor = (id, payload) => unwrap(api.patch(`/finance/vendors/${id}`, payload));
 export const deleteVendor = (id) => unwrap(api.delete(`/finance/vendors/${id}`));
@@ -115,14 +115,14 @@ export const deletePurchase = (id) => unwrap(api.delete(`/finance/purchases/${id
 export const voidPurchase = (id, payload = {}) =>
   unwrap(api.post(`/finance/purchases/${id}/void`, payload));
 
-export const listMyWorkOrders = () => unwrap(api.get("/finance/my-work-orders"));
+export const listMyWorkOrders = (params = {}) => unwrap(api.get("/finance/my-work-orders", { params }));
 export const getMyWorkOrder = (id) => unwrap(api.get(`/finance/my-work-orders/${id}`));
 export const submitMyFieldReport = (id, payload) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/field-report`, payload));
-export const listMyFieldReports = () => unwrap(api.get("/finance/my-field-reports"));
+export const listMyFieldReports = (params = {}) => unwrap(api.get("/finance/my-field-reports", { params }));
 export const getFieldReport = (id) => unwrap(api.get(`/finance/field-reports/${id}`));
-export const listWorkOrderFieldReports = (workOrderId) =>
-  unwrap(api.get(`/finance/work-orders/${workOrderId}/field-reports`));
+export const listWorkOrderFieldReports = (workOrderId, params = {}) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/field-reports`, { params }));
 export const getPlanVsReported = (fieldReportId) =>
   unwrap(api.get(`/finance/field-reports/${fieldReportId}/plan-vs-reported`));
 export const requestFieldReportClarification = (fieldReportId) =>
@@ -130,8 +130,8 @@ export const requestFieldReportClarification = (fieldReportId) =>
 export const rejectFieldReport = (fieldReportId) =>
   unwrap(api.post(`/finance/field-reports/${fieldReportId}/reject`));
 
-export const listWorkOrderReviews = (workOrderId) =>
-  unwrap(api.get(`/finance/work-orders/${workOrderId}/reviews`));
+export const listWorkOrderReviews = (workOrderId, params = {}) =>
+  unwrap(api.get(`/finance/work-orders/${workOrderId}/reviews`, { params }));
 export const createWorkOrderReview = (workOrderId, payload) =>
   unwrap(api.post(`/finance/work-orders/${workOrderId}/reviews`, payload));
 export const getWorkOrderReview = (reviewId) =>

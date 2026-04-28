@@ -26,6 +26,7 @@ import { useSnackbar } from "notistack";
 import { createWorkOrderReview, getPlanVsReported, listWorkOrderFieldReports, listWorkOrders, rejectFieldReport, requestFieldReportClarification } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceStatusChip from "./components/FinanceStatusChip";
+import FinancePagination from "./components/FinancePagination";
 
 function FieldReportDetailDialog({ open, onClose, report, comparison, onClarification, onReject, onCreateReview }) {
   return (
@@ -130,6 +131,9 @@ export default function FieldReportsPage({ onNavigate }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState("");
   const [reports, setReports] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
@@ -137,7 +141,7 @@ export default function FieldReportsPage({ onNavigate }) {
   const [comparison, setComparison] = useState(null);
 
   const loadWorkOrders = async () => {
-    const res = await listWorkOrders({ limit: 100 });
+    const res = await listWorkOrders({ per_page: 100 });
     const rows = Array.isArray(res?.items) ? res.items : [];
     setWorkOrders(rows);
     if (!selectedWorkOrderId && rows.length) {
@@ -153,8 +157,9 @@ export default function FieldReportsPage({ onNavigate }) {
       setReports([]);
       return;
     }
-    const res = await listWorkOrderFieldReports(activeWorkOrderId);
+    const res = await listWorkOrderFieldReports(activeWorkOrderId, { page, per_page: perPage });
     setReports(Array.isArray(res?.items) ? res.items : []);
+    setPagination(res?.pagination || null);
   };
 
   const loadAll = async () => {
@@ -180,7 +185,7 @@ export default function FieldReportsPage({ onNavigate }) {
         setError(err?.response?.data?.error || err?.message || "Unable to load field reports.");
       });
     }
-  }, [selectedWorkOrderId]);
+  }, [selectedWorkOrderId, page, perPage]);
 
   const openDetail = async (report) => {
     setSelectedReport(report);
@@ -238,7 +243,7 @@ export default function FieldReportsPage({ onNavigate }) {
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
           <FormControl size="small" sx={{ minWidth: 280 }}>
             <InputLabel>Work order</InputLabel>
-            <Select label="Work order" value={selectedWorkOrderId} onChange={(e) => setSelectedWorkOrderId(e.target.value)}>
+            <Select label="Work order" value={selectedWorkOrderId} onChange={(e) => { setSelectedWorkOrderId(e.target.value); setPage(1); }}>
               {workOrders.map((workOrder) => (
                 <MenuItem key={workOrder.id} value={workOrder.id}>
                   {workOrder.work_order_number} • {workOrder.title}
@@ -287,6 +292,17 @@ export default function FieldReportsPage({ onNavigate }) {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <FieldReportDetailDialog
         open={detailOpen}

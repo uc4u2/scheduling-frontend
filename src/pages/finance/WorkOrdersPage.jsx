@@ -32,6 +32,7 @@ import {
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import FinancePagination from "./components/FinancePagination";
 
 export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) {
   const { enqueueSnackbar } = useSnackbar();
@@ -39,6 +40,9 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
   const [summary, setSummary] = useState({});
   const [clients, setClients] = useState([]);
   const [estimates, setEstimates] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -59,13 +63,15 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
           q: search || undefined,
           start_date: startDate || undefined,
           end_date: endDate || undefined,
-          limit: 100,
+          page,
+          per_page: perPage,
         }),
         getWorkOrdersSummary(),
         listManagerClients(),
         listEstimates({ limit: 100 }),
       ]);
       setItems(Array.isArray(workOrdersRes?.items) ? workOrdersRes.items : Array.isArray(workOrdersRes) ? workOrdersRes : []);
+      setPagination(workOrdersRes?.pagination || null);
       setSummary(summaryRes || {});
       setClients(clientsRes || []);
       setEstimates(Array.isArray(estimatesRes?.items) ? estimatesRes.items : Array.isArray(estimatesRes) ? estimatesRes : []);
@@ -78,7 +84,7 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
 
   useEffect(() => {
     load();
-  }, [status]);
+  }, [status, page, perPage]);
 
   useEffect(() => {
     if (createNonce) {
@@ -105,14 +111,14 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
               size="small"
               label="Search jobs"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") load();
               }}
             />
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel>Status</InputLabel>
-              <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
                 <MenuItem value="">All statuses</MenuItem>
                 <MenuItem value="draft">Draft</MenuItem>
                 <MenuItem value="scheduled">Scheduled</MenuItem>
@@ -122,8 +128,8 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
                 <MenuItem value="cancelled">Cancelled</MenuItem>
               </Select>
             </FormControl>
-            <ThemedDateField label="Start date" name="start_date" value={startDate} onChange={(e) => setStartDate(e.target.value)} fullWidth={false} sx={{ minWidth: 170 }} />
-            <ThemedDateField label="End date" name="end_date" value={endDate} onChange={(e) => setEndDate(e.target.value)} fullWidth={false} sx={{ minWidth: 170 }} />
+            <ThemedDateField label="Start date" name="start_date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} fullWidth={false} sx={{ minWidth: 170 }} />
+            <ThemedDateField label="End date" name="end_date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} fullWidth={false} sx={{ minWidth: 170 }} />
             <Button variant="outlined" onClick={load}>Refresh</Button>
           </Stack>
           <Button variant="contained" onClick={() => { setPrefillEstimate(null); setEditorOpen(true); }}>New Work Order</Button>
@@ -192,6 +198,17 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <WorkOrderEditorDialog
         open={editorOpen}

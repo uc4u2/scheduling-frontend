@@ -39,6 +39,7 @@ import {
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinancePagination from "./components/FinancePagination";
 
 const blankLine = {
   inventory_item_id: "",
@@ -243,6 +244,9 @@ export default function PurchasesPage({ createNonce = 0 }) {
   const [vendors, setVendors] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -255,13 +259,14 @@ export default function PurchasesPage({ createNonce = 0 }) {
     setError("");
     try {
       const [vendorsRes, itemsRes, purchasesRes] = await Promise.all([
-        listVendors(),
-        listInventoryItems({ active: true }),
-        listPurchases(),
+        listVendors({ active: true, per_page: 100 }),
+        listInventoryItems({ active: true, per_page: 100 }),
+        listPurchases({ page, per_page: perPage }),
       ]);
       setVendors(Array.isArray(vendorsRes?.items) ? vendorsRes.items : []);
       setInventoryItems(Array.isArray(itemsRes?.items) ? itemsRes.items : []);
       setPurchases(Array.isArray(purchasesRes?.items) ? purchasesRes.items : []);
+      setPagination(purchasesRes?.pagination || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load purchases.");
     } finally {
@@ -271,7 +276,7 @@ export default function PurchasesPage({ createNonce = 0 }) {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page, perPage]);
 
   useEffect(() => {
     if (createNonce) {
@@ -369,6 +374,17 @@ export default function PurchasesPage({ createNonce = 0 }) {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <PurchaseDialog
         open={editorOpen}

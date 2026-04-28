@@ -37,6 +37,7 @@ import {
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinancePagination from "./components/FinancePagination";
 
 const blankItemForm = {
   name: "",
@@ -247,6 +248,9 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -268,10 +272,13 @@ export default function InventoryPage() {
           category_id: categoryId || undefined,
           low_stock: lowStockOnly || undefined,
           active: true,
+          page,
+          per_page: perPage,
         }),
       ]);
       setCategories(Array.isArray(categoriesRes?.items) ? categoriesRes.items : []);
       setItems(Array.isArray(itemsRes?.items) ? itemsRes.items : []);
+      setPagination(itemsRes?.pagination || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load inventory.");
     } finally {
@@ -281,18 +288,22 @@ export default function InventoryPage() {
 
   useEffect(() => {
     load();
-  }, [categoryId, lowStockOnly]);
+  }, [categoryId, lowStockOnly, page, perPage]);
 
   const metrics = useMemo(() => {
     const lowStockCount = items.filter((item) => item.low_stock_threshold != null && Number(item.current_quantity || 0) <= Number(item.low_stock_threshold || 0)).length;
     const inventoryValue = items.reduce((sum, item) => sum + Number(item.current_quantity || 0) * Number(item.cost_per_unit || 0), 0);
-    return { lowStockCount, inventoryValue, activeItems: items.length };
-  }, [items]);
+    return {
+      lowStockCount,
+      inventoryValue,
+      activeItems: Number(pagination?.total || items.length),
+    };
+  }, [items, pagination]);
 
   const loadTransactionsForItem = async (item) => {
     setSelectedItem(item);
     try {
-      const res = await listInventoryTransactions({ item_id: item.id });
+      const res = await listInventoryTransactions({ item_id: item.id, page: 1, per_page: 100 });
       setTransactions(Array.isArray(res?.items) ? res.items : []);
       setHistoryOpen(true);
     } catch (err) {
@@ -353,21 +364,24 @@ export default function InventoryPage() {
               size="small"
               label="Search items"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") load();
               }}
             />
             <FormControl size="small" sx={{ minWidth: 220 }}>
               <InputLabel>Category</InputLabel>
-              <Select label="Category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <Select label="Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
                 <MenuItem value="">All categories</MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
-            <FormControlLabel control={<Checkbox checked={lowStockOnly} onChange={(e) => setLowStockOnly(e.target.checked)} />} label="Low stock only" />
+            <FormControlLabel control={<Checkbox checked={lowStockOnly} onChange={(e) => { setLowStockOnly(e.target.checked); setPage(1); }} />} label="Low stock only" />
             <Button variant="outlined" onClick={load}>Refresh</Button>
           </Stack>
           <Button
@@ -443,6 +457,17 @@ export default function InventoryPage() {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <InventoryItemDialog
         open={editorOpen}

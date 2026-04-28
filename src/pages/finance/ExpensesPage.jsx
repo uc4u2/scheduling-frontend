@@ -33,6 +33,7 @@ import {
   listManagerClients,
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import FinancePagination from "./components/FinancePagination";
 
 const formatMoney = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
@@ -46,6 +47,9 @@ export default function ExpensesPage({ createNonce }) {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [clients, setClients] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -70,12 +74,14 @@ export default function ExpensesPage({ createNonce }) {
           missing_receipt: missingReceipt || undefined,
           start_date: dateFrom || undefined,
           end_date: dateTo || undefined,
-          limit: 200,
+          page,
+          per_page: perPage,
         }),
         listExpenseCategories(),
         listManagerClients(),
       ]);
       setItems(Array.isArray(expenses?.items) ? expenses.items : Array.isArray(expenses) ? expenses : []);
+      setPagination(expenses?.pagination || null);
       setCategories(Array.isArray(cats?.items) ? cats.items : Array.isArray(cats) ? cats : []);
       setClients(managerClients);
     } catch (err) {
@@ -87,7 +93,7 @@ export default function ExpensesPage({ createNonce }) {
 
   useEffect(() => {
     load();
-  }, [categoryId, missingReceipt]);
+  }, [categoryId, missingReceipt, page, perPage]);
 
   useEffect(() => {
     if (createNonce) {
@@ -132,14 +138,17 @@ export default function ExpensesPage({ createNonce }) {
             size="small"
             label="Search expenses"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") load();
             }}
           />
           <FormControl size="small" sx={{ minWidth: 190 }}>
             <InputLabel>Category</InputLabel>
-            <Select label="Category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <Select label="Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
               <MenuItem value="">All categories</MenuItem>
               {categories.map((category) => (
                 <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>
@@ -148,13 +157,13 @@ export default function ExpensesPage({ createNonce }) {
           </FormControl>
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>Receipt status</InputLabel>
-            <Select label="Receipt status" value={missingReceipt} onChange={(e) => setMissingReceipt(e.target.value)}>
+            <Select label="Receipt status" value={missingReceipt} onChange={(e) => { setMissingReceipt(e.target.value); setPage(1); }}>
               <MenuItem value="">All expenses</MenuItem>
               <MenuItem value="true">Missing receipts</MenuItem>
             </Select>
           </FormControl>
-          <ThemedDateField size="small" label="From" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <ThemedDateField size="small" label="To" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <ThemedDateField size="small" label="From" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
+          <ThemedDateField size="small" label="To" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
           <Button variant="outlined" onClick={load}>Refresh</Button>
         </Stack>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
@@ -229,6 +238,17 @@ export default function ExpensesPage({ createNonce }) {
           </Table>
         </Paper>
       )}
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <ExpenseQuickAddDialog
         open={dialogOpen}

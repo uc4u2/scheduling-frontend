@@ -18,6 +18,7 @@ import ManagementFrame from "../../../components/ui/ManagementFrame";
 import useRecruiterTabsAccess from "../../../components/recruiter/useRecruiterTabsAccess";
 import { listMyWorkOrders } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
+import FinancePagination from "../components/FinancePagination";
 import EmployeeFinanceEmptyState from "./EmployeeFinanceEmptyState";
 import EmployeeWorkOrderDetailDialog from "./EmployeeWorkOrderDetailDialog";
 import EmployeeFieldReportDialog from "./EmployeeFieldReportDialog";
@@ -35,6 +36,9 @@ export default function EmployeeWorkOrdersPage() {
   const managerViewingEmployee = role === "manager" && location.pathname.startsWith("/employee");
   const { allowHrAccess, isLoading: tabsLoading } = useRecruiterTabsAccess();
   const [workOrders, setWorkOrders] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
@@ -50,8 +54,9 @@ export default function EmployeeWorkOrdersPage() {
     setLoading(true);
     setError("");
     try {
-      const workOrdersRes = await listMyWorkOrders();
+      const workOrdersRes = await listMyWorkOrders({ page, per_page: perPage });
       setWorkOrders(Array.isArray(workOrdersRes?.items) ? workOrdersRes.items : []);
+      setPagination(workOrdersRes?.pagination || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load your work orders.");
     } finally {
@@ -61,7 +66,7 @@ export default function EmployeeWorkOrdersPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page, perPage]);
 
   return (
     <ManagementFrame title="My Work Orders" subtitle="See your assigned jobs and send updates from the field." fullWidth sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }} disableContentCard contentSx={{ p: 0 }}>
@@ -113,6 +118,17 @@ export default function EmployeeWorkOrdersPage() {
           </Paper>
         )}
       </Stack>
+
+      <FinancePagination
+        pagination={pagination}
+        page={page}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => {
+          setPerPage(next);
+          setPage(1);
+        }}
+      />
 
       <EmployeeWorkOrderDetailDialog
         open={detailOpen}
