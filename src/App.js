@@ -199,6 +199,7 @@ import PublicReview from "./pages/client/PublicReview";
 import PublicReviewList from "./pages/client/PublicReviewList";
 import PublicAppointmentPayPage from "./pages/client/PublicAppointmentPayPage";
 import PublicTip from "./pages/client/PublicTip";
+import PublicEstimatePage from "./pages/finance/public/PublicEstimatePage";
 import { useEmbedConfig } from "./embed";
 import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView";
 import KioskPayPage from "./pages/kiosk/KioskPayPage";
@@ -516,8 +517,8 @@ const AppContent = ({ token, setToken }) => {
     if (!isCustomDomain) return;
     let alive = true;
     setTenantLoaded(false);
-    fetch("/public/tenant", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    api.get("/public/tenant", { noAuth: true, noCompanyHeader: true, headers: { "Cache-Control": "no-store" } })
+      .then((res) => res?.data || null)
       .then((data) => {
         if (!alive) return;
         setTenantSlug(data?.ok ? data.slug : null);
@@ -705,6 +706,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/appointment-cancel/:bookingId" element={<ClientCancelBooking slugOverride={tenantSlug} />} />
               <Route path="/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking slugOverride={tenantSlug} />} />
               <Route path="/pay/:appointmentId" element={<PublicAppointmentPayPage slugOverride={tenantSlug} />} />
+              <Route path="/estimate/:token" element={<PublicEstimatePage />} />
               <Route path="/meet/:artistId" element={<MeetWithArtistPage slugOverride={tenantSlug} />} />
               <Route path="/reviews" element={<PublicReviewList slugOverride={tenantSlug} />} />
               <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
@@ -838,6 +840,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />
           <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
           <Route path="/:slug/pay/:appointmentId" element={<PublicAppointmentPayPage />} />
+          <Route path="/estimate/:token" element={<PublicEstimatePage />} />
           <Route path="/book-slot/:recruiterId/:token" element={<CandidateBooking />} />
           <Route path="/:slug/meet/:artistId" element={<MeetWithArtistPage />} />
           <Route path="/settings/payments/stripe/return" element={<StripeConnectReturn />} />

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
+  Chip,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -20,6 +21,8 @@ import {
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LaunchIcon from "@mui/icons-material/Launch";
+import LinkIcon from "@mui/icons-material/Link";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
@@ -28,6 +31,7 @@ import WorkOrderEditorDialog from "./WorkOrderEditorDialog";
 import {
   convertEstimateToInvoice,
   createEstimateTemplate,
+  createEstimateShareLink,
   duplicateEstimate,
   getEstimate,
   listEstimateTemplates,
@@ -58,6 +62,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [workOrderDialogOpen, setWorkOrderDialogOpen] = useState(false);
   const [workOrderSeed, setWorkOrderSeed] = useState(null);
   const [templateName, setTemplateName] = useState("");
+  const [linkBusyId, setLinkBusyId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -138,6 +143,42 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to duplicate estimate.", { variant: "error" });
+    }
+  };
+
+  const ensureShareLink = async (item) => {
+    const payload = await createEstimateShareLink(item.id);
+    const publicUrl = payload?.public_url || payload?.estimate?.public_url;
+    if (!publicUrl) {
+      throw new Error("Share link is not available.");
+    }
+    return { payload, publicUrl };
+  };
+
+  const handleCopyLink = async (item) => {
+    try {
+      setLinkBusyId(item.id);
+      const { publicUrl } = await ensureShareLink(item);
+      await navigator.clipboard.writeText(publicUrl);
+      enqueueSnackbar("Estimate link copied.", { variant: "success" });
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create estimate link.", { variant: "error" });
+    } finally {
+      setLinkBusyId(null);
+    }
+  };
+
+  const handleOpenLink = async (item) => {
+    try {
+      setLinkBusyId(item.id);
+      const publicUrl = item.public_url || (await ensureShareLink(item)).publicUrl;
+      window.open(publicUrl, "_blank", "noopener,noreferrer");
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open estimate link.", { variant: "error" });
+    } finally {
+      setLinkBusyId(null);
     }
   };
 
@@ -277,7 +318,14 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                     <Typography variant="body2">{item.client_name || "-"}</Typography>
                     <Typography variant="body2" color="text.secondary">{item.client_email || ""}</Typography>
                   </TableCell>
-                  <TableCell><FinanceStatusChip status={item.status} /></TableCell>
+                  <TableCell>
+                    <Stack spacing={0.75} alignItems="flex-start">
+                      <FinanceStatusChip status={item.status} />
+                      {item.public_url ? <Chip size="small" variant="outlined" label="Share link ready" /> : null}
+                      {item.client_accepted_at ? <Chip size="small" color="success" variant="outlined" label="Accepted by client" /> : null}
+                      {item.client_rejected_at ? <Chip size="small" color="warning" variant="outlined" label="Rejected by client" /> : null}
+                    </Stack>
+                  </TableCell>
                   <TableCell>{formatCurrency(item.total, item.currency)}</TableCell>
                   <TableCell>{item.issue_date || "-"}</TableCell>
                   <TableCell>{item.sent_at ? formatDateTimeInTz(item.sent_at, timezone) : "-"}</TableCell>
@@ -286,6 +334,30 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <TableCell align="right">
                     <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
                       <Button size="small" onClick={() => { setEditing(item); setDialogOpen(true); }}>Edit</Button>
+                      <Tooltip title="Create a public estimate link, then copy it to email, WhatsApp, or another channel.">
+                        <span>
+                          <Button
+                            size="small"
+                            startIcon={<LinkIcon />}
+                            onClick={() => handleCopyLink(item)}
+                            disabled={linkBusyId === item.id}
+                          >
+                            Create / Copy Link
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Open the public estimate page the client will see.">
+                        <span>
+                          <Button
+                            size="small"
+                            startIcon={<LaunchIcon />}
+                            onClick={() => handleOpenLink(item)}
+                            disabled={linkBusyId === item.id}
+                          >
+                            Open Link
+                          </Button>
+                        </span>
+                      </Tooltip>
                       <Button size="small" startIcon={<ContentCopyIcon />} onClick={() => handleCopySummary(item)}>Copy Summary</Button>
                       <Tooltip title="Use this after you send the estimate by email, WhatsApp, or another channel.">
                         <span>

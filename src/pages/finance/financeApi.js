@@ -48,8 +48,14 @@ export const createEstimate = (payload) => unwrap(api.post("/finance/estimates",
 export const getEstimate = (id) => unwrap(api.get(`/finance/estimates/${id}`));
 export const updateEstimate = (id, payload) => unwrap(api.patch(`/finance/estimates/${id}`, payload));
 export const sendEstimate = (id) => unwrap(api.post(`/finance/estimates/${id}/send`));
+export const createEstimateShareLink = (id) =>
+  unwrap(api.post(`/finance/estimates/${id}/share-link`));
 export const duplicateEstimate = (id) => unwrap(api.post(`/finance/estimates/${id}/duplicate`));
 export const convertEstimateToInvoice = (id) => unwrap(api.post(`/finance/estimates/${id}/convert-to-invoice`));
+export const getPublicEstimate = (token) =>
+  unwrap(api.get(`/public/estimates/${encodeURIComponent(token)}`, { noAuth: true, noCompanyHeader: true }));
+export const respondPublicEstimate = (token, payload) =>
+  unwrap(api.post(`/public/estimates/${encodeURIComponent(token)}/respond`, payload, { noAuth: true, noCompanyHeader: true }));
 
 export const listEstimateTemplates = (params = {}) =>
   unwrap(api.get("/finance/estimate-templates", { params }));
