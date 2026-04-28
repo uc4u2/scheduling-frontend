@@ -24,8 +24,21 @@ import { getFieldReport, listMyFieldReports } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
 import FinancePagination from "../components/FinancePagination";
 import EmployeeFinanceEmptyState from "./EmployeeFinanceEmptyState";
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
+
+const yesNoText = (value) => {
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "No";
+  if (["true", "yes", "y", "1"].includes(normalized)) return "Yes";
+  if (["false", "no", "n", "0"].includes(normalized)) return "No";
+  return value;
+};
 
 function FieldReportDetailDialog({ open, onClose, report }) {
+  const timezone = getUserTimezone();
+  const submittedAt = report?.submitted_at || report?.created_at || null;
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>My Field Report</DialogTitle>
@@ -36,15 +49,15 @@ function FieldReportDetailDialog({ open, onClose, report }) {
               <Alert severity="warning">Your manager requested clarification. Update flow will be added later if backend supports editing.</Alert>
             ) : null}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">Submitted {report.submitted_at || report.created_at || "-"}</Typography>
+              <Typography variant="body2" color="text.secondary">Submitted {submittedAt ? formatDateTimeInTz(submittedAt, timezone) : "-"}</Typography>
               <FinanceStatusChip status={report.status} />
             </Stack>
             <Typography variant="body2">Completed: {report.completed ? "Yes" : "No"}</Typography>
             <Typography variant="body2">Work notes: {report.work_notes || "-"}</Typography>
             <Typography variant="body2">Issues found: {report.issues_found || "-"}</Typography>
-            <Typography variant="body2">Extra work requested: {report.client_requested_extra_work || "-"}</Typography>
+            <Typography variant="body2">Extra work requested: {yesNoText(report.client_requested_extra_work)}</Typography>
             <Typography variant="body2">Client note: {report.client_note || "-"}</Typography>
-            <Typography variant="body2">Files: {Array.isArray(report.files_json) && report.files_json.length ? report.files_json.join(", ") : "No file metadata added."}</Typography>
+            <Typography variant="body2">Files: {Array.isArray(report.files_json) && report.files_json.length ? report.files_json.join(", ") : "No files attached."}</Typography>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Materials reported</Typography>
               {(report.materials || []).length ? (
@@ -83,6 +96,7 @@ function FieldReportDetailDialog({ open, onClose, report }) {
 export default function EmployeeFieldReportsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const timezone = getUserTimezone();
   const role = typeof window !== "undefined" ? (localStorage.getItem("role") || "").toLowerCase() : "";
   const managerViewingEmployee = role === "manager" && location.pathname.startsWith("/employee");
   const { allowHrAccess, isLoading: tabsLoading } = useRecruiterTabsAccess();
@@ -155,7 +169,7 @@ export default function EmployeeFieldReportsPage() {
               <TableBody>
                 {reports.map((report) => (
                   <TableRow key={report.id} hover>
-                    <TableCell>{report.submitted_at || report.created_at || "-"}</TableCell>
+                    <TableCell>{report.submitted_at || report.created_at ? formatDateTimeInTz(report.submitted_at || report.created_at, timezone) : "-"}</TableCell>
                     <TableCell><FinanceStatusChip status={report.status} /></TableCell>
                     <TableCell>{report.completed ? "Yes" : "No"}</TableCell>
                     <TableCell>{report.work_notes || "-"}</TableCell>

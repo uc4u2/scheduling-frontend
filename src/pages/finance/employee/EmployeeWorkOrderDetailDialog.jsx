@@ -19,7 +19,7 @@ import {
 import { getMyWorkOrder } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
 
-export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport }) {
+export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports }) {
   const [workOrder, setWorkOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -115,7 +115,11 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button variant="contained" disabled={!workOrder} onClick={() => onSubmitReport?.(workOrder)}>Submit Field Report</Button>
+        {workOrder?.status === "completed" ? (
+          <Button variant="outlined" onClick={onViewReports}>My Field Reports</Button>
+        ) : (
+          <Button variant="contained" disabled={!workOrder} onClick={() => onSubmitReport?.(workOrder)}>Submit Field Report</Button>
+        )}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>
