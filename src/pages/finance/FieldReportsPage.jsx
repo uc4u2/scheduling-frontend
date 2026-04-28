@@ -29,6 +29,8 @@ import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinancePagination from "./components/FinancePagination";
 
 function FieldReportDetailDialog({ open, onClose, report, comparison, onClarification, onReject, onCreateReview }) {
+  const reviewLocked = report?.status === "approved";
+  const plannedById = new Map((comparison?.planned_materials || []).map((row) => [row.material_plan_id, row]));
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>Field report detail</DialogTitle>
@@ -63,7 +65,13 @@ function FieldReportDetailDialog({ open, onClose, report, comparison, onClarific
                       <TableRow key={row.id}>
                         <TableCell>{row.title}</TableCell>
                         <TableCell>{row.quantity_reported}</TableCell>
-                        <TableCell>{row.material_plan_title || row.material_plan_id || "-"}</TableCell>
+                        <TableCell>
+                          {row.material_plan_title ||
+                            plannedById.get(row.material_plan_id)?.title ||
+                            (plannedById.get(row.material_plan_id)?.planned_quantity != null
+                              ? `Planned ${plannedById.get(row.material_plan_id)?.planned_quantity}`
+                              : "-")}
+                        </TableCell>
                         <TableCell>{row.is_extra ? "Yes" : "No"}</TableCell>
                         <TableCell>{row.reason || "-"}</TableCell>
                       </TableRow>
@@ -108,9 +116,15 @@ function FieldReportDetailDialog({ open, onClose, report, comparison, onClarific
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button color="warning" onClick={onClarification}>Request clarification</Button>
-        <Button color="error" onClick={onReject}>Reject report</Button>
-        <Button variant="contained" onClick={onCreateReview}>Create review</Button>
+        {reviewLocked ? (
+          <Button variant="outlined" onClick={onCreateReview}>View Approved Review</Button>
+        ) : (
+          <>
+            <Button color="warning" onClick={onClarification}>Request clarification</Button>
+            <Button color="error" onClick={onReject}>Reject report</Button>
+            <Button variant="contained" onClick={onCreateReview}>Create review</Button>
+          </>
+        )}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>
@@ -225,6 +239,11 @@ export default function FieldReportsPage({ onNavigate }) {
 
   const handleCreateReview = async () => {
     if (!selectedReport || !selectedWorkOrderId) return;
+    if (selectedReport.status === "approved") {
+      setDetailOpen(false);
+      if (onNavigate) onNavigate("finance-reviews");
+      return null;
+    }
     try {
       const res = await createWorkOrderReview(selectedWorkOrderId, { field_report_id: selectedReport.id });
       enqueueSnackbar("Review created.", { variant: "success" });

@@ -50,6 +50,10 @@ export default function EmployeeWorkOrdersPage() {
     navigate(`${basePath}?tab=${value}`);
   };
 
+  const openMyFieldReports = () => {
+    navigate(location.pathname.startsWith("/recruiter") ? "/recruiter/field-reports" : "/employee/field-reports");
+  };
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -108,7 +112,11 @@ export default function EmployeeWorkOrdersPage() {
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
                         <Button size="small" onClick={() => { setSelectedWorkOrder(workOrder); setDetailOpen(true); }}>Open</Button>
-                        <Button size="small" variant="contained" onClick={() => { setSelectedWorkOrder(workOrder); setReportOpen(true); }}>Submit Field Report</Button>
+                        {workOrder.status === "completed" ? (
+                          <Button size="small" variant="outlined" onClick={openMyFieldReports}>My Field Reports</Button>
+                        ) : (
+                          <Button size="small" variant="contained" onClick={() => { setSelectedWorkOrder(workOrder); setReportOpen(true); }}>Submit Field Report</Button>
+                        )}
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -134,6 +142,7 @@ export default function EmployeeWorkOrdersPage() {
         open={detailOpen}
         workOrderId={selectedWorkOrder?.id}
         onClose={() => setDetailOpen(false)}
+        onViewReports={openMyFieldReports}
         onSubmitReport={(workOrder) => {
           setDetailOpen(false);
           setSelectedWorkOrder(workOrder || selectedWorkOrder);
