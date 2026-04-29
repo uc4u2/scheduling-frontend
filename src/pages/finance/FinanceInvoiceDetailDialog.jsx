@@ -1,0 +1,520 @@
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LaunchIcon from "@mui/icons-material/Launch";
+import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
+import { useSnackbar } from "notistack";
+import FinanceStatusChip from "./components/FinanceStatusChip";
+import {
+  createFinanceInvoicePaymentLink,
+  getFinanceInvoice,
+  updateFinanceInvoice,
+} from "./financeApi";
+import { formatCurrency } from "../../utils/formatters";
+
+const blankBillingRecipient = {
+  company_name: "",
+  contact_name: "",
+  email: "",
+  phone: "",
+  address_street: "",
+  address_city: "",
+  address_state: "",
+  address_province: "",
+  address_zip: "",
+  address_country: "",
+  tax_id: "",
+};
+
+const blankForm = {
+  issue_date: "",
+  due_date: "",
+  description: "",
+  notes: "",
+  terms: "",
+  po_number: "",
+  payment_terms: "",
+  billing_notes_internal: "",
+  billing_recipient: blankBillingRecipient,
+};
+
+const coalesceText = (value) => (value == null ? "" : String(value));
+
+const buildFormFromInvoice = (invoice) => ({
+  issue_date: invoice?.issue_date || "",
+  due_date: invoice?.due_date || "",
+  description: invoice?.description || "",
+  notes: invoice?.notes || "",
+  terms: invoice?.terms || "",
+  po_number: invoice?.custom_fields_json?.po_number || "",
+  payment_terms: invoice?.custom_fields_json?.payment_terms || "",
+  billing_notes_internal: invoice?.custom_fields_json?.billing_notes_internal || "",
+  billing_recipient: {
+    ...blankBillingRecipient,
+    ...(invoice?.billing_recipient || invoice?.billing_address_json || {}),
+  },
+});
+
+export default function FinanceInvoiceDetailDialog({
+  open,
+  invoiceId,
+  onClose,
+  onSaved,
+}) {
+  const { enqueueSnackbar } = useSnackbar();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
+  const [invoice, setInvoice] = useState(null);
+  const [form, setForm] = useState(blankForm);
+
+  useEffect(() => {
+    if (!open || !invoiceId) return;
+    let active = true;
+    setLoading(true);
+    setError("");
+    setWarning("");
+    getFinanceInvoice(invoiceId)
+      .then((payload) => {
+        if (!active) return;
+        const nextInvoice = payload?.invoice || null;
+        setInvoice(nextInvoice);
+        setForm(buildFormFromInvoice(nextInvoice));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err?.response?.data?.error || err?.message || "Unable to load invoice.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [invoiceId, open]);
+
+  const totalLabel = useMemo(
+    () => formatCurrency(invoice?.total, invoice?.currency),
+    [invoice?.currency, invoice?.total]
+  );
+
+  const hasHostedLink = Boolean(invoice?.hosted_invoice_url);
+
+  const setField = (field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+  const setBillingField = (field, value) =>
+    setForm((prev) => ({
+      ...prev,
+      billing_recipient: {
+        ...prev.billing_recipient,
+        [field]: value,
+      },
+    }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    setWarning("");
+    try {
+      const payload = await updateFinanceInvoice(invoiceId, {
+        issue_date: form.issue_date || null,
+        due_date: form.due_date || null,
+        description: form.description,
+        notes: form.notes,
+        terms: form.terms,
+        billing_recipient: form.billing_recipient,
+        po_number: form.po_number,
+        payment_terms: form.payment_terms,
+        billing_notes_internal: form.billing_notes_internal,
+      });
+      const nextInvoice = payload?.invoice || null;
+      setInvoice(nextInvoice);
+      setForm(buildFormFromInvoice(nextInvoice));
+      setWarning(payload?.warning || "");
+      enqueueSnackbar("Invoice document details saved.", { variant: "success" });
+      onSaved?.(nextInvoice);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Unable to save invoice.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopyPaymentLink = async () => {
+    if (!invoiceId) return;
+    try {
+      const payload = await createFinanceInvoicePaymentLink(invoiceId);
+      const checkoutUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url || "";
+      if (!checkoutUrl) {
+        throw new Error("Payment link is not available yet.");
+      }
+      await navigator.clipboard.writeText(checkoutUrl);
+      enqueueSnackbar("Payment link copied.", { variant: "success" });
+      const nextInvoice = payload?.invoice || null;
+      if (nextInvoice) {
+        setInvoice((prev) => ({ ...(prev || {}), ...nextInvoice }));
+      }
+      onSaved?.(nextInvoice || invoice);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Unable to create payment link.");
+    }
+  };
+
+  const handleOpenPaymentLink = async () => {
+    const hostedUrl = invoice?.hosted_invoice_url;
+    if (!hostedUrl) {
+      await handleCopyPaymentLink();
+      return;
+    }
+    window.open(hostedUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const relatedWorkOrders = invoice?.related_work_orders || [];
+
+  return (
+    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="lg">
+      <DialogTitle>Finance Invoice Detail</DialogTitle>
+      <DialogContent dividers>
+        {loading ? (
+          <Stack alignItems="center" sx={{ py: 6 }}>
+            <CircularProgress />
+          </Stack>
+        ) : (
+          <Stack spacing={2.5}>
+            {error ? <Alert severity="error">{error}</Alert> : null}
+            {warning ? <Alert severity="warning">{warning}</Alert> : null}
+            {hasHostedLink ? (
+              <Alert severity="warning">
+                Payment link already exists. Billing/document edits update Schedulaa records but may not change the already-created Stripe hosted invoice.
+              </Alert>
+            ) : null}
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={1.5}
+                justifyContent="space-between"
+                alignItems={{ md: "center" }}
+              >
+                <Stack spacing={1}>
+                  <Typography variant="h6" fontWeight={700}>
+                    {invoice?.invoice_number || "Invoice"}
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <FinanceStatusChip status={invoice?.status} />
+                    <Typography variant="body2" color="text.secondary">
+                      {invoice?.currency || "USD"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {invoice?.payment_link_exists ? "Payment link ready" : invoice?.payment_link_ready ? "Payment link can be created" : "Payment link unavailable"}
+                    </Typography>
+                  </Stack>
+                </Stack>
+                <Stack spacing={0.5} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Total
+                  </Typography>
+                  <Typography variant="h5" fontWeight={700}>
+                    {totalLabel}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1.25}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Client Summary
+                </Typography>
+                <Typography variant="body2">
+                  {invoice?.client?.name || "No client"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {invoice?.client?.email || "No email"}
+                  {invoice?.client?.phone ? ` • ${invoice.client.phone}` : ""}
+                </Typography>
+                {invoice?.related_estimate ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Estimate: {invoice.related_estimate.estimate_number} • {invoice.related_estimate.title || "Estimate"} • {invoice.related_estimate.status || "unknown"}
+                  </Typography>
+                ) : null}
+                {relatedWorkOrders.length ? (
+                  <Stack spacing={0.5}>
+                    <Typography variant="body2" color="text.secondary">
+                      Related work orders
+                    </Typography>
+                    {relatedWorkOrders.map((row) => (
+                      <Typography key={row.id} variant="body2" color="text.secondary">
+                        {row.work_order_number} • {row.title || "Work order"} • {row.status || "unknown"}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Billing Recipient
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Billing recipient is the company/person shown on the invoice. It can differ from the operational client.
+                  </Typography>
+                </Box>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Company / Recipient name"
+                    value={coalesceText(form.billing_recipient.company_name)}
+                    onChange={(event) => setBillingField("company_name", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Contact name"
+                    value={coalesceText(form.billing_recipient.contact_name)}
+                    onChange={(event) => setBillingField("contact_name", event.target.value)}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Billing email"
+                    value={coalesceText(form.billing_recipient.email)}
+                    onChange={(event) => setBillingField("email", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Billing phone"
+                    value={coalesceText(form.billing_recipient.phone)}
+                    onChange={(event) => setBillingField("phone", event.target.value)}
+                  />
+                </Stack>
+                <TextField
+                  fullWidth
+                  label="Address street"
+                  value={coalesceText(form.billing_recipient.address_street)}
+                  onChange={(event) => setBillingField("address_street", event.target.value)}
+                />
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="City"
+                    value={coalesceText(form.billing_recipient.address_city)}
+                    onChange={(event) => setBillingField("address_city", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="State / Province"
+                    value={coalesceText(form.billing_recipient.address_province || form.billing_recipient.address_state)}
+                    onChange={(event) => {
+                      setBillingField("address_province", event.target.value);
+                      setBillingField("address_state", event.target.value);
+                    }}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Postal / ZIP"
+                    value={coalesceText(form.billing_recipient.address_zip)}
+                    onChange={(event) => setBillingField("address_zip", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Country"
+                    value={coalesceText(form.billing_recipient.address_country)}
+                    onChange={(event) => setBillingField("address_country", event.target.value)}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Tax ID"
+                    value={coalesceText(form.billing_recipient.tax_id)}
+                    onChange={(event) => setBillingField("tax_id", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Internal billing note"
+                    value={coalesceText(form.billing_notes_internal)}
+                    onChange={(event) => setField("billing_notes_internal", event.target.value)}
+                  />
+                </Stack>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={2}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Invoice Admin Fields
+                </Typography>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    label="Issue date"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={form.issue_date}
+                    onChange={(event) => setField("issue_date", event.target.value)}
+                  />
+                  <TextField
+                    label="Due date"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={form.due_date}
+                    onChange={(event) => setField("due_date", event.target.value)}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="PO number"
+                    value={form.po_number}
+                    onChange={(event) => setField("po_number", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Payment terms"
+                    value={form.payment_terms}
+                    onChange={(event) => setField("payment_terms", event.target.value)}
+                  />
+                </Stack>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  value={form.description}
+                  onChange={(event) => setField("description", event.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="Notes"
+                  value={form.notes}
+                  onChange={(event) => setField("notes", event.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="Terms"
+                  value={form.terms}
+                  onChange={(event) => setField("terms", event.target.value)}
+                />
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Line Items and Totals
+                </Typography>
+                {invoice?.tax_context?.prices_include_tax ? (
+                  <Alert severity="info">
+                    Tax-inclusive estimates may show entered line prices separately from taxable base. Totals remain the source of truth.
+                  </Alert>
+                ) : null}
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Description</TableCell>
+                      <TableCell align="right">Qty</TableCell>
+                      <TableCell align="right">Unit price</TableCell>
+                      <TableCell align="right">Amount</TableCell>
+                      <TableCell align="right">Taxable</TableCell>
+                      <TableCell align="right">Tax rate</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(invoice?.line_items || []).map((line) => (
+                      <TableRow key={line.id}>
+                        <TableCell>{line.description}</TableCell>
+                        <TableCell align="right">{line.quantity}</TableCell>
+                        <TableCell align="right">{formatCurrency(line.unit_price, invoice?.currency)}</TableCell>
+                        <TableCell align="right">{formatCurrency(line.amount, invoice?.currency)}</TableCell>
+                        <TableCell align="right">{line.taxable ? "Yes" : "No"}</TableCell>
+                        <TableCell align="right">{line.tax_rate != null ? `${line.tax_rate}%` : "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <Divider />
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="flex-end">
+                  <Typography variant="body2">Subtotal: {formatCurrency(invoice?.subtotal, invoice?.currency)}</Typography>
+                  <Typography variant="body2">Tax: {formatCurrency(invoice?.tax_total, invoice?.currency)}</Typography>
+                  <Typography variant="body2">Discount: {formatCurrency(invoice?.discount_total, invoice?.currency)}</Typography>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Total: {formatCurrency(invoice?.total, invoice?.currency)}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Paper>
+          </Stack>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>
+          Close
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<PaymentOutlinedIcon />}
+          onClick={handleCopyPaymentLink}
+          disabled={loading || saving || !invoice?.payment_link_ready}
+        >
+          Create / Copy Payment Link
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<ContentCopyIcon />}
+          onClick={async () => {
+            if (!invoice?.hosted_invoice_url) return;
+            await navigator.clipboard.writeText(invoice.hosted_invoice_url);
+            enqueueSnackbar("Payment link copied.", { variant: "success" });
+          }}
+          disabled={!invoice?.hosted_invoice_url}
+        >
+          Copy Existing Link
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<LaunchIcon />}
+          onClick={handleOpenPaymentLink}
+          disabled={loading || saving || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
+        >
+          Open Payment Link
+        </Button>
+        <Button variant="contained" onClick={handleSave} disabled={loading || saving}>
+          {saving ? "Saving..." : "Save changes"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

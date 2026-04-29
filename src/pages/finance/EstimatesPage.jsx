@@ -34,6 +34,7 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
 import EstimateEditorDialog from "./EstimateEditorDialog";
+import FinanceInvoiceDetailDialog from "./FinanceInvoiceDetailDialog";
 import WorkOrderEditorDialog from "./WorkOrderEditorDialog";
 import {
   convertEstimateToInvoice,
@@ -72,6 +73,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [editing, setEditing] = useState(null);
   const [workOrderDialogOpen, setWorkOrderDialogOpen] = useState(false);
   const [workOrderSeed, setWorkOrderSeed] = useState(null);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [invoiceDialogId, setInvoiceDialogId] = useState(null);
   const [templateName, setTemplateName] = useState("");
   const [linkBusyId, setLinkBusyId] = useState(null);
   const [paymentLinkBusyId, setPaymentLinkBusyId] = useState(null);
@@ -346,6 +349,15 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     setWorkOrderDialogOpen(true);
   };
 
+  const handleOpenInvoice = (item) => {
+    if (!item?.converted_invoice_id) {
+      enqueueSnackbar("Convert the estimate to an invoice first.", { variant: "warning" });
+      return;
+    }
+    setInvoiceDialogId(item.converted_invoice_id);
+    setInvoiceDialogOpen(true);
+  };
+
   return (
     <Stack spacing={2}>
       <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
@@ -535,6 +547,13 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                           </Button>
                         </span>
                       </Tooltip>
+                      <Button
+                        size="small"
+                        onClick={() => handleOpenInvoice(item)}
+                        disabled={!item.converted_invoice_id}
+                      >
+                        Open Invoice
+                      </Button>
                       <Tooltip title="Open the hosted payment link for this finance invoice.">
                         <span>
                           <Button
@@ -608,6 +627,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         clients={clients}
         estimates={items}
         prefillEstimate={workOrderSeed}
+      />
+      <FinanceInvoiceDetailDialog
+        open={invoiceDialogOpen}
+        invoiceId={invoiceDialogId}
+        onClose={() => {
+          setInvoiceDialogOpen(false);
+          setInvoiceDialogId(null);
+        }}
+        onSaved={async () => {
+          await load();
+        }}
       />
       <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Send Estimate</DialogTitle>

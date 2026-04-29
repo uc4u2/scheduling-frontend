@@ -58,6 +58,9 @@ export const reopenEstimateResponse = (id) =>
   unwrap(api.post(`/finance/estimates/${id}/reopen-response`));
 export const createFinanceInvoicePaymentLink = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-payment-link`));
+export const getFinanceInvoice = (id) => unwrap(api.get(`/finance/invoices/${id}`));
+export const updateFinanceInvoice = (id, payload) =>
+  unwrap(api.patch(`/finance/invoices/${id}`, payload));
 export const getPublicEstimate = (token) =>
   unwrap(api.get(`/public/estimates/${encodeURIComponent(token)}`, { noAuth: true, noCompanyHeader: true }));
 export const respondPublicEstimate = (token, payload) =>
