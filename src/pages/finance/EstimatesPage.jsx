@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -60,6 +60,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [items, setItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [taxContext, setTaxContext] = useState(null);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
@@ -80,7 +81,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -91,6 +92,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       ]);
       setItems(Array.isArray(estimates?.items) ? estimates.items : Array.isArray(estimates) ? estimates : []);
       setPagination(estimates?.pagination || null);
+      setTaxContext(estimates?.tax_context || null);
       setClients(managerClients);
       setTemplates(Array.isArray(templateList?.items) ? templateList.items : Array.isArray(templateList) ? templateList : []);
     } catch (err) {
@@ -98,11 +100,11 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, perPage, search, status]);
 
   useEffect(() => {
     load();
-  }, [status, page, perPage]);
+  }, [load]);
 
   useEffect(() => {
     if (createNonce) {
@@ -592,6 +594,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         estimate={editing}
         clients={clients}
         templates={templates}
+        taxContext={taxContext}
       />
       <WorkOrderEditorDialog
         open={workOrderDialogOpen}

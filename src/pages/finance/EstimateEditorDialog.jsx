@@ -35,16 +35,18 @@ const makeLine = (line = {}, index = 0) => ({
   quantity: line.quantity ?? 1,
   unit_price: line.unit_price ?? 0,
   taxable: Boolean(line.taxable),
-  tax_rate: line.tax_rate ?? 0,
+  tax_rate: line.tax_rate ?? "",
 });
 
-const blankForm = () => ({
+const blankForm = (taxContext = {}) => ({
   client_id: "",
   estimate_number: "",
   title: "",
   issue_date: formatDate(new Date()),
   expiry_date: "",
-  currency: normalizeCurrency(getActiveCurrency("USD")) || "USD",
+  currency:
+    normalizeCurrency(taxContext?.display_currency || getActiveCurrency("USD")) ||
+    "USD",
   notes: "",
   terms: "",
   visible_notes: "",
@@ -58,6 +60,39 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+
+const hasMeaningfulRate = (value) => {
+  if (value === null || value === undefined || value === "") return false;
+  return Number(value) > 0;
+};
+
+const applyDefaultTaxRate = (line, taxContext) => {
+  if (!line?.taxable) return line;
+  if (hasMeaningfulRate(line.tax_rate)) return line;
+  if (taxContext?.default_tax_rate == null) return line;
+  return { ...line, tax_rate: String(taxContext.default_tax_rate) };
+};
+
+const computePreviewLine = (line, taxContext = {}) => {
+  const quantity = toNumber(line.quantity, 1);
+  const unitPrice = toNumber(line.unit_price, 0);
+  const gross = roundMoney(quantity * unitPrice);
+  const taxable = Boolean(line.taxable);
+  const taxRate = hasMeaningfulRate(line.tax_rate) ? toNumber(line.tax_rate, 0) : 0;
+  if (!taxable || taxRate <= 0) {
+    return { base: gross, tax: 0, gross };
+  }
+  if (taxContext?.prices_include_tax) {
+    const base = roundMoney(gross / (1 + taxRate / 100));
+    const tax = roundMoney(gross - base);
+    return { base, tax, gross };
+  }
+  const base = gross;
+  const tax = roundMoney(base * (taxRate / 100));
+  return { base, tax, gross };
+};
+
 export default function EstimateEditorDialog({
   open,
   onClose,
@@ -65,12 +100,17 @@ export default function EstimateEditorDialog({
   estimate,
   clients = [],
   templates = [],
+  taxContext,
 }) {
   const theme = useTheme();
   const currencyOptions = useMemo(() => getCurrencyOptions(), []);
   const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const effectiveTaxContext = useMemo(
+    () => estimate?.tax_context || taxContext || {},
+    [estimate?.tax_context, taxContext]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -88,32 +128,31 @@ export default function EstimateEditorDialog({
         internal_notes: estimate.internal_notes || "",
         discount_total: estimate.discount_total ?? 0,
         line_items: Array.isArray(estimate.line_items) && estimate.line_items.length
-          ? estimate.line_items.map((line, idx) => makeLine(line, idx))
+          ? estimate.line_items.map((line, idx) =>
+              applyDefaultTaxRate(makeLine(line, idx), estimate.tax_context || taxContext || {})
+            )
           : [makeLine()],
       });
     } else {
-      setForm(blankForm());
+      setForm(blankForm(taxContext || {}));
     }
     setError("");
-  }, [estimate, open]);
+  }, [estimate, open, taxContext]);
 
   const preview = useMemo(() => {
-    const subtotal = form.line_items.reduce(
-      (sum, line) => sum + toNumber(line.quantity, 1) * toNumber(line.unit_price, 0),
-      0
+    const subtotal = roundMoney(
+      form.line_items.reduce((sum, line) => sum + computePreviewLine(line, effectiveTaxContext).base, 0)
     );
-    const taxTotal = form.line_items.reduce((sum, line) => {
-      const amount = toNumber(line.quantity, 1) * toNumber(line.unit_price, 0);
-      if (!line.taxable) return sum;
-      return sum + amount * (toNumber(line.tax_rate, 0) / 100);
-    }, 0);
-    const discount = toNumber(form.discount_total, 0);
+    const taxTotal = roundMoney(
+      form.line_items.reduce((sum, line) => sum + computePreviewLine(line, effectiveTaxContext).tax, 0)
+    );
+    const discount = roundMoney(toNumber(form.discount_total, 0));
     return {
       subtotal,
       taxTotal,
-      total: subtotal + taxTotal - discount,
+      total: roundMoney(subtotal + taxTotal - discount),
     };
-  }, [form]);
+  }, [effectiveTaxContext, form]);
 
   const applyTemplate = (templateId) => {
     const template = templates.find((item) => String(item.id) === String(templateId));
@@ -123,7 +162,9 @@ export default function EstimateEditorDialog({
       notes: template.default_notes || prev.notes,
       terms: template.default_terms || prev.terms,
       line_items: Array.isArray(template.line_items) && template.line_items.length
-        ? template.line_items.map((line, idx) => makeLine(line, idx))
+        ? template.line_items.map((line, idx) =>
+            applyDefaultTaxRate(makeLine(line, idx), effectiveTaxContext)
+          )
         : prev.line_items,
     }));
   };
@@ -133,12 +174,27 @@ export default function EstimateEditorDialog({
   const setLineField = (lineId, field, value) => {
     setForm((prev) => ({
       ...prev,
-      line_items: prev.line_items.map((line) => (line.id === lineId ? { ...line, [field]: value } : line)),
+      line_items: prev.line_items.map((line) => {
+        if (line.id !== lineId) return line;
+        const next = { ...line, [field]: value };
+        if (field === "taxable") {
+          if (!value) {
+            next.tax_rate = "";
+          } else if (!hasMeaningfulRate(next.tax_rate)) {
+            const withDefault = applyDefaultTaxRate(next, effectiveTaxContext);
+            next.tax_rate = withDefault.tax_rate;
+          }
+        }
+        return next;
+      }),
     }));
   };
 
   const addLine = () => {
-    setForm((prev) => ({ ...prev, line_items: [...prev.line_items, makeLine({}, prev.line_items.length)] }));
+    setForm((prev) => ({
+      ...prev,
+      line_items: [...prev.line_items, applyDefaultTaxRate(makeLine({}, prev.line_items.length), effectiveTaxContext)],
+    }));
   };
 
   const removeLine = (lineId) => {
@@ -178,7 +234,10 @@ export default function EstimateEditorDialog({
           quantity: toNumber(line.quantity, 1),
           unit_price: toNumber(line.unit_price, 0),
           taxable: Boolean(line.taxable),
-          tax_rate: line.taxable ? toNumber(line.tax_rate, 0) : null,
+          tax_rate:
+            line.taxable && hasMeaningfulRate(line.tax_rate)
+              ? toNumber(line.tax_rate, 0)
+              : null,
           sort_order: idx,
         })),
     };
@@ -268,6 +327,39 @@ export default function EstimateEditorDialog({
                 ))}
               </TextField>
             </Grid>
+            <Grid item xs={12}>
+              <Alert
+                severity={effectiveTaxContext?.warning ? "warning" : "info"}
+                variant="outlined"
+              >
+                <Stack spacing={0.75}>
+                  <Typography variant="body2" fontWeight={700}>
+                    Tax & currency context
+                  </Typography>
+                  <Typography variant="body2">
+                    Display currency: <strong>{effectiveTaxContext?.display_currency || form.currency || "USD"}</strong>
+                    {" • "}
+                    Tax country/region: <strong>{effectiveTaxContext?.tax_country_code || "—"} / {effectiveTaxContext?.tax_region_code || "—"}</strong>
+                    {" • "}
+                    Prices include tax: <strong>{effectiveTaxContext?.prices_include_tax ? "ON" : "OFF"}</strong>
+                    {effectiveTaxContext?.default_tax_rate != null ? (
+                      <>
+                        {" • "}
+                        Default tax rate: <strong>{Number(effectiveTaxContext.default_tax_rate).toFixed(2)}%</strong>
+                      </>
+                    ) : null}
+                  </Typography>
+                  <Typography variant="body2">
+                    {effectiveTaxContext?.prices_include_tax
+                      ? "Prices include tax. Tax is backed out from taxable line prices."
+                      : "Tax is added on top based on your company tax settings."}
+                  </Typography>
+                  {effectiveTaxContext?.warning ? (
+                    <Typography variant="body2">{effectiveTaxContext.warning}</Typography>
+                  ) : null}
+                </Stack>
+              </Alert>
+            </Grid>
             <Grid item xs={12} md={6}>
               <ThemedDateField
                 fullWidth
@@ -331,10 +423,26 @@ export default function EstimateEditorDialog({
                     <TextField fullWidth label="Qty" type="number" inputProps={{ step: "0.01" }} value={line.quantity} onChange={(e) => setLineField(line.id, "quantity", e.target.value)} />
                   </Grid>
                   <Grid item xs={6} md={2}>
-                    <TextField fullWidth label="Unit price" type="number" inputProps={{ step: "0.01" }} value={line.unit_price} onChange={(e) => setLineField(line.id, "unit_price", e.target.value)} />
+                    <TextField
+                      fullWidth
+                      label="Unit price"
+                      type="number"
+                      inputProps={{ step: "0.01" }}
+                      value={line.unit_price}
+                      onChange={(e) => setLineField(line.id, "unit_price", e.target.value)}
+                      helperText={effectiveTaxContext?.prices_include_tax ? "Tax-included price" : "Pre-tax price"}
+                    />
                   </Grid>
                   <Grid item xs={6} md={1.5}>
-                    <TextField fullWidth label="Tax %" type="number" inputProps={{ step: "0.01" }} value={line.tax_rate} onChange={(e) => setLineField(line.id, "tax_rate", e.target.value)} disabled={!line.taxable} />
+                    <TextField
+                      fullWidth
+                      label="Tax %"
+                      type="number"
+                      inputProps={{ step: "0.01" }}
+                      value={line.tax_rate}
+                      onChange={(e) => setLineField(line.id, "tax_rate", e.target.value)}
+                      disabled={!line.taxable}
+                    />
                   </Grid>
                   <Grid item xs={4} md={1}>
                     <TextField
@@ -364,7 +472,7 @@ export default function EstimateEditorDialog({
             </Grid>
             <Grid item xs={12} md={8}>
               <Alert severity="info">
-                Preview only. The backend recalculates subtotal, tax, and total when you save.
+                Preview only. The backend recalculates subtotal, tax, and total using your Business Finance tax settings when you save.
               </Alert>
             </Grid>
             <Grid item xs={12}>
