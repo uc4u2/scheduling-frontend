@@ -263,6 +263,7 @@ export default function ManagerPaymentsView({ connect }) {
 
   // Filters + paging
   const [q, setQ] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all"); // all | paid | pending | card_on_file | unpaid | partially_refunded | refunded | no_show
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -1239,6 +1240,9 @@ export default function ManagerPaymentsView({ connect }) {
   const bookingsFiltered = useMemo(() => {
     const ql = q.trim().toLowerCase();
     const filtered = bookings.filter((b) => {
+      if (sourceFilter !== "all" && (b.row_type || "booking") !== sourceFilter) {
+        return false;
+      }
       if (statusFilter !== "all") {
         if (statusFilter === "no_show") {
           const s = String(b.status || "")
@@ -1270,7 +1274,7 @@ export default function ManagerPaymentsView({ connect }) {
       const bMs = b._latestPaymentMs ?? b._startMs ?? 0;
       return bMs - aMs;
     });
-  }, [bookings, q, statusFilter]);
+  }, [bookings, q, sourceFilter, statusFilter]);
 
   const bookingsPage = useMemo(() => {
     const start = page * rowsPerPage;
@@ -1424,6 +1428,20 @@ export default function ManagerPaymentsView({ connect }) {
               }}
               sx={{ minWidth: { xs: "100%", sm: 280 } }}
             />
+            <Select
+              size="small"
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value);
+                setPage(0);
+              }}
+              displayEmpty
+              sx={{ minWidth: { xs: "100%", sm: 180 } }}
+            >
+              <MenuItem value="all">All sources</MenuItem>
+              <MenuItem value="booking">Bookings</MenuItem>
+              <MenuItem value="finance_invoice">Business Finance</MenuItem>
+            </Select>
             <Select
               size="small"
               value={statusFilter}
