@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LaunchIcon from "@mui/icons-material/Launch";
+import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
 import { useSnackbar } from "notistack";
 import FinanceStatusChip from "./components/FinanceStatusChip";
@@ -194,11 +195,15 @@ export default function FinanceInvoiceDetailDialog({
   };
 
   const relatedWorkOrders = invoice?.related_work_orders || [];
+  const handleOpenPrintView = () => {
+    if (!invoice?.print_url) return;
+    window.open(invoice.print_url, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="lg">
       <DialogTitle>Finance Invoice Detail</DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers sx={{ maxHeight: "72vh" }}>
         {loading ? (
           <Stack alignItems="center" sx={{ py: 6 }}>
             <CircularProgress />
@@ -482,6 +487,14 @@ export default function FinanceInvoiceDetailDialog({
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>
           Close
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<LocalPrintshopOutlinedIcon />}
+          onClick={handleOpenPrintView}
+          disabled={!invoice?.print_url}
+        >
+          Print / Save PDF
         </Button>
         <Button
           variant="outlined"
