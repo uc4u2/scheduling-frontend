@@ -53,6 +53,7 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { isMobileComplianceMode } from "../../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../../components/mobile/MobileWebOnlyNotice";
+import FinanceInvoiceDetailDialog from "../../finance/FinanceInvoiceDetailDialog";
 
 // Timezone helpers
 const resolveTZ = () => getUserTimezone();
@@ -279,6 +280,8 @@ export default function ManagerPaymentsView({ connect }) {
   const [viewAppt, setViewAppt] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [invoiceDetailOpen, setInvoiceDetailOpen] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
 
   // Charge dialog
   const [chargeOpen, setChargeOpen] = useState(false);
@@ -370,13 +373,48 @@ export default function ManagerPaymentsView({ connect }) {
   // No-show fee (for quick-fill)
   const [noShowFee, setNoShowFee] = useState(null);
 
+  const openFinanceInvoice = (invoiceId) => {
+    if (!invoiceId) return;
+    setSelectedInvoiceId(invoiceId);
+    setInvoiceDetailOpen(true);
+  };
+
   // Load bookings
   const loadBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/api/manager/bookings");
-      const raw = Array.isArray(data) ? data : data?.bookings || [];
+      const { data } = await api.get("/api/manager/payments-and-refunds");
+      const raw = Array.isArray(data) ? data : data?.items || data?.bookings || [];
       const normalized = raw.map((b) => {
+        if (b?.row_type === "finance_invoice") {
+          const paymentStatus = String(b.payment_status || b.status || "pending").toLowerCase();
+          const whenValue = b.when || b.issue_date || b.updated_at || b.created_at || null;
+          const whenLabel = b.issue_date
+            ? `Invoice date ${b.issue_date}`
+            : whenValue
+              ? fmtISO(whenValue, "yyyy-LL-dd hh:mm a")
+              : "";
+          const whenMs = whenValue ? DateTime.fromISO(whenValue).toMillis() : 0;
+          return {
+            ...b,
+            payment_status: paymentStatus,
+            paid: paymentStatus === "paid",
+            _startMs: whenMs,
+            _latestPaymentMs: whenMs,
+            _whenLabel: whenLabel,
+            _capturedBalanceTotal: paymentStatus === "paid" ? Number(b.amount || 0) : 0,
+            _capturedTipTotal: 0,
+            _refundedTotal: paymentStatus === "refunded" || paymentStatus === "partially_refunded" ? Number(b.amount || 0) : 0,
+            _sourceTypeLabel: b.source_label || "Business Finance",
+            client: b.client || {
+              full_name: b.client_name || "Client",
+              email: b.client_email || "",
+            },
+            service: b.service || null,
+            amount: Number(b.amount || 0),
+            currency: b.currency || displayCurrency,
+          };
+        }
         const paymentMeta = normalizeBookingPayment(b);
         const dateUtc = b?.date || null;
         const startUtc = b?.start_time || null;
@@ -545,6 +583,7 @@ export default function ManagerPaymentsView({ connect }) {
 
         return {
           ...b,
+          row_type: b?.row_type || "booking",
           date: localDate,
           start_time: localStart,
           end_time: localEnd,
@@ -579,6 +618,7 @@ export default function ManagerPaymentsView({ connect }) {
             srcTZ,
             "yyyy-LL-dd hh:mm a (z)",
           ),
+          _sourceTypeLabel: b?.source_label || "Booking",
         };
       });
       setBookings(normalized);
@@ -1213,8 +1253,15 @@ export default function ManagerPaymentsView({ connect }) {
       const hay = [
         b?.client?.full_name,
         b?.client?.email,
+        b?.client_name,
+        b?.client_email,
         b?.service?.name,
         b?.id,
+        b?.invoice_number,
+        b?.title,
+        b?.description,
+        b?.related_estimate_number,
+        b?._sourceTypeLabel,
       ].map((x) => String(x || "").toLowerCase());
       return hay.some((h) => h.includes(ql));
     });
@@ -1351,8 +1398,8 @@ export default function ManagerPaymentsView({ connect }) {
               Payments & Refunds
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Track booking payments, card-on-file charges, and refund activity
-              in one place.
+              Track booking payments, Business Finance invoices, card-on-file
+              charges, and refund activity in one place.
             </Typography>
           </Box>
           <Stack
@@ -1362,7 +1409,7 @@ export default function ManagerPaymentsView({ connect }) {
           >
             <TextField
               size="small"
-              placeholder="Search name, email, service, or #ID"
+              placeholder="Search name, email, service, invoice, estimate, or #ID"
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
@@ -1500,10 +1547,11 @@ export default function ManagerPaymentsView({ connect }) {
         ) : (
           <Stack spacing={1.5}>
             {bookingsPage.map((b) => {
+              const isFinanceInvoice = b.row_type === "finance_invoice";
               const totalCaptured =
                 (b._capturedBalanceTotal || 0) + (b._capturedTipTotal || 0);
               const segments = [];
-              if (totalCaptured > 0) {
+              if (!isFinanceInvoice && totalCaptured > 0) {
                 const capturedLabel = `Captured ${money(
                   totalCaptured,
                   b.currency || displayCurrency,
@@ -1516,7 +1564,7 @@ export default function ManagerPaymentsView({ connect }) {
                     : ""
                 }`;
                 segments.push(capturedLabel);
-              } else {
+              } else if (!isFinanceInvoice) {
                 segments.push("No captures");
               }
               if (b._refundedTotal > 0) {
@@ -1570,9 +1618,11 @@ export default function ManagerPaymentsView({ connect }) {
                     justifyContent="space-between"
                   >
                     <Stack spacing={0.5}>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                         <Typography variant="subtitle1" fontWeight={700}>
-                          Booking #{b.id}
+                          {isFinanceInvoice
+                            ? b.title || `Finance Invoice ${b.invoice_number || `#${b.id}`}`
+                            : `Booking #${b.id}`}
                         </Typography>
                         <Chip
                           size="small"
@@ -1595,18 +1645,33 @@ export default function ManagerPaymentsView({ connect }) {
                               : undefined
                           }
                         />
+                        {isFinanceInvoice ? (
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={b._sourceTypeLabel || "Business Finance"}
+                          />
+                        ) : null}
                       </Stack>
                       <Typography variant="body2" color="text.secondary">
                         {b?.client?.full_name || b?.client_name || "Client"}{" "}
                         {b?.client?.email ? `• ${b.client.email}` : ""}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Service: {b?.service?.name || b?.service_name || "—"}{" "}
+                        {isFinanceInvoice
+                          ? `Source: ${b._sourceTypeLabel || "Business Finance"}`
+                          : `Service: ${b?.service?.name || b?.service_name || "—"}`}{" "}
                         {b._whenLabel ? `• ${b._whenLabel}` : ""}
                       </Typography>
+                      {isFinanceInvoice && (b.invoice_number || b.related_estimate_number) ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {b.invoice_number ? `Invoice ${b.invoice_number}` : ""}{" "}
+                          {b.related_estimate_number ? `• Estimate ${b.related_estimate_number}` : ""}
+                        </Typography>
+                      ) : null}
                       {summary ? (
                         <Typography variant="body2" color="text.secondary">
-                          Payments: {summary}
+                          {isFinanceInvoice ? `Payment state: ${summary}` : `Payments: ${summary}`}
                         </Typography>
                       ) : null}
                       {typeof b.amount !== "undefined" && (
@@ -1623,9 +1688,10 @@ export default function ManagerPaymentsView({ connect }) {
                       justifyContent="flex-end"
                       sx={{ width: { xs: "100%", md: "auto" } }}
                     >
-                      {["paid", "partially_refunded"].includes(
-                        b.payment_status,
-                      ) && (
+                      {!isFinanceInvoice &&
+                        ["paid", "partially_refunded"].includes(
+                          b.payment_status,
+                        ) && (
                         <Button
                           size="small"
                           color="error"
@@ -1634,15 +1700,25 @@ export default function ManagerPaymentsView({ connect }) {
                         >
                           Refund
                         </Button>
+                        )}
+                      {isFinanceInvoice ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => openFinanceInvoice(b.invoice_id || b.id)}
+                        >
+                          View Invoice
+                        </Button>
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => onViewPayments(b)}
+                        >
+                          View
+                        </Button>
                       )}
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => onViewPayments(b)}
-                      >
-                        View
-                      </Button>
-                      {b.payment_status === "card_on_file" && (
+                      {!isFinanceInvoice && b.payment_status === "card_on_file" && (
                         <Button
                           size="small"
                           color="primary"
@@ -1818,6 +1894,18 @@ export default function ManagerPaymentsView({ connect }) {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <FinanceInvoiceDetailDialog
+          open={invoiceDetailOpen}
+          invoiceId={selectedInvoiceId}
+          onClose={() => {
+            setInvoiceDetailOpen(false);
+            setSelectedInvoiceId(null);
+          }}
+          onSaved={() => {
+            loadBookings();
+          }}
+        />
 
         {/* Charge dialog */}
         <Dialog
