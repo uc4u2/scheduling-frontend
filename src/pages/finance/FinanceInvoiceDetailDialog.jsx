@@ -251,6 +251,26 @@ export default function FinanceInvoiceDetailDialog({
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Payments
+                </Typography>
+                <Typography variant="body2">
+                  Payment status: {invoice?.payment_status || invoice?.status || "pending"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Payment link: {invoice?.payment_link_exists ? "Created" : invoice?.payment_link_ready ? "Ready to create" : "Unavailable"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Reconciled payment reference: {invoice?.stripe_payment_intent_present ? "Stripe payment captured" : "Not reconciled yet"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Refund eligibility: {invoice?.refund_eligible ? "Eligible once refund support is implemented" : "Not available"}
+                </Typography>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
               <Stack spacing={1.25}>
                 <Typography variant="subtitle1" fontWeight={700}>
                   Client Summary
