@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -13,10 +13,10 @@ import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getFinanceProfitabilityReport } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
-const formatMoney = (value) =>
+const formatMoney = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
@@ -31,8 +31,9 @@ export default function ProfitabilityReportsPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const currency = report?.currency || "USD";
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -43,11 +44,11 @@ export default function ProfitabilityReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <Stack spacing={2.5}>
@@ -66,15 +67,19 @@ export default function ProfitabilityReportsPage() {
       ) : (
         <>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatMoney(report?.estimate_total)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Invoice total" value={formatMoney(report?.invoice_total)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Planned labor cost" value={formatMoney(report?.planned_labor_cost)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Approved material cost" value={formatMoney(report?.approved_material_cost)} accent="error" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Linked expenses" value={formatMoney(report?.linked_expense_total)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin" value={formatMoney(report?.estimated_margin)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatMoney(report?.estimate_total, currency)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Invoice total" value={formatMoney(report?.invoice_total, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross revenue" value={formatMoney(report?.gross_revenue ?? report?.invoice_total, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunds" value={formatMoney(report?.refund_total, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net revenue" value={formatMoney(report?.net_revenue, currency)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Planned labor cost" value={formatMoney(report?.planned_labor_cost, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Approved material cost" value={formatMoney(report?.approved_material_cost, currency)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Linked expenses" value={formatMoney(report?.linked_expense_total, currency)} accent="info" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin gross" value={formatMoney(report?.estimated_margin_gross ?? report?.estimated_margin, currency)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin net" value={formatMoney(report?.estimated_margin_net, currency)} accent="success" /></Grid>
           </Grid>
           <Typography variant="body2" color="text.secondary">
-            Calculated per work order using invoice total when available, otherwise estimate total, minus planned labor, approved materials, and linked expenses.
+            Calculated per work order using linked invoice totals when available, estimate fallback when not invoiced yet, and separate gross versus net margin when refund activity exists.
           </Typography>
         </>
       )}

@@ -114,6 +114,7 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
 
   const actions = useMemo(() => Array.isArray(overview?.today_action_list) ? overview.today_action_list : [], [overview]);
   const attentionCards = useMemo(() => buildAttentionCards(overview || {}, actions), [overview, actions]);
+  const currency = summary?.currency || "USD";
 
   if (loading) {
     return (
@@ -163,12 +164,16 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
           Money snapshot
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatCurrency(summary?.estimate_total)} accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Invoice total" value={formatCurrency(summary?.invoice_total)} accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Expense total" value={formatCurrency(summary?.expense_total)} accent="error" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax collected" value={formatCurrency(summary?.tax_collected)} accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatCurrency(summary?.tax_paid_on_expenses)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax" value={formatCurrency(summary?.estimated_net_tax)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatCurrency(summary?.estimate_total, currency)} accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross invoice total" value={formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunds" value={formatCurrency(summary?.refund_total, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net invoice total" value={formatCurrency(summary?.net_invoice_total, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Expense total" value={formatCurrency(summary?.expense_total, currency)} accent="error" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross tax collected" value={formatCurrency(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax refunded" value={formatCurrency(summary?.tax_refunded, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net tax collected" value={formatCurrency(summary?.net_tax_collected, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatCurrency(summary?.tax_paid_on_expenses, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax net" value={formatCurrency(summary?.estimated_net_tax_net ?? summary?.estimated_net_tax, currency)} accent="warning" /></Grid>
         </Grid>
         {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
           <Alert severity="info" sx={{ mt: 2 }}>

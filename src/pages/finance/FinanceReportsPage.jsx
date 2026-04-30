@@ -17,10 +17,10 @@ import { exportAccountantCsv, getFinanceSummary } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 
-const formatMoney = (value) =>
+const formatMoney = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
@@ -38,6 +38,7 @@ export default function FinanceReportsPage() {
   const [dateFrom, setDateFrom] = useState(firstDayOfMonth());
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [downloading, setDownloading] = useState(false);
+  const currency = summary?.currency || "USD";
 
   useEffect(() => {
     let mounted = true;
@@ -92,14 +93,23 @@ export default function FinanceReportsPage() {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : (
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate Total" value={formatMoney(summary?.estimate_total)} accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Invoice Total" value={formatMoney(summary?.invoice_total)} accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Expense Total" value={formatMoney(summary?.expense_total)} accent="error" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax Collected" value={formatMoney(summary?.tax_collected)} accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax Paid On Expenses" value={formatMoney(summary?.tax_paid_on_expenses)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated Net Tax" value={formatMoney(summary?.estimated_net_tax)} accent="warning" /></Grid>
-        </Grid>
+        <Stack spacing={2}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate Total" value={formatMoney(summary?.estimate_total, currency)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross Invoice Total" value={formatMoney(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunds" value={formatMoney(summary?.refund_total, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net Invoice Total" value={formatMoney(summary?.net_invoice_total, currency)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Expense Total" value={formatMoney(summary?.expense_total, currency)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross Tax Collected" value={formatMoney(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax Refunded" value={formatMoney(summary?.tax_refunded, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net Tax Collected" value={formatMoney(summary?.net_tax_collected, currency)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax Paid On Expenses" value={formatMoney(summary?.tax_paid_on_expenses, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated Net Tax Gross" value={formatMoney(summary?.estimated_net_tax_gross ?? summary?.estimated_net_tax, currency)} accent="info" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated Net Tax Net" value={formatMoney(summary?.estimated_net_tax_net, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunded Invoices" value={String(summary?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Partial Refunds" value={String(summary?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
+          </Grid>
+        </Stack>
       )}
 
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1 }}>
