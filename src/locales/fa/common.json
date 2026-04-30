@@ -2140,6 +2140,403 @@
             "createEstimate": "ایجاد برآورد"
           }
         }
+      },
+      "workOrders": {
+        "errors": {
+          "loadFailed": "بارگذاری دستورهای کار انجام نشد."
+        },
+        "metrics": {
+          "scheduledThisWeek": "برنامه‌ریزی این هفته",
+          "activeJobs": "کارهای فعال",
+          "completedThisMonth": "تکمیل‌شده این ماه",
+          "plannedLaborThisMonth": "هزینه نیروی کار برنامه‌ریزی‌شده این ماه",
+          "plannedHoursHelper": "{{count}} ساعت برنامه‌ریزی‌شده"
+        },
+        "toolbar": {
+          "searchLabel": "جستجوی کارها",
+          "statusLabel": "وضعیت",
+          "allStatuses": "همه وضعیت‌ها",
+          "startDate": "تاریخ شروع",
+          "endDate": "تاریخ پایان",
+          "refresh": "بازخوانی",
+          "newWorkOrder": "دستور کار جدید"
+        },
+        "statusSummary": {
+          "title": "کارها بر اساس وضعیت",
+          "empty": "هنوز فعالیتی برای دستور کار وجود ندارد."
+        },
+        "empty": {
+          "title": "هنوز دستور کاری وجود ندارد",
+          "description": "کارها را دستی یا از روی برآورد ایجاد کنید، سپس تیم را به‌صورت ردیف‌های روزانه تخصیص دهید.",
+          "action": "ایجاد دستور کار"
+        },
+        "table": {
+          "headers": {
+            "workOrderNumber": "شماره دستور کار",
+            "title": "عنوان",
+            "client": "مشتری",
+            "status": "وضعیت",
+            "schedule": "زمان‌بندی",
+            "assignments": "تخصیص‌ها",
+            "plannedHours": "ساعت برنامه‌ریزی‌شده",
+            "plannedLabor": "هزینه نیروی کار",
+            "materials": "مواد",
+            "actions": "اقدامات"
+          },
+          "to": "تا",
+          "open": "باز کردن"
+        },
+        "snackbar": {
+          "saved": "دستور کار ذخیره شد."
+        },
+        "editor": {
+          "errors": {
+            "titleRequired": "عنوان الزامی است.",
+            "clientOrEstimateRequired": "یک مشتری انتخاب کنید یا ابتدا یک برآورد انتخاب کنید.",
+            "saveFailed": "ذخیره دستور کار انجام نشد."
+          },
+          "snackbar": {
+            "updated": "دستور کار به‌روزرسانی شد.",
+            "created": "دستور کار ایجاد شد."
+          },
+          "title": {
+            "edit": "ویرایش دستور کار",
+            "fromEstimate": "ایجاد دستور کار از برآورد",
+            "new": "دستور کار جدید"
+          },
+          "linkLocked": "اتصال مشتری و برآورد بعد از ایجاد قفل می‌شود.",
+          "chooseClientOrEstimate": "مشتری را مستقیم انتخاب کنید یا از یک برآورد برای پیش‌پرکردن کار شروع کنید.",
+          "fields": {
+            "jobTitle": "عنوان کار",
+            "timezone": "منطقه زمانی",
+            "timezoneHelp": "به‌صورت پیش‌فرض از منطقه زمانی فعلی شما استفاده می‌شود.",
+            "client": "مشتری",
+            "selectClient": "انتخاب مشتری",
+            "clientFallback": "مشتری #{{id}}",
+            "estimate": "برآورد",
+            "noEstimateLink": "بدون اتصال به برآورد",
+            "copyMaterials": "کپی مواد برنامه‌ریزی‌شده از برآورد",
+            "location": "مکان",
+            "startDate": "تاریخ شروع",
+            "endDate": "تاریخ پایان",
+            "jobNotes": "یادداشت‌های کار",
+            "managerNotes": "یادداشت‌های فقط مدیر",
+            "employeeNotes": "یادداشت‌های قابل‌مشاهده برای کارمند"
+          },
+          "common": {
+            "cancel": "انصراف",
+            "save": "ذخیره",
+            "createWorkOrder": "ایجاد دستور کار"
+          }
+        },
+        "detail": {
+          "errors": {
+            "loadFailed": "بارگذاری دستور کار انجام نشد.",
+            "updateStatusFailed": "به‌روزرسانی وضعیت دستور کار انجام نشد."
+          },
+          "snackbar": {
+            "statusUpdated": "وضعیت دستور کار به‌روزرسانی شد."
+          },
+          "title": {
+            "fallback": "دستور کار"
+          },
+          "fallbacks": {
+            "noClientLinked": "مشتری متصل نشده است",
+            "noLocation": "مکانی ثبت نشده است"
+          },
+          "schedule": {
+            "to": "تا"
+          },
+          "actions": {
+            "editJob": "ویرایش کار"
+          },
+          "statusActions": {
+            "schedule": "زمان‌بندی",
+            "cancel": "لغو",
+            "moveBackToDraft": "بازگشت به پیش‌نویس",
+            "start": "شروع",
+            "markCompleted": "علامت‌گذاری به‌عنوان تکمیل‌شده",
+            "moveBackToActive": "بازگرداندن به فعال",
+            "closeJob": "بستن کار"
+          },
+          "metrics": {
+            "plannedLaborHours": "ساعت نیروی کار برنامه‌ریزی‌شده",
+            "plannedLaborCost": "هزینه نیروی کار برنامه‌ریزی‌شده",
+            "assignments": "تخصیص‌ها",
+            "assignmentsHelp": "ردیف‌های روزانه تخصیص‌داده‌شده به تیم.",
+            "fieldReports": "گزارش‌های میدانی",
+            "fieldReportsHelp": "گزارش‌های ثبت‌شده از محل.",
+            "pendingReview": "در انتظار بازبینی",
+            "pendingReviewHelp": "هنوز نیاز به پیگیری مدیر دارد.",
+            "approvedMaterialCost": "هزینه مواد تأییدشده",
+            "approvedMaterialCostHelp": "پس از تأیید مدیر رسمی می‌شود."
+          },
+          "notes": {
+            "title": "یادداشت‌های کار",
+            "employeeVisible": "یادداشت‌های قابل‌مشاهده برای کارمند",
+            "employeeVisibleEmpty": "هنوز یادداشتی برای کارمند ثبت نشده است.",
+            "managerOnly": "یادداشت‌های فقط مدیر",
+            "managerOnlyEmpty": "هنوز یادداشت فقط مدیر ثبت نشده است.",
+            "general": "یادداشت‌های عمومی",
+            "generalEmpty": "هنوز یادداشت عمومی ثبت نشده است."
+          },
+          "audit": {
+            "title": "تاریخچه ثبت",
+            "system": "سیستم",
+            "empty": "هنوز سابقه‌ای ثبت نشده است."
+          },
+          "fieldReportInfo": "کارمندان اکنون می‌توانند گزارش میدانی ارسال کنند. تغییرات موجودی و فاکتور فقط پس از تأیید بازبینی مدیر اعمال می‌شود.",
+          "common": {
+            "close": "بستن"
+          }
+        },
+        "assignments": {
+          "errors": {
+            "assignmentOverlap": "این عضو تیم در این بازه زمانی قبلاً تخصیص داده شده است.",
+            "approvedLeaveConflict": "این عضو تیم در این تاریخ/زمان مرخصی تأییدشده دارد.",
+            "recruiterArchived": "این عضو تیم غیرفعال یا بایگانی شده است.",
+            "recruiterNotFound": "عضو تیم برای این شرکت پیدا نشد.",
+            "chooseWorkDate": "یک تاریخ کاری انتخاب کنید.",
+            "saveFailed": "ذخیره تخصیص انجام نشد.",
+            "loadTeamMembersFailed": "بارگذاری اعضای تیم انجام نشد.",
+            "chooseTeamMember": "یک عضو تیم انتخاب کنید.",
+            "chooseAtLeastOne": "حداقل یک عضو تیم انتخاب کنید.",
+            "enterHoursOrTime": "ساعات برنامه‌ریزی‌شده را وارد کنید یا زمان شروع و پایان را انتخاب کنید.",
+            "chooseBothTimes": "هم زمان شروع و هم پایان را انتخاب کنید.",
+            "endAfterStart": "زمان پایان باید بعد از زمان شروع باشد.",
+            "hoursGreaterThanZero": "ساعات برنامه‌ریزی‌شده باید بیشتر از ۰ باشد.",
+            "noneAdded": "هیچ عضوی به تیم اضافه نشد.",
+            "removeFailed": "حذف تخصیص انجام نشد."
+          },
+          "snackbar": {
+            "assignmentUpdated": "تخصیص به‌روزرسانی شد.",
+            "addedOne": "{{count}} عضو تیم اضافه شد.",
+            "addedMany": "{{count}} عضو تیم اضافه شدند.",
+            "addedWithFailures": "{{successCount}} عضو تیم اضافه شد. {{failureCount}} مورد اضافه نشد.",
+            "teamMemberAssigned": "عضو تیم تخصیص داده شد.",
+            "assignmentRemoved": "تخصیص حذف شد."
+          },
+          "title": "تخصیص تیم",
+          "description": "هر روز را بر اساس عضو تیم برنامه‌ریزی کنید.",
+          "addTeamMember": "افزودن عضو تیم",
+          "mode": {
+            "title": "حالت",
+            "single": "یک عضو تیم",
+            "bulk": "چند عضو تیم"
+          },
+          "bulkInfo": "زمانی از تخصیص گروهی استفاده کنید که چند عضو تیم تاریخ و زمان یکسانی دارند.",
+          "bulkFailuresTitle": "امکان افزودن وجود نداشت:",
+          "fields": {
+            "teamMember": "عضو تیم",
+            "selectTeamMember": "انتخاب عضو تیم",
+            "workDate": "تاریخ کار",
+            "teamMembers": "اعضای تیم",
+            "selectTeamMembers": "انتخاب اعضای تیم",
+            "startTime": "زمان شروع",
+            "endTime": "زمان پایان",
+            "plannedHours": "ساعات برنامه‌ریزی‌شده",
+            "plannedHoursHelp": "وقتی زمان شروع و پایان مشخص است اختیاری است.",
+            "timezone": "منطقه زمانی",
+            "notes": "یادداشت‌ها"
+          },
+          "futureAccess": {
+            "title": "دسترسی گزارش‌دهی آینده",
+            "description": "این گزینه‌ها فقط برای آینده آماده هستند. گزارش میدانی کارمند هنوز فعال نیست.",
+            "canSubmitReport": "امکان ارسال گزارش در آینده",
+            "canReportMaterials": "امکان گزارش مواد در آینده",
+            "canUploadFiles": "امکان بارگذاری فایل در آینده",
+            "isLeadReporter": "گزارش‌دهنده اصلی در آینده"
+          },
+          "common": {
+            "cancel": "انصراف",
+            "saveAssignment": "ذخیره تخصیص",
+            "addSelected": "افزودن اعضای انتخاب‌شده",
+            "addAssignment": "افزودن تخصیص"
+          },
+          "empty": {
+            "title": "هنوز تخصیصی برای تیم وجود ندارد",
+            "description": "برای هر عضو تیم یک ردیف روزانه اضافه کنید تا برنامه، ساعات برنامه‌ریزی‌شده و هزینه نیروی کار شفاف بماند.",
+            "action": "افزودن عضو تیم"
+          },
+          "table": {
+            "headers": {
+              "teamMember": "عضو تیم",
+              "workDate": "تاریخ کار",
+              "time": "زمان",
+              "hours": "ساعت",
+              "plannedLabor": "هزینه نیروی کار",
+              "timezone": "منطقه زمانی",
+              "notes": "یادداشت‌ها",
+              "actions": "اقدامات"
+            },
+            "hoursOnly": "فقط ساعت",
+            "editAssignment": "ویرایش تخصیص",
+            "deleteAssignment": "حذف تخصیص"
+          },
+          "fallbacks": {
+            "teamMemberId": "عضو تیم #{{id}}"
+          }
+        },
+        "materials": {
+          "errors": {
+            "titleRequired": "عنوان الزامی است."
+          },
+          "snackbar": {
+            "updated": "ماده برنامه‌ریزی‌شده به‌روزرسانی شد.",
+            "added": "ماده برنامه‌ریزی‌شده اضافه شد.",
+            "removed": "ماده برنامه‌ریزی‌شده حذف شد."
+          },
+          "title": "مواد برنامه‌ریزی‌شده",
+          "description": "این‌ها فقط مواد برنامه‌ریزی‌شده هستند. تغییرات موجودی بعداً و پس از تأیید بازبینی مدیر انجام می‌شود.",
+          "addMaterial": "افزودن ماده برنامه‌ریزی‌شده",
+          "fields": {
+            "title": "عنوان",
+            "sortOrder": "ترتیب",
+            "plannedQuantity": "مقدار برنامه‌ریزی‌شده",
+            "unitCost": "هزینه واحد",
+            "taxRate": "نرخ مالیات",
+            "taxable": "مشمول مالیات",
+            "description": "شرح"
+          },
+          "yes": "بله",
+          "no": "خیر",
+          "common": {
+            "cancel": "انصراف",
+            "saveMaterial": "ذخیره ماده",
+            "addMaterial": "افزودن ماده"
+          },
+          "empty": {
+            "title": "هنوز ماده برنامه‌ریزی‌شده‌ای وجود ندارد",
+            "description": "آن‌ها را از برآورد کپی کنید یا اینجا اضافه کنید تا محدوده کار برای تیم روشن بماند.",
+            "action": "افزودن ماده برنامه‌ریزی‌شده"
+          },
+          "table": {
+            "headers": {
+              "title": "عنوان",
+              "quantity": "مقدار",
+              "unitCost": "هزینه واحد",
+              "plannedTotal": "جمع برنامه‌ریزی‌شده",
+              "taxable": "مشمول مالیات",
+              "sort": "ترتیب",
+              "actions": "اقدامات"
+            },
+            "edit": "ویرایش ماده برنامه‌ریزی‌شده",
+            "delete": "حذف ماده برنامه‌ریزی‌شده"
+          },
+          "addPlannedMaterial": "افزودن ماده برنامه‌ریزی‌شده"
+        }
+      },
+      "materials": {
+        "errors": {
+          "loadFailed": "بارگذاری موجودی انجام نشد.",
+          "loadHistoryFailed": "بارگذاری تاریخچه موجودی انجام نشد.",
+          "saveItemFailed": "ذخیره قلم موجودی انجام نشد.",
+          "archiveItemFailed": "بایگانی قلم انجام نشد.",
+          "addCategoryFailed": "افزودن دسته‌بندی انجام نشد.",
+          "adjustStockFailed": "تنظیم موجودی انجام نشد."
+        },
+        "snackbar": {
+          "itemUpdated": "قلم موجودی به‌روزرسانی شد.",
+          "itemAdded": "قلم موجودی اضافه شد.",
+          "itemArchived": "قلم بایگانی شد.",
+          "categoryAdded": "دسته‌بندی اضافه شد.",
+          "stockAdjusted": "موجودی تنظیم شد."
+        },
+        "metrics": {
+          "activeItems": "اقلام فعال",
+          "lowStockItems": "اقلام کم‌موجودی",
+          "lowStockHelper": "سطوح سفارش مجدد و تأییدهای مدیر را بررسی کنید.",
+          "inventoryValueEstimate": "برآورد ارزش موجودی",
+          "inventoryValueHelper": "بر اساس مقدار فعلی و هزینه هر واحد."
+        },
+        "toolbar": {
+          "searchItems": "جستجوی اقلام",
+          "materialsCategory": "دسته‌بندی مواد",
+          "allMaterialsCategories": "همه دسته‌بندی‌های مواد",
+          "lowStockOnly": "فقط کم‌موجودی",
+          "refresh": "بازخوانی",
+          "addMaterialsCategory": "افزودن دسته‌بندی مواد",
+          "addItem": "افزودن قلم"
+        },
+        "empty": {
+          "title": "هنوز قلم موجودی وجود ندارد",
+          "description": "اولین قلم موجودی خود را اضافه کنید.",
+          "action": "افزودن قلم"
+        },
+        "table": {
+          "headers": {
+            "name": "نام",
+            "category": "دسته‌بندی",
+            "sku": "SKU",
+            "unit": "واحد",
+            "quantity": "مقدار",
+            "cost": "هزینه",
+            "lowStockLevel": "سطح کم‌موجودی",
+            "vendor": "فروشنده",
+            "actions": "اقدامات"
+          },
+          "inactive": "غیرفعال",
+          "taxable": "مشمول مالیات",
+          "nonTaxable": "بدون مالیات",
+          "each": "عدد",
+          "low": "کم",
+          "edit": "ویرایش",
+          "adjustStock": "تنظیم موجودی",
+          "history": "تاریخچه",
+          "archive": "بایگانی"
+        },
+        "common": {
+          "cancel": "انصراف",
+          "save": "ذخیره",
+          "close": "بستن"
+        },
+        "categoryDialog": {
+          "title": "افزودن دسته‌بندی مواد",
+          "tooltip": "برای سازمان‌دهی اقلام انبار استفاده می‌شود، نه گزارش هزینه.",
+          "materialsCategories": "دسته‌بندی‌های مواد",
+          "categoryName": "نام دسته‌بندی مواد",
+          "activeCategory": "دسته‌بندی فعال مواد",
+          "create": "ایجاد دسته‌بندی مواد"
+        },
+        "itemDialog": {
+          "editTitle": "ویرایش قلم",
+          "addTitle": "افزودن قلم",
+          "itemName": "نام قلم",
+          "category": "دسته‌بندی مواد",
+          "noCategory": "بدون دسته‌بندی",
+          "addCategory": "افزودن دسته‌بندی مواد",
+          "sku": "SKU",
+          "unit": "واحد",
+          "costPerUnit": "هزینه هر واحد",
+          "optionalSellPrice": "قیمت فروش اختیاری",
+          "lowStockThreshold": "آستانه کم‌موجودی",
+          "vendorName": "نام فروشنده ترجیحی",
+          "taxable": "مشمول مالیات",
+          "activeItem": "قلم فعال"
+        },
+        "adjustDialog": {
+          "title": "تنظیم موجودی",
+          "auditInfo": "تغییرات موجودی برای حسابرسی به‌صورت تراکنش ثبت می‌شود.",
+          "currentQuantity": "مقدار فعلی",
+          "quantityChange": "تغییر مقدار",
+          "quantityHelp": "برای افزایش موجودی عدد مثبت و برای کاهش آن عدد منفی وارد کنید.",
+          "unitCost": "هزینه واحد",
+          "note": "یادداشت",
+          "saveAdjustment": "ذخیره تنظیم"
+        },
+        "historyDialog": {
+          "title": "تاریخچه موجودی",
+          "empty": "هنوز تراکنش موجودی وجود ندارد.",
+          "manual": "دستی",
+          "headers": {
+            "when": "زمان",
+            "type": "نوع",
+            "quantity": "مقدار",
+            "unitCost": "هزینه واحد",
+            "source": "منبع",
+            "note": "یادداشت"
+          }
+        }
       }
     }
   },

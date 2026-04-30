@@ -18,6 +18,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { formatCurrency } from "../../utils/formatters";
@@ -35,7 +36,12 @@ import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
 
 export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tWorkOrders = useMemo(
+    () => (key, fallback, options = {}) => t(`manager.finance.workOrders.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState({});
   const [clients, setClients] = useState([]);
@@ -76,7 +82,7 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
       setClients(clientsRes || []);
       setEstimates(Array.isArray(estimatesRes?.items) ? estimatesRes.items : Array.isArray(estimatesRes) ? estimatesRes : []);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load work orders.");
+      setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.loadFailed", "Unable to load work orders."));
     } finally {
       setLoading(false);
     }
@@ -84,6 +90,8 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
 
   useEffect(() => {
     load();
+    // Search and date filters stay manual via Enter/Refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, page, perPage]);
 
   useEffect(() => {
@@ -98,10 +106,10 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
   return (
     <Stack spacing={2}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Scheduled this week" value={String(summary?.scheduled_this_week ?? 0)} accent="primary" /></Grid>
-        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Active jobs" value={String(summary?.active_count ?? 0)} accent="success" /></Grid>
-        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Completed this month" value={String(summary?.completed_this_month ?? 0)} accent="info" /></Grid>
-        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Planned labor this month" value={formatCurrency(summary?.planned_labor_cost_this_month || 0)} helper={`${summary?.planned_labor_hours_this_month ?? 0} planned hours`} accent="secondary" /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tWorkOrders("metrics.scheduledThisWeek", "Scheduled this week")} value={String(summary?.scheduled_this_week ?? 0)} accent="primary" /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tWorkOrders("metrics.activeJobs", "Active jobs")} value={String(summary?.active_count ?? 0)} accent="success" /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tWorkOrders("metrics.completedThisMonth", "Completed this month")} value={String(summary?.completed_this_month ?? 0)} accent="info" /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tWorkOrders("metrics.plannedLaborThisMonth", "Planned labor this month")} value={formatCurrency(summary?.planned_labor_cost_this_month || 0)} helper={tWorkOrders("metrics.plannedHoursHelper", "{{count}} planned hours", { count: summary?.planned_labor_hours_this_month ?? 0 })} accent="secondary" /></Grid>
       </Grid>
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -109,7 +117,7 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
             <TextField
               size="small"
-              label="Search jobs"
+              label={tWorkOrders("toolbar.searchLabel", "Search jobs")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               onKeyDown={(e) => {
@@ -117,34 +125,34 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
               }}
             />
             <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>Status</InputLabel>
-              <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-                <MenuItem value="">All statuses</MenuItem>
-                <MenuItem value="draft">Draft</MenuItem>
-                <MenuItem value="scheduled">Scheduled</MenuItem>
-                <MenuItem value="in_progress">In Progress</MenuItem>
-                <MenuItem value="completed">Completed</MenuItem>
-                <MenuItem value="closed">Closed</MenuItem>
-                <MenuItem value="cancelled">Cancelled</MenuItem>
+              <InputLabel>{tWorkOrders("toolbar.statusLabel", "Status")}</InputLabel>
+              <Select label={tWorkOrders("toolbar.statusLabel", "Status")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+                <MenuItem value="">{tWorkOrders("toolbar.allStatuses", "All statuses")}</MenuItem>
+                <MenuItem value="draft">{t("manager.finance.shared.statuses.draft", { defaultValue: "Draft" })}</MenuItem>
+                <MenuItem value="scheduled">{t("manager.finance.shared.statuses.scheduled", { defaultValue: "Scheduled" })}</MenuItem>
+                <MenuItem value="in_progress">{t("manager.finance.shared.statuses.in_progress", { defaultValue: "In Progress" })}</MenuItem>
+                <MenuItem value="completed">{t("manager.finance.shared.statuses.completed", { defaultValue: "Completed" })}</MenuItem>
+                <MenuItem value="closed">{t("manager.finance.shared.statuses.closed", { defaultValue: "Closed" })}</MenuItem>
+                <MenuItem value="cancelled">{t("manager.finance.shared.statuses.cancelled", { defaultValue: "Cancelled" })}</MenuItem>
               </Select>
             </FormControl>
-            <ThemedDateField label="Start date" name="start_date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} fullWidth={false} sx={{ minWidth: 170 }} />
-            <ThemedDateField label="End date" name="end_date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} fullWidth={false} sx={{ minWidth: 170 }} />
-            <Button variant="outlined" onClick={load}>Refresh</Button>
+            <ThemedDateField label={tWorkOrders("toolbar.startDate", "Start date")} name="start_date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} fullWidth={false} sx={{ minWidth: 170 }} />
+            <ThemedDateField label={tWorkOrders("toolbar.endDate", "End date")} name="end_date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} fullWidth={false} sx={{ minWidth: 170 }} />
+            <Button variant="outlined" onClick={load}>{tWorkOrders("toolbar.refresh", "Refresh")}</Button>
           </Stack>
-          <Button variant="contained" onClick={() => { setPrefillEstimate(null); setEditorOpen(true); }}>New Work Order</Button>
+          <Button variant="contained" onClick={() => { setPrefillEstimate(null); setEditorOpen(true); }}>{tWorkOrders("toolbar.newWorkOrder", "New Work Order")}</Button>
         </Stack>
       </Paper>
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>Jobs by status</Typography>
+        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>{tWorkOrders("statusSummary.title", "Jobs by status")}</Typography>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap="wrap">
           {Object.entries(countByStatus).length ? Object.entries(countByStatus).map(([key, value]) => (
             <Stack key={key} direction="row" spacing={1} alignItems="center">
               <FinanceStatusChip status={key} />
               <Typography variant="body2">{value}</Typography>
             </Stack>
-          )) : <Typography variant="body2" color="text.secondary">No work order activity yet.</Typography>}
+          )) : <Typography variant="body2" color="text.secondary">{tWorkOrders("statusSummary.empty", "No work order activity yet.")}</Typography>}
         </Stack>
       </Paper>
 
@@ -154,9 +162,9 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
       ) : items.length === 0 ? (
         <FinanceEmptyState
-          title="No work orders yet"
-          description="Create jobs manually or from an estimate, then assign the team by daily rows."
-          actionLabel="Create work order"
+          title={tWorkOrders("empty.title", "No work orders yet")}
+          description={tWorkOrders("empty.description", "Create jobs manually or from an estimate, then assign the team by daily rows.")}
+          actionLabel={tWorkOrders("empty.action", "Create work order")}
           onAction={() => { setPrefillEstimate(null); setEditorOpen(true); }}
         />
       ) : (
@@ -164,16 +172,16 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Work order #</TableCell>
-                <TableCell>Title</TableCell>
-                <TableCell>Client</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Schedule</TableCell>
-                <TableCell>Assignments</TableCell>
-                <TableCell>Planned hours</TableCell>
-                <TableCell>Planned labor</TableCell>
-                <TableCell>Materials</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>{tWorkOrders("table.headers.workOrderNumber", "Work order #")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.title", "Title")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.client", "Client")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.status", "Status")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.schedule", "Schedule")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.assignments", "Assignments")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.plannedHours", "Planned hours")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.plannedLabor", "Planned labor")}</TableCell>
+                <TableCell>{tWorkOrders("table.headers.materials", "Materials")}</TableCell>
+                <TableCell align="right">{tWorkOrders("table.headers.actions", "Actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -186,12 +194,12 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
                     <Typography variant="body2" color="text.secondary">{item.client_email || ""}</Typography>
                   </TableCell>
                   <TableCell><FinanceStatusChip status={item.status} /></TableCell>
-                  <TableCell>{item.start_date || "-"}{item.end_date ? ` to ${item.end_date}` : ""}</TableCell>
+                  <TableCell>{item.start_date || "-"}{item.end_date ? ` ${tWorkOrders("table.to", "to")} ${item.end_date}` : ""}</TableCell>
                   <TableCell>{item.assignment_count ?? 0}</TableCell>
                   <TableCell>{item.planned_labor_hours ?? 0}</TableCell>
                   <TableCell>{formatCurrency(item.planned_labor_cost || 0)}</TableCell>
                   <TableCell>{item.material_plan_count ?? 0}</TableCell>
-                  <TableCell align="right"><Button size="small" onClick={(e) => { e.stopPropagation(); setDetailId(item.id); }}>Open</Button></TableCell>
+                  <TableCell align="right"><Button size="small" onClick={(e) => { e.stopPropagation(); setDetailId(item.id); }}>{tWorkOrders("table.open", "Open")}</Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -213,7 +221,7 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
       <WorkOrderEditorDialog
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
-        onSaved={async () => { setEditorOpen(false); setPrefillEstimate(null); await load(); enqueueSnackbar("Work order saved.", { variant: "success" }); if (onNavigate) onNavigate("finance-work-orders"); }}
+        onSaved={async () => { setEditorOpen(false); setPrefillEstimate(null); await load(); enqueueSnackbar(tWorkOrders("snackbar.saved", "Work order saved."), { variant: "success" }); if (onNavigate) onNavigate("finance-work-orders"); }}
         clients={clients}
         estimates={estimates}
         prefillEstimate={prefillEstimate}
