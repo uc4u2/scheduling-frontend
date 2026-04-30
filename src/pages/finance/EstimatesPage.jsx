@@ -75,9 +75,54 @@ const statusFlagChipSx = {
   },
 };
 
-function EstimateActionMenu({ item, actions, disabled }) {
+const captionClampSx = {
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  lineHeight: 1.4,
+};
+
+const formatPaymentState = (item) => {
+  const paymentStatus = String(item?.converted_invoice_payment_status || item?.converted_invoice_status || "").toLowerCase();
+  if (paymentStatus === "paid") return "Payment paid";
+  if (paymentStatus === "partial_refund" || paymentStatus === "partially_refunded") return "Partially refunded";
+  if (paymentStatus === "refunded") return "Refunded";
+  if (item?.converted_invoice_hosted_invoice_url) return "Payment link ready";
+  if (item?.converted_invoice_number) return "No payment link yet";
+  return "Convert first";
+};
+
+const buildSupplementalFlags = (item) => {
+  const flags = [];
+  if (item?.converted_invoice_hosted_invoice_url) {
+    flags.push({ label: "Payment link ready", color: "secondary", variant: "outlined" });
+  }
+  if (item?.public_url) {
+    flags.push({ label: "Share link ready", variant: "outlined" });
+  }
+  if (item?.client_accepted_at) {
+    flags.push({ label: "Accepted by client", color: "success", variant: "outlined" });
+  } else if (item?.client_rejected_at) {
+    flags.push({ label: "Rejected by client", color: "warning", variant: "outlined" });
+  } else if (item?.public_viewed_at) {
+    flags.push({ label: "Viewed by client", color: "info", variant: "outlined" });
+  }
+  return flags;
+};
+
+function EstimateActionMenu({ actions }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+
+  const enabledActions = actions.filter((action) => action.type === "divider" || !action.disabled);
+  const cleanedActions = enabledActions.filter((action, index) => {
+    if (action.type !== "divider") return true;
+    const prev = enabledActions[index - 1];
+    const next = enabledActions[index + 1];
+    return prev && prev.type !== "divider" && next && next.type !== "divider";
+  });
+  const unavailableCount = actions.filter((action) => action.type !== "divider" && action.disabled).length;
 
   const handleOpen = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -89,11 +134,9 @@ function EstimateActionMenu({ item, actions, disabled }) {
   return (
     <>
       <Tooltip title="More actions">
-        <span>
-          <IconButton size="small" onClick={handleOpen} disabled={disabled}>
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
-        </span>
+        <IconButton size="small" onClick={handleOpen}>
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
       </Tooltip>
       <Menu
         anchorEl={anchorEl}
@@ -103,17 +146,12 @@ function EstimateActionMenu({ item, actions, disabled }) {
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         PaperProps={{ sx: { minWidth: 260, borderRadius: 2 } }}
       >
-        {actions.map((action, index) => {
+        {cleanedActions.map((action, index) => {
           if (action.type === "divider") {
-            return <Divider key={`divider-${item.id}-${index}`} />;
+            return <Divider key={`divider-${index}`} />;
           }
           return (
-            <MenuItem
-              key={`${item.id}-${action.label}`}
-              onClick={run(action.onClick)}
-              disabled={action.disabled}
-              sx={{ py: 1 }}
-            >
+            <MenuItem key={action.key || action.label} onClick={run(action.onClick)} sx={{ py: 1 }}>
               {action.icon ? <Box sx={{ mr: 1.5, display: "inline-flex", color: "text.secondary" }}>{action.icon}</Box> : null}
               <Stack spacing={0.25} sx={{ minWidth: 0 }}>
                 <Typography variant="body2" fontWeight={600} noWrap>
@@ -128,6 +166,16 @@ function EstimateActionMenu({ item, actions, disabled }) {
             </MenuItem>
           );
         })}
+        {unavailableCount > 0 ? (
+          <>
+            {cleanedActions.length ? <Divider /> : null}
+            <Box sx={{ px: 2, py: 1.25 }}>
+              <Typography variant="caption" color="text.secondary">
+                Some actions are unavailable for this estimate state.
+              </Typography>
+            </Box>
+          </>
+        ) : null}
       </Menu>
     </>
   );
@@ -412,9 +460,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         !estimate.visible_notes && estimate.notes ? `Notes: ${estimate.notes}` : null,
         "",
         "Reply to this message to approve or request changes.",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      ].filter(Boolean).join("\n");
       await navigator.clipboard.writeText(summary);
       enqueueSnackbar("Estimate summary copied.", { variant: "success" });
     } catch (err) {
@@ -438,10 +484,293 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
   const estimateCountLabel = pagination?.total || items.length;
 
-  const renderEstimateTable = (expanded = false) => (
-    <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: expanded ? 0 : 3, borderColor: expanded ? "transparent" : "divider" }}>
+  const buildRowActions = (item) => {
+    const canOpenInvoice = Boolean(item.converted_invoice_id);
+    const isConverted = item.status === "converted_to_invoice";
+    const rowBusy = linkBusyId === item.id || paymentLinkBusyId === item.id;
+    const hasPaymentLink = Boolean(item.converted_invoice_hosted_invoice_url);
+    const hasClientResponse = Boolean(item.client_accepted_at || item.client_rejected_at);
+
+    const primaryActions = canOpenInvoice
+      ? [
+          {
+            key: "open-invoice",
+            label: "Open Invoice",
+            icon: <DescriptionOutlinedIcon fontSize="small" />,
+            onClick: () => handleOpenInvoice(item),
+            variant: "contained",
+          },
+          hasPaymentLink
+            ? {
+                key: "open-payment-link",
+                label: "Open Payment Link",
+                icon: <LaunchIcon fontSize="small" />,
+                onClick: () => handleOpenPaymentLink(item),
+                variant: "outlined",
+                disabled: rowBusy,
+              }
+            : {
+                key: "copy-payment-link",
+                label: "Create / Copy Payment Link",
+                icon: <PaymentOutlinedIcon fontSize="small" />,
+                onClick: () => handleCopyPaymentLink(item),
+                variant: "outlined",
+                disabled: rowBusy,
+              },
+        ]
+      : [
+          {
+            key: "edit",
+            label: "Edit",
+            icon: <EditOutlinedIcon fontSize="small" />,
+            onClick: () => {
+              setEditing(item);
+              setDialogOpen(true);
+            },
+            variant: "outlined",
+          },
+          {
+            key: "convert",
+            label: "Convert to Invoice",
+            icon: <RequestQuoteOutlinedIcon fontSize="small" />,
+            onClick: () => handleConvert(item),
+            variant: "contained",
+            disabled: isConverted,
+          },
+        ];
+
+    const visibleKeys = new Set(primaryActions.map((action) => action.key));
+    const allMenuActions = [
+      {
+        key: "edit",
+        label: "Edit",
+        help: "Open the estimate editor with the current billing snapshot and line items.",
+        icon: <EditOutlinedIcon fontSize="small" />,
+        onClick: () => {
+          setEditing(item);
+          setDialogOpen(true);
+        },
+      },
+      {
+        key: "copy-link",
+        label: "Create / Copy Link",
+        help: "Create the public estimate link if needed and copy it to the clipboard.",
+        icon: <LinkIcon fontSize="small" />,
+        onClick: () => handleCopyLink(item),
+        disabled: rowBusy,
+      },
+      {
+        key: "open-link",
+        label: "Open Link",
+        help: "Open the client-facing public estimate page in a new tab.",
+        icon: <LaunchIcon fontSize="small" />,
+        onClick: () => handleOpenLink(item),
+        disabled: rowBusy,
+      },
+      {
+        key: "send-estimate",
+        label: "Send Estimate",
+        help: "Use the existing mail flow to send the estimate link to the client.",
+        icon: <EmailOutlinedIcon fontSize="small" />,
+        onClick: () => openSendEmailDialog(item),
+        disabled: rowBusy,
+      },
+      {
+        key: "copy-summary",
+        label: "Copy Summary",
+        help: "Copy a text summary with the estimate number, client, line items, and totals.",
+        icon: <ContentCopyIcon fontSize="small" />,
+        onClick: () => handleCopySummary(item),
+      },
+      {
+        key: "print-pdf",
+        label: "Print / PDF",
+        help: "Open the clean browser print view for save-as-PDF or printing.",
+        icon: <LocalPrintshopOutlinedIcon fontSize="small" />,
+        onClick: () => handlePrintEstimate(item),
+        disabled: rowBusy,
+      },
+      { type: "divider", key: "divider-1" },
+      {
+        key: "mark-sent",
+        label: "Mark Sent Manually",
+        help: "Use when you sent the estimate outside the automated email flow.",
+        onClick: () => handleSend(item),
+        disabled: isConverted,
+      },
+      {
+        key: "mark-accepted",
+        label: "Mark Accepted",
+        help: "Manager-only manual status update. This is not the public client approval flow.",
+        onClick: () => handleManualStatus(item, "approved", "Estimate marked accepted manually."),
+        disabled: isConverted,
+      },
+      {
+        key: "mark-rejected",
+        label: "Mark Rejected",
+        help: "Manager-only manual rejection status. This does not use the public client rejection flow.",
+        onClick: () => handleManualStatus(item, "rejected", "Estimate marked rejected manually."),
+        disabled: isConverted,
+      },
+      { type: "divider", key: "divider-2" },
+      {
+        key: "duplicate",
+        label: "Duplicate",
+        help: "Create a new estimate using this estimate as the starting point.",
+        onClick: () => handleDuplicate(item),
+      },
+      {
+        key: "convert",
+        label: "Convert to Invoice",
+        help: "Create the local finance invoice from this estimate when billing is ready.",
+        icon: <RequestQuoteOutlinedIcon fontSize="small" />,
+        onClick: () => handleConvert(item),
+        disabled: isConverted,
+      },
+      {
+        key: "copy-payment-link",
+        label: "Create / Copy Payment Link",
+        help: "Create or reuse the hosted Stripe invoice link for the converted invoice.",
+        icon: <PaymentOutlinedIcon fontSize="small" />,
+        onClick: () => handleCopyPaymentLink(item),
+        disabled: !item.converted_invoice_id || rowBusy,
+      },
+      {
+        key: "open-payment-link",
+        label: "Open Payment Link",
+        help: "Open the hosted Stripe invoice/payment page for this converted invoice.",
+        icon: <LaunchIcon fontSize="small" />,
+        onClick: () => handleOpenPaymentLink(item),
+        disabled: !item.converted_invoice_id || rowBusy,
+      },
+      {
+        key: "open-invoice",
+        label: "Open Invoice",
+        help: "Open the finance invoice detail dialog.",
+        icon: <DescriptionOutlinedIcon fontSize="small" />,
+        onClick: () => handleOpenInvoice(item),
+        disabled: !item.converted_invoice_id,
+      },
+      {
+        key: "create-work-order",
+        label: "Create Work Order",
+        help: "Move the approved estimate into operational job execution.",
+        icon: <AddTaskOutlinedIcon fontSize="small" />,
+        onClick: () => handleCreateWorkOrder(item),
+      },
+      {
+        key: "revise-resend",
+        label: "Revise and Resend",
+        help: "Reopen the client response flow so you can adjust and resend the estimate.",
+        onClick: () => handleReopenResponse(item),
+        disabled: !hasClientResponse,
+      },
+    ];
+
+    return {
+      primaryActions,
+      menuActions: allMenuActions.filter((action) => action.type === "divider" || !visibleKeys.has(action.key)),
+    };
+  };
+
+  const renderCollapsedStatus = (item) => {
+    const supplemental = buildSupplementalFlags(item);
+    const visibleSupplemental = supplemental.slice(0, 1);
+    const hiddenSupplemental = supplemental.slice(1);
+
+    return (
+      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+        <FinanceStatusChip status={item.status} />
+        {visibleSupplemental.map((flag) => (
+          <Chip
+            key={flag.label}
+            size="small"
+            label={flag.label}
+            color={flag.color}
+            variant={flag.variant || "outlined"}
+            sx={statusFlagChipSx}
+          />
+        ))}
+        {hiddenSupplemental.length ? (
+          <Tooltip
+            title={
+              <Stack spacing={0.25} sx={{ py: 0.25 }}>
+                {hiddenSupplemental.map((flag) => (
+                  <Typography key={flag.label} variant="caption">{flag.label}</Typography>
+                ))}
+              </Stack>
+            }
+          >
+            <Chip size="small" label={`+${hiddenSupplemental.length}`} variant="outlined" sx={statusFlagChipSx} />
+          </Tooltip>
+        ) : null}
+      </Stack>
+    );
+  };
+
+  const renderCompactRows = () => (
+    <Stack spacing={1.25}>
+      {items.map((item) => {
+        const { primaryActions, menuActions } = buildRowActions(item);
+        return (
+          <Paper key={item.id} variant="outlined" sx={{ p: 1.75, borderRadius: 3 }}>
+            <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between">
+              <Stack spacing={1.1} sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ md: "flex-start" }}>
+                  <Stack spacing={0.45} sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1.2, fontWeight: 800 }}>
+                      {item.estimate_number}
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.3 }}>
+                      {item.title || "Untitled estimate"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      {item.client_name || "-"}{item.client_email ? ` • ${item.client_email}` : ""}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={captionClampSx}>
+                      {item.issue_date || "No issue date"} • {item.sent_at ? `Sent ${formatDateTimeInTz(item.sent_at, timezone)}` : "Not sent"} • {item.line_count ?? 0} line{Number(item.line_count ?? 0) === 1 ? "" : "s"}
+                    </Typography>
+                  </Stack>
+
+                  <Stack spacing={0.65} alignItems={{ xs: "flex-start", md: "flex-end" }} sx={{ minWidth: { md: 180 } }}>
+                    {renderCollapsedStatus(item)}
+                    <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1 }}>
+                      {formatCurrency(item.total, item.currency)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: { md: "right" } }}>
+                      {item.converted_invoice_number ? `${item.converted_invoice_number} • ${formatPaymentState(item)}` : "No invoice yet • Convert first"}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Stack>
+
+              <Stack direction={{ xs: "row", md: "row" }} spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} flexWrap="wrap" useFlexGap sx={{ minWidth: { lg: 320 } }}>
+                {primaryActions.map((action) => (
+                  <Button
+                    key={action.key}
+                    size="small"
+                    variant={action.variant}
+                    startIcon={action.icon}
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                    sx={{ whiteSpace: "nowrap" }}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+                <EstimateActionMenu actions={menuActions} />
+              </Stack>
+            </Stack>
+          </Paper>
+        );
+      })}
+    </Stack>
+  );
+
+  const renderExpandedTable = () => (
+    <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: 0, borderColor: "transparent" }}>
       <Box sx={{ overflowX: "auto" }}>
-        <Table sx={{ minWidth: expanded ? 1420 : 980 }}>
+        <Table sx={{ minWidth: 1380 }}>
           <TableHead>
             <TableRow
               sx={{
@@ -456,19 +785,19 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 },
               }}
             >
-              <TableCell sx={{ minWidth: expanded ? 124 : 120 }}>Estimate #</TableCell>
-              <TableCell sx={{ minWidth: expanded ? 280 : 300 }}>{expanded ? "Title" : "Title / Client"}</TableCell>
-              {expanded ? <TableCell sx={{ minWidth: 240 }}>Client</TableCell> : null}
-              <TableCell sx={{ minWidth: expanded ? 260 : 220 }}>Status</TableCell>
+              <TableCell sx={{ minWidth: 124 }}>Estimate #</TableCell>
+              <TableCell sx={{ minWidth: 280 }}>Title</TableCell>
+              <TableCell sx={{ minWidth: 240 }}>Client</TableCell>
+              <TableCell sx={{ minWidth: 270 }}>Status</TableCell>
               <TableCell align="right" sx={{ minWidth: 110 }}>Total</TableCell>
-              {expanded ? <TableCell sx={{ minWidth: 120 }}>Issue date</TableCell> : null}
-              {expanded ? <TableCell sx={{ minWidth: 176 }}>Sent</TableCell> : null}
-              {expanded ? <TableCell align="center" sx={{ minWidth: 72 }}>Lines</TableCell> : null}
-              <TableCell sx={{ minWidth: expanded ? 170 : 220 }}>Invoice</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Issue date</TableCell>
+              <TableCell sx={{ minWidth: 176 }}>Sent</TableCell>
+              <TableCell align="center" sx={{ minWidth: 72 }}>Lines</TableCell>
+              <TableCell sx={{ minWidth: 220 }}>Invoice</TableCell>
               <TableCell
                 align="right"
                 sx={{
-                  minWidth: expanded ? 360 : 300,
+                  minWidth: 320,
                   position: "sticky",
                   right: 0,
                   zIndex: 3,
@@ -482,215 +811,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           </TableHead>
           <TableBody>
             {items.map((item) => {
-              const canOpenInvoice = Boolean(item.converted_invoice_id);
-              const isConverted = item.status === "converted_to_invoice";
-              const rowBusy = linkBusyId === item.id || paymentLinkBusyId === item.id;
-              const hasPaymentLink = Boolean(item.converted_invoice_hosted_invoice_url);
-              const hasClientResponse = Boolean(item.client_accepted_at || item.client_rejected_at);
-
-              const primaryActions = canOpenInvoice
-                ? [
-                    {
-                      key: "open-invoice",
-                      label: "Open Invoice",
-                      icon: <DescriptionOutlinedIcon fontSize="small" />,
-                      onClick: () => handleOpenInvoice(item),
-                      variant: "contained",
-                    },
-                    hasPaymentLink
-                      ? {
-                          key: "open-payment-link",
-                          label: "Open Payment Link",
-                          icon: <LaunchIcon fontSize="small" />,
-                          onClick: () => handleOpenPaymentLink(item),
-                          variant: "outlined",
-                          disabled: rowBusy,
-                        }
-                      : {
-                          key: "copy-payment-link",
-                          label: "Create / Copy Payment Link",
-                          icon: <PaymentOutlinedIcon fontSize="small" />,
-                          onClick: () => handleCopyPaymentLink(item),
-                          variant: "outlined",
-                          disabled: rowBusy,
-                        },
-                    {
-                      key: "create-work-order",
-                      label: "Create Work Order",
-                      icon: <AddTaskOutlinedIcon fontSize="small" />,
-                      onClick: () => handleCreateWorkOrder(item),
-                      variant: "outlined",
-                    },
-                  ]
-                : [
-                    {
-                      key: "edit",
-                      label: "Edit",
-                      icon: <EditOutlinedIcon fontSize="small" />,
-                      onClick: () => {
-                        setEditing(item);
-                        setDialogOpen(true);
-                      },
-                      variant: "outlined",
-                    },
-                    {
-                      key: "convert",
-                      label: "Convert to Invoice",
-                      icon: <RequestQuoteOutlinedIcon fontSize="small" />,
-                      onClick: () => handleConvert(item),
-                      variant: "contained",
-                      disabled: isConverted,
-                    },
-                    item.public_url
-                      ? {
-                          key: "open-link",
-                          label: "Open Link",
-                          icon: <LaunchIcon fontSize="small" />,
-                          onClick: () => handleOpenLink(item),
-                          variant: "outlined",
-                          disabled: rowBusy,
-                        }
-                      : {
-                          key: "copy-link",
-                          label: "Create / Copy Link",
-                          icon: <LinkIcon fontSize="small" />,
-                          onClick: () => handleCopyLink(item),
-                          variant: "outlined",
-                          disabled: rowBusy,
-                        },
-                  ];
-
-              const visibleKeys = new Set(primaryActions.map((action) => action.key));
-
-              const allMenuActions = [
-                {
-                  key: "edit",
-                  label: "Edit",
-                  help: "Open the estimate editor with the current billing snapshot and line items.",
-                  icon: <EditOutlinedIcon fontSize="small" />,
-                  onClick: () => {
-                    setEditing(item);
-                    setDialogOpen(true);
-                  },
-                },
-                {
-                  key: "copy-link",
-                  label: "Create / Copy Link",
-                  help: "Create the public estimate link if needed and copy it to the clipboard.",
-                  icon: <LinkIcon fontSize="small" />,
-                  onClick: () => handleCopyLink(item),
-                  disabled: rowBusy,
-                },
-                {
-                  key: "open-link",
-                  label: "Open Link",
-                  help: "Open the client-facing public estimate page in a new tab.",
-                  icon: <LaunchIcon fontSize="small" />,
-                  onClick: () => handleOpenLink(item),
-                  disabled: rowBusy,
-                },
-                {
-                  key: "send-estimate",
-                  label: "Send Estimate",
-                  help: "Use the existing mail flow to send the estimate link to the client.",
-                  icon: <EmailOutlinedIcon fontSize="small" />,
-                  onClick: () => openSendEmailDialog(item),
-                  disabled: rowBusy,
-                },
-                {
-                  key: "copy-summary",
-                  label: "Copy Summary",
-                  help: "Copy a text summary with the estimate number, client, line items, and totals.",
-                  icon: <ContentCopyIcon fontSize="small" />,
-                  onClick: () => handleCopySummary(item),
-                },
-                {
-                  key: "print-pdf",
-                  label: "Print / PDF",
-                  help: "Open the clean browser print view for save-as-PDF or printing.",
-                  icon: <LocalPrintshopOutlinedIcon fontSize="small" />,
-                  onClick: () => handlePrintEstimate(item),
-                  disabled: rowBusy,
-                },
-                { type: "divider", key: "divider-1" },
-                {
-                  key: "mark-sent",
-                  label: "Mark Sent Manually",
-                  help: "Use when you sent the estimate outside the automated email flow.",
-                  onClick: () => handleSend(item),
-                  disabled: isConverted,
-                },
-                {
-                  key: "mark-accepted",
-                  label: "Mark Accepted",
-                  help: "Manager-only manual status update. This is not the public client approval flow.",
-                  onClick: () => handleManualStatus(item, "approved", "Estimate marked accepted manually."),
-                  disabled: isConverted,
-                },
-                {
-                  key: "mark-rejected",
-                  label: "Mark Rejected",
-                  help: "Manager-only manual rejection status. This does not use the public client rejection flow.",
-                  onClick: () => handleManualStatus(item, "rejected", "Estimate marked rejected manually."),
-                  disabled: isConverted,
-                },
-                { type: "divider", key: "divider-2" },
-                {
-                  key: "duplicate",
-                  label: "Duplicate",
-                  help: "Create a new estimate using this estimate as the starting point.",
-                  onClick: () => handleDuplicate(item),
-                },
-                {
-                  key: "convert",
-                  label: "Convert to Invoice",
-                  help: "Create the local finance invoice from this estimate when billing is ready.",
-                  icon: <RequestQuoteOutlinedIcon fontSize="small" />,
-                  onClick: () => handleConvert(item),
-                  disabled: isConverted,
-                },
-                {
-                  key: "copy-payment-link",
-                  label: "Create / Copy Payment Link",
-                  help: "Create or reuse the hosted Stripe invoice link for the converted invoice.",
-                  icon: <PaymentOutlinedIcon fontSize="small" />,
-                  onClick: () => handleCopyPaymentLink(item),
-                  disabled: !item.converted_invoice_id || rowBusy,
-                },
-                {
-                  key: "open-payment-link",
-                  label: "Open Payment Link",
-                  help: "Open the hosted Stripe invoice/payment page for this converted invoice.",
-                  icon: <LaunchIcon fontSize="small" />,
-                  onClick: () => handleOpenPaymentLink(item),
-                  disabled: !item.converted_invoice_id || rowBusy,
-                },
-                {
-                  key: "open-invoice",
-                  label: "Open Invoice",
-                  help: "Open the finance invoice detail dialog.",
-                  icon: <DescriptionOutlinedIcon fontSize="small" />,
-                  onClick: () => handleOpenInvoice(item),
-                  disabled: !item.converted_invoice_id,
-                },
-                {
-                  key: "create-work-order",
-                  label: "Create Work Order",
-                  help: "Move the approved estimate into operational job execution.",
-                  icon: <AddTaskOutlinedIcon fontSize="small" />,
-                  onClick: () => handleCreateWorkOrder(item),
-                },
-                {
-                  key: "revise-resend",
-                  label: "Revise and Resend",
-                  help: "Reopen the client response flow so you can adjust and resend the estimate.",
-                  onClick: () => handleReopenResponse(item),
-                  disabled: !hasClientResponse,
-                },
-              ];
-
-              const menuActions = allMenuActions.filter((action) => action.type === "divider" || !visibleKeys.has(action.key));
-
+              const { primaryActions, menuActions } = buildRowActions(item);
               return (
                 <TableRow
                   key={item.id}
@@ -709,44 +830,33 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                     </Typography>
                   </TableCell>
                   <TableCell>
+                    <Typography variant="body2" fontWeight={700} sx={{ lineHeight: 1.35 }}>
+                      {item.title || "Untitled estimate"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
                     <Stack spacing={0.35} sx={{ minWidth: 0 }}>
-                      <Typography variant="body2" fontWeight={700} sx={{ lineHeight: 1.35 }}>
-                        {item.title || "Untitled estimate"}
+                      <Typography variant="body2" fontWeight={700} noWrap>
+                        {item.client_name || "-"}
                       </Typography>
-                      {!expanded ? (
-                        <>
-                          <Typography variant="body2" color="text.secondary" noWrap>
-                            {item.client_name || "-"}{item.client_email ? ` • ${item.client_email}` : ""}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap>
-                            {item.issue_date || "No issue date"} • {item.sent_at ? `Sent ${formatDateTimeInTz(item.sent_at, timezone)}` : "Not sent"} • {item.line_count ?? 0} line{Number(item.line_count ?? 0) === 1 ? "" : "s"}
-                          </Typography>
-                        </>
-                      ) : null}
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        {item.client_email || ""}
+                      </Typography>
                     </Stack>
                   </TableCell>
-                  {expanded ? (
-                    <TableCell>
-                      <Stack spacing={0.35} sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" fontWeight={700} noWrap>
-                          {item.client_name || "-"}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" noWrap>
-                          {item.client_email || ""}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                  ) : null}
                   <TableCell>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                       <FinanceStatusChip status={item.status} />
-                      {item.public_url ? <Chip size="small" variant="outlined" label="Share link ready" sx={statusFlagChipSx} /> : null}
-                      {item.public_viewed_at && !item.client_accepted_at && !item.client_rejected_at ? (
-                        <Chip size="small" color="info" variant="outlined" label="Viewed by client" sx={statusFlagChipSx} />
-                      ) : null}
-                      {item.client_accepted_at ? <Chip size="small" color="success" variant="outlined" label="Accepted by client" sx={statusFlagChipSx} /> : null}
-                      {item.client_rejected_at ? <Chip size="small" color="warning" variant="outlined" label="Rejected by client" sx={statusFlagChipSx} /> : null}
-                      {hasPaymentLink ? <Chip size="small" color="secondary" variant="outlined" label="Payment link ready" sx={statusFlagChipSx} /> : null}
+                      {buildSupplementalFlags(item).map((flag) => (
+                        <Chip
+                          key={flag.label}
+                          size="small"
+                          label={flag.label}
+                          color={flag.color}
+                          variant={flag.variant || "outlined"}
+                          sx={statusFlagChipSx}
+                        />
+                      ))}
                     </Stack>
                   </TableCell>
                   <TableCell align="right">
@@ -754,35 +864,27 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                       {formatCurrency(item.total, item.currency)}
                     </Typography>
                   </TableCell>
-                  {expanded ? (
-                    <TableCell>
-                      <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-                        {item.issue_date || "-"}
-                      </Typography>
-                    </TableCell>
-                  ) : null}
-                  {expanded ? (
-                    <TableCell>
-                      <Typography variant="body2" color={item.sent_at ? "text.primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
-                        {item.sent_at ? formatDateTimeInTz(item.sent_at, timezone) : "-"}
-                      </Typography>
-                    </TableCell>
-                  ) : null}
-                  {expanded ? (
-                    <TableCell align="center">
-                      <Chip label={item.line_count ?? 0} size="small" variant="outlined" sx={statusFlagChipSx} />
-                    </TableCell>
-                  ) : null}
+                  <TableCell>
+                    <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
+                      {item.issue_date || "-"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color={item.sent_at ? "text.primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
+                      {item.sent_at ? formatDateTimeInTz(item.sent_at, timezone) : "-"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip label={item.line_count ?? 0} size="small" variant="outlined" sx={statusFlagChipSx} />
+                  </TableCell>
                   <TableCell>
                     <Stack spacing={0.35}>
                       <Typography variant="body2" fontWeight={item.converted_invoice_number ? 700 : 500} color={item.converted_invoice_number ? "text.primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
                         {item.converted_invoice_number || "No invoice yet"}
                       </Typography>
-                      {!expanded ? (
-                        <Typography variant="caption" color="text.secondary" noWrap>
-                          {hasPaymentLink ? "Payment link ready" : canOpenInvoice ? "No payment link yet" : "Convert first"}
-                        </Typography>
-                      ) : null}
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {formatPaymentState(item)}
+                      </Typography>
                     </Stack>
                   </TableCell>
                   <TableCell
@@ -809,7 +911,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                           {action.label}
                         </Button>
                       ))}
-                      <EstimateActionMenu item={item} actions={menuActions} disabled={false} />
+                      <EstimateActionMenu actions={menuActions} />
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -930,7 +1032,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           }}
         />
       ) : (
-        renderEstimateTable(false)
+        renderCompactRows()
       )}
 
       <FinancePagination
@@ -955,7 +1057,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 0, bgcolor: "background.default" }}>
-          {renderEstimateTable(true)}
+          {renderExpandedTable()}
         </DialogContent>
       </Dialog>
 
