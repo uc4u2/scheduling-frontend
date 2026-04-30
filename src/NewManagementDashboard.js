@@ -231,25 +231,25 @@ const menuConfig = [
   },
 
   {
-    label: "Business Finance",
+    labelKey: "manager.finance.groupLabel",
     key: "finance-group",
     icon: <ReceiptLong />,
-    tooltip: "Daily operations, field work, and accountant-ready reporting.",
+    tooltipKey: "manager.finance.groupTooltip",
     children: [
-      { label: "Overview", key: "finance-overview", icon: <Dashboard /> },
-      { label: "Quotes", key: "finance-quotes", icon: <ReceiptLong /> },
-      { label: "Estimates", key: "finance-estimates", icon: <AssignmentTurnedIn /> },
-      { label: "Work Orders", key: "finance-work-orders", icon: <Assignment /> },
-      { label: "Materials & Supplies", key: "finance-inventory", icon: <Inventory2Outlined /> },
-      { label: "Purchases", key: "finance-purchases", icon: <ShoppingCartOutlined /> },
-      { label: "Field Reports", key: "finance-field-reports", icon: <Article /> },
-      { label: "Reviews", key: "finance-reviews", icon: <FactCheckOutlined /> },
-      { label: "Expenses", key: "finance-expenses", icon: <Paid /> },
-      { label: "Vendors", key: "finance-vendors", icon: <Business /> },
-      { label: "Reports", key: "finance-reports", icon: <Summarize /> },
-      { label: "Profitability", key: "finance-profitability", icon: <TrendingUp /> },
-      { label: "Tax Summary", key: "finance-tax-summary", icon: <Calculate /> },
-      { label: "Month-End", key: "finance-month-end", icon: <EventNote /> },
+      { labelKey: "manager.finance.tabs.overview", key: "finance-overview", icon: <Dashboard /> },
+      { labelKey: "manager.finance.tabs.quotes", key: "finance-quotes", icon: <ReceiptLong /> },
+      { labelKey: "manager.finance.tabs.estimates", key: "finance-estimates", icon: <AssignmentTurnedIn /> },
+      { labelKey: "manager.finance.tabs.workOrders", key: "finance-work-orders", icon: <Assignment /> },
+      { labelKey: "manager.finance.tabs.materialsSupplies", key: "finance-inventory", icon: <Inventory2Outlined /> },
+      { labelKey: "manager.finance.tabs.purchases", key: "finance-purchases", icon: <ShoppingCartOutlined /> },
+      { labelKey: "manager.finance.tabs.fieldReports", key: "finance-field-reports", icon: <Article /> },
+      { labelKey: "manager.finance.tabs.reviews", key: "finance-reviews", icon: <FactCheckOutlined /> },
+      { labelKey: "manager.finance.tabs.expenses", key: "finance-expenses", icon: <Paid /> },
+      { labelKey: "manager.finance.tabs.vendors", key: "finance-vendors", icon: <Business /> },
+      { labelKey: "manager.finance.tabs.reports", key: "finance-reports", icon: <Summarize /> },
+      { labelKey: "manager.finance.tabs.profitability", key: "finance-profitability", icon: <TrendingUp /> },
+      { labelKey: "manager.finance.tabs.taxSummary", key: "finance-tax-summary", icon: <Calculate /> },
+      { labelKey: "manager.finance.tabs.monthEnd", key: "finance-month-end", icon: <EventNote /> },
     ],
   },
 
@@ -1709,6 +1709,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         const mappedItem = {
           ...item,
           label: item.labelKey ? t(item.labelKey) : item.label || "",
+          tooltip: item.tooltipKey ? t(item.tooltipKey) : item.tooltip || "",
         };
 
         if (item.children) {
