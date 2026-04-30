@@ -405,7 +405,9 @@ export default function ManagerPaymentsView({ connect }) {
             _whenLabel: whenLabel,
             _capturedBalanceTotal: paymentStatus === "paid" ? Number(b.amount || 0) : 0,
             _capturedTipTotal: 0,
-            _refundedTotal: paymentStatus === "refunded" || paymentStatus === "partially_refunded" ? Number(b.amount || 0) : 0,
+            _refundedTotal: Number(b.refunded_amount || 0),
+            _remainingRefundable: Number(b.remaining_refundable_amount || 0),
+            _netCollectedAmount: Number(b.net_collected_amount || 0),
             _sourceTypeLabel: b.source_label || "Business Finance",
             client: b.client || {
               full_name: b.client_name || "Client",
@@ -1589,6 +1591,14 @@ export default function ManagerPaymentsView({ connect }) {
                 segments.push(
                   `Refunded ${money(
                     b._refundedTotal,
+                    b.currency || displayCurrency,
+                  )}`,
+                );
+              }
+              if (isFinanceInvoice && Number(b._remainingRefundable || 0) > 0) {
+                segments.push(
+                  `Remaining refundable ${money(
+                    b._remainingRefundable,
                     b.currency || displayCurrency,
                   )}`,
                 );

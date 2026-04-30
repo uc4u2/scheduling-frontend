@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -12,10 +12,10 @@ import FinanceMetricCard from "./components/FinanceMetricCard";
 import { getFinanceTaxSummary } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
-const formatMoney = (value) =>
+const formatMoney = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
@@ -30,8 +30,9 @@ export default function TaxSummaryPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const currency = report?.currency || "USD";
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -42,11 +43,11 @@ export default function TaxSummaryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <Stack spacing={2.5}>
@@ -65,9 +66,15 @@ export default function TaxSummaryPage() {
       ) : (
         <>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax collected" value={formatMoney(report?.tax_collected)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatMoney(report?.tax_paid_on_expenses)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax" value={formatMoney(report?.estimated_net_tax)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross tax collected" value={formatMoney(report?.gross_tax_collected ?? report?.tax_collected, currency)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax refunded" value={formatMoney(report?.tax_refunded, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net tax collected" value={formatMoney(report?.net_tax_collected, currency)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatMoney(report?.tax_paid_on_expenses, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax gross" value={formatMoney(report?.estimated_net_tax_gross ?? report?.estimated_net_tax, currency)} accent="info" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax net" value={formatMoney(report?.estimated_net_tax_net, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refund total" value={formatMoney(report?.refund_total, currency)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunded invoices" value={String(report?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Partial refunds" value={String(report?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
           </Grid>
         </>
       )}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -13,6 +13,13 @@ import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import { exportFinanceMonthEndCsv, getFinanceMissingData, getFinanceMonthEnd } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
+
+const formatMoney = (value, currency = "USD") =>
+  new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
 
 const firstDayOfMonth = () => {
   const now = new Date();
@@ -29,7 +36,7 @@ export default function MonthEndReviewPage() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -44,11 +51,11 @@ export default function MonthEndReviewPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -74,6 +81,10 @@ export default function MonthEndReviewPage() {
   const checklist = review?.checklist || review?.checklist_json || {};
   const checklistReasons = review?.checklist_reasons || {};
   const summary = review?.summary || review?.summary_json || {};
+  const refundSummary = summary?.refund_summary || {};
+  const financeSummary = summary?.finance_summary || {};
+  const taxSummary = summary?.tax_summary || {};
+  const currency = refundSummary?.currency || financeSummary?.currency || taxSummary?.currency || "USD";
   const renderChecklistLine = (label, key) => (
     <Stack spacing={0.25}>
       <Typography variant="body2">{label}: {checklist[key] ? "Ready" : "Needs attention"}</Typography>
@@ -105,6 +116,10 @@ export default function MonthEndReviewPage() {
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Low stock" value={String(missingData?.low_stock_count ?? 0)} accent="error" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Pending field reports" value={String(missingData?.field_reports_pending_review_count ?? 0)} accent="info" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Pending work orders" value={String(missingData?.work_orders_pending_review_count ?? 0)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Refund total" value={formatMoney(refundSummary?.refund_total, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Refunded invoices" value={String(refundSummary?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Partial refunds" value={String(refundSummary?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Tax refunded" value={formatMoney(refundSummary?.tax_refunded, currency)} accent="error" /></Grid>
           </Grid>
 
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -124,8 +139,18 @@ export default function MonthEndReviewPage() {
             <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Summary snapshot</Typography>
             <Typography variant="body2" color="text.secondary">Missing receipts: {summary?.missing_data?.missing_receipts_count ?? 0}</Typography>
             <Typography variant="body2" color="text.secondary">Uncategorized expenses: {summary?.missing_data?.uncategorized_expenses_count ?? 0}</Typography>
-            <Typography variant="body2" color="text.secondary">Estimated net tax: {summary?.tax_summary?.estimated_net_tax ?? 0}</Typography>
-            <Typography variant="body2" color="text.secondary">Estimated margin: {summary?.profitability_summary?.estimated_margin ?? 0}</Typography>
+            <Typography variant="body2" color="text.secondary">Gross invoice total: {formatMoney(financeSummary?.gross_invoice_total ?? financeSummary?.invoice_total, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">Refund total: {formatMoney(refundSummary?.refund_total, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">Net invoice total: {formatMoney(refundSummary?.net_invoice_total ?? financeSummary?.net_invoice_total, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">Estimated net tax gross: {formatMoney(summary?.tax_summary?.estimated_net_tax_gross ?? summary?.tax_summary?.estimated_net_tax, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">Estimated net tax net: {formatMoney(summary?.tax_summary?.estimated_net_tax_net, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">Estimated margin gross: {formatMoney(summary?.profitability_summary?.estimated_margin_gross ?? summary?.profitability_summary?.estimated_margin, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">Estimated margin net: {formatMoney(summary?.profitability_summary?.estimated_margin_net, currency)}</Typography>
+            {(Number(refundSummary?.refund_total || 0) > 0) ? (
+              <Typography variant="body2" color="text.secondary">
+                Review refund activity before final accounting handoff. Refunds do not block month-end, but they do affect net cash and net tax.
+              </Typography>
+            ) : null}
           </Paper>
         </>
       )}
