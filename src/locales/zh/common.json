@@ -1644,6 +1644,265 @@
         "profitability": "盈利能力",
         "taxSummary": "税务汇总",
         "monthEnd": "月末"
+      },
+      "shared": {
+        "statuses": {
+          "new": "新建",
+          "reviewed": "已审核",
+          "estimate_created": "已创建报价单",
+          "closed": "已关闭",
+          "rejected": "已拒绝",
+          "draft": "草稿",
+          "sent": "已发送",
+          "viewed": "已查看",
+          "approved": "已批准",
+          "submitted": "已提交",
+          "clarification_requested": "需补充说明",
+          "scheduled": "已排期",
+          "in_progress": "进行中",
+          "completed": "已完成",
+          "cancelled": "已取消",
+          "converted_to_invoice": "已转为发票",
+          "converted_to_work_order": "已转为工单",
+          "paid": "已付款",
+          "partial_refund": "部分退款",
+          "refunded": "已退款",
+          "void": "已作废"
+        }
+      },
+      "overview": {
+        "errors": {
+          "loadFailed": "无法加载 Business Finance 概览。"
+        },
+        "sections": {
+          "attention": "今天需要关注",
+          "money": "财务概览",
+          "operations": "运营概览"
+        },
+        "empty": {
+          "title": "当前没有紧急事项",
+          "description": "报价请求、任务、收据和月末跟进目前都处于良好状态。"
+        },
+        "attention": {
+          "quote": {
+            "label": "新报价请求",
+            "helper": "在请求变陈旧之前先记录下来。",
+            "action": "打开报价请求"
+          },
+          "estimate": {
+            "label": "草稿报价单",
+            "helper": "在工作推进前先完成定价。",
+            "action": "打开报价单"
+          },
+          "workOrder": {
+            "label": "待排期工单",
+            "helper": "草稿任务或尚未分配团队的任务。",
+            "action": "打开工单"
+          },
+          "fieldReport": {
+            "label": "待审核现场报告",
+            "helper": "提交的工作需要经理审核后才算正式。",
+            "action": "打开现场报告"
+          },
+          "lowStock": {
+            "label": "低库存项目",
+            "helper": "在下一项工作开始前检查材料。",
+            "action": "打开材料"
+          },
+          "missingReceipts": {
+            "label": "缺少收据",
+            "helper": "在月末交接前补齐凭证。",
+            "action": "打开费用"
+          },
+          "monthEnd": {
+            "label": "月末缺失项",
+            "helper": "在导出给会计前检查缺口。",
+            "action": "打开月末"
+          }
+        },
+        "money": {
+          "estimateTotal": "报价总额",
+          "grossInvoiceTotal": "发票毛额",
+          "refunds": "退款",
+          "netInvoiceTotal": "发票净额",
+          "expenseTotal": "费用总额",
+          "grossTaxCollected": "税金毛额",
+          "taxRefunded": "已退税额",
+          "netTaxCollected": "税金净额",
+          "taxPaidOnExpenses": "费用已付税额",
+          "estimatedNetTaxNet": "预计净税额",
+          "paymentScopeInfo": "目前并非所有发票付款方式都能统计到回款总额。"
+        },
+        "operations": {
+          "activeJobs": {
+            "label": "进行中的任务",
+            "helper": "已排期或执行中。"
+          },
+          "plannedLabor": {
+            "label": "本月计划人工成本",
+            "helper": "仅基于工单计划。"
+          },
+          "inventoryValue": {
+            "label": "库存价值估算",
+            "helper": "当前库存乘以单位成本。"
+          },
+          "approvedMaterialCost": {
+            "label": "已批准材料成本",
+            "helper": "经理审核后正式确认的材料。"
+          }
+        }
+      },
+      "quotes": {
+        "errors": {
+          "loadFailed": "无法加载报价请求。",
+          "titleRequired": "标题为必填项。",
+          "saveFailed": "无法保存报价请求。",
+          "updateFailed": "无法更新报价请求。",
+          "createEstimateFailed": "无法创建报价单。",
+          "clientRequiredForEstimate": "创建报价单前请先关联或创建客户。",
+          "linkClientFailed": "无法关联客户。"
+        },
+        "snackbar": {
+          "updated": "报价请求已更新。",
+          "created": "报价请求已创建。",
+          "estimateCreated": "已为 {{clientName}} 创建报价单。",
+          "clientLinked": "客户已关联到报价请求。"
+        },
+        "page": {
+          "title": "报价请求",
+          "description": "清晰记录定制工作的客户需求，确认正确客户，并在不丢失来源、联系人或时间要求的情况下将请求推进到报价流程。"
+        },
+        "toolbar": {
+          "expandView": "展开视图",
+          "newQuote": "新建报价请求",
+          "searchLabel": "搜索报价请求",
+          "searchPlaceholder": "标题、联系人、客户或来源",
+          "statusLabel": "状态",
+          "allStatuses": "全部状态",
+          "refresh": "刷新",
+          "countLabel_one": "{{count}} 个报价请求",
+          "countLabel_other": "{{count}} 个报价请求"
+        },
+        "table": {
+          "headers": {
+            "title": "标题",
+            "titleSource": "标题 / 来源",
+            "status": "状态",
+            "source": "来源",
+            "requestContact": "请求联系人",
+            "linkedClient": "已关联客户",
+            "timeline": "时间要求",
+            "timelineCreated": "时间要求 / 创建时间",
+            "created": "创建时间",
+            "description": "说明",
+            "actions": "操作"
+          },
+          "sourceTooltip": "除非已接入自动化，否则这里显示的是来源标签。"
+        },
+        "sources": {
+          "manual": "手动录入",
+          "whatsapp": "WhatsApp 备注",
+          "phone": "电话来电",
+          "instagram": "Instagram / 私信",
+          "website": "网站表单"
+        },
+        "actions": {
+          "moreActions": "更多操作",
+          "openEstimates": "打开报价单",
+          "createEstimate": "创建报价单",
+          "linkCreateClient": "关联 / 创建客户",
+          "linkOrCreateClient": "关联或创建客户",
+          "edit": "编辑",
+          "markReviewed": "标记为已审核",
+          "close": "关闭",
+          "reject": "拒绝"
+        },
+        "actionHelp": {
+          "edit": "打开报价请求编辑器，更新接单详情、联系信息、备注或服务地址。",
+          "markReviewed": "当请求已分流并准备进入经理下一步时使用。",
+          "linkClient": "将请求关联到用于报价单、发票和工单的正式客户记录。",
+          "createEstimate": "在确认请求详情并关联正确客户后创建报价单。",
+          "openEstimates": "如果该请求已经生成报价单，直接进入报价工作区。",
+          "close": "当请求已完成且不再需要跟进时使用。",
+          "reject": "当请求明确不会继续推进时使用。"
+        },
+        "chips": {
+          "linked": "已关联",
+          "notLinked": "未关联",
+          "contactDiffers": "联系人与客户不一致",
+          "checkClientMatch": "请检查客户匹配"
+        },
+        "fallbacks": {
+          "linkedClient": "已关联客户",
+          "untitled": "未命名报价请求",
+          "noExternalReference": "无外部引用",
+          "notLinked": "未关联",
+          "noClientEmail": "无客户邮箱"
+        },
+        "empty": {
+          "title": "还没有报价请求",
+          "description": "可以先在这里创建报价请求，或稍后再统一处理公开表单。",
+          "action": "创建报价请求"
+        },
+        "expanded": {
+          "title": "报价请求",
+          "description": "扩展工作视图，包含固定操作列和完整请求字段。"
+        },
+        "dialog": {
+          "editTitle": "编辑报价请求",
+          "newTitle": "新建报价请求",
+          "sections": {
+            "requestDetails": "请求详情",
+            "requestContact": "请求联系人",
+            "linkedClient": "已关联客户",
+            "notes": "备注"
+          },
+          "fields": {
+            "title": "标题",
+            "source": "来源",
+            "sourceHelp": "例如：电话来电、WhatsApp 备注、网站表单。",
+            "preferredTimeline": "期望时间",
+            "serviceAddress": "服务地址",
+            "description": "说明",
+            "contactName": "联系人姓名",
+            "contactEmail": "联系人邮箱",
+            "contactPhone": "联系人电话",
+            "linkedClientFallback": "已关联客户",
+            "visibleNotes": "可见备注",
+            "internalNotes": "内部备注"
+          },
+          "linkedClientHelp": "联系人是提出报价请求的人。客户是用于报价单、发票和工单的正式客户记录。",
+          "noClientLinked": "尚未关联客户。",
+          "saveBeforeLinking": "请先保存报价请求，然后再关联或创建客户。",
+          "actions": {
+            "linkExistingClient": "关联现有客户",
+            "createClientFromContact": "根据联系人创建客户",
+            "saveChanges": "保存更改",
+            "createQuote": "创建报价请求"
+          }
+        },
+        "linkDialog": {
+          "title": "关联或创建客户",
+          "info": "可以关联已有客户，也可以根据请求联系人创建新客户。",
+          "existingClient": "现有客户",
+          "createNewInstead": "改为创建新客户",
+          "clientFallback": "客户 #{{id}}",
+          "clientName": "客户名称",
+          "clientEmail": "客户邮箱",
+          "clientPhone": "客户电话",
+          "linkClient": "关联客户"
+        },
+        "confirmEstimate": {
+          "title": "确认报价单客户",
+          "description": "请求联系人与已关联客户不一致。仍然使用该客户创建报价单吗？",
+          "requestContact": "请求联系人",
+          "linkedClient": "已关联客户",
+          "continue": "继续"
+        },
+        "common": {
+          "cancel": "取消",
+          "saving": "保存中..."
+        }
       }
     }
   },
