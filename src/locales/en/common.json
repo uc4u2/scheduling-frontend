@@ -1647,6 +1647,30 @@
           "dialogTitle": "Visual Site Builder"
         }
       }
+    },
+    "finance": {
+      "groupLabel": "Business Finance",
+      "groupTooltip": "Daily operations, field work, and accountant-ready reporting.",
+      "help": {
+        "button": "How it works",
+        "tooltip": "See how quotes, jobs, field reports, reviews, and month-end fit together."
+      },
+      "tabs": {
+        "overview": "Overview",
+        "quotes": "Quotes",
+        "estimates": "Estimates",
+        "workOrders": "Work Orders",
+        "materialsSupplies": "Materials & Supplies",
+        "purchases": "Purchases",
+        "fieldReports": "Field Reports",
+        "reviews": "Reviews",
+        "expenses": "Expenses",
+        "vendors": "Vendors",
+        "reports": "Reports",
+        "profitability": "Profitability",
+        "taxSummary": "Tax Summary",
+        "monthEnd": "Month-End"
+      }
     }
   },
   "settings": {

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Button, Paper, Stack, Tab, Tabs, Tooltip } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import AddTaskIcon from "@mui/icons-material/AddTask";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -40,20 +41,20 @@ const GROUP_ALIAS_TO_TAB = {
 };
 
 const TAB_ORDER = [
-  { key: "finance-overview", label: "Overview", icon: <DashboardIcon fontSize="small" /> },
-  { key: "finance-quotes", label: "Quotes", icon: <ReceiptLongIcon fontSize="small" /> },
-  { key: "finance-estimates", label: "Estimates", icon: <AddTaskIcon fontSize="small" /> },
-  { key: "finance-work-orders", label: "Work Orders", icon: <AssignmentIcon fontSize="small" /> },
-  { key: "finance-inventory", label: "Materials & Supplies", icon: <Inventory2OutlinedIcon fontSize="small" /> },
-  { key: "finance-purchases", label: "Purchases", icon: <ShoppingCartOutlinedIcon fontSize="small" /> },
-  { key: "finance-field-reports", label: "Field Reports", icon: <ArticleOutlinedIcon fontSize="small" /> },
-  { key: "finance-reviews", label: "Reviews", icon: <FactCheckOutlinedIcon fontSize="small" /> },
-  { key: "finance-expenses", label: "Expenses", icon: <PaidIcon fontSize="small" /> },
-  { key: "finance-vendors", label: "Vendors", icon: <StorefrontOutlinedIcon fontSize="small" /> },
-  { key: "finance-reports", label: "Reports", icon: <SummarizeOutlinedIcon fontSize="small" /> },
-  { key: "finance-profitability", label: "Profitability", icon: <TrendingUpOutlinedIcon fontSize="small" /> },
-  { key: "finance-tax-summary", label: "Tax Summary", icon: <CalculateOutlinedIcon fontSize="small" /> },
-  { key: "finance-month-end", label: "Month-End", icon: <EventNoteOutlinedIcon fontSize="small" /> },
+  { key: "finance-overview", labelKey: "manager.finance.tabs.overview", labelFallback: "Overview", icon: <DashboardIcon fontSize="small" /> },
+  { key: "finance-quotes", labelKey: "manager.finance.tabs.quotes", labelFallback: "Quotes", icon: <ReceiptLongIcon fontSize="small" /> },
+  { key: "finance-estimates", labelKey: "manager.finance.tabs.estimates", labelFallback: "Estimates", icon: <AddTaskIcon fontSize="small" /> },
+  { key: "finance-work-orders", labelKey: "manager.finance.tabs.workOrders", labelFallback: "Work Orders", icon: <AssignmentIcon fontSize="small" /> },
+  { key: "finance-inventory", labelKey: "manager.finance.tabs.materialsSupplies", labelFallback: "Materials & Supplies", icon: <Inventory2OutlinedIcon fontSize="small" /> },
+  { key: "finance-purchases", labelKey: "manager.finance.tabs.purchases", labelFallback: "Purchases", icon: <ShoppingCartOutlinedIcon fontSize="small" /> },
+  { key: "finance-field-reports", labelKey: "manager.finance.tabs.fieldReports", labelFallback: "Field Reports", icon: <ArticleOutlinedIcon fontSize="small" /> },
+  { key: "finance-reviews", labelKey: "manager.finance.tabs.reviews", labelFallback: "Reviews", icon: <FactCheckOutlinedIcon fontSize="small" /> },
+  { key: "finance-expenses", labelKey: "manager.finance.tabs.expenses", labelFallback: "Expenses", icon: <PaidIcon fontSize="small" /> },
+  { key: "finance-vendors", labelKey: "manager.finance.tabs.vendors", labelFallback: "Vendors", icon: <StorefrontOutlinedIcon fontSize="small" /> },
+  { key: "finance-reports", labelKey: "manager.finance.tabs.reports", labelFallback: "Reports", icon: <SummarizeOutlinedIcon fontSize="small" /> },
+  { key: "finance-profitability", labelKey: "manager.finance.tabs.profitability", labelFallback: "Profitability", icon: <TrendingUpOutlinedIcon fontSize="small" /> },
+  { key: "finance-tax-summary", labelKey: "manager.finance.tabs.taxSummary", labelFallback: "Tax Summary", icon: <CalculateOutlinedIcon fontSize="small" /> },
+  { key: "finance-month-end", labelKey: "manager.finance.tabs.monthEnd", labelFallback: "Month-End", icon: <EventNoteOutlinedIcon fontSize="small" /> },
 ];
 
 const resolveInitialTab = (viewKey) => {
@@ -62,6 +63,7 @@ const resolveInitialTab = (viewKey) => {
 };
 
 export default function BusinessFinanceShell({ viewKey = "finance-overview", onNavigate }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(resolveInitialTab(viewKey));
   const [quickAction, setQuickAction] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -149,9 +151,9 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
     <ManagementFrame title={null} subtitle={null} fullWidth contentSx={{ p: { xs: 1.5, md: 2.5 } }}>
       <Stack spacing={2.5}>
         <Stack direction="row" justifyContent="flex-start">
-          <Tooltip title="See how quotes, jobs, field reports, reviews, and month-end fit together.">
+          <Tooltip title={t("manager.finance.help.tooltip", { defaultValue: "See how quotes, jobs, field reports, reviews, and month-end fit together." })}>
             <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
-              How it works
+              {t("manager.finance.help.button", { defaultValue: "How it works" })}
             </Button>
           </Tooltip>
         </Stack>
@@ -212,7 +214,14 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
               }}
             >
               {TAB_ORDER.map((tab) => (
-                <Tab key={tab.key} value={tab.key} icon={tab.icon} iconPosition="start" label={tab.label} wrapped={false} />
+                <Tab
+                  key={tab.key}
+                  value={tab.key}
+                  icon={tab.icon}
+                  iconPosition="start"
+                  label={t(tab.labelKey, { defaultValue: tab.labelFallback })}
+                  wrapped={false}
+                />
               ))}
             </Tabs>
           </Box>
