@@ -1903,6 +1903,255 @@
           "cancel": "取消",
           "saving": "保存中..."
         }
+      },
+      "estimates": {
+        "errors": {
+          "loadFailed": "无法加载报价单。",
+          "saveTemplateFailed": "无法保存模板。",
+          "markSentFailed": "无法将报价单标记为已发送。",
+          "updateStatusFailed": "无法更新报价单状态。",
+          "duplicateFailed": "无法复制报价单。",
+          "shareLinkUnavailable": "分享链接不可用。",
+          "createEstimateLinkFailed": "无法创建报价单链接。",
+          "openEstimateLinkFailed": "无法打开报价单链接。",
+          "emailRequired": "请先输入邮箱地址。",
+          "sendEmailFailed": "无法发送报价单邮件。",
+          "openPrintFailed": "无法打开打印视图。",
+          "convertFirst": "请先将报价单转换为发票。",
+          "paymentLinkUnavailable": "付款链接不可用。",
+          "createPaymentLinkFailed": "无法创建付款链接。",
+          "openPaymentLinkFailed": "无法打开付款链接。",
+          "reopenFailed": "无法重新打开报价单。",
+          "convertFailed": "无法将报价单转换为发票。",
+          "copySummaryFailed": "无法复制报价单摘要。"
+        },
+        "snackbar": {
+          "templateNameRequired": "请先打开一个报价单并输入模板名称。",
+          "templateSaved": "报价单模板已保存。",
+          "markedSent": "报价单已手动标记为已发送。",
+          "markedAccepted": "报价单已手动标记为已接受。",
+          "markedRejected": "报价单已手动标记为已拒绝。",
+          "duplicated": "报价单已复制。",
+          "duplicatedWithNumber": "报价单已复制：{{estimateNumber}}。",
+          "estimateLinkCopied": "报价单链接已复制。",
+          "emailSent": "报价单邮件已发送。",
+          "paymentLinkCopied": "付款链接已复制。",
+          "reopenedForRevision": "报价单已重新打开以便修改。",
+          "invoiceCreated": "发票已创建。",
+          "invoiceCreatedWithNumber": "发票已创建：{{invoiceNumber}}。",
+          "summaryCopied": "报价单摘要已复制。",
+          "updated": "报价单已更新。",
+          "created": "报价单已创建。",
+          "workOrderCreated": "已根据报价单创建工单。"
+        },
+        "page": {
+          "title": "报价单",
+          "description": "为定制工作定价，整理好客户可用的报价链接，并在不丢失财务上下文的前提下把已批准的工作推进到发票和工单流程。"
+        },
+        "toolbar": {
+          "expandView": "展开视图",
+          "newEstimate": "新建报价单",
+          "searchLabel": "搜索报价单",
+          "searchPlaceholder": "报价单编号、标题、客户或发票",
+          "statusLabel": "状态",
+          "allStatuses": "全部状态",
+          "refresh": "刷新",
+          "count_one": "{{count}} 个报价单",
+          "count_other": "{{count}} 个报价单"
+        },
+        "templateShortcut": {
+          "title": "模板快捷方式",
+          "description": "把当前在编辑器中打开的报价单保存为可重复使用的起点。",
+          "templateName": "模板名称",
+          "saveCurrent": "将当前报价单保存为模板"
+        },
+        "empty": {
+          "title": "还没有报价单",
+          "description": "先创建一个简单报价单，发送给客户，在工作获批后再转换为发票。",
+          "action": "创建报价单"
+        },
+        "expanded": {
+          "title": "报价单",
+          "description": "扩展工作视图，包含固定操作列和完整报价字段。"
+        },
+        "table": {
+          "headers": {
+            "estimateNumber": "报价单号",
+            "title": "标题",
+            "client": "客户",
+            "status": "状态",
+            "total": "总额",
+            "issueDate": "开具日期",
+            "sent": "发送时间",
+            "lines": "行数",
+            "invoice": "发票",
+            "actions": "操作"
+          }
+        },
+        "paymentState": {
+          "paid": "已付款",
+          "partialRefund": "部分退款",
+          "refunded": "已退款",
+          "linkReady": "付款链接已就绪",
+          "noLinkYet": "还没有付款链接",
+          "convertFirst": "请先转换"
+        },
+        "flags": {
+          "paymentLinkReady": "付款链接已就绪",
+          "shareLinkReady": "分享链接已就绪",
+          "acceptedByClient": "客户已接受",
+          "rejectedByClient": "客户已拒绝",
+          "viewedByClient": "客户已查看"
+        },
+        "fallbacks": {
+          "untitled": "未命名报价单",
+          "noIssueDate": "无开具日期",
+          "notSent": "未发送",
+          "noInvoiceYet": "还没有发票",
+          "dash": "-"
+        },
+        "metadata": {
+          "sentAt": "发送于 {{value}}",
+          "lineCount_one": "{{count}} 行",
+          "lineCount_other": "{{count}} 行"
+        },
+        "actions": {
+          "moreActions": "更多操作",
+          "unavailableNote": "此报价单状态下有些操作不可用。",
+          "openInvoice": "打开发票",
+          "openPaymentLink": "打开付款链接",
+          "copyPaymentLink": "创建 / 复制付款链接",
+          "edit": "编辑",
+          "convertToInvoice": "转换为发票",
+          "copyLink": "创建 / 复制链接",
+          "openLink": "打开链接",
+          "sendEstimate": "发送报价单",
+          "copySummary": "复制摘要",
+          "printPdf": "打印 / PDF",
+          "markSent": "手动标记为已发送",
+          "markAccepted": "标记为已接受",
+          "markRejected": "标记为已拒绝",
+          "duplicate": "复制",
+          "createWorkOrder": "创建工单",
+          "reviseResend": "修改并重新发送"
+        },
+        "actionHelp": {
+          "edit": "打开报价单编辑器，查看当前账单快照和项目行。",
+          "copyLink": "如有需要，创建公开报价链接并复制到剪贴板。",
+          "openLink": "在新标签页打开面向客户的公开报价页面。",
+          "sendEstimate": "使用现有邮件流程把报价链接发送给客户。",
+          "copySummary": "复制包含报价单号、客户、项目行和金额汇总的文本摘要。",
+          "printPdf": "打开干净的浏览器打印视图，以便打印或另存为 PDF。",
+          "markSent": "如果你是在自动邮件流程之外发送了报价单，请使用此操作。",
+          "markAccepted": "仅经理可用的手动状态更新。这不是客户公开接受流程。",
+          "markRejected": "仅经理可用的手动拒绝状态。这不会使用客户公开拒绝流程。",
+          "duplicate": "以当前报价单为起点创建新的报价单。",
+          "convertToInvoice": "当需要进入计费时，从此报价单创建本地财务发票。",
+          "copyPaymentLink": "为已转换的发票创建或复用托管的 Stripe 发票链接。",
+          "openPaymentLink": "打开该已转换发票的托管 Stripe 发票/付款页面。",
+          "openInvoice": "打开财务发票详情。",
+          "createWorkOrder": "将已批准报价单推进到执行工单。",
+          "reviseResend": "重新打开客户回复流程，以便修改并重新发送报价单。"
+        },
+        "summary": {
+          "estimateHeader": "报价单 {{estimateNumber}}",
+          "client": "客户：{{value}}",
+          "email": "邮箱：{{value}}",
+          "items": "项目：",
+          "lineItem": "项目行",
+          "qty": "数量",
+          "noItems": "此摘要中没有项目行。",
+          "subtotal": "小计",
+          "tax": "税额",
+          "total": "总额",
+          "notes": "备注",
+          "reply": "请回复此消息以批准报价单或提出修改意见。"
+        },
+        "emailDialog": {
+          "title": "发送报价单",
+          "recipientEmail": "收件人邮箱",
+          "messageOptional": "消息（可选）",
+          "helperText": "报价链接和总额会自动附加。"
+        },
+        "common": {
+          "cancel": "取消",
+          "sending": "发送中...",
+          "send": "发送"
+        },
+        "editor": {
+          "errors": {
+            "requiredFields": "客户、标题和开具日期为必填项。",
+            "lineItemRequired": "请至少添加一个项目行。",
+            "saveFailed": "无法保存报价单。"
+          },
+          "title": {
+            "edit": "编辑报价单",
+            "new": "新建报价单"
+          },
+          "quoteRequestChip": "由报价请求创建",
+          "intro": "报价单是建议价格。需要付款时可将其转换为发票；当工作准备排期时，可创建工单。",
+          "fields": {
+            "client": "客户",
+            "clientFallback": "客户 #{{id}}",
+            "template": "模板",
+            "estimateTitle": "报价标题",
+            "estimateNumber": "报价单号",
+            "currency": "币种",
+            "currencyHelp": "默认使用设置中的公司显示币种。你也可以针对这份报价单覆盖它。",
+            "currencyTooltip": "这里默认使用设置里保存的公司显示币种。只有当这份报价单需要其他币种时才修改它。",
+            "issueDate": "开具日期",
+            "expiryDate": "到期日期",
+            "visibleNotes": "可见备注",
+            "internalNotes": "内部备注",
+            "notes": "备注",
+            "terms": "条款",
+            "discountTotal": "折扣总额"
+          },
+          "taxContext": {
+            "title": "税务与币种上下文",
+            "displayCurrency": "显示币种",
+            "taxRegion": "税务国家/地区",
+            "pricesIncludeTax": "价格含税",
+            "defaultTaxRate": "默认税率",
+            "on": "开",
+            "off": "关",
+            "includedMessage": "价格包含税额。系统会从应税项目单价中拆分税额。",
+            "addedMessage": "税额会根据你的 Business Finance 税务设置额外加上。"
+          },
+          "lineItems": {
+            "title": "项目行",
+            "addLine": "添加项目行",
+            "taxIncludedPrice": "含税价格",
+            "preTaxPrice": "税前价格",
+            "taxableYes": "是",
+            "taxableNo": "否",
+            "fields": {
+              "type": "类型",
+              "description": "说明",
+              "qty": "数量",
+              "unitPrice": "单价",
+              "taxPercent": "税率 %",
+              "taxable": "是否应税"
+            },
+            "types": {
+              "service": "服务",
+              "material": "材料",
+              "custom": "自定义"
+            }
+          },
+          "previewInfo": "这里只是预览。保存时，后端会根据你的 Business Finance 税务设置重新计算小计、税额和总额。",
+          "totals": {
+            "subtotal": "小计",
+            "tax": "税额",
+            "total": "总额"
+          },
+          "common": {
+            "cancel": "取消",
+            "saving": "保存中...",
+            "saveChanges": "保存更改",
+            "createEstimate": "创建报价单"
+          }
+        }
       }
     }
   },
