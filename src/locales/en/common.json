@@ -1670,6 +1670,265 @@
         "profitability": "Profitability",
         "taxSummary": "Tax Summary",
         "monthEnd": "Month-End"
+      },
+      "shared": {
+        "statuses": {
+          "new": "New",
+          "reviewed": "Reviewed",
+          "estimate_created": "Estimate Created",
+          "closed": "Closed",
+          "rejected": "Rejected",
+          "draft": "Draft",
+          "sent": "Sent",
+          "viewed": "Viewed",
+          "approved": "Approved",
+          "submitted": "Submitted",
+          "clarification_requested": "Clarification Requested",
+          "scheduled": "Scheduled",
+          "in_progress": "In Progress",
+          "completed": "Completed",
+          "cancelled": "Cancelled",
+          "converted_to_invoice": "Converted to Invoice",
+          "converted_to_work_order": "Converted to Work",
+          "paid": "Paid",
+          "partial_refund": "Partially Refunded",
+          "refunded": "Refunded",
+          "void": "Void"
+        }
+      },
+      "overview": {
+        "errors": {
+          "loadFailed": "Unable to load Business Finance overview."
+        },
+        "sections": {
+          "attention": "Today needs your attention",
+          "money": "Money snapshot",
+          "operations": "Operations snapshot"
+        },
+        "empty": {
+          "title": "Nothing urgent is waiting right now",
+          "description": "Quotes, jobs, receipts, and month-end follow-up are all in a good spot at the moment."
+        },
+        "attention": {
+          "quote": {
+            "label": "New quotes",
+            "helper": "Capture new requests before they go stale.",
+            "action": "Open Quotes"
+          },
+          "estimate": {
+            "label": "Draft estimates",
+            "helper": "Finish pricing before the job moves forward.",
+            "action": "Open Estimates"
+          },
+          "workOrder": {
+            "label": "Work orders need scheduling",
+            "helper": "Draft jobs or jobs still missing team assignments.",
+            "action": "Open Work Orders"
+          },
+          "fieldReport": {
+            "label": "Field reports need review",
+            "helper": "Submitted work needs manager review before it becomes official.",
+            "action": "Open Field Reports"
+          },
+          "lowStock": {
+            "label": "Low stock items",
+            "helper": "Check materials before the next job starts.",
+            "action": "Open Materials"
+          },
+          "missingReceipts": {
+            "label": "Missing receipts",
+            "helper": "Capture the missing proof before month-end handoff.",
+            "action": "Open Expenses"
+          },
+          "monthEnd": {
+            "label": "Month-end missing items",
+            "helper": "Review gaps before exporting for the accountant.",
+            "action": "Open Month-End"
+          }
+        },
+        "money": {
+          "estimateTotal": "Estimate total",
+          "grossInvoiceTotal": "Gross invoice total",
+          "refunds": "Refunds",
+          "netInvoiceTotal": "Net invoice total",
+          "expenseTotal": "Expense total",
+          "grossTaxCollected": "Gross tax collected",
+          "taxRefunded": "Tax refunded",
+          "netTaxCollected": "Net tax collected",
+          "taxPaidOnExpenses": "Tax paid on expenses",
+          "estimatedNetTaxNet": "Estimated net tax net",
+          "paymentScopeInfo": "Payment collection totals are not available yet for all invoice payment methods."
+        },
+        "operations": {
+          "activeJobs": {
+            "label": "Active jobs",
+            "helper": "Scheduled or in progress."
+          },
+          "plannedLabor": {
+            "label": "Planned labor this month",
+            "helper": "Work order planning only."
+          },
+          "inventoryValue": {
+            "label": "Inventory value estimate",
+            "helper": "Current stock multiplied by cost per unit."
+          },
+          "approvedMaterialCost": {
+            "label": "Approved material cost",
+            "helper": "Materials made official through manager review."
+          }
+        }
+      },
+      "quotes": {
+        "errors": {
+          "loadFailed": "Unable to load quote requests.",
+          "titleRequired": "Title is required.",
+          "saveFailed": "Unable to save quote request.",
+          "updateFailed": "Unable to update quote request.",
+          "createEstimateFailed": "Unable to create estimate.",
+          "clientRequiredForEstimate": "Link or create a client before creating an estimate.",
+          "linkClientFailed": "Unable to link client."
+        },
+        "snackbar": {
+          "updated": "Quote request updated.",
+          "created": "Quote request created.",
+          "estimateCreated": "Estimate created for {{clientName}}.",
+          "clientLinked": "Client linked to quote request."
+        },
+        "page": {
+          "title": "Quote Requests",
+          "description": "Capture custom job intake cleanly, verify the right client, and move the request into estimate workflow without losing source, contact, or timeline context."
+        },
+        "toolbar": {
+          "expandView": "Expand View",
+          "newQuote": "New Quote",
+          "searchLabel": "Search quotes",
+          "searchPlaceholder": "Title, contact, client, or source",
+          "statusLabel": "Status",
+          "allStatuses": "All statuses",
+          "refresh": "Refresh",
+          "countLabel_one": "{{count}} quote",
+          "countLabel_other": "{{count}} quotes"
+        },
+        "table": {
+          "headers": {
+            "title": "Title",
+            "titleSource": "Title / Source",
+            "status": "Status",
+            "source": "Source",
+            "requestContact": "Request Contact",
+            "linkedClient": "Linked Client",
+            "timeline": "Timeline",
+            "timelineCreated": "Timeline / Created",
+            "created": "Created",
+            "description": "Description",
+            "actions": "Actions"
+          },
+          "sourceTooltip": "This is a source label unless automation is connected."
+        },
+        "sources": {
+          "manual": "Manual entry",
+          "whatsapp": "WhatsApp note",
+          "phone": "Phone call",
+          "instagram": "Instagram/DM",
+          "website": "Website form"
+        },
+        "actions": {
+          "moreActions": "More actions",
+          "openEstimates": "Open Estimates",
+          "createEstimate": "Create Estimate",
+          "linkCreateClient": "Link / Create Client",
+          "linkOrCreateClient": "Link or Create Client",
+          "edit": "Edit",
+          "markReviewed": "Mark Reviewed",
+          "close": "Close",
+          "reject": "Reject"
+        },
+        "actionHelp": {
+          "edit": "Open the quote request editor to update intake details, contact info, notes, or service address.",
+          "markReviewed": "Use when the quote request has been triaged and is ready for the next manager step.",
+          "linkClient": "Connect the request to the official client record used for estimates, invoices, and work orders.",
+          "createEstimate": "Create the estimate after the right client is linked and the request details are confirmed.",
+          "openEstimates": "Jump to the estimates workspace after an estimate has already been created from this quote.",
+          "close": "Use when the request is finished and does not need more follow-up.",
+          "reject": "Use when the request should be explicitly marked as not moving forward."
+        },
+        "chips": {
+          "linked": "Linked",
+          "notLinked": "Not linked",
+          "contactDiffers": "Contact differs from client",
+          "checkClientMatch": "Check client match"
+        },
+        "fallbacks": {
+          "linkedClient": "the linked client",
+          "untitled": "Untitled quote request",
+          "noExternalReference": "No external reference",
+          "notLinked": "Not linked",
+          "noClientEmail": "No client email"
+        },
+        "empty": {
+          "title": "No quote requests yet",
+          "description": "Create a quote request here or normalize public quote forms later.",
+          "action": "Create quote"
+        },
+        "expanded": {
+          "title": "Quote Requests",
+          "description": "Expanded working view with sticky actions and full request columns."
+        },
+        "dialog": {
+          "editTitle": "Edit quote request",
+          "newTitle": "New quote request",
+          "sections": {
+            "requestDetails": "Request details",
+            "requestContact": "Request contact",
+            "linkedClient": "Linked client",
+            "notes": "Notes"
+          },
+          "fields": {
+            "title": "Title",
+            "source": "Source",
+            "sourceHelp": "Examples: Phone call, WhatsApp note, Website form.",
+            "preferredTimeline": "Preferred timeline",
+            "serviceAddress": "Service address",
+            "description": "Description",
+            "contactName": "Contact name",
+            "contactEmail": "Contact email",
+            "contactPhone": "Contact phone",
+            "linkedClientFallback": "Linked client",
+            "visibleNotes": "Visible notes",
+            "internalNotes": "Internal notes"
+          },
+          "linkedClientHelp": "Contact is who requested the quote. Client is the official customer record used for estimates, invoices, and work orders.",
+          "noClientLinked": "No client linked yet.",
+          "saveBeforeLinking": "Save the quote first, then link or create the client.",
+          "actions": {
+            "linkExistingClient": "Link existing client",
+            "createClientFromContact": "Create client from contact",
+            "saveChanges": "Save changes",
+            "createQuote": "Create quote"
+          }
+        },
+        "linkDialog": {
+          "title": "Link or Create Client",
+          "info": "Link an existing client or create a client from the request contact.",
+          "existingClient": "Existing client",
+          "createNewInstead": "Create new client instead",
+          "clientFallback": "Client #{{id}}",
+          "clientName": "Client name",
+          "clientEmail": "Client email",
+          "clientPhone": "Client phone",
+          "linkClient": "Link client"
+        },
+        "confirmEstimate": {
+          "title": "Confirm client for estimate",
+          "description": "The request contact is different from the linked client. Continue using this client for the estimate?",
+          "requestContact": "Request contact",
+          "linkedClient": "Linked client",
+          "continue": "Continue"
+        },
+        "common": {
+          "cancel": "Cancel",
+          "saving": "Saving..."
+        }
       }
     }
   },

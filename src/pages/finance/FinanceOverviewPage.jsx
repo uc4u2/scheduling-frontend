@@ -9,81 +9,87 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { formatCurrency } from "../../utils/formatters";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import { getFinanceOverview, getFinanceSummary } from "./financeApi";
 
-const buildAttentionCards = (overview = {}, actions = []) => {
+const buildAttentionCards = (overview = {}, actions = [], tFinance) => {
   const actionMap = new Map(actions.map((row) => [row.type, row]));
   return [
     {
       key: "quote",
-      label: actionMap.get("quote")?.label || "New quotes",
+      label: tFinance("attention.quote.label", "New quotes"),
       count: actionMap.get("quote")?.count ?? actionMap.get("quote_request")?.count ?? 0,
-      helper: "Capture new requests before they go stale.",
+      helper: tFinance("attention.quote.helper", "Capture new requests before they go stale."),
       target: "finance-quotes",
       accent: "warning",
-      actionLabel: "Open Quotes",
+      actionLabel: tFinance("attention.quote.action", "Open Quotes"),
     },
     {
       key: "estimate",
-      label: "Draft estimates",
+      label: tFinance("attention.estimate.label", "Draft estimates"),
       count: Number(overview?.estimate_counts?.draft ?? 0),
-      helper: "Finish pricing before the job moves forward.",
+      helper: tFinance("attention.estimate.helper", "Finish pricing before the job moves forward."),
       target: "finance-estimates",
       accent: "primary",
-      actionLabel: "Open Estimates",
+      actionLabel: tFinance("attention.estimate.action", "Open Estimates"),
     },
     {
       key: "work-order",
-      label: "Work orders need scheduling",
+      label: tFinance("attention.workOrder.label", "Work orders need scheduling"),
       count: Number(overview?.work_orders_needing_scheduling_count ?? 0),
-      helper: "Draft jobs or jobs still missing team assignments.",
+      helper: tFinance("attention.workOrder.helper", "Draft jobs or jobs still missing team assignments."),
       target: "finance-work-orders",
       accent: "warning",
-      actionLabel: "Open Work Orders",
+      actionLabel: tFinance("attention.workOrder.action", "Open Work Orders"),
     },
     {
       key: "field-report",
-      label: "Field reports need review",
+      label: tFinance("attention.fieldReport.label", "Field reports need review"),
       count: Number(overview?.field_reports_pending_review_count ?? 0),
-      helper: "Submitted work needs manager review before it becomes official.",
+      helper: tFinance("attention.fieldReport.helper", "Submitted work needs manager review before it becomes official."),
       target: "finance-field-reports",
       accent: "secondary",
-      actionLabel: "Open Field Reports",
+      actionLabel: tFinance("attention.fieldReport.action", "Open Field Reports"),
     },
     {
       key: "low-stock",
-      label: "Low stock items",
+      label: tFinance("attention.lowStock.label", "Low stock items"),
       count: Number(overview?.low_stock_count ?? 0),
-      helper: "Check materials before the next job starts.",
+      helper: tFinance("attention.lowStock.helper", "Check materials before the next job starts."),
       target: "finance-inventory",
       accent: "error",
-      actionLabel: "Open Materials",
+      actionLabel: tFinance("attention.lowStock.action", "Open Materials"),
     },
     {
       key: "missing-receipts",
-      label: "Missing receipts",
+      label: tFinance("attention.missingReceipts.label", "Missing receipts"),
       count: Number(overview?.expenses_missing_receipt_count ?? overview?.missing_receipts_count ?? 0),
-      helper: "Capture the missing proof before month-end handoff.",
+      helper: tFinance("attention.missingReceipts.helper", "Capture the missing proof before month-end handoff."),
       target: "finance-expenses",
       accent: "info",
-      actionLabel: "Open Expenses",
+      actionLabel: tFinance("attention.missingReceipts.action", "Open Expenses"),
     },
     {
       key: "month-end",
-      label: "Month-end missing items",
+      label: tFinance("attention.monthEnd.label", "Month-end missing items"),
       count: Number(overview?.month_end_missing_items_count ?? 0),
-      helper: "Review gaps before exporting for the accountant.",
+      helper: tFinance("attention.monthEnd.helper", "Review gaps before exporting for the accountant."),
       target: "finance-month-end",
       accent: "warning",
-      actionLabel: "Open Month-End",
+      actionLabel: tFinance("attention.monthEnd.action", "Open Month-End"),
     },
   ];
 };
 
 export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
+  const { t } = useTranslation();
+  const tFinance = React.useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.overview.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [overview, setOverview] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -101,7 +107,11 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
         setSummary(summaryData || {});
       } catch (err) {
         if (!mounted) return;
-        setError(err?.response?.data?.error || err?.message || "Unable to load Business Finance overview.");
+        setError(
+          err?.response?.data?.error ||
+            err?.message ||
+            tFinance("errors.loadFailed", "Unable to load Business Finance overview.")
+        );
       } finally {
         if (mounted) setLoading(false);
       }
@@ -110,10 +120,13 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [tFinance]);
 
   const actions = useMemo(() => Array.isArray(overview?.today_action_list) ? overview.today_action_list : [], [overview]);
-  const attentionCards = useMemo(() => buildAttentionCards(overview || {}, actions), [overview, actions]);
+  const attentionCards = useMemo(
+    () => buildAttentionCards(overview || {}, actions, tFinance),
+    [overview, actions, tFinance]
+  );
   const currency = summary?.currency || "USD";
 
   if (loading) {
@@ -133,7 +146,7 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
         <Stack spacing={2}>
           <Typography variant="h6" fontWeight={900}>
-            Today needs your attention
+            {tFinance("sections.attention", "Today needs your attention")}
           </Typography>
 
           {attentionCards.some((card) => Number(card.count) > 0) ? (
@@ -152,8 +165,11 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
             </Grid>
           ) : (
             <FinanceEmptyState
-              title="Nothing urgent is waiting right now"
-              description="Quotes, jobs, receipts, and month-end follow-up are all in a good spot at the moment."
+              title={tFinance("empty.title", "Nothing urgent is waiting right now")}
+              description={tFinance(
+                "empty.description",
+                "Quotes, jobs, receipts, and month-end follow-up are all in a good spot at the moment."
+              )}
             />
           )}
         </Stack>
@@ -161,36 +177,39 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
 
       <Box>
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
-          Money snapshot
+          {tFinance("sections.money", "Money snapshot")}
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatCurrency(summary?.estimate_total, currency)} accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross invoice total" value={formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunds" value={formatCurrency(summary?.refund_total, currency)} accent="warning" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net invoice total" value={formatCurrency(summary?.net_invoice_total, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Expense total" value={formatCurrency(summary?.expense_total, currency)} accent="error" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross tax collected" value={formatCurrency(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax refunded" value={formatCurrency(summary?.tax_refunded, currency)} accent="warning" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net tax collected" value={formatCurrency(summary?.net_tax_collected, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Tax paid on expenses" value={formatCurrency(summary?.tax_paid_on_expenses, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated net tax net" value={formatCurrency(summary?.estimated_net_tax_net ?? summary?.estimated_net_tax, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimateTotal", "Estimate total")} value={formatCurrency(summary?.estimate_total, currency)} accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossInvoiceTotal", "Gross invoice total")} value={formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.refunds", "Refunds")} value={formatCurrency(summary?.refund_total, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netInvoiceTotal", "Net invoice total")} value={formatCurrency(summary?.net_invoice_total, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.expenseTotal", "Expense total")} value={formatCurrency(summary?.expense_total, currency)} accent="error" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossTaxCollected", "Gross tax collected")} value={formatCurrency(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxRefunded", "Tax refunded")} value={formatCurrency(summary?.tax_refunded, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netTaxCollected", "Net tax collected")} value={formatCurrency(summary?.net_tax_collected, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxPaidOnExpenses", "Tax paid on expenses")} value={formatCurrency(summary?.tax_paid_on_expenses, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimatedNetTaxNet", "Estimated net tax net")} value={formatCurrency(summary?.estimated_net_tax_net ?? summary?.estimated_net_tax, currency)} accent="warning" /></Grid>
         </Grid>
         {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
           <Alert severity="info" sx={{ mt: 2 }}>
-            Payment collection totals are not available yet for all invoice payment methods.
+            {tFinance(
+              "money.paymentScopeInfo",
+              "Payment collection totals are not available yet for all invoice payment methods."
+            )}
           </Alert>
         ) : null}
       </Box>
 
       <Box>
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
-          Operations snapshot
+          {tFinance("sections.operations", "Operations snapshot")}
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Active jobs" value={String(overview?.work_orders_active_count ?? 0)} helper="Scheduled or in progress." accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Planned labor this month" value={formatCurrency(overview?.planned_labor_cost_this_month || 0)} helper="Work order planning only." accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Inventory value estimate" value={formatCurrency(overview?.inventory_value_estimate || summary?.inventory_value_estimate || 0)} helper="Current stock multiplied by cost per unit." accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Approved material cost" value={formatCurrency(summary?.approved_material_cost || 0)} helper="Materials made official through manager review." accent="error" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.activeJobs.label", "Active jobs")} value={String(overview?.work_orders_active_count ?? 0)} helper={tFinance("operations.activeJobs.helper", "Scheduled or in progress.")} accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.plannedLabor.label", "Planned labor this month")} value={formatCurrency(overview?.planned_labor_cost_this_month || 0)} helper={tFinance("operations.plannedLabor.helper", "Work order planning only.")} accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.inventoryValue.label", "Inventory value estimate")} value={formatCurrency(overview?.inventory_value_estimate || summary?.inventory_value_estimate || 0)} helper={tFinance("operations.inventoryValue.helper", "Current stock multiplied by cost per unit.")} accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.approvedMaterialCost.label", "Approved material cost")} value={formatCurrency(summary?.approved_material_cost || 0)} helper={tFinance("operations.approvedMaterialCost.helper", "Materials made official through manager review.")} accent="error" /></Grid>
         </Grid>
       </Box>
 

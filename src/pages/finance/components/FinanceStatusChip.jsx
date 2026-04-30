@@ -1,6 +1,7 @@
 import React from "react";
 import { Chip } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import { useTranslation } from "react-i18next";
 
 const STATUS_MAP = {
   new: { label: "New", color: "warning" },
@@ -31,8 +32,11 @@ const titleize = (value) =>
 
 export default function FinanceStatusChip({ status, size = "small", variant = "soft" }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const key = String(status || "").toLowerCase();
-  const meta = STATUS_MAP[key] || { label: titleize(key) || "Unknown", color: "default" };
+  const defaultLabel = STATUS_MAP[key]?.label || titleize(key) || "Unknown";
+  const meta = STATUS_MAP[key] || { label: defaultLabel, color: "default" };
+  const label = t(`manager.finance.shared.statuses.${key}`, { defaultValue: defaultLabel });
   const paletteKey = meta.color || "default";
   const palette =
     paletteKey === "default"
@@ -48,7 +52,7 @@ export default function FinanceStatusChip({ status, size = "small", variant = "s
   return (
     <Chip
       size={size}
-      label={meta.label}
+      label={label}
       color={isOutlined ? meta.color : undefined}
       variant={isOutlined ? "outlined" : "filled"}
       sx={
