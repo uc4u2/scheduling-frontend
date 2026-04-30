@@ -1,29 +1,29 @@
 # Business Finance Manager Workflow
 
-This guide explains how a manager should use Business Finance for custom-price jobs.
+This guide explains how a manager uses Business Finance for custom-price jobs from first request through payment, refund handling, and reporting review.
 
-## When to Use Quote/Estimate vs Booking
+## When to Use Business Finance Instead of Booking
 
 Use Business Finance when:
 - the client asks for a price first
 - the scope is custom
 - the manager needs to prepare an estimate before scheduling or payment
+- the team will likely execute the work later through a work order
 
 Use Booking instead when:
 - the service is already known
 - the price is already known
-- the employee and time are already being selected as part of a normal appointment flow
+- the normal appointment flow is the real source of truth
 
 Simple rule:
-- Booking = known service/time flow
-- Business Finance = custom pricing and job execution flow
+- Booking = known service and appointment flow
+- Business Finance = custom pricing, invoice, and job workflow
 
-## How Manager Handles a Quote Request
+## How Manager Creates and Sends an Estimate
 
-Start in:
-- Manager Dashboard -> Business Finance -> Quotes
+Start in Business Finance and create a quote request.
 
-Create the Quote Request with:
+Enter:
 - title
 - request type
 - source label
@@ -36,180 +36,155 @@ Create the Quote Request with:
 - visible notes
 - internal notes
 
-Important distinction:
-- Request Contact = the person who asked for the quote
-- Linked Client = the official customer record used for estimates, invoices, and work orders
+Then:
+- link the correct client record or create one from the quote contact
+- create the estimate
+- add line items
+- review notes, terms, expiry, tax, and totals
+- preview the client-facing view
+- send the estimate or copy the public link
 
-## Important Quote Fields
+Important:
+- the public estimate page is the client approval step
+- the estimate is not an invoice yet
 
-Use source labels honestly:
-- Phone call
-- WhatsApp note
-- Instagram/DM
-- Website form
-- Manual entry
+## How Accepted Estimate Becomes Invoice
 
-These are labels only.
-They do not mean automation exists.
+After the client accepts the estimate, the manager can convert it to an invoice.
 
-## Link or Create Client
+That conversion:
+- creates the local finance invoice
+- copies the approved totals into the invoice
+- keeps the invoice tied to the correct client and estimate context
 
-Before creating the estimate:
-- link the quote to the correct client
-- or create the client from the quote contact
+At this stage the manager can also decide whether to:
+- collect payment now
+- create the work order now
+- do both in the right order for the job
 
-This keeps estimates, invoices, payment links, and work orders tied to the official customer record.
+## How Payment Link Works
 
-## Create Estimate
-
-From the quote row:
-- create estimate
-- or open/view estimate if one already exists
-
-## Important Estimate Fields
-
-Check:
-- client
-- estimate title
-- line items
-- issue date
-- expiry date
-- visible notes
-- terms
-- tax totals
-- discount totals
-
-Before sharing, preview the client-facing estimate page.
-
-## Send Estimate
-
-Preferred actions:
-- Send Estimate
-- Create / Copy Link
-- Open Link
-- Print / Save PDF
-- Copy Summary
-
-Notes:
-- Send Estimate email is implemented
-- WhatsApp/SMS sending is still manual
-- browser Print / Save PDF is the current PDF flow
-
-## What Client Sees
-
-The client opens the public estimate link and sees:
-- company name
-- estimate number
-- title
-- client-safe estimate details
-- line items
-- totals
-- notes
-- terms
-- accept/reject actions
-
-The client does not see manager-only or accounting-only internals.
-
-## What Happens on Accept / Reject / No Response
-
-### If the client accepts
-The estimate becomes approved.
-Then the manager can:
-- convert to invoice
-- create payment link if payment is needed
-- create work order when the job is ready to execute
-
-### If the client rejects
-The estimate becomes rejected.
-Then the manager can:
-- revise and resend
-- or leave it rejected/closed if the opportunity is not moving forward
-
-### If the client does not respond
-Do not treat silence as approval.
-The manager should follow up manually.
-
-## Can Manager Approve on Behalf of Client?
-
-Yes, but only as an administrative fallback.
-
-Use it only when the client clearly approved outside the portal, for example:
-- phone approval
-- email approval
-- text approval
-- WhatsApp approval
-- in-person approval
-
-Best practice:
-- save proof in internal notes
-- use the public acceptance link whenever possible
-
-## Convert to Invoice
-
-Use Convert to Invoice after the client approved the estimate and billing is needed.
-
-This creates the local finance invoice record.
-
-## Create / Copy / Open Payment Link
-
-After converting to invoice, use:
-- Create / Copy Payment Link
+Inside the invoice detail, the manager can use:
+- Create Payment Link
+- Copy Payment Link
 - Open Payment Link
 
-This uses the hosted Stripe invoice/payment path from the finance invoice.
+This uses the hosted Stripe invoice/payment flow.
 
-## Create Work Order
+Important truths:
+- the hosted payment link should match the local invoice total
+- if Stripe has a stale or mismatched hosted invoice, the hotfix behavior replaces it
+- current Print / Save PDF is a browser print path, not a server-generated PDF file
 
-Use Create Work Order when the job is ready for operational execution.
+## How Payment Status Changes After Client Pays
 
-Meaning:
-- Estimate = proposed price
-- Invoice = billing/payment
-- Work Order = the job the team will do
+When the client pays the hosted invoice:
+- Stripe marks the hosted invoice paid
+- the Stripe webhook reconciles the local finance invoice
+- the local finance invoice becomes `paid`
 
-## Assign Team
+Manager-visible payment state includes:
+- payment status
+- whether Stripe payment was captured
+- whether the invoice is refund-eligible
 
-Inside the work order:
-- assign employee/team member
-- set work date/time
-- allow field reporting where needed
+## How Manager Sees Payment in Payments & Refunds
 
-## Employee Field Report
+Advanced Management -> Payments & Refunds now includes Business Finance rows.
 
-Employee uses My Work Orders and submits a field report.
+Finance rows show:
+- Business Finance label
+- invoice number
+- client
+- payment status
+- amount
 
-The employee can report:
-- completion
-- work notes
-- issues found
-- extra work request
-- materials used
-- files/photos
+Manager can:
+- search by invoice number, client, or related estimate
+- use the source filter to switch between Bookings and Business Finance
+- click `View Invoice` to open the finance invoice detail
 
-The field report is not official by itself.
+Important:
+- finance rows do not use the booking refund dialog
+- finance rows do not show a global Refund button in the list
 
-## Manager Review / Approval
+## How Manager Issues Finance Refund From Finance Invoice Detail
 
-Manager reviews the field report and creates or opens the review.
+Refunds start inside Finance Invoice Detail.
 
-On approval, the system can:
-- make material usage official
-- deduct inventory
-- add invoice line item if billing decision is `add_to_invoice`
-- update approved material cost
-- close the work order when appropriate
+When a finance invoice is eligible, the dialog shows:
+- paid amount
+- refunded amount
+- remaining refundable amount
+- refund history
+- `Issue refund`
 
-## Month-End / Reporting Review
+Manager refund flow:
+- open the finance invoice detail
+- review payment and refund summary
+- click `Issue refund`
+- choose full remaining refund or custom amount
+- enter reason/note
+- confirm understanding that refunding payment does not change estimate, work order, tax, or line-item totals
+- submit the refund
 
-Manager can then review:
-- Reports
-- Profitability
-- Tax Summary
-- Month-End
+After refund:
+- invoice status updates
+- refund history updates
+- remaining refundable updates
+- invoice totals do not change
 
-These tools help operational and accounting readiness.
-They are not accountant-certified filings by themselves.
+## Difference Between Booking Refund and Finance Invoice Refund
 
-## Simple Checklist
+Booking refund:
+- belongs to appointment payment flow
+- can include booking-specific logic such as service buckets, tips, no-show, or platform-fee options
+- uses booking refund endpoints and booking refund UI
 
-Quote -> Client -> Estimate -> Send -> Client response -> Invoice/payment -> Work order -> Assignment -> Field report -> Review -> Reporting
+Finance invoice refund:
+- belongs to Business Finance invoice flow
+- starts from Finance Invoice Detail
+- uses finance invoice refund endpoint
+- does not use booking refund dialog
+- does not use booking-specific tip, no-show, or platform-fee refund options
+
+These are intentionally separate UI flows even though both are part of the larger payment/refund system.
+
+## How Reports Show Gross, Refund, and Net
+
+Business Finance reports now preserve original invoice totals and also show refund-aware net values.
+
+Manager should read them as:
+- Gross invoice total = original invoiced amount in the date scope
+- Refunds = refund activity in the date scope
+- Net invoice total = gross invoice total minus refunds
+- Gross tax collected = original tax billed in the date scope
+- Tax refunded = refunded tax estimate based on refund proportion
+- Net tax collected = gross tax collected minus refunded tax
+
+Invoice report rows now also show:
+- refunded amount
+- remaining refundable amount
+- net collected amount
+- refund count
+
+## What Month-End Refund Review Means
+
+Month-End now surfaces refund activity so the manager and accountant can see:
+- refund total
+- refunded invoices
+- partial refunds
+- tax refunded
+
+This is an accounting handoff and review aid.
+
+It does not mean:
+- refunds block month-end automatically
+- Schedulaa replaces accountant review
+
+Simple rule:
+- Month-End should now be read as gross plus refund-aware net context, not gross-only history
+
+## Operational Flow Summary
+
+Quote Request -> Client -> Estimate -> Client response -> Invoice -> Payment link -> Paid webhook reconciliation -> Work order -> Field report -> Manager review -> Refund if needed -> Refund-aware reporting/month-end
