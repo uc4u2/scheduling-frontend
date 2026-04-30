@@ -27,6 +27,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -83,35 +84,35 @@ const captionClampSx = {
   lineHeight: 1.4,
 };
 
-const formatPaymentState = (item) => {
+const formatPaymentState = (item, tEstimate) => {
   const paymentStatus = String(item?.converted_invoice_payment_status || item?.converted_invoice_status || "").toLowerCase();
-  if (paymentStatus === "paid") return "Payment paid";
-  if (paymentStatus === "partial_refund" || paymentStatus === "partially_refunded") return "Partially refunded";
-  if (paymentStatus === "refunded") return "Refunded";
-  if (item?.converted_invoice_hosted_invoice_url) return "Payment link ready";
-  if (item?.converted_invoice_number) return "No payment link yet";
-  return "Convert first";
+  if (paymentStatus === "paid") return tEstimate("paymentState.paid", "Payment paid");
+  if (paymentStatus === "partial_refund" || paymentStatus === "partially_refunded") return tEstimate("paymentState.partialRefund", "Partially refunded");
+  if (paymentStatus === "refunded") return tEstimate("paymentState.refunded", "Refunded");
+  if (item?.converted_invoice_hosted_invoice_url) return tEstimate("paymentState.linkReady", "Payment link ready");
+  if (item?.converted_invoice_number) return tEstimate("paymentState.noLinkYet", "No payment link yet");
+  return tEstimate("paymentState.convertFirst", "Convert first");
 };
 
-const buildSupplementalFlags = (item) => {
+const buildSupplementalFlags = (item, tEstimate) => {
   const flags = [];
   if (item?.converted_invoice_hosted_invoice_url) {
-    flags.push({ label: "Payment link ready", color: "secondary", variant: "outlined" });
+    flags.push({ label: tEstimate("flags.paymentLinkReady", "Payment link ready"), color: "secondary", variant: "outlined" });
   }
   if (item?.public_url) {
-    flags.push({ label: "Share link ready", variant: "outlined" });
+    flags.push({ label: tEstimate("flags.shareLinkReady", "Share link ready"), variant: "outlined" });
   }
   if (item?.client_accepted_at) {
-    flags.push({ label: "Accepted by client", color: "success", variant: "outlined" });
+    flags.push({ label: tEstimate("flags.acceptedByClient", "Accepted by client"), color: "success", variant: "outlined" });
   } else if (item?.client_rejected_at) {
-    flags.push({ label: "Rejected by client", color: "warning", variant: "outlined" });
+    flags.push({ label: tEstimate("flags.rejectedByClient", "Rejected by client"), color: "warning", variant: "outlined" });
   } else if (item?.public_viewed_at) {
-    flags.push({ label: "Viewed by client", color: "info", variant: "outlined" });
+    flags.push({ label: tEstimate("flags.viewedByClient", "Viewed by client"), color: "info", variant: "outlined" });
   }
   return flags;
 };
 
-function EstimateActionMenu({ actions }) {
+function EstimateActionMenu({ actions, tEstimate }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -133,7 +134,7 @@ function EstimateActionMenu({ actions }) {
 
   return (
     <>
-      <Tooltip title="More actions">
+      <Tooltip title={tEstimate("actions.moreActions", "More actions")}>
         <IconButton size="small" onClick={handleOpen}>
           <MoreVertIcon fontSize="small" />
         </IconButton>
@@ -171,7 +172,7 @@ function EstimateActionMenu({ actions }) {
             {cleanedActions.length ? <Divider /> : null}
             <Box sx={{ px: 2, py: 1.25 }}>
               <Typography variant="caption" color="text.secondary">
-                Some actions are unavailable for this estimate state.
+                {tEstimate("actions.unavailableNote", "Some actions are unavailable for this estimate state.")}
               </Typography>
             </Box>
           </>
@@ -182,8 +183,13 @@ function EstimateActionMenu({ actions }) {
 }
 
 export default function EstimatesPage({ createNonce, onNavigate }) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const timezone = useMemo(() => getUserTimezone(), []);
+  const tEstimate = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.estimates.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [items, setItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -226,11 +232,11 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       setClients(managerClients);
       setTemplates(Array.isArray(templateList?.items) ? templateList.items : Array.isArray(templateList) ? templateList : []);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load estimates.");
+      setError(err?.response?.data?.error || err?.message || tEstimate("errors.loadFailed", "Unable to load estimates."));
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, search, status]);
+  }, [page, perPage, search, status, tEstimate]);
 
   useEffect(() => {
     load();
@@ -245,7 +251,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
   const saveAsTemplate = async () => {
     if (!editing || !templateName) {
-      enqueueSnackbar("Open an estimate and enter a template name first.", { variant: "warning" });
+      enqueueSnackbar(tEstimate("snackbar.templateNameRequired", "Open an estimate and enter a template name first."), { variant: "warning" });
       return;
     }
     try {
@@ -255,21 +261,21 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         default_terms: editing.terms || "",
         line_items_json: Array.isArray(editing.line_items) ? editing.line_items : [],
       });
-      enqueueSnackbar("Estimate template saved.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.templateSaved", "Estimate template saved."), { variant: "success" });
       setTemplateName("");
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to save template.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.saveTemplateFailed", "Unable to save template."), { variant: "error" });
     }
   };
 
   const handleSend = async (item) => {
     try {
       await sendEstimate(item.id);
-      enqueueSnackbar("Estimate marked as sent manually.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.markedSent", "Estimate marked as sent manually."), { variant: "success" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to mark estimate as sent.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.markSentFailed", "Unable to mark estimate as sent."), { variant: "error" });
     }
   };
 
@@ -279,7 +285,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       enqueueSnackbar(successMessage, { variant: "success" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to update estimate status.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.updateStatusFailed", "Unable to update estimate status."), { variant: "error" });
     }
   };
 
@@ -287,10 +293,15 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     try {
       const res = await duplicateEstimate(item.id);
       const estimateNumber = res?.estimate?.estimate_number || res?.estimate_number;
-      enqueueSnackbar(`Estimate duplicated${estimateNumber ? `: ${estimateNumber}` : ""}.`, { variant: "success" });
+      enqueueSnackbar(
+        estimateNumber
+          ? tEstimate("snackbar.duplicatedWithNumber", "Estimate duplicated: {{estimateNumber}}.", { estimateNumber })
+          : tEstimate("snackbar.duplicated", "Estimate duplicated."),
+        { variant: "success" }
+      );
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to duplicate estimate.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.duplicateFailed", "Unable to duplicate estimate."), { variant: "error" });
     }
   };
 
@@ -298,7 +309,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     const payload = await createEstimateShareLink(item.id);
     const publicUrl = payload?.public_url || payload?.estimate?.public_url;
     if (!publicUrl) {
-      throw new Error("Share link is not available.");
+      throw new Error(tEstimate("errors.shareLinkUnavailable", "Share link is not available."));
     }
     return { payload, publicUrl };
   };
@@ -308,10 +319,10 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       setLinkBusyId(item.id);
       const { publicUrl } = await ensureShareLink(item);
       await navigator.clipboard.writeText(publicUrl);
-      enqueueSnackbar("Estimate link copied.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.estimateLinkCopied", "Estimate link copied."), { variant: "success" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create estimate link.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.createEstimateLinkFailed", "Unable to create estimate link."), { variant: "error" });
     } finally {
       setLinkBusyId(null);
     }
@@ -324,7 +335,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       window.open(publicUrl, "_blank", "noopener,noreferrer");
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open estimate link.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.openEstimateLinkFailed", "Unable to open estimate link."), { variant: "error" });
     } finally {
       setLinkBusyId(null);
     }
@@ -340,18 +351,18 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const handleSendEmail = async () => {
     if (!emailTarget) return;
     if (!String(emailTo || "").trim()) {
-      enqueueSnackbar("Enter an email address first.", { variant: "warning" });
+      enqueueSnackbar(tEstimate("errors.emailRequired", "Enter an email address first."), { variant: "warning" });
       return;
     }
     try {
       setEmailSending(true);
       await sendEstimateEmail(emailTarget.id, { email: emailTo.trim(), message: emailMessage.trim() || undefined });
-      enqueueSnackbar("Estimate email sent.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.emailSent", "Estimate email sent."), { variant: "success" });
       setEmailDialogOpen(false);
       setEmailTarget(null);
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to send estimate email.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.sendEmailFailed", "Unable to send estimate email."), { variant: "error" });
     } finally {
       setEmailSending(false);
     }
@@ -364,7 +375,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       window.open(`${publicUrl}${publicUrl.includes("?") ? "&" : "?"}print=1`, "_blank", "noopener,noreferrer");
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open print view.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.openPrintFailed", "Unable to open print view."), { variant: "error" });
     } finally {
       setLinkBusyId(null);
     }
@@ -372,12 +383,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
   const ensurePaymentLink = async (item) => {
     if (!item?.converted_invoice_id) {
-      throw new Error("Convert the estimate to an invoice first.");
+      throw new Error(tEstimate("errors.convertFirst", "Convert the estimate to an invoice first."));
     }
     const payload = await createFinanceInvoicePaymentLink(item.converted_invoice_id);
     const publicUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url;
     if (!publicUrl) {
-      throw new Error("Payment link is not available.");
+      throw new Error(tEstimate("errors.paymentLinkUnavailable", "Payment link is not available."));
     }
     return { payload, publicUrl };
   };
@@ -387,10 +398,10 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       setPaymentLinkBusyId(item.id);
       const { publicUrl } = await ensurePaymentLink(item);
       await navigator.clipboard.writeText(publicUrl);
-      enqueueSnackbar("Payment link copied.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.paymentLinkCopied", "Payment link copied."), { variant: "success" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create payment link.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.createPaymentLinkFailed", "Unable to create payment link."), { variant: "error" });
     } finally {
       setPaymentLinkBusyId(null);
     }
@@ -403,7 +414,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       window.open(publicUrl, "_blank", "noopener,noreferrer");
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to open payment link.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.openPaymentLinkFailed", "Unable to open payment link."), { variant: "error" });
     } finally {
       setPaymentLinkBusyId(null);
     }
@@ -412,12 +423,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const handleReopenResponse = async (item) => {
     try {
       await reopenEstimateResponse(item.id);
-      enqueueSnackbar("Estimate reopened for revision.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.reopenedForRevision", "Estimate reopened for revision."), { variant: "success" });
       await load();
       setEditing(item);
       setDialogOpen(true);
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to reopen estimate.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.reopenFailed", "Unable to reopen estimate."), { variant: "error" });
     }
   };
 
@@ -425,10 +436,15 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     try {
       const res = await convertEstimateToInvoice(item.id);
       const invoiceNumber = res?.invoice?.invoice_number || res?.invoice_number || res?.invoice?.number;
-      enqueueSnackbar(invoiceNumber ? `Invoice created: ${invoiceNumber}.` : "Invoice created.", { variant: "success" });
+      enqueueSnackbar(
+        invoiceNumber
+          ? tEstimate("snackbar.invoiceCreatedWithNumber", "Invoice created: {{invoiceNumber}}.", { invoiceNumber })
+          : tEstimate("snackbar.invoiceCreated", "Invoice created."),
+        { variant: "success" }
+      );
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to convert estimate to invoice.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.convertFailed", "Unable to convert estimate to invoice."), { variant: "error" });
     }
   };
 
@@ -438,33 +454,35 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       const estimate = detail?.estimate || detail || item;
       const lines = Array.isArray(estimate?.line_items) ? estimate.line_items : [];
       const summary = [
-        `Estimate ${estimate.estimate_number || `#${estimate.id}`}`,
+        tEstimate("summary.estimateHeader", "Estimate {{estimateNumber}}", {
+          estimateNumber: estimate.estimate_number || `#${estimate.id}`,
+        }),
         estimate.title || "",
-        estimate.client_name ? `Client: ${estimate.client_name}` : "",
-        estimate.client_email ? `Email: ${estimate.client_email}` : "",
+        estimate.client_name ? tEstimate("summary.client", "Client: {{value}}", { value: estimate.client_name }) : "",
+        estimate.client_email ? tEstimate("summary.email", "Email: {{value}}", { value: estimate.client_email }) : "",
         "",
-        "Items:",
+        tEstimate("summary.items", "Items:"),
         ...(lines.length
           ? lines.map((line) => {
               const quantity = Number(line.quantity || 0);
               const price = formatCurrency(line.unit_price || 0, estimate.currency);
-              return `- ${line.description || "Line item"}${quantity ? ` • Qty ${quantity}` : ""}${price ? ` • ${price}` : ""}`;
+              return `- ${line.description || tEstimate("summary.lineItem", "Line item")}${quantity ? ` • ${tEstimate("summary.qty", "Qty")} ${quantity}` : ""}${price ? ` • ${price}` : ""}`;
             })
-          : ["- Line items are not available in this summary."]),
+          : [`- ${tEstimate("summary.noItems", "Line items are not available in this summary.")}`]),
         "",
-        `Subtotal: ${formatCurrency(estimate.subtotal || 0, estimate.currency)}`,
-        `Tax: ${formatCurrency(estimate.tax_total || 0, estimate.currency)}`,
-        `Total: ${formatCurrency(estimate.total || 0, estimate.currency)}`,
+        `${tEstimate("summary.subtotal", "Subtotal")}: ${formatCurrency(estimate.subtotal || 0, estimate.currency)}`,
+        `${tEstimate("summary.tax", "Tax")}: ${formatCurrency(estimate.tax_total || 0, estimate.currency)}`,
+        `${tEstimate("summary.total", "Total")}: ${formatCurrency(estimate.total || 0, estimate.currency)}`,
         estimate.visible_notes || estimate.notes ? "" : null,
-        estimate.visible_notes ? `Notes: ${estimate.visible_notes}` : null,
-        !estimate.visible_notes && estimate.notes ? `Notes: ${estimate.notes}` : null,
+        estimate.visible_notes ? `${tEstimate("summary.notes", "Notes")}: ${estimate.visible_notes}` : null,
+        !estimate.visible_notes && estimate.notes ? `${tEstimate("summary.notes", "Notes")}: ${estimate.notes}` : null,
         "",
-        "Reply to this message to approve or request changes.",
+        tEstimate("summary.reply", "Reply to this message to approve or request changes."),
       ].filter(Boolean).join("\n");
       await navigator.clipboard.writeText(summary);
-      enqueueSnackbar("Estimate summary copied.", { variant: "success" });
+      enqueueSnackbar(tEstimate("snackbar.summaryCopied", "Estimate summary copied."), { variant: "success" });
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to copy estimate summary.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.copySummaryFailed", "Unable to copy estimate summary."), { variant: "error" });
     }
   };
 
@@ -475,7 +493,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
   const handleOpenInvoice = (item) => {
     if (!item?.converted_invoice_id) {
-      enqueueSnackbar("Convert the estimate to an invoice first.", { variant: "warning" });
+      enqueueSnackbar(tEstimate("errors.convertFirst", "Convert the estimate to an invoice first."), { variant: "warning" });
       return;
     }
     setInvoiceDialogId(item.converted_invoice_id);
@@ -495,7 +513,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       ? [
           {
             key: "open-invoice",
-            label: "Open Invoice",
+            label: tEstimate("actions.openInvoice", "Open Invoice"),
             icon: <DescriptionOutlinedIcon fontSize="small" />,
             onClick: () => handleOpenInvoice(item),
             variant: "contained",
@@ -503,7 +521,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           hasPaymentLink
             ? {
                 key: "open-payment-link",
-                label: "Open Payment Link",
+                label: tEstimate("actions.openPaymentLink", "Open Payment Link"),
                 icon: <LaunchIcon fontSize="small" />,
                 onClick: () => handleOpenPaymentLink(item),
                 variant: "outlined",
@@ -511,7 +529,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               }
             : {
                 key: "copy-payment-link",
-                label: "Create / Copy Payment Link",
+                label: tEstimate("actions.copyPaymentLink", "Create / Copy Payment Link"),
                 icon: <PaymentOutlinedIcon fontSize="small" />,
                 onClick: () => handleCopyPaymentLink(item),
                 variant: "outlined",
@@ -521,7 +539,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       : [
           {
             key: "edit",
-            label: "Edit",
+            label: tEstimate("actions.edit", "Edit"),
             icon: <EditOutlinedIcon fontSize="small" />,
             onClick: () => {
               setEditing(item);
@@ -531,7 +549,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           },
           {
             key: "convert",
-            label: "Convert to Invoice",
+            label: tEstimate("actions.convertToInvoice", "Convert to Invoice"),
             icon: <RequestQuoteOutlinedIcon fontSize="small" />,
             onClick: () => handleConvert(item),
             variant: "contained",
@@ -543,8 +561,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     const allMenuActions = [
       {
         key: "edit",
-        label: "Edit",
-        help: "Open the estimate editor with the current billing snapshot and line items.",
+        label: tEstimate("actions.edit", "Edit"),
+        help: tEstimate("actionHelp.edit", "Open the estimate editor with the current billing snapshot and line items."),
         icon: <EditOutlinedIcon fontSize="small" />,
         onClick: () => {
           setEditing(item);
@@ -553,39 +571,39 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       },
       {
         key: "copy-link",
-        label: "Create / Copy Link",
-        help: "Create the public estimate link if needed and copy it to the clipboard.",
+        label: tEstimate("actions.copyLink", "Create / Copy Link"),
+        help: tEstimate("actionHelp.copyLink", "Create the public estimate link if needed and copy it to the clipboard."),
         icon: <LinkIcon fontSize="small" />,
         onClick: () => handleCopyLink(item),
         disabled: rowBusy,
       },
       {
         key: "open-link",
-        label: "Open Link",
-        help: "Open the client-facing public estimate page in a new tab.",
+        label: tEstimate("actions.openLink", "Open Link"),
+        help: tEstimate("actionHelp.openLink", "Open the client-facing public estimate page in a new tab."),
         icon: <LaunchIcon fontSize="small" />,
         onClick: () => handleOpenLink(item),
         disabled: rowBusy,
       },
       {
         key: "send-estimate",
-        label: "Send Estimate",
-        help: "Use the existing mail flow to send the estimate link to the client.",
+        label: tEstimate("actions.sendEstimate", "Send Estimate"),
+        help: tEstimate("actionHelp.sendEstimate", "Use the existing mail flow to send the estimate link to the client."),
         icon: <EmailOutlinedIcon fontSize="small" />,
         onClick: () => openSendEmailDialog(item),
         disabled: rowBusy,
       },
       {
         key: "copy-summary",
-        label: "Copy Summary",
-        help: "Copy a text summary with the estimate number, client, line items, and totals.",
+        label: tEstimate("actions.copySummary", "Copy Summary"),
+        help: tEstimate("actionHelp.copySummary", "Copy a text summary with the estimate number, client, line items, and totals."),
         icon: <ContentCopyIcon fontSize="small" />,
         onClick: () => handleCopySummary(item),
       },
       {
         key: "print-pdf",
-        label: "Print / PDF",
-        help: "Open the clean browser print view for save-as-PDF or printing.",
+        label: tEstimate("actions.printPdf", "Print / PDF"),
+        help: tEstimate("actionHelp.printPdf", "Open the clean browser print view for save-as-PDF or printing."),
         icon: <LocalPrintshopOutlinedIcon fontSize="small" />,
         onClick: () => handlePrintEstimate(item),
         disabled: rowBusy,
@@ -593,75 +611,75 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       { type: "divider", key: "divider-1" },
       {
         key: "mark-sent",
-        label: "Mark Sent Manually",
-        help: "Use when you sent the estimate outside the automated email flow.",
+        label: tEstimate("actions.markSent", "Mark Sent Manually"),
+        help: tEstimate("actionHelp.markSent", "Use when you sent the estimate outside the automated email flow."),
         onClick: () => handleSend(item),
         disabled: isConverted,
       },
       {
         key: "mark-accepted",
-        label: "Mark Accepted",
-        help: "Manager-only manual status update. This is not the public client approval flow.",
-        onClick: () => handleManualStatus(item, "approved", "Estimate marked accepted manually."),
+        label: tEstimate("actions.markAccepted", "Mark Accepted"),
+        help: tEstimate("actionHelp.markAccepted", "Manager-only manual status update. This is not the public client approval flow."),
+        onClick: () => handleManualStatus(item, "approved", tEstimate("snackbar.markedAccepted", "Estimate marked accepted manually.")),
         disabled: isConverted,
       },
       {
         key: "mark-rejected",
-        label: "Mark Rejected",
-        help: "Manager-only manual rejection status. This does not use the public client rejection flow.",
-        onClick: () => handleManualStatus(item, "rejected", "Estimate marked rejected manually."),
+        label: tEstimate("actions.markRejected", "Mark Rejected"),
+        help: tEstimate("actionHelp.markRejected", "Manager-only manual rejection status. This does not use the public client rejection flow."),
+        onClick: () => handleManualStatus(item, "rejected", tEstimate("snackbar.markedRejected", "Estimate marked rejected manually.")),
         disabled: isConverted,
       },
       { type: "divider", key: "divider-2" },
       {
         key: "duplicate",
-        label: "Duplicate",
-        help: "Create a new estimate using this estimate as the starting point.",
+        label: tEstimate("actions.duplicate", "Duplicate"),
+        help: tEstimate("actionHelp.duplicate", "Create a new estimate using this estimate as the starting point."),
         onClick: () => handleDuplicate(item),
       },
       {
         key: "convert",
-        label: "Convert to Invoice",
-        help: "Create the local finance invoice from this estimate when billing is ready.",
+        label: tEstimate("actions.convertToInvoice", "Convert to Invoice"),
+        help: tEstimate("actionHelp.convertToInvoice", "Create the local finance invoice from this estimate when billing is ready."),
         icon: <RequestQuoteOutlinedIcon fontSize="small" />,
         onClick: () => handleConvert(item),
         disabled: isConverted,
       },
       {
         key: "copy-payment-link",
-        label: "Create / Copy Payment Link",
-        help: "Create or reuse the hosted Stripe invoice link for the converted invoice.",
+        label: tEstimate("actions.copyPaymentLink", "Create / Copy Payment Link"),
+        help: tEstimate("actionHelp.copyPaymentLink", "Create or reuse the hosted Stripe invoice link for the converted invoice."),
         icon: <PaymentOutlinedIcon fontSize="small" />,
         onClick: () => handleCopyPaymentLink(item),
         disabled: !item.converted_invoice_id || rowBusy,
       },
       {
         key: "open-payment-link",
-        label: "Open Payment Link",
-        help: "Open the hosted Stripe invoice/payment page for this converted invoice.",
+        label: tEstimate("actions.openPaymentLink", "Open Payment Link"),
+        help: tEstimate("actionHelp.openPaymentLink", "Open the hosted Stripe invoice/payment page for this converted invoice."),
         icon: <LaunchIcon fontSize="small" />,
         onClick: () => handleOpenPaymentLink(item),
         disabled: !item.converted_invoice_id || rowBusy,
       },
       {
         key: "open-invoice",
-        label: "Open Invoice",
-        help: "Open the finance invoice detail dialog.",
+        label: tEstimate("actions.openInvoice", "Open Invoice"),
+        help: tEstimate("actionHelp.openInvoice", "Open the finance invoice detail dialog."),
         icon: <DescriptionOutlinedIcon fontSize="small" />,
         onClick: () => handleOpenInvoice(item),
         disabled: !item.converted_invoice_id,
       },
       {
         key: "create-work-order",
-        label: "Create Work Order",
-        help: "Move the approved estimate into operational job execution.",
+        label: tEstimate("actions.createWorkOrder", "Create Work Order"),
+        help: tEstimate("actionHelp.createWorkOrder", "Move the approved estimate into operational job execution."),
         icon: <AddTaskOutlinedIcon fontSize="small" />,
         onClick: () => handleCreateWorkOrder(item),
       },
       {
         key: "revise-resend",
-        label: "Revise and Resend",
-        help: "Reopen the client response flow so you can adjust and resend the estimate.",
+        label: tEstimate("actions.reviseResend", "Revise and Resend"),
+        help: tEstimate("actionHelp.reviseResend", "Reopen the client response flow so you can adjust and resend the estimate."),
         onClick: () => handleReopenResponse(item),
         disabled: !hasClientResponse,
       },
@@ -674,7 +692,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   };
 
   const renderCollapsedStatus = (item) => {
-    const supplemental = buildSupplementalFlags(item);
+    const supplemental = buildSupplementalFlags(item, tEstimate);
     const visibleSupplemental = supplemental.slice(0, 1);
     const hiddenSupplemental = supplemental.slice(1);
 
@@ -722,13 +740,13 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                       {item.estimate_number}
                     </Typography>
                     <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.3 }}>
-                      {item.title || "Untitled estimate"}
+                      {item.title || tEstimate("fallbacks.untitled", "Untitled estimate")}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" noWrap>
                       {item.client_name || "-"}{item.client_email ? ` • ${item.client_email}` : ""}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={captionClampSx}>
-                      {item.issue_date || "No issue date"} • {item.sent_at ? `Sent ${formatDateTimeInTz(item.sent_at, timezone)}` : "Not sent"} • {item.line_count ?? 0} line{Number(item.line_count ?? 0) === 1 ? "" : "s"}
+                      {item.issue_date || tEstimate("fallbacks.noIssueDate", "No issue date")} • {item.sent_at ? tEstimate("metadata.sentAt", "Sent {{value}}", { value: formatDateTimeInTz(item.sent_at, timezone) }) : tEstimate("fallbacks.notSent", "Not sent")} • {tEstimate(Number(item.line_count ?? 0) === 1 ? "metadata.lineCount_one" : "metadata.lineCount_other", Number(item.line_count ?? 0) === 1 ? "{{count}} line" : "{{count}} lines", { count: item.line_count ?? 0 })}
                     </Typography>
                   </Stack>
 
@@ -738,7 +756,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                       {formatCurrency(item.total, item.currency)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ textAlign: { md: "right" } }}>
-                      {item.converted_invoice_number ? `${item.converted_invoice_number} • ${formatPaymentState(item)}` : "No invoice yet • Convert first"}
+                      {item.converted_invoice_number ? `${item.converted_invoice_number} • ${formatPaymentState(item, tEstimate)}` : `${tEstimate("fallbacks.noInvoiceYet", "No invoice yet")} • ${tEstimate("paymentState.convertFirst", "Convert first")}`}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -758,7 +776,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                     {action.label}
                   </Button>
                 ))}
-                <EstimateActionMenu actions={menuActions} />
+                <EstimateActionMenu actions={menuActions} tEstimate={tEstimate} />
               </Stack>
             </Stack>
           </Paper>
@@ -785,15 +803,15 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 },
               }}
             >
-              <TableCell sx={{ minWidth: 124 }}>Estimate #</TableCell>
-              <TableCell sx={{ minWidth: 280 }}>Title</TableCell>
-              <TableCell sx={{ minWidth: 240 }}>Client</TableCell>
-              <TableCell sx={{ minWidth: 270 }}>Status</TableCell>
-              <TableCell align="right" sx={{ minWidth: 110 }}>Total</TableCell>
-              <TableCell sx={{ minWidth: 120 }}>Issue date</TableCell>
-              <TableCell sx={{ minWidth: 176 }}>Sent</TableCell>
-              <TableCell align="center" sx={{ minWidth: 72 }}>Lines</TableCell>
-              <TableCell sx={{ minWidth: 220 }}>Invoice</TableCell>
+              <TableCell sx={{ minWidth: 124 }}>{tEstimate("table.headers.estimateNumber", "Estimate #")}</TableCell>
+              <TableCell sx={{ minWidth: 280 }}>{tEstimate("table.headers.title", "Title")}</TableCell>
+              <TableCell sx={{ minWidth: 240 }}>{tEstimate("table.headers.client", "Client")}</TableCell>
+              <TableCell sx={{ minWidth: 270 }}>{tEstimate("table.headers.status", "Status")}</TableCell>
+              <TableCell align="right" sx={{ minWidth: 110 }}>{tEstimate("table.headers.total", "Total")}</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>{tEstimate("table.headers.issueDate", "Issue date")}</TableCell>
+              <TableCell sx={{ minWidth: 176 }}>{tEstimate("table.headers.sent", "Sent")}</TableCell>
+              <TableCell align="center" sx={{ minWidth: 72 }}>{tEstimate("table.headers.lines", "Lines")}</TableCell>
+              <TableCell sx={{ minWidth: 220 }}>{tEstimate("table.headers.invoice", "Invoice")}</TableCell>
               <TableCell
                 align="right"
                 sx={{
@@ -805,7 +823,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   borderLeft: (theme) => `1px solid ${theme.palette.divider}`,
                 }}
               >
-                Actions
+                {tEstimate("table.headers.actions", "Actions")}
               </TableCell>
             </TableRow>
           </TableHead>
@@ -831,7 +849,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" fontWeight={700} sx={{ lineHeight: 1.35 }}>
-                      {item.title || "Untitled estimate"}
+                      {item.title || tEstimate("fallbacks.untitled", "Untitled estimate")}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -847,7 +865,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <TableCell>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                       <FinanceStatusChip status={item.status} />
-                      {buildSupplementalFlags(item).map((flag) => (
+                      {buildSupplementalFlags(item, tEstimate).map((flag) => (
                         <Chip
                           key={flag.label}
                           size="small"
@@ -866,12 +884,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-                      {item.issue_date || "-"}
+                      {item.issue_date || tEstimate("fallbacks.dash", "-")}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color={item.sent_at ? "text.primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
-                      {item.sent_at ? formatDateTimeInTz(item.sent_at, timezone) : "-"}
+                      {item.sent_at ? formatDateTimeInTz(item.sent_at, timezone) : tEstimate("fallbacks.dash", "-")}
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
@@ -880,10 +898,10 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <TableCell>
                     <Stack spacing={0.35}>
                       <Typography variant="body2" fontWeight={item.converted_invoice_number ? 700 : 500} color={item.converted_invoice_number ? "text.primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
-                        {item.converted_invoice_number || "No invoice yet"}
+                        {item.converted_invoice_number || tEstimate("fallbacks.noInvoiceYet", "No invoice yet")}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" noWrap>
-                        {formatPaymentState(item)}
+                        {formatPaymentState(item, tEstimate)}
                       </Typography>
                     </Stack>
                   </TableCell>
@@ -911,7 +929,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                           {action.label}
                         </Button>
                       ))}
-                      <EstimateActionMenu actions={menuActions} />
+                      <EstimateActionMenu actions={menuActions} tEstimate={tEstimate} />
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -938,15 +956,15 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           <Stack direction={{ xs: "column", lg: "row" }} spacing={2} justifyContent="space-between" alignItems={{ lg: "flex-start" }}>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>
               <Typography variant="h5" fontWeight={800}>
-                Estimates
+                {tEstimate("page.title", "Estimates")}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
-                Price custom work, keep client-ready estimate links organized, and move approved jobs into invoice and work-order workflow without losing finance context.
+                {tEstimate("page.description", "Price custom work, keep client-ready estimate links organized, and move approved jobs into invoice and work-order workflow without losing finance context.")}
               </Typography>
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="outlined" startIcon={<OpenInFullIcon />} onClick={() => setExpandedOpen(true)} disabled={loading || items.length === 0}>
-                Expand View
+                {tEstimate("toolbar.expandView", "Expand View")}
               </Button>
               <Button
                 variant="contained"
@@ -956,7 +974,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   setDialogOpen(true);
                 }}
               >
-                New Estimate
+                {tEstimate("toolbar.newEstimate", "New Estimate")}
               </Button>
             </Stack>
           </Stack>
@@ -965,8 +983,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ flex: 1 }}>
               <TextField
                 size="small"
-                label="Search estimates"
-                placeholder="Estimate #, title, client, or invoice"
+                label={tEstimate("toolbar.searchLabel", "Search estimates")}
+                placeholder={tEstimate("toolbar.searchPlaceholder", "Estimate #, title, client, or invoice")}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -978,38 +996,38 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 sx={{ minWidth: { xs: "100%", md: 320 } }}
               />
               <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 190 } }}>
-                <InputLabel>Status</InputLabel>
-                <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-                  <MenuItem value="">All statuses</MenuItem>
-                  <MenuItem value="draft">Draft</MenuItem>
-                  <MenuItem value="sent">Sent</MenuItem>
-                  <MenuItem value="viewed">Viewed</MenuItem>
-                  <MenuItem value="approved">Approved</MenuItem>
-                  <MenuItem value="rejected">Rejected</MenuItem>
-                  <MenuItem value="converted_to_invoice">Converted to Invoice</MenuItem>
+                <InputLabel>{tEstimate("toolbar.statusLabel", "Status")}</InputLabel>
+                <Select label={tEstimate("toolbar.statusLabel", "Status")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+                  <MenuItem value="">{tEstimate("toolbar.allStatuses", "All statuses")}</MenuItem>
+                  <MenuItem value="draft">{t("manager.finance.shared.statuses.draft", { defaultValue: "Draft" })}</MenuItem>
+                  <MenuItem value="sent">{t("manager.finance.shared.statuses.sent", { defaultValue: "Sent" })}</MenuItem>
+                  <MenuItem value="viewed">{t("manager.finance.shared.statuses.viewed", { defaultValue: "Viewed" })}</MenuItem>
+                  <MenuItem value="approved">{t("manager.finance.shared.statuses.approved", { defaultValue: "Approved" })}</MenuItem>
+                  <MenuItem value="rejected">{t("manager.finance.shared.statuses.rejected", { defaultValue: "Rejected" })}</MenuItem>
+                  <MenuItem value="converted_to_invoice">{t("manager.finance.shared.statuses.converted_to_invoice", { defaultValue: "Converted to Invoice" })}</MenuItem>
                 </Select>
               </FormControl>
               <Button variant="outlined" onClick={load} sx={{ minWidth: 110 }}>
-                Refresh
+                {tEstimate("toolbar.refresh", "Refresh")}
               </Button>
             </Stack>
-            <Chip label={`${estimateCountLabel} estimate${Number(estimateCountLabel) === 1 ? "" : "s"}`} variant="outlined" sx={{ alignSelf: { xs: "flex-start", xl: "center" }, fontWeight: 700 }} />
+            <Chip label={tEstimate(Number(estimateCountLabel) === 1 ? "toolbar.count_one" : "toolbar.count_other", Number(estimateCountLabel) === 1 ? "{{count}} estimate" : "{{count}} estimates", { count: estimateCountLabel })} variant="outlined" sx={{ alignSelf: { xs: "flex-start", xl: "center" }, fontWeight: 700 }} />
           </Stack>
 
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5, bgcolor: "background.default" }}>
             <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} alignItems={{ lg: "center" }} justifyContent="space-between">
               <Stack spacing={0.35}>
                 <Typography variant="subtitle2" fontWeight={800}>
-                  Template shortcut
+                  {tEstimate("templateShortcut.title", "Template shortcut")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Save the estimate currently open in the editor as a reusable starting point.
+                  {tEstimate("templateShortcut.description", "Save the estimate currently open in the editor as a reusable starting point.")}
                 </Typography>
               </Stack>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
-                <TextField size="small" label="Template name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
+                <TextField size="small" label={tEstimate("templateShortcut.templateName", "Template name")} value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
                 <Button variant="outlined" onClick={saveAsTemplate} sx={{ whiteSpace: "nowrap" }}>
-                  Save current estimate as template
+                  {tEstimate("templateShortcut.saveCurrent", "Save current estimate as template")}
                 </Button>
               </Stack>
             </Stack>
@@ -1023,9 +1041,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
       ) : items.length === 0 ? (
         <FinanceEmptyState
-          title="No estimates yet"
-          description="Create a simple estimate, send it, and convert it to an invoice when the work is approved."
-          actionLabel="Create estimate"
+          title={tEstimate("empty.title", "No estimates yet")}
+          description={tEstimate("empty.description", "Create a simple estimate, send it, and convert it to an invoice when the work is approved.")}
+          actionLabel={tEstimate("empty.action", "Create estimate")}
           onAction={() => {
             setEditing(null);
             setDialogOpen(true);
@@ -1049,8 +1067,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       <Dialog fullScreen open={expandedOpen} onClose={() => setExpandedOpen(false)}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pr: 1.5 }}>
           <Stack spacing={0.25}>
-            <Typography variant="h6" fontWeight={800}>Estimates</Typography>
-            <Typography variant="body2" color="text.secondary">Expanded working view with sticky actions and full estimate columns.</Typography>
+            <Typography variant="h6" fontWeight={800}>{tEstimate("expanded.title", "Estimates")}</Typography>
+            <Typography variant="body2" color="text.secondary">{tEstimate("expanded.description", "Expanded working view with sticky actions and full estimate columns.")}</Typography>
           </Stack>
           <IconButton onClick={() => setExpandedOpen(false)}>
             <CloseIcon />
@@ -1065,7 +1083,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSaved={async () => {
-          enqueueSnackbar(editing ? "Estimate updated." : "Estimate created.", { variant: "success" });
+          enqueueSnackbar(editing ? tEstimate("snackbar.updated", "Estimate updated.") : tEstimate("snackbar.created", "Estimate created."), { variant: "success" });
           await load();
         }}
         estimate={editing}
@@ -1078,7 +1096,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         onClose={() => setWorkOrderDialogOpen(false)}
         onSaved={async () => {
           setWorkOrderDialogOpen(false);
-          enqueueSnackbar("Work order created from estimate.", { variant: "success" });
+          enqueueSnackbar(tEstimate("snackbar.workOrderCreated", "Work order created from estimate."), { variant: "success" });
           await load();
           onNavigate?.("finance-work-orders");
         }}
@@ -1098,24 +1116,24 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         }}
       />
       <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Send Estimate</DialogTitle>
+        <DialogTitle>{tEstimate("emailDialog.title", "Send Estimate")}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
-            <TextField label="Recipient email" value={emailTo} onChange={(event) => setEmailTo(event.target.value)} />
+            <TextField label={tEstimate("emailDialog.recipientEmail", "Recipient email")} value={emailTo} onChange={(event) => setEmailTo(event.target.value)} />
             <TextField
-              label="Message (optional)"
+              label={tEstimate("emailDialog.messageOptional", "Message (optional)")}
               multiline
               minRows={4}
               value={emailMessage}
               onChange={(event) => setEmailMessage(event.target.value)}
-              helperText="The estimate link and totals will be added automatically."
+              helperText={tEstimate("emailDialog.helperText", "The estimate link and totals will be added automatically.")}
             />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEmailDialogOpen(false)} disabled={emailSending}>Cancel</Button>
+          <Button onClick={() => setEmailDialogOpen(false)} disabled={emailSending}>{tEstimate("common.cancel", "Cancel")}</Button>
           <Button variant="contained" onClick={handleSendEmail} disabled={emailSending}>
-            {emailSending ? "Sending..." : "Send"}
+            {emailSending ? tEstimate("common.sending", "Sending...") : tEstimate("common.send", "Send")}
           </Button>
         </DialogActions>
       </Dialog>

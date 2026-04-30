@@ -1929,6 +1929,255 @@
           "cancel": "Cancel",
           "saving": "Saving..."
         }
+      },
+      "estimates": {
+        "errors": {
+          "loadFailed": "Unable to load estimates.",
+          "saveTemplateFailed": "Unable to save template.",
+          "markSentFailed": "Unable to mark estimate as sent.",
+          "updateStatusFailed": "Unable to update estimate status.",
+          "duplicateFailed": "Unable to duplicate estimate.",
+          "shareLinkUnavailable": "Share link is not available.",
+          "createEstimateLinkFailed": "Unable to create estimate link.",
+          "openEstimateLinkFailed": "Unable to open estimate link.",
+          "emailRequired": "Enter an email address first.",
+          "sendEmailFailed": "Unable to send estimate email.",
+          "openPrintFailed": "Unable to open print view.",
+          "convertFirst": "Convert the estimate to an invoice first.",
+          "paymentLinkUnavailable": "Payment link is not available.",
+          "createPaymentLinkFailed": "Unable to create payment link.",
+          "openPaymentLinkFailed": "Unable to open payment link.",
+          "reopenFailed": "Unable to reopen estimate.",
+          "convertFailed": "Unable to convert estimate to invoice.",
+          "copySummaryFailed": "Unable to copy estimate summary."
+        },
+        "snackbar": {
+          "templateNameRequired": "Open an estimate and enter a template name first.",
+          "templateSaved": "Estimate template saved.",
+          "markedSent": "Estimate marked as sent manually.",
+          "markedAccepted": "Estimate marked accepted manually.",
+          "markedRejected": "Estimate marked rejected manually.",
+          "duplicated": "Estimate duplicated.",
+          "duplicatedWithNumber": "Estimate duplicated: {{estimateNumber}}.",
+          "estimateLinkCopied": "Estimate link copied.",
+          "emailSent": "Estimate email sent.",
+          "paymentLinkCopied": "Payment link copied.",
+          "reopenedForRevision": "Estimate reopened for revision.",
+          "invoiceCreated": "Invoice created.",
+          "invoiceCreatedWithNumber": "Invoice created: {{invoiceNumber}}.",
+          "summaryCopied": "Estimate summary copied.",
+          "updated": "Estimate updated.",
+          "created": "Estimate created.",
+          "workOrderCreated": "Work order created from estimate."
+        },
+        "page": {
+          "title": "Estimates",
+          "description": "Price custom work, keep client-ready estimate links organized, and move approved jobs into invoice and work-order workflow without losing finance context."
+        },
+        "toolbar": {
+          "expandView": "Expand View",
+          "newEstimate": "New Estimate",
+          "searchLabel": "Search estimates",
+          "searchPlaceholder": "Estimate #, title, client, or invoice",
+          "statusLabel": "Status",
+          "allStatuses": "All statuses",
+          "refresh": "Refresh",
+          "count_one": "{{count}} estimate",
+          "count_other": "{{count}} estimates"
+        },
+        "templateShortcut": {
+          "title": "Template shortcut",
+          "description": "Save the estimate currently open in the editor as a reusable starting point.",
+          "templateName": "Template name",
+          "saveCurrent": "Save current estimate as template"
+        },
+        "empty": {
+          "title": "No estimates yet",
+          "description": "Create a simple estimate, send it, and convert it to an invoice when the work is approved.",
+          "action": "Create estimate"
+        },
+        "expanded": {
+          "title": "Estimates",
+          "description": "Expanded working view with sticky actions and full estimate columns."
+        },
+        "table": {
+          "headers": {
+            "estimateNumber": "Estimate #",
+            "title": "Title",
+            "client": "Client",
+            "status": "Status",
+            "total": "Total",
+            "issueDate": "Issue date",
+            "sent": "Sent",
+            "lines": "Lines",
+            "invoice": "Invoice",
+            "actions": "Actions"
+          }
+        },
+        "paymentState": {
+          "paid": "Payment paid",
+          "partialRefund": "Partially refunded",
+          "refunded": "Refunded",
+          "linkReady": "Payment link ready",
+          "noLinkYet": "No payment link yet",
+          "convertFirst": "Convert first"
+        },
+        "flags": {
+          "paymentLinkReady": "Payment link ready",
+          "shareLinkReady": "Share link ready",
+          "acceptedByClient": "Accepted by client",
+          "rejectedByClient": "Rejected by client",
+          "viewedByClient": "Viewed by client"
+        },
+        "fallbacks": {
+          "untitled": "Untitled estimate",
+          "noIssueDate": "No issue date",
+          "notSent": "Not sent",
+          "noInvoiceYet": "No invoice yet",
+          "dash": "-"
+        },
+        "metadata": {
+          "sentAt": "Sent {{value}}",
+          "lineCount_one": "{{count}} line",
+          "lineCount_other": "{{count}} lines"
+        },
+        "actions": {
+          "moreActions": "More actions",
+          "unavailableNote": "Some actions are unavailable for this estimate state.",
+          "openInvoice": "Open Invoice",
+          "openPaymentLink": "Open Payment Link",
+          "copyPaymentLink": "Create / Copy Payment Link",
+          "edit": "Edit",
+          "convertToInvoice": "Convert to Invoice",
+          "copyLink": "Create / Copy Link",
+          "openLink": "Open Link",
+          "sendEstimate": "Send Estimate",
+          "copySummary": "Copy Summary",
+          "printPdf": "Print / PDF",
+          "markSent": "Mark Sent Manually",
+          "markAccepted": "Mark Accepted",
+          "markRejected": "Mark Rejected",
+          "duplicate": "Duplicate",
+          "createWorkOrder": "Create Work Order",
+          "reviseResend": "Revise and Resend"
+        },
+        "actionHelp": {
+          "edit": "Open the estimate editor with the current billing snapshot and line items.",
+          "copyLink": "Create the public estimate link if needed and copy it to the clipboard.",
+          "openLink": "Open the client-facing public estimate page in a new tab.",
+          "sendEstimate": "Use the existing mail flow to send the estimate link to the client.",
+          "copySummary": "Copy a text summary with the estimate number, client, line items, and totals.",
+          "printPdf": "Open the clean browser print view for save-as-PDF or printing.",
+          "markSent": "Use when you sent the estimate outside the automated email flow.",
+          "markAccepted": "Manager-only manual status update. This is not the public client approval flow.",
+          "markRejected": "Manager-only manual rejection status. This does not use the public client rejection flow.",
+          "duplicate": "Create a new estimate using this estimate as the starting point.",
+          "convertToInvoice": "Create the local finance invoice from this estimate when billing is ready.",
+          "copyPaymentLink": "Create or reuse the hosted Stripe invoice link for the converted invoice.",
+          "openPaymentLink": "Open the hosted Stripe invoice/payment page for this converted invoice.",
+          "openInvoice": "Open the finance invoice detail dialog.",
+          "createWorkOrder": "Move the approved estimate into operational job execution.",
+          "reviseResend": "Reopen the client response flow so you can adjust and resend the estimate."
+        },
+        "summary": {
+          "estimateHeader": "Estimate {{estimateNumber}}",
+          "client": "Client: {{value}}",
+          "email": "Email: {{value}}",
+          "items": "Items:",
+          "lineItem": "Line item",
+          "qty": "Qty",
+          "noItems": "Line items are not available in this summary.",
+          "subtotal": "Subtotal",
+          "tax": "Tax",
+          "total": "Total",
+          "notes": "Notes",
+          "reply": "Reply to this message to approve or request changes."
+        },
+        "emailDialog": {
+          "title": "Send Estimate",
+          "recipientEmail": "Recipient email",
+          "messageOptional": "Message (optional)",
+          "helperText": "The estimate link and totals will be added automatically."
+        },
+        "common": {
+          "cancel": "Cancel",
+          "sending": "Sending...",
+          "send": "Send"
+        },
+        "editor": {
+          "errors": {
+            "requiredFields": "Client, title, and issue date are required.",
+            "lineItemRequired": "Add at least one line item.",
+            "saveFailed": "Unable to save estimate."
+          },
+          "title": {
+            "edit": "Edit estimate",
+            "new": "New estimate"
+          },
+          "quoteRequestChip": "Created from quote request",
+          "intro": "Estimate is the proposed price. Convert it to an invoice when payment is needed, or create a work order when the job is ready to schedule.",
+          "fields": {
+            "client": "Client",
+            "clientFallback": "Client #{{id}}",
+            "template": "Template",
+            "estimateTitle": "Estimate title",
+            "estimateNumber": "Estimate number",
+            "currency": "Currency",
+            "currencyHelp": "Starts with your company display currency from settings. You can override it for this estimate.",
+            "currencyTooltip": "This defaults to the company display currency saved in settings. Change it here only when this estimate needs a different currency.",
+            "issueDate": "Issue date",
+            "expiryDate": "Expiry date",
+            "visibleNotes": "Visible notes",
+            "internalNotes": "Internal notes",
+            "notes": "Notes",
+            "terms": "Terms",
+            "discountTotal": "Discount total"
+          },
+          "taxContext": {
+            "title": "Tax & currency context",
+            "displayCurrency": "Display currency",
+            "taxRegion": "Tax country/region",
+            "pricesIncludeTax": "Prices include tax",
+            "defaultTaxRate": "Default tax rate",
+            "on": "ON",
+            "off": "OFF",
+            "includedMessage": "Prices include tax. Tax is backed out from taxable line prices.",
+            "addedMessage": "Tax is added on top based on your company tax settings."
+          },
+          "lineItems": {
+            "title": "Line items",
+            "addLine": "Add line",
+            "taxIncludedPrice": "Tax-included price",
+            "preTaxPrice": "Pre-tax price",
+            "taxableYes": "Yes",
+            "taxableNo": "No",
+            "fields": {
+              "type": "Type",
+              "description": "Description",
+              "qty": "Qty",
+              "unitPrice": "Unit price",
+              "taxPercent": "Tax %",
+              "taxable": "Taxable"
+            },
+            "types": {
+              "service": "Service",
+              "material": "Material",
+              "custom": "Custom"
+            }
+          },
+          "previewInfo": "Preview only. The backend recalculates subtotal, tax, and total using your Business Finance tax settings when you save.",
+          "totals": {
+            "subtotal": "Subtotal",
+            "tax": "Tax",
+            "total": "Total"
+          },
+          "common": {
+            "cancel": "Cancel",
+            "saving": "Saving...",
+            "saveChanges": "Save changes",
+            "createEstimate": "Create estimate"
+          }
+        }
       }
     }
   },

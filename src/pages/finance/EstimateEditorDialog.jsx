@@ -23,6 +23,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTheme } from "@mui/material/styles";
+import { useTranslation } from "react-i18next";
 import { createEstimate, updateEstimate } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
@@ -103,6 +104,11 @@ export default function EstimateEditorDialog({
   taxContext,
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
+  const tEstimate = React.useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.estimates.editor.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const currencyOptions = useMemo(() => getCurrencyOptions(), []);
   const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
@@ -206,11 +212,11 @@ export default function EstimateEditorDialog({
 
   const handleSave = async () => {
     if (!form.client_id || !form.title || !form.issue_date) {
-      setError("Client, title, and issue date are required.");
+      setError(tEstimate("errors.requiredFields", "Client, title, and issue date are required."));
       return;
     }
     if (!form.line_items.some((line) => String(line.description || "").trim())) {
-      setError("Add at least one line item.");
+      setError(tEstimate("errors.lineItemRequired", "Add at least one line item."));
       return;
     }
 
@@ -249,7 +255,7 @@ export default function EstimateEditorDialog({
       onSaved?.(saved);
       onClose?.();
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to save estimate.");
+      setError(err?.response?.data?.error || err?.message || tEstimate("errors.saveFailed", "Unable to save estimate."));
     } finally {
       setLoading(false);
     }
@@ -257,22 +263,25 @@ export default function EstimateEditorDialog({
 
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} fullWidth maxWidth="lg">
-      <DialogTitle>{estimate ? "Edit estimate" : "New estimate"}</DialogTitle>
+      <DialogTitle>{estimate ? tEstimate("title.edit", "Edit estimate") : tEstimate("title.new", "New estimate")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
-            {estimate?.quote_request_id ? <Chip size="small" variant="outlined" color="info" label="Created from quote request" /> : null}
+            {estimate?.quote_request_id ? <Chip size="small" variant="outlined" color="info" label={tEstimate("quoteRequestChip", "Created from quote request")} /> : null}
             <Typography variant="caption" color="text.secondary">
-              Estimate is the proposed price. Convert it to an invoice when payment is needed, or create a work order when the job is ready to schedule.
+              {tEstimate(
+                "intro",
+                "Estimate is the proposed price. Convert it to an invoice when payment is needed, or create a work order when the job is ready to schedule."
+              )}
             </Typography>
           </Stack>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Client</InputLabel>
+                <InputLabel>{tEstimate("fields.client", "Client")}</InputLabel>
                 <Select
-                  label="Client"
+                  label={tEstimate("fields.client", "Client")}
                   value={form.client_id}
                   onChange={(e) => setField("client_id", e.target.value)}
                 >
@@ -280,7 +289,7 @@ export default function EstimateEditorDialog({
                     <MenuItem key={client.id} value={client.id}>
                       {client.first_name || client.last_name
                         ? `${client.first_name || ""} ${client.last_name || ""}`.trim()
-                        : client.email || `Client #${client.id}`}
+                        : client.email || tEstimate("fields.clientFallback", "Client #{{id}}", { id: client.id })}
                     </MenuItem>
                   ))}
                 </Select>
@@ -288,8 +297,8 @@ export default function EstimateEditorDialog({
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Template</InputLabel>
-                <Select label="Template" value="" onChange={(e) => applyTemplate(e.target.value)}>
+                <InputLabel>{tEstimate("fields.template", "Template")}</InputLabel>
+                <Select label={tEstimate("fields.template", "Template")} value="" onChange={(e) => applyTemplate(e.target.value)}>
                   {templates.map((template) => (
                     <MenuItem key={template.id} value={template.id}>
                       {template.name}
@@ -299,22 +308,22 @@ export default function EstimateEditorDialog({
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label="Estimate title" value={form.title} onChange={(e) => setField("title", e.target.value)} />
+              <TextField fullWidth label={tEstimate("fields.estimateTitle", "Estimate title")} value={form.title} onChange={(e) => setField("title", e.target.value)} />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField fullWidth label="Estimate number" value={form.estimate_number} onChange={(e) => setField("estimate_number", e.target.value)} />
+              <TextField fullWidth label={tEstimate("fields.estimateNumber", "Estimate number")} value={form.estimate_number} onChange={(e) => setField("estimate_number", e.target.value)} />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField
                 select
                 fullWidth
-                label="Currency"
+                label={tEstimate("fields.currency", "Currency")}
                 value={form.currency}
                 onChange={(e) => setField("currency", e.target.value)}
-                helperText="Starts with your company display currency from settings. You can override it for this estimate."
+                helperText={tEstimate("fields.currencyHelp", "Starts with your company display currency from settings. You can override it for this estimate.")}
                 InputProps={{
                   endAdornment: (
-                    <Tooltip title="This defaults to the company display currency saved in settings. Change it here only when this estimate needs a different currency.">
+                    <Tooltip title={tEstimate("fields.currencyTooltip", "This defaults to the company display currency saved in settings. Change it here only when this estimate needs a different currency.")}>
                       <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
                     </Tooltip>
                   ),
@@ -334,25 +343,25 @@ export default function EstimateEditorDialog({
               >
                 <Stack spacing={0.75}>
                   <Typography variant="body2" fontWeight={700}>
-                    Tax & currency context
+                    {tEstimate("taxContext.title", "Tax & currency context")}
                   </Typography>
                   <Typography variant="body2">
-                    Display currency: <strong>{effectiveTaxContext?.display_currency || form.currency || "USD"}</strong>
+                    {tEstimate("taxContext.displayCurrency", "Display currency")}: <strong>{effectiveTaxContext?.display_currency || form.currency || "USD"}</strong>
                     {" • "}
-                    Tax country/region: <strong>{effectiveTaxContext?.tax_country_code || "—"} / {effectiveTaxContext?.tax_region_code || "—"}</strong>
+                    {tEstimate("taxContext.taxRegion", "Tax country/region")}: <strong>{effectiveTaxContext?.tax_country_code || "—"} / {effectiveTaxContext?.tax_region_code || "—"}</strong>
                     {" • "}
-                    Prices include tax: <strong>{effectiveTaxContext?.prices_include_tax ? "ON" : "OFF"}</strong>
+                    {tEstimate("taxContext.pricesIncludeTax", "Prices include tax")}: <strong>{effectiveTaxContext?.prices_include_tax ? tEstimate("taxContext.on", "ON") : tEstimate("taxContext.off", "OFF")}</strong>
                     {effectiveTaxContext?.default_tax_rate != null ? (
                       <>
                         {" • "}
-                        Default tax rate: <strong>{Number(effectiveTaxContext.default_tax_rate).toFixed(2)}%</strong>
+                        {tEstimate("taxContext.defaultTaxRate", "Default tax rate")}: <strong>{Number(effectiveTaxContext.default_tax_rate).toFixed(2)}%</strong>
                       </>
                     ) : null}
                   </Typography>
                   <Typography variant="body2">
                     {effectiveTaxContext?.prices_include_tax
-                      ? "Prices include tax. Tax is backed out from taxable line prices."
-                      : "Tax is added on top based on your company tax settings."}
+                      ? tEstimate("taxContext.includedMessage", "Prices include tax. Tax is backed out from taxable line prices.")
+                      : tEstimate("taxContext.addedMessage", "Tax is added on top based on your company tax settings.")}
                   </Typography>
                   {effectiveTaxContext?.warning ? (
                     <Typography variant="body2">{effectiveTaxContext.warning}</Typography>
@@ -363,7 +372,7 @@ export default function EstimateEditorDialog({
             <Grid item xs={12} md={6}>
               <ThemedDateField
                 fullWidth
-                label="Issue date"
+                label={tEstimate("fields.issueDate", "Issue date")}
                 value={form.issue_date}
                 onChange={(e) => setField("issue_date", e.target.value)}
               />
@@ -371,32 +380,32 @@ export default function EstimateEditorDialog({
             <Grid item xs={12} md={6}>
               <ThemedDateField
                 fullWidth
-                label="Expiry date"
+                label={tEstimate("fields.expiryDate", "Expiry date")}
                 value={form.expiry_date}
                 onChange={(e) => setField("expiry_date", e.target.value)}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Visible notes" value={form.visible_notes} onChange={(e) => setField("visible_notes", e.target.value)} multiline minRows={2} />
+              <TextField fullWidth label={tEstimate("fields.visibleNotes", "Visible notes")} value={form.visible_notes} onChange={(e) => setField("visible_notes", e.target.value)} multiline minRows={2} />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label="Internal notes" value={form.internal_notes} onChange={(e) => setField("internal_notes", e.target.value)} multiline minRows={2} />
+              <TextField fullWidth label={tEstimate("fields.internalNotes", "Internal notes")} value={form.internal_notes} onChange={(e) => setField("internal_notes", e.target.value)} multiline minRows={2} />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label="Notes" value={form.notes} onChange={(e) => setField("notes", e.target.value)} multiline minRows={2} />
+              <TextField fullWidth label={tEstimate("fields.notes", "Notes")} value={form.notes} onChange={(e) => setField("notes", e.target.value)} multiline minRows={2} />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label="Terms" value={form.terms} onChange={(e) => setField("terms", e.target.value)} multiline minRows={2} />
+              <TextField fullWidth label={tEstimate("fields.terms", "Terms")} value={form.terms} onChange={(e) => setField("terms", e.target.value)} multiline minRows={2} />
             </Grid>
           </Grid>
 
           <Stack spacing={1.5}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h6" fontWeight={700}>
-                Line items
+                {tEstimate("lineItems.title", "Line items")}
               </Typography>
               <Button startIcon={<AddIcon />} onClick={addLine}>
-                Add line
+                {tEstimate("lineItems.addLine", "Add line")}
               </Button>
             </Stack>
             {form.line_items.map((line) => (
@@ -410,33 +419,33 @@ export default function EstimateEditorDialog({
               >
                 <Grid container spacing={1.5} alignItems="center">
                   <Grid item xs={12} md={2}>
-                    <TextField select fullWidth label="Type" value={line.item_type} onChange={(e) => setLineField(line.id, "item_type", e.target.value)}>
-                      <MenuItem value="service">Service</MenuItem>
-                      <MenuItem value="material">Material</MenuItem>
-                      <MenuItem value="custom">Custom</MenuItem>
+                    <TextField select fullWidth label={tEstimate("lineItems.fields.type", "Type")} value={line.item_type} onChange={(e) => setLineField(line.id, "item_type", e.target.value)}>
+                      <MenuItem value="service">{tEstimate("lineItems.types.service", "Service")}</MenuItem>
+                      <MenuItem value="material">{tEstimate("lineItems.types.material", "Material")}</MenuItem>
+                      <MenuItem value="custom">{tEstimate("lineItems.types.custom", "Custom")}</MenuItem>
                     </TextField>
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <TextField fullWidth label="Description" value={line.description} onChange={(e) => setLineField(line.id, "description", e.target.value)} />
+                    <TextField fullWidth label={tEstimate("lineItems.fields.description", "Description")} value={line.description} onChange={(e) => setLineField(line.id, "description", e.target.value)} />
                   </Grid>
                   <Grid item xs={6} md={1.5}>
-                    <TextField fullWidth label="Qty" type="number" inputProps={{ step: "0.01" }} value={line.quantity} onChange={(e) => setLineField(line.id, "quantity", e.target.value)} />
+                    <TextField fullWidth label={tEstimate("lineItems.fields.qty", "Qty")} type="number" inputProps={{ step: "0.01" }} value={line.quantity} onChange={(e) => setLineField(line.id, "quantity", e.target.value)} />
                   </Grid>
                   <Grid item xs={6} md={2}>
                     <TextField
                       fullWidth
-                      label="Unit price"
+                      label={tEstimate("lineItems.fields.unitPrice", "Unit price")}
                       type="number"
                       inputProps={{ step: "0.01" }}
                       value={line.unit_price}
                       onChange={(e) => setLineField(line.id, "unit_price", e.target.value)}
-                      helperText={effectiveTaxContext?.prices_include_tax ? "Tax-included price" : "Pre-tax price"}
+                      helperText={effectiveTaxContext?.prices_include_tax ? tEstimate("lineItems.taxIncludedPrice", "Tax-included price") : tEstimate("lineItems.preTaxPrice", "Pre-tax price")}
                     />
                   </Grid>
                   <Grid item xs={6} md={1.5}>
                     <TextField
                       fullWidth
-                      label="Tax %"
+                      label={tEstimate("lineItems.fields.taxPercent", "Tax %")}
                       type="number"
                       inputProps={{ step: "0.01" }}
                       value={line.tax_rate}
@@ -448,12 +457,12 @@ export default function EstimateEditorDialog({
                     <TextField
                       select
                       fullWidth
-                      label="Taxable"
+                      label={tEstimate("lineItems.fields.taxable", "Taxable")}
                       value={line.taxable ? "yes" : "no"}
                       onChange={(e) => setLineField(line.id, "taxable", e.target.value === "yes")}
                     >
-                      <MenuItem value="yes">Yes</MenuItem>
-                      <MenuItem value="no">No</MenuItem>
+                      <MenuItem value="yes">{tEstimate("lineItems.taxableYes", "Yes")}</MenuItem>
+                      <MenuItem value="no">{tEstimate("lineItems.taxableNo", "No")}</MenuItem>
                     </TextField>
                   </Grid>
                   <Grid item xs={2} md={0.5}>
@@ -468,18 +477,18 @@ export default function EstimateEditorDialog({
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
-              <TextField fullWidth label="Discount total" type="number" inputProps={{ step: "0.01" }} value={form.discount_total} onChange={(e) => setField("discount_total", e.target.value)} />
+              <TextField fullWidth label={tEstimate("fields.discountTotal", "Discount total")} type="number" inputProps={{ step: "0.01" }} value={form.discount_total} onChange={(e) => setField("discount_total", e.target.value)} />
             </Grid>
             <Grid item xs={12} md={8}>
               <Alert severity="info">
-                Preview only. The backend recalculates subtotal, tax, and total using your Business Finance tax settings when you save.
+                {tEstimate("previewInfo", "Preview only. The backend recalculates subtotal, tax, and total using your Business Finance tax settings when you save.")}
               </Alert>
             </Grid>
             <Grid item xs={12}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <Typography variant="body2">Subtotal: {preview.subtotal.toFixed(2)}</Typography>
-                <Typography variant="body2">Tax: {preview.taxTotal.toFixed(2)}</Typography>
-                <Typography variant="body2">Total: {preview.total.toFixed(2)}</Typography>
+                <Typography variant="body2">{tEstimate("totals.subtotal", "Subtotal")}: {preview.subtotal.toFixed(2)}</Typography>
+                <Typography variant="body2">{tEstimate("totals.tax", "Tax")}: {preview.taxTotal.toFixed(2)}</Typography>
+                <Typography variant="body2">{tEstimate("totals.total", "Total")}: {preview.total.toFixed(2)}</Typography>
               </Stack>
             </Grid>
           </Grid>
@@ -487,10 +496,10 @@ export default function EstimateEditorDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>
-          Cancel
+          {tEstimate("common.cancel", "Cancel")}
         </Button>
         <Button variant="contained" onClick={handleSave} disabled={loading}>
-          {loading ? "Saving..." : estimate ? "Save changes" : "Create estimate"}
+          {loading ? tEstimate("common.saving", "Saving...") : estimate ? tEstimate("common.saveChanges", "Save changes") : tEstimate("common.createEstimate", "Create estimate")}
         </Button>
       </DialogActions>
     </Dialog>
