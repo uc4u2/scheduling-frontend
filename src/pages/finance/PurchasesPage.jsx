@@ -27,6 +27,7 @@ import {
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getActiveCurrency, normalizeCurrency } from "../../utils/currency";
@@ -74,6 +75,11 @@ const formatMoney = (value, currency = "USD") =>
   }).format(Number(value || 0));
 
 function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit }) {
+  const { t } = useTranslation();
+  const tPurchases = React.useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.purchases.dialog.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [form, setForm] = useState(getBlankPurchase());
 
   useEffect(() => {
@@ -107,48 +113,48 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit }) {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>Create purchase</DialogTitle>
+      <DialogTitle>{tPurchases("title", "Create purchase")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 0.25 }}>
-          <Alert severity="info">Receipt files are metadata-only in this phase. Paste links or short notes instead of uploading binaries.</Alert>
+          <Alert severity="info">{tPurchases("receiptInfo", "Receipt files are metadata-only in this phase. Paste links or short notes instead of uploading binaries.")}</Alert>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Vendor</InputLabel>
-                <Select label="Vendor" value={form.vendor_id} onChange={(e) => setField("vendor_id", e.target.value)}>
-                  <MenuItem value="">No linked vendor</MenuItem>
+                <InputLabel>{tPurchases("fields.vendor", "Vendor")}</InputLabel>
+                <Select label={tPurchases("fields.vendor", "Vendor")} value={form.vendor_id} onChange={(e) => setField("vendor_id", e.target.value)}>
+                  <MenuItem value="">{tPurchases("fields.noLinkedVendor", "No linked vendor")}</MenuItem>
                   {vendors.map((vendor) => <MenuItem key={vendor.id} value={vendor.id}>{vendor.name}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Vendor name fallback" value={form.vendor_name} onChange={(e) => setField("vendor_name", e.target.value)} /></Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Currency" value={form.currency} onChange={(e) => setField("currency", e.target.value.toUpperCase())} /></Grid>
-            <Grid item xs={12} md={4}><ThemedDateField fullWidth label="Purchase date" value={form.purchase_date} onChange={(e) => setField("purchase_date", e.target.value)} /></Grid>
-            <Grid item xs={12} md={8}><TextField fullWidth label="Receipt links or notes" value={form.receipt_files_text} onChange={(e) => setField("receipt_files_text", e.target.value)} helperText="One line per link or short file note." /></Grid>
-            <Grid item xs={12}><TextField fullWidth multiline minRows={3} label="Note" value={form.note} onChange={(e) => setField("note", e.target.value)} /></Grid>
-            <Grid item xs={12}><FormControlLabel control={<Checkbox checked={form.create_expense} onChange={(e) => setField("create_expense", e.target.checked)} />} label="Create linked expense record" /></Grid>
+            <Grid item xs={12} md={4}><TextField fullWidth label={tPurchases("fields.vendorNameFallback", "Vendor name fallback")} value={form.vendor_name} onChange={(e) => setField("vendor_name", e.target.value)} /></Grid>
+            <Grid item xs={12} md={4}><TextField fullWidth label={tPurchases("fields.currency", "Currency")} value={form.currency} onChange={(e) => setField("currency", e.target.value.toUpperCase())} /></Grid>
+            <Grid item xs={12} md={4}><ThemedDateField fullWidth label={tPurchases("fields.purchaseDate", "Purchase date")} value={form.purchase_date} onChange={(e) => setField("purchase_date", e.target.value)} /></Grid>
+            <Grid item xs={12} md={8}><TextField fullWidth label={tPurchases("fields.receiptLinksOrNotes", "Receipt links or notes")} value={form.receipt_files_text} onChange={(e) => setField("receipt_files_text", e.target.value)} helperText={tPurchases("fields.receiptLinksHelp", "One line per link or short file note.")} /></Grid>
+            <Grid item xs={12}><TextField fullWidth multiline minRows={3} label={tPurchases("fields.note", "Note")} value={form.note} onChange={(e) => setField("note", e.target.value)} /></Grid>
+            <Grid item xs={12}><FormControlLabel control={<Checkbox checked={form.create_expense} onChange={(e) => setField("create_expense", e.target.checked)} />} label={tPurchases("fields.createLinkedExpense", "Create linked expense record")} /></Grid>
           </Grid>
 
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Stack spacing={1.5}>
               <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Typography variant="h6" fontWeight={800}>Line items</Typography>
-                <Button startIcon={<AddIcon />} onClick={addLine}>Add line</Button>
+                <Typography variant="h6" fontWeight={800}>{tPurchases("lineItems.title", "Line items")}</Typography>
+                <Button startIcon={<AddIcon />} onClick={addLine}>{tPurchases("lineItems.addLine", "Add line")}</Button>
               </Stack>
               {form.line_items.map((line, index) => (
                 <Grid container spacing={2} key={`purchase-line-${index}`} alignItems="center">
                   <Grid item xs={12} md={3}>
                     <FormControl fullWidth>
-                      <InputLabel>Stock item</InputLabel>
-                      <Select label="Stock item" value={line.inventory_item_id} onChange={(e) => setLine(index, "inventory_item_id", e.target.value)}>
+                      <InputLabel>{tPurchases("lineItems.stockItem", "Stock item")}</InputLabel>
+                      <Select label={tPurchases("lineItems.stockItem", "Stock item")} value={line.inventory_item_id} onChange={(e) => setLine(index, "inventory_item_id", e.target.value)}>
                         {inventoryItems.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} md={3}><TextField fullWidth label="Description" value={line.description} onChange={(e) => setLine(index, "description", e.target.value)} /></Grid>
-                  <Grid item xs={12} sm={4} md={2}><TextField fullWidth label="Quantity" value={line.quantity} onChange={(e) => setLine(index, "quantity", e.target.value)} /></Grid>
-                  <Grid item xs={12} sm={4} md={2}><TextField fullWidth label="Unit cost" value={line.unit_cost} onChange={(e) => setLine(index, "unit_cost", e.target.value)} /></Grid>
-                  <Grid item xs={12} sm={4} md={1.5}><TextField fullWidth label="Tax" value={line.tax_amount} onChange={(e) => setLine(index, "tax_amount", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={3}><TextField fullWidth label={tPurchases("lineItems.description", "Description")} value={line.description} onChange={(e) => setLine(index, "description", e.target.value)} /></Grid>
+                  <Grid item xs={12} sm={4} md={2}><TextField fullWidth label={tPurchases("lineItems.quantity", "Quantity")} value={line.quantity} onChange={(e) => setLine(index, "quantity", e.target.value)} /></Grid>
+                  <Grid item xs={12} sm={4} md={2}><TextField fullWidth label={tPurchases("lineItems.unitCost", "Unit cost")} value={line.unit_cost} onChange={(e) => setLine(index, "unit_cost", e.target.value)} /></Grid>
+                  <Grid item xs={12} sm={4} md={1.5}><TextField fullWidth label={tPurchases("lineItems.tax", "Tax")} value={line.tax_amount} onChange={(e) => setLine(index, "tax_amount", e.target.value)} /></Grid>
                   <Grid item xs={12} md={0.5}>
                     <IconButton onClick={() => removeLine(index)} disabled={form.line_items.length === 1}>
                       <DeleteOutlineIcon fontSize="small" />
@@ -156,13 +162,13 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit }) {
                   </Grid>
                 </Grid>
               ))}
-              <Typography variant="body2" color="text.secondary">Estimated total: {formatMoney(computedTotal, form.currency)}</Typography>
+              <Typography variant="body2" color="text.secondary">{tPurchases("lineItems.estimatedTotal", "Estimated total")}: {formatMoney(computedTotal, form.currency)}</Typography>
             </Stack>
           </Paper>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{tPurchases("common.cancel", "Cancel")}</Button>
         <Button
           variant="contained"
           onClick={() => onSubmit({
@@ -185,7 +191,7 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit }) {
             })),
           })}
         >
-          Save purchase
+          {tPurchases("common.savePurchase", "Save purchase")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -193,29 +199,34 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit }) {
 }
 
 function PurchaseDetailDialog({ open, onClose, purchase }) {
+  const { t } = useTranslation();
+  const tPurchases = React.useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.purchases.detail.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Purchase detail</DialogTitle>
+      <DialogTitle>{tPurchases("title", "Purchase detail")}</DialogTitle>
       <DialogContent dividers>
         {purchase ? (
           <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
-              {purchase.vendor_name || purchase.vendor?.name || "No vendor"} • {purchase.purchase_date || "-"} • {purchase.currency || "USD"}
+              {purchase.vendor_name || purchase.vendor?.name || tPurchases("fallbacks.noVendor", "No vendor")} • {purchase.purchase_date || "-"} • {purchase.currency || "USD"}
             </Typography>
-            <Typography variant="body2">Subtotal: {formatMoney(purchase.subtotal, purchase.currency)}</Typography>
-            <Typography variant="body2">Tax: {formatMoney(purchase.tax_total, purchase.currency)}</Typography>
-            <Typography variant="body2">Total: {formatMoney(purchase.total, purchase.currency)}</Typography>
-            <Typography variant="body2">Linked expense: {purchase.linked_expense_id || "Not created"}</Typography>
-            <Typography variant="body2">Note: {purchase.note || "-"}</Typography>
+            <Typography variant="body2">{tPurchases("summary.subtotal", "Subtotal")}: {formatMoney(purchase.subtotal, purchase.currency)}</Typography>
+            <Typography variant="body2">{tPurchases("summary.tax", "Tax")}: {formatMoney(purchase.tax_total, purchase.currency)}</Typography>
+            <Typography variant="body2">{tPurchases("summary.total", "Total")}: {formatMoney(purchase.total, purchase.currency)}</Typography>
+            <Typography variant="body2">{tPurchases("summary.linkedExpense", "Linked expense")}: {purchase.linked_expense_id || tPurchases("fallbacks.notCreated", "Not created")}</Typography>
+            <Typography variant="body2">{tPurchases("summary.note", "Note")}: {purchase.note || "-"}</Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Item</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Quantity</TableCell>
-                  <TableCell>Unit cost</TableCell>
-                  <TableCell>Tax</TableCell>
-                  <TableCell>Line total</TableCell>
+                  <TableCell>{tPurchases("table.headers.item", "Item")}</TableCell>
+                  <TableCell>{tPurchases("table.headers.description", "Description")}</TableCell>
+                  <TableCell>{tPurchases("table.headers.quantity", "Quantity")}</TableCell>
+                  <TableCell>{tPurchases("table.headers.unitCost", "Unit cost")}</TableCell>
+                  <TableCell>{tPurchases("table.headers.tax", "Tax")}</TableCell>
+                  <TableCell>{tPurchases("table.headers.lineTotal", "Line total")}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -234,13 +245,18 @@ function PurchaseDetailDialog({ open, onClose, purchase }) {
           </Stack>
         ) : null}
       </DialogContent>
-      <DialogActions><Button onClick={onClose}>Close</Button></DialogActions>
+      <DialogActions><Button onClick={onClose}>{tPurchases("common.close", "Close")}</Button></DialogActions>
     </Dialog>
   );
 }
 
 export default function PurchasesPage({ createNonce = 0 }) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tPurchases = React.useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.purchases.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [vendors, setVendors] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [purchases, setPurchases] = useState([]);
@@ -268,7 +284,7 @@ export default function PurchasesPage({ createNonce = 0 }) {
       setPurchases(Array.isArray(purchasesRes?.items) ? purchasesRes.items : []);
       setPagination(purchasesRes?.pagination || null);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load purchases.");
+      setError(err?.response?.data?.error || err?.message || tPurchases("errors.loadFailed", "Unable to load purchases."));
     } finally {
       setLoading(false);
     }
@@ -276,6 +292,8 @@ export default function PurchasesPage({ createNonce = 0 }) {
 
   useEffect(() => {
     load();
+    // Filters for this page are pagination-only right now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage]);
 
   useEffect(() => {
@@ -291,11 +309,11 @@ export default function PurchasesPage({ createNonce = 0 }) {
       const res = await createPurchase(payload);
       const warnings = Array.isArray(res?.warnings) ? res.warnings : [];
       setMessages(warnings);
-      enqueueSnackbar("Purchase saved.", { variant: "success" });
+      enqueueSnackbar(tPurchases("snackbar.purchaseSaved", "Purchase saved."), { variant: "success" });
       setEditorOpen(false);
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create purchase.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tPurchases("errors.createFailed", "Unable to create purchase."), { variant: "error" });
     }
   };
 
@@ -304,29 +322,29 @@ export default function PurchasesPage({ createNonce = 0 }) {
       const res = await voidPurchase(purchase.id);
       const warnings = Array.isArray(res?.warnings) ? res.warnings : [];
       setMessages(warnings);
-      enqueueSnackbar("Purchase voided.", { variant: "success" });
+      enqueueSnackbar(tPurchases("snackbar.purchaseVoided", "Purchase voided."), { variant: "success" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to void purchase.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tPurchases("errors.voidFailed", "Unable to void purchase."), { variant: "error" });
     }
   };
 
   return (
     <Stack spacing={2.5}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label="Purchases" value={String(purchases.length)} accent="primary" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label="Total purchase spend" value={formatMoney(totalSpend)} accent="secondary" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label={tPurchases("metrics.purchases", "Purchases")} value={String(purchases.length)} accent="primary" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label={tPurchases("metrics.totalPurchaseSpend", "Total purchase spend")} value={formatMoney(totalSpend)} accent="secondary" /></Grid>
       </Grid>
 
       {messages.map((message) => (
         <Alert key={message} severity={message === "linked_expense_not_reversed" ? "warning" : "info"}>
-          {message === "linked_expense_not_reversed" ? "The linked expense was kept for audit. Reverse it manually if needed." : message}
+          {message === "linked_expense_not_reversed" ? tPurchases("messages.linkedExpenseNotReversed", "The linked expense was kept for audit. Reverse it manually if needed.") : message}
         </Alert>
       ))}
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-          <Button variant="contained" onClick={() => setEditorOpen(true)}>Create purchase</Button>
+          <Button variant="contained" onClick={() => setEditorOpen(true)}>{tPurchases("toolbar.createPurchase", "Create purchase")}</Button>
         </Stack>
       </Paper>
 
@@ -336,9 +354,9 @@ export default function PurchasesPage({ createNonce = 0 }) {
         <Alert severity="error">{error}</Alert>
       ) : purchases.length === 0 ? (
         <FinanceEmptyState
-          title="No purchases yet"
-          description="Create your first purchase."
-          actionLabel="Create purchase"
+          title={tPurchases("empty.title", "No purchases yet")}
+          description={tPurchases("empty.description", "Create your first purchase.")}
+          actionLabel={tPurchases("empty.action", "Create purchase")}
           onAction={() => setEditorOpen(true)}
         />
       ) : (
@@ -346,12 +364,12 @@ export default function PurchasesPage({ createNonce = 0 }) {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Vendor</TableCell>
-                <TableCell>Total</TableCell>
-                <TableCell>Currency</TableCell>
-                <TableCell>Linked expense</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>{tPurchases("table.headers.date", "Date")}</TableCell>
+                <TableCell>{tPurchases("table.headers.vendor", "Vendor")}</TableCell>
+                <TableCell>{tPurchases("table.headers.total", "Total")}</TableCell>
+                <TableCell>{tPurchases("table.headers.currency", "Currency")}</TableCell>
+                <TableCell>{tPurchases("table.headers.linkedExpense", "Linked expense")}</TableCell>
+                <TableCell align="right">{tPurchases("table.headers.actions", "Actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -364,8 +382,8 @@ export default function PurchasesPage({ createNonce = 0 }) {
                   <TableCell>{purchase.linked_expense_id || "-"}</TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button size="small" onClick={() => { setSelectedPurchase(purchase); setDetailOpen(true); }}>View</Button>
-                      <Button size="small" color="warning" onClick={() => handleVoid(purchase)}>Void</Button>
+                      <Button size="small" onClick={() => { setSelectedPurchase(purchase); setDetailOpen(true); }}>{tPurchases("table.view", "View")}</Button>
+                      <Button size="small" color="warning" onClick={() => handleVoid(purchase)}>{tPurchases("table.void", "Void")}</Button>
                     </Stack>
                   </TableCell>
                 </TableRow>

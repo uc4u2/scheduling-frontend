@@ -2549,6 +2549,217 @@
             "note": "备注"
           }
         }
+      },
+      "expenses": {
+        "errors": {
+          "loadFailed": "无法加载费用。",
+          "createCategoryFailed": "无法创建费用分类。",
+          "deleteFailed": "无法删除费用。"
+        },
+        "snackbar": {
+          "categoryNameSlugRequired": "费用分类名称和 slug 为必填项。",
+          "categoryCreated": "费用分类已创建。",
+          "expenseDeleted": "费用已删除。",
+          "expenseUpdated": "费用已更新。",
+          "expenseAdded": "费用已添加。"
+        },
+        "toolbar": {
+          "searchExpenses": "搜索费用",
+          "expenseCategory": "费用分类",
+          "allExpenseCategories": "全部费用分类",
+          "receiptStatus": "收据状态",
+          "allExpenses": "全部费用",
+          "missingReceipts": "缺少收据",
+          "from": "从",
+          "to": "到",
+          "refresh": "刷新",
+          "addExpenseCategory": "添加费用分类",
+          "addExpense": "添加费用"
+        },
+        "receiptInfo": "收据文件上传将在后续添加。当前请在每条费用中粘贴收据链接或附加说明。",
+        "empty": {
+          "title": "还没有费用",
+          "description": "在这里添加业务费用，让每日支出跟踪集中在一个地方。",
+          "action": "添加费用"
+        },
+        "table": {
+          "headers": {
+            "date": "日期",
+            "title": "标题",
+            "vendor": "供应商",
+            "expenseCategory": "费用分类",
+            "amount": "金额",
+            "tax": "税额",
+            "total": "总计",
+            "receipts": "收据",
+            "client": "客户",
+            "actions": "操作"
+          },
+          "uncategorized": "未分类",
+          "savedReceiptCount": "已保存 {{count}} 条",
+          "missingReceipt": "缺少收据",
+          "edit": "编辑",
+          "delete": "删除"
+        },
+        "deleteDialog": {
+          "title": "删除费用",
+          "description": "删除这条费用记录？此操作无法撤销。"
+        },
+        "categoryDialog": {
+          "title": "添加费用分类",
+          "tooltip": "用于费用报表和会计导出。",
+          "categories": "费用分类",
+          "name": "费用分类名称",
+          "slug": "Slug",
+          "slugHelp": "请使用小写单词和短横线。",
+          "expenseGroup": "费用分组",
+          "create": "创建费用分类"
+        },
+        "groups": {
+          "utilitiesTelecom": "水电与通信",
+          "travelMeals": "差旅与餐饮",
+          "officeAdmin": "办公与行政",
+          "operations": "运营",
+          "marketing": "营销",
+          "facilities": "场地设施",
+          "professionalServices": "专业服务",
+          "misc": "杂项"
+        },
+        "common": {
+          "cancel": "取消",
+          "delete": "删除"
+        },
+        "dialog": {
+          "title": {
+            "edit": "编辑费用",
+            "add": "添加费用"
+          },
+          "receiptInfo": "收据文件上传将在后续添加。当前请粘贴收据链接或附加说明。",
+          "categoryTooltip": "用于费用报表和会计导出。",
+          "errors": {
+            "requiredFields": "标题、金额和日期为必填项。",
+            "categoryRequired": "请选择费用分类。",
+            "saveFailed": "无法保存费用。"
+          },
+          "fields": {
+            "title": "标题",
+            "amount": "金额",
+            "tax": "税额",
+            "expenseCategory": "费用分类",
+            "date": "日期",
+            "currency": "币种",
+            "vendor": "供应商",
+            "linkedClient": "关联客户",
+            "none": "无",
+            "clientFallback": "客户 #{{id}}",
+            "linkedEntityType": "关联实体类型",
+            "linkedEntityId": "关联实体 ID",
+            "receiptLinksOrNotes": "收据链接或备注",
+            "receiptLinksHelp": "每行填写一个链接或备注。",
+            "note": "备注",
+            "recurringTemplate": "标记为周期性费用模板"
+          },
+          "common": {
+            "cancel": "取消",
+            "saving": "保存中...",
+            "saveChanges": "保存更改",
+            "addExpense": "添加费用"
+          }
+        }
+      },
+      "purchases": {
+        "errors": {
+          "loadFailed": "无法加载采购。",
+          "createFailed": "无法创建采购。",
+          "voidFailed": "无法作废采购。"
+        },
+        "snackbar": {
+          "purchaseSaved": "采购已保存。",
+          "purchaseVoided": "采购已作废。"
+        },
+        "metrics": {
+          "purchases": "采购数",
+          "totalPurchaseSpend": "采购总支出"
+        },
+        "messages": {
+          "linkedExpenseNotReversed": "关联费用已保留用于审计。如有需要，请手动冲销。"
+        },
+        "toolbar": {
+          "createPurchase": "创建采购"
+        },
+        "empty": {
+          "title": "还没有采购",
+          "description": "创建你的第一条采购记录。",
+          "action": "创建采购"
+        },
+        "table": {
+          "headers": {
+            "date": "日期",
+            "vendor": "供应商",
+            "total": "总计",
+            "currency": "币种",
+            "linkedExpense": "关联费用",
+            "actions": "操作"
+          },
+          "view": "查看",
+          "void": "作废"
+        },
+        "dialog": {
+          "title": "创建采购",
+          "receiptInfo": "当前阶段的收据文件仅作为元数据处理。请粘贴链接或简短说明，而不是上传二进制文件。",
+          "fields": {
+            "vendor": "供应商",
+            "noLinkedVendor": "未关联供应商",
+            "vendorNameFallback": "供应商备用名称",
+            "currency": "币种",
+            "purchaseDate": "采购日期",
+            "receiptLinksOrNotes": "收据链接或备注",
+            "receiptLinksHelp": "每行填写一个链接或简短备注。",
+            "note": "备注",
+            "createLinkedExpense": "创建关联费用记录"
+          },
+          "lineItems": {
+            "title": "行项目",
+            "addLine": "添加行",
+            "stockItem": "库存项目",
+            "description": "描述",
+            "quantity": "数量",
+            "unitCost": "单位成本",
+            "tax": "税额",
+            "estimatedTotal": "预计总额"
+          },
+          "common": {
+            "cancel": "取消",
+            "savePurchase": "保存采购"
+          }
+        },
+        "detail": {
+          "title": "采购详情",
+          "fallbacks": {
+            "noVendor": "无供应商",
+            "notCreated": "未创建"
+          },
+          "summary": {
+            "subtotal": "小计",
+            "tax": "税额",
+            "total": "总计",
+            "linkedExpense": "关联费用",
+            "note": "备注"
+          },
+          "table": {
+            "headers": {
+              "item": "项目",
+              "description": "描述",
+              "quantity": "数量",
+              "unitCost": "单位成本",
+              "tax": "税额",
+              "lineTotal": "行总额"
+            }
+          },
+          "common": {
+            "close": "关闭"
+          }
+        }
       }
     }
   },

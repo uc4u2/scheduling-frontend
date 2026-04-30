@@ -2537,6 +2537,217 @@
             "note": "یادداشت"
           }
         }
+      },
+      "expenses": {
+        "errors": {
+          "loadFailed": "بارگذاری هزینه‌ها انجام نشد.",
+          "createCategoryFailed": "ایجاد دسته‌بندی هزینه انجام نشد.",
+          "deleteFailed": "حذف هزینه انجام نشد."
+        },
+        "snackbar": {
+          "categoryNameSlugRequired": "نام و اسلاگ دسته‌بندی هزینه الزامی است.",
+          "categoryCreated": "دسته‌بندی هزینه ایجاد شد.",
+          "expenseDeleted": "هزینه حذف شد.",
+          "expenseUpdated": "هزینه به‌روزرسانی شد.",
+          "expenseAdded": "هزینه اضافه شد."
+        },
+        "toolbar": {
+          "searchExpenses": "جستجوی هزینه‌ها",
+          "expenseCategory": "دسته‌بندی هزینه",
+          "allExpenseCategories": "همه دسته‌بندی‌های هزینه",
+          "receiptStatus": "وضعیت رسید",
+          "allExpenses": "همه هزینه‌ها",
+          "missingReceipts": "رسیدهای ناقص",
+          "from": "از",
+          "to": "تا",
+          "refresh": "بازخوانی",
+          "addExpenseCategory": "افزودن دسته‌بندی هزینه",
+          "addExpense": "افزودن هزینه"
+        },
+        "receiptInfo": "بارگذاری فایل رسید بعداً اضافه می‌شود. فعلاً لینک رسید یا اطلاعات آن را داخل هر هزینه وارد کنید.",
+        "empty": {
+          "title": "هنوز هزینه‌ای وجود ندارد",
+          "description": "هزینه‌های کسب‌وکار را اینجا ثبت کنید تا پیگیری روزانه خروج پول در یکجا بماند.",
+          "action": "افزودن هزینه"
+        },
+        "table": {
+          "headers": {
+            "date": "تاریخ",
+            "title": "عنوان",
+            "vendor": "فروشنده",
+            "expenseCategory": "دسته‌بندی هزینه",
+            "amount": "مبلغ",
+            "tax": "مالیات",
+            "total": "جمع",
+            "receipts": "رسیدها",
+            "client": "مشتری",
+            "actions": "اقدامات"
+          },
+          "uncategorized": "بدون دسته‌بندی",
+          "savedReceiptCount": "{{count}} ذخیره شده",
+          "missingReceipt": "رسید موجود نیست",
+          "edit": "ویرایش",
+          "delete": "حذف"
+        },
+        "deleteDialog": {
+          "title": "حذف هزینه",
+          "description": "این رکورد هزینه حذف شود؟ این عمل قابل بازگشت نیست."
+        },
+        "categoryDialog": {
+          "title": "افزودن دسته‌بندی هزینه",
+          "tooltip": "برای گزارش هزینه و خروجی حسابداری استفاده می‌شود.",
+          "categories": "دسته‌بندی‌های هزینه",
+          "name": "نام دسته‌بندی هزینه",
+          "slug": "اسلاگ",
+          "slugHelp": "از حروف کوچک و خط تیره استفاده کنید.",
+          "expenseGroup": "گروه هزینه",
+          "create": "ایجاد دسته‌بندی هزینه"
+        },
+        "groups": {
+          "utilitiesTelecom": "خدمات و مخابرات",
+          "travelMeals": "سفر و غذا",
+          "officeAdmin": "اداری و دفتر",
+          "operations": "عملیات",
+          "marketing": "بازاریابی",
+          "facilities": "تأسیسات",
+          "professionalServices": "خدمات حرفه‌ای",
+          "misc": "متفرقه"
+        },
+        "common": {
+          "cancel": "انصراف",
+          "delete": "حذف"
+        },
+        "dialog": {
+          "title": {
+            "edit": "ویرایش هزینه",
+            "add": "افزودن هزینه"
+          },
+          "receiptInfo": "بارگذاری فایل رسید بعداً اضافه می‌شود. فعلاً لینک رسید یا اطلاعات آن را وارد کنید.",
+          "categoryTooltip": "برای گزارش هزینه و خروجی حسابداری استفاده می‌شود.",
+          "errors": {
+            "requiredFields": "عنوان، مبلغ و تاریخ الزامی است.",
+            "categoryRequired": "یک دسته‌بندی هزینه انتخاب کنید.",
+            "saveFailed": "ذخیره هزینه انجام نشد."
+          },
+          "fields": {
+            "title": "عنوان",
+            "amount": "مبلغ",
+            "tax": "مالیات",
+            "expenseCategory": "دسته‌بندی هزینه",
+            "date": "تاریخ",
+            "currency": "ارز",
+            "vendor": "فروشنده",
+            "linkedClient": "مشتری مرتبط",
+            "none": "هیچ‌کدام",
+            "clientFallback": "مشتری #{{id}}",
+            "linkedEntityType": "نوع موجودیت مرتبط",
+            "linkedEntityId": "شناسه موجودیت مرتبط",
+            "receiptLinksOrNotes": "لینک‌ها یا یادداشت‌های رسید",
+            "receiptLinksHelp": "در هر خط یک لینک یا یادداشت وارد کنید.",
+            "note": "یادداشت",
+            "recurringTemplate": "علامت‌گذاری به‌عنوان الگوی هزینه تکرارشونده"
+          },
+          "common": {
+            "cancel": "انصراف",
+            "saving": "در حال ذخیره...",
+            "saveChanges": "ذخیره تغییرات",
+            "addExpense": "افزودن هزینه"
+          }
+        }
+      },
+      "purchases": {
+        "errors": {
+          "loadFailed": "بارگذاری خریدها انجام نشد.",
+          "createFailed": "ایجاد خرید انجام نشد.",
+          "voidFailed": "باطل کردن خرید انجام نشد."
+        },
+        "snackbar": {
+          "purchaseSaved": "خرید ذخیره شد.",
+          "purchaseVoided": "خرید باطل شد."
+        },
+        "metrics": {
+          "purchases": "خریدها",
+          "totalPurchaseSpend": "جمع هزینه خرید"
+        },
+        "messages": {
+          "linkedExpenseNotReversed": "هزینه مرتبط برای حسابرسی نگه داشته شد. در صورت نیاز آن را دستی معکوس کنید."
+        },
+        "toolbar": {
+          "createPurchase": "ایجاد خرید"
+        },
+        "empty": {
+          "title": "هنوز خریدی وجود ندارد",
+          "description": "اولین خرید خود را ایجاد کنید.",
+          "action": "ایجاد خرید"
+        },
+        "table": {
+          "headers": {
+            "date": "تاریخ",
+            "vendor": "فروشنده",
+            "total": "جمع",
+            "currency": "ارز",
+            "linkedExpense": "هزینه مرتبط",
+            "actions": "اقدامات"
+          },
+          "view": "مشاهده",
+          "void": "باطل"
+        },
+        "dialog": {
+          "title": "ایجاد خرید",
+          "receiptInfo": "فایل‌های رسید در این فاز فقط به‌صورت متادیتا هستند. به‌جای بارگذاری فایل، لینک یا یادداشت کوتاه وارد کنید.",
+          "fields": {
+            "vendor": "فروشنده",
+            "noLinkedVendor": "فروشنده مرتبط ندارد",
+            "vendorNameFallback": "نام جایگزین فروشنده",
+            "currency": "ارز",
+            "purchaseDate": "تاریخ خرید",
+            "receiptLinksOrNotes": "لینک‌ها یا یادداشت‌های رسید",
+            "receiptLinksHelp": "در هر خط یک لینک یا یادداشت کوتاه وارد کنید.",
+            "note": "یادداشت",
+            "createLinkedExpense": "ایجاد رکورد هزینه مرتبط"
+          },
+          "lineItems": {
+            "title": "اقلام",
+            "addLine": "افزودن ردیف",
+            "stockItem": "قلم موجودی",
+            "description": "شرح",
+            "quantity": "تعداد",
+            "unitCost": "هزینه واحد",
+            "tax": "مالیات",
+            "estimatedTotal": "جمع برآوردی"
+          },
+          "common": {
+            "cancel": "انصراف",
+            "savePurchase": "ذخیره خرید"
+          }
+        },
+        "detail": {
+          "title": "جزئیات خرید",
+          "fallbacks": {
+            "noVendor": "فروشنده ندارد",
+            "notCreated": "ایجاد نشده"
+          },
+          "summary": {
+            "subtotal": "جمع جزء",
+            "tax": "مالیات",
+            "total": "جمع کل",
+            "linkedExpense": "هزینه مرتبط",
+            "note": "یادداشت"
+          },
+          "table": {
+            "headers": {
+              "item": "قلم",
+              "description": "شرح",
+              "quantity": "تعداد",
+              "unitCost": "هزینه واحد",
+              "tax": "مالیات",
+              "lineTotal": "جمع ردیف"
+            }
+          },
+          "common": {
+            "close": "بستن"
+          }
+        }
       }
     }
   },
