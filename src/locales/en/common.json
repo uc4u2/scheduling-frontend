@@ -2575,6 +2575,217 @@
             "note": "Note"
           }
         }
+      },
+      "expenses": {
+        "errors": {
+          "loadFailed": "Unable to load expenses.",
+          "createCategoryFailed": "Unable to create expense category.",
+          "deleteFailed": "Unable to delete expense."
+        },
+        "snackbar": {
+          "categoryNameSlugRequired": "Expense category name and slug are required.",
+          "categoryCreated": "Expense category created.",
+          "expenseDeleted": "Expense deleted.",
+          "expenseUpdated": "Expense updated.",
+          "expenseAdded": "Expense added."
+        },
+        "toolbar": {
+          "searchExpenses": "Search expenses",
+          "expenseCategory": "Expense Category",
+          "allExpenseCategories": "All expense categories",
+          "receiptStatus": "Receipt status",
+          "allExpenses": "All expenses",
+          "missingReceipts": "Missing receipts",
+          "from": "From",
+          "to": "To",
+          "refresh": "Refresh",
+          "addExpenseCategory": "Add Expense Category",
+          "addExpense": "Add Expense"
+        },
+        "receiptInfo": "Receipt file upload will be added later. For now, paste a receipt link or attach metadata in each expense.",
+        "empty": {
+          "title": "No expenses yet",
+          "description": "Add business expenses here so your daily money-out tracking stays in one place.",
+          "action": "Add expense"
+        },
+        "table": {
+          "headers": {
+            "date": "Date",
+            "title": "Title",
+            "vendor": "Vendor",
+            "expenseCategory": "Expense Category",
+            "amount": "Amount",
+            "tax": "Tax",
+            "total": "Total",
+            "receipts": "Receipts",
+            "client": "Client",
+            "actions": "Actions"
+          },
+          "uncategorized": "Uncategorized",
+          "savedReceiptCount": "{{count}} saved",
+          "missingReceipt": "Missing receipt",
+          "edit": "Edit",
+          "delete": "Delete"
+        },
+        "deleteDialog": {
+          "title": "Delete expense",
+          "description": "Delete this expense record? This action cannot be undone."
+        },
+        "categoryDialog": {
+          "title": "Add Expense Category",
+          "tooltip": "Used for expense reports and accountant exports.",
+          "categories": "Expense categories",
+          "name": "Expense category name",
+          "slug": "Slug",
+          "slugHelp": "Use lowercase words with dashes.",
+          "expenseGroup": "Expense group",
+          "create": "Create expense category"
+        },
+        "groups": {
+          "utilitiesTelecom": "Utilities & Telecom",
+          "travelMeals": "Travel & Meals",
+          "officeAdmin": "Office & Admin",
+          "operations": "Operations",
+          "marketing": "Marketing",
+          "facilities": "Facilities",
+          "professionalServices": "Professional Services",
+          "misc": "Misc"
+        },
+        "common": {
+          "cancel": "Cancel",
+          "delete": "Delete"
+        },
+        "dialog": {
+          "title": {
+            "edit": "Edit expense",
+            "add": "Add expense"
+          },
+          "receiptInfo": "Receipt file upload will be added later. For now, paste a receipt link or attach metadata.",
+          "categoryTooltip": "Used for expense reports and accountant exports.",
+          "errors": {
+            "requiredFields": "Title, amount, and date are required.",
+            "categoryRequired": "Choose an expense category.",
+            "saveFailed": "Unable to save expense."
+          },
+          "fields": {
+            "title": "Title",
+            "amount": "Amount",
+            "tax": "Tax",
+            "expenseCategory": "Expense Category",
+            "date": "Date",
+            "currency": "Currency",
+            "vendor": "Vendor",
+            "linkedClient": "Linked client",
+            "none": "None",
+            "clientFallback": "Client #{{id}}",
+            "linkedEntityType": "Linked entity type",
+            "linkedEntityId": "Linked entity ID",
+            "receiptLinksOrNotes": "Receipt links or notes",
+            "receiptLinksHelp": "Use one link or note per line.",
+            "note": "Note",
+            "recurringTemplate": "Mark as recurring expense template"
+          },
+          "common": {
+            "cancel": "Cancel",
+            "saving": "Saving...",
+            "saveChanges": "Save changes",
+            "addExpense": "Add expense"
+          }
+        }
+      },
+      "purchases": {
+        "errors": {
+          "loadFailed": "Unable to load purchases.",
+          "createFailed": "Unable to create purchase.",
+          "voidFailed": "Unable to void purchase."
+        },
+        "snackbar": {
+          "purchaseSaved": "Purchase saved.",
+          "purchaseVoided": "Purchase voided."
+        },
+        "metrics": {
+          "purchases": "Purchases",
+          "totalPurchaseSpend": "Total purchase spend"
+        },
+        "messages": {
+          "linkedExpenseNotReversed": "The linked expense was kept for audit. Reverse it manually if needed."
+        },
+        "toolbar": {
+          "createPurchase": "Create purchase"
+        },
+        "empty": {
+          "title": "No purchases yet",
+          "description": "Create your first purchase.",
+          "action": "Create purchase"
+        },
+        "table": {
+          "headers": {
+            "date": "Date",
+            "vendor": "Vendor",
+            "total": "Total",
+            "currency": "Currency",
+            "linkedExpense": "Linked expense",
+            "actions": "Actions"
+          },
+          "view": "View",
+          "void": "Void"
+        },
+        "dialog": {
+          "title": "Create purchase",
+          "receiptInfo": "Receipt files are metadata-only in this phase. Paste links or short notes instead of uploading binaries.",
+          "fields": {
+            "vendor": "Vendor",
+            "noLinkedVendor": "No linked vendor",
+            "vendorNameFallback": "Vendor name fallback",
+            "currency": "Currency",
+            "purchaseDate": "Purchase date",
+            "receiptLinksOrNotes": "Receipt links or notes",
+            "receiptLinksHelp": "One line per link or short file note.",
+            "note": "Note",
+            "createLinkedExpense": "Create linked expense record"
+          },
+          "lineItems": {
+            "title": "Line items",
+            "addLine": "Add line",
+            "stockItem": "Stock item",
+            "description": "Description",
+            "quantity": "Quantity",
+            "unitCost": "Unit cost",
+            "tax": "Tax",
+            "estimatedTotal": "Estimated total"
+          },
+          "common": {
+            "cancel": "Cancel",
+            "savePurchase": "Save purchase"
+          }
+        },
+        "detail": {
+          "title": "Purchase detail",
+          "fallbacks": {
+            "noVendor": "No vendor",
+            "notCreated": "Not created"
+          },
+          "summary": {
+            "subtotal": "Subtotal",
+            "tax": "Tax",
+            "total": "Total",
+            "linkedExpense": "Linked expense",
+            "note": "Note"
+          },
+          "table": {
+            "headers": {
+              "item": "Item",
+              "description": "Description",
+              "quantity": "Quantity",
+              "unitCost": "Unit cost",
+              "tax": "Tax",
+              "lineTotal": "Line total"
+            }
+          },
+          "common": {
+            "close": "Close"
+          }
+        }
       }
     }
   },

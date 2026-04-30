@@ -2547,6 +2547,217 @@
             "note": "Заметка"
           }
         }
+      },
+      "expenses": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить расходы.",
+          "createCategoryFailed": "Не удалось создать категорию расходов.",
+          "deleteFailed": "Не удалось удалить расход."
+        },
+        "snackbar": {
+          "categoryNameSlugRequired": "Название и slug категории расходов обязательны.",
+          "categoryCreated": "Категория расходов создана.",
+          "expenseDeleted": "Расход удалён.",
+          "expenseUpdated": "Расход обновлён.",
+          "expenseAdded": "Расход добавлен."
+        },
+        "toolbar": {
+          "searchExpenses": "Поиск расходов",
+          "expenseCategory": "Категория расходов",
+          "allExpenseCategories": "Все категории расходов",
+          "receiptStatus": "Статус чека",
+          "allExpenses": "Все расходы",
+          "missingReceipts": "Нет чеков",
+          "from": "От",
+          "to": "До",
+          "refresh": "Обновить",
+          "addExpenseCategory": "Добавить категорию расходов",
+          "addExpense": "Добавить расход"
+        },
+        "receiptInfo": "Загрузка файлов чеков будет добавлена позже. Пока вставляйте ссылку на чек или метаданные в каждый расход.",
+        "empty": {
+          "title": "Расходов пока нет",
+          "description": "Добавляйте бизнес-расходы здесь, чтобы ежедневный учёт денежных расходов был в одном месте.",
+          "action": "Добавить расход"
+        },
+        "table": {
+          "headers": {
+            "date": "Дата",
+            "title": "Название",
+            "vendor": "Поставщик",
+            "expenseCategory": "Категория расходов",
+            "amount": "Сумма",
+            "tax": "Налог",
+            "total": "Итого",
+            "receipts": "Чеки",
+            "client": "Клиент",
+            "actions": "Действия"
+          },
+          "uncategorized": "Без категории",
+          "savedReceiptCount": "сохранено: {{count}}",
+          "missingReceipt": "Чек отсутствует",
+          "edit": "Редактировать",
+          "delete": "Удалить"
+        },
+        "deleteDialog": {
+          "title": "Удалить расход",
+          "description": "Удалить эту запись расхода? Это действие нельзя отменить."
+        },
+        "categoryDialog": {
+          "title": "Добавить категорию расходов",
+          "tooltip": "Используется для отчётов по расходам и бухгалтерского экспорта.",
+          "categories": "Категории расходов",
+          "name": "Название категории расходов",
+          "slug": "Slug",
+          "slugHelp": "Используйте строчные буквы и дефисы.",
+          "expenseGroup": "Группа расходов",
+          "create": "Создать категорию расходов"
+        },
+        "groups": {
+          "utilitiesTelecom": "Коммунальные услуги и связь",
+          "travelMeals": "Поездки и питание",
+          "officeAdmin": "Офис и администрирование",
+          "operations": "Операции",
+          "marketing": "Маркетинг",
+          "facilities": "Помещения",
+          "professionalServices": "Профессиональные услуги",
+          "misc": "Прочее"
+        },
+        "common": {
+          "cancel": "Отмена",
+          "delete": "Удалить"
+        },
+        "dialog": {
+          "title": {
+            "edit": "Редактировать расход",
+            "add": "Добавить расход"
+          },
+          "receiptInfo": "Загрузка файлов чеков будет добавлена позже. Пока вставляйте ссылку на чек или метаданные.",
+          "categoryTooltip": "Используется для отчётов по расходам и бухгалтерского экспорта.",
+          "errors": {
+            "requiredFields": "Название, сумма и дата обязательны.",
+            "categoryRequired": "Выберите категорию расходов.",
+            "saveFailed": "Не удалось сохранить расход."
+          },
+          "fields": {
+            "title": "Название",
+            "amount": "Сумма",
+            "tax": "Налог",
+            "expenseCategory": "Категория расходов",
+            "date": "Дата",
+            "currency": "Валюта",
+            "vendor": "Поставщик",
+            "linkedClient": "Связанный клиент",
+            "none": "Нет",
+            "clientFallback": "Клиент #{{id}}",
+            "linkedEntityType": "Тип связанной сущности",
+            "linkedEntityId": "ID связанной сущности",
+            "receiptLinksOrNotes": "Ссылки на чеки или заметки",
+            "receiptLinksHelp": "Одна ссылка или заметка на строку.",
+            "note": "Заметка",
+            "recurringTemplate": "Отметить как шаблон повторяющегося расхода"
+          },
+          "common": {
+            "cancel": "Отмена",
+            "saving": "Сохранение...",
+            "saveChanges": "Сохранить изменения",
+            "addExpense": "Добавить расход"
+          }
+        }
+      },
+      "purchases": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить закупки.",
+          "createFailed": "Не удалось создать закупку.",
+          "voidFailed": "Не удалось аннулировать закупку."
+        },
+        "snackbar": {
+          "purchaseSaved": "Закупка сохранена.",
+          "purchaseVoided": "Закупка аннулирована."
+        },
+        "metrics": {
+          "purchases": "Закупки",
+          "totalPurchaseSpend": "Общая сумма закупок"
+        },
+        "messages": {
+          "linkedExpenseNotReversed": "Связанный расход сохранён для аудита. При необходимости сторнируйте его вручную."
+        },
+        "toolbar": {
+          "createPurchase": "Создать закупку"
+        },
+        "empty": {
+          "title": "Закупок пока нет",
+          "description": "Создайте первую закупку.",
+          "action": "Создать закупку"
+        },
+        "table": {
+          "headers": {
+            "date": "Дата",
+            "vendor": "Поставщик",
+            "total": "Итого",
+            "currency": "Валюта",
+            "linkedExpense": "Связанный расход",
+            "actions": "Действия"
+          },
+          "view": "Открыть",
+          "void": "Аннулировать"
+        },
+        "dialog": {
+          "title": "Создать закупку",
+          "receiptInfo": "Файлы чеков на этом этапе только как метаданные. Вместо загрузки файлов вставляйте ссылки или короткие заметки.",
+          "fields": {
+            "vendor": "Поставщик",
+            "noLinkedVendor": "Нет связанного поставщика",
+            "vendorNameFallback": "Резервное имя поставщика",
+            "currency": "Валюта",
+            "purchaseDate": "Дата закупки",
+            "receiptLinksOrNotes": "Ссылки на чеки или заметки",
+            "receiptLinksHelp": "Одна ссылка или короткая заметка на строку.",
+            "note": "Заметка",
+            "createLinkedExpense": "Создать связанную запись расхода"
+          },
+          "lineItems": {
+            "title": "Позиции",
+            "addLine": "Добавить строку",
+            "stockItem": "Складская позиция",
+            "description": "Описание",
+            "quantity": "Количество",
+            "unitCost": "Себестоимость",
+            "tax": "Налог",
+            "estimatedTotal": "Оценочный итог"
+          },
+          "common": {
+            "cancel": "Отмена",
+            "savePurchase": "Сохранить закупку"
+          }
+        },
+        "detail": {
+          "title": "Детали закупки",
+          "fallbacks": {
+            "noVendor": "Нет поставщика",
+            "notCreated": "Не создан"
+          },
+          "summary": {
+            "subtotal": "Подытог",
+            "tax": "Налог",
+            "total": "Итого",
+            "linkedExpense": "Связанный расход",
+            "note": "Заметка"
+          },
+          "table": {
+            "headers": {
+              "item": "Позиция",
+              "description": "Описание",
+              "quantity": "Количество",
+              "unitCost": "Себестоимость",
+              "tax": "Налог",
+              "lineTotal": "Сумма строки"
+            }
+          },
+          "common": {
+            "close": "Закрыть"
+          }
+        }
       }
     }
   },
