@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -12,7 +12,9 @@ import {
   Divider,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
+  Menu,
   MenuItem,
   Paper,
   Select,
@@ -29,6 +31,13 @@ import {
 import { useSnackbar } from "notistack";
 import { useTheme } from "@mui/material/styles";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import AddTaskOutlinedIcon from "@mui/icons-material/AddTaskOutlined";
+import LinkIcon from "@mui/icons-material/Link";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
+import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import {
@@ -72,7 +81,8 @@ const formatSourceLabel = (requestType, sourceType) => {
 };
 
 const hasEmailMismatch = (item) =>
-  normalizeText(item?.contact_email) && normalizeText(item?.client_email) &&
+  normalizeText(item?.contact_email) &&
+  normalizeText(item?.client_email) &&
   normalizeText(item.contact_email) !== normalizeText(item.client_email);
 
 const hasNameMismatch = (item) => {
@@ -82,6 +92,71 @@ const hasNameMismatch = (item) => {
   if (contact === client) return false;
   return !contact.includes(client) && !client.includes(contact);
 };
+
+const compactChipSx = {
+  height: 24,
+  borderRadius: 1.5,
+  "& .MuiChip-label": {
+    px: 1,
+    fontWeight: 600,
+  },
+};
+
+function QuoteActionMenu({ item, actions }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleClose = () => setAnchorEl(null);
+  const run = (fn) => () => {
+    handleClose();
+    fn?.();
+  };
+
+  return (
+    <>
+      <Tooltip title="More actions">
+        <IconButton size="small" onClick={handleOpen}>
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{ sx: { minWidth: 260, borderRadius: 2 } }}
+      >
+        {actions.map((action, index) => {
+          if (action.type === "divider") {
+            return <Divider key={`divider-${item.id}-${index}`} />;
+          }
+          return (
+            <MenuItem
+              key={`${item.id}-${action.label}`}
+              onClick={run(action.onClick)}
+              disabled={action.disabled}
+              sx={{ py: 1 }}
+            >
+              {action.icon ? <Box sx={{ mr: 1.5, display: "inline-flex", color: "text.secondary" }}>{action.icon}</Box> : null}
+              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                <Typography variant="body2" fontWeight={600} noWrap>
+                  {action.label}
+                </Typography>
+                {action.help ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "normal", lineHeight: 1.35 }}>
+                    {action.help}
+                  </Typography>
+                ) : null}
+              </Stack>
+            </MenuItem>
+          );
+        })}
+      </Menu>
+    </>
+  );
+}
 
 export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const theme = useTheme();
@@ -105,7 +180,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const [newClient, setNewClient] = useState({ name: "", email: "", phone: "" });
   const [confirmEstimateTarget, setConfirmEstimateTarget] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -126,11 +201,11 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, perPage, search, status]);
 
   useEffect(() => {
     load();
-  }, [status, page, perPage]);
+  }, [load]);
 
   useEffect(() => {
     if (createNonce) {
@@ -252,37 +327,73 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     }
   };
 
+  const quoteCountLabel = pagination?.total || items.length;
+
   return (
     <Stack spacing={2}>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-          <TextField
-            size="small"
-            label="Search quotes"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") load();
-            }}
-          />
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>Status</InputLabel>
-            <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-              <MenuItem value="">All statuses</MenuItem>
-              <MenuItem value="new">New</MenuItem>
-              <MenuItem value="reviewed">Reviewed</MenuItem>
-              <MenuItem value="estimate_created">Estimate Created</MenuItem>
-              <MenuItem value="closed">Closed</MenuItem>
-              <MenuItem value="rejected">Rejected</MenuItem>
-            </Select>
-          </FormControl>
-          <Button variant="outlined" onClick={load}>Refresh</Button>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          borderRadius: 3,
+          borderColor: "divider",
+          background: (themeArg) => themeArg.palette.background.paper,
+        }}
+      >
+        <Stack spacing={2}>
+          <Stack direction={{ xs: "column", lg: "row" }} spacing={2} justifyContent="space-between" alignItems={{ lg: "flex-start" }}>
+            <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+              <Typography variant="h5" fontWeight={800}>
+                Quote Requests
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
+                Capture custom job intake cleanly, verify the right client, and move the request into estimate workflow without losing source, contact, or timeline context.
+              </Typography>
+            </Stack>
+            <Button variant="contained" startIcon={<AddTaskOutlinedIcon />} onClick={openCreate}>
+              New Quote
+            </Button>
+          </Stack>
+
+          <Stack direction={{ xs: "column", xl: "row" }} spacing={1.5} alignItems={{ xl: "center" }} justifyContent="space-between">
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ flex: 1 }}>
+              <TextField
+                size="small"
+                label="Search quotes"
+                placeholder="Title, contact, client, or source"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") load();
+                }}
+                sx={{ minWidth: { xs: "100%", md: 320 } }}
+              />
+              <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 180 } }}>
+                <InputLabel>Status</InputLabel>
+                <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+                  <MenuItem value="">All statuses</MenuItem>
+                  <MenuItem value="new">New</MenuItem>
+                  <MenuItem value="reviewed">Reviewed</MenuItem>
+                  <MenuItem value="estimate_created">Estimate Created</MenuItem>
+                  <MenuItem value="closed">Closed</MenuItem>
+                  <MenuItem value="rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+              <Button variant="outlined" onClick={load} sx={{ minWidth: 110 }}>
+                Refresh
+              </Button>
+            </Stack>
+            <Chip
+              label={`${quoteCountLabel} quote${Number(quoteCountLabel) === 1 ? "" : "s"}`}
+              variant="outlined"
+              sx={{ alignSelf: { xs: "flex-start", xl: "center" }, fontWeight: 700 }}
+            />
+          </Stack>
         </Stack>
-        <Button variant="contained" onClick={openCreate}>New Quote</Button>
-      </Stack>
+      </Paper>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
@@ -296,100 +407,229 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
           onAction={openCreate}
         />
       ) : (
-        <Paper variant="outlined" sx={{ overflowX: "auto" }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <Typography variant="inherit">Source</Typography>
-                    <Tooltip title="This is a source label unless automation is connected.">
-                      <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                    </Tooltip>
-                  </Stack>
-                </TableCell>
-                <TableCell>Request Contact</TableCell>
-                <TableCell>Linked Client</TableCell>
-                <TableCell>Timeline</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell>
-                    <Typography fontWeight={700}>{item.title}</Typography>
-                    {item.request_type ? <Typography variant="body2" color="text.secondary">{item.request_type}</Typography> : null}
-                  </TableCell>
-                  <TableCell><FinanceStatusChip status={item.status} /></TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatSourceLabel(item.request_type, item.source_type)}</Typography>
-                    {item.source_ref ? <Typography variant="body2" color="text.secondary">{item.source_ref}</Typography> : null}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{item.contact_name || "-"}</Typography>
-                    <Typography variant="body2" color="text.secondary">{item.contact_email || "-"}</Typography>
-                    <Typography variant="body2" color="text.secondary">{item.contact_phone || "-"}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Stack spacing={0.75}>
-                      <Box>
-                        <Typography variant="body2">{item.client_name || "Not linked"}</Typography>
-                        <Typography variant="body2" color="text.secondary">{item.client_email || ""}</Typography>
-                      </Box>
-                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          color={item.client_id ? "success" : "default"}
-                          label={item.client_id ? "Linked" : "Not linked"}
-                        />
-                        {hasEmailMismatch(item) ? (
-                          <Chip size="small" variant="outlined" color="warning" label="Contact differs from client" />
-                        ) : null}
-                        {hasNameMismatch(item) ? (
-                          <Chip size="small" variant="outlined" color="warning" label="Check client match" />
-                        ) : null}
-                      </Stack>
+        <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: 3 }}>
+          <Box sx={{ overflowX: "auto" }}>
+            <Table sx={{ minWidth: 1500 }}>
+              <TableHead>
+                <TableRow
+                  sx={{
+                    bgcolor: "background.default",
+                    "& .MuiTableCell-root": {
+                      fontWeight: 800,
+                      fontSize: 12,
+                      letterSpacing: 0.2,
+                      textTransform: "uppercase",
+                      color: "text.secondary",
+                      whiteSpace: "nowrap",
+                    },
+                  }}
+                >
+                  <TableCell sx={{ minWidth: 250 }}>Title</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Status</TableCell>
+                  <TableCell sx={{ minWidth: 220 }}>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Typography variant="inherit">Source</Typography>
+                      <Tooltip title="This is a source label unless automation is connected.">
+                        <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                      </Tooltip>
                     </Stack>
                   </TableCell>
-                  <TableCell>{item.preferred_timeline || "-"}</TableCell>
-                  <TableCell>{item.created_at ? formatDateTimeInTz(item.created_at, timezone) : "-"}</TableCell>
-                  <TableCell sx={{ maxWidth: 260 }}>
-                    <Typography variant="body2" color="text.secondary">{item.description || "-"}</Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      justifyContent="flex-end"
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      <Button size="small" onClick={() => openEdit(item)}>Edit</Button>
-                      <Button size="small" onClick={() => patchStatus(item, "reviewed")}>Mark Reviewed</Button>
-                      <Button size="small" onClick={() => openLinkClientDialog(item, !item.client_id)}>Link or Create Client</Button>
-                      {item.status === "estimate_created" ? (
-                        <Button size="small" variant="outlined" onClick={() => onNavigate?.("finance-estimates")}>
-                          Open Estimates
-                        </Button>
-                      ) : (
-                        <Button size="small" variant="contained" onClick={() => handleCreateEstimate(item)} disabled={!item.client_id}>
-                          Create Estimate
-                        </Button>
-                      )}
-                      <Button size="small" color="warning" onClick={() => patchStatus(item, "closed")}>Close</Button>
-                      <Button size="small" color="error" onClick={() => patchStatus(item, "rejected")}>Reject</Button>
-                    </Stack>
-                  </TableCell>
+                  <TableCell sx={{ minWidth: 220 }}>Request Contact</TableCell>
+                  <TableCell sx={{ minWidth: 260 }}>Linked Client</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Timeline</TableCell>
+                  <TableCell sx={{ minWidth: 176 }}>Created</TableCell>
+                  <TableCell sx={{ minWidth: 280 }}>Description</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 330 }}>Actions</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {items.map((item) => {
+                  const hasLinkedClient = Boolean(item.client_id);
+                  const hasEstimate = item.status === "estimate_created";
+                  const primaryActions = hasEstimate
+                    ? [{ key: "open-estimates", label: "Open Estimates", icon: <DescriptionOutlinedIcon fontSize="small" />, onClick: () => onNavigate?.("finance-estimates"), variant: "contained" }]
+                    : hasLinkedClient
+                      ? [{ key: "create-estimate", label: "Create Estimate", icon: <AddTaskOutlinedIcon fontSize="small" />, onClick: () => handleCreateEstimate(item), variant: "contained" }]
+                      : [{ key: "link-client", label: "Link / Create Client", icon: <LinkIcon fontSize="small" />, onClick: () => openLinkClientDialog(item, true), variant: "contained" }];
+                  const menuActions = [
+                    {
+                      label: "Edit",
+                      help: "Open the quote request editor to update intake details, contact info, notes, or service address.",
+                      icon: <EditOutlinedIcon fontSize="small" />,
+                      onClick: () => openEdit(item),
+                    },
+                    {
+                      label: "Mark Reviewed",
+                      help: "Use when the quote request has been triaged and is ready for the next manager step.",
+                      icon: <TaskAltOutlinedIcon fontSize="small" />,
+                      onClick: () => patchStatus(item, "reviewed"),
+                    },
+                    {
+                      label: "Link or Create Client",
+                      help: "Connect the request to the official client record used for estimates, invoices, and work orders.",
+                      icon: <LinkIcon fontSize="small" />,
+                      onClick: () => openLinkClientDialog(item, !item.client_id),
+                    },
+                    {
+                      label: "Create Estimate",
+                      help: "Create the estimate after the right client is linked and the request details are confirmed.",
+                      icon: <AddTaskOutlinedIcon fontSize="small" />,
+                      onClick: () => handleCreateEstimate(item),
+                      disabled: !item.client_id,
+                    },
+                    {
+                      label: "Open Estimates",
+                      help: "Jump to the estimates workspace after an estimate has already been created from this quote.",
+                      icon: <DescriptionOutlinedIcon fontSize="small" />,
+                      onClick: () => onNavigate?.("finance-estimates"),
+                      disabled: !hasEstimate,
+                    },
+                    { type: "divider" },
+                    {
+                      label: "Close",
+                      help: "Use when the request is finished and does not need more follow-up.",
+                      icon: <TaskAltOutlinedIcon fontSize="small" />,
+                      onClick: () => patchStatus(item, "closed"),
+                    },
+                    {
+                      label: "Reject",
+                      help: "Use when the request should be explicitly marked as not moving forward.",
+                      icon: <BlockOutlinedIcon fontSize="small" />,
+                      onClick: () => patchStatus(item, "rejected"),
+                    },
+                  ];
+
+                  return (
+                    <TableRow
+                      key={item.id}
+                      hover
+                      sx={{
+                        "& .MuiTableCell-root": {
+                          py: 1.5,
+                          borderBottomColor: "divider",
+                          verticalAlign: "top",
+                        },
+                      }}
+                    >
+                      <TableCell>
+                        <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={800} sx={{ lineHeight: 1.35 }}>
+                            {item.title || "Untitled quote request"}
+                          </Typography>
+                          {item.request_type ? (
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              {item.request_type}
+                            </Typography>
+                          ) : null}
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                          <FinanceStatusChip status={item.status} />
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={700} noWrap>
+                            {formatSourceLabel(item.request_type, item.source_type)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {item.source_ref || "No external reference"}
+                          </Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={700} noWrap>
+                            {item.contact_name || "-"}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {item.contact_email || item.contact_phone || "-"}
+                          </Typography>
+                          {item.contact_email && item.contact_phone ? (
+                            <Typography variant="caption" color="text.secondary" noWrap>
+                              {item.contact_phone}
+                            </Typography>
+                          ) : null}
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+                          <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={700} noWrap>
+                              {item.client_name || "Not linked"}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              {item.client_email || "No client email"}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              color={item.client_id ? "success" : "default"}
+                              label={item.client_id ? "Linked" : "Not linked"}
+                              sx={compactChipSx}
+                            />
+                            {hasEmailMismatch(item) ? (
+                              <Chip size="small" variant="outlined" color="warning" label="Contact differs from client" sx={compactChipSx} />
+                            ) : null}
+                            {hasNameMismatch(item) ? (
+                              <Chip size="small" variant="outlined" color="warning" label="Check client match" sx={compactChipSx} />
+                            ) : null}
+                          </Stack>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
+                          {item.preferred_timeline || "-"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                          {item.created_at ? formatDateTimeInTz(item.created_at, timezone) : "-"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            lineHeight: 1.45,
+                            maxWidth: 320,
+                          }}
+                        >
+                          {item.description || "-"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexWrap="wrap" useFlexGap>
+                          {primaryActions.map((action) => (
+                            <Button
+                              key={action.key}
+                              size="small"
+                              variant={action.variant}
+                              startIcon={action.icon}
+                              onClick={action.onClick}
+                              disabled={action.disabled}
+                              sx={{ whiteSpace: "nowrap" }}
+                            >
+                              {action.label}
+                            </Button>
+                          ))}
+                          <QuoteActionMenu item={item} actions={menuActions} />
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Box>
         </Paper>
       )}
 
