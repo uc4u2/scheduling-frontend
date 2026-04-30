@@ -2178,6 +2178,403 @@
             "createEstimate": "Create estimate"
           }
         }
+      },
+      "workOrders": {
+        "errors": {
+          "loadFailed": "Unable to load work orders."
+        },
+        "metrics": {
+          "scheduledThisWeek": "Scheduled this week",
+          "activeJobs": "Active jobs",
+          "completedThisMonth": "Completed this month",
+          "plannedLaborThisMonth": "Planned labor this month",
+          "plannedHoursHelper": "{{count}} planned hours"
+        },
+        "toolbar": {
+          "searchLabel": "Search jobs",
+          "statusLabel": "Status",
+          "allStatuses": "All statuses",
+          "startDate": "Start date",
+          "endDate": "End date",
+          "refresh": "Refresh",
+          "newWorkOrder": "New Work Order"
+        },
+        "statusSummary": {
+          "title": "Jobs by status",
+          "empty": "No work order activity yet."
+        },
+        "empty": {
+          "title": "No work orders yet",
+          "description": "Create jobs manually or from an estimate, then assign the team by daily rows.",
+          "action": "Create work order"
+        },
+        "table": {
+          "headers": {
+            "workOrderNumber": "Work order #",
+            "title": "Title",
+            "client": "Client",
+            "status": "Status",
+            "schedule": "Schedule",
+            "assignments": "Assignments",
+            "plannedHours": "Planned hours",
+            "plannedLabor": "Planned labor",
+            "materials": "Materials",
+            "actions": "Actions"
+          },
+          "to": "to",
+          "open": "Open"
+        },
+        "snackbar": {
+          "saved": "Work order saved."
+        },
+        "editor": {
+          "errors": {
+            "titleRequired": "Title is required.",
+            "clientOrEstimateRequired": "Choose a client or pick an estimate first.",
+            "saveFailed": "Unable to save work order."
+          },
+          "snackbar": {
+            "updated": "Work order updated.",
+            "created": "Work order created."
+          },
+          "title": {
+            "edit": "Edit Work Order",
+            "fromEstimate": "Create Work Order From Estimate",
+            "new": "New Work Order"
+          },
+          "linkLocked": "Client and estimate links are locked after creation.",
+          "chooseClientOrEstimate": "Choose a client directly, or start from an estimate to prefill the job.",
+          "fields": {
+            "jobTitle": "Job title",
+            "timezone": "Timezone",
+            "timezoneHelp": "Defaults to your current timezone.",
+            "client": "Client",
+            "selectClient": "Select client",
+            "clientFallback": "Client #{{id}}",
+            "estimate": "Estimate",
+            "noEstimateLink": "No estimate link",
+            "copyMaterials": "Copy planned materials from estimate",
+            "location": "Location",
+            "startDate": "Start date",
+            "endDate": "End date",
+            "jobNotes": "Job notes",
+            "managerNotes": "Manager-only notes",
+            "employeeNotes": "Employee-visible notes"
+          },
+          "common": {
+            "cancel": "Cancel",
+            "save": "Save",
+            "createWorkOrder": "Create Work Order"
+          }
+        },
+        "detail": {
+          "errors": {
+            "loadFailed": "Unable to load work order.",
+            "updateStatusFailed": "Unable to update work order status."
+          },
+          "snackbar": {
+            "statusUpdated": "Work order status updated."
+          },
+          "title": {
+            "fallback": "Work Order"
+          },
+          "fallbacks": {
+            "noClientLinked": "No client linked",
+            "noLocation": "No location set"
+          },
+          "schedule": {
+            "to": "to"
+          },
+          "actions": {
+            "editJob": "Edit Job"
+          },
+          "statusActions": {
+            "schedule": "Schedule",
+            "cancel": "Cancel",
+            "moveBackToDraft": "Move Back to Draft",
+            "start": "Start",
+            "markCompleted": "Mark Completed",
+            "moveBackToActive": "Move Back to Active",
+            "closeJob": "Close Job"
+          },
+          "metrics": {
+            "plannedLaborHours": "Planned labor hours",
+            "plannedLaborCost": "Planned labor cost",
+            "assignments": "Assignments",
+            "assignmentsHelp": "Daily rows assigned to the team.",
+            "fieldReports": "Field reports",
+            "fieldReportsHelp": "Reports submitted from the field.",
+            "pendingReview": "Pending review",
+            "pendingReviewHelp": "Manager follow-up still needed.",
+            "approvedMaterialCost": "Approved material cost",
+            "approvedMaterialCostHelp": "Official after manager approval."
+          },
+          "notes": {
+            "title": "Job Notes",
+            "employeeVisible": "Employee-visible notes",
+            "employeeVisibleEmpty": "No employee-visible notes yet.",
+            "managerOnly": "Manager-only notes",
+            "managerOnlyEmpty": "No manager-only notes yet.",
+            "general": "General notes",
+            "generalEmpty": "No general notes yet."
+          },
+          "audit": {
+            "title": "Audit History",
+            "system": "System",
+            "empty": "No audit entries yet."
+          },
+          "fieldReportInfo": "Employees can submit field reports now. Inventory and invoice changes only happen after manager review approval.",
+          "common": {
+            "close": "Close"
+          }
+        },
+        "assignments": {
+          "errors": {
+            "assignmentOverlap": "This team member is already assigned during that time.",
+            "approvedLeaveConflict": "This team member has approved leave on that date/time.",
+            "recruiterArchived": "This team member is inactive or archived.",
+            "recruiterNotFound": "Team member was not found for this company.",
+            "chooseWorkDate": "Choose a work date.",
+            "saveFailed": "Unable to save assignment.",
+            "loadTeamMembersFailed": "Unable to load team members.",
+            "chooseTeamMember": "Choose a team member.",
+            "chooseAtLeastOne": "Choose at least one team member.",
+            "enterHoursOrTime": "Enter planned hours or choose a start and end time.",
+            "chooseBothTimes": "Choose both a start time and an end time.",
+            "endAfterStart": "End time must be after start time.",
+            "hoursGreaterThanZero": "Planned hours must be greater than 0.",
+            "noneAdded": "No team members could be added.",
+            "removeFailed": "Unable to remove assignment."
+          },
+          "snackbar": {
+            "assignmentUpdated": "Assignment updated.",
+            "addedOne": "Added {{count}} team member.",
+            "addedMany": "Added {{count}} team members.",
+            "addedWithFailures": "Added {{successCount}} team members. {{failureCount}} could not be added.",
+            "teamMemberAssigned": "Team member assigned.",
+            "assignmentRemoved": "Assignment removed."
+          },
+          "title": "Assign Team",
+          "description": "Plan each day by team member.",
+          "addTeamMember": "Add Team Member",
+          "mode": {
+            "title": "Mode",
+            "single": "One team member",
+            "bulk": "Multiple team members"
+          },
+          "bulkInfo": "Use bulk assignment when several team members share the same date and time.",
+          "bulkFailuresTitle": "Could not add:",
+          "fields": {
+            "teamMember": "Team member",
+            "selectTeamMember": "Select team member",
+            "workDate": "Work date",
+            "teamMembers": "Team members",
+            "selectTeamMembers": "Select team members",
+            "startTime": "Start time",
+            "endTime": "End time",
+            "plannedHours": "Planned hours",
+            "plannedHoursHelp": "Optional when start and end times are set.",
+            "timezone": "Timezone",
+            "notes": "Notes"
+          },
+          "futureAccess": {
+            "title": "Future reporting access",
+            "description": "These flags are future-safe only. Employee field reports are not live yet.",
+            "canSubmitReport": "Can submit report later",
+            "canReportMaterials": "Can report materials later",
+            "canUploadFiles": "Can upload files later",
+            "isLeadReporter": "Lead reporter later"
+          },
+          "common": {
+            "cancel": "Cancel",
+            "saveAssignment": "Save Assignment",
+            "addSelected": "Add selected team members",
+            "addAssignment": "Add Assignment"
+          },
+          "empty": {
+            "title": "No team assignments yet",
+            "description": "Add one daily row per team member so the schedule, planned hours, and labor cost stay clear.",
+            "action": "Add team member"
+          },
+          "table": {
+            "headers": {
+              "teamMember": "Team member",
+              "workDate": "Work date",
+              "time": "Time",
+              "hours": "Hours",
+              "plannedLabor": "Planned labor",
+              "timezone": "Timezone",
+              "notes": "Notes",
+              "actions": "Actions"
+            },
+            "hoursOnly": "Hours only",
+            "editAssignment": "Edit assignment",
+            "deleteAssignment": "Delete assignment"
+          },
+          "fallbacks": {
+            "teamMemberId": "Team member #{{id}}"
+          }
+        },
+        "materials": {
+          "errors": {
+            "titleRequired": "Title is required."
+          },
+          "snackbar": {
+            "updated": "Planned material updated.",
+            "added": "Planned material added.",
+            "removed": "Planned material removed."
+          },
+          "title": "Planned Materials",
+          "description": "These are planned materials only. Inventory changes happen later through manager review approval.",
+          "addMaterial": "Add Planned Material",
+          "fields": {
+            "title": "Title",
+            "sortOrder": "Sort order",
+            "plannedQuantity": "Planned quantity",
+            "unitCost": "Unit cost",
+            "taxRate": "Tax rate",
+            "taxable": "Taxable",
+            "description": "Description"
+          },
+          "yes": "Yes",
+          "no": "No",
+          "common": {
+            "cancel": "Cancel",
+            "saveMaterial": "Save Material",
+            "addMaterial": "Add Material"
+          },
+          "empty": {
+            "title": "No planned materials yet",
+            "description": "Copy them from an estimate or add them here to keep the job scope clear for the team.",
+            "action": "Add planned material"
+          },
+          "table": {
+            "headers": {
+              "title": "Title",
+              "quantity": "Quantity",
+              "unitCost": "Unit cost",
+              "plannedTotal": "Planned total",
+              "taxable": "Taxable",
+              "sort": "Sort",
+              "actions": "Actions"
+            },
+            "edit": "Edit planned material",
+            "delete": "Delete planned material"
+          },
+          "addPlannedMaterial": "Add Planned Material"
+        }
+      },
+      "materials": {
+        "errors": {
+          "loadFailed": "Unable to load inventory.",
+          "loadHistoryFailed": "Unable to load stock history.",
+          "saveItemFailed": "Unable to save inventory item.",
+          "archiveItemFailed": "Unable to archive item.",
+          "addCategoryFailed": "Unable to add category.",
+          "adjustStockFailed": "Unable to adjust stock."
+        },
+        "snackbar": {
+          "itemUpdated": "Inventory item updated.",
+          "itemAdded": "Inventory item added.",
+          "itemArchived": "Item archived.",
+          "categoryAdded": "Category added.",
+          "stockAdjusted": "Stock adjusted."
+        },
+        "metrics": {
+          "activeItems": "Active items",
+          "lowStockItems": "Low stock items",
+          "lowStockHelper": "Review reorder levels and manager approvals.",
+          "inventoryValueEstimate": "Inventory value estimate",
+          "inventoryValueHelper": "Based on current quantity and cost per unit."
+        },
+        "toolbar": {
+          "searchItems": "Search items",
+          "materialsCategory": "Materials Category",
+          "allMaterialsCategories": "All materials categories",
+          "lowStockOnly": "Low stock only",
+          "refresh": "Refresh",
+          "addMaterialsCategory": "Add Materials Category",
+          "addItem": "Add item"
+        },
+        "empty": {
+          "title": "No stock items yet",
+          "description": "Add your first stock item.",
+          "action": "Add item"
+        },
+        "table": {
+          "headers": {
+            "name": "Name",
+            "category": "Category",
+            "sku": "SKU",
+            "unit": "Unit",
+            "quantity": "Quantity",
+            "cost": "Cost",
+            "lowStockLevel": "Low stock level",
+            "vendor": "Vendor",
+            "actions": "Actions"
+          },
+          "inactive": "Inactive",
+          "taxable": "Taxable",
+          "nonTaxable": "Non-taxable",
+          "each": "each",
+          "low": "Low",
+          "edit": "Edit",
+          "adjustStock": "Adjust stock",
+          "history": "History",
+          "archive": "Archive"
+        },
+        "common": {
+          "cancel": "Cancel",
+          "save": "Save",
+          "close": "Close"
+        },
+        "categoryDialog": {
+          "title": "Add Materials Category",
+          "tooltip": "Used to organize stock items, not expense reporting.",
+          "materialsCategories": "Materials categories",
+          "categoryName": "Materials category name",
+          "activeCategory": "Active materials category",
+          "create": "Create materials category"
+        },
+        "itemDialog": {
+          "editTitle": "Edit item",
+          "addTitle": "Add item",
+          "itemName": "Item name",
+          "category": "Materials Category",
+          "noCategory": "No category",
+          "addCategory": "Add Materials Category",
+          "sku": "SKU",
+          "unit": "Unit",
+          "costPerUnit": "Cost per unit",
+          "optionalSellPrice": "Optional sell price",
+          "lowStockThreshold": "Low stock threshold",
+          "vendorName": "Preferred vendor name",
+          "taxable": "Taxable",
+          "activeItem": "Active item"
+        },
+        "adjustDialog": {
+          "title": "Adjust stock",
+          "auditInfo": "Stock changes are recorded as transactions for audit.",
+          "currentQuantity": "Current quantity",
+          "quantityChange": "Quantity change",
+          "quantityHelp": "Use a positive number to add stock or a negative number to reduce stock.",
+          "unitCost": "Unit cost",
+          "note": "Note",
+          "saveAdjustment": "Save adjustment"
+        },
+        "historyDialog": {
+          "title": "Stock history",
+          "empty": "No stock transactions yet.",
+          "manual": "manual",
+          "headers": {
+            "when": "When",
+            "type": "Type",
+            "quantity": "Quantity",
+            "unitCost": "Unit cost",
+            "source": "Source",
+            "note": "Note"
+          }
+        }
       }
     }
   },

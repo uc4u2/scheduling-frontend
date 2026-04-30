@@ -18,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getUserTimezone, normalizeTimezoneValue } from "../../utils/timezone";
@@ -51,7 +52,12 @@ export default function WorkOrderEditorDialog({
   prefillEstimate = null,
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tWorkOrders = React.useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.workOrders.editor.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [form, setForm] = useState(buildBlankForm(prefillEstimate));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -101,11 +107,11 @@ export default function WorkOrderEditorDialog({
 
   const handleSubmit = async () => {
     if (!(form.title || "").trim()) {
-      setError("Title is required.");
+      setError(tWorkOrders("errors.titleRequired", "Title is required."));
       return;
     }
     if (!workOrder && !form.client_id && !form.finance_estimate_id) {
-      setError("Choose a client or pick an estimate first.");
+      setError(tWorkOrders("errors.clientOrEstimateRequired", "Choose a client or pick an estimate first."));
       return;
     }
     setSaving(true);
@@ -128,11 +134,11 @@ export default function WorkOrderEditorDialog({
       const res = workOrder
         ? await updateWorkOrder(workOrder.id, payload)
         : await createWorkOrder(payload);
-      enqueueSnackbar(workOrder ? "Work order updated." : "Work order created.", { variant: "success" });
+      enqueueSnackbar(workOrder ? tWorkOrders("snackbar.updated", "Work order updated.") : tWorkOrders("snackbar.created", "Work order created."), { variant: "success" });
       onSaved?.(res?.work_order || res);
       onClose?.();
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to save work order.");
+      setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.saveFailed", "Unable to save work order."));
     } finally {
       setSaving(false);
     }
@@ -142,44 +148,44 @@ export default function WorkOrderEditorDialog({
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{workOrder ? "Edit Work Order" : prefillEstimate ? "Create Work Order From Estimate" : "New Work Order"}</DialogTitle>
+      <DialogTitle>{workOrder ? tWorkOrders("title.edit", "Edit Work Order") : prefillEstimate ? tWorkOrders("title.fromEstimate", "Create Work Order From Estimate") : tWorkOrders("title.new", "New Work Order")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ pt: 1 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
           {linkLocked ? (
-            <Alert severity="info">Client and estimate links are locked after creation.</Alert>
+            <Alert severity="info">{tWorkOrders("linkLocked", "Client and estimate links are locked after creation.")}</Alert>
           ) : (
-            <Alert severity="info">Choose a client directly, or start from an estimate to prefill the job.</Alert>
+            <Alert severity="info">{tWorkOrders("chooseClientOrEstimate", "Choose a client directly, or start from an estimate to prefill the job.")}</Alert>
           )}
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField
-              label="Job title"
+              label={tWorkOrders("fields.jobTitle", "Job title")}
               value={form.title}
               onChange={(e) => setField("title", e.target.value)}
               fullWidth
               required
             />
             <TextField
-              label="Timezone"
+              label={tWorkOrders("fields.timezone", "Timezone")}
               value={form.timezone}
               onChange={(e) => setField("timezone", e.target.value)}
               fullWidth
-              helperText="Defaults to your current timezone."
+              helperText={tWorkOrders("fields.timezoneHelp", "Defaults to your current timezone.")}
             />
           </Stack>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <FormControl fullWidth disabled={linkLocked}>
-              <InputLabel>Client</InputLabel>
+              <InputLabel>{tWorkOrders("fields.client", "Client")}</InputLabel>
               <Select
-                label="Client"
+                label={tWorkOrders("fields.client", "Client")}
                 value={form.client_id || ""}
                 onChange={(e) => setField("client_id", e.target.value)}
               >
-                <MenuItem value="">Select client</MenuItem>
+                <MenuItem value="">{tWorkOrders("fields.selectClient", "Select client")}</MenuItem>
                 {clients.map((client) => {
-                  const name = `${client.first_name || ""} ${client.last_name || ""}`.trim() || client.email || `Client #${client.id}`;
+                  const name = `${client.first_name || ""} ${client.last_name || ""}`.trim() || client.email || tWorkOrders("fields.clientFallback", "Client #{{id}}", { id: client.id });
                   return (
                     <MenuItem key={client.id} value={client.id}>
                       {name}
@@ -189,13 +195,13 @@ export default function WorkOrderEditorDialog({
               </Select>
             </FormControl>
             <FormControl fullWidth disabled={linkLocked}>
-              <InputLabel>Estimate</InputLabel>
+              <InputLabel>{tWorkOrders("fields.estimate", "Estimate")}</InputLabel>
               <Select
-                label="Estimate"
+                label={tWorkOrders("fields.estimate", "Estimate")}
                 value={form.finance_estimate_id || ""}
                 onChange={(e) => setField("finance_estimate_id", e.target.value)}
               >
-                <MenuItem value="">No estimate link</MenuItem>
+                <MenuItem value="">{tWorkOrders("fields.noEstimateLink", "No estimate link")}</MenuItem>
                 {estimates.map((estimate) => (
                   <MenuItem key={estimate.id} value={estimate.id}>
                     {estimate.estimate_number} - {estimate.title}
@@ -214,12 +220,12 @@ export default function WorkOrderEditorDialog({
                   disabled={!form.finance_estimate_id}
                 />
               }
-              label="Copy planned materials from estimate"
+              label={tWorkOrders("fields.copyMaterials", "Copy planned materials from estimate")}
             />
           ) : null}
 
           <TextField
-            label="Location"
+            label={tWorkOrders("fields.location", "Location")}
             value={form.location}
             onChange={(e) => setField("location", e.target.value)}
             fullWidth
@@ -227,14 +233,14 @@ export default function WorkOrderEditorDialog({
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <ThemedDateField
-              label="Start date"
+              label={tWorkOrders("fields.startDate", "Start date")}
               name="start_date"
               value={form.start_date}
               onChange={(e) => setField("start_date", e.target.value)}
               fullWidth
             />
             <ThemedDateField
-              label="End date"
+              label={tWorkOrders("fields.endDate", "End date")}
               name="end_date"
               value={form.end_date}
               onChange={(e) => setField("end_date", e.target.value)}
@@ -243,7 +249,7 @@ export default function WorkOrderEditorDialog({
           </Stack>
 
           <TextField
-            label="Job notes"
+            label={tWorkOrders("fields.jobNotes", "Job notes")}
             value={form.notes}
             onChange={(e) => setField("notes", e.target.value)}
             multiline
@@ -251,7 +257,7 @@ export default function WorkOrderEditorDialog({
             fullWidth
           />
           <TextField
-            label="Manager-only notes"
+            label={tWorkOrders("fields.managerNotes", "Manager-only notes")}
             value={form.manager_only_notes}
             onChange={(e) => setField("manager_only_notes", e.target.value)}
             multiline
@@ -259,7 +265,7 @@ export default function WorkOrderEditorDialog({
             fullWidth
           />
           <TextField
-            label="Employee-visible notes"
+            label={tWorkOrders("fields.employeeNotes", "Employee-visible notes")}
             value={form.employee_visible_notes}
             onChange={(e) => setField("employee_visible_notes", e.target.value)}
             multiline
@@ -269,15 +275,15 @@ export default function WorkOrderEditorDialog({
 
           {!workOrder ? (
             <Box sx={{ color: theme.palette.text.secondary }}>
-              <Typography variant="body2">Client and estimate links are locked after creation.</Typography>
+              <Typography variant="body2">{tWorkOrders("linkLocked", "Client and estimate links are locked after creation.")}</Typography>
             </Box>
           ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={onClose} disabled={saving}>{tWorkOrders("common.cancel", "Cancel")}</Button>
         <Button variant="contained" onClick={handleSubmit} disabled={saving}>
-          {workOrder ? "Save" : "Create Work Order"}
+          {workOrder ? tWorkOrders("common.save", "Save") : tWorkOrders("common.createWorkOrder", "Create Work Order")}
         </Button>
       </DialogActions>
     </Dialog>

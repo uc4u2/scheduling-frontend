@@ -2152,6 +2152,403 @@
             "createEstimate": "创建报价单"
           }
         }
+      },
+      "workOrders": {
+        "errors": {
+          "loadFailed": "无法加载工单。"
+        },
+        "metrics": {
+          "scheduledThisWeek": "本周已排期",
+          "activeJobs": "进行中的工作",
+          "completedThisMonth": "本月已完成",
+          "plannedLaborThisMonth": "本月计划人工成本",
+          "plannedHoursHelper": "{{count}} 小时计划工时"
+        },
+        "toolbar": {
+          "searchLabel": "搜索工作",
+          "statusLabel": "状态",
+          "allStatuses": "全部状态",
+          "startDate": "开始日期",
+          "endDate": "结束日期",
+          "refresh": "刷新",
+          "newWorkOrder": "新建工单"
+        },
+        "statusSummary": {
+          "title": "按状态查看工作",
+          "empty": "还没有工单活动。"
+        },
+        "empty": {
+          "title": "还没有工单",
+          "description": "可手动创建工作，或从估算单生成，然后按每日行分配团队。",
+          "action": "创建工单"
+        },
+        "table": {
+          "headers": {
+            "workOrderNumber": "工单号",
+            "title": "标题",
+            "client": "客户",
+            "status": "状态",
+            "schedule": "排期",
+            "assignments": "分配",
+            "plannedHours": "计划工时",
+            "plannedLabor": "计划人工成本",
+            "materials": "材料",
+            "actions": "操作"
+          },
+          "to": "至",
+          "open": "打开"
+        },
+        "snackbar": {
+          "saved": "工单已保存。"
+        },
+        "editor": {
+          "errors": {
+            "titleRequired": "标题为必填项。",
+            "clientOrEstimateRequired": "请选择客户，或先选择一个估算单。",
+            "saveFailed": "无法保存工单。"
+          },
+          "snackbar": {
+            "updated": "工单已更新。",
+            "created": "工单已创建。"
+          },
+          "title": {
+            "edit": "编辑工单",
+            "fromEstimate": "从估算单创建工单",
+            "new": "新建工单"
+          },
+          "linkLocked": "创建后，客户和估算单关联将被锁定。",
+          "chooseClientOrEstimate": "可直接选择客户，或从估算单开始以预填工作信息。",
+          "fields": {
+            "jobTitle": "工作标题",
+            "timezone": "时区",
+            "timezoneHelp": "默认使用你当前的时区。",
+            "client": "客户",
+            "selectClient": "选择客户",
+            "clientFallback": "客户 #{{id}}",
+            "estimate": "估算单",
+            "noEstimateLink": "不关联估算单",
+            "copyMaterials": "从估算单复制计划材料",
+            "location": "地点",
+            "startDate": "开始日期",
+            "endDate": "结束日期",
+            "jobNotes": "工作备注",
+            "managerNotes": "仅经理可见备注",
+            "employeeNotes": "员工可见备注"
+          },
+          "common": {
+            "cancel": "取消",
+            "save": "保存",
+            "createWorkOrder": "创建工单"
+          }
+        },
+        "detail": {
+          "errors": {
+            "loadFailed": "无法加载工单。",
+            "updateStatusFailed": "无法更新工单状态。"
+          },
+          "snackbar": {
+            "statusUpdated": "工单状态已更新。"
+          },
+          "title": {
+            "fallback": "工单"
+          },
+          "fallbacks": {
+            "noClientLinked": "未关联客户",
+            "noLocation": "未设置地点"
+          },
+          "schedule": {
+            "to": "至"
+          },
+          "actions": {
+            "editJob": "编辑工作"
+          },
+          "statusActions": {
+            "schedule": "安排排期",
+            "cancel": "取消",
+            "moveBackToDraft": "退回草稿",
+            "start": "开始",
+            "markCompleted": "标记完成",
+            "moveBackToActive": "恢复进行中",
+            "closeJob": "关闭工作"
+          },
+          "metrics": {
+            "plannedLaborHours": "计划人工工时",
+            "plannedLaborCost": "计划人工成本",
+            "assignments": "分配",
+            "assignmentsHelp": "按日分配给团队的行。",
+            "fieldReports": "现场报告",
+            "fieldReportsHelp": "从现场提交的报告。",
+            "pendingReview": "待审核",
+            "pendingReviewHelp": "仍需经理跟进。",
+            "approvedMaterialCost": "已批准材料成本",
+            "approvedMaterialCostHelp": "经理批准后才正式生效。"
+          },
+          "notes": {
+            "title": "工作备注",
+            "employeeVisible": "员工可见备注",
+            "employeeVisibleEmpty": "还没有员工可见备注。",
+            "managerOnly": "仅经理可见备注",
+            "managerOnlyEmpty": "还没有仅经理可见备注。",
+            "general": "通用备注",
+            "generalEmpty": "还没有通用备注。"
+          },
+          "audit": {
+            "title": "审计记录",
+            "system": "系统",
+            "empty": "还没有审计记录。"
+          },
+          "fieldReportInfo": "员工现在可以提交现场报告。库存和发票变更只有在经理审核批准后才会生效。",
+          "common": {
+            "close": "关闭"
+          }
+        },
+        "assignments": {
+          "errors": {
+            "assignmentOverlap": "该团队成员在该时间段已被分配。",
+            "approvedLeaveConflict": "该团队成员在该日期/时间已有已批准的请假。",
+            "recruiterArchived": "该团队成员已停用或已归档。",
+            "recruiterNotFound": "在该公司下找不到该团队成员。",
+            "chooseWorkDate": "请选择工作日期。",
+            "saveFailed": "无法保存分配。",
+            "loadTeamMembersFailed": "无法加载团队成员。",
+            "chooseTeamMember": "请选择团队成员。",
+            "chooseAtLeastOne": "至少选择一名团队成员。",
+            "enterHoursOrTime": "请输入计划工时，或填写开始和结束时间。",
+            "chooseBothTimes": "请同时填写开始和结束时间。",
+            "endAfterStart": "结束时间必须晚于开始时间。",
+            "hoursGreaterThanZero": "计划工时必须大于 0。",
+            "noneAdded": "没有团队成员被添加。",
+            "removeFailed": "无法移除分配。"
+          },
+          "snackbar": {
+            "assignmentUpdated": "分配已更新。",
+            "addedOne": "已添加 {{count}} 名团队成员。",
+            "addedMany": "已添加 {{count}} 名团队成员。",
+            "addedWithFailures": "已添加 {{successCount}} 名团队成员。{{failureCount}} 名未能添加。",
+            "teamMemberAssigned": "团队成员已分配。",
+            "assignmentRemoved": "分配已移除。"
+          },
+          "title": "分配团队",
+          "description": "按团队成员规划每天的工作。",
+          "addTeamMember": "添加团队成员",
+          "mode": {
+            "title": "模式",
+            "single": "单个成员",
+            "bulk": "多个成员"
+          },
+          "bulkInfo": "当多个团队成员共享相同日期和时间时，请使用批量分配。",
+          "bulkFailuresTitle": "无法添加：",
+          "fields": {
+            "teamMember": "团队成员",
+            "selectTeamMember": "选择团队成员",
+            "workDate": "工作日期",
+            "teamMembers": "团队成员",
+            "selectTeamMembers": "选择团队成员",
+            "startTime": "开始时间",
+            "endTime": "结束时间",
+            "plannedHours": "计划工时",
+            "plannedHoursHelp": "当已设置开始和结束时间时可选。",
+            "timezone": "时区",
+            "notes": "备注"
+          },
+          "futureAccess": {
+            "title": "未来报告权限",
+            "description": "这些开关仅为未来预留。员工现场报告尚未启用。",
+            "canSubmitReport": "未来可提交报告",
+            "canReportMaterials": "未来可上报材料",
+            "canUploadFiles": "未来可上传文件",
+            "isLeadReporter": "未来担任主报告人"
+          },
+          "common": {
+            "cancel": "取消",
+            "saveAssignment": "保存分配",
+            "addSelected": "添加所选成员",
+            "addAssignment": "添加分配"
+          },
+          "empty": {
+            "title": "还没有团队分配",
+            "description": "为每位团队成员添加每日一行，以便清晰显示排期、计划工时和人工成本。",
+            "action": "添加团队成员"
+          },
+          "table": {
+            "headers": {
+              "teamMember": "团队成员",
+              "workDate": "工作日期",
+              "time": "时间",
+              "hours": "工时",
+              "plannedLabor": "计划人工成本",
+              "timezone": "时区",
+              "notes": "备注",
+              "actions": "操作"
+            },
+            "hoursOnly": "仅工时",
+            "editAssignment": "编辑分配",
+            "deleteAssignment": "删除分配"
+          },
+          "fallbacks": {
+            "teamMemberId": "团队成员 #{{id}}"
+          }
+        },
+        "materials": {
+          "errors": {
+            "titleRequired": "标题为必填项。"
+          },
+          "snackbar": {
+            "updated": "计划材料已更新。",
+            "added": "计划材料已添加。",
+            "removed": "计划材料已删除。"
+          },
+          "title": "计划材料",
+          "description": "这里显示的只是计划材料。库存变动会在经理审核批准后稍后处理。",
+          "addMaterial": "添加计划材料",
+          "fields": {
+            "title": "标题",
+            "sortOrder": "排序",
+            "plannedQuantity": "计划数量",
+            "unitCost": "单位成本",
+            "taxRate": "税率",
+            "taxable": "应税",
+            "description": "描述"
+          },
+          "yes": "是",
+          "no": "否",
+          "common": {
+            "cancel": "取消",
+            "saveMaterial": "保存材料",
+            "addMaterial": "添加材料"
+          },
+          "empty": {
+            "title": "还没有计划材料",
+            "description": "可从估算单复制，或在这里添加，以便团队清楚了解工作范围。",
+            "action": "添加计划材料"
+          },
+          "table": {
+            "headers": {
+              "title": "标题",
+              "quantity": "数量",
+              "unitCost": "单位成本",
+              "plannedTotal": "计划总额",
+              "taxable": "应税",
+              "sort": "排序",
+              "actions": "操作"
+            },
+            "edit": "编辑计划材料",
+            "delete": "删除计划材料"
+          },
+          "addPlannedMaterial": "添加计划材料"
+        }
+      },
+      "materials": {
+        "errors": {
+          "loadFailed": "无法加载库存。",
+          "loadHistoryFailed": "无法加载库存历史。",
+          "saveItemFailed": "无法保存库存项目。",
+          "archiveItemFailed": "无法归档项目。",
+          "addCategoryFailed": "无法添加分类。",
+          "adjustStockFailed": "无法调整库存。"
+        },
+        "snackbar": {
+          "itemUpdated": "库存项目已更新。",
+          "itemAdded": "库存项目已添加。",
+          "itemArchived": "项目已归档。",
+          "categoryAdded": "分类已添加。",
+          "stockAdjusted": "库存已调整。"
+        },
+        "metrics": {
+          "activeItems": "有效项目",
+          "lowStockItems": "低库存项目",
+          "lowStockHelper": "请检查补货水平和经理审批。",
+          "inventoryValueEstimate": "库存价值估算",
+          "inventoryValueHelper": "基于当前数量和单位成本。"
+        },
+        "toolbar": {
+          "searchItems": "搜索项目",
+          "materialsCategory": "材料分类",
+          "allMaterialsCategories": "全部材料分类",
+          "lowStockOnly": "仅低库存",
+          "refresh": "刷新",
+          "addMaterialsCategory": "添加材料分类",
+          "addItem": "添加项目"
+        },
+        "empty": {
+          "title": "还没有库存项目",
+          "description": "添加你的第一个库存项目。",
+          "action": "添加项目"
+        },
+        "table": {
+          "headers": {
+            "name": "名称",
+            "category": "分类",
+            "sku": "SKU",
+            "unit": "单位",
+            "quantity": "数量",
+            "cost": "成本",
+            "lowStockLevel": "低库存阈值",
+            "vendor": "供应商",
+            "actions": "操作"
+          },
+          "inactive": "停用",
+          "taxable": "应税",
+          "nonTaxable": "不含税",
+          "each": "件",
+          "low": "低",
+          "edit": "编辑",
+          "adjustStock": "调整库存",
+          "history": "历史",
+          "archive": "归档"
+        },
+        "common": {
+          "cancel": "取消",
+          "save": "保存",
+          "close": "关闭"
+        },
+        "categoryDialog": {
+          "title": "添加材料分类",
+          "tooltip": "用于整理库存项目，不用于费用报表。",
+          "materialsCategories": "材料分类",
+          "categoryName": "材料分类名称",
+          "activeCategory": "启用材料分类",
+          "create": "创建材料分类"
+        },
+        "itemDialog": {
+          "editTitle": "编辑项目",
+          "addTitle": "添加项目",
+          "itemName": "项目名称",
+          "category": "材料分类",
+          "noCategory": "无分类",
+          "addCategory": "添加材料分类",
+          "sku": "SKU",
+          "unit": "单位",
+          "costPerUnit": "单位成本",
+          "optionalSellPrice": "可选销售价",
+          "lowStockThreshold": "低库存阈值",
+          "vendorName": "首选供应商名称",
+          "taxable": "应税",
+          "activeItem": "启用项目"
+        },
+        "adjustDialog": {
+          "title": "调整库存",
+          "auditInfo": "库存变更会记录为交易，便于审计。",
+          "currentQuantity": "当前数量",
+          "quantityChange": "数量变动",
+          "quantityHelp": "增加库存请输入正数，减少库存请输入负数。",
+          "unitCost": "单位成本",
+          "note": "备注",
+          "saveAdjustment": "保存调整"
+        },
+        "historyDialog": {
+          "title": "库存历史",
+          "empty": "还没有库存交易记录。",
+          "manual": "手动",
+          "headers": {
+            "when": "时间",
+            "type": "类型",
+            "quantity": "数量",
+            "unitCost": "单位成本",
+            "source": "来源",
+            "note": "备注"
+          }
+        }
       }
     }
   },
