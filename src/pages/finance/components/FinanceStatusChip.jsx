@@ -40,7 +40,7 @@ export default function FinanceStatusChip({ status, size = "small", variant = "s
           main: theme.palette.text.secondary,
           contrastText: theme.palette.text.primary,
         }
-      : (theme.palette[paletteKey] || theme.palette.primary);
+      : theme.palette[paletteKey] || theme.palette.primary;
 
   const isOutlined = variant === "outlined";
   const isStrong = meta.emphasis === "strong";
@@ -53,8 +53,16 @@ export default function FinanceStatusChip({ status, size = "small", variant = "s
       variant={isOutlined ? "outlined" : "filled"}
       sx={
         isOutlined
-          ? undefined
+          ? {
+              height: 24,
+              borderRadius: 1.5,
+              "& .MuiChip-label": {
+                px: 1,
+                fontWeight: 600,
+              },
+            }
           : {
+              height: 24,
               fontWeight: 700,
               borderRadius: 1.5,
               backgroundColor: isStrong ? alpha(palette.main, 0.2) : alpha(palette.main, 0.14),

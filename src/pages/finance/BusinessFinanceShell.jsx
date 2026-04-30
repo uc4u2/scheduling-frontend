@@ -1,12 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Stack,
-  Tab,
-  Tabs,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Box, Button, Paper, Stack, Tab, Tabs, Tooltip } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import AddTaskIcon from "@mui/icons-material/AddTask";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -77,13 +70,13 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
     setActiveTab(resolveInitialTab(viewKey));
   }, [viewKey]);
 
-  const handleNavigate = (next) => {
+  const handleNavigate = useCallback((next) => {
     const resolved = resolveInitialTab(next);
     setActiveTab(resolved);
     onNavigate?.(resolved);
-  };
+  }, [onNavigate]);
 
-  const handleQuickAction = (action) => {
+  const handleQuickAction = useCallback((action) => {
     if (action === "quote") {
       setQuickAction({ type: "quote", nonce: Date.now() });
       handleNavigate("finance-quotes");
@@ -110,7 +103,7 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
       return;
     }
     handleNavigate("finance-reports");
-  };
+  }, [handleNavigate]);
 
   const content = useMemo(() => {
     switch (activeTab) {
@@ -150,16 +143,11 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
       default:
         return <FinanceOverviewPage onNavigate={handleNavigate} onQuickAction={handleQuickAction} />;
     }
-  }, [activeTab, quickAction]);
+  }, [activeTab, handleNavigate, handleQuickAction, quickAction]);
 
   return (
-    <ManagementFrame
-      title={null}
-      subtitle={null}
-      fullWidth
-      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
-    >
-      <Stack spacing={2}>
+    <ManagementFrame title={null} subtitle={null} fullWidth contentSx={{ p: { xs: 1.5, md: 2.5 } }}>
+      <Stack spacing={2.5}>
         <Stack direction="row" justifyContent="flex-start">
           <Tooltip title="See how quotes, jobs, field reports, reviews, and month-end fit together.">
             <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
@@ -168,36 +156,67 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
           </Tooltip>
         </Stack>
 
-        <Tabs
-          value={activeTab}
-          onChange={(_, next) => handleNavigate(next)}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
+        <Paper
+          variant="outlined"
           sx={{
-            minHeight: 40,
-            "& .MuiTabs-flexContainer": { gap: 0.5 },
-            "& .MuiTab-root": {
-              minHeight: 40,
-              px: 1.5,
-              py: 0.75,
-              textTransform: "none",
-              fontWeight: 700,
-              alignItems: "center",
-            },
+            borderRadius: 3,
+            px: 1,
+            py: 1,
+            overflow: "hidden",
+            background: (theme) => theme.palette.background.paper,
           }}
         >
-          {TAB_ORDER.map((tab) => (
-            <Tab
-              key={tab.key}
-              value={tab.key}
-              icon={tab.icon}
-              iconPosition="start"
-              label={tab.label}
-              wrapped={false}
-            />
-          ))}
-        </Tabs>
+          <Box sx={{ overflowX: "auto", pb: 0.25 }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_, next) => handleNavigate(next)}
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
+              sx={{
+                minHeight: 48,
+                "& .MuiTabs-indicator": {
+                  display: "none",
+                },
+                "& .MuiTabs-flexContainer": {
+                  gap: 0.75,
+                  flexWrap: "nowrap",
+                },
+                "& .MuiTab-root": {
+                  minHeight: 44,
+                  px: 1.5,
+                  py: 0.75,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 999,
+                  border: "1px solid transparent",
+                  color: "text.secondary",
+                  whiteSpace: "nowrap",
+                  transition: "all 160ms ease",
+                  "&:hover": {
+                    bgcolor: "action.hover",
+                    color: "text.primary",
+                  },
+                  "&.Mui-selected": {
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    borderColor: "primary.main",
+                    boxShadow: (theme) => `0 10px 24px ${theme.palette.primary.main}22`,
+                  },
+                },
+                "& .MuiTab-iconWrapper": {
+                  mb: 0,
+                },
+              }}
+            >
+              {TAB_ORDER.map((tab) => (
+                <Tab key={tab.key} value={tab.key} icon={tab.icon} iconPosition="start" label={tab.label} wrapped={false} />
+              ))}
+            </Tabs>
+          </Box>
+        </Paper>
 
         {content}
       </Stack>
