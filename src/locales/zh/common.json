@@ -2971,6 +2971,139 @@
           "cancel": "取消",
           "save": "保存"
         }
+      },
+      "reports": {
+        "errors": {
+          "loadFailed": "无法加载财务报表。",
+          "exportFailed": "无法导出 CSV。"
+        },
+        "snackbar": {
+          "csvDownloaded": "CSV 导出已下载。"
+        },
+        "cards": {
+          "estimateTotal": "估算总额",
+          "grossInvoiceTotal": "发票毛额总计",
+          "refunds": "退款",
+          "netInvoiceTotal": "发票净额总计",
+          "expenseTotal": "费用总额",
+          "grossTaxCollected": "已收税毛额",
+          "taxRefunded": "已退税额",
+          "netTaxCollected": "已收税净额",
+          "taxPaidOnExpenses": "费用已付税额",
+          "estimatedNetTaxGross": "预计净税额（毛额）",
+          "estimatedNetTaxNet": "预计净税额（净额）",
+          "refundedInvoices": "已退款发票",
+          "partialRefunds": "部分退款"
+        },
+        "filters": {
+          "from": "从",
+          "to": "到",
+          "exportType": "导出类型",
+          "expenses": "费用",
+          "invoices": "发票",
+          "summary": "汇总",
+          "preparingCsv": "正在准备 CSV...",
+          "downloadCsv": "下载 CSV"
+        }
+      },
+      "profitability": {
+        "errors": {
+          "loadFailed": "无法加载盈利能力。"
+        },
+        "cards": {
+          "estimateTotal": "估算总额",
+          "invoiceTotal": "发票总额",
+          "grossRevenue": "毛收入",
+          "refunds": "退款",
+          "netRevenue": "净收入",
+          "plannedLaborCost": "计划人工成本",
+          "approvedMaterialCost": "已批准材料成本",
+          "linkedExpenses": "关联费用",
+          "estimatedMarginGross": "预计毛利",
+          "estimatedMarginNet": "预计净利"
+        },
+        "filters": {
+          "from": "从",
+          "to": "到",
+          "refresh": "刷新"
+        },
+        "footnote": "按每个工单计算：如有已关联发票则使用发票总额，未开票时回退到估算金额；如存在退款，则分别展示毛利和净利。"
+      },
+      "taxSummary": {
+        "errors": {
+          "loadFailed": "无法加载税务汇总。"
+        },
+        "cards": {
+          "grossTaxCollected": "已收税毛额",
+          "taxRefunded": "已退税额",
+          "netTaxCollected": "已收税净额",
+          "taxPaidOnExpenses": "费用已付税额",
+          "estimatedNetTaxGross": "预计净税额（毛额）",
+          "estimatedNetTaxNet": "预计净税额（净额）",
+          "refundTotal": "退款总额",
+          "refundedInvoices": "已退款发票",
+          "partialRefunds": "部分退款"
+        },
+        "filters": {
+          "from": "从",
+          "to": "到",
+          "refresh": "刷新"
+        }
+      },
+      "monthEnd": {
+        "errors": {
+          "loadFailed": "无法加载月末检查。",
+          "exportFailed": "无法导出月末 CSV。"
+        },
+        "snackbar": {
+          "exportDownloaded": "月末导出已下载。"
+        },
+        "filters": {
+          "from": "从",
+          "to": "到",
+          "refresh": "刷新",
+          "preparingCsv": "正在准备 CSV...",
+          "downloadCsv": "下载 CSV"
+        },
+        "cards": {
+          "missingItems": "缺失项",
+          "lowStock": "低库存",
+          "pendingFieldReports": "待审核现场报告",
+          "pendingWorkOrders": "待审核工单",
+          "refundTotal": "退款总额",
+          "refundedInvoices": "已退款发票",
+          "partialRefunds": "部分退款",
+          "taxRefunded": "已退税额"
+        },
+        "sections": {
+          "checklist": "检查清单",
+          "summarySnapshot": "摘要快照"
+        },
+        "checklist": {
+          "ready": "已就绪",
+          "needsAttention": "需要处理"
+        },
+        "checklistLines": {
+          "invoicesReviewed": "发票已复核",
+          "paymentsRecorded": "付款已记录",
+          "expensesCategorized": "费用已分类",
+          "receiptsUploaded": "收据已上传",
+          "fieldReportsApproved": "现场报告已批准",
+          "inventoryUsageReviewed": "库存使用已复核",
+          "taxSummaryReady": "税务汇总已准备好"
+        },
+        "summary": {
+          "missingReceipts": "缺少收据",
+          "uncategorizedExpenses": "未分类费用",
+          "grossInvoiceTotal": "发票毛额总计",
+          "refundTotal": "退款总额",
+          "netInvoiceTotal": "发票净额总计",
+          "estimatedNetTaxGross": "预计净税额（毛额）",
+          "estimatedNetTaxNet": "预计净税额（净额）",
+          "estimatedMarginGross": "预计毛利",
+          "estimatedMarginNet": "预计净利",
+          "refundReviewNote": "在最终移交给会计前，请复核退款活动。退款不会阻止月末结账，但会影响净现金和净税额。"
+        }
       }
     }
   },

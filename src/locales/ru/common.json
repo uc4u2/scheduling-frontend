@@ -2969,6 +2969,139 @@
           "cancel": "Отмена",
           "save": "Сохранить"
         }
+      },
+      "reports": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить финансовые отчёты.",
+          "exportFailed": "Не удалось экспортировать CSV."
+        },
+        "snackbar": {
+          "csvDownloaded": "CSV-выгрузка загружена."
+        },
+        "cards": {
+          "estimateTotal": "Сумма смет",
+          "grossInvoiceTotal": "Валовая сумма счетов",
+          "refunds": "Возвраты",
+          "netInvoiceTotal": "Чистая сумма счетов",
+          "expenseTotal": "Сумма расходов",
+          "grossTaxCollected": "Валовый собранный налог",
+          "taxRefunded": "Возвращённый налог",
+          "netTaxCollected": "Чистый собранный налог",
+          "taxPaidOnExpenses": "Налог, уплаченный по расходам",
+          "estimatedNetTaxGross": "Оценка чистого налога (валовая)",
+          "estimatedNetTaxNet": "Оценка чистого налога (чистая)",
+          "refundedInvoices": "Счета с возвратом",
+          "partialRefunds": "Частичные возвраты"
+        },
+        "filters": {
+          "from": "От",
+          "to": "До",
+          "exportType": "Тип экспорта",
+          "expenses": "Расходы",
+          "invoices": "Счета",
+          "summary": "Сводка",
+          "preparingCsv": "Подготовка CSV...",
+          "downloadCsv": "Скачать CSV"
+        }
+      },
+      "profitability": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить рентабельность."
+        },
+        "cards": {
+          "estimateTotal": "Сумма смет",
+          "invoiceTotal": "Сумма счетов",
+          "grossRevenue": "Валовая выручка",
+          "refunds": "Возвраты",
+          "netRevenue": "Чистая выручка",
+          "plannedLaborCost": "Плановая стоимость труда",
+          "approvedMaterialCost": "Утверждённая стоимость материалов",
+          "linkedExpenses": "Связанные расходы",
+          "estimatedMarginGross": "Оценочная валовая маржа",
+          "estimatedMarginNet": "Оценочная чистая маржа"
+        },
+        "filters": {
+          "from": "От",
+          "to": "До",
+          "refresh": "Обновить"
+        },
+        "footnote": "Расчёт ведётся по каждому наряду с использованием связанных сумм счетов при наличии, со сметой как запасным вариантом, если счёт ещё не выставлен, и с отдельной валовой и чистой маржой при наличии возвратов."
+      },
+      "taxSummary": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить налоговую сводку."
+        },
+        "cards": {
+          "grossTaxCollected": "Валовый собранный налог",
+          "taxRefunded": "Возвращённый налог",
+          "netTaxCollected": "Чистый собранный налог",
+          "taxPaidOnExpenses": "Налог, уплаченный по расходам",
+          "estimatedNetTaxGross": "Оценка чистого налога (валовая)",
+          "estimatedNetTaxNet": "Оценка чистого налога (чистая)",
+          "refundTotal": "Сумма возвратов",
+          "refundedInvoices": "Счета с возвратом",
+          "partialRefunds": "Частичные возвраты"
+        },
+        "filters": {
+          "from": "От",
+          "to": "До",
+          "refresh": "Обновить"
+        }
+      },
+      "monthEnd": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить проверку конца месяца.",
+          "exportFailed": "Не удалось экспортировать CSV конца месяца."
+        },
+        "snackbar": {
+          "exportDownloaded": "Выгрузка конца месяца загружена."
+        },
+        "filters": {
+          "from": "От",
+          "to": "До",
+          "refresh": "Обновить",
+          "preparingCsv": "Подготовка CSV...",
+          "downloadCsv": "Скачать CSV"
+        },
+        "cards": {
+          "missingItems": "Недостающие элементы",
+          "lowStock": "Низкий остаток",
+          "pendingFieldReports": "Полевые отчёты ожидают проверки",
+          "pendingWorkOrders": "Наряды ожидают проверки",
+          "refundTotal": "Сумма возвратов",
+          "refundedInvoices": "Счета с возвратом",
+          "partialRefunds": "Частичные возвраты",
+          "taxRefunded": "Возвращённый налог"
+        },
+        "sections": {
+          "checklist": "Чек-лист",
+          "summarySnapshot": "Сводный снимок"
+        },
+        "checklist": {
+          "ready": "Готово",
+          "needsAttention": "Требует внимания"
+        },
+        "checklistLines": {
+          "invoicesReviewed": "Счета проверены",
+          "paymentsRecorded": "Платежи отражены",
+          "expensesCategorized": "Расходы распределены по категориям",
+          "receiptsUploaded": "Чеки загружены",
+          "fieldReportsApproved": "Полевые отчёты утверждены",
+          "inventoryUsageReviewed": "Использование запасов проверено",
+          "taxSummaryReady": "Налоговая сводка готова"
+        },
+        "summary": {
+          "missingReceipts": "Отсутствующие чеки",
+          "uncategorizedExpenses": "Расходы без категории",
+          "grossInvoiceTotal": "Валовая сумма счетов",
+          "refundTotal": "Сумма возвратов",
+          "netInvoiceTotal": "Чистая сумма счетов",
+          "estimatedNetTaxGross": "Оценка чистого налога (валовая)",
+          "estimatedNetTaxNet": "Оценка чистого налога (чистая)",
+          "estimatedMarginGross": "Оценочная валовая маржа",
+          "estimatedMarginNet": "Оценочная чистая маржа",
+          "refundReviewNote": "Проверьте активность возвратов перед окончательной передачей в бухгалтерию. Возвраты не блокируют конец месяца, но влияют на чистые денежные средства и чистый налог."
+        }
       }
     }
   },

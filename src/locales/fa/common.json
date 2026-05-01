@@ -2959,6 +2959,139 @@
           "cancel": "انصراف",
           "save": "ذخیره"
         }
+      },
+      "reports": {
+        "errors": {
+          "loadFailed": "بارگذاری گزارش‌های مالی انجام نشد.",
+          "exportFailed": "خروجی CSV انجام نشد."
+        },
+        "snackbar": {
+          "csvDownloaded": "خروجی CSV دانلود شد."
+        },
+        "cards": {
+          "estimateTotal": "جمع برآوردها",
+          "grossInvoiceTotal": "جمع ناخالص فاکتورها",
+          "refunds": "بازپرداخت‌ها",
+          "netInvoiceTotal": "جمع خالص فاکتورها",
+          "expenseTotal": "جمع هزینه‌ها",
+          "grossTaxCollected": "مالیات ناخالص جمع‌آوری‌شده",
+          "taxRefunded": "مالیات بازپرداخت‌شده",
+          "netTaxCollected": "مالیات خالص جمع‌آوری‌شده",
+          "taxPaidOnExpenses": "مالیات پرداخت‌شده روی هزینه‌ها",
+          "estimatedNetTaxGross": "برآورد خالص مالیات ناخالص",
+          "estimatedNetTaxNet": "برآورد خالص مالیات خالص",
+          "refundedInvoices": "فاکتورهای بازپرداخت‌شده",
+          "partialRefunds": "بازپرداخت‌های جزئی"
+        },
+        "filters": {
+          "from": "از",
+          "to": "تا",
+          "exportType": "نوع خروجی",
+          "expenses": "هزینه‌ها",
+          "invoices": "فاکتورها",
+          "summary": "خلاصه",
+          "preparingCsv": "در حال آماده‌سازی CSV...",
+          "downloadCsv": "دانلود CSV"
+        }
+      },
+      "profitability": {
+        "errors": {
+          "loadFailed": "بارگذاری سودآوری انجام نشد."
+        },
+        "cards": {
+          "estimateTotal": "جمع برآوردها",
+          "invoiceTotal": "جمع فاکتورها",
+          "grossRevenue": "درآمد ناخالص",
+          "refunds": "بازپرداخت‌ها",
+          "netRevenue": "درآمد خالص",
+          "plannedLaborCost": "هزینه برنامه‌ریزی‌شده نیروی کار",
+          "approvedMaterialCost": "هزینه مواد تأییدشده",
+          "linkedExpenses": "هزینه‌های مرتبط",
+          "estimatedMarginGross": "حاشیه برآوردی ناخالص",
+          "estimatedMarginNet": "حاشیه برآوردی خالص"
+        },
+        "filters": {
+          "from": "از",
+          "to": "تا",
+          "refresh": "بازخوانی"
+        },
+        "footnote": "برای هر دستور کار با استفاده از جمع فاکتورهای مرتبط در صورت وجود، و برآورد به‌عنوان جایگزین وقتی هنوز فاکتور نشده است، و با تفکیک حاشیه ناخالص و خالص هنگام وجود بازپرداخت محاسبه می‌شود."
+      },
+      "taxSummary": {
+        "errors": {
+          "loadFailed": "بارگذاری خلاصه مالیات انجام نشد."
+        },
+        "cards": {
+          "grossTaxCollected": "مالیات ناخالص جمع‌آوری‌شده",
+          "taxRefunded": "مالیات بازپرداخت‌شده",
+          "netTaxCollected": "مالیات خالص جمع‌آوری‌شده",
+          "taxPaidOnExpenses": "مالیات پرداخت‌شده روی هزینه‌ها",
+          "estimatedNetTaxGross": "برآورد خالص مالیات ناخالص",
+          "estimatedNetTaxNet": "برآورد خالص مالیات خالص",
+          "refundTotal": "جمع بازپرداخت",
+          "refundedInvoices": "فاکتورهای بازپرداخت‌شده",
+          "partialRefunds": "بازپرداخت‌های جزئی"
+        },
+        "filters": {
+          "from": "از",
+          "to": "تا",
+          "refresh": "بازخوانی"
+        }
+      },
+      "monthEnd": {
+        "errors": {
+          "loadFailed": "بارگذاری بازبینی پایان ماه انجام نشد.",
+          "exportFailed": "خروجی CSV پایان ماه انجام نشد."
+        },
+        "snackbar": {
+          "exportDownloaded": "خروجی پایان ماه دانلود شد."
+        },
+        "filters": {
+          "from": "از",
+          "to": "تا",
+          "refresh": "بازخوانی",
+          "preparingCsv": "در حال آماده‌سازی CSV...",
+          "downloadCsv": "دانلود CSV"
+        },
+        "cards": {
+          "missingItems": "موارد ناقص",
+          "lowStock": "موجودی کم",
+          "pendingFieldReports": "گزارش‌های میدانی در انتظار",
+          "pendingWorkOrders": "دستورهای کار در انتظار",
+          "refundTotal": "جمع بازپرداخت",
+          "refundedInvoices": "فاکتورهای بازپرداخت‌شده",
+          "partialRefunds": "بازپرداخت‌های جزئی",
+          "taxRefunded": "مالیات بازپرداخت‌شده"
+        },
+        "sections": {
+          "checklist": "چک‌لیست",
+          "summarySnapshot": "خلاصه وضعیت"
+        },
+        "checklist": {
+          "ready": "آماده",
+          "needsAttention": "نیاز به رسیدگی"
+        },
+        "checklistLines": {
+          "invoicesReviewed": "فاکتورها بازبینی شده‌اند",
+          "paymentsRecorded": "پرداخت‌ها ثبت شده‌اند",
+          "expensesCategorized": "هزینه‌ها دسته‌بندی شده‌اند",
+          "receiptsUploaded": "رسیدها بارگذاری شده‌اند",
+          "fieldReportsApproved": "گزارش‌های میدانی تأیید شده‌اند",
+          "inventoryUsageReviewed": "مصرف موجودی بازبینی شده است",
+          "taxSummaryReady": "خلاصه مالیات آماده است"
+        },
+        "summary": {
+          "missingReceipts": "رسیدهای ناقص",
+          "uncategorizedExpenses": "هزینه‌های بدون دسته‌بندی",
+          "grossInvoiceTotal": "جمع ناخالص فاکتورها",
+          "refundTotal": "جمع بازپرداخت",
+          "netInvoiceTotal": "جمع خالص فاکتورها",
+          "estimatedNetTaxGross": "برآورد خالص مالیات ناخالص",
+          "estimatedNetTaxNet": "برآورد خالص مالیات خالص",
+          "estimatedMarginGross": "حاشیه برآوردی ناخالص",
+          "estimatedMarginNet": "حاشیه برآوردی خالص",
+          "refundReviewNote": "پیش از تحویل نهایی به حسابداری، فعالیت بازپرداخت را بازبینی کنید. بازپرداخت‌ها پایان ماه را متوقف نمی‌کنند، اما بر وجه نقد خالص و مالیات خالص اثر می‌گذارند."
+        }
       }
     }
   },

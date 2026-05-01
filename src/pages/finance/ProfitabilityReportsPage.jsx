@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getFinanceProfitabilityReport } from "./financeApi";
@@ -26,6 +27,11 @@ const firstDayOfMonth = () => {
 };
 
 export default function ProfitabilityReportsPage() {
+  const { t } = useTranslation();
+  const tProfit = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.profitability.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [dateFrom, setDateFrom] = useState(firstDayOfMonth());
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [report, setReport] = useState(null);
@@ -40,11 +46,11 @@ export default function ProfitabilityReportsPage() {
       const res = await getFinanceProfitabilityReport({ date_from: dateFrom, date_to: dateTo });
       setReport(res || {});
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load profitability.");
+      setError(err?.response?.data?.error || err?.message || tProfit("errors.loadFailed", "Unable to load profitability."));
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, tProfit]);
 
   useEffect(() => {
     load();
@@ -54,9 +60,9 @@ export default function ProfitabilityReportsPage() {
     <Stack spacing={2.5}>
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }}>
-          <ThemedDateField fullWidth label="From" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <ThemedDateField fullWidth label="To" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <Button variant="contained" onClick={load}>Refresh</Button>
+          <ThemedDateField fullWidth label={tProfit("filters.from", "From")} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <ThemedDateField fullWidth label={tProfit("filters.to", "To")} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <Button variant="contained" onClick={load}>{tProfit("filters.refresh", "Refresh")}</Button>
         </Stack>
       </Paper>
 
@@ -67,19 +73,19 @@ export default function ProfitabilityReportsPage() {
       ) : (
         <>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimate total" value={formatMoney(report?.estimate_total, currency)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Invoice total" value={formatMoney(report?.invoice_total, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Gross revenue" value={formatMoney(report?.gross_revenue ?? report?.invoice_total, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Refunds" value={formatMoney(report?.refund_total, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Net revenue" value={formatMoney(report?.net_revenue, currency)} accent="success" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Planned labor cost" value={formatMoney(report?.planned_labor_cost, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Approved material cost" value={formatMoney(report?.approved_material_cost, currency)} accent="error" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Linked expenses" value={formatMoney(report?.linked_expense_total, currency)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin gross" value={formatMoney(report?.estimated_margin_gross ?? report?.estimated_margin, currency)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label="Estimated margin net" value={formatMoney(report?.estimated_margin_net, currency)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.estimateTotal", "Estimate total")} value={formatMoney(report?.estimate_total, currency)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.invoiceTotal", "Invoice total")} value={formatMoney(report?.invoice_total, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.grossRevenue", "Gross revenue")} value={formatMoney(report?.gross_revenue ?? report?.invoice_total, currency)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.refunds", "Refunds")} value={formatMoney(report?.refund_total, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.netRevenue", "Net revenue")} value={formatMoney(report?.net_revenue, currency)} accent="success" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.plannedLaborCost", "Planned labor cost")} value={formatMoney(report?.planned_labor_cost, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.approvedMaterialCost", "Approved material cost")} value={formatMoney(report?.approved_material_cost, currency)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.linkedExpenses", "Linked expenses")} value={formatMoney(report?.linked_expense_total, currency)} accent="info" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.estimatedMarginGross", "Estimated margin gross")} value={formatMoney(report?.estimated_margin_gross ?? report?.estimated_margin, currency)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.estimatedMarginNet", "Estimated margin net")} value={formatMoney(report?.estimated_margin_net, currency)} accent="success" /></Grid>
           </Grid>
           <Typography variant="body2" color="text.secondary">
-            Calculated per work order using linked invoice totals when available, estimate fallback when not invoiced yet, and separate gross versus net margin when refund activity exists.
+            {tProfit("footnote", "Calculated per work order using linked invoice totals when available, estimate fallback when not invoiced yet, and separate gross versus net margin when refund activity exists.")}
           </Typography>
         </>
       )}

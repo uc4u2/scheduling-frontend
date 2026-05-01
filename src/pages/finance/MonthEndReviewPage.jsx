@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
@@ -27,7 +28,12 @@ const firstDayOfMonth = () => {
 };
 
 export default function MonthEndReviewPage() {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tMonthEnd = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.monthEnd.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [dateFrom, setDateFrom] = useState(firstDayOfMonth());
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [review, setReview] = useState(null);
@@ -47,11 +53,11 @@ export default function MonthEndReviewPage() {
       setReview(reviewRes?.month_end_review || reviewRes || null);
       setMissingData(missingRes || null);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load month-end review.");
+      setError(err?.response?.data?.error || err?.message || tMonthEnd("errors.loadFailed", "Unable to load month-end review."));
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, tMonthEnd]);
 
   useEffect(() => {
     load();
@@ -70,9 +76,9 @@ export default function MonthEndReviewPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      enqueueSnackbar("Month-end export downloaded.", { variant: "success" });
+      enqueueSnackbar(tMonthEnd("snackbar.exportDownloaded", "Month-end export downloaded."), { variant: "success" });
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to export month-end CSV.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tMonthEnd("errors.exportFailed", "Unable to export month-end CSV."), { variant: "error" });
     } finally {
       setExporting(false);
     }
@@ -87,7 +93,7 @@ export default function MonthEndReviewPage() {
   const currency = refundSummary?.currency || financeSummary?.currency || taxSummary?.currency || "USD";
   const renderChecklistLine = (label, key) => (
     <Stack spacing={0.25}>
-      <Typography variant="body2">{label}: {checklist[key] ? "Ready" : "Needs attention"}</Typography>
+      <Typography variant="body2">{label}: {checklist[key] ? tMonthEnd("checklist.ready", "Ready") : tMonthEnd("checklist.needsAttention", "Needs attention")}</Typography>
       {checklistReasons[key] ? (
         <Typography variant="caption" color="text.secondary">{checklistReasons[key]}</Typography>
       ) : null}
@@ -98,10 +104,10 @@ export default function MonthEndReviewPage() {
     <Stack spacing={2.5}>
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-          <ThemedDateField fullWidth label="From" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <ThemedDateField fullWidth label="To" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <Button variant="contained" onClick={load}>Refresh</Button>
-          <Button variant="outlined" onClick={handleExport} disabled={exporting}>{exporting ? "Preparing CSV..." : "Download CSV"}</Button>
+          <ThemedDateField fullWidth label={tMonthEnd("filters.from", "From")} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <ThemedDateField fullWidth label={tMonthEnd("filters.to", "To")} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <Button variant="contained" onClick={load}>{tMonthEnd("filters.refresh", "Refresh")}</Button>
+          <Button variant="outlined" onClick={handleExport} disabled={exporting}>{exporting ? tMonthEnd("filters.preparingCsv", "Preparing CSV...") : tMonthEnd("filters.downloadCsv", "Download CSV")}</Button>
         </Stack>
       </Paper>
 
@@ -112,43 +118,43 @@ export default function MonthEndReviewPage() {
       ) : (
         <>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Missing items" value={String(missingData?.month_end_missing_items_count ?? 0)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Low stock" value={String(missingData?.low_stock_count ?? 0)} accent="error" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Pending field reports" value={String(missingData?.field_reports_pending_review_count ?? 0)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Pending work orders" value={String(missingData?.work_orders_pending_review_count ?? 0)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Refund total" value={formatMoney(refundSummary?.refund_total, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Refunded invoices" value={String(refundSummary?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Partial refunds" value={String(refundSummary?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label="Tax refunded" value={formatMoney(refundSummary?.tax_refunded, currency)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.missingItems", "Missing items")} value={String(missingData?.month_end_missing_items_count ?? 0)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.lowStock", "Low stock")} value={String(missingData?.low_stock_count ?? 0)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.pendingFieldReports", "Pending field reports")} value={String(missingData?.field_reports_pending_review_count ?? 0)} accent="info" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.pendingWorkOrders", "Pending work orders")} value={String(missingData?.work_orders_pending_review_count ?? 0)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.refundTotal", "Refund total")} value={formatMoney(refundSummary?.refund_total, currency)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.refundedInvoices", "Refunded invoices")} value={String(refundSummary?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.partialRefunds", "Partial refunds")} value={String(refundSummary?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.taxRefunded", "Tax refunded")} value={formatMoney(refundSummary?.tax_refunded, currency)} accent="error" /></Grid>
           </Grid>
 
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-            <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Checklist</Typography>
+            <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>{tMonthEnd("sections.checklist", "Checklist")}</Typography>
             <Stack spacing={1}>
-              {renderChecklistLine("Invoices reviewed", "invoices_reviewed")}
-              {renderChecklistLine("Payments recorded", "payments_recorded")}
-              {renderChecklistLine("Expenses categorized", "expenses_categorized")}
-              {renderChecklistLine("Receipts uploaded", "receipts_uploaded")}
-              {renderChecklistLine("Field reports approved", "field_reports_approved")}
-              {renderChecklistLine("Inventory usage reviewed", "inventory_usage_reviewed")}
-              {renderChecklistLine("Tax summary ready", "tax_summary_ready")}
+              {renderChecklistLine(tMonthEnd("checklistLines.invoicesReviewed", "Invoices reviewed"), "invoices_reviewed")}
+              {renderChecklistLine(tMonthEnd("checklistLines.paymentsRecorded", "Payments recorded"), "payments_recorded")}
+              {renderChecklistLine(tMonthEnd("checklistLines.expensesCategorized", "Expenses categorized"), "expenses_categorized")}
+              {renderChecklistLine(tMonthEnd("checklistLines.receiptsUploaded", "Receipts uploaded"), "receipts_uploaded")}
+              {renderChecklistLine(tMonthEnd("checklistLines.fieldReportsApproved", "Field reports approved"), "field_reports_approved")}
+              {renderChecklistLine(tMonthEnd("checklistLines.inventoryUsageReviewed", "Inventory usage reviewed"), "inventory_usage_reviewed")}
+              {renderChecklistLine(tMonthEnd("checklistLines.taxSummaryReady", "Tax summary ready"), "tax_summary_ready")}
             </Stack>
           </Paper>
 
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-            <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Summary snapshot</Typography>
-            <Typography variant="body2" color="text.secondary">Missing receipts: {summary?.missing_data?.missing_receipts_count ?? 0}</Typography>
-            <Typography variant="body2" color="text.secondary">Uncategorized expenses: {summary?.missing_data?.uncategorized_expenses_count ?? 0}</Typography>
-            <Typography variant="body2" color="text.secondary">Gross invoice total: {formatMoney(financeSummary?.gross_invoice_total ?? financeSummary?.invoice_total, currency)}</Typography>
-            <Typography variant="body2" color="text.secondary">Refund total: {formatMoney(refundSummary?.refund_total, currency)}</Typography>
-            <Typography variant="body2" color="text.secondary">Net invoice total: {formatMoney(refundSummary?.net_invoice_total ?? financeSummary?.net_invoice_total, currency)}</Typography>
-            <Typography variant="body2" color="text.secondary">Estimated net tax gross: {formatMoney(summary?.tax_summary?.estimated_net_tax_gross ?? summary?.tax_summary?.estimated_net_tax, currency)}</Typography>
-            <Typography variant="body2" color="text.secondary">Estimated net tax net: {formatMoney(summary?.tax_summary?.estimated_net_tax_net, currency)}</Typography>
-            <Typography variant="body2" color="text.secondary">Estimated margin gross: {formatMoney(summary?.profitability_summary?.estimated_margin_gross ?? summary?.profitability_summary?.estimated_margin, currency)}</Typography>
-            <Typography variant="body2" color="text.secondary">Estimated margin net: {formatMoney(summary?.profitability_summary?.estimated_margin_net, currency)}</Typography>
+            <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>{tMonthEnd("sections.summarySnapshot", "Summary snapshot")}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.missingReceipts", "Missing receipts")}: {summary?.missing_data?.missing_receipts_count ?? 0}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.uncategorizedExpenses", "Uncategorized expenses")}: {summary?.missing_data?.uncategorized_expenses_count ?? 0}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.grossInvoiceTotal", "Gross invoice total")}: {formatMoney(financeSummary?.gross_invoice_total ?? financeSummary?.invoice_total, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.refundTotal", "Refund total")}: {formatMoney(refundSummary?.refund_total, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.netInvoiceTotal", "Net invoice total")}: {formatMoney(refundSummary?.net_invoice_total ?? financeSummary?.net_invoice_total, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.estimatedNetTaxGross", "Estimated net tax gross")}: {formatMoney(taxSummary?.estimated_net_tax_gross ?? taxSummary?.estimated_net_tax, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.estimatedNetTaxNet", "Estimated net tax net")}: {formatMoney(taxSummary?.estimated_net_tax_net, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.estimatedMarginGross", "Estimated margin gross")}: {formatMoney(summary?.profitability_summary?.estimated_margin_gross ?? summary?.profitability_summary?.estimated_margin, currency)}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.estimatedMarginNet", "Estimated margin net")}: {formatMoney(summary?.profitability_summary?.estimated_margin_net, currency)}</Typography>
             {(Number(refundSummary?.refund_total || 0) > 0) ? (
               <Typography variant="body2" color="text.secondary">
-                Review refund activity before final accounting handoff. Refunds do not block month-end, but they do affect net cash and net tax.
+                {tMonthEnd("summary.refundReviewNote", "Review refund activity before final accounting handoff. Refunds do not block month-end, but they do affect net cash and net tax.")}
               </Typography>
             ) : null}
           </Paper>
