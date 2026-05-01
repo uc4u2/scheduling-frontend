@@ -1,190 +1,202 @@
 # Business Finance Manager Workflow
 
-This guide explains how a manager uses Business Finance for custom-price jobs from first request through payment, refund handling, and reporting review.
+This guide explains how a manager should use Business Finance in Schedulaa.
 
-## When to Use Business Finance Instead of Booking
+## What Business Finance Is For
 
-Use Business Finance when:
-- the client asks for a price first
-- the scope is custom
-- the manager needs to prepare an estimate before scheduling or payment
-- the team will likely execute the work later through a work order
+Use Business Finance when the job is custom and the team needs:
+- a quote request
+- an estimate
+- an invoice
+- payment tracking
+- a work order
+- material planning
+- expenses and receipts
+- a month-end handoff for the accountant
 
 Use Booking instead when:
 - the service is already known
 - the price is already known
-- the normal appointment flow is the real source of truth
+- the regular appointment flow is the real source of truth
 
 Simple rule:
-- Booking = known service and appointment flow
-- Business Finance = custom pricing, invoice, and job workflow
+- Booking = normal appointment flow
+- Business Finance = custom-price job flow
 
-## How Manager Creates and Sends an Estimate
+## Quote Request -> Estimate -> Invoice
 
-Start in Business Finance and create a quote request.
+Manager flow:
+- create or review a quote request
+- link or create the client
+- build the estimate
+- send the estimate or share the public link
+- client approves or rejects the estimate
+- convert the accepted estimate to an invoice
 
-Enter:
-- title
-- request type
-- source label
-- contact name
-- contact email
-- contact phone
-- service address
-- preferred timeline
-- description
-- visible notes
-- internal notes
+Business Finance is for custom-price work. The estimate is the pricing proposal. The invoice is the bill after the scope is approved.
 
-Then:
-- link the correct client record or create one from the quote contact
-- create the estimate
-- add line items
-- review notes, terms, expiry, tax, and totals
-- preview the client-facing view
-- send the estimate or copy the public link
+## Online Payment vs Offline Payment
+
+There are two payment paths.
+
+### Online payment
+Use the Stripe-hosted payment link when the customer should pay online.
+
+Manager flow:
+- open the finance invoice detail
+- create/copy/open payment link
+- customer pays online
+- local invoice becomes paid after reconciliation
+
+### Offline payment
+Use offline payment when the customer pays by:
+- cash
+- e-transfer
+- cheque
+- bank transfer
+- external debit/card terminal
+- other offline method
+
+Manager flow:
+- open the finance invoice detail
+- click `Record offline payment`
+- enter amount, method, date, and note
 
 Important:
-- the public estimate page is the client approval step
-- the estimate is not an invoice yet
+- recording an offline payment does not charge the customer through Stripe
+- offline-paid invoices are not Stripe refund eligible
 
-## How Accepted Estimate Becomes Invoice
+## Work Order After Approval or Payment
 
-After the client accepts the estimate, the manager can convert it to an invoice.
+After estimate approval and invoice creation, the manager can create the work order.
 
-That conversion:
-- creates the local finance invoice
-- copies the approved totals into the invoice
-- keeps the invoice tied to the correct client and estimate context
+The work order is the job execution record.
 
-At this stage the manager can also decide whether to:
-- collect payment now
-- create the work order now
-- do both in the right order for the job
+Manager uses it to:
+- assign employee or crew
+- set the date
+- add instructions
+- plan materials
 
-## How Payment Link Works
+## Planned Materials and Inventory Reservation
 
-Inside the invoice detail, the manager can use:
-- Create Payment Link
-- Copy Payment Link
-- Open Payment Link
+When the manager plans materials on the work order:
+- stock is reserved operationally
+- stock is not deducted yet
 
-This uses the hosted Stripe invoice/payment flow.
+Manager sees:
+- On hand
+- Reserved
+- Available
+- Available after this job
 
-Important truths:
-- the hosted payment link should match the local invoice total
-- if Stripe has a stale or mismatched hosted invoice, the hotfix behavior replaces it
-- current Print / Save PDF is a browser print path, not a server-generated PDF file
+If the job plans more than current availability:
+- Schedulaa warns the manager
+- it does not hard-block the plan
 
-## How Payment Status Changes After Client Pays
+This is useful because the team may restock before the job date.
 
-When the client pays the hosted invoice:
-- Stripe marks the hosted invoice paid
-- the Stripe webhook reconciles the local finance invoice
-- the local finance invoice becomes `paid`
+## Employee Field Report
 
-Manager-visible payment state includes:
-- payment status
-- whether Stripe payment was captured
-- whether the invoice is refund-eligible
+The employee uses the work order to:
+- review instructions
+- see planned materials
+- submit the field report
+- report actual usage
 
-## How Manager Sees Payment in Payments & Refunds
+Important:
+- reported usage is not final yet
+- reported usage does not deduct stock by itself
 
-Advanced Management -> Payments & Refunds now includes Business Finance rows.
+## Manager Review
 
-Finance rows show:
-- Business Finance label
-- invoice number
-- client
-- payment status
+Manager review is the approval step after the field report.
+
+This is where the manager confirms:
+- what happened on the job
+- what materials were actually used
+- what should count as approved usage
+
+After manager approval:
+- approved usage deducts stock
+- approved material cost feeds profitability
+- review closes the operational loop
+
+## Expenses and Recurring Expenses
+
+Use Expenses for overhead and general business costs such as:
+- rent
+- internet
+- phone
+- insurance
+- fuel
+- software
+- accountant fees
+
+Each expense can have:
+- vendor
+- category
 - amount
+- tax
+- receipt
+- review status
+
+Recurring expenses help with repeat costs.
+
+Manager flow:
+- create a recurring expense template once
+- preview due recurring drafts
+- generate due recurring draft expenses
+- review them before month-end
+
+Important:
+- recurring templates are not actual expenses
+- generated recurring drafts stay out of totals until reviewed
+
+## Receipt Inbox
+
+Receipt Inbox is for capturing the receipt first and organizing the expense later.
 
 Manager can:
-- search by invoice number, client, or related estimate
-- use the source filter to switch between Bookings and Business Finance
-- click `View Invoice` to open the finance invoice detail
+- upload a receipt
+- take a receipt photo on mobile web
+- keep it unlinked for now
+- link it to an existing expense later
+- create a new expense from the receipt
+
+Receipt statuses:
+- Unlinked
+- Linked
+- Archived
+
+This is useful when the manager has the receipt now but does not want to fill the whole expense form immediately.
+
+## Month-End Accountant Package
+
+Month-End helps the manager prepare a clean accountant handoff.
+
+Manager can review:
+- missing receipts
+- unlinked receipts
+- uncategorized expenses
+- draft recurring expenses
+- low available stock
+- refund-aware totals
+
+Then the manager can use:
+- `Prepare accountant package`
+
+The package gives the accountant:
+- invoices
+- payments
+- refunds
+- expenses
+- tax summary
+- profitability
+- month-end summary
+- receipt manifest
 
 Important:
-- finance rows do not use the booking refund dialog
-- finance rows do not show a global Refund button in the list
-
-## How Manager Issues Finance Refund From Finance Invoice Detail
-
-Refunds start inside Finance Invoice Detail.
-
-When a finance invoice is eligible, the dialog shows:
-- paid amount
-- refunded amount
-- remaining refundable amount
-- refund history
-- `Issue refund`
-
-Manager refund flow:
-- open the finance invoice detail
-- review payment and refund summary
-- click `Issue refund`
-- choose full remaining refund or custom amount
-- enter reason/note
-- confirm understanding that refunding payment does not change estimate, work order, tax, or line-item totals
-- submit the refund
-
-After refund:
-- invoice status updates
-- refund history updates
-- remaining refundable updates
-- invoice totals do not change
-
-## Difference Between Booking Refund and Finance Invoice Refund
-
-Booking refund:
-- belongs to appointment payment flow
-- can include booking-specific logic such as service buckets, tips, no-show, or platform-fee options
-- uses booking refund endpoints and booking refund UI
-
-Finance invoice refund:
-- belongs to Business Finance invoice flow
-- starts from Finance Invoice Detail
-- uses finance invoice refund endpoint
-- does not use booking refund dialog
-- does not use booking-specific tip, no-show, or platform-fee refund options
-
-These are intentionally separate UI flows even though both are part of the larger payment/refund system.
-
-## How Reports Show Gross, Refund, and Net
-
-Business Finance reports now preserve original invoice totals and also show refund-aware net values.
-
-Manager should read them as:
-- Gross invoice total = original invoiced amount in the date scope
-- Refunds = refund activity in the date scope
-- Net invoice total = gross invoice total minus refunds
-- Gross tax collected = original tax billed in the date scope
-- Tax refunded = refunded tax estimate based on refund proportion
-- Net tax collected = gross tax collected minus refunded tax
-
-Invoice report rows now also show:
-- refunded amount
-- remaining refundable amount
-- net collected amount
-- refund count
-
-## What Month-End Refund Review Means
-
-Month-End now surfaces refund activity so the manager and accountant can see:
-- refund total
-- refunded invoices
-- partial refunds
-- tax refunded
-
-This is an accounting handoff and review aid.
-
-It does not mean:
-- refunds block month-end automatically
-- Schedulaa replaces accountant review
-
-Simple rule:
-- Month-End should now be read as gross plus refund-aware net context, not gross-only history
-
-## Operational Flow Summary
-
-Quote Request -> Client -> Estimate -> Client response -> Invoice -> Payment link -> Paid webhook reconciliation -> Work order -> Field report -> Manager review -> Refund if needed -> Refund-aware reporting/month-end
+- this does not file taxes
+- this does not replace the accountant
+- it prepares cleaner records for accountant review
