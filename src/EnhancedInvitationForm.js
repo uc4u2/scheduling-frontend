@@ -889,7 +889,12 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
 
       if (recruiterDefaults) {
         try {
-          setFormData((prev) => ({ ...prev, ...JSON.parse(recruiterDefaults) }));
+          const parsedDefaults = JSON.parse(recruiterDefaults);
+          setFormData((prev) => ({ ...prev, ...parsedDefaults }));
+          const savedDocumentUploadMode = parsedDefaults?.documentUploadMode;
+          if (["hidden", "optional", "required"].includes(savedDocumentUploadMode)) {
+            setDocumentUploadMode(savedDocumentUploadMode);
+          }
         } catch (err) {
           console.warn("Unable to parse recruiter defaults", err);
         }
@@ -1016,6 +1021,7 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       studioName,
       cleanerName,
     }))(formData);
+    recruiterDefaults.documentUploadMode = documentUploadMode;
     localStorage.setItem("recruiterDefaults", JSON.stringify(recruiterDefaults));
     setMessage("Defaults saved successfully.");
   };
