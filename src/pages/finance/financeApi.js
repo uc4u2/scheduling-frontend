@@ -186,6 +186,8 @@ export const getFinanceMonthEnd = (params = {}) =>
   unwrap(api.get("/finance/month-end", { params }));
 export const exportFinanceMonthEndCsv = (payload) =>
   api.post("/finance/month-end/export", payload, { responseType: "blob" });
+export const downloadFinanceAccountantPackage = (payload) =>
+  api.post("/finance/month-end/accountant-package", payload, { responseType: "blob" });
 
 export const listExpenseCategories = () => unwrap(api.get("/finance/expense-categories"));
 export const getExpenseCategory = (id) => unwrap(api.get(`/finance/expense-categories/${id}`));

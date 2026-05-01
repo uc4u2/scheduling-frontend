@@ -13,7 +13,14 @@ import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
-import { exportFinanceMonthEndCsv, getFinanceMissingData, getFinanceMonthEnd, getFinanceTaxContext, previewRecurringExpenses } from "./financeApi";
+import {
+  downloadFinanceAccountantPackage,
+  exportFinanceMonthEndCsv,
+  getFinanceMissingData,
+  getFinanceMonthEnd,
+  getFinanceTaxContext,
+  previewRecurringExpenses,
+} from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
 const formatMoney = (value, currency = "USD") =>
@@ -43,6 +50,7 @@ export default function MonthEndReviewPage() {
   const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [preparingPackage, setPreparingPackage] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -91,6 +99,35 @@ export default function MonthEndReviewPage() {
     }
   };
 
+  const handlePrepareAccountantPackage = async () => {
+    setPreparingPackage(true);
+    try {
+      const res = await downloadFinanceAccountantPackage({ date_from: dateFrom, date_to: dateTo });
+      const blob = new Blob([res.data], { type: res.headers?.["content-type"] || "application/zip" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `schedulaa-accountant-package-${dateFrom}-to-${dateTo}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      enqueueSnackbar(
+        tMonthEnd("snackbar.packageDownloaded", "Accountant package downloaded."),
+        { variant: "success" }
+      );
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error
+          || err?.message
+          || tMonthEnd("errors.packageFailed", "Unable to prepare accountant package."),
+        { variant: "error" }
+      );
+    } finally {
+      setPreparingPackage(false);
+    }
+  };
+
   const checklist = review?.checklist || review?.checklist_json || {};
   const checklistReasons = review?.checklist_reasons || {};
   const summary = review?.summary || review?.summary_json || {};
@@ -126,7 +163,18 @@ export default function MonthEndReviewPage() {
           <ThemedDateField fullWidth label={tMonthEnd("filters.to", "To")} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <Button variant="contained" onClick={load}>{tMonthEnd("filters.refresh", "Refresh")}</Button>
           <Button variant="outlined" onClick={handleExport} disabled={exporting}>{exporting ? tMonthEnd("filters.preparingCsv", "Preparing CSV...") : tMonthEnd("filters.downloadCsv", "Download CSV")}</Button>
+          <Button variant="outlined" onClick={handlePrepareAccountantPackage} disabled={preparingPackage}>
+            {preparingPackage
+              ? tMonthEnd("filters.preparingPackage", "Preparing package...")
+              : tMonthEnd("filters.prepareAccountantPackage", "Prepare accountant package")}
+          </Button>
         </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+          {tMonthEnd(
+            "filters.packageHelper",
+            "This package prepares records for accountant review. It does not file taxes."
+          )}
+        </Typography>
       </Paper>
 
       {loading ? (
