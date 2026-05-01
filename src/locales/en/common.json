@@ -2786,6 +2786,217 @@
             "close": "Close"
           }
         }
+      },
+      "fieldReports": {
+        "errors": {
+          "loadFailed": "Unable to load field reports.",
+          "compareFailed": "Unable to compare planned and reported materials.",
+          "clarificationFailed": "Unable to request clarification.",
+          "rejectFailed": "Unable to reject report.",
+          "createReviewFailed": "Unable to create review."
+        },
+        "snackbar": {
+          "clarificationRequested": "Clarification requested.",
+          "reportRejected": "Field report rejected.",
+          "reviewCreated": "Review created."
+        },
+        "toolbar": {
+          "workOrder": "Work order",
+          "refresh": "Refresh"
+        },
+        "empty": {
+          "title": "No field reports for this work order",
+          "description": "No reports submitted yet."
+        },
+        "table": {
+          "headers": {
+            "submitted": "Submitted",
+            "teamMember": "Team member",
+            "status": "Status",
+            "completed": "Completed",
+            "reportedMaterials": "Reported materials",
+            "actions": "Actions"
+          },
+          "open": "Open"
+        },
+        "common": {
+          "yes": "Yes",
+          "no": "No",
+          "close": "Close"
+        },
+        "detail": {
+          "title": "Field report detail",
+          "submittedBy": "Submitted by",
+          "status": "Status",
+          "workNotes": "Work notes",
+          "issuesFound": "Issues found",
+          "clientRequestedExtraWork": "Client requested extra work",
+          "clientNote": "Client note",
+          "files": "Files",
+          "noFileMetadata": "No file metadata added.",
+          "reportedMaterials": "Reported materials",
+          "plannedMaterials": "Planned materials",
+          "planVsReported": "Plan vs reported",
+          "plannedQuantity": "Planned {{count}}",
+          "reportedQuantity": "Reported {{count}}",
+          "extra": "Extra",
+          "comparisonUnavailable": "Comparison data is unavailable.",
+          "table": {
+            "title": "Title",
+            "reportedQty": "Reported qty",
+            "plannedMaterial": "Planned material",
+            "extraWork": "Extra work",
+            "reason": "Reason"
+          },
+          "noReportedMaterials": "No reported materials.",
+          "viewApprovedReview": "View Approved Review",
+          "requestClarification": "Request clarification",
+          "rejectReport": "Reject report",
+          "createReview": "Create review"
+        }
+      },
+      "reviews": {
+        "errors": {
+          "loadFailed": "Unable to load reviews.",
+          "alreadyApproved": "This review has already been approved and applied.",
+          "insufficientInventory": "There is not enough stock available for the approved quantity.",
+          "invalidMaterialDecision": "One of the material decisions is not valid.",
+          "invalidBillingDecision": "One of the billing decisions is not valid.",
+          "actionFailed": "Unable to complete the review action."
+        },
+        "snackbar": {
+          "reviewCreated": "Review created.",
+          "notesSaved": "Review notes saved.",
+          "reviewApproved": "Review approved.",
+          "clarificationRequested": "Clarification requested.",
+          "reviewRejected": "Review rejected."
+        },
+        "toolbar": {
+          "workOrder": "Work order",
+          "fieldReportForNewReview": "Field report for new review",
+          "createEmptyDraftReview": "Create empty draft review",
+          "reportNumber": "Report #{{id}}",
+          "refresh": "Refresh",
+          "createReview": "Create review"
+        },
+        "empty": {
+          "title": "No reviews yet",
+          "description": "No reviews created yet.",
+          "action": "Create review"
+        },
+        "table": {
+          "headers": {
+            "review": "Review",
+            "fieldReport": "Field report",
+            "status": "Status",
+            "approved": "Approved",
+            "actions": "Actions"
+          },
+          "reviewNumber": "Review #{{id}}",
+          "open": "Open"
+        },
+        "actions": {
+          "saveNotes": "Save notes",
+          "requestClarification": "Request clarification",
+          "reject": "Reject",
+          "approveReview": "Approve review"
+        },
+        "common": {
+          "close": "Close"
+        },
+        "decisionOptions": {
+          "approve": "approve",
+          "adjust": "adjust",
+          "reject": "reject",
+          "client_provided": "client_provided"
+        },
+        "billingOptions": {
+          "internal_cost_only": "internal_cost_only",
+          "add_to_invoice": "add_to_invoice",
+          "ignore": "ignore",
+          "client_provided": "client_provided"
+        },
+        "detail": {
+          "title": "Review & approve",
+          "reviewNumber": "Review #{{id}}",
+          "fieldReportNumber": "Field report #{{id}}",
+          "invoiceMissingWarning": "No linked invoice exists for this work order, so no invoice extra was created.",
+          "reviewNotes": "Review notes",
+          "planVsReported": "Plan vs reported",
+          "reportedQuantity": "Reported {{count}}",
+          "extraWork": "Extra work",
+          "noComparison": "No plan-vs-reported data linked to this review yet.",
+          "materialDecisions": "Material decisions",
+          "noReportedMaterials": "No reported materials are attached to this review.",
+          "inventoryInfo": "Inventory changes only after manager approval. This screen does not expose negative-inventory overrides.",
+          "fields": {
+            "title": "Title",
+            "plannedQty": "Planned qty",
+            "reportedQty": "Reported qty",
+            "approvedQty": "Approved qty",
+            "unitCost": "Unit cost",
+            "decision": "Decision",
+            "billing": "Billing",
+            "inventoryItem": "Inventory item",
+            "noStockItem": "No stock item",
+            "note": "Note"
+          }
+        }
+      },
+      "vendors": {
+        "errors": {
+          "loadFailed": "Unable to load vendors.",
+          "saveFailed": "Unable to save vendor.",
+          "archiveFailed": "Unable to archive vendor."
+        },
+        "snackbar": {
+          "updated": "Vendor updated.",
+          "added": "Vendor added.",
+          "archived": "Vendor archived."
+        },
+        "metrics": {
+          "activeVendors": "Active vendors",
+          "inactiveVendors": "Inactive vendors"
+        },
+        "toolbar": {
+          "searchVendors": "Search vendors",
+          "addVendor": "Add vendor"
+        },
+        "empty": {
+          "title": "No vendors yet",
+          "description": "Add your first vendor.",
+          "action": "Add vendor"
+        },
+        "table": {
+          "headers": {
+            "name": "Name",
+            "contact": "Contact",
+            "address": "Address",
+            "notes": "Notes",
+            "status": "Status",
+            "actions": "Actions"
+          },
+          "active": "Active",
+          "inactive": "Inactive",
+          "edit": "Edit",
+          "archive": "Archive"
+        },
+        "dialog": {
+          "editTitle": "Edit vendor",
+          "addTitle": "Add vendor"
+        },
+        "fields": {
+          "vendorName": "Vendor name",
+          "email": "Email",
+          "phone": "Phone",
+          "address": "Address",
+          "notes": "Notes",
+          "activeVendor": "Active vendor"
+        },
+        "common": {
+          "cancel": "Cancel",
+          "save": "Save"
+        }
       }
     }
   },

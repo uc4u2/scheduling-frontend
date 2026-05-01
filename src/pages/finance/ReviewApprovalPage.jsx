@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -22,6 +22,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import {
   approveWorkOrderReview,
@@ -43,12 +44,12 @@ import FinancePagination from "./components/FinancePagination";
 const decisionOptions = ["approve", "adjust", "reject", "client_provided"];
 const billingOptions = ["internal_cost_only", "add_to_invoice", "ignore", "client_provided"];
 
-const mapApiError = (error) => {
-  if (error === "review_already_approved") return "This review has already been approved and applied.";
-  if (error === "insufficient_inventory") return "There is not enough stock available for the approved quantity.";
-  if (error === "invalid_material_decision") return "One of the material decisions is not valid.";
-  if (error === "invalid_billing_decision") return "One of the billing decisions is not valid.";
-  return error || "Unable to complete the review action.";
+const mapApiError = (error, tReviews) => {
+  if (error === "review_already_approved") return tReviews("errors.alreadyApproved", "This review has already been approved and applied.");
+  if (error === "insufficient_inventory") return tReviews("errors.insufficientInventory", "There is not enough stock available for the approved quantity.");
+  if (error === "invalid_material_decision") return tReviews("errors.invalidMaterialDecision", "One of the material decisions is not valid.");
+  if (error === "invalid_billing_decision") return tReviews("errors.invalidBillingDecision", "One of the billing decisions is not valid.");
+  return error || tReviews("errors.actionFailed", "Unable to complete the review action.");
 };
 
 const buildDecisionRows = (review, comparison) => {
@@ -84,17 +85,13 @@ const buildDecisionRows = (review, comparison) => {
   }));
 };
 
-function ReviewDetailDialog({
-  open,
-  onClose,
-  workOrderId,
-  review,
-  fieldReports,
-  comparison,
-  inventoryItems,
-  onSaved,
-}) {
+function ReviewDetailDialog({ open, onClose, review, fieldReports, comparison, inventoryItems, onSaved }) {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tReviews = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.reviews.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [reviewNotes, setReviewNotes] = useState("");
   const [decisionRows, setDecisionRows] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -121,10 +118,10 @@ function ReviewDetailDialog({
     setSaving(true);
     try {
       await updateWorkOrderReview(review.id, { review_notes: reviewNotes });
-      enqueueSnackbar("Review notes saved.", { variant: "success" });
+      enqueueSnackbar(tReviews("snackbar.notesSaved", "Review notes saved."), { variant: "success" });
       onSaved?.();
     } catch (err) {
-      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message), { variant: "error" });
+      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message, tReviews), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -153,11 +150,11 @@ function ReviewDetailDialog({
       const res = await approveWorkOrderReview(review.id, payload);
       const nextWarnings = Array.isArray(res?.warnings) ? res.warnings : [];
       setWarnings(nextWarnings);
-      enqueueSnackbar("Review approved.", { variant: "success" });
+      enqueueSnackbar(tReviews("snackbar.reviewApproved", "Review approved."), { variant: "success" });
       onSaved?.();
     } catch (err) {
       const payload = err?.response?.data || {};
-      enqueueSnackbar(mapApiError(payload.error || err?.message), { variant: "error" });
+      enqueueSnackbar(mapApiError(payload.error || err?.message, tReviews), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -168,10 +165,10 @@ function ReviewDetailDialog({
     setSaving(true);
     try {
       await requestReviewClarification(review.id);
-      enqueueSnackbar("Clarification requested.", { variant: "success" });
+      enqueueSnackbar(tReviews("snackbar.clarificationRequested", "Clarification requested."), { variant: "success" });
       onSaved?.();
     } catch (err) {
-      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message), { variant: "error" });
+      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message, tReviews), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -182,10 +179,10 @@ function ReviewDetailDialog({
     setSaving(true);
     try {
       await rejectWorkOrderReview(review.id);
-      enqueueSnackbar("Review rejected.", { variant: "success" });
+      enqueueSnackbar(tReviews("snackbar.reviewRejected", "Review rejected."), { variant: "success" });
       onSaved?.();
     } catch (err) {
-      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message), { variant: "error" });
+      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message, tReviews), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -193,14 +190,14 @@ function ReviewDetailDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-      <DialogTitle>Review & approve</DialogTitle>
+      <DialogTitle>{tReviews("detail.title", "Review & approve")}</DialogTitle>
       <DialogContent dividers>
         {review ? (
           <Stack spacing={2}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
               <Typography variant="body2" color="text.secondary">
-                Review #{review.id}{review.work_order_number ? ` • ${review.work_order_number}` : ""}
-                {selectedFieldReport ? ` • Field report #${selectedFieldReport.id}` : ""}
+                {tReviews("detail.reviewNumber", "Review #{{id}}", { id: review.id })}{review.work_order_number ? ` • ${review.work_order_number}` : ""}
+                {selectedFieldReport ? ` • ${tReviews("detail.fieldReportNumber", "Field report #{{id}}", { id: selectedFieldReport.id })}` : ""}
               </Typography>
               <FinanceStatusChip status={review.status} />
             </Stack>
@@ -208,7 +205,7 @@ function ReviewDetailDialog({
             {warnings.map((warning) => (
               <Alert key={warning} severity={warning === "invoice_missing_for_work_order" ? "warning" : "info"}>
                 {warning === "invoice_missing_for_work_order"
-                  ? "No linked invoice exists for this work order, so no invoice extra was created."
+                  ? tReviews("detail.invoiceMissingWarning", "No linked invoice exists for this work order, so no invoice extra was created.")
                   : warning}
               </Alert>
             ))}
@@ -217,66 +214,66 @@ function ReviewDetailDialog({
               fullWidth
               multiline
               minRows={3}
-              label="Review notes"
+              label={tReviews("detail.reviewNotes", "Review notes")}
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
             />
 
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Plan vs reported</Typography>
+              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>{tReviews("detail.planVsReported", "Plan vs reported")}</Typography>
               {comparison ? (
                 <Stack spacing={1}>
                   {(comparison.reported_materials || []).map((row) => (
                     <Typography key={`compare-${row.field_report_material_id}`} variant="body2">
-                      {row.title} • Reported {row.reported_quantity}{row.is_extra ? " • Extra work" : ""}
+                      {row.title} • {tReviews("detail.reportedQuantity", "Reported {{count}}", { count: row.reported_quantity })}{row.is_extra ? ` • ${tReviews("detail.extraWork", "Extra work")}` : ""}
                     </Typography>
                   ))}
                 </Stack>
               ) : (
-                <Typography variant="body2" color="text.secondary">No plan-vs-reported data linked to this review yet.</Typography>
+                <Typography variant="body2" color="text.secondary">{tReviews("detail.noComparison", "No plan-vs-reported data linked to this review yet.")}</Typography>
               )}
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Material decisions</Typography>
+              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>{tReviews("detail.materialDecisions", "Material decisions")}</Typography>
               {!decisionRows.length ? (
-                <Typography variant="body2" color="text.secondary">No reported materials are attached to this review.</Typography>
+                <Typography variant="body2" color="text.secondary">{tReviews("detail.noReportedMaterials", "No reported materials are attached to this review.")}</Typography>
               ) : (
                 <Stack spacing={2}>
                   {decisionRows.map((row, index) => (
                     <Paper key={`decision-${index}`} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
                       <Grid container spacing={2}>
-                        <Grid item xs={12} md={3}><TextField fullWidth label="Title" value={row.title} onChange={(e) => updateDecisionRow(index, "title", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={2}><TextField fullWidth label="Planned qty" value={row.planned_quantity} onChange={(e) => updateDecisionRow(index, "planned_quantity", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={2}><TextField fullWidth label="Reported qty" value={row.reported_quantity} onChange={(e) => updateDecisionRow(index, "reported_quantity", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={2}><TextField fullWidth label="Approved qty" value={row.approved_quantity} onChange={(e) => updateDecisionRow(index, "approved_quantity", e.target.value)} /></Grid>
-                        <Grid item xs={12} md={3}><TextField fullWidth label="Unit cost" value={row.unit_cost_snapshot} onChange={(e) => updateDecisionRow(index, "unit_cost_snapshot", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}><TextField fullWidth label={tReviews("detail.fields.title", "Title")} value={row.title} onChange={(e) => updateDecisionRow(index, "title", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={2}><TextField fullWidth label={tReviews("detail.fields.plannedQty", "Planned qty")} value={row.planned_quantity} onChange={(e) => updateDecisionRow(index, "planned_quantity", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={2}><TextField fullWidth label={tReviews("detail.fields.reportedQty", "Reported qty")} value={row.reported_quantity} onChange={(e) => updateDecisionRow(index, "reported_quantity", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={2}><TextField fullWidth label={tReviews("detail.fields.approvedQty", "Approved qty")} value={row.approved_quantity} onChange={(e) => updateDecisionRow(index, "approved_quantity", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}><TextField fullWidth label={tReviews("detail.fields.unitCost", "Unit cost")} value={row.unit_cost_snapshot} onChange={(e) => updateDecisionRow(index, "unit_cost_snapshot", e.target.value)} /></Grid>
                         <Grid item xs={12} md={3}>
                           <FormControl fullWidth>
-                            <InputLabel>Decision</InputLabel>
-                            <Select label="Decision" value={row.decision} onChange={(e) => updateDecisionRow(index, "decision", e.target.value)}>
-                              {decisionOptions.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                            <InputLabel>{tReviews("detail.fields.decision", "Decision")}</InputLabel>
+                            <Select label={tReviews("detail.fields.decision", "Decision")} value={row.decision} onChange={(e) => updateDecisionRow(index, "decision", e.target.value)}>
+                              {decisionOptions.map((option) => <MenuItem key={option} value={option}>{tReviews(`decisionOptions.${option}`, option)}</MenuItem>)}
                             </Select>
                           </FormControl>
                         </Grid>
                         <Grid item xs={12} md={3}>
                           <FormControl fullWidth>
-                            <InputLabel>Billing</InputLabel>
-                            <Select label="Billing" value={row.billing_decision} onChange={(e) => updateDecisionRow(index, "billing_decision", e.target.value)}>
-                              {billingOptions.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                            <InputLabel>{tReviews("detail.fields.billing", "Billing")}</InputLabel>
+                            <Select label={tReviews("detail.fields.billing", "Billing")} value={row.billing_decision} onChange={(e) => updateDecisionRow(index, "billing_decision", e.target.value)}>
+                              {billingOptions.map((option) => <MenuItem key={option} value={option}>{tReviews(`billingOptions.${option}`, option)}</MenuItem>)}
                             </Select>
                           </FormControl>
                         </Grid>
                         <Grid item xs={12} md={3}>
                           <FormControl fullWidth>
-                            <InputLabel>Inventory item</InputLabel>
-                            <Select label="Inventory item" value={row.inventory_item_id} onChange={(e) => updateDecisionRow(index, "inventory_item_id", e.target.value)}>
-                              <MenuItem value="">No stock item</MenuItem>
+                            <InputLabel>{tReviews("detail.fields.inventoryItem", "Inventory item")}</InputLabel>
+                            <Select label={tReviews("detail.fields.inventoryItem", "Inventory item")} value={row.inventory_item_id} onChange={(e) => updateDecisionRow(index, "inventory_item_id", e.target.value)}>
+                              <MenuItem value="">{tReviews("detail.fields.noStockItem", "No stock item")}</MenuItem>
                               {inventoryItems.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
                             </Select>
                           </FormControl>
                         </Grid>
-                        <Grid item xs={12} md={3}><TextField fullWidth label="Note" value={row.note} onChange={(e) => updateDecisionRow(index, "note", e.target.value)} /></Grid>
+                        <Grid item xs={12} md={3}><TextField fullWidth label={tReviews("detail.fields.note", "Note")} value={row.note} onChange={(e) => updateDecisionRow(index, "note", e.target.value)} /></Grid>
                       </Grid>
                     </Paper>
                   ))}
@@ -284,23 +281,28 @@ function ReviewDetailDialog({
               )}
             </Paper>
 
-            <Alert severity="info">Inventory changes only after manager approval. This screen does not expose negative-inventory overrides.</Alert>
+            <Alert severity="info">{tReviews("detail.inventoryInfo", "Inventory changes only after manager approval. This screen does not expose negative-inventory overrides.")}</Alert>
           </Stack>
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleSaveDraft} disabled={saving}>Save notes</Button>
-        <Button onClick={handleClarification} disabled={saving}>Request clarification</Button>
-        <Button color="error" onClick={handleReject} disabled={saving}>Reject</Button>
-        <Button variant="contained" onClick={handleApprove} disabled={saving}>Approve review</Button>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={handleSaveDraft} disabled={saving}>{tReviews("actions.saveNotes", "Save notes")}</Button>
+        <Button onClick={handleClarification} disabled={saving}>{tReviews("actions.requestClarification", "Request clarification")}</Button>
+        <Button color="error" onClick={handleReject} disabled={saving}>{tReviews("actions.reject", "Reject")}</Button>
+        <Button variant="contained" onClick={handleApprove} disabled={saving}>{tReviews("actions.approveReview", "Approve review")}</Button>
+        <Button onClick={onClose}>{tReviews("common.close", "Close")}</Button>
       </DialogActions>
     </Dialog>
   );
 }
 
 export default function ReviewApprovalPage() {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tReviews = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.reviews.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [workOrders, setWorkOrders] = useState([]);
   const [fieldReports, setFieldReports] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -353,7 +355,7 @@ export default function ReviewApprovalPage() {
       const workOrderId = await loadBase();
       await loadWorkOrderScoped(workOrderId);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load reviews.");
+      setError(err?.response?.data?.error || err?.message || tReviews("errors.loadFailed", "Unable to load reviews."));
     } finally {
       setLoading(false);
     }
@@ -361,15 +363,19 @@ export default function ReviewApprovalPage() {
 
   useEffect(() => {
     loadAll();
+    // Initial page bootstrap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (selectedWorkOrderId) {
       loadWorkOrderScoped(selectedWorkOrderId).catch((err) => {
-        setError(err?.response?.data?.error || err?.message || "Unable to load reviews.");
+        setError(err?.response?.data?.error || err?.message || tReviews("errors.loadFailed", "Unable to load reviews."));
       });
     }
-  }, [selectedWorkOrderId, page, perPage]);
+    // Keep reload scoped to selected work order and pagination without making the helper identity-sensitive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWorkOrderId, page, perPage, tReviews]);
 
   const openReview = async (reviewId) => {
     try {
@@ -384,7 +390,7 @@ export default function ReviewApprovalPage() {
       }
       setDetailOpen(true);
     } catch (err) {
-      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message), { variant: "error" });
+      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message, tReviews), { variant: "error" });
     }
   };
 
@@ -394,10 +400,10 @@ export default function ReviewApprovalPage() {
       await createWorkOrderReview(selectedWorkOrderId, {
         field_report_id: selectedFieldReportId || undefined,
       });
-      enqueueSnackbar("Review created.", { variant: "success" });
+      enqueueSnackbar(tReviews("snackbar.reviewCreated", "Review created."), { variant: "success" });
       await loadWorkOrderScoped(selectedWorkOrderId);
     } catch (err) {
-      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message), { variant: "error" });
+      enqueueSnackbar(mapApiError(err?.response?.data?.error || err?.message, tReviews), { variant: "error" });
     }
   };
 
@@ -407,26 +413,26 @@ export default function ReviewApprovalPage() {
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
             <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>Work order</InputLabel>
-              <Select label="Work order" value={selectedWorkOrderId} onChange={(e) => { setSelectedWorkOrderId(e.target.value); setPage(1); }}>
+              <InputLabel>{tReviews("toolbar.workOrder", "Work order")}</InputLabel>
+              <Select label={tReviews("toolbar.workOrder", "Work order")} value={selectedWorkOrderId} onChange={(e) => { setSelectedWorkOrderId(e.target.value); setPage(1); }}>
                 {workOrders.map((row) => (
                   <MenuItem key={row.id} value={row.id}>{row.work_order_number} • {row.title}</MenuItem>
                 ))}
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>Field report for new review</InputLabel>
-              <Select label="Field report for new review" value={selectedFieldReportId} onChange={(e) => setSelectedFieldReportId(e.target.value)}>
-                <MenuItem value="">Create empty draft review</MenuItem>
+              <InputLabel>{tReviews("toolbar.fieldReportForNewReview", "Field report for new review")}</InputLabel>
+              <Select label={tReviews("toolbar.fieldReportForNewReview", "Field report for new review")} value={selectedFieldReportId} onChange={(e) => setSelectedFieldReportId(e.target.value)}>
+                <MenuItem value="">{tReviews("toolbar.createEmptyDraftReview", "Create empty draft review")}</MenuItem>
                 {fieldReports.map((row) => (
-                  <MenuItem key={row.id} value={row.id}>Report #{row.id} • {row.submitted_by_name || row.submitted_by_recruiter_id}</MenuItem>
+                  <MenuItem key={row.id} value={row.id}>{tReviews("toolbar.reportNumber", "Report #{{id}}", { id: row.id })} • {row.submitted_by_name || row.submitted_by_recruiter_id}</MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Stack>
           <Stack direction="row" spacing={1}>
-            <Button variant="outlined" onClick={loadAll}>Refresh</Button>
-            <Button variant="contained" onClick={handleCreateReview}>Create review</Button>
+            <Button variant="outlined" onClick={loadAll}>{tReviews("toolbar.refresh", "Refresh")}</Button>
+            <Button variant="contained" onClick={handleCreateReview}>{tReviews("toolbar.createReview", "Create review")}</Button>
           </Stack>
         </Stack>
       </Paper>
@@ -437,9 +443,9 @@ export default function ReviewApprovalPage() {
         <Alert severity="error">{error}</Alert>
       ) : reviews.length === 0 ? (
         <FinanceEmptyState
-          title="No reviews yet"
-          description="No reviews created yet."
-          actionLabel="Create review"
+          title={tReviews("empty.title", "No reviews yet")}
+          description={tReviews("empty.description", "No reviews created yet.")}
+          actionLabel={tReviews("empty.action", "Create review")}
           onAction={handleCreateReview}
         />
       ) : (
@@ -447,21 +453,21 @@ export default function ReviewApprovalPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Review</TableCell>
-                <TableCell>Field report</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Approved</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>{tReviews("table.headers.review", "Review")}</TableCell>
+                <TableCell>{tReviews("table.headers.fieldReport", "Field report")}</TableCell>
+                <TableCell>{tReviews("table.headers.status", "Status")}</TableCell>
+                <TableCell>{tReviews("table.headers.approved", "Approved")}</TableCell>
+                <TableCell align="right">{tReviews("table.headers.actions", "Actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {reviews.map((review) => (
                 <TableRow key={review.id} hover>
-                  <TableCell>Review #{review.id}</TableCell>
+                  <TableCell>{tReviews("table.reviewNumber", "Review #{{id}}", { id: review.id })}</TableCell>
                   <TableCell>{review.field_report_id || "-"}</TableCell>
                   <TableCell><FinanceStatusChip status={review.status} /></TableCell>
                   <TableCell>{review.approved_at || "-"}</TableCell>
-                  <TableCell align="right"><Button size="small" onClick={() => openReview(review.id)}>Open</Button></TableCell>
+                  <TableCell align="right"><Button size="small" onClick={() => openReview(review.id)}>{tReviews("table.open", "Open")}</Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -483,7 +489,6 @@ export default function ReviewApprovalPage() {
       <ReviewDetailDialog
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        workOrderId={selectedWorkOrderId}
         review={selectedReview}
         fieldReports={fieldReports}
         comparison={comparison}

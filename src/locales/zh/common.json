@@ -2760,6 +2760,217 @@
             "close": "关闭"
           }
         }
+      },
+      "fieldReports": {
+        "errors": {
+          "loadFailed": "无法加载现场报告。",
+          "compareFailed": "无法比较计划材料与上报材料。",
+          "clarificationFailed": "无法请求补充说明。",
+          "rejectFailed": "无法拒绝报告。",
+          "createReviewFailed": "无法创建审核。"
+        },
+        "snackbar": {
+          "clarificationRequested": "已请求补充说明。",
+          "reportRejected": "现场报告已拒绝。",
+          "reviewCreated": "审核已创建。"
+        },
+        "toolbar": {
+          "workOrder": "工单",
+          "refresh": "刷新"
+        },
+        "empty": {
+          "title": "该工单还没有现场报告",
+          "description": "尚未提交任何报告。"
+        },
+        "table": {
+          "headers": {
+            "submitted": "提交时间",
+            "teamMember": "团队成员",
+            "status": "状态",
+            "completed": "已完成",
+            "reportedMaterials": "上报材料",
+            "actions": "操作"
+          },
+          "open": "打开"
+        },
+        "common": {
+          "yes": "是",
+          "no": "否",
+          "close": "关闭"
+        },
+        "detail": {
+          "title": "现场报告详情",
+          "submittedBy": "提交人",
+          "status": "状态",
+          "workNotes": "工作备注",
+          "issuesFound": "发现的问题",
+          "clientRequestedExtraWork": "客户要求额外工作",
+          "clientNote": "客户备注",
+          "files": "文件",
+          "noFileMetadata": "尚未添加文件元数据。",
+          "reportedMaterials": "上报材料",
+          "plannedMaterials": "计划材料",
+          "planVsReported": "计划与上报对比",
+          "plannedQuantity": "计划 {{count}}",
+          "reportedQuantity": "上报 {{count}}",
+          "extra": "额外",
+          "comparisonUnavailable": "比较数据不可用。",
+          "table": {
+            "title": "标题",
+            "reportedQty": "上报数量",
+            "plannedMaterial": "计划材料",
+            "extraWork": "额外工作",
+            "reason": "原因"
+          },
+          "noReportedMaterials": "没有上报材料。",
+          "viewApprovedReview": "查看已批准审核",
+          "requestClarification": "请求补充说明",
+          "rejectReport": "拒绝报告",
+          "createReview": "创建审核"
+        }
+      },
+      "reviews": {
+        "errors": {
+          "loadFailed": "无法加载审核。",
+          "alreadyApproved": "该审核已批准并已应用。",
+          "insufficientInventory": "库存不足，无法满足批准数量。",
+          "invalidMaterialDecision": "某个材料处理决定无效。",
+          "invalidBillingDecision": "某个计费处理决定无效。",
+          "actionFailed": "无法完成审核操作。"
+        },
+        "snackbar": {
+          "reviewCreated": "审核已创建。",
+          "notesSaved": "审核备注已保存。",
+          "reviewApproved": "审核已批准。",
+          "clarificationRequested": "已请求补充说明。",
+          "reviewRejected": "审核已拒绝。"
+        },
+        "toolbar": {
+          "workOrder": "工单",
+          "fieldReportForNewReview": "用于新审核的现场报告",
+          "createEmptyDraftReview": "创建空白审核草稿",
+          "reportNumber": "报告 #{{id}}",
+          "refresh": "刷新",
+          "createReview": "创建审核"
+        },
+        "empty": {
+          "title": "还没有审核",
+          "description": "尚未创建任何审核。",
+          "action": "创建审核"
+        },
+        "table": {
+          "headers": {
+            "review": "审核",
+            "fieldReport": "现场报告",
+            "status": "状态",
+            "approved": "已批准",
+            "actions": "操作"
+          },
+          "reviewNumber": "审核 #{{id}}",
+          "open": "打开"
+        },
+        "actions": {
+          "saveNotes": "保存备注",
+          "requestClarification": "请求补充说明",
+          "reject": "拒绝",
+          "approveReview": "批准审核"
+        },
+        "common": {
+          "close": "关闭"
+        },
+        "decisionOptions": {
+          "approve": "批准",
+          "adjust": "调整",
+          "reject": "拒绝",
+          "client_provided": "客户提供"
+        },
+        "billingOptions": {
+          "internal_cost_only": "仅内部成本",
+          "add_to_invoice": "加入发票",
+          "ignore": "忽略",
+          "client_provided": "客户提供"
+        },
+        "detail": {
+          "title": "审核并批准",
+          "reviewNumber": "审核 #{{id}}",
+          "fieldReportNumber": "现场报告 #{{id}}",
+          "invoiceMissingWarning": "该工单没有关联发票，因此未创建发票附加项。",
+          "reviewNotes": "审核备注",
+          "planVsReported": "计划与上报对比",
+          "reportedQuantity": "上报 {{count}}",
+          "extraWork": "额外工作",
+          "noComparison": "该审核尚未关联计划与上报对比数据。",
+          "materialDecisions": "材料处理决定",
+          "noReportedMaterials": "该审核未关联任何上报材料。",
+          "inventoryInfo": "库存变更仅在经理批准后执行。此界面不提供负库存强制处理。",
+          "fields": {
+            "title": "标题",
+            "plannedQty": "计划数量",
+            "reportedQty": "上报数量",
+            "approvedQty": "批准数量",
+            "unitCost": "单位成本",
+            "decision": "处理决定",
+            "billing": "计费处理",
+            "inventoryItem": "库存项目",
+            "noStockItem": "无库存项目",
+            "note": "备注"
+          }
+        }
+      },
+      "vendors": {
+        "errors": {
+          "loadFailed": "无法加载供应商。",
+          "saveFailed": "无法保存供应商。",
+          "archiveFailed": "无法归档供应商。"
+        },
+        "snackbar": {
+          "updated": "供应商已更新。",
+          "added": "供应商已添加。",
+          "archived": "供应商已归档。"
+        },
+        "metrics": {
+          "activeVendors": "活跃供应商",
+          "inactiveVendors": "停用供应商"
+        },
+        "toolbar": {
+          "searchVendors": "搜索供应商",
+          "addVendor": "添加供应商"
+        },
+        "empty": {
+          "title": "还没有供应商",
+          "description": "添加你的第一个供应商。",
+          "action": "添加供应商"
+        },
+        "table": {
+          "headers": {
+            "name": "名称",
+            "contact": "联系方式",
+            "address": "地址",
+            "notes": "备注",
+            "status": "状态",
+            "actions": "操作"
+          },
+          "active": "启用",
+          "inactive": "停用",
+          "edit": "编辑",
+          "archive": "归档"
+        },
+        "dialog": {
+          "editTitle": "编辑供应商",
+          "addTitle": "添加供应商"
+        },
+        "fields": {
+          "vendorName": "供应商名称",
+          "email": "邮箱",
+          "phone": "电话",
+          "address": "地址",
+          "notes": "备注",
+          "activeVendor": "启用供应商"
+        },
+        "common": {
+          "cancel": "取消",
+          "save": "保存"
+        }
       }
     }
   },

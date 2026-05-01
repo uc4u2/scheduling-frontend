@@ -2758,6 +2758,217 @@
             "close": "Закрыть"
           }
         }
+      },
+      "fieldReports": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить полевые отчёты.",
+          "compareFailed": "Не удалось сравнить плановые и фактические материалы.",
+          "clarificationFailed": "Не удалось запросить уточнение.",
+          "rejectFailed": "Не удалось отклонить отчёт.",
+          "createReviewFailed": "Не удалось создать проверку."
+        },
+        "snackbar": {
+          "clarificationRequested": "Запрос на уточнение отправлен.",
+          "reportRejected": "Полевой отчёт отклонён.",
+          "reviewCreated": "Проверка создана."
+        },
+        "toolbar": {
+          "workOrder": "Наряд",
+          "refresh": "Обновить"
+        },
+        "empty": {
+          "title": "Для этого наряда пока нет полевых отчётов",
+          "description": "Отчёты ещё не отправлены."
+        },
+        "table": {
+          "headers": {
+            "submitted": "Отправлен",
+            "teamMember": "Участник команды",
+            "status": "Статус",
+            "completed": "Завершено",
+            "reportedMaterials": "Заявленные материалы",
+            "actions": "Действия"
+          },
+          "open": "Открыть"
+        },
+        "common": {
+          "yes": "Да",
+          "no": "Нет",
+          "close": "Закрыть"
+        },
+        "detail": {
+          "title": "Детали полевого отчёта",
+          "submittedBy": "Отправил",
+          "status": "Статус",
+          "workNotes": "Рабочие заметки",
+          "issuesFound": "Обнаруженные проблемы",
+          "clientRequestedExtraWork": "Клиент запросил доп. работы",
+          "clientNote": "Заметка клиента",
+          "files": "Файлы",
+          "noFileMetadata": "Метаданные файлов ещё не добавлены.",
+          "reportedMaterials": "Заявленные материалы",
+          "plannedMaterials": "Плановые материалы",
+          "planVsReported": "План и факт",
+          "plannedQuantity": "План {{count}}",
+          "reportedQuantity": "Сообщено {{count}}",
+          "extra": "Дополнительно",
+          "comparisonUnavailable": "Данные для сравнения недоступны.",
+          "table": {
+            "title": "Название",
+            "reportedQty": "Сообщённое кол-во",
+            "plannedMaterial": "Плановый материал",
+            "extraWork": "Доп. работа",
+            "reason": "Причина"
+          },
+          "noReportedMaterials": "Заявленных материалов нет.",
+          "viewApprovedReview": "Открыть утверждённую проверку",
+          "requestClarification": "Запросить уточнение",
+          "rejectReport": "Отклонить отчёт",
+          "createReview": "Создать проверку"
+        }
+      },
+      "reviews": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить проверки.",
+          "alreadyApproved": "Эта проверка уже утверждена и применена.",
+          "insufficientInventory": "Недостаточно запасов для утверждённого количества.",
+          "invalidMaterialDecision": "Одно из решений по материалам недопустимо.",
+          "invalidBillingDecision": "Одно из решений по выставлению счёта недопустимо.",
+          "actionFailed": "Не удалось выполнить действие проверки."
+        },
+        "snackbar": {
+          "reviewCreated": "Проверка создана.",
+          "notesSaved": "Заметки проверки сохранены.",
+          "reviewApproved": "Проверка утверждена.",
+          "clarificationRequested": "Запрос на уточнение отправлен.",
+          "reviewRejected": "Проверка отклонена."
+        },
+        "toolbar": {
+          "workOrder": "Наряд",
+          "fieldReportForNewReview": "Полевой отчёт для новой проверки",
+          "createEmptyDraftReview": "Создать пустой черновик проверки",
+          "reportNumber": "Отчёт #{{id}}",
+          "refresh": "Обновить",
+          "createReview": "Создать проверку"
+        },
+        "empty": {
+          "title": "Проверок пока нет",
+          "description": "Проверки ещё не созданы.",
+          "action": "Создать проверку"
+        },
+        "table": {
+          "headers": {
+            "review": "Проверка",
+            "fieldReport": "Полевой отчёт",
+            "status": "Статус",
+            "approved": "Утверждено",
+            "actions": "Действия"
+          },
+          "reviewNumber": "Проверка #{{id}}",
+          "open": "Открыть"
+        },
+        "actions": {
+          "saveNotes": "Сохранить заметки",
+          "requestClarification": "Запросить уточнение",
+          "reject": "Отклонить",
+          "approveReview": "Утвердить проверку"
+        },
+        "common": {
+          "close": "Закрыть"
+        },
+        "decisionOptions": {
+          "approve": "утвердить",
+          "adjust": "скорректировать",
+          "reject": "отклонить",
+          "client_provided": "предоставлено клиентом"
+        },
+        "billingOptions": {
+          "internal_cost_only": "только внутренняя себестоимость",
+          "add_to_invoice": "добавить в счёт",
+          "ignore": "игнорировать",
+          "client_provided": "предоставлено клиентом"
+        },
+        "detail": {
+          "title": "Проверка и утверждение",
+          "reviewNumber": "Проверка #{{id}}",
+          "fieldReportNumber": "Полевой отчёт #{{id}}",
+          "invoiceMissingWarning": "Для этого наряда нет связанного счёта, поэтому дополнительная позиция в счёт не создана.",
+          "reviewNotes": "Заметки проверки",
+          "planVsReported": "План и факт",
+          "reportedQuantity": "Сообщено {{count}}",
+          "extraWork": "Доп. работа",
+          "noComparison": "К этой проверке пока не привязаны данные план/факт.",
+          "materialDecisions": "Решения по материалам",
+          "noReportedMaterials": "К этой проверке не привязаны заявленные материалы.",
+          "inventoryInfo": "Изменения по складу выполняются только после утверждения менеджером. На этом экране нет принудительного отрицательного остатка.",
+          "fields": {
+            "title": "Название",
+            "plannedQty": "План. кол-во",
+            "reportedQty": "Сообщённое кол-во",
+            "approvedQty": "Утверждённое кол-во",
+            "unitCost": "Себестоимость",
+            "decision": "Решение",
+            "billing": "Выставление счёта",
+            "inventoryItem": "Складская позиция",
+            "noStockItem": "Без складской позиции",
+            "note": "Заметка"
+          }
+        }
+      },
+      "vendors": {
+        "errors": {
+          "loadFailed": "Не удалось загрузить поставщиков.",
+          "saveFailed": "Не удалось сохранить поставщика.",
+          "archiveFailed": "Не удалось архивировать поставщика."
+        },
+        "snackbar": {
+          "updated": "Поставщик обновлён.",
+          "added": "Поставщик добавлен.",
+          "archived": "Поставщик архивирован."
+        },
+        "metrics": {
+          "activeVendors": "Активные поставщики",
+          "inactiveVendors": "Неактивные поставщики"
+        },
+        "toolbar": {
+          "searchVendors": "Поиск поставщиков",
+          "addVendor": "Добавить поставщика"
+        },
+        "empty": {
+          "title": "Поставщиков пока нет",
+          "description": "Добавьте первого поставщика.",
+          "action": "Добавить поставщика"
+        },
+        "table": {
+          "headers": {
+            "name": "Название",
+            "contact": "Контакты",
+            "address": "Адрес",
+            "notes": "Заметки",
+            "status": "Статус",
+            "actions": "Действия"
+          },
+          "active": "Активен",
+          "inactive": "Неактивен",
+          "edit": "Редактировать",
+          "archive": "Архивировать"
+        },
+        "dialog": {
+          "editTitle": "Редактировать поставщика",
+          "addTitle": "Добавить поставщика"
+        },
+        "fields": {
+          "vendorName": "Название поставщика",
+          "email": "Email",
+          "phone": "Телефон",
+          "address": "Адрес",
+          "notes": "Заметки",
+          "activeVendor": "Активный поставщик"
+        },
+        "common": {
+          "cancel": "Отмена",
+          "save": "Сохранить"
+        }
       }
     }
   },

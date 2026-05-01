@@ -2748,6 +2748,217 @@
             "close": "بستن"
           }
         }
+      },
+      "fieldReports": {
+        "errors": {
+          "loadFailed": "بارگذاری گزارش‌های میدانی انجام نشد.",
+          "compareFailed": "مقایسه مواد برنامه‌ریزی‌شده و گزارش‌شده انجام نشد.",
+          "clarificationFailed": "درخواست شفاف‌سازی انجام نشد.",
+          "rejectFailed": "رد گزارش انجام نشد.",
+          "createReviewFailed": "ایجاد بازبینی انجام نشد."
+        },
+        "snackbar": {
+          "clarificationRequested": "درخواست شفاف‌سازی ثبت شد.",
+          "reportRejected": "گزارش میدانی رد شد.",
+          "reviewCreated": "بازبینی ایجاد شد."
+        },
+        "toolbar": {
+          "workOrder": "دستور کار",
+          "refresh": "بازخوانی"
+        },
+        "empty": {
+          "title": "برای این دستور کار هنوز گزارش میدانی وجود ندارد",
+          "description": "هنوز گزارشی ثبت نشده است."
+        },
+        "table": {
+          "headers": {
+            "submitted": "ثبت‌شده",
+            "teamMember": "عضو تیم",
+            "status": "وضعیت",
+            "completed": "تکمیل‌شده",
+            "reportedMaterials": "مواد گزارش‌شده",
+            "actions": "اقدامات"
+          },
+          "open": "باز کردن"
+        },
+        "common": {
+          "yes": "بله",
+          "no": "خیر",
+          "close": "بستن"
+        },
+        "detail": {
+          "title": "جزئیات گزارش میدانی",
+          "submittedBy": "ثبت‌شده توسط",
+          "status": "وضعیت",
+          "workNotes": "یادداشت‌های کار",
+          "issuesFound": "مشکلات پیدا شده",
+          "clientRequestedExtraWork": "درخواست کار اضافه توسط مشتری",
+          "clientNote": "یادداشت مشتری",
+          "files": "فایل‌ها",
+          "noFileMetadata": "هنوز متادیتای فایلی اضافه نشده است.",
+          "reportedMaterials": "مواد گزارش‌شده",
+          "plannedMaterials": "مواد برنامه‌ریزی‌شده",
+          "planVsReported": "برنامه در برابر گزارش",
+          "plannedQuantity": "برنامه‌ریزی {{count}}",
+          "reportedQuantity": "گزارش {{count}}",
+          "extra": "اضافی",
+          "comparisonUnavailable": "داده‌ای برای مقایسه در دسترس نیست.",
+          "table": {
+            "title": "عنوان",
+            "reportedQty": "مقدار گزارش‌شده",
+            "plannedMaterial": "ماده برنامه‌ریزی‌شده",
+            "extraWork": "کار اضافه",
+            "reason": "دلیل"
+          },
+          "noReportedMaterials": "هیچ ماده گزارش‌شده‌ای وجود ندارد.",
+          "viewApprovedReview": "مشاهده بازبینی تأییدشده",
+          "requestClarification": "درخواست شفاف‌سازی",
+          "rejectReport": "رد گزارش",
+          "createReview": "ایجاد بازبینی"
+        }
+      },
+      "reviews": {
+        "errors": {
+          "loadFailed": "بارگذاری بازبینی‌ها انجام نشد.",
+          "alreadyApproved": "این بازبینی قبلاً تأیید و اعمال شده است.",
+          "insufficientInventory": "موجودی کافی برای مقدار تأییدشده وجود ندارد.",
+          "invalidMaterialDecision": "یکی از تصمیم‌های مواد معتبر نیست.",
+          "invalidBillingDecision": "یکی از تصمیم‌های صورتحساب معتبر نیست.",
+          "actionFailed": "انجام اقدام بازبینی ممکن نشد."
+        },
+        "snackbar": {
+          "reviewCreated": "بازبینی ایجاد شد.",
+          "notesSaved": "یادداشت‌های بازبینی ذخیره شد.",
+          "reviewApproved": "بازبینی تأیید شد.",
+          "clarificationRequested": "درخواست شفاف‌سازی ثبت شد.",
+          "reviewRejected": "بازبینی رد شد."
+        },
+        "toolbar": {
+          "workOrder": "دستور کار",
+          "fieldReportForNewReview": "گزارش میدانی برای بازبینی جدید",
+          "createEmptyDraftReview": "ایجاد پیش‌نویس خالی بازبینی",
+          "reportNumber": "گزارش #{{id}}",
+          "refresh": "بازخوانی",
+          "createReview": "ایجاد بازبینی"
+        },
+        "empty": {
+          "title": "هنوز بازبینی‌ای وجود ندارد",
+          "description": "هنوز بازبینی‌ای ایجاد نشده است.",
+          "action": "ایجاد بازبینی"
+        },
+        "table": {
+          "headers": {
+            "review": "بازبینی",
+            "fieldReport": "گزارش میدانی",
+            "status": "وضعیت",
+            "approved": "تأییدشده",
+            "actions": "اقدامات"
+          },
+          "reviewNumber": "بازبینی #{{id}}",
+          "open": "باز کردن"
+        },
+        "actions": {
+          "saveNotes": "ذخیره یادداشت‌ها",
+          "requestClarification": "درخواست شفاف‌سازی",
+          "reject": "رد",
+          "approveReview": "تأیید بازبینی"
+        },
+        "common": {
+          "close": "بستن"
+        },
+        "decisionOptions": {
+          "approve": "تأیید",
+          "adjust": "تنظیم",
+          "reject": "رد",
+          "client_provided": "توسط مشتری فراهم شده"
+        },
+        "billingOptions": {
+          "internal_cost_only": "فقط هزینه داخلی",
+          "add_to_invoice": "افزودن به فاکتور",
+          "ignore": "نادیده گرفتن",
+          "client_provided": "توسط مشتری فراهم شده"
+        },
+        "detail": {
+          "title": "بازبینی و تأیید",
+          "reviewNumber": "بازبینی #{{id}}",
+          "fieldReportNumber": "گزارش میدانی #{{id}}",
+          "invoiceMissingWarning": "برای این دستور کار فاکتور مرتبطی وجود ندارد، بنابراین مورد اضافه برای فاکتور ایجاد نشد.",
+          "reviewNotes": "یادداشت‌های بازبینی",
+          "planVsReported": "برنامه در برابر گزارش",
+          "reportedQuantity": "گزارش {{count}}",
+          "extraWork": "کار اضافه",
+          "noComparison": "هنوز داده برنامه در برابر گزارش به این بازبینی متصل نشده است.",
+          "materialDecisions": "تصمیم‌های مواد",
+          "noReportedMaterials": "هیچ ماده گزارش‌شده‌ای به این بازبینی متصل نیست.",
+          "inventoryInfo": "تغییرات موجودی فقط پس از تأیید مدیر اعمال می‌شود. این صفحه امکان عبور از کمبود موجودی را نشان نمی‌دهد.",
+          "fields": {
+            "title": "عنوان",
+            "plannedQty": "مقدار برنامه‌ریزی‌شده",
+            "reportedQty": "مقدار گزارش‌شده",
+            "approvedQty": "مقدار تأییدشده",
+            "unitCost": "هزینه واحد",
+            "decision": "تصمیم",
+            "billing": "صورتحساب",
+            "inventoryItem": "قلم موجودی",
+            "noStockItem": "بدون قلم موجودی",
+            "note": "یادداشت"
+          }
+        }
+      },
+      "vendors": {
+        "errors": {
+          "loadFailed": "بارگذاری فروشندگان انجام نشد.",
+          "saveFailed": "ذخیره فروشنده انجام نشد.",
+          "archiveFailed": "بایگانی فروشنده انجام نشد."
+        },
+        "snackbar": {
+          "updated": "فروشنده به‌روزرسانی شد.",
+          "added": "فروشنده اضافه شد.",
+          "archived": "فروشنده بایگانی شد."
+        },
+        "metrics": {
+          "activeVendors": "فروشندگان فعال",
+          "inactiveVendors": "فروشندگان غیرفعال"
+        },
+        "toolbar": {
+          "searchVendors": "جستجوی فروشندگان",
+          "addVendor": "افزودن فروشنده"
+        },
+        "empty": {
+          "title": "هنوز فروشنده‌ای وجود ندارد",
+          "description": "اولین فروشنده خود را اضافه کنید.",
+          "action": "افزودن فروشنده"
+        },
+        "table": {
+          "headers": {
+            "name": "نام",
+            "contact": "اطلاعات تماس",
+            "address": "آدرس",
+            "notes": "یادداشت‌ها",
+            "status": "وضعیت",
+            "actions": "اقدامات"
+          },
+          "active": "فعال",
+          "inactive": "غیرفعال",
+          "edit": "ویرایش",
+          "archive": "بایگانی"
+        },
+        "dialog": {
+          "editTitle": "ویرایش فروشنده",
+          "addTitle": "افزودن فروشنده"
+        },
+        "fields": {
+          "vendorName": "نام فروشنده",
+          "email": "ایمیل",
+          "phone": "تلفن",
+          "address": "آدرس",
+          "notes": "یادداشت‌ها",
+          "activeVendor": "فروشنده فعال"
+        },
+        "common": {
+          "cancel": "انصراف",
+          "save": "ذخیره"
+        }
       }
     }
   },
