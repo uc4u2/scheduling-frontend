@@ -13,6 +13,7 @@ const STATUS_MAP = {
   sent: { label: "Sent", color: "info", emphasis: "strong" },
   viewed: { label: "Viewed", color: "secondary" },
   approved: { label: "Approved", color: "success" },
+  partial_payment: { label: "Partially Paid", color: "warning", emphasis: "strong" },
   submitted: { label: "Submitted", color: "info" },
   clarification_requested: { label: "Clarification Requested", color: "warning" },
   scheduled: { label: "Scheduled", color: "info" },

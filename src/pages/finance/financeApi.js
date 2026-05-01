@@ -70,6 +70,8 @@ export const getFinanceInvoicePrintHtml = async (id) => {
 };
 export const updateFinanceInvoice = (id, payload) =>
   unwrap(api.patch(`/finance/invoices/${id}`, payload));
+export const recordFinanceInvoiceOfflinePayment = (id, payload) =>
+  unwrap(api.post(`/finance/invoices/${id}/offline-payments`, payload));
 export const refundFinanceInvoice = (id, payload) =>
   unwrap(api.post(`/finance/invoices/${id}/refund`, payload));
 export const getPublicEstimate = (token) =>

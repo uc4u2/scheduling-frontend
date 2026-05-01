@@ -26,6 +26,7 @@ import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
 import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
 import { useSnackbar } from "notistack";
 import FinanceStatusChip from "./components/FinanceStatusChip";
+import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import {
   createFinanceInvoicePaymentLink,
@@ -66,11 +67,22 @@ const formatStatusLabel = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return "Pending";
   if (normalized === "partial_refund") return "Partial refund";
+  if (normalized === "partial_payment") return "Partially paid";
   if (normalized === "payment_failed") return "Payment failed";
   return normalized
     .split("_")
     .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : ""))
     .join(" ");
+};
+
+const formatPaymentOriginLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized || normalized === "unpaid") return "Pending";
+  if (normalized === "online") return "Paid online";
+  if (normalized === "offline") return "Paid offline";
+  if (normalized === "mixed") return "Mixed online and offline";
+  if (normalized === "partially_paid_offline") return "Partially paid offline";
+  return formatStatusLabel(normalized);
 };
 
 const buildFormFromInvoice = (invoice) => ({
@@ -102,6 +114,7 @@ export default function FinanceInvoiceDetailDialog({
   const [invoice, setInvoice] = useState(null);
   const [form, setForm] = useState(blankForm);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [offlinePaymentDialogOpen, setOfflinePaymentDialogOpen] = useState(false);
   const [printOpening, setPrintOpening] = useState(false);
 
   useEffect(() => {
@@ -135,12 +148,18 @@ export default function FinanceInvoiceDetailDialog({
   );
 
   const refundSummary = invoice?.refund_summary || {};
+  const paymentSummary = invoice?.payment_summary || {};
   const refundHistory = refundSummary?.refunds || [];
   const remainingRefundable = Number(refundSummary?.remaining_refundable_amount || 0);
+  const remainingBalance = Number(paymentSummary?.remaining_balance || 0);
   const canIssueRefund =
     Boolean(invoice?.refund_eligible) &&
     remainingRefundable > 0 &&
     ["paid", "partial_refund"].includes(String(invoice?.status || "").toLowerCase());
+  const canRecordOfflinePayment =
+    remainingBalance > 0 &&
+    !["refunded", "void"].includes(String(invoice?.status || "").toLowerCase()) &&
+    !paymentSummary?.online_payment_present;
   const hasHostedLink = Boolean(invoice?.hosted_invoice_url);
   const relatedWorkOrders = invoice?.related_work_orders || [];
 
@@ -254,6 +273,17 @@ export default function FinanceInvoiceDetailDialog({
     setRefundDialogOpen(false);
   };
 
+  const handleOfflinePaymentSaved = (payload) => {
+    const nextInvoice = payload?.invoice || null;
+    if (nextInvoice) {
+      setInvoice(nextInvoice);
+      setForm(buildFormFromInvoice(nextInvoice));
+      setWarning("");
+      onSaved?.(nextInvoice);
+    }
+    setOfflinePaymentDialogOpen(false);
+  };
+
   return (
     <>
       <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="lg">
@@ -321,11 +351,28 @@ export default function FinanceInvoiceDetailDialog({
                     Payment link: {invoice?.payment_link_exists ? "Created" : invoice?.payment_link_ready ? "Ready to create" : "Unavailable"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Reconciled payment reference: {invoice?.stripe_payment_intent_present ? "Stripe payment captured" : "Not reconciled yet"}
+                    Payment origin: {formatPaymentOriginLabel(paymentSummary?.payment_origin)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Paid amount: {formatCurrency(refundSummary?.paid_amount, invoice?.currency)}
+                    Online payment state: {paymentSummary?.online_payment_present ? "Stripe payment captured" : "No Stripe payment captured"}
                   </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Online paid amount: {formatCurrency(paymentSummary?.online_paid_amount, invoice?.currency)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Offline paid amount: {formatCurrency(paymentSummary?.offline_paid_amount, invoice?.currency)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total recorded paid: {formatCurrency(paymentSummary?.total_recorded_paid_amount, invoice?.currency)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Remaining balance: {formatCurrency(paymentSummary?.remaining_balance, invoice?.currency)}
+                  </Typography>
+                  {paymentSummary?.payment_method_summary ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Offline payment methods: {paymentSummary.payment_method_summary}
+                    </Typography>
+                  ) : null}
                   <Typography variant="body2" color="text.secondary">
                     Refunded amount: {formatCurrency(refundSummary?.refunded_amount, invoice?.currency)}
                   </Typography>
@@ -333,8 +380,21 @@ export default function FinanceInvoiceDetailDialog({
                     Remaining refundable: {formatCurrency(refundSummary?.remaining_refundable_amount, invoice?.currency)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Refund eligibility: {invoice?.refund_eligible ? "Eligible" : "Not available"}
+                    Refund eligibility: {invoice?.refund_eligible ? "Eligible for Stripe refund" : "Stripe refund not available"}
                   </Typography>
+                  {(paymentSummary?.offline_payments || []).length ? (
+                    <Stack spacing={0.5} sx={{ pt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Offline payment history
+                      </Typography>
+                      {(paymentSummary.offline_payments || []).map((row) => (
+                        <Typography key={row.id} variant="body2" color="text.secondary">
+                          {formatCurrency(row.amount, row.currency || invoice?.currency)} • {row.payment_method_label || formatStatusLabel(row.payment_method)} • {row.paid_at ? new Date(row.paid_at).toLocaleString() : "No date"}
+                          {row.reference_note ? ` • ${row.reference_note}` : ""}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  ) : null}
                   {refundHistory.length ? (
                     <Stack spacing={0.5} sx={{ pt: 0.5 }}>
                       <Typography variant="body2" color="text.secondary">
@@ -357,6 +417,16 @@ export default function FinanceInvoiceDetailDialog({
                       sx={{ alignSelf: "flex-start", mt: 0.5 }}
                     >
                       Issue refund
+                    </Button>
+                  ) : null}
+                  {canRecordOfflinePayment ? (
+                    <Button
+                      variant="outlined"
+                      startIcon={<PaymentOutlinedIcon />}
+                      onClick={() => setOfflinePaymentDialogOpen(true)}
+                      sx={{ alignSelf: "flex-start", mt: canIssueRefund ? 0 : 0.5 }}
+                    >
+                      Record offline payment
                     </Button>
                   ) : null}
                 </Stack>
@@ -647,6 +717,12 @@ export default function FinanceInvoiceDetailDialog({
         invoice={invoice}
         onClose={() => setRefundDialogOpen(false)}
         onRefunded={handleRefunded}
+      />
+      <FinanceInvoiceOfflinePaymentDialog
+        open={offlinePaymentDialogOpen}
+        invoice={invoice}
+        onClose={() => setOfflinePaymentDialogOpen(false)}
+        onSaved={handleOfflinePaymentSaved}
       />
     </>
   );

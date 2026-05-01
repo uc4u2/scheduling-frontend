@@ -221,8 +221,9 @@ const paymentStatusChipColor = (status) => {
   switch (status) {
     case "paid":
       return "success";
+    case "partial_payment":
     case "card_on_file":
-      return "primary";
+      return status === "card_on_file" ? "primary" : "warning";
     case "pending":
     case "processing":
       return "warning";
@@ -400,10 +401,16 @@ export default function ManagerPaymentsView({ connect }) {
             ...b,
             payment_status: paymentStatus,
             paid: paymentStatus === "paid",
+            payment_origin: b.payment_origin || "unpaid",
+            offline_paid_amount: Number(b.offline_paid_amount || 0),
+            online_paid_amount: Number(b.online_paid_amount || 0),
+            total_recorded_paid_amount: Number(b.total_recorded_paid_amount || 0),
+            remaining_balance: Number(b.remaining_balance || 0),
+            payment_method_summary: b.payment_method_summary || "",
             _startMs: whenMs,
             _latestPaymentMs: whenMs,
             _whenLabel: whenLabel,
-            _capturedBalanceTotal: paymentStatus === "paid" ? Number(b.amount || 0) : 0,
+            _capturedBalanceTotal: Number(b.total_recorded_paid_amount || 0),
             _capturedTipTotal: 0,
             _refundedTotal: Number(b.refunded_amount || 0),
             _remainingRefundable: Number(b.remaining_refundable_amount || 0),
@@ -1287,6 +1294,7 @@ export default function ManagerPaymentsView({ connect }) {
     () => ({
       all: bookings.length,
       paid: bookings.filter((b) => b.payment_status === "paid").length,
+      partial_payment: bookings.filter((b) => b.payment_status === "partial_payment").length,
       pending: bookings.filter((b) => b.payment_status === "pending").length,
       card_on_file: bookings.filter((b) => b.payment_status === "card_on_file")
         .length,
@@ -1306,6 +1314,7 @@ export default function ManagerPaymentsView({ connect }) {
     () => [
       { value: "all", label: "All", color: "default" },
       { value: "paid", label: "Paid", color: "success" },
+      { value: "partial_payment", label: "Partially paid", color: "warning" },
       { value: "pending", label: "Pending", color: "warning" },
       { value: "card_on_file", label: "Card on file", color: "primary" },
       { value: "unpaid", label: "Unpaid", color: "default" },
@@ -1456,6 +1465,7 @@ export default function ManagerPaymentsView({ connect }) {
             >
               <MenuItem value="all">All statuses</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
+              <MenuItem value="partial_payment">Partially paid</MenuItem>
               <MenuItem value="pending">Pending</MenuItem>
               <MenuItem value="card_on_file">Card on file</MenuItem>
               <MenuItem value="unpaid">Unpaid</MenuItem>
@@ -1594,6 +1604,43 @@ export default function ManagerPaymentsView({ connect }) {
                     b.currency || displayCurrency,
                   )}`,
                 );
+              }
+              if (isFinanceInvoice) {
+                if (b.payment_origin === "online") {
+                  segments.push("Paid online");
+                } else if (b.payment_origin === "offline") {
+                  segments.push(
+                    `Paid offline ${money(
+                      b.offline_paid_amount,
+                      b.currency || displayCurrency,
+                    )}`,
+                  );
+                } else if (b.payment_origin === "mixed") {
+                  segments.push(
+                    `Mixed payment ${money(
+                      b.total_recorded_paid_amount,
+                      b.currency || displayCurrency,
+                    )}`,
+                  );
+                } else if (b.payment_origin === "partially_paid_offline") {
+                  segments.push(
+                    `Offline paid ${money(
+                      b.offline_paid_amount,
+                      b.currency || displayCurrency,
+                    )}`,
+                  );
+                }
+                if (Number(b.remaining_balance || 0) > 0) {
+                  segments.push(
+                    `Remaining ${money(
+                      b.remaining_balance,
+                      b.currency || displayCurrency,
+                    )}`,
+                  );
+                }
+                if (b.payment_method_summary) {
+                  segments.push(b.payment_method_summary);
+                }
               }
               if (isFinanceInvoice && Number(b._remainingRefundable || 0) > 0) {
                 segments.push(
