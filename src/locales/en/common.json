@@ -2997,6 +2997,139 @@
           "cancel": "Cancel",
           "save": "Save"
         }
+      },
+      "reports": {
+        "errors": {
+          "loadFailed": "Unable to load finance reports.",
+          "exportFailed": "Unable to export CSV."
+        },
+        "snackbar": {
+          "csvDownloaded": "CSV export downloaded."
+        },
+        "cards": {
+          "estimateTotal": "Estimate Total",
+          "grossInvoiceTotal": "Gross Invoice Total",
+          "refunds": "Refunds",
+          "netInvoiceTotal": "Net Invoice Total",
+          "expenseTotal": "Expense Total",
+          "grossTaxCollected": "Gross Tax Collected",
+          "taxRefunded": "Tax Refunded",
+          "netTaxCollected": "Net Tax Collected",
+          "taxPaidOnExpenses": "Tax Paid On Expenses",
+          "estimatedNetTaxGross": "Estimated Net Tax Gross",
+          "estimatedNetTaxNet": "Estimated Net Tax Net",
+          "refundedInvoices": "Refunded Invoices",
+          "partialRefunds": "Partial Refunds"
+        },
+        "filters": {
+          "from": "From",
+          "to": "To",
+          "exportType": "Export type",
+          "expenses": "Expenses",
+          "invoices": "Invoices",
+          "summary": "Summary",
+          "preparingCsv": "Preparing CSV...",
+          "downloadCsv": "Download CSV"
+        }
+      },
+      "profitability": {
+        "errors": {
+          "loadFailed": "Unable to load profitability."
+        },
+        "cards": {
+          "estimateTotal": "Estimate total",
+          "invoiceTotal": "Invoice total",
+          "grossRevenue": "Gross revenue",
+          "refunds": "Refunds",
+          "netRevenue": "Net revenue",
+          "plannedLaborCost": "Planned labor cost",
+          "approvedMaterialCost": "Approved material cost",
+          "linkedExpenses": "Linked expenses",
+          "estimatedMarginGross": "Estimated margin gross",
+          "estimatedMarginNet": "Estimated margin net"
+        },
+        "filters": {
+          "from": "From",
+          "to": "To",
+          "refresh": "Refresh"
+        },
+        "footnote": "Calculated per work order using linked invoice totals when available, estimate fallback when not invoiced yet, and separate gross versus net margin when refund activity exists."
+      },
+      "taxSummary": {
+        "errors": {
+          "loadFailed": "Unable to load tax summary."
+        },
+        "cards": {
+          "grossTaxCollected": "Gross tax collected",
+          "taxRefunded": "Tax refunded",
+          "netTaxCollected": "Net tax collected",
+          "taxPaidOnExpenses": "Tax paid on expenses",
+          "estimatedNetTaxGross": "Estimated net tax gross",
+          "estimatedNetTaxNet": "Estimated net tax net",
+          "refundTotal": "Refund total",
+          "refundedInvoices": "Refunded invoices",
+          "partialRefunds": "Partial refunds"
+        },
+        "filters": {
+          "from": "From",
+          "to": "To",
+          "refresh": "Refresh"
+        }
+      },
+      "monthEnd": {
+        "errors": {
+          "loadFailed": "Unable to load month-end review.",
+          "exportFailed": "Unable to export month-end CSV."
+        },
+        "snackbar": {
+          "exportDownloaded": "Month-end export downloaded."
+        },
+        "filters": {
+          "from": "From",
+          "to": "To",
+          "refresh": "Refresh",
+          "preparingCsv": "Preparing CSV...",
+          "downloadCsv": "Download CSV"
+        },
+        "cards": {
+          "missingItems": "Missing items",
+          "lowStock": "Low stock",
+          "pendingFieldReports": "Pending field reports",
+          "pendingWorkOrders": "Pending work orders",
+          "refundTotal": "Refund total",
+          "refundedInvoices": "Refunded invoices",
+          "partialRefunds": "Partial refunds",
+          "taxRefunded": "Tax refunded"
+        },
+        "sections": {
+          "checklist": "Checklist",
+          "summarySnapshot": "Summary snapshot"
+        },
+        "checklist": {
+          "ready": "Ready",
+          "needsAttention": "Needs attention"
+        },
+        "checklistLines": {
+          "invoicesReviewed": "Invoices reviewed",
+          "paymentsRecorded": "Payments recorded",
+          "expensesCategorized": "Expenses categorized",
+          "receiptsUploaded": "Receipts uploaded",
+          "fieldReportsApproved": "Field reports approved",
+          "inventoryUsageReviewed": "Inventory usage reviewed",
+          "taxSummaryReady": "Tax summary ready"
+        },
+        "summary": {
+          "missingReceipts": "Missing receipts",
+          "uncategorizedExpenses": "Uncategorized expenses",
+          "grossInvoiceTotal": "Gross invoice total",
+          "refundTotal": "Refund total",
+          "netInvoiceTotal": "Net invoice total",
+          "estimatedNetTaxGross": "Estimated net tax gross",
+          "estimatedNetTaxNet": "Estimated net tax net",
+          "estimatedMarginGross": "Estimated margin gross",
+          "estimatedMarginNet": "Estimated margin net",
+          "refundReviewNote": "Review refund activity before final accounting handoff. Refunds do not block month-end, but they do affect net cash and net tax."
+        }
       }
     }
   },
