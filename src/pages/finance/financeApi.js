@@ -190,6 +190,8 @@ export const exportFinanceMonthEndCsv = (payload) =>
   api.post("/finance/month-end/export", payload, { responseType: "blob" });
 export const downloadFinanceAccountantPackage = (payload) =>
   api.post("/finance/month-end/accountant-package", payload, { responseType: "blob" });
+export const listFinanceAccountantPackageHistory = (params = {}) =>
+  unwrap(api.get("/finance/month-end/accountant-package/history", { params }));
 
 export const listExpenseCategories = () => unwrap(api.get("/finance/expense-categories"));
 export const getExpenseCategory = (id) => unwrap(api.get(`/finance/expense-categories/${id}`));
