@@ -58,6 +58,8 @@ export const reopenEstimateResponse = (id) =>
   unwrap(api.post(`/finance/estimates/${id}/reopen-response`));
 export const createFinanceInvoicePaymentLink = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-payment-link`));
+export const listFinanceInvoices = (params = {}) =>
+  unwrap(api.get("/finance/invoices", { params }));
 export const getFinanceInvoice = (id) => unwrap(api.get(`/finance/invoices/${id}`));
 export const updateFinanceInvoice = (id, payload) =>
   unwrap(api.patch(`/finance/invoices/${id}`, payload));
@@ -184,6 +186,16 @@ export const createExpense = (payload) => unwrap(api.post("/finance/expenses", p
 export const getExpense = (id) => unwrap(api.get(`/finance/expenses/${id}`));
 export const updateExpense = (id, payload) => unwrap(api.patch(`/finance/expenses/${id}`, payload));
 export const deleteExpense = (id) => unwrap(api.delete(`/finance/expenses/${id}`));
+export const uploadExpenseReceipt = async (id, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post(`/finance/expenses/${id}/receipt`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+};
+export const deleteExpenseReceipt = (expenseId, receiptId) =>
+  unwrap(api.delete(`/finance/expenses/${expenseId}/receipts/${encodeURIComponent(receiptId)}`));
 
 export const exportAccountantCsv = (payload) =>
   api.post("/finance/reports/accountant-export", payload, { responseType: "blob" });
