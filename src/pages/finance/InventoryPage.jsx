@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Checkbox,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -78,6 +79,32 @@ const formatMoney = (value) =>
     currency: "USD",
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
+
+const availabilityChipColor = (state) => {
+  switch (state) {
+    case "out_of_stock":
+      return "error";
+    case "low_available":
+      return "warning";
+    case "partially_available":
+      return "info";
+    default:
+      return "success";
+  }
+};
+
+const availabilityChipLabel = (state, tInventory) => {
+  switch (state) {
+    case "out_of_stock":
+      return tInventory("availability.outOfStock", "Out of stock");
+    case "low_available":
+      return tInventory("availability.lowAvailable", "Low available");
+    case "partially_available":
+      return tInventory("availability.partiallyAvailable", "Partially available");
+    default:
+      return tInventory("availability.fullyAvailable", "Fully available");
+  }
+};
 
 function InventoryCategoryDialog({ open, onClose, onSubmit }) {
   const { t } = useTranslation();
@@ -382,12 +409,14 @@ export default function InventoryPage() {
   }, [categoryId, lowStockOnly, page, perPage]);
 
   const metrics = useMemo(() => {
-    const lowStockCount = items.filter((item) => item.low_stock_threshold != null && Number(item.current_quantity || 0) <= Number(item.low_stock_threshold || 0)).length;
+    const lowStockCount = items.filter((item) => item.low_available_stock).length;
     const inventoryValue = items.reduce((sum, item) => sum + Number(item.current_quantity || 0) * Number(item.cost_per_unit || 0), 0);
+    const reservedValue = items.reduce((sum, item) => sum + Number(item.reserved_quantity || 0), 0);
     return {
       lowStockCount,
       inventoryValue,
       activeItems: Number(pagination?.total || items.length),
+      reservedValue,
     };
   }, [items, pagination]);
 
@@ -457,10 +486,12 @@ export default function InventoryPage() {
 
   return (
     <Stack spacing={2.5}>
+      <Alert severity="info">{tInventory("availabilityInfo", "Low available stock considers items reserved for active jobs. Stock is only deducted after manager approval of actual usage.")}</Alert>
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.activeItems", "Active items")} value={String(metrics.activeItems)} accent="primary" /></Grid>
-        <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.lowStockItems", "Low stock items")} value={String(metrics.lowStockCount)} accent="warning" helper={tInventory("metrics.lowStockHelper", "Review reorder levels and manager approvals.")} /></Grid>
+        <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.lowStockItems", "Low available stock")} value={String(metrics.lowStockCount)} accent="warning" helper={tInventory("metrics.lowStockHelper", "Considers stock reserved for active jobs.")} /></Grid>
         <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.inventoryValueEstimate", "Inventory value estimate")} value={formatMoney(metrics.inventoryValue)} accent="secondary" helper={tInventory("metrics.inventoryValueHelper", "Based on current quantity and cost per unit.")} /></Grid>
+        <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.reservedQuantity", "Reserved quantity")} value={String(metrics.reservedValue)} accent="info" helper={tInventory("metrics.reservedQuantityHelper", "Planned on active jobs, but not deducted yet.")} /></Grid>
       </Grid>
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -528,7 +559,10 @@ export default function InventoryPage() {
                 <TableCell>{tInventory("table.headers.category", "Category")}</TableCell>
                 <TableCell>{tInventory("table.headers.sku", "SKU")}</TableCell>
                 <TableCell>{tInventory("table.headers.unit", "Unit")}</TableCell>
-                <TableCell>{tInventory("table.headers.quantity", "Quantity")}</TableCell>
+                <TableCell>{tInventory("table.headers.onHand", "On hand")}</TableCell>
+                <TableCell>{tInventory("table.headers.reserved", "Reserved")}</TableCell>
+                <TableCell>{tInventory("table.headers.available", "Available")}</TableCell>
+                <TableCell>{tInventory("table.headers.pendingUsage", "Pending usage")}</TableCell>
                 <TableCell>{tInventory("table.headers.cost", "Cost")}</TableCell>
                 <TableCell>{tInventory("table.headers.lowStockLevel", "Low stock level")}</TableCell>
                 <TableCell>{tInventory("table.headers.vendor", "Vendor")}</TableCell>
@@ -537,17 +571,36 @@ export default function InventoryPage() {
             </TableHead>
             <TableBody>
               {items.map((item) => {
-                const isLow = item.low_stock_threshold != null && Number(item.current_quantity || 0) <= Number(item.low_stock_threshold || 0);
+                const overReserved = Number(item.available_quantity || 0) < 0;
                 return (
                   <TableRow key={item.id} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
+                      <Stack direction="row" spacing={0.75} sx={{ mt: 0.5, flexWrap: "wrap" }}>
+                        <Chip
+                          size="small"
+                          color={availabilityChipColor(item.stock_conflict_state)}
+                          variant="outlined"
+                          label={availabilityChipLabel(item.stock_conflict_state, tInventory)}
+                        />
+                      </Stack>
                       <Typography variant="body2" color="text.secondary">{item.is_active === false ? tInventory("table.inactive", "Inactive") : item.taxable ? tInventory("table.taxable", "Taxable") : tInventory("table.nonTaxable", "Non-taxable")}</Typography>
+                      {overReserved ? (
+                        <Typography variant="body2" color="error.main">
+                          {tInventory("table.overReserved", "Over-reserved by {{count}}", { count: Math.abs(Number(item.available_quantity || 0)) })}
+                        </Typography>
+                      ) : null}
                     </TableCell>
                     <TableCell>{item.category_name || "-"}</TableCell>
                     <TableCell>{item.sku || "-"}</TableCell>
                     <TableCell>{item.unit || tInventory("table.each", "each")}</TableCell>
-                    <TableCell>{item.current_quantity}{isLow ? <Typography component="span" color="warning.main"> • {tInventory("table.low", "Low")}</Typography> : null}</TableCell>
+                    <TableCell>{item.on_hand_quantity ?? item.current_quantity}</TableCell>
+                    <TableCell>{item.reserved_quantity ?? 0}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{item.available_quantity ?? item.current_quantity}</Typography>
+                      {item.low_available_stock ? <Typography variant="body2" color="warning.main">{tInventory("table.lowAvailable", "Low available")}</Typography> : null}
+                    </TableCell>
+                    <TableCell>{item.pending_usage_quantity ?? 0}</TableCell>
                     <TableCell>{formatMoney(item.cost_per_unit)}</TableCell>
                     <TableCell>{item.low_stock_threshold ?? "-"}</TableCell>
                     <TableCell>{item.vendor_name || "-"}</TableCell>
