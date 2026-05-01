@@ -67,6 +67,7 @@ const getBlankExpenseForm = () => ({
   recurring_frequency: "monthly",
   recurring_next_due_date: formatDate(new Date()),
   recurring_auto_create_mode: "draft",
+  review_status: "reviewed",
   receipt_text: "",
   currency: normalizeCurrency(getActiveCurrency("USD")) || "USD",
 });
@@ -243,6 +244,7 @@ export default function ExpenseQuickAddDialog({
         recurring_frequency: expense.recurring_frequency || "monthly",
         recurring_next_due_date: expense.recurring_next_due_date || formatDate(new Date()),
         recurring_auto_create_mode: expense.recurring_auto_create_mode || "draft",
+        review_status: expense.review_status || "reviewed",
         receipt_text: "",
         currency: expense.currency || "USD",
       });
@@ -383,6 +385,7 @@ export default function ExpenseQuickAddDialog({
         recurring_frequency: form.is_recurring_template ? form.recurring_frequency : null,
         recurring_next_due_date: form.is_recurring_template ? form.recurring_next_due_date : null,
         recurring_auto_create_mode: form.is_recurring_template ? form.recurring_auto_create_mode : null,
+        review_status: form.is_recurring_template ? "reviewed" : (form.review_status || "reviewed"),
         receipt_files: buildReceiptPayload(),
         currency: form.currency || "USD",
       };
@@ -631,6 +634,22 @@ export default function ExpenseQuickAddDialog({
               <Grid item xs={12}>
                 <TextField fullWidth label={tExpenses("fields.note", "Note")} value={form.note} onChange={(e) => setField("note", e.target.value)} multiline minRows={3} />
               </Grid>
+              {!form.is_recurring_template ? (
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    select
+                    fullWidth
+                    label={tExpenses("fields.reviewStatus", "Review status")}
+                    value={form.review_status}
+                    onChange={(e) => setField("review_status", e.target.value)}
+                    helperText={tExpenses("fields.reviewStatusHelp", "Draft expenses stay out of actual totals until you review them.")}
+                  >
+                    <MenuItem value="reviewed">{tExpenses("fields.reviewStatusOptions.reviewed", "Reviewed and ready")}</MenuItem>
+                    <MenuItem value="draft">{tExpenses("fields.reviewStatusOptions.draft", "Draft / needs review")}</MenuItem>
+                    <MenuItem value="excluded">{tExpenses("fields.reviewStatusOptions.excluded", "Exclude from reports")}</MenuItem>
+                  </TextField>
+                </Grid>
+              ) : null}
               <Grid item xs={12}>
                 <FormControlLabel
                   control={<Switch checked={form.is_recurring_template} onChange={(e) => setField("is_recurring_template", e.target.checked)} />}
