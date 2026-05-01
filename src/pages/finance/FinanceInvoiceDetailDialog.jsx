@@ -30,6 +30,7 @@ import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import {
   createFinanceInvoicePaymentLink,
   getFinanceInvoice,
+  getFinanceInvoicePrintHtml,
   updateFinanceInvoice,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
@@ -101,6 +102,7 @@ export default function FinanceInvoiceDetailDialog({
   const [invoice, setInvoice] = useState(null);
   const [form, setForm] = useState(blankForm);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [printOpening, setPrintOpening] = useState(false);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -215,9 +217,30 @@ export default function FinanceInvoiceDetailDialog({
     window.open(hostedUrl, "_blank", "noopener,noreferrer");
   };
 
-  const handleOpenPrintView = () => {
-    if (!invoice?.print_url) return;
-    window.open(invoice.print_url, "_blank", "noopener,noreferrer");
+  const handleOpenPrintView = async () => {
+    if (!invoice?.id || printOpening) return;
+    setPrintOpening(true);
+    setError("");
+    try {
+      const html = await getFinanceInvoicePrintHtml(invoice.id);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const printWindow = window.open(blobUrl, "_blank", "noopener,noreferrer");
+      if (!printWindow) {
+        URL.revokeObjectURL(blobUrl);
+        enqueueSnackbar("Print window was blocked. Please allow popups and try again.", {
+          variant: "warning",
+        });
+        return;
+      }
+      window.setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 60_000);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Unable to open the print view.");
+    } finally {
+      setPrintOpening(false);
+    }
   };
 
   const handleRefunded = (payload) => {
@@ -581,7 +604,7 @@ export default function FinanceInvoiceDetailDialog({
             variant="outlined"
             startIcon={<LocalPrintshopOutlinedIcon />}
             onClick={handleOpenPrintView}
-            disabled={!invoice?.print_url}
+            disabled={!invoice?.id || printOpening}
           >
             Print / Save PDF
           </Button>
