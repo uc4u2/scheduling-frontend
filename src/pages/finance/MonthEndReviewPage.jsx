@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
-import { exportFinanceMonthEndCsv, getFinanceMissingData, getFinanceMonthEnd } from "./financeApi";
+import { exportFinanceMonthEndCsv, getFinanceMissingData, getFinanceMonthEnd, previewRecurringExpenses } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
 const formatMoney = (value, currency = "USD") =>
@@ -38,6 +38,7 @@ export default function MonthEndReviewPage() {
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [review, setReview] = useState(null);
   const [missingData, setMissingData] = useState(null);
+  const [recurringPreview, setRecurringPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
@@ -46,12 +47,14 @@ export default function MonthEndReviewPage() {
     setLoading(true);
     setError("");
     try {
-      const [reviewRes, missingRes] = await Promise.all([
+      const [reviewRes, missingRes, recurringRes] = await Promise.all([
         getFinanceMonthEnd({ date_from: dateFrom, date_to: dateTo }),
         getFinanceMissingData({ date_from: dateFrom, date_to: dateTo }),
+        previewRecurringExpenses({ through_date: dateTo }),
       ]);
       setReview(reviewRes?.month_end_review || reviewRes || null);
       setMissingData(missingRes || null);
+      setRecurringPreview(recurringRes || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tMonthEnd("errors.loadFailed", "Unable to load month-end review."));
     } finally {
@@ -90,6 +93,8 @@ export default function MonthEndReviewPage() {
   const refundSummary = summary?.refund_summary || {};
   const financeSummary = summary?.finance_summary || {};
   const taxSummary = summary?.tax_summary || {};
+  const dueDraftCount = Number(recurringPreview?.due_draft_count || 0);
+  const dueTemplateCount = Number(recurringPreview?.due_templates_count || 0);
   const currency = refundSummary?.currency || financeSummary?.currency || taxSummary?.currency || "USD";
   const renderChecklistLine = (label, key) => (
     <Stack spacing={0.25}>
@@ -117,11 +122,29 @@ export default function MonthEndReviewPage() {
         <Alert severity="error">{error}</Alert>
       ) : (
         <>
+          {(Number(missingData?.draft_expenses_count || 0) > 0 || dueTemplateCount > 0) ? (
+            <Alert severity="warning">
+              {Number(missingData?.draft_expenses_count || 0) > 0
+                ? tMonthEnd(
+                    "alerts.recurringDraftsNeedReview",
+                    "Recurring draft expenses need review before accountant handoff."
+                  )
+                : tMonthEnd(
+                    "alerts.recurringTemplatesDueSoon",
+                    "Recurring expense templates are due soon. Generate draft expenses when you are ready to review them."
+                  )}
+            </Alert>
+          ) : null}
+
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.missingItems", "Missing items")} value={String(missingData?.month_end_missing_items_count ?? 0)} accent="warning" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.lowStock", "Low stock")} value={String(missingData?.low_stock_count ?? 0)} accent="error" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.pendingFieldReports", "Pending field reports")} value={String(missingData?.field_reports_pending_review_count ?? 0)} accent="info" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.pendingWorkOrders", "Pending work orders")} value={String(missingData?.work_orders_pending_review_count ?? 0)} accent="secondary" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.draftExpenses", "Draft expenses to review")} value={String(missingData?.draft_expenses_count ?? 0)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.reviewedMissingReceipts", "Reviewed expenses missing receipts")} value={String(missingData?.missing_receipts_count ?? 0)} accent="error" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.uncategorizedExpenses", "Uncategorized expenses")} value={String(missingData?.uncategorized_expenses_count ?? 0)} accent="warning" /></Grid>
+            <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.dueRecurringTemplates", "Recurring templates due soon")} value={String(dueTemplateCount)} accent="info" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.refundTotal", "Refund total")} value={formatMoney(refundSummary?.refund_total, currency)} accent="warning" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.refundedInvoices", "Refunded invoices")} value={String(refundSummary?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
             <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tMonthEnd("cards.partialRefunds", "Partial refunds")} value={String(refundSummary?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
@@ -143,8 +166,15 @@ export default function MonthEndReviewPage() {
 
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>{tMonthEnd("sections.summarySnapshot", "Summary snapshot")}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.draftExpenses", "Draft expenses needing review")}: {missingData?.draft_expenses_count ?? 0}</Typography>
             <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.missingReceipts", "Missing receipts")}: {summary?.missing_data?.missing_receipts_count ?? 0}</Typography>
             <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.uncategorizedExpenses", "Uncategorized expenses")}: {summary?.missing_data?.uncategorized_expenses_count ?? 0}</Typography>
+            <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.dueRecurringTemplates", "Recurring templates due soon")}: {dueTemplateCount}</Typography>
+            {dueDraftCount > 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                {tMonthEnd("summary.dueRecurringDrafts", "{{count}} recurring draft expense(s) are due and ready to generate.", { count: dueDraftCount })}
+              </Typography>
+            ) : null}
             <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.grossInvoiceTotal", "Gross invoice total")}: {formatMoney(financeSummary?.gross_invoice_total ?? financeSummary?.invoice_total, currency)}</Typography>
             <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.refundTotal", "Refund total")}: {formatMoney(refundSummary?.refund_total, currency)}</Typography>
             <Typography variant="body2" color="text.secondary">{tMonthEnd("summary.netInvoiceTotal", "Net invoice total")}: {formatMoney(refundSummary?.net_invoice_total ?? financeSummary?.net_invoice_total, currency)}</Typography>

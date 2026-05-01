@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -31,11 +32,13 @@ import ExpenseQuickAddDialog from "./ExpenseQuickAddDialog";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import {
   createExpenseCategory,
+  bulkUpdateExpenseReviewStatus,
   deleteExpense,
   generateRecurringExpenseDrafts,
   listExpenseCategories,
   listExpenses,
   listManagerClients,
+  updateExpense,
   previewRecurringExpenses,
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
@@ -74,6 +77,9 @@ export default function ExpensesPage({ createNonce }) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [missingReceipt, setMissingReceipt] = useState("");
+  const [expenseKind, setExpenseKind] = useState("");
+  const [reviewFilter, setReviewFilter] = useState("");
+  const [readinessFilter, setReadinessFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -86,16 +92,24 @@ export default function ExpensesPage({ createNonce }) {
   const [recurringLoading, setRecurringLoading] = useState(false);
   const [recurringGenerating, setRecurringGenerating] = useState(false);
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const load = async () => {
     setLoading(true);
     setError("");
     try {
+      const effectiveReviewFilter = expenseKind === "generated_drafts" ? (reviewFilter || "draft") : reviewFilter;
       const [expenses, cats, managerClients, recurring] = await Promise.all([
         listExpenses({
           category_id: categoryId || undefined,
           q: search || undefined,
           missing_receipt: missingReceipt || undefined,
+          expense_kind:
+            expenseKind === "generated_drafts"
+              ? "generated_recurring"
+              : expenseKind || undefined,
+          review_status: effectiveReviewFilter || undefined,
+          readiness: readinessFilter || undefined,
           start_date: dateFrom || undefined,
           end_date: dateTo || undefined,
           page,
@@ -121,7 +135,11 @@ export default function ExpensesPage({ createNonce }) {
     load();
     // Search and date filters stay manual via Enter/Refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, missingReceipt, page, perPage, recurringThroughDate]);
+  }, [categoryId, missingReceipt, expenseKind, reviewFilter, readinessFilter, page, perPage, recurringThroughDate]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [items]);
 
   useEffect(() => {
     if (createNonce) {
@@ -158,10 +176,10 @@ export default function ExpensesPage({ createNonce }) {
     }
   };
 
-  const refreshRecurringPreview = async ({ openDialog = false } = {}) => {
+  const refreshRecurringPreview = async ({ openDialog = false, throughDate = recurringThroughDate } = {}) => {
     setRecurringLoading(true);
     try {
-      const payload = await previewRecurringExpenses({ through_date: recurringThroughDate });
+      const payload = await previewRecurringExpenses({ through_date: throughDate });
       setRecurringPreview(payload || null);
       if (openDialog) setRecurringDialogOpen(true);
     } catch (err) {
@@ -174,11 +192,11 @@ export default function ExpensesPage({ createNonce }) {
     }
   };
 
-  const generateRecurringDrafts = async () => {
+  const generateRecurringDrafts = async ({ throughDate = recurringThroughDate, focusGenerated = false } = {}) => {
     setRecurringGenerating(true);
     try {
       const payload = await generateRecurringExpenseDrafts({
-        through_date: recurringThroughDate,
+        through_date: throughDate,
         dry_run: false,
       });
       enqueueSnackbar(
@@ -189,6 +207,12 @@ export default function ExpensesPage({ createNonce }) {
       );
       setRecurringPreview(payload || null);
       setRecurringDialogOpen(true);
+      if (focusGenerated) {
+        setExpenseKind("generated_drafts");
+        setReviewFilter("draft");
+        setReadinessFilter("");
+        setPage(1);
+      }
       await load();
     } catch (err) {
       enqueueSnackbar(
@@ -201,6 +225,81 @@ export default function ExpensesPage({ createNonce }) {
   };
 
   const nextDueRow = Array.isArray(recurringPreview?.next_due) ? recurringPreview.next_due[0] : null;
+  const selectableItems = useMemo(
+    () => items.filter((item) => !item.is_recurring_template),
+    [items]
+  );
+  const allSelectableIds = useMemo(() => selectableItems.map((item) => item.id), [selectableItems]);
+  const allSelected = allSelectableIds.length > 0 && allSelectableIds.every((id) => selectedIds.includes(id));
+
+  const toggleSelected = (expenseId) => {
+    setSelectedIds((prev) => (prev.includes(expenseId) ? prev.filter((id) => id !== expenseId) : [...prev, expenseId]));
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => (allSelected ? prev.filter((id) => !allSelectableIds.includes(id)) : Array.from(new Set([...prev, ...allSelectableIds]))));
+  };
+
+  const applyReviewStatus = async (expenseId, reviewStatus) => {
+    try {
+      await updateExpense(expenseId, { review_status: reviewStatus });
+      enqueueSnackbar(
+        tExpenses("snackbar.reviewStatusUpdated", "Expense review status updated."),
+        { variant: "success" }
+      );
+      await load();
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error || err?.message || tExpenses("errors.reviewStatusFailed", "Unable to update expense review status."),
+        { variant: "error" }
+      );
+    }
+  };
+
+  const applyBulkReviewStatus = async (reviewStatus) => {
+    if (!selectedIds.length) return;
+    try {
+      const payload = await bulkUpdateExpenseReviewStatus({
+        expense_ids: selectedIds,
+        review_status: reviewStatus,
+      });
+      enqueueSnackbar(
+        tExpenses("snackbar.bulkReviewStatusUpdated", "{{count}} expense(s) updated.", {
+          count: payload?.updated_count || 0,
+        }),
+        { variant: "success" }
+      );
+      setSelectedIds([]);
+      await load();
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error || err?.message || tExpenses("errors.bulkReviewStatusFailed", "Unable to update selected expenses."),
+        { variant: "error" }
+      );
+    }
+  };
+
+  const previewTemplateDue = async (item) => {
+    const throughDate = item?.recurring_next_due_date || recurringThroughDate;
+    if (item?.recurring_next_due_date) setRecurringThroughDate(item.recurring_next_due_date);
+    await refreshRecurringPreview({ openDialog: true, throughDate });
+  };
+
+  const generateTemplateDue = async (item) => {
+    const throughDate = item?.recurring_next_due_date || recurringThroughDate;
+    if (item?.recurring_next_due_date) {
+      setRecurringThroughDate(item.recurring_next_due_date);
+    }
+    await generateRecurringDrafts({ throughDate, focusGenerated: true });
+  };
+
+  const viewGeneratedDrafts = () => {
+    setExpenseKind("generated_drafts");
+    setReviewFilter("draft");
+    setReadinessFilter("");
+    setMissingReceipt("");
+    setPage(1);
+  };
 
   return (
     <Stack spacing={2}>
@@ -232,6 +331,52 @@ export default function ExpensesPage({ createNonce }) {
             <Select label={tExpenses("toolbar.receiptStatus", "Receipt status")} value={missingReceipt} onChange={(e) => { setMissingReceipt(e.target.value); setPage(1); }}>
               <MenuItem value="">{tExpenses("toolbar.allExpenses", "All expenses")}</MenuItem>
               <MenuItem value="true">{tExpenses("toolbar.missingReceipts", "Missing receipts")}</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>{tExpenses("toolbar.sourceType", "Source / type")}</InputLabel>
+            <Select
+              label={tExpenses("toolbar.sourceType", "Source / type")}
+              value={expenseKind}
+              onChange={(e) => {
+                const value = e.target.value;
+                setExpenseKind(value);
+                if (value === "generated_drafts" && !reviewFilter) {
+                  setReviewFilter("draft");
+                }
+                setPage(1);
+              }}
+            >
+              <MenuItem value="">{tExpenses("toolbar.sourceTypeOptions.all", "All expenses")}</MenuItem>
+              <MenuItem value="actual">{tExpenses("toolbar.sourceTypeOptions.actual", "Actual expenses")}</MenuItem>
+              <MenuItem value="templates">{tExpenses("toolbar.sourceTypeOptions.templates", "Recurring templates")}</MenuItem>
+              <MenuItem value="generated_drafts">{tExpenses("toolbar.sourceTypeOptions.generatedDrafts", "Generated recurring drafts")}</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 210 }}>
+            <InputLabel>{tExpenses("toolbar.reviewFilter", "Review state")}</InputLabel>
+            <Select
+              label={tExpenses("toolbar.reviewFilter", "Review state")}
+              value={reviewFilter}
+              onChange={(e) => { setReviewFilter(e.target.value); setPage(1); }}
+            >
+              <MenuItem value="">{tExpenses("toolbar.reviewFilterOptions.all", "All review states")}</MenuItem>
+              <MenuItem value="draft">{tExpenses("toolbar.reviewFilterOptions.draft", "Draft / needs review")}</MenuItem>
+              <MenuItem value="reviewed">{tExpenses("toolbar.reviewFilterOptions.reviewed", "Reviewed / ready for accountant")}</MenuItem>
+              <MenuItem value="excluded">{tExpenses("toolbar.reviewFilterOptions.excluded", "Excluded")}</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 210 }}>
+            <InputLabel>{tExpenses("toolbar.readinessFilter", "Readiness")}</InputLabel>
+            <Select
+              label={tExpenses("toolbar.readinessFilter", "Readiness")}
+              value={readinessFilter}
+              onChange={(e) => { setReadinessFilter(e.target.value); setPage(1); }}
+            >
+              <MenuItem value="">{tExpenses("toolbar.readinessFilterOptions.all", "All readiness states")}</MenuItem>
+              <MenuItem value="needs_receipt">{tExpenses("toolbar.readinessFilterOptions.needsReceipt", "Needs receipt")}</MenuItem>
+              <MenuItem value="needs_category">{tExpenses("toolbar.readinessFilterOptions.needsCategory", "Needs category")}</MenuItem>
+              <MenuItem value="ready_for_accountant">{tExpenses("toolbar.readinessFilterOptions.readyForAccountant", "Ready for accountant")}</MenuItem>
             </Select>
           </FormControl>
           <ThemedDateField size="small" label={tExpenses("toolbar.from", "From")} value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
@@ -269,7 +414,7 @@ export default function ExpensesPage({ createNonce }) {
               <Button variant="outlined" onClick={() => refreshRecurringPreview({ openDialog: true })} disabled={recurringLoading}>
                 {recurringLoading ? tExpenses("recurringPanel.previewing", "Previewing...") : tExpenses("recurringPanel.preview", "Preview due")}
               </Button>
-              <Button variant="contained" onClick={generateRecurringDrafts} disabled={recurringGenerating}>
+              <Button variant="contained" onClick={() => generateRecurringDrafts({ focusGenerated: true })} disabled={recurringGenerating}>
                 {recurringGenerating ? tExpenses("recurringPanel.generating", "Generating...") : tExpenses("recurringPanel.generate", "Generate due drafts")}
               </Button>
             </Stack>
@@ -289,6 +434,13 @@ export default function ExpensesPage({ createNonce }) {
                 count: recurringPreview?.due_draft_count || 0,
               })}
             />
+            <Chip
+              color={(recurringPreview?.generated_count || 0) > 0 ? "primary" : "default"}
+              variant="outlined"
+              label={tExpenses("recurringPanel.generatedDraftCount", "{{count}} generated draft expense(s)", {
+                count: recurringPreview?.generated_count || 0,
+              })}
+            />
             {nextDueRow?.next_due_date ? (
               <Chip
                 color="info"
@@ -299,10 +451,34 @@ export default function ExpensesPage({ createNonce }) {
                 })}
               />
             ) : null}
+            <Button size="small" variant="text" onClick={viewGeneratedDrafts}>
+              {tExpenses("recurringPanel.viewGeneratedDrafts", "View draft recurring expenses")}
+            </Button>
           </Stack>
         </Stack>
       </Paper>
       {error ? <Alert severity="error">{error}</Alert> : null}
+
+      {selectedIds.length ? (
+        <Alert
+          severity="info"
+          action={
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button size="small" variant="outlined" onClick={() => applyBulkReviewStatus("reviewed")}>
+                {tExpenses("bulkActions.markReviewed", "Mark reviewed")}
+              </Button>
+              <Button size="small" variant="outlined" onClick={() => applyBulkReviewStatus("draft")}>
+                {tExpenses("bulkActions.markDraft", "Mark draft")}
+              </Button>
+              <Button size="small" color="warning" variant="outlined" onClick={() => applyBulkReviewStatus("excluded")}>
+                {tExpenses("bulkActions.exclude", "Exclude")}
+              </Button>
+            </Stack>
+          }
+        >
+          {tExpenses("bulkActions.selectedCount", "{{count}} expense(s) selected", { count: selectedIds.length })}
+        </Alert>
+      ) : null}
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
@@ -318,6 +494,14 @@ export default function ExpensesPage({ createNonce }) {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    checked={allSelected}
+                    indeterminate={selectedIds.length > 0 && !allSelected}
+                    onChange={toggleSelectAll}
+                    inputProps={{ "aria-label": tExpenses("table.selectAll", "Select all expenses") }}
+                  />
+                </TableCell>
                 <TableCell>{tExpenses("table.headers.date", "Date")}</TableCell>
                 <TableCell>{tExpenses("table.headers.title", "Title")}</TableCell>
                 <TableCell>{tExpenses("table.headers.vendor", "Vendor")}</TableCell>
@@ -334,26 +518,44 @@ export default function ExpensesPage({ createNonce }) {
               {items.map((item) => {
                 const receiptCount = Array.isArray(item.receipt_files) ? item.receipt_files.length : 0;
                 const total = Number(item.amount || 0) + Number(item.tax_amount || 0);
+                const isTemplate = Boolean(item.is_recurring_template);
+                const reviewStatus = item.review_status || "reviewed";
+                const readiness = item.readiness || "";
+                const isDueTemplate = Boolean(isTemplate && item.recurring_next_due_date && item.recurring_next_due_date <= recurringThroughDate);
                 return (
                   <TableRow key={item.id} hover>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        disabled={isTemplate}
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() => toggleSelected(item.id)}
+                        inputProps={{ "aria-label": tExpenses("table.selectRow", "Select expense") }}
+                      />
+                    </TableCell>
                     <TableCell>{item.expense_date || "-"}</TableCell>
                     <TableCell>
                       <Typography fontWeight={700}>{item.title}</Typography>
                       <Stack direction="row" spacing={0.75} sx={{ mt: 0.75, flexWrap: "wrap" }}>
-                        {item.is_recurring_template ? (
+                        {isTemplate ? (
                           <Chip size="small" variant="outlined" label={tExpenses("table.template", "Template")} />
                         ) : null}
-                        {item.review_status === "draft" ? (
+                        {reviewStatus === "draft" ? (
                           <Chip size="small" color="warning" variant="outlined" label={tExpenses("table.draft", "Draft")} />
                         ) : null}
-                        {item.review_status === "excluded" ? (
+                        {reviewStatus === "excluded" ? (
                           <Chip size="small" color="default" variant="outlined" label={tExpenses("table.excluded", "Excluded")} />
                         ) : null}
                         {item.source_recurring_expense_id ? (
                           <Chip size="small" color="info" variant="outlined" label={tExpenses("table.generatedRecurring", "Generated recurring")} />
                         ) : null}
-                        {!item.is_recurring_template && receiptCount === 0 ? (
+                        {readiness === "needs_receipt" ? (
                           <Chip size="small" color="error" variant="outlined" label={tExpenses("table.needsReceipt", "Needs receipt")} />
+                        ) : null}
+                        {readiness === "needs_category" ? (
+                          <Chip size="small" color="warning" variant="outlined" label={tExpenses("table.needsCategory", "Needs category")} />
+                        ) : null}
+                        {readiness === "ready_for_accountant" ? (
+                          <Chip size="small" color="success" variant="outlined" label={tExpenses("table.readyForAccountant", "Ready for accountant")} />
                         ) : null}
                       </Stack>
                       {item.source_recurring_expense?.title ? (
@@ -378,7 +580,49 @@ export default function ExpensesPage({ createNonce }) {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="flex-end">
-                        <Button size="small" onClick={() => { setEditing(item); setDialogOpen(true); }}>{tExpenses("table.edit", "Edit")}</Button>
+                        <Button size="small" onClick={() => { setEditing(item); setDialogOpen(true); }}>
+                          {isTemplate ? tExpenses("table.editTemplate", "Edit template") : tExpenses("table.edit", "Edit")}
+                        </Button>
+                        {isTemplate ? (
+                          <>
+                            <Button size="small" variant="outlined" onClick={() => previewTemplateDue(item)}>
+                              {tExpenses("table.previewDue", "Preview due")}
+                            </Button>
+                            {isDueTemplate ? (
+                              <Button size="small" variant="outlined" onClick={() => generateTemplateDue(item)}>
+                                {tExpenses("table.generateDrafts", "Generate due drafts")}
+                              </Button>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            {reviewStatus === "draft" ? (
+                              <Button size="small" variant="outlined" onClick={() => applyReviewStatus(item.id, "reviewed")}>
+                                {tExpenses("table.markReviewed", "Mark reviewed")}
+                              </Button>
+                            ) : null}
+                            {reviewStatus === "reviewed" ? (
+                              <Button size="small" variant="outlined" onClick={() => applyReviewStatus(item.id, "draft")}>
+                                {tExpenses("table.markDraft", "Mark draft")}
+                              </Button>
+                            ) : null}
+                            {reviewStatus === "excluded" ? (
+                              <>
+                                <Button size="small" variant="outlined" onClick={() => applyReviewStatus(item.id, "draft")}>
+                                  {tExpenses("table.restoreDraft", "Restore draft")}
+                                </Button>
+                                <Button size="small" variant="outlined" onClick={() => applyReviewStatus(item.id, "reviewed")}>
+                                  {tExpenses("table.restoreReviewed", "Restore reviewed")}
+                                </Button>
+                              </>
+                            ) : null}
+                            {reviewStatus !== "excluded" ? (
+                              <Button size="small" color="warning" variant="outlined" onClick={() => applyReviewStatus(item.id, "excluded")}>
+                                {tExpenses("table.exclude", "Exclude")}
+                              </Button>
+                            ) : null}
+                          </>
+                        )}
                         <Button size="small" color="error" onClick={() => setDeleteTarget(item)}>{tExpenses("table.delete", "Delete")}</Button>
                       </Stack>
                     </TableCell>
