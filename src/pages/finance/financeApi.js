@@ -193,6 +193,8 @@ export const createExpense = (payload) => unwrap(api.post("/finance/expenses", p
 export const getExpense = (id) => unwrap(api.get(`/finance/expenses/${id}`));
 export const updateExpense = (id, payload) => unwrap(api.patch(`/finance/expenses/${id}`, payload));
 export const deleteExpense = (id) => unwrap(api.delete(`/finance/expenses/${id}`));
+export const bulkUpdateExpenseReviewStatus = (payload) =>
+  unwrap(api.post("/finance/expenses/bulk-review-status", payload));
 export const previewRecurringExpenses = (params = {}) =>
   unwrap(api.get("/finance/expenses/recurring/due", { params }));
 export const generateRecurringExpenseDrafts = (payload) =>
