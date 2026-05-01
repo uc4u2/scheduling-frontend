@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -20,6 +20,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import { createVendor, deleteVendor, listVendors, updateVendor } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
@@ -36,6 +37,11 @@ const blankVendor = {
 };
 
 function VendorDialog({ open, onClose, initialValues, onSubmit }) {
+  const { t } = useTranslation();
+  const tVendors = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.vendors.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [form, setForm] = useState(blankVendor);
 
   useEffect(() => {
@@ -47,29 +53,34 @@ function VendorDialog({ open, onClose, initialValues, onSubmit }) {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{initialValues?.id ? "Edit vendor" : "Add vendor"}</DialogTitle>
+      <DialogTitle>{initialValues?.id ? tVendors("dialog.editTitle", "Edit vendor") : tVendors("dialog.addTitle", "Add vendor")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 0.25 }}>
-          <TextField fullWidth label="Vendor name" value={form.name} onChange={(e) => setField("name", e.target.value)} />
+          <TextField fullWidth label={tVendors("fields.vendorName", "Vendor name")} value={form.name} onChange={(e) => setField("name", e.target.value)} />
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Email" value={form.email} onChange={(e) => setField("email", e.target.value)} /></Grid>
-            <Grid item xs={12} md={6}><TextField fullWidth label="Phone" value={form.phone} onChange={(e) => setField("phone", e.target.value)} /></Grid>
+            <Grid item xs={12} md={6}><TextField fullWidth label={tVendors("fields.email", "Email")} value={form.email} onChange={(e) => setField("email", e.target.value)} /></Grid>
+            <Grid item xs={12} md={6}><TextField fullWidth label={tVendors("fields.phone", "Phone")} value={form.phone} onChange={(e) => setField("phone", e.target.value)} /></Grid>
           </Grid>
-          <TextField fullWidth label="Address" multiline minRows={2} value={form.address} onChange={(e) => setField("address", e.target.value)} />
-          <TextField fullWidth label="Notes" multiline minRows={3} value={form.notes} onChange={(e) => setField("notes", e.target.value)} />
-          <FormControlLabel control={<Switch checked={form.is_active} onChange={(e) => setField("is_active", e.target.checked)} />} label="Active vendor" />
+          <TextField fullWidth label={tVendors("fields.address", "Address")} multiline minRows={2} value={form.address} onChange={(e) => setField("address", e.target.value)} />
+          <TextField fullWidth label={tVendors("fields.notes", "Notes")} multiline minRows={3} value={form.notes} onChange={(e) => setField("notes", e.target.value)} />
+          <FormControlLabel control={<Switch checked={form.is_active} onChange={(e) => setField("is_active", e.target.checked)} />} label={tVendors("fields.activeVendor", "Active vendor")} />
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={() => onSubmit(form)}>Save</Button>
+        <Button onClick={onClose}>{tVendors("common.cancel", "Cancel")}</Button>
+        <Button variant="contained" onClick={() => onSubmit(form)}>{tVendors("common.save", "Save")}</Button>
       </DialogActions>
     </Dialog>
   );
 }
 
 export default function VendorsPage() {
+  const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const tVendors = useCallback(
+    (key, fallback, options = {}) => t(`manager.finance.vendors.${key}`, { defaultValue: fallback, ...options }),
+    [t]
+  );
   const [vendors, setVendors] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
@@ -89,7 +100,7 @@ export default function VendorsPage() {
       setVendors(rows);
       setPagination(res?.pagination || null);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load vendors.");
+      setError(err?.response?.data?.error || err?.message || tVendors("errors.loadFailed", "Unable to load vendors."));
     } finally {
       setLoading(false);
     }
@@ -97,47 +108,49 @@ export default function VendorsPage() {
 
   useEffect(() => {
     load();
+    // Search stays manual via Enter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage]);
 
   const handleSave = async (payload) => {
     try {
       if (selectedVendor?.id) {
         await updateVendor(selectedVendor.id, payload);
-        enqueueSnackbar("Vendor updated.", { variant: "success" });
+        enqueueSnackbar(tVendors("snackbar.updated", "Vendor updated."), { variant: "success" });
       } else {
         await createVendor(payload);
-        enqueueSnackbar("Vendor added.", { variant: "success" });
+        enqueueSnackbar(tVendors("snackbar.added", "Vendor added."), { variant: "success" });
       }
       setEditorOpen(false);
       setSelectedVendor(null);
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to save vendor.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tVendors("errors.saveFailed", "Unable to save vendor."), { variant: "error" });
     }
   };
 
   const handleArchive = async (vendor) => {
     try {
       await deleteVendor(vendor.id);
-      enqueueSnackbar("Vendor archived.", { variant: "success" });
+      enqueueSnackbar(tVendors("snackbar.archived", "Vendor archived."), { variant: "success" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to archive vendor.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tVendors("errors.archiveFailed", "Unable to archive vendor."), { variant: "error" });
     }
   };
 
   return (
     <Stack spacing={2.5}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label="Active vendors" value={String(vendors.filter((row) => row.is_active !== false).length)} accent="primary" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label="Inactive vendors" value={String(vendors.filter((row) => row.is_active === false).length)} accent="warning" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label={tVendors("metrics.activeVendors", "Active vendors")} value={String(vendors.filter((row) => row.is_active !== false).length)} accent="primary" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><FinanceMetricCard label={tVendors("metrics.inactiveVendors", "Inactive vendors")} value={String(vendors.filter((row) => row.is_active === false).length)} accent="warning" /></Grid>
       </Grid>
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
           <TextField
             size="small"
-            label="Search vendors"
+            label={tVendors("toolbar.searchVendors", "Search vendors")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -148,7 +161,7 @@ export default function VendorsPage() {
             }}
             sx={{ minWidth: { md: 300 } }}
           />
-          <Button variant="contained" onClick={() => { setSelectedVendor(null); setEditorOpen(true); }}>Add vendor</Button>
+          <Button variant="contained" onClick={() => { setSelectedVendor(null); setEditorOpen(true); }}>{tVendors("toolbar.addVendor", "Add vendor")}</Button>
         </Stack>
       </Paper>
 
@@ -158,9 +171,9 @@ export default function VendorsPage() {
         <Alert severity="error">{error}</Alert>
       ) : vendors.length === 0 ? (
         <FinanceEmptyState
-          title="No vendors yet"
-          description="Add your first vendor."
-          actionLabel="Add vendor"
+          title={tVendors("empty.title", "No vendors yet")}
+          description={tVendors("empty.description", "Add your first vendor.")}
+          actionLabel={tVendors("empty.action", "Add vendor")}
           onAction={() => { setSelectedVendor(null); setEditorOpen(true); }}
         />
       ) : (
@@ -168,12 +181,12 @@ export default function VendorsPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Address</TableCell>
-                <TableCell>Notes</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>{tVendors("table.headers.name", "Name")}</TableCell>
+                <TableCell>{tVendors("table.headers.contact", "Contact")}</TableCell>
+                <TableCell>{tVendors("table.headers.address", "Address")}</TableCell>
+                <TableCell>{tVendors("table.headers.notes", "Notes")}</TableCell>
+                <TableCell>{tVendors("table.headers.status", "Status")}</TableCell>
+                <TableCell align="right">{tVendors("table.headers.actions", "Actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -186,11 +199,11 @@ export default function VendorsPage() {
                   </TableCell>
                   <TableCell>{vendor.address || "-"}</TableCell>
                   <TableCell>{vendor.notes || "-"}</TableCell>
-                  <TableCell>{vendor.is_active === false ? "Inactive" : "Active"}</TableCell>
+                  <TableCell>{vendor.is_active === false ? tVendors("table.inactive", "Inactive") : tVendors("table.active", "Active")}</TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button size="small" onClick={() => { setSelectedVendor(vendor); setEditorOpen(true); }}>Edit</Button>
-                      <Button size="small" color="error" onClick={() => handleArchive(vendor)}>Archive</Button>
+                      <Button size="small" onClick={() => { setSelectedVendor(vendor); setEditorOpen(true); }}>{tVendors("table.edit", "Edit")}</Button>
+                      <Button size="small" color="error" onClick={() => handleArchive(vendor)}>{tVendors("table.archive", "Archive")}</Button>
                     </Stack>
                   </TableCell>
                 </TableRow>
