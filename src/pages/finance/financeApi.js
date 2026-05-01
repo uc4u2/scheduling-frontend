@@ -61,6 +61,13 @@ export const createFinanceInvoicePaymentLink = (id) =>
 export const listFinanceInvoices = (params = {}) =>
   unwrap(api.get("/finance/invoices", { params }));
 export const getFinanceInvoice = (id) => unwrap(api.get(`/finance/invoices/${id}`));
+export const getFinanceInvoicePrintHtml = async (id) => {
+  const res = await api.get(`/finance/invoices/${id}/print`, {
+    responseType: "text",
+    transformResponse: [(data) => data],
+  });
+  return res.data;
+};
 export const updateFinanceInvoice = (id, payload) =>
   unwrap(api.patch(`/finance/invoices/${id}`, payload));
 export const refundFinanceInvoice = (id, payload) =>
