@@ -13,7 +13,8 @@ import { useTranslation } from "react-i18next";
 import { formatCurrency } from "../../utils/formatters";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
-import { getFinanceOverview, getFinanceSummary } from "./financeApi";
+import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
+import { getFinanceOverview, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
 
 const buildAttentionCards = (overview = {}, actions = [], tFinance) => {
   const actionMap = new Map(actions.map((row) => [row.type, row]));
@@ -92,6 +93,7 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   );
   const [overview, setOverview] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -101,10 +103,15 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
       setLoading(true);
       setError("");
       try {
-        const [overviewData, summaryData] = await Promise.all([getFinanceOverview(), getFinanceSummary()]);
+        const [overviewData, summaryData, financeTaxContext] = await Promise.all([
+          getFinanceOverview(),
+          getFinanceSummary(),
+          getFinanceTaxContext(),
+        ]);
         if (!mounted) return;
         setOverview(overviewData || {});
         setSummary(summaryData || {});
+        setTaxContext(financeTaxContext?.tax_context || null);
       } catch (err) {
         if (!mounted) return;
         setError(
@@ -143,6 +150,15 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
 
   return (
     <Stack spacing={3}>
+      <FinanceSettingsSnapshotCard
+        taxContext={taxContext}
+        title={tFinance("taxContext.snapshotTitle", "Finance settings snapshot")}
+        helper={tFinance(
+          "taxContext.snapshotHelper",
+          "These are the current company defaults for Business Finance estimates, expenses, purchases, reports, and month-end review."
+        )}
+      />
+
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
         <Stack spacing={2}>
           <Typography variant="h6" fontWeight={900}>

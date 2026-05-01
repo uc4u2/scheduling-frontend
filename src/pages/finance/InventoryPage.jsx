@@ -29,6 +29,7 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
+import { getActiveCurrency, normalizeCurrency, subscribeToActiveCurrency } from "../../utils/currency";
 import {
   adjustInventoryItem,
   createInventoryCategory,
@@ -73,10 +74,10 @@ const parseNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const formatMoney = (value) =>
+const formatMoney = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "USD",
+    currency: currency || "USD",
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
@@ -308,7 +309,7 @@ function InventoryAdjustmentDialog({ open, onClose, item, onSubmit }) {
   );
 }
 
-function InventoryTransactionsDialog({ open, onClose, item, transactions }) {
+function InventoryTransactionsDialog({ open, onClose, item, transactions, currency }) {
   const { t } = useTranslation();
   const tInventory = React.useCallback(
     (key, fallback, options = {}) => t(`manager.finance.materials.${key}`, { defaultValue: fallback, ...options }),
@@ -338,7 +339,7 @@ function InventoryTransactionsDialog({ open, onClose, item, transactions }) {
                   <TableCell>{row.created_at || "-"}</TableCell>
                   <TableCell>{row.transaction_type || "-"}</TableCell>
                   <TableCell>{row.quantity_delta}</TableCell>
-                  <TableCell>{row.unit_cost != null ? formatMoney(row.unit_cost) : "-"}</TableCell>
+                  <TableCell>{row.unit_cost != null ? formatMoney(row.unit_cost, currency) : "-"}</TableCell>
                   <TableCell>{row.source_type || tInventory("historyDialog.manual", "manual")}</TableCell>
                   <TableCell>{row.note || "-"}</TableCell>
                 </TableRow>
@@ -359,6 +360,7 @@ export default function InventoryPage() {
     (key, fallback, options = {}) => t(`manager.finance.materials.${key}`, { defaultValue: fallback, ...options }),
     [t]
   );
+  const [activeCurrency, setActiveCurrency] = useState(() => normalizeCurrency(getActiveCurrency("USD")) || "USD");
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -407,6 +409,10 @@ export default function InventoryPage() {
     // Search stays manual via Enter so the list does not refetch on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId, lowStockOnly, page, perPage]);
+
+  useEffect(() => subscribeToActiveCurrency((next) => {
+    setActiveCurrency(normalizeCurrency(next) || "USD");
+  }), []);
 
   const metrics = useMemo(() => {
     const lowStockCount = items.filter((item) => item.low_available_stock).length;
@@ -490,7 +496,7 @@ export default function InventoryPage() {
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.activeItems", "Active items")} value={String(metrics.activeItems)} accent="primary" /></Grid>
         <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.lowStockItems", "Low available stock")} value={String(metrics.lowStockCount)} accent="warning" helper={tInventory("metrics.lowStockHelper", "Considers stock reserved for active jobs.")} /></Grid>
-        <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.inventoryValueEstimate", "Inventory value estimate")} value={formatMoney(metrics.inventoryValue)} accent="secondary" helper={tInventory("metrics.inventoryValueHelper", "Based on current quantity and cost per unit.")} /></Grid>
+        <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.inventoryValueEstimate", "Inventory value estimate")} value={formatMoney(metrics.inventoryValue, activeCurrency)} accent="secondary" helper={tInventory("metrics.inventoryValueHelper", "Based on current quantity and cost per unit.")} /></Grid>
         <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tInventory("metrics.reservedQuantity", "Reserved quantity")} value={String(metrics.reservedValue)} accent="info" helper={tInventory("metrics.reservedQuantityHelper", "Planned on active jobs, but not deducted yet.")} /></Grid>
       </Grid>
 
@@ -601,7 +607,7 @@ export default function InventoryPage() {
                       {item.low_available_stock ? <Typography variant="body2" color="warning.main">{tInventory("table.lowAvailable", "Low available")}</Typography> : null}
                     </TableCell>
                     <TableCell>{item.pending_usage_quantity ?? 0}</TableCell>
-                    <TableCell>{formatMoney(item.cost_per_unit)}</TableCell>
+                    <TableCell>{formatMoney(item.cost_per_unit, activeCurrency)}</TableCell>
                     <TableCell>{item.low_stock_threshold ?? "-"}</TableCell>
                     <TableCell>{item.vendor_name || "-"}</TableCell>
                     <TableCell align="right">
@@ -659,6 +665,7 @@ export default function InventoryPage() {
         onClose={() => setHistoryOpen(false)}
         item={selectedItem}
         transactions={transactions}
+        currency={activeCurrency}
       />
     </Stack>
   );

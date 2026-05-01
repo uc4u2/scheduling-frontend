@@ -27,7 +27,12 @@ import { useTranslation } from "react-i18next";
 import { createEstimate, updateEstimate } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
-import { getActiveCurrency, getCurrencyOptions, normalizeCurrency } from "../../utils/currency";
+import {
+  getActiveCurrency,
+  getCurrencyOptions,
+  normalizeCurrency,
+  subscribeToActiveCurrency,
+} from "../../utils/currency";
 
 const makeLine = (line = {}, index = 0) => ({
   id: line.id || `line-${Date.now()}-${index}`,
@@ -55,6 +60,9 @@ const blankForm = (taxContext = {}) => ({
   discount_total: 0,
   line_items: [makeLine()],
 });
+
+const getDefaultEstimateCurrency = (taxContext = {}) =>
+  normalizeCurrency(taxContext?.display_currency || getActiveCurrency("USD")) || "USD";
 
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
@@ -110,6 +118,7 @@ export default function EstimateEditorDialog({
     [t]
   );
   const currencyOptions = useMemo(() => getCurrencyOptions(), []);
+  const [activeCurrency, setActiveCurrency] = useState(() => getDefaultEstimateCurrency(taxContext || {}));
   const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -117,6 +126,25 @@ export default function EstimateEditorDialog({
     () => estimate?.tax_context || taxContext || {},
     [estimate?.tax_context, taxContext]
   );
+  const currentCompanyTaxContext = taxContext || {};
+  const currencyMismatch = Boolean(
+    currentCompanyTaxContext?.display_currency &&
+    normalizeCurrency(form.currency) &&
+    normalizeCurrency(form.currency) !== normalizeCurrency(currentCompanyTaxContext.display_currency)
+  );
+  const jurisdictionMismatch = Boolean(
+    estimate?.id &&
+    (
+      normalizeCurrency(effectiveTaxContext?.tax_country_code) !== normalizeCurrency(currentCompanyTaxContext?.tax_country_code) ||
+      normalizeCurrency(effectiveTaxContext?.tax_region_code) !== normalizeCurrency(currentCompanyTaxContext?.tax_region_code) ||
+      Boolean(effectiveTaxContext?.prices_include_tax) !== Boolean(currentCompanyTaxContext?.prices_include_tax)
+    )
+  );
+
+  useEffect(() => subscribeToActiveCurrency((next) => {
+    const normalized = normalizeCurrency(next) || "USD";
+    setActiveCurrency(normalized);
+  }), []);
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +155,11 @@ export default function EstimateEditorDialog({
         title: estimate.title || "",
         issue_date: estimate.issue_date || formatDate(new Date()),
         expiry_date: estimate.expiry_date || "",
-        currency: estimate.currency || "USD",
+        currency: normalizeCurrency(
+          estimate.currency ||
+          estimate.tax_context?.display_currency ||
+          activeCurrency
+        ) || activeCurrency,
         notes: estimate.notes || "",
         terms: estimate.terms || "",
         visible_notes: estimate.visible_notes || "",
@@ -140,10 +172,13 @@ export default function EstimateEditorDialog({
           : [makeLine()],
       });
     } else {
-      setForm(blankForm(taxContext || {}));
+      setForm({
+        ...blankForm(taxContext || {}),
+        currency: normalizeCurrency((taxContext || {}).display_currency || activeCurrency) || activeCurrency,
+      });
     }
     setError("");
-  }, [estimate, open, taxContext]);
+  }, [activeCurrency, estimate, open, taxContext]);
 
   const preview = useMemo(() => {
     const subtotal = roundMoney(
@@ -338,7 +373,7 @@ export default function EstimateEditorDialog({
             </Grid>
             <Grid item xs={12}>
               <Alert
-                severity={effectiveTaxContext?.warning ? "warning" : "info"}
+                severity={effectiveTaxContext?.warning || currencyMismatch || jurisdictionMismatch ? "warning" : "info"}
                 variant="outlined"
               >
                 <Stack spacing={0.75}>
@@ -363,6 +398,16 @@ export default function EstimateEditorDialog({
                       ? tEstimate("taxContext.includedMessage", "Prices include tax. Tax is backed out from taxable line prices.")
                       : tEstimate("taxContext.addedMessage", "Tax is added on top based on your company tax settings.")}
                   </Typography>
+                  {currencyMismatch ? (
+                    <Typography variant="body2" color="warning.main">
+                      {tEstimate("taxContext.currencyMismatch", "This estimate uses a different currency than your current company display currency. Keep it only if that is intentional.")}
+                    </Typography>
+                  ) : null}
+                  {jurisdictionMismatch ? (
+                    <Typography variant="body2" color="warning.main">
+                      {tEstimate("taxContext.jurisdictionMismatch", "This estimate was created under different company tax settings than the current ones. Keep it only if that historical tax treatment is intentional.")}
+                    </Typography>
+                  ) : null}
                   {effectiveTaxContext?.warning ? (
                     <Typography variant="body2">{effectiveTaxContext.warning}</Typography>
                   ) : null}

@@ -10,7 +10,8 @@ import {
 import { useTranslation } from "react-i18next";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
-import { getFinanceTaxSummary } from "./financeApi";
+import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
+import { getFinanceTaxContext, getFinanceTaxSummary } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
 const formatMoney = (value, currency = "USD") =>
@@ -34,6 +35,7 @@ export default function TaxSummaryPage() {
   const [dateFrom, setDateFrom] = useState(firstDayOfMonth());
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [report, setReport] = useState(null);
+  const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const currency = report?.currency || "USD";
@@ -42,8 +44,12 @@ export default function TaxSummaryPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await getFinanceTaxSummary({ date_from: dateFrom, date_to: dateTo });
+      const [res, financeTaxContext] = await Promise.all([
+        getFinanceTaxSummary({ date_from: dateFrom, date_to: dateTo }),
+        getFinanceTaxContext(),
+      ]);
       setReport(res || {});
+      setTaxContext(financeTaxContext?.tax_context || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tTax("errors.loadFailed", "Unable to load tax summary."));
     } finally {
@@ -57,6 +63,15 @@ export default function TaxSummaryPage() {
 
   return (
     <Stack spacing={2.5}>
+      <FinanceSettingsSnapshotCard
+        taxContext={taxContext}
+        title={tTax("taxContext.snapshotTitle", "Finance settings snapshot")}
+        helper={tTax(
+          "taxContext.snapshotHelper",
+          "These are the current company tax defaults behind Business Finance tax calculations and month-end tax review."
+        )}
+      />
+
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
           <ThemedDateField fullWidth label={tTax("filters.from", "From")} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
