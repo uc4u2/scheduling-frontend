@@ -10,8 +10,9 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import ThemedDateField from "../../components/ui/ThemedDateField";
-import { getFinanceProfitabilityReport } from "./financeApi";
+import { getFinanceProfitabilityReport, getFinanceTaxContext } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
 const formatMoney = (value, currency = "USD") =>
@@ -35,16 +36,21 @@ export default function ProfitabilityReportsPage() {
   const [dateFrom, setDateFrom] = useState(firstDayOfMonth());
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [report, setReport] = useState(null);
+  const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const currency = report?.currency || "USD";
+  const currency = report?.currency || taxContext?.display_currency || "USD";
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await getFinanceProfitabilityReport({ date_from: dateFrom, date_to: dateTo });
+      const [res, financeTaxContext] = await Promise.all([
+        getFinanceProfitabilityReport({ date_from: dateFrom, date_to: dateTo }),
+        getFinanceTaxContext(),
+      ]);
       setReport(res || {});
+      setTaxContext(financeTaxContext?.tax_context || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tProfit("errors.loadFailed", "Unable to load profitability."));
     } finally {
@@ -58,6 +64,15 @@ export default function ProfitabilityReportsPage() {
 
   return (
     <Stack spacing={2.5}>
+      <FinanceSettingsSnapshotCard
+        taxContext={taxContext}
+        title={tProfit("taxContext.snapshotTitle", "Finance settings snapshot")}
+        helper={tProfit(
+          "taxContext.snapshotHelper",
+          "These are the current company finance defaults behind Business Finance pricing, tax behavior, and profitability context."
+        )}
+      />
+
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }}>
           <ThemedDateField fullWidth label={tProfit("filters.from", "From")} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
