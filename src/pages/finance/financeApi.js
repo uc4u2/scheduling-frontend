@@ -193,6 +193,10 @@ export const createExpense = (payload) => unwrap(api.post("/finance/expenses", p
 export const getExpense = (id) => unwrap(api.get(`/finance/expenses/${id}`));
 export const updateExpense = (id, payload) => unwrap(api.patch(`/finance/expenses/${id}`, payload));
 export const deleteExpense = (id) => unwrap(api.delete(`/finance/expenses/${id}`));
+export const previewRecurringExpenses = (params = {}) =>
+  unwrap(api.get("/finance/expenses/recurring/due", { params }));
+export const generateRecurringExpenseDrafts = (payload) =>
+  unwrap(api.post("/finance/expenses/recurring/generate", payload));
 export const uploadExpenseReceipt = async (id, file) => {
   const formData = new FormData();
   formData.append("file", file);
