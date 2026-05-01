@@ -2602,7 +2602,7 @@
           "addExpenseCategory": "Add Expense Category",
           "addExpense": "Add Expense"
         },
-        "receiptInfo": "Receipt file upload will be added later. For now, paste a receipt link or attach metadata in each expense.",
+        "receiptInfo": "Upload receipts directly to each expense. You can also keep receipt links or notes as a fallback.",
         "empty": {
           "title": "No expenses yet",
           "description": "Add business expenses here so your daily money-out tracking stays in one place.",
