@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  Box,
   Button,
   CircularProgress,
   Grid,
@@ -16,6 +17,7 @@ import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCar
 import {
   downloadFinanceAccountantPackage,
   exportFinanceMonthEndCsv,
+  listFinanceAccountantPackageHistory,
   getFinanceMissingData,
   getFinanceMonthEnd,
   getFinanceTaxContext,
@@ -48,7 +50,10 @@ export default function MonthEndReviewPage() {
   const [missingData, setMissingData] = useState(null);
   const [recurringPreview, setRecurringPreview] = useState(null);
   const [taxContext, setTaxContext] = useState(null);
+  const [packageHistory, setPackageHistory] = useState([]);
+  const [packageHistoryPagination, setPackageHistoryPagination] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [preparingPackage, setPreparingPackage] = useState(false);
   const [error, setError] = useState("");
@@ -57,20 +62,24 @@ export default function MonthEndReviewPage() {
     setLoading(true);
     setError("");
     try {
-      const [reviewRes, missingRes, recurringRes, financeTaxContext] = await Promise.all([
+      const [reviewRes, missingRes, recurringRes, financeTaxContext, packageHistoryRes] = await Promise.all([
         getFinanceMonthEnd({ date_from: dateFrom, date_to: dateTo }),
         getFinanceMissingData({ date_from: dateFrom, date_to: dateTo }),
         previewRecurringExpenses({ through_date: dateTo }),
         getFinanceTaxContext(),
+        listFinanceAccountantPackageHistory({ date_from: dateFrom, date_to: dateTo, page: 1, per_page: 5 }),
       ]);
       setReview(reviewRes?.month_end_review || reviewRes || null);
       setMissingData(missingRes || null);
       setRecurringPreview(recurringRes || null);
       setTaxContext(financeTaxContext?.tax_context || null);
+      setPackageHistory(Array.isArray(packageHistoryRes?.items) ? packageHistoryRes.items : []);
+      setPackageHistoryPagination(packageHistoryRes?.pagination || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tMonthEnd("errors.loadFailed", "Unable to load month-end review."));
     } finally {
       setLoading(false);
+      setHistoryLoading(false);
     }
   }, [dateFrom, dateTo, tMonthEnd]);
 
@@ -116,6 +125,7 @@ export default function MonthEndReviewPage() {
         tMonthEnd("snackbar.packageDownloaded", "Accountant package downloaded."),
         { variant: "success" }
       );
+      await load();
     } catch (err) {
       enqueueSnackbar(
         err?.response?.data?.error
@@ -175,6 +185,80 @@ export default function MonthEndReviewPage() {
             "This package prepares records for accountant review. It does not file taxes."
           )}
         </Typography>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.5}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+          sx={{ mb: 1 }}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight={800}>
+              {tMonthEnd("history.title", "Recent accountant packages")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {tMonthEnd(
+                "history.helper",
+                "This history shows package generation events. Re-download is not enabled yet."
+              )}
+            </Typography>
+          </Box>
+          <Button variant="outlined" size="small" onClick={load} disabled={loading || historyLoading}>
+            {tMonthEnd("history.refresh", "Refresh")}
+          </Button>
+        </Stack>
+
+        {historyLoading ? (
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
+            <CircularProgress size={18} />
+            <Typography variant="body2" color="text.secondary">
+              {tMonthEnd("history.loading", "Loading package history...")}
+            </Typography>
+          </Stack>
+        ) : packageHistory.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {tMonthEnd("history.empty", "No accountant packages have been generated for this period yet.")}
+          </Typography>
+        ) : (
+          <Stack spacing={1.25}>
+            {packageHistory.map((row) => (
+              <Paper key={row.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                <Stack spacing={0.35}>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {tMonthEnd("history.period", "Period")}: {row.date_from || "—"} {tMonthEnd("history.to", "to")} {row.date_to || "—"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tMonthEnd("history.generatedAt", "Generated at")}: {row.generated_at || row.created_at || "—"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tMonthEnd("history.format", "Format")}: {(row.format || "zip").toUpperCase()}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tMonthEnd("history.filesIncluded", "Files included")}: {Array.isArray(row.files_included) ? row.files_included.length : 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tMonthEnd("history.generatedBy", "Generated by")}: {row.generated_by?.name || row.generated_by?.email || "—"}
+                  </Typography>
+                </Stack>
+              </Paper>
+            ))}
+            {packageHistoryPagination?.total > packageHistory.length ? (
+              <Typography variant="caption" color="text.secondary">
+                {tMonthEnd(
+                  "history.paginationSummary",
+                  "Showing {{shown}} of {{total}} package events for this filter.",
+                  {
+                    shown: packageHistory.length,
+                    total: packageHistoryPagination?.total || packageHistory.length,
+                  }
+                )}
+              </Typography>
+            ) : null}
+          </Stack>
+        )}
       </Paper>
 
       {loading ? (
