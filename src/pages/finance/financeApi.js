@@ -35,6 +35,8 @@ const normalizeRecruiterRow = (row = {}) => {
 export const getFinanceOverview = () => unwrap(api.get("/finance/overview"));
 export const getFinanceSummary = (params = {}) => unwrap(api.get("/finance/reports/summary", { params }));
 export const getFinanceTaxContext = () => unwrap(api.get("/finance/tax-context"));
+export const getFinanceOwnerSnapshot = (params = {}) =>
+  unwrap(api.get("/finance/reports/owner-snapshot", { params }));
 
 export const listQuoteRequests = (params = {}) => unwrap(api.get("/finance/quote-requests", { params }));
 export const createQuoteRequest = (payload) => unwrap(api.post("/finance/quote-requests", payload));

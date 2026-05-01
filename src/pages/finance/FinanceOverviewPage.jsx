@@ -11,10 +11,17 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "../../utils/formatters";
+import { formatDate } from "../../utils/datetime";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
-import { getFinanceOverview, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
+import { getFinanceOverview, getFinanceOwnerSnapshot, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
+
+const firstDayOfMonth = () => {
+  const now = new Date();
+  return formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+};
 
 const buildAttentionCards = (overview = {}, actions = [], tFinance) => {
   const actionMap = new Map(actions.map((row) => [row.type, row]));
@@ -93,9 +100,14 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   );
   const [overview, setOverview] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [ownerSnapshot, setOwnerSnapshot] = useState(null);
   const [taxContext, setTaxContext] = useState(null);
+  const [snapshotDateFrom, setSnapshotDateFrom] = useState(firstDayOfMonth());
+  const [snapshotDateTo, setSnapshotDateTo] = useState(formatDate(new Date()));
   const [loading, setLoading] = useState(true);
+  const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [error, setError] = useState("");
+  const [snapshotError, setSnapshotError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -129,12 +141,45 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
     };
   }, [tFinance]);
 
+  useEffect(() => {
+    let mounted = true;
+    const loadOwnerSnapshot = async () => {
+      setSnapshotLoading(true);
+      setSnapshotError("");
+      try {
+        const snapshot = await getFinanceOwnerSnapshot({
+          date_from: snapshotDateFrom,
+          date_to: snapshotDateTo,
+        });
+        if (!mounted) return;
+        setOwnerSnapshot(snapshot || {});
+      } catch (err) {
+        if (!mounted) return;
+        setSnapshotError(
+          err?.response?.data?.error ||
+            err?.message ||
+            tFinance("ownerSnapshot.errors.loadFailed", "Unable to load owner snapshot.")
+        );
+      } finally {
+        if (mounted) setSnapshotLoading(false);
+      }
+    };
+    loadOwnerSnapshot();
+    return () => {
+      mounted = false;
+    };
+  }, [snapshotDateFrom, snapshotDateTo, tFinance]);
+
   const actions = useMemo(() => Array.isArray(overview?.today_action_list) ? overview.today_action_list : [], [overview]);
   const attentionCards = useMemo(
     () => buildAttentionCards(overview || {}, actions, tFinance),
     [overview, actions, tFinance]
   );
   const currency = summary?.currency || "USD";
+  const ownerCurrency = ownerSnapshot?.currency || currency;
+  const readiness = ownerSnapshot?.readiness || {};
+  const readinessAccent =
+    readiness?.status === "ready" ? "success" : readiness?.status === "almost_ready" ? "warning" : "error";
 
   if (loading) {
     return (
@@ -190,6 +235,69 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
           )}
         </Stack>
       </Paper>
+
+      <Box>
+        <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
+          {tFinance("sections.ownerSnapshot", "Owner snapshot")}
+        </Typography>
+        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5, mb: 2 }}>
+          <Stack spacing={2}>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+              <ThemedDateField
+                fullWidth
+                label={tFinance("ownerSnapshot.filters.from", "From")}
+                value={snapshotDateFrom}
+                onChange={(e) => setSnapshotDateFrom(e.target.value)}
+              />
+              <ThemedDateField
+                fullWidth
+                label={tFinance("ownerSnapshot.filters.to", "To")}
+                value={snapshotDateTo}
+                onChange={(e) => setSnapshotDateTo(e.target.value)}
+              />
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {tFinance(
+                "ownerSnapshot.helper",
+                "Operational view, not a tax filing. Use this to prepare for accountant handoff."
+              )}
+            </Typography>
+            {snapshotError ? <Alert severity="error">{snapshotError}</Alert> : null}
+            {snapshotLoading ? (
+              <Stack alignItems="center" sx={{ py: 2 }}>
+                <CircularProgress size={28} />
+              </Stack>
+            ) : (
+              <>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.netRevenue", "Net revenue")} value={formatCurrency(ownerSnapshot?.revenue?.net_invoice_total, ownerCurrency)} accent="success" /></Grid>
+                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.refunds", "Refunds")} value={formatCurrency(ownerSnapshot?.revenue?.refund_total, ownerCurrency)} accent="warning" /></Grid>
+                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.expenses", "Expenses")} value={formatCurrency(ownerSnapshot?.expenses?.expense_total, ownerCurrency)} accent="error" /></Grid>
+                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.margin", "Estimated margin")} value={formatCurrency(ownerSnapshot?.profitability?.estimated_margin_net, ownerCurrency)} accent="primary" helper={tFinance("ownerSnapshot.marginHelper", "Based on current approved materials, linked expenses, and planned labor data.")} /></Grid>
+                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.readiness", "Readiness score")} value={String(readiness?.score ?? 0)} accent={readinessAccent} helper={tFinance("ownerSnapshot.readinessHelper", "Operational readiness for accountant handoff, not accounting accuracy.")} /></Grid>
+                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.paidOnline", "Paid online")} value={formatCurrency(ownerSnapshot?.revenue?.online_paid_total, ownerCurrency)} accent="info" /></Grid>
+                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.paidOffline", "Paid offline")} value={formatCurrency(ownerSnapshot?.revenue?.offline_paid_total, ownerCurrency)} accent="secondary" /></Grid>
+                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.pendingBalance", "Pending balance")} value={formatCurrency((Number(ownerSnapshot?.revenue?.pending_balance || 0) + Number(ownerSnapshot?.revenue?.partial_payment_balance || 0)), ownerCurrency)} accent="warning" /></Grid>
+                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.netTax", "Estimated net tax")} value={formatCurrency(ownerSnapshot?.tax?.estimated_net_tax_net, ownerCurrency)} accent="warning" /></Grid>
+                </Grid>
+
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>
+                    {tFinance("ownerSnapshot.attentionTitle", "Attention items")}
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.missingReceipts", "Missing receipts")} value={String(ownerSnapshot?.expenses?.missing_receipts_count ?? 0)} accent="error" /></Grid>
+                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.unlinkedReceipts", "Unlinked receipts")} value={String(ownerSnapshot?.expenses?.unlinked_receipts_count ?? 0)} accent="warning" /></Grid>
+                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.draftExpenses", "Draft expenses")} value={String(ownerSnapshot?.expenses?.draft_expense_count ?? 0)} accent="warning" /></Grid>
+                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.pendingFieldReports", "Pending field reports")} value={String(ownerSnapshot?.operations?.field_reports_pending_review ?? 0)} accent="secondary" /></Grid>
+                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.lowAvailableStock", "Low available stock")} value={String(ownerSnapshot?.operations?.low_available_stock_count ?? 0)} accent="error" /></Grid>
+                  </Grid>
+                </Box>
+              </>
+            )}
+          </Stack>
+        </Paper>
+      </Box>
 
       <Box>
         <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
