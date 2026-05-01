@@ -182,7 +182,7 @@ export default function ExpensesPage({ createNonce }) {
         </Stack>
       </Stack>
 
-      <Alert severity="info">{tExpenses("receiptInfo", "Receipt file upload will be added later. For now, paste a receipt link or attach metadata in each expense.")}</Alert>
+      <Alert severity="info">{tExpenses("receiptInfo", "Upload receipts directly to each expense and keep links or notes only as a fallback.")}</Alert>
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       {loading ? (
