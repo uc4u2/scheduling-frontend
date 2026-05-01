@@ -4,6 +4,7 @@
 // We keep a module-level fallback so SSR/tests without localStorage still work.
 let memoryCurrency = "USD";
 const STORAGE_KEY = "company_currency";
+const CURRENCY_EVENT = "schedulaa:currency-changed";
 
 export const COUNTRY_TO_CURRENCY = Object.freeze({
   US: "USD",
@@ -86,6 +87,33 @@ export function resolveCurrencyForCountry(countryCode) {
   return COUNTRY_TO_CURRENCY[code] || "USD";
 }
 
+function readStorageCurrency() {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const norm = normalizeCurrency(raw);
+      if (isSupportedCurrency(norm)) return norm;
+    }
+  } catch {
+    // ignore storage failures
+  }
+  return "";
+}
+
+function notifyCurrencyChange(code) {
+  try {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(
+        new CustomEvent(CURRENCY_EVENT, {
+          detail: { currency: code },
+        })
+      );
+    }
+  } catch {
+    // ignore browser event failures
+  }
+}
+
 function writeStorage(code) {
   memoryCurrency = code;
   try {
@@ -95,28 +123,22 @@ function writeStorage(code) {
   } catch {
     // ignore storage failures (private browsing, SSR, etc.)
   }
+  notifyCurrencyChange(code);
 }
 
 export function setActiveCurrency(code) {
   const norm = normalizeCurrency(code);
   if (!norm) return;
   if (!isSupportedCurrency(norm)) return;
-  if (norm === memoryCurrency) return;
+  if (norm === memoryCurrency && readStorageCurrency() === norm) return;
   writeStorage(norm);
 }
 
 export function getActiveCurrency(fallback = "USD") {
-  try {
-    if (typeof localStorage !== "undefined") {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const norm = normalizeCurrency(raw);
-      if (isSupportedCurrency(norm)) {
-        memoryCurrency = norm;
-        return norm;
-      }
-    }
-  } catch {
-    // ignore
+  const stored = readStorageCurrency();
+  if (stored) {
+    memoryCurrency = stored;
+    return stored;
   }
   const normMem = normalizeCurrency(memoryCurrency);
   if (isSupportedCurrency(normMem)) return normMem;
@@ -127,6 +149,32 @@ export function getActiveCurrency(fallback = "USD") {
   }
   writeStorage("USD");
   return "USD";
+}
+
+export function subscribeToActiveCurrency(listener) {
+  if (typeof listener !== "function") return () => {};
+  if (typeof window === "undefined") return () => {};
+
+  const handleCurrencyChange = (event) => {
+    const next =
+      normalizeCurrency(event?.detail?.currency) ||
+      getActiveCurrency();
+    if (next) listener(next);
+  };
+  const handleStorage = (event) => {
+    if (event?.key !== STORAGE_KEY) return;
+    const next =
+      normalizeCurrency(event?.newValue) ||
+      getActiveCurrency();
+    if (next) listener(next);
+  };
+
+  window.addEventListener(CURRENCY_EVENT, handleCurrencyChange);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(CURRENCY_EVENT, handleCurrencyChange);
+    window.removeEventListener("storage", handleStorage);
+  };
 }
 
 function pickCurrencyFromObject(obj) {

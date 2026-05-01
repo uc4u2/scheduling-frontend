@@ -182,6 +182,7 @@ export default function SettingsCheckoutPro() {
         setTaxRegion((data.tax_region_code || "").toUpperCase());
         const normalizedDisplay = normalizeCurrency(data.display_currency || "") || "USD";
         setDisplayCurrency(normalizedDisplay);
+        setActiveCurrency(normalizedDisplay);
         setLogoUrl(data.logo_url || "");
         setCompanyCountry((data.country_code || "").toUpperCase());
       } catch (error) {
@@ -243,6 +244,7 @@ export default function SettingsCheckoutPro() {
     setTaxRegion((data.tax_region_code || "").toUpperCase());
     const normalizedDisplay = normalizeCurrency(data.display_currency || "") || "USD";
     setDisplayCurrency(normalizedDisplay);
+    setActiveCurrency(normalizedDisplay);
     setLogoUrl(data.logo_url || "");
     setCompanyCountry((data.country_code || "").toUpperCase());
     setBookingHoldMinutes(data.booking_hold_minutes ?? 3);

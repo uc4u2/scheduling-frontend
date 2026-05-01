@@ -317,6 +317,10 @@ export default function CompanyProfile({ token }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!ignore && data && typeof data === 'object') {
+          const normalizedDisplay = normalizeCurrency(data.display_currency || "");
+          if (isSupportedCurrency(normalizedDisplay)) {
+            setActiveCurrency(normalizedDisplay);
+          }
           setForm((prev) => ({ ...prev, ...data, retirement_engine_mode: "enterprise" }));
         }
         if (!ignore) {
@@ -460,6 +464,10 @@ export default function CompanyProfile({ token }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (updated && typeof updated === "object") {
+        const normalizedDisplay = normalizeCurrency(updated.display_currency || "");
+        if (isSupportedCurrency(normalizedDisplay)) {
+          setActiveCurrency(normalizedDisplay);
+        }
         setForm((prev) => ({ ...prev, ...updated }));
       }
       showMessage("manager.companyProfile.messages.saveSuccess", "success");

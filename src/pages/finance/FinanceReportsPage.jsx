@@ -14,7 +14,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import FinanceMetricCard from "./components/FinanceMetricCard";
-import { exportAccountantCsv, getFinanceSummary } from "./financeApi";
+import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
+import { exportAccountantCsv, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 
@@ -38,6 +39,7 @@ export default function FinanceReportsPage() {
     [t]
   );
   const [summary, setSummary] = useState(null);
+  const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exportType, setExportType] = useState("summary");
@@ -52,8 +54,12 @@ export default function FinanceReportsPage() {
       setLoading(true);
       setError("");
       try {
-        const data = await getFinanceSummary({ date_from: dateFrom, date_to: dateTo });
+        const [data, financeTaxContext] = await Promise.all([
+          getFinanceSummary({ date_from: dateFrom, date_to: dateTo }),
+          getFinanceTaxContext(),
+        ]);
         if (mounted) setSummary(data || {});
+        if (mounted) setTaxContext(financeTaxContext?.tax_context || null);
       } catch (err) {
         if (mounted) setError(err?.response?.data?.error || err?.message || tReports("errors.loadFailed", "Unable to load finance reports."));
       } finally {
@@ -94,6 +100,15 @@ export default function FinanceReportsPage() {
 
   return (
     <Stack spacing={2.5}>
+      <FinanceSettingsSnapshotCard
+        taxContext={taxContext}
+        title={tReports("taxContext.snapshotTitle", "Finance settings snapshot")}
+        helper={tReports(
+          "taxContext.snapshotHelper",
+          "These are the company finance defaults behind report totals, estimate pricing behavior, and expense/purchase guidance."
+        )}
+      />
+
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
       ) : error ? (

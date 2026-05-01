@@ -40,7 +40,12 @@ import {
 } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
-import { getActiveCurrency, getCurrencyOptions, normalizeCurrency } from "../../utils/currency";
+import {
+  getActiveCurrency,
+  getCurrencyOptions,
+  normalizeCurrency,
+  subscribeToActiveCurrency,
+} from "../../utils/currency";
 
 const ACCEPTED_RECEIPT_TYPES = ".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif";
 
@@ -50,7 +55,7 @@ const parseReceiptLines = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-const getBlankExpenseForm = () => ({
+const getBlankExpenseForm = (defaultCurrency = getActiveCurrency("USD")) => ({
   title: "",
   amount: "",
   tax_amount: "0",
@@ -69,8 +74,23 @@ const getBlankExpenseForm = () => ({
   recurring_auto_create_mode: "draft",
   review_status: "reviewed",
   receipt_text: "",
-  currency: normalizeCurrency(getActiveCurrency("USD")) || "USD",
+  currency: normalizeCurrency(defaultCurrency) || "USD",
 });
+
+const getDefaultFinanceCurrency = (taxContext = null) =>
+  normalizeCurrency(taxContext?.display_currency || getActiveCurrency("USD")) || "USD";
+
+const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+
+const computeDefaultTaxAmount = (baseAmount, taxContext) => {
+  const amount = Number(baseAmount || 0);
+  const rate = Number(taxContext?.default_tax_rate || 0);
+  if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate <= 0) return null;
+  if (taxContext?.prices_include_tax) {
+    return roundMoney(amount - amount / (1 + rate / 100));
+  }
+  return roundMoney(amount * (rate / 100));
+};
 
 const blankVendorForm = {
   name: "",
@@ -160,6 +180,7 @@ export default function ExpenseQuickAddDialog({
   expense,
   categories = [],
   clients = [],
+  taxContext = null,
 }) {
   const { t } = useTranslation();
   const tExpenses = useCallback(
@@ -167,7 +188,8 @@ export default function ExpenseQuickAddDialog({
     [t]
   );
   const currencyOptions = useMemo(() => getCurrencyOptions(), []);
-  const [form, setForm] = useState(getBlankExpenseForm);
+  const [activeCurrency, setActiveCurrency] = useState(() => getDefaultFinanceCurrency(taxContext));
+  const [form, setForm] = useState(() => getBlankExpenseForm(getDefaultFinanceCurrency(taxContext)));
   const [receiptEntries, setReceiptEntries] = useState([]);
   const [pendingFiles, setPendingFiles] = useState([]);
   const [deletedUploadedReceiptIds, setDeletedUploadedReceiptIds] = useState([]);
@@ -176,6 +198,8 @@ export default function ExpenseQuickAddDialog({
   const [invoices, setInvoices] = useState([]);
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
   const [persistedExpenseId, setPersistedExpenseId] = useState(null);
+  const [taxTouched, setTaxTouched] = useState(false);
+  const [autoFilledTaxAmount, setAutoFilledTaxAmount] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -191,6 +215,21 @@ export default function ExpenseQuickAddDialog({
   const selectedInvoice = useMemo(
     () => invoices.find((item) => Number(item.id) === Number(form.invoice_id)) || null,
     [invoices, form.invoice_id]
+  );
+
+  useEffect(() => subscribeToActiveCurrency((next) => {
+    setActiveCurrency(normalizeCurrency(next) || "USD");
+  }), []);
+
+  useEffect(() => {
+    const nextCurrency = getDefaultFinanceCurrency(taxContext);
+    setActiveCurrency(nextCurrency);
+  }, [taxContext]);
+
+  const currencyMismatch = Boolean(
+    taxContext?.display_currency &&
+    normalizeCurrency(form.currency) &&
+    normalizeCurrency(form.currency) !== normalizeCurrency(taxContext.display_currency)
   );
 
   useEffect(() => {
@@ -246,21 +285,42 @@ export default function ExpenseQuickAddDialog({
         recurring_auto_create_mode: expense.recurring_auto_create_mode || "draft",
         review_status: expense.review_status || "reviewed",
         receipt_text: "",
-        currency: expense.currency || "USD",
+        currency: normalizeCurrency(expense.currency || taxContext?.display_currency || activeCurrency) || activeCurrency,
       });
       setReceiptEntries(Array.isArray(expense.receipt_files) ? expense.receipt_files : []);
       setPersistedExpenseId(expense.id || null);
     } else {
-      setForm(getBlankExpenseForm());
+      setForm({
+        ...getBlankExpenseForm(getDefaultFinanceCurrency(taxContext)),
+        currency: activeCurrency,
+      });
       setReceiptEntries([]);
       setPersistedExpenseId(null);
     }
     setPendingFiles([]);
     setDeletedUploadedReceiptIds([]);
+    setTaxTouched(false);
+    setAutoFilledTaxAmount(null);
     setError("");
-  }, [expense, open]);
+  }, [activeCurrency, expense, open, taxContext]);
 
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  useEffect(() => {
+    if (!open || expense || taxTouched) return;
+    const nextTax = computeDefaultTaxAmount(form.amount, taxContext);
+    if (nextTax == null) return;
+    const currentTax = Number(form.tax_amount || 0);
+    const priorAutoTax = autoFilledTaxAmount == null ? null : Number(autoFilledTaxAmount);
+    const shouldAutofill =
+      form.tax_amount === "" ||
+      currentTax === 0 ||
+      (priorAutoTax != null && Math.abs(currentTax - priorAutoTax) < 0.0001);
+    if (!shouldAutofill) return;
+    if (Math.abs(currentTax - nextTax) < 0.0001 && priorAutoTax != null) return;
+    setForm((prev) => ({ ...prev, tax_amount: String(nextTax) }));
+    setAutoFilledTaxAmount(nextTax);
+  }, [autoFilledTaxAmount, expense, form.amount, form.tax_amount, open, taxContext, taxTouched]);
 
   const handleVendorCreated = async (payload) => {
     try {
@@ -302,6 +362,14 @@ export default function ExpenseQuickAddDialog({
 
   const removePendingFile = (index) => {
     setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+  };
+
+  const applyDefaultTaxAmount = () => {
+    const nextTax = computeDefaultTaxAmount(form.amount, taxContext);
+    if (nextTax == null) return;
+    setTaxTouched(false);
+    setAutoFilledTaxAmount(nextTax);
+    setField("tax_amount", String(nextTax));
   };
 
   const buildReceiptPayload = () => {
@@ -436,7 +504,26 @@ export default function ExpenseQuickAddDialog({
                 <TextField fullWidth label={tExpenses("fields.amount", "Amount")} type="number" inputProps={{ step: "0.01" }} value={form.amount} onChange={(e) => setField("amount", e.target.value)} />
               </Grid>
               <Grid item xs={12} md={3}>
-                <TextField fullWidth label={tExpenses("fields.tax", "Tax")} type="number" inputProps={{ step: "0.01" }} value={form.tax_amount} onChange={(e) => setField("tax_amount", e.target.value)} />
+                <TextField
+                  fullWidth
+                  label={tExpenses("fields.tax", "Tax")}
+                  type="number"
+                  inputProps={{ step: "0.01" }}
+                  value={form.tax_amount}
+                  onChange={(e) => {
+                    setTaxTouched(true);
+                    setAutoFilledTaxAmount(null);
+                    setField("tax_amount", e.target.value);
+                  }}
+                  helperText={
+                    taxContext?.default_tax_rate != null
+                      ? tExpenses(
+                          "fields.taxHelp",
+                          "Use your company default tax rate as a starting point, then override it if this expense needs a different tax amount."
+                        )
+                      : undefined
+                  }
+                />
               </Grid>
 
               <Grid item xs={12} md={6}>
@@ -461,12 +548,66 @@ export default function ExpenseQuickAddDialog({
                 <ThemedDateField fullWidth label={tExpenses("fields.date", "Date")} value={form.expense_date} onChange={(e) => setField("expense_date", e.target.value)} />
               </Grid>
               <Grid item xs={12} md={3}>
-                <TextField select fullWidth label={tExpenses("fields.currency", "Currency")} value={form.currency} onChange={(e) => setField("currency", e.target.value)}>
+                <TextField
+                  select
+                  fullWidth
+                  label={tExpenses("fields.currency", "Currency")}
+                  value={form.currency}
+                  onChange={(e) => setField("currency", e.target.value)}
+                  helperText={tExpenses("fields.currencyHelp", "Starts with your company display currency from settings. You can override it for this expense.")}
+                >
                   {currencyOptions.map((option) => (
                     <MenuItem key={option.code} value={option.code}>{option.label}</MenuItem>
                   ))}
                 </TextField>
               </Grid>
+              {taxContext ? (
+                <Grid item xs={12}>
+                  <Alert severity={currencyMismatch || taxContext.warning ? "warning" : "info"}>
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2">
+                        {tExpenses("taxContext.summary", "Company tax settings")}:{" "}
+                        <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
+                        {" • "}
+                        {tExpenses("taxContext.displayCurrency", "Display currency")}: <strong>{taxContext.display_currency || form.currency || "USD"}</strong>
+                        {" • "}
+                        {tExpenses("taxContext.pricesIncludeTax", "Prices include tax")}: <strong>{taxContext.prices_include_tax ? tExpenses("taxContext.on", "ON") : tExpenses("taxContext.off", "OFF")}</strong>
+                        {taxContext.default_tax_rate != null ? (
+                          <>
+                            {" • "}
+                            {tExpenses("taxContext.defaultTaxRate", "Default tax rate")}: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong>
+                          </>
+                        ) : null}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {taxContext.warning || tExpenses("taxContext.helper", "These settings come from Company Profile / Checkout settings. Use them as the default for this expense, then override only when this record needs a different tax treatment.")}
+                      </Typography>
+                      {currencyMismatch ? (
+                        <Typography variant="caption" color="warning.main">
+                          {tExpenses("taxContext.currencyMismatch", "This expense uses a different currency than your current company display currency. Keep it only if that is intentional.")}
+                        </Typography>
+                      ) : null}
+                      {taxContext.default_tax_rate != null ? (
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={applyDefaultTaxAmount}
+                            disabled={computeDefaultTaxAmount(form.amount, taxContext) == null}
+                          >
+                            {tExpenses("taxContext.applyDefaultTax", "Apply default tax")}
+                          </Button>
+                          <Typography variant="caption" color="text.secondary">
+                            {taxContext.prices_include_tax
+                              ? tExpenses("taxContext.applyIncludedHelp", "Uses the current amount as tax-included and fills the tax portion from your company default rate.")
+                              : tExpenses("taxContext.applyAddedHelp", "Uses the current amount as pre-tax and adds tax from your company default rate.")}
+                          </Typography>
+                        </Stack>
+                      ) : null}
+                    </Stack>
+                  </Alert>
+                </Grid>
+              ) : null}
 
               <Grid item xs={12}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ xs: "stretch", md: "flex-start" }}>

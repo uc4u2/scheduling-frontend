@@ -35,6 +35,7 @@ import {
   bulkUpdateExpenseReviewStatus,
   deleteExpense,
   generateRecurringExpenseDrafts,
+  getFinanceTaxContext,
   listExpenseCategories,
   listExpenses,
   listManagerClients,
@@ -69,6 +70,7 @@ export default function ExpensesPage({ createNonce }) {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [clients, setClients] = useState([]);
+  const [taxContext, setTaxContext] = useState(null);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
@@ -99,7 +101,7 @@ export default function ExpensesPage({ createNonce }) {
     setError("");
     try {
       const effectiveReviewFilter = expenseKind === "generated_drafts" ? (reviewFilter || "draft") : reviewFilter;
-      const [expenses, cats, managerClients, recurring] = await Promise.all([
+      const [expenses, cats, managerClients, recurring, financeTaxContext] = await Promise.all([
         listExpenses({
           category_id: categoryId || undefined,
           q: search || undefined,
@@ -118,12 +120,14 @@ export default function ExpensesPage({ createNonce }) {
         listExpenseCategories(),
         listManagerClients(),
         previewRecurringExpenses({ through_date: recurringThroughDate }),
+        getFinanceTaxContext(),
       ]);
       setItems(Array.isArray(expenses?.items) ? expenses.items : Array.isArray(expenses) ? expenses : []);
       setPagination(expenses?.pagination || null);
       setCategories(Array.isArray(cats?.items) ? cats.items : Array.isArray(cats) ? cats : []);
       setClients(managerClients);
       setRecurringPreview(recurring || null);
+      setTaxContext(financeTaxContext?.tax_context || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tExpenses("errors.loadFailed", "Unable to load expenses."));
     } finally {
@@ -655,6 +659,7 @@ export default function ExpensesPage({ createNonce }) {
         expense={editing}
         categories={categories.filter((category) => category.is_active !== false)}
         clients={clients}
+        taxContext={taxContext}
       />
 
       <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)}>

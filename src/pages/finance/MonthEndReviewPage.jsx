@@ -12,7 +12,8 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
-import { exportFinanceMonthEndCsv, getFinanceMissingData, getFinanceMonthEnd, previewRecurringExpenses } from "./financeApi";
+import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
+import { exportFinanceMonthEndCsv, getFinanceMissingData, getFinanceMonthEnd, getFinanceTaxContext, previewRecurringExpenses } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 
 const formatMoney = (value, currency = "USD") =>
@@ -39,6 +40,7 @@ export default function MonthEndReviewPage() {
   const [review, setReview] = useState(null);
   const [missingData, setMissingData] = useState(null);
   const [recurringPreview, setRecurringPreview] = useState(null);
+  const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
@@ -47,14 +49,16 @@ export default function MonthEndReviewPage() {
     setLoading(true);
     setError("");
     try {
-      const [reviewRes, missingRes, recurringRes] = await Promise.all([
+      const [reviewRes, missingRes, recurringRes, financeTaxContext] = await Promise.all([
         getFinanceMonthEnd({ date_from: dateFrom, date_to: dateTo }),
         getFinanceMissingData({ date_from: dateFrom, date_to: dateTo }),
         previewRecurringExpenses({ through_date: dateTo }),
+        getFinanceTaxContext(),
       ]);
       setReview(reviewRes?.month_end_review || reviewRes || null);
       setMissingData(missingRes || null);
       setRecurringPreview(recurringRes || null);
+      setTaxContext(financeTaxContext?.tax_context || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tMonthEnd("errors.loadFailed", "Unable to load month-end review."));
     } finally {
@@ -107,6 +111,15 @@ export default function MonthEndReviewPage() {
 
   return (
     <Stack spacing={2.5}>
+      <FinanceSettingsSnapshotCard
+        taxContext={taxContext}
+        title={tMonthEnd("taxContext.snapshotTitle", "Finance settings snapshot")}
+        helper={tMonthEnd(
+          "taxContext.snapshotHelper",
+          "These defaults are the current company finance settings used for month-end guidance and tax-facing review."
+        )}
+      />
+
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
           <ThemedDateField fullWidth label={tMonthEnd("filters.from", "From")} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
