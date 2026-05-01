@@ -524,28 +524,6 @@ useEffect(() => {
         Employee Availability Management
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          <Stack spacing={0.75}>
-            <Typography variant="body2">{error}</Typography>
-            {availabilityConflict?.leave_conflicts?.length > 0 && (
-              <Stack spacing={0.5}>
-                {availabilityConflict.leave_conflicts.slice(0, 4).map((conflict, index) => (
-                  <Typography key={`${conflict.leave_id || "leave"}-${index}`} variant="caption">
-                    Leave #{conflict.leave_id || "—"} · {conflict.leave_type || "leave"} · {conflict.leave_status || "approved"} · {Number(conflict.overlap_minutes || 0).toFixed(0)} min overlap
-                  </Typography>
-                ))}
-              </Stack>
-            )}
-          </Stack>
-        </Alert>
-      )}
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {successMessage}
-        </Alert>
-      )}
-
       <Stack spacing={2} sx={{ mb: 2 }}>
         <TextField
           select
@@ -1089,6 +1067,38 @@ useEffect(() => {
           {loading ? "Saving..." : "Save Availability"}
         </Button>
       </Box>
+
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={6000}
+        onClose={() => {
+          setError("");
+          setAvailabilityConflict(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => {
+            setError("");
+            setAvailabilityConflict(null);
+          }}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          <Stack spacing={0.75}>
+            <Typography variant="body2">{error}</Typography>
+            {availabilityConflict?.leave_conflicts?.length > 0 && (
+              <Stack spacing={0.5}>
+                {availabilityConflict.leave_conflicts.slice(0, 4).map((conflict, index) => (
+                  <Typography key={`${conflict.leave_id || "leave"}-${index}`} variant="caption">
+                    Leave #{conflict.leave_id || "—"} · {conflict.leave_type || "leave"} · {conflict.leave_status || "approved"} · {Number(conflict.overlap_minutes || 0).toFixed(0)} min overlap
+                  </Typography>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Alert>
+      </Snackbar>
 
       <Snackbar
         open={Boolean(successMessage)}
