@@ -198,6 +198,25 @@ export const updateExpense = (id, payload) => unwrap(api.patch(`/finance/expense
 export const deleteExpense = (id) => unwrap(api.delete(`/finance/expenses/${id}`));
 export const bulkUpdateExpenseReviewStatus = (payload) =>
   unwrap(api.post("/finance/expenses/bulk-review-status", payload));
+export const listReceiptInbox = (params = {}) =>
+  unwrap(api.get("/finance/receipt-inbox", { params }));
+export const getReceiptInboxItem = (id) =>
+  unwrap(api.get(`/finance/receipt-inbox/${id}`));
+export const updateReceiptInboxItem = (id, payload) =>
+  unwrap(api.patch(`/finance/receipt-inbox/${id}`, payload));
+export const uploadReceiptInbox = async (file, note = "") => {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (note) formData.append("note", note);
+  const res = await api.post("/finance/receipt-inbox", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+};
+export const linkReceiptInboxExpense = (id, payload) =>
+  unwrap(api.post(`/finance/receipt-inbox/${id}/link-expense`, payload));
+export const createExpenseFromReceiptInbox = (id, payload) =>
+  unwrap(api.post(`/finance/receipt-inbox/${id}/create-expense`, payload));
 export const previewRecurringExpenses = (params = {}) =>
   unwrap(api.get("/finance/expenses/recurring/due", { params }));
 export const generateRecurringExpenseDrafts = (payload) =>

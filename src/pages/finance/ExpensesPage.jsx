@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Box,
   Button,
   Checkbox,
   Chip,
@@ -26,9 +27,18 @@ import {
   Typography,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
+import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
+import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
+import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ExpenseQuickAddDialog from "./ExpenseQuickAddDialog";
+import FinanceReceiptInboxCreateExpenseDialog from "./FinanceReceiptInboxCreateExpenseDialog";
+import FinanceReceiptInboxLinkExpenseDialog from "./FinanceReceiptInboxLinkExpenseDialog";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import {
   createExpenseCategory,
@@ -36,11 +46,14 @@ import {
   deleteExpense,
   generateRecurringExpenseDrafts,
   getFinanceTaxContext,
+  listReceiptInbox,
   listExpenseCategories,
   listExpenses,
   listManagerClients,
+  updateReceiptInboxItem,
   updateExpense,
   previewRecurringExpenses,
+  uploadReceiptInbox,
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
@@ -95,13 +108,34 @@ export default function ExpensesPage({ createNonce }) {
   const [recurringGenerating, setRecurringGenerating] = useState(false);
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [receiptInboxItems, setReceiptInboxItems] = useState([]);
+  const [receiptInboxPagination, setReceiptInboxPagination] = useState(null);
+  const [receiptInboxStatus, setReceiptInboxStatus] = useState("unlinked");
+  const [receiptInboxPage, setReceiptInboxPage] = useState(1);
+  const [receiptInboxPerPage, setReceiptInboxPerPage] = useState(10);
+  const [receiptInboxCounts, setReceiptInboxCounts] = useState({ unlinked: 0, linked: 0, archived: 0 });
+  const [receiptInboxLoading, setReceiptInboxLoading] = useState(false);
+  const [receiptInboxActionLoading, setReceiptInboxActionLoading] = useState(false);
+  const [linkReceiptTarget, setLinkReceiptTarget] = useState(null);
+  const [createExpenseReceiptTarget, setCreateExpenseReceiptTarget] = useState(null);
 
   const load = async () => {
     setLoading(true);
+    setReceiptInboxLoading(true);
     setError("");
     try {
       const effectiveReviewFilter = expenseKind === "generated_drafts" ? (reviewFilter || "draft") : reviewFilter;
-      const [expenses, cats, managerClients, recurring, financeTaxContext] = await Promise.all([
+      const [
+        expenses,
+        cats,
+        managerClients,
+        recurring,
+        financeTaxContext,
+        receiptList,
+        receiptUnlinked,
+        receiptLinked,
+        receiptArchived,
+      ] = await Promise.all([
         listExpenses({
           category_id: categoryId || undefined,
           q: search || undefined,
@@ -121,6 +155,14 @@ export default function ExpensesPage({ createNonce }) {
         listManagerClients(),
         previewRecurringExpenses({ through_date: recurringThroughDate }),
         getFinanceTaxContext(),
+        listReceiptInbox({
+          status: receiptInboxStatus,
+          page: receiptInboxPage,
+          per_page: receiptInboxPerPage,
+        }),
+        listReceiptInbox({ status: "unlinked", page: 1, per_page: 1 }),
+        listReceiptInbox({ status: "linked", page: 1, per_page: 1 }),
+        listReceiptInbox({ status: "archived", page: 1, per_page: 1 }),
       ]);
       setItems(Array.isArray(expenses?.items) ? expenses.items : Array.isArray(expenses) ? expenses : []);
       setPagination(expenses?.pagination || null);
@@ -128,10 +170,18 @@ export default function ExpensesPage({ createNonce }) {
       setClients(managerClients);
       setRecurringPreview(recurring || null);
       setTaxContext(financeTaxContext?.tax_context || null);
+      setReceiptInboxItems(Array.isArray(receiptList?.items) ? receiptList.items : []);
+      setReceiptInboxPagination(receiptList?.pagination || null);
+      setReceiptInboxCounts({
+        unlinked: Number(receiptUnlinked?.pagination?.total || 0),
+        linked: Number(receiptLinked?.pagination?.total || 0),
+        archived: Number(receiptArchived?.pagination?.total || 0),
+      });
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tExpenses("errors.loadFailed", "Unable to load expenses."));
     } finally {
       setLoading(false);
+      setReceiptInboxLoading(false);
     }
   };
 
@@ -139,7 +189,7 @@ export default function ExpensesPage({ createNonce }) {
     load();
     // Search and date filters stay manual via Enter/Refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, missingReceipt, expenseKind, reviewFilter, readinessFilter, page, perPage, recurringThroughDate]);
+  }, [categoryId, missingReceipt, expenseKind, reviewFilter, readinessFilter, page, perPage, recurringThroughDate, receiptInboxStatus, receiptInboxPage, receiptInboxPerPage]);
 
   useEffect(() => {
     setSelectedIds([]);
@@ -305,6 +355,52 @@ export default function ExpensesPage({ createNonce }) {
     setPage(1);
   };
 
+  const uploadReceiptFiles = async (files, note = "") => {
+    if (!files?.length) return;
+    setReceiptInboxActionLoading(true);
+    try {
+      for (const file of files) {
+        await uploadReceiptInbox(file, note);
+      }
+      enqueueSnackbar(
+        tExpenses("receiptInbox.snackbar.uploaded", "{{count}} receipt(s) uploaded to the inbox.", { count: files.length }),
+        { variant: "success" }
+      );
+      setReceiptInboxStatus("unlinked");
+      setReceiptInboxPage(1);
+      await load();
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.message || err?.response?.data?.error || err?.message || tExpenses("receiptInbox.errors.uploadFailed", "Unable to upload receipt to the inbox."),
+        { variant: "error" }
+      );
+    } finally {
+      setReceiptInboxActionLoading(false);
+    }
+  };
+
+  const handleReceiptInboxFileInput = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    await uploadReceiptFiles(files);
+  };
+
+  const patchReceiptInboxStatus = async (receipt, nextStatus) => {
+    setReceiptInboxActionLoading(true);
+    try {
+      await updateReceiptInboxItem(receipt.id, { status: nextStatus });
+      enqueueSnackbar(tExpenses("receiptInbox.snackbar.statusUpdated", "Receipt inbox item updated."), { variant: "success" });
+      await load();
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error || err?.message || tExpenses("receiptInbox.errors.statusUpdateFailed", "Unable to update receipt inbox item."),
+        { variant: "error" }
+      );
+    } finally {
+      setReceiptInboxActionLoading(false);
+    }
+  };
+
   return (
     <Stack spacing={2}>
       <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
@@ -394,6 +490,197 @@ export default function ExpensesPage({ createNonce }) {
       </Stack>
 
       <Alert severity="info">{tExpenses("receiptInfo", "Upload receipts directly to each expense and keep links or notes only as a fallback.")}</Alert>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
+            <Stack spacing={0.5}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {tExpenses("receiptInbox.title", "Receipt inbox")}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {tExpenses(
+                  "receiptInbox.description",
+                  "Capture receipts now, then link them to an expense or create a draft expense later. Unlinked receipts show up as a month-end attention item."
+                )}
+              </Typography>
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<UploadFileOutlinedIcon />}
+                disabled={receiptInboxActionLoading}
+              >
+                {tExpenses("receiptInbox.upload", "Upload receipt")}
+                <input hidden type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif" multiple onChange={handleReceiptInboxFileInput} />
+              </Button>
+              <Button
+                component="label"
+                variant="contained"
+                startIcon={<PhotoCameraOutlinedIcon />}
+                disabled={receiptInboxActionLoading}
+              >
+                {tExpenses("receiptInbox.takePhoto", "Take receipt photo")}
+                <input hidden type="file" accept="image/*" capture="environment" multiple onChange={handleReceiptInboxFileInput} />
+              </Button>
+            </Stack>
+          </Stack>
+          <Alert severity="info">
+            {tExpenses(
+              "receiptInbox.mobileHelper",
+              "On mobile, use Take receipt photo for a fast camera-first capture. Receipt Inbox keeps the file safe until you are ready to link or create an expense."
+            )}
+          </Alert>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>{tExpenses("receiptInbox.statusFilter", "Inbox status")}</InputLabel>
+              <Select
+                label={tExpenses("receiptInbox.statusFilter", "Inbox status")}
+                value={receiptInboxStatus}
+                onChange={(e) => {
+                  setReceiptInboxStatus(e.target.value);
+                  setReceiptInboxPage(1);
+                }}
+              >
+                <MenuItem value="unlinked">{tExpenses("receiptInbox.statusOptions.unlinked", "Unlinked receipts")}</MenuItem>
+                <MenuItem value="linked">{tExpenses("receiptInbox.statusOptions.linked", "Linked receipts")}</MenuItem>
+                <MenuItem value="archived">{tExpenses("receiptInbox.statusOptions.archived", "Archived receipts")}</MenuItem>
+              </Select>
+            </FormControl>
+            <Chip variant="outlined" color={receiptInboxCounts.unlinked > 0 ? "warning" : "default"} label={tExpenses("receiptInbox.counts.unlinked", "{{count}} unlinked", { count: receiptInboxCounts.unlinked })} />
+            <Chip variant="outlined" label={tExpenses("receiptInbox.counts.linked", "{{count}} linked", { count: receiptInboxCounts.linked })} />
+            <Chip variant="outlined" label={tExpenses("receiptInbox.counts.archived", "{{count}} archived", { count: receiptInboxCounts.archived })} />
+          </Stack>
+          {receiptInboxLoading ? (
+            <Stack alignItems="center" sx={{ py: 4 }}><CircularProgress size={28} /></Stack>
+          ) : receiptInboxItems.length === 0 ? (
+            <Box sx={{ py: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                {tExpenses("receiptInbox.empty", "No receipt inbox items match this filter yet.")}
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={1.25}>
+              {receiptInboxItems.map((receipt) => (
+                <Paper key={receipt.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1.25 }}>
+                  <Stack spacing={1.25}>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }}>
+                      <Stack spacing={0.5}>
+                        <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
+                          <Typography fontWeight={700}>{receipt.file_name || tExpenses("receiptInbox.receiptFallback", "Receipt")}</Typography>
+                          <Chip
+                            size="small"
+                            color={receipt.status === "unlinked" ? "warning" : receipt.status === "linked" ? "success" : "default"}
+                            variant="outlined"
+                            label={
+                              receipt.status === "linked"
+                                ? tExpenses("receiptInbox.status.linked", "Linked")
+                                : receipt.status === "archived"
+                                  ? tExpenses("receiptInbox.status.archived", "Archived")
+                                  : tExpenses("receiptInbox.status.unlinked", "Unlinked")
+                            }
+                          />
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary">
+                          {[
+                            receipt.content_type,
+                            receipt.size ? tExpenses("receiptInbox.size", "{{size}} bytes", { size: receipt.size }) : null,
+                            receipt.created_at,
+                          ].filter(Boolean).join(" • ")}
+                        </Typography>
+                        {receipt.note ? (
+                          <Typography variant="body2" color="text.secondary">{receipt.note}</Typography>
+                        ) : null}
+                        {receipt.linked_expense ? (
+                          <Typography variant="body2" color="text.secondary">
+                            {tExpenses(
+                              "receiptInbox.linkedExpenseSummary",
+                              "Linked to {{title}} on {{date}} • {{vendor}}",
+                              {
+                                title: receipt.linked_expense.title || tExpenses("receiptInbox.expenseFallback", "Expense"),
+                                date: receipt.linked_expense.expense_date || "—",
+                                vendor: receipt.linked_expense.vendor_name || "—",
+                              }
+                            )}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="warning.main">
+                            {tExpenses("receiptInbox.unlinkedWarning", "This receipt is not linked to an expense yet and will show up at month-end.")}
+                          </Typography>
+                        )}
+                      </Stack>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                        {receipt.url ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            href={receipt.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            startIcon={<OpenInNewOutlinedIcon />}
+                          >
+                            {tExpenses("receiptInbox.open", "Open")}
+                          </Button>
+                        ) : null}
+                        {!receipt.linked_expense_id ? (
+                          <>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<LinkOutlinedIcon />}
+                              onClick={() => setLinkReceiptTarget(receipt)}
+                            >
+                              {tExpenses("receiptInbox.linkToExpense", "Link to expense")}
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<ReceiptLongOutlinedIcon />}
+                              onClick={() => setCreateExpenseReceiptTarget(receipt)}
+                            >
+                              {tExpenses("receiptInbox.createExpense", "Create expense")}
+                            </Button>
+                          </>
+                        ) : null}
+                        {receipt.status !== "archived" ? (
+                          <Button
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            startIcon={<ArchiveOutlinedIcon />}
+                            onClick={() => patchReceiptInboxStatus(receipt, "archived")}
+                          >
+                            {tExpenses("receiptInbox.archive", "Archive")}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<UnarchiveOutlinedIcon />}
+                            onClick={() => patchReceiptInboxStatus(receipt, receipt.linked_expense_id ? "linked" : "unlinked")}
+                          >
+                            {tExpenses("receiptInbox.restore", "Restore")}
+                          </Button>
+                        )}
+                      </Stack>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+          <FinancePagination
+            pagination={receiptInboxPagination}
+            page={receiptInboxPage}
+            perPage={receiptInboxPerPage}
+            onPageChange={setReceiptInboxPage}
+            onPerPageChange={(next) => {
+              setReceiptInboxPerPage(next);
+              setReceiptInboxPage(1);
+            }}
+          />
+        </Stack>
+      </Paper>
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
@@ -777,6 +1064,29 @@ export default function ExpensesPage({ createNonce }) {
           <Button onClick={() => setRecurringDialogOpen(false)}>{tExpenses("common.cancel", "Cancel")}</Button>
         </DialogActions>
       </Dialog>
+
+      <FinanceReceiptInboxLinkExpenseDialog
+        open={Boolean(linkReceiptTarget)}
+        receipt={linkReceiptTarget}
+        onClose={() => setLinkReceiptTarget(null)}
+        onSaved={async () => {
+          setLinkReceiptTarget(null);
+          enqueueSnackbar(tExpenses("receiptInbox.snackbar.linked", "Receipt linked to expense."), { variant: "success" });
+          await load();
+        }}
+      />
+
+      <FinanceReceiptInboxCreateExpenseDialog
+        open={Boolean(createExpenseReceiptTarget)}
+        receipt={createExpenseReceiptTarget}
+        categories={categories.filter((category) => category.is_active !== false)}
+        taxContext={taxContext}
+        onClose={() => setCreateExpenseReceiptTarget(null)}
+        onSaved={async () => {
+          setCreateExpenseReceiptTarget(null);
+          await load();
+        }}
+      />
     </Stack>
   );
 }
