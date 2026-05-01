@@ -23,6 +23,23 @@ Simple rule:
 - Booking = normal appointment flow
 - Business Finance = custom-price job flow
 
+## Owner Snapshot on Overview
+
+Business Finance -> Overview now includes `Owner Snapshot`.
+
+Use it when the owner or manager wants a quick answer to:
+- how much revenue came in
+- how much was refunded
+- how much is still pending
+- how much was paid online vs offline
+- how much was spent
+- whether month-end is clean enough for accountant handoff
+
+Important:
+- this is operational
+- it is not a formal P&L
+- it is not tax filing
+
 ## Quote Request -> Estimate -> Invoice
 
 Manager flow:

@@ -2,6 +2,23 @@
 
 This document shows where Business Finance features live in the manager UI, what the manager should do there, what they should not do there, and what data each page feeds.
 
+## Business Finance -> Overview
+
+What manager does here:
+- review the `Owner Snapshot` for the selected date range
+- check net revenue, refunds, paid online, paid offline, pending balance, expenses, estimated margin, and readiness score
+- review attention items such as missing receipts, unlinked receipts, draft expenses, pending field reports, and low available stock
+
+What not to do here:
+- do not treat it as a formal P&L
+- do not use it as tax filing output
+- do not try to edit source records from this summary view
+
+What this page feeds:
+- owner visibility
+- month-end readiness follow-up
+- accountant handoff preparation
+
 ## Business Finance -> Quotes
 
 What manager does here:
