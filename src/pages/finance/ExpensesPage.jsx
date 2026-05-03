@@ -73,7 +73,7 @@ const formatDateInput = (value) => {
   }
 };
 
-export default function ExpensesPage({ createNonce }) {
+export default function ExpensesPage({ createNonce, shortcutState = null }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const tExpenses = React.useCallback(
@@ -201,6 +201,23 @@ export default function ExpensesPage({ createNonce }) {
       setDialogOpen(true);
     }
   }, [createNonce]);
+
+  useEffect(() => {
+    if (!shortcutState) return;
+    setPage(1);
+    setReceiptInboxPage(1);
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setCategoryId("");
+    setMissingReceipt("");
+    setExpenseKind(shortcutState.expenseKind || "");
+    setReviewFilter(shortcutState.reviewStatus || "");
+    setReadinessFilter(shortcutState.readiness || "");
+    if (shortcutState.receiptInboxStatus) {
+      setReceiptInboxStatus(shortcutState.receiptInboxStatus);
+    }
+  }, [shortcutState]);
 
   const saveCategory = async () => {
     if (!newCategory.name || !newCategory.slug) {

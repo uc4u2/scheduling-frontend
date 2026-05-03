@@ -73,8 +73,12 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
   }, [viewKey]);
 
   const handleNavigate = useCallback((next) => {
-    const resolved = resolveInitialTab(next);
+    const nextView = typeof next === "string" ? next : next?.tab || "finance-overview";
+    const resolved = resolveInitialTab(nextView);
     setActiveTab(resolved);
+    if (next && typeof next === "object" && next.payload) {
+      setQuickAction({ type: "navigation", nonce: Date.now(), payload: next.payload });
+    }
     onNavigate?.(resolved);
   }, [onNavigate]);
 
@@ -136,7 +140,12 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
       case "finance-tax-summary":
         return <TaxSummaryPage />;
       case "finance-expenses":
-        return <ExpensesPage createNonce={quickAction?.type === "expense" ? quickAction.nonce : 0} />;
+        return (
+          <ExpensesPage
+            createNonce={quickAction?.type === "expense" ? quickAction.nonce : 0}
+            shortcutState={quickAction?.type === "navigation" ? quickAction.payload || null : null}
+          />
+        );
       case "finance-reports":
         return <FinanceReportsPage />;
       case "finance-month-end":
