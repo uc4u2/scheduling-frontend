@@ -23,6 +23,12 @@ const firstDayOfMonth = () => {
   return formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
 };
 
+const ownerShortcutAction = (label, handler) => (
+  <Button size="small" variant="outlined" onClick={handler}>
+    {label}
+  </Button>
+);
+
 const buildAttentionCards = (overview = {}, actions = [], tFinance) => {
   const actionMap = new Map(actions.map((row) => [row.type, row]));
   return [
@@ -180,6 +186,29 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   const readiness = ownerSnapshot?.readiness || {};
   const readinessAccent =
     readiness?.status === "ready" ? "success" : readiness?.status === "almost_ready" ? "warning" : "error";
+  const pendingBalanceTotal =
+    Number(ownerSnapshot?.revenue?.pending_balance || 0) +
+    Number(ownerSnapshot?.revenue?.partial_payment_balance || 0);
+  const hasFinanceActivity = [
+    Number(ownerSnapshot?.revenue?.gross_invoice_total || 0),
+    Number(ownerSnapshot?.revenue?.net_invoice_total || 0),
+    Number(ownerSnapshot?.expenses?.expense_total || 0),
+    Number(ownerSnapshot?.revenue?.paid_total || 0),
+  ].some((value) => Math.abs(value) > 0);
+  const attentionCounts = {
+    missingReceipts: Number(ownerSnapshot?.expenses?.missing_receipts_count || 0),
+    unlinkedReceipts: Number(ownerSnapshot?.expenses?.unlinked_receipts_count || 0),
+    draftExpenses: Number(ownerSnapshot?.expenses?.draft_expense_count || 0),
+    pendingFieldReports: Number(ownerSnapshot?.operations?.field_reports_pending_review || 0),
+    lowAvailableStock: Number(ownerSnapshot?.operations?.low_available_stock_count || 0),
+  };
+  const noAttentionItems = Object.values(attentionCounts).every((count) => count === 0);
+  const readinessStatusLabel =
+    readiness?.status === "ready"
+      ? tFinance("ownerSnapshot.readinessStatus.ready", "Ready")
+      : readiness?.status === "almost_ready"
+      ? tFinance("ownerSnapshot.readinessStatus.almostReady", "Almost ready")
+      : tFinance("ownerSnapshot.readinessStatus.needsAttention", "Needs attention");
 
   if (loading) {
     return (
@@ -269,30 +298,249 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
               </Stack>
             ) : (
               <>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.netRevenue", "Net revenue")} value={formatCurrency(ownerSnapshot?.revenue?.net_invoice_total, ownerCurrency)} accent="success" /></Grid>
-                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.refunds", "Refunds")} value={formatCurrency(ownerSnapshot?.revenue?.refund_total, ownerCurrency)} accent="warning" /></Grid>
-                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.expenses", "Expenses")} value={formatCurrency(ownerSnapshot?.expenses?.expense_total, ownerCurrency)} accent="error" /></Grid>
-                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.margin", "Estimated margin")} value={formatCurrency(ownerSnapshot?.profitability?.estimated_margin_net, ownerCurrency)} accent="primary" helper={tFinance("ownerSnapshot.marginHelper", "Based on current approved materials, linked expenses, and planned labor data.")} /></Grid>
-                  <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.readiness", "Readiness score")} value={String(readiness?.score ?? 0)} accent={readinessAccent} helper={tFinance("ownerSnapshot.readinessHelper", "Operational readiness for accountant handoff, not accounting accuracy.")} /></Grid>
-                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.paidOnline", "Paid online")} value={formatCurrency(ownerSnapshot?.revenue?.online_paid_total, ownerCurrency)} accent="info" /></Grid>
-                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.paidOffline", "Paid offline")} value={formatCurrency(ownerSnapshot?.revenue?.offline_paid_total, ownerCurrency)} accent="secondary" /></Grid>
-                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.pendingBalance", "Pending balance")} value={formatCurrency((Number(ownerSnapshot?.revenue?.pending_balance || 0) + Number(ownerSnapshot?.revenue?.partial_payment_balance || 0)), ownerCurrency)} accent="warning" /></Grid>
-                  <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("ownerSnapshot.netTax", "Estimated net tax")} value={formatCurrency(ownerSnapshot?.tax?.estimated_net_tax_net, ownerCurrency)} accent="warning" /></Grid>
-                </Grid>
+                {!hasFinanceActivity ? (
+                  <FinanceEmptyState
+                    title={tFinance("ownerSnapshot.empty.title", "No finance activity yet for this period")}
+                    description={tFinance(
+                      "ownerSnapshot.empty.description",
+                      "Invoices, expenses, receipts, and month-end signals will appear here once this period has activity."
+                    )}
+                  />
+                ) : (
+                  <>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" fontWeight={800}>
+                          {tFinance("ownerSnapshot.groups.moneyCollected", "Money collected")}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.netRevenue", "Net revenue")}
+                          value={formatCurrency(ownerSnapshot?.revenue?.net_invoice_total, ownerCurrency)}
+                          accent="success"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.refunds", "Refunds")}
+                          value={formatCurrency(ownerSnapshot?.revenue?.refund_total, ownerCurrency)}
+                          accent="warning"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.paidOnline", "Paid online")}
+                          value={formatCurrency(ownerSnapshot?.revenue?.online_paid_total, ownerCurrency)}
+                          accent="info"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.paidOffline", "Paid offline")}
+                          value={formatCurrency(ownerSnapshot?.revenue?.offline_paid_total, ownerCurrency)}
+                          accent="secondary"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.pendingBalance", "Pending balance")}
+                          value={formatCurrency(pendingBalanceTotal, ownerCurrency)}
+                          accent="warning"
+                          action={
+                            pendingBalanceTotal > 0
+                              ? ownerShortcutAction(
+                                  tFinance("ownerSnapshot.actions.reviewInvoices", "Review invoices"),
+                                  () => onNavigate?.("finance-reports")
+                                )
+                              : null
+                          }
+                        />
+                      </Grid>
 
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>
-                    {tFinance("ownerSnapshot.attentionTitle", "Attention items")}
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.missingReceipts", "Missing receipts")} value={String(ownerSnapshot?.expenses?.missing_receipts_count ?? 0)} accent="error" /></Grid>
-                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.unlinkedReceipts", "Unlinked receipts")} value={String(ownerSnapshot?.expenses?.unlinked_receipts_count ?? 0)} accent="warning" /></Grid>
-                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.draftExpenses", "Draft expenses")} value={String(ownerSnapshot?.expenses?.draft_expense_count ?? 0)} accent="warning" /></Grid>
-                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.pendingFieldReports", "Pending field reports")} value={String(ownerSnapshot?.operations?.field_reports_pending_review ?? 0)} accent="secondary" /></Grid>
-                    <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("ownerSnapshot.lowAvailableStock", "Low available stock")} value={String(ownerSnapshot?.operations?.low_available_stock_count ?? 0)} accent="error" /></Grid>
-                  </Grid>
-                </Box>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 1 }}>
+                          {tFinance("ownerSnapshot.groups.costsMargin", "Costs and margin")}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.expenses", "Expenses")}
+                          value={formatCurrency(ownerSnapshot?.expenses?.expense_total, ownerCurrency)}
+                          accent="error"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.margin", "Estimated margin")}
+                          value={formatCurrency(ownerSnapshot?.profitability?.estimated_margin_net, ownerCurrency)}
+                          accent="primary"
+                          helper={tFinance(
+                            "ownerSnapshot.marginHelper",
+                            "Based on current approved materials, linked expenses, and planned labor data."
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.approvedMaterialCost", "Approved material cost")}
+                          value={formatCurrency(ownerSnapshot?.operations?.approved_material_cost, ownerCurrency)}
+                          accent="warning"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.plannedLaborCost", "Planned labor cost")}
+                          value={formatCurrency(ownerSnapshot?.operations?.planned_labor_cost, ownerCurrency)}
+                          accent="secondary"
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 1 }}>
+                          {tFinance("ownerSnapshot.groups.taxSnapshot", "Tax snapshot")}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={4}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.netTax", "Estimated net tax")}
+                          value={formatCurrency(ownerSnapshot?.tax?.estimated_net_tax_net, ownerCurrency)}
+                          accent="warning"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={4}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.netTaxCollected", "Net tax collected")}
+                          value={formatCurrency(ownerSnapshot?.tax?.net_tax_collected, ownerCurrency)}
+                          accent="success"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={4}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.taxPaidOnExpenses", "Tax paid on expenses")}
+                          value={formatCurrency(ownerSnapshot?.tax?.tax_paid_on_expenses, ownerCurrency)}
+                          accent="info"
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 1 }}>
+                          {tFinance("ownerSnapshot.groups.monthEndReadiness", "Month-end readiness")}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.readiness", "Readiness score")}
+                          value={`${readiness?.score ?? 0} · ${readinessStatusLabel}`}
+                          accent={readinessAccent}
+                          helper={tFinance(
+                            "ownerSnapshot.readinessHelper",
+                            "This score tracks operational readiness for accountant handoff, not formal accounting accuracy."
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.missingReceipts", "Missing receipts")}
+                          value={String(attentionCounts.missingReceipts)}
+                          accent="error"
+                          action={
+                            attentionCounts.missingReceipts > 0
+                              ? ownerShortcutAction(
+                                  tFinance("ownerSnapshot.actions.reviewMissingReceipts", "Review missing receipts"),
+                                  () =>
+                                    onNavigate?.({
+                                      tab: "finance-expenses",
+                                      payload: {
+                                        readiness: "needs_receipt",
+                                      },
+                                    })
+                                )
+                              : null
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.unlinkedReceipts", "Unlinked receipts")}
+                          value={String(attentionCounts.unlinkedReceipts)}
+                          accent="warning"
+                          action={
+                            attentionCounts.unlinkedReceipts > 0
+                              ? ownerShortcutAction(
+                                  tFinance("ownerSnapshot.actions.openReceiptInbox", "Open Receipt Inbox"),
+                                  () =>
+                                    onNavigate?.({
+                                      tab: "finance-expenses",
+                                      payload: {
+                                        receiptInboxStatus: "unlinked",
+                                      },
+                                    })
+                                )
+                              : null
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.draftExpenses", "Draft expenses")}
+                          value={String(attentionCounts.draftExpenses)}
+                          accent="warning"
+                          action={
+                            attentionCounts.draftExpenses > 0
+                              ? ownerShortcutAction(
+                                  tFinance("ownerSnapshot.actions.reviewDrafts", "Review drafts"),
+                                  () =>
+                                    onNavigate?.({
+                                      tab: "finance-expenses",
+                                      payload: {
+                                        reviewStatus: "draft",
+                                      },
+                                    })
+                                )
+                              : null
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.pendingFieldReports", "Pending field reports")}
+                          value={String(attentionCounts.pendingFieldReports)}
+                          accent="secondary"
+                          action={
+                            attentionCounts.pendingFieldReports > 0
+                              ? ownerShortcutAction(
+                                  tFinance("ownerSnapshot.actions.reviewFieldReports", "Review field reports"),
+                                  () => onNavigate?.("finance-field-reports")
+                                )
+                              : null
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} lg={3}>
+                        <FinanceMetricCard
+                          label={tFinance("ownerSnapshot.lowAvailableStock", "Low available stock")}
+                          value={String(attentionCounts.lowAvailableStock)}
+                          accent="error"
+                          action={
+                            attentionCounts.lowAvailableStock > 0
+                              ? ownerShortcutAction(
+                                  tFinance("ownerSnapshot.actions.reviewInventory", "Review inventory"),
+                                  () => onNavigate?.("finance-inventory")
+                                )
+                              : null
+                          }
+                        />
+                      </Grid>
+                    </Grid>
+
+                    {readiness?.status === "ready" && noAttentionItems ? (
+                      <Alert severity="success" sx={{ mt: 2 }}>
+                        {tFinance("ownerSnapshot.readyState", "Month-end looks clean for this period.")}
+                      </Alert>
+                    ) : null}
+                  </>
+                )}
               </>
             )}
           </Stack>
