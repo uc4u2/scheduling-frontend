@@ -449,6 +449,44 @@ const BOOKING_CAPTURED_FIELD_KEYS = new Set([
   "resume",
 ]);
 
+const RECRUITER_DEFAULTS_KEY = "recruiterDefaults";
+
+const normaliseInvitationDefaults = (value) => {
+  const payload = value && typeof value === "object" ? value : {};
+  const byProfession = payload.candidateExperienceByProfession && typeof payload.candidateExperienceByProfession === "object"
+    ? payload.candidateExperienceByProfession
+    : {};
+  const normalisedByProfession = {};
+  Object.entries(byProfession).forEach(([professionKey, config]) => {
+    if (!professionKey || !config || typeof config !== "object") return;
+    const selectedQuestionnaires = Array.isArray(config.selectedQuestionnaires)
+      ? config.selectedQuestionnaires
+          .map((item) => ({
+            template_id: Number(item?.template_id),
+            required: item?.required !== false,
+          }))
+          .filter((item) => Number.isFinite(item.template_id) && item.template_id > 0)
+      : [];
+    normalisedByProfession[professionKey] = {
+      documentUploadMode: ["hidden", "optional", "required"].includes(config.documentUploadMode)
+        ? config.documentUploadMode
+        : "optional",
+      sendWithoutForm: Boolean(config.sendWithoutForm),
+      selectedTemplateId:
+        config.selectedTemplateId === "" || config.selectedTemplateId === null || config.selectedTemplateId === undefined
+          ? ""
+          : Number.isFinite(Number(config.selectedTemplateId))
+          ? Number(config.selectedTemplateId)
+          : config.selectedTemplateId,
+      selectedQuestionnaires,
+    };
+  });
+  return {
+    ...payload,
+    candidateExperienceByProfession: normalisedByProfession,
+  };
+};
+
 const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate }) => {
   const theme = useTheme();
   const [isInitialising, setIsInitialising] = useState(true);
@@ -874,7 +912,7 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
 
       let recruiterDefaults = null;
       try {
-        recruiterDefaults = localStorage.getItem("recruiterDefaults");
+        recruiterDefaults = localStorage.getItem(RECRUITER_DEFAULTS_KEY);
       } catch (err) {
         console.warn("Unable to read recruiter defaults", err);
       }
@@ -889,11 +927,26 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
 
       if (recruiterDefaults) {
         try {
-          const parsedDefaults = JSON.parse(recruiterDefaults);
+          const parsedDefaults = normaliseInvitationDefaults(JSON.parse(recruiterDefaults));
           setFormData((prev) => ({ ...prev, ...parsedDefaults }));
-          const savedDocumentUploadMode = parsedDefaults?.documentUploadMode;
+          const candidateExperienceDefaults =
+            parsedDefaults?.candidateExperienceByProfession?.[nextProfession] || null;
+          const savedDocumentUploadMode =
+            candidateExperienceDefaults?.documentUploadMode || parsedDefaults?.documentUploadMode;
           if (["hidden", "optional", "required"].includes(savedDocumentUploadMode)) {
             setDocumentUploadMode(savedDocumentUploadMode);
+          }
+          setSendWithoutForm(Boolean(candidateExperienceDefaults?.sendWithoutForm));
+          setSelectedQuestionnaires(
+            Array.isArray(candidateExperienceDefaults?.selectedQuestionnaires)
+              ? candidateExperienceDefaults.selectedQuestionnaires
+              : []
+          );
+          if (
+            candidateExperienceDefaults &&
+            Object.prototype.hasOwnProperty.call(candidateExperienceDefaults, "selectedTemplateId")
+          ) {
+            setSelectedTemplateId(candidateExperienceDefaults.selectedTemplateId);
           }
         } catch (err) {
           console.warn("Unable to parse recruiter defaults", err);
@@ -907,7 +960,18 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       }
 
       if (nextProfession && nextProfession !== "custom") {
-        const { selectedId } = await loadTemplateOptionsForProfession(nextProfession);
+        const savedSelection =
+          recruiterDefaults
+            ? (() => {
+                try {
+                  const parsed = normaliseInvitationDefaults(JSON.parse(recruiterDefaults));
+                  return parsed?.candidateExperienceByProfession?.[nextProfession]?.selectedTemplateId ?? "";
+                } catch {
+                  return "";
+                }
+              })()
+            : "";
+        const { selectedId } = await loadTemplateOptionsForProfession(nextProfession, savedSelection);
         if (!active) {
           return;
         }
@@ -944,7 +1008,32 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       return;
     }
 
-    setSendWithoutForm(false);
+    let nextSendWithoutForm = false;
+    let nextDocumentUploadMode = "optional";
+    let nextSelectedTemplateId = "";
+    let nextSelectedQuestionnaires = [];
+    try {
+      const parsedDefaults = normaliseInvitationDefaults(
+        JSON.parse(localStorage.getItem(RECRUITER_DEFAULTS_KEY) || "{}")
+      );
+      const candidateExperienceDefaults =
+        parsedDefaults?.candidateExperienceByProfession?.[profession] || null;
+      if (candidateExperienceDefaults) {
+        nextSendWithoutForm = Boolean(candidateExperienceDefaults.sendWithoutForm);
+        nextDocumentUploadMode = candidateExperienceDefaults.documentUploadMode || "optional";
+        nextSelectedTemplateId = candidateExperienceDefaults.selectedTemplateId ?? "";
+        nextSelectedQuestionnaires = Array.isArray(candidateExperienceDefaults.selectedQuestionnaires)
+          ? candidateExperienceDefaults.selectedQuestionnaires
+          : [];
+      }
+    } catch (err) {
+      console.warn("Unable to read profession invitation defaults", err);
+    }
+
+    setSendWithoutForm(nextSendWithoutForm);
+    setDocumentUploadMode(nextDocumentUploadMode);
+    setSelectedTemplateId(nextSelectedTemplateId);
+    setSelectedQuestionnaires(nextSelectedQuestionnaires);
 
     const savedTemplate = localStorage.getItem(`invitationTemplate_${profession}`);
     if (savedTemplate) {
@@ -1021,9 +1110,32 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       studioName,
       cleanerName,
     }))(formData);
-    recruiterDefaults.documentUploadMode = documentUploadMode;
-    localStorage.setItem("recruiterDefaults", JSON.stringify(recruiterDefaults));
-    setMessage("Defaults saved successfully.");
+    const existingDefaults = (() => {
+      try {
+        return normaliseInvitationDefaults(
+          JSON.parse(localStorage.getItem(RECRUITER_DEFAULTS_KEY) || "{}")
+        );
+      } catch {
+        return normaliseInvitationDefaults({});
+      }
+    })();
+    recruiterDefaults.candidateExperienceByProfession = {
+      ...(existingDefaults.candidateExperienceByProfession || {}),
+      [profession]: {
+        documentUploadMode,
+        sendWithoutForm,
+        selectedTemplateId: sendWithoutForm ? "" : selectedTemplateId || "",
+        selectedQuestionnaires:
+          profession === "doctor"
+            ? selectedQuestionnaires.map((item) => ({
+                template_id: item.template_id,
+                required: item.required !== false,
+              }))
+            : [],
+      },
+    };
+    localStorage.setItem(RECRUITER_DEFAULTS_KEY, JSON.stringify(recruiterDefaults));
+    setMessage("Invitation defaults saved.");
   };
 
   // Save template for this profession
@@ -2653,7 +2765,11 @@ const handlePreview = () => {
       )}
 
       {!isInitialising && (
-        <Box sx={{ mt: 3, display: "flex", gap: 2, flexWrap: "wrap" }}>
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+            Save Defaults stores recruiter contact details plus the current candidate experience setup for this profession.
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           <Button variant="outlined" onClick={handleSaveDefaults}>
             Save Defaults
           </Button>
@@ -2666,6 +2782,7 @@ const handlePreview = () => {
           <Button variant="contained" color="primary" onClick={handleSendInvitation} disabled={isSubmitting} endIcon={isSubmitting ? <CircularProgress size={16} /> : null}>
             Send Invitation
           </Button>
+          </Box>
         </Box>
       )}
 
