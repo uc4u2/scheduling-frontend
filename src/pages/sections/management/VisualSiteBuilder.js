@@ -116,6 +116,7 @@ import {
 /** Theme designer (drawer content) */
 import ThemeDesigner from "../../../components/website/ThemeDesigner";
 import { SearchSnippetPreview, SocialCardPreview } from "../../../components/seo/SeoPreview";
+import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../../utils/websiteRadius";
 
 /** UI wrappers per design system */
 import SectionCard from "../../../components/ui/SectionCard";
@@ -781,7 +782,7 @@ const BUTTON_STYLE_PRESET_LIBRARY = [
     key: "soft-rounded",
     label: "Soft Rounded",
     description: "Friendly rounded buttons for beauty, wellness, and lifestyle sites.",
-    values: { btnRadius: 10 },
+    values: { btnRadius: 4 },
   },
   {
     key: "luxury-rectangle",
@@ -791,9 +792,9 @@ const BUTTON_STYLE_PRESET_LIBRARY = [
   },
   {
     key: "pill",
-    label: "Pill",
-    description: "Full pill buttons for softer consumer-facing brands.",
-    values: { btnRadius: 999 },
+    label: "Rounded",
+    description: "Rounded buttons with restrained corners for softer websites.",
+    values: { btnRadius: 4 },
   },
   {
     key: "sharp-minimal",
@@ -926,6 +927,20 @@ const INDUSTRY_STARTER_PACKS = [
   },
 ];
 
+const clampPageStyleRadiusValue = (value, fallback = 4) =>
+  clampWebsiteRadius(value, { min: 2, max: 4, fallback });
+
+const sanitizePageStyleRadii = (style = {}) => {
+  const next = { ...(style || {}) };
+  if (next.cardRadius !== undefined && next.cardRadius !== null && next.cardRadius !== "") {
+    next.cardRadius = clampPageStyleRadiusValue(next.cardRadius, 4);
+  }
+  if (next.btnRadius !== undefined && next.btnRadius !== null && next.btnRadius !== "") {
+    next.btnRadius = clampPageStyleRadiusValue(next.btnRadius, 4);
+  }
+  return next;
+};
+
 /* ---------- CSS VARS helper for page-level style (NEW) ---------- */
 /* ---------- CSS VARS helper for page-level style (final) ---------- */
 function styleToCssVars(style = {}) {
@@ -961,12 +976,12 @@ function styleToCssVars(style = {}) {
 
     // cards
     "--page-card-bg": cardBgValue,
-    "--page-card-radius": (style.cardRadius ?? 12) + "px",
+    "--page-card-radius": toWebsiteRadiusPx(style.cardRadius ?? 4),
 
     // NEW — buttons
     "--page-btn-bg": style.btnBg || "var(--sched-primary)",
     "--page-btn-color": style.btnColor || "#fff",
-    "--page-btn-radius": (style.btnRadius ?? 10) + "px",
+    "--page-btn-radius": toWebsiteRadiusPx(style.btnRadius ?? 4),
 
     // background image opacity
     "--page-bg-image-opacity": String(
@@ -1144,7 +1159,9 @@ function PageStyleCard({
 
   const overlayOpacityValue = clamp01(v.overlayOpacity ?? 0);
   const cardOpacityValue = clamp01(cardOpacityInput);
-  const cardRadiusValue = Number.isFinite(Number(v.cardRadius)) ? Number(v.cardRadius) : 12;
+  const cardRadiusValue = Number.isFinite(Number(v.cardRadius))
+    ? clampPageStyleRadiusValue(Number(v.cardRadius), 4)
+    : 4;
   const cardBlurValue = Number.isFinite(Number(v.cardBlur)) ? Number(v.cardBlur) : 0;
 
   const gradientDefaults = {
@@ -1320,17 +1337,17 @@ function PageStyleCard({
             background: headerBg,
           }}
         >
-          <Box sx={{ width: 18, height: 7, borderRadius: 999, bgcolor: textTone, opacity: 0.7 }} />
+          <Box sx={{ width: 18, height: 7, borderRadius: 4, bgcolor: textTone, opacity: 0.7 }} />
           <Stack direction="row" spacing={0.5}>
             {[0, 1, 2].map((idx) => (
-              <Box key={idx} sx={{ width: 12, height: 4, borderRadius: 999, bgcolor: textTone, opacity: 0.45 }} />
+              <Box key={idx} sx={{ width: 12, height: 4, borderRadius: 4, bgcolor: textTone, opacity: 0.45 }} />
             ))}
           </Stack>
         </Box>
         <Box sx={{ p: 1.25, background: secondary }}>
-          <Box sx={{ width: "68%", height: 8, borderRadius: 999, bgcolor: textTone, opacity: 0.75, mb: 0.75 }} />
-          <Box sx={{ width: "86%", height: 6, borderRadius: 999, bgcolor: textTone, opacity: 0.25, mb: 1.25 }} />
-          <Box sx={{ width: 44, height: 18, borderRadius: "var(--page-btn-radius, 10px)", bgcolor: buttonBg }} />
+          <Box sx={{ width: "68%", height: 8, borderRadius: 4, bgcolor: textTone, opacity: 0.75, mb: 0.75 }} />
+          <Box sx={{ width: "86%", height: 6, borderRadius: 4, bgcolor: textTone, opacity: 0.25, mb: 1.25 }} />
+          <Box sx={{ width: 44, height: 18, borderRadius: "var(--page-btn-radius, 4px)", bgcolor: buttonBg }} />
         </Box>
         <Box sx={{ height: 14, background: footerBg }} />
       </Box>
@@ -1369,7 +1386,7 @@ function PageStyleCard({
               background: headerTone,
             }}
           >
-            <Box sx={{ width: 18, height: 6, borderRadius: 999, bgcolor: headerText, opacity: 0.72 }} />
+            <Box sx={{ width: 18, height: 6, borderRadius: 4, bgcolor: headerText, opacity: 0.72 }} />
             <Box sx={{ width: 34, height: 10, borderRadius: "6px", bgcolor: buttonTone, color: buttonText, opacity: 0.92 }} />
           </Box>
           <Box sx={{ px: 1, py: 0.85, bgcolor: preset.pageStyle?.backgroundColor || "#fff" }}>
@@ -1392,10 +1409,10 @@ function PageStyleCard({
               background: footerTone,
             }}
           >
-            <Box sx={{ width: 22, height: 4, borderRadius: 999, bgcolor: footerText, opacity: 0.65 }} />
+            <Box sx={{ width: 22, height: 4, borderRadius: 4, bgcolor: footerText, opacity: 0.65 }} />
             <Stack direction="row" spacing={0.4}>
               {[0, 1, 2].map((idx) => (
-                <Box key={idx} sx={{ width: 8, height: 4, borderRadius: 999, bgcolor: footerText, opacity: 0.45 }} />
+                <Box key={idx} sx={{ width: 8, height: 4, borderRadius: 4, bgcolor: footerText, opacity: 0.45 }} />
               ))}
             </Stack>
           </Box>
@@ -1790,13 +1807,13 @@ function PageStyleCard({
             <Stack direction="row" spacing={1} alignItems="center">
               <Slider
                 size="small"
-                min={0}
-                max={32}
+                min={2}
+                max={4}
                 step={1}
                 value={cardRadiusValue}
                 valueLabelDisplay="auto"
                 onChange={(_, val) =>
-                  typeof val === "number" && set({ cardRadius: val })
+                  typeof val === "number" && set({ cardRadius: clampPageStyleRadiusValue(val, 4) })
                 }
                 sx={{ flex: 1 }}
               />
@@ -1805,9 +1822,9 @@ function PageStyleCard({
                 value={cardRadiusValue}
                 onChange={(e) => {
                   const num = Number(e.target.value);
-                  if (Number.isFinite(num)) set({ cardRadius: Math.max(0, Math.min(32, num)) });
+                  if (Number.isFinite(num)) set({ cardRadius: clampPageStyleRadiusValue(num, 4) });
                 }}
-                inputProps={{ step: 1, min: 0, max: 32 }}
+                inputProps={{ step: 1, min: 2, max: 4 }}
                 sx={{ width: 90 }}
               />
             </Stack>
@@ -1883,12 +1900,18 @@ function PageStyleCard({
             size="small"
             label={t("manager.visualBuilder.pageStyle.buttons.radius")}
             type="number"
-            value={v.btnRadius ?? 10}
+            value={v.btnRadius ?? 4}
             onChange={(e) =>
-              set({ btnRadius: e.target.value === "" ? "" : Number(e.target.value) })
+              set({
+                btnRadius:
+                  e.target.value === ""
+                    ? ""
+                    : clampPageStyleRadiusValue(Number(e.target.value), 4),
+              })
             }
             placeholder={t("manager.visualBuilder.pageStyle.buttons.radiusPlaceholder")}
             fullWidth
+            inputProps={{ step: 1, min: 2, max: 4 }}
           />
 
           <Divider />
@@ -2826,11 +2849,11 @@ const applyThemePreset = useCallback(
       editing?.content?.meta?.pageStyle ||
       editing?.content?.style ||
       {};
-    const nextPageStyle = {
+    const nextPageStyle = sanitizePageStyleRadii({
       ...currentPageStyle,
       ...(preset.pageStyle || {}),
       themePresetKey: preset.key,
-    };
+    });
 
     setEditing((cur) => {
       const content = { ...(cur.content || {}) };
@@ -2898,11 +2921,11 @@ const applyButtonStylePreset = useCallback(
       editing?.content?.meta?.pageStyle ||
       editing?.content?.style ||
       {};
-    const nextPageStyle = {
+    const nextPageStyle = sanitizePageStyleRadii({
       ...currentPageStyle,
       ...(preset.values || {}),
       buttonStylePresetKey: preset.key,
-    };
+    });
 
     setEditing((cur) => {
       const content = { ...(cur.content || {}) };
@@ -2978,14 +3001,14 @@ const applyIndustryStarterPack = useCallback(
       editing?.content?.meta?.pageStyle ||
       editing?.content?.style ||
       {};
-    const nextPageStyle = {
+    const nextPageStyle = sanitizePageStyleRadii({
       ...currentPageStyle,
       ...(themePreset.pageStyle || {}),
       ...(buttonPreset?.values || {}),
       themePresetKey: themePreset.key,
       buttonStylePresetKey: buttonPreset?.key || currentPageStyle.buttonStylePresetKey,
       industryStarterPackKey: pack.key,
-    };
+    });
 
     setEditing((cur) => {
       const content = { ...(cur.content || {}) };
@@ -3231,8 +3254,16 @@ const saveNavSettings = useCallback(
       );
       const refreshed = await wb.getSettings(companyId).catch(() => null);
       const root = refreshed?.data || refreshed || {};
-      applyBrandingFromServer(root);
-      setSiteSettings(root);
+      const rootWithNav = mergeNavIntoSettings(root, {
+        nav_style:
+          navStyleState ||
+          navDraft?.nav_style ||
+          siteSettings?.nav_style ||
+          siteSettings?.settings?.nav_style ||
+          {},
+      });
+      applyBrandingFromServer(rootWithNav);
+      setSiteSettings(rootWithNav);
       const draftSavedMsg = t(
         "manager.visualBuilder.messages.brandingDraftSaved",
         "Branding draft saved. Publish to go live."
@@ -3258,7 +3289,9 @@ const saveNavSettings = useCallback(
     defaultThemeOverrides,
     t,
     applyBrandingFromServer,
+    navDraft,
     navOverridesWithDefault,
+    navStyleState,
     siteSettings,
   ]
 );
@@ -3569,8 +3602,13 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   }, [pages]);
 
   const previewSite = useMemo(() => {
-    const navStyle =
-      siteSettings?.nav_style || siteSettings?.settings?.nav_style || {};
+    const navStyle = normalizeNavStyle(
+      navStyleState ||
+        navDraft?.nav_style ||
+        siteSettings?.nav_style ||
+        siteSettings?.settings?.nav_style ||
+        {}
+    );
     const themeOverrides =
       siteSettings?.theme_overrides ||
       siteSettings?.settings?.theme_overrides ||
@@ -3619,7 +3657,9 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     previewPagesMeta,
     previewSlug,
     editing,
+    navDraft,
     navOverridesWithDefault,
+    navStyleState,
   ]);
 
 

@@ -30,11 +30,22 @@ import { toPlain } from "../../utils/html";
 import ContactFormSection from "./ContactFormSection";
 import buildImgixUrl from "../../utils/imgix";
 import { safeHtml } from "../../utils/safeHtml";
+import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../utils/websiteRadius";
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const WEBSITE_RADIUS_MIN = 2;
+const WEBSITE_RADIUS_MAX = 4;
+const WEBSITE_RADIUS_FALLBACK = 4;
+
+const websiteRadius = (value, fallback = WEBSITE_RADIUS_FALLBACK) =>
+  clampWebsiteRadius(value, {
+    min: WEBSITE_RADIUS_MIN,
+    max: WEBSITE_RADIUS_MAX,
+    fallback,
+  });
 
 /** Safely coerce JSON-string or non-array values into arrays */
 function toArray(val) {
@@ -143,14 +154,14 @@ function pageStyleToVars(ps = {}) {
 
     // cards
     "--page-card-bg":       has(ps.cardBg)       ? ps.cardBg       : undefined, // rgba(...) supported
-    "--page-card-radius":   ps.cardRadius != null ? `${ps.cardRadius}px` : undefined,
+    "--page-card-radius":   ps.cardRadius != null ? toWebsiteRadiusPx(ps.cardRadius) : undefined,
     "--page-card-shadow":   has(ps.cardShadow)   ? ps.cardShadow   : undefined,
     "--page-card-blur":     ps.cardBlur != null  ? `${ps.cardBlur}px` : undefined,
 
     // buttons
     "--page-btn-bg":        has(ps.btnBg)        ? ps.btnBg        : undefined,
     "--page-btn-color":     has(ps.btnColor)     ? ps.btnColor     : undefined,
-    "--page-btn-radius":    ps.btnRadius != null ? `${ps.btnRadius}px` : undefined,
+    "--page-btn-radius":    ps.btnRadius != null ? toWebsiteRadiusPx(ps.btnRadius) : undefined,
 
     // secondary background (accent band)
     "--page-secondary-bg":  has(ps.secondaryBackground) ? ps.secondaryBackground : undefined,
@@ -223,6 +234,23 @@ function normalizeCtaColorToken(prop, value) {
   );
 }
 
+function isRadiusKey(key) {
+  return (
+    key === "borderRadius" ||
+    key === "borderTopLeftRadius" ||
+    key === "borderTopRightRadius" ||
+    key === "borderBottomLeftRadius" ||
+    key === "borderBottomRightRadius"
+  );
+}
+
+function normalizeRadiusToken(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return toWebsiteRadiusPx(value);
+  }
+  return value;
+}
+
 function normalizeSectionSxForButtons(input, inCtaSelector = false) {
   if (Array.isArray(input)) {
     return input.map((entry) => normalizeSectionSxForButtons(entry, inCtaSelector));
@@ -238,6 +266,10 @@ function normalizeSectionSxForButtons(input, inCtaSelector = false) {
 
     if (nextInCtaSelector && typeof value === "string") {
       out[key] = normalizeCtaColorToken(key, value);
+      return;
+    }
+    if (isRadiusKey(key)) {
+      out[key] = normalizeRadiusToken(value);
       return;
     }
     out[key] = normalizeSectionSxForButtons(value, nextInCtaSelector);
@@ -338,7 +370,7 @@ const InteractiveTiltMedia = ({ src, alt, sx }) => {
         position: "relative",
         width: "100%",
         height: "100%",
-        borderRadius: 4,
+        borderRadius: websiteRadius(2),
         overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.28)",
         boxShadow: "0 18px 40px rgba(17,24,39,0.18)",
@@ -463,7 +495,7 @@ const Hero = ({
     <Box
       sx={{
         position: "relative",
-        borderRadius: { xs: 0, md: 3 },
+        borderRadius: { xs: 0, md: `${websiteRadius(3)}px` },
         overflow: "hidden",
         minHeight: minH || { xs: 380, md: 560 },
         display: "flex",
@@ -667,7 +699,7 @@ const HeroCarousel = ({
     <Box
       sx={{
         position: "relative",
-        borderRadius: { xs: 0, md: 3 },
+        borderRadius: { xs: 0, md: `${websiteRadius(3)}px` },
         overflow: "hidden",
         minHeight: minH || { xs: 380, md: 560 },
         color: "var(--page-hero-text-color, var(--page-body-color, inherit))",
@@ -758,7 +790,7 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
         <Box
           className="split-image"
           sx={{
-            borderRadius: 4,
+            borderRadius: websiteRadius(4),
             overflow: "hidden",
             boxShadow: (t) => t.shadows[4],
             lineHeight: 0
@@ -790,7 +822,8 @@ const FeatureZigzag = ({
   items = []
 }) => {
   const list = toArray(items);
-const cardRadius = 0;
+  const resolvedMax = toContainerMax(maxWidth);
+  const cardRadius = 0;
   const hasHeader = eyebrow || title || supportingText;
   if (!hasHeader && list.length === 0) return null;
 
@@ -876,7 +909,7 @@ const cardRadius = 0;
             src={imageSrc}
             alt={imageAlt}
             sx={{
-              borderRadius: 4,
+              borderRadius: websiteRadius(2),
               border: "1px solid rgba(255,255,255,0.24)",
               boxShadow: "0 16px 32px rgba(17,24,39,0.16)"
             }}
@@ -910,7 +943,7 @@ const cardRadius = 0;
   };
 
   return (
-    <Container maxWidth={toContainerMax(maxWidth)}>
+    <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false}>
       <Stack spacing={{ xs: 4, md: 5 }}>
         {hasHeader && (
           <Stack spacing={1} sx={{ textAlign: titleAlign }}>
@@ -960,6 +993,7 @@ const FeatureZigzagModern = ({
   items = []
 }) => {
   const list = toArray(items);
+  const resolvedMax = toContainerMax(maxWidth);
   const hasHeader = eyebrow || title || supportingText;
   if (!hasHeader && list.length === 0) return null;
 
@@ -1035,7 +1069,7 @@ const FeatureZigzagModern = ({
             src={imageSrc}
             alt={imageAlt}
             sx={{
-              borderRadius: 4,
+              borderRadius: websiteRadius(2),
               border: "1px solid rgba(255,255,255,0.24)",
               boxShadow: "0 16px 32px rgba(17,24,39,0.16)"
             }}
@@ -1064,7 +1098,7 @@ const FeatureZigzagModern = ({
   };
 
   return (
-    <Container maxWidth={toContainerMax(maxWidth)}>
+    <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false}>
       <Stack spacing={{ xs: 4, md: 5 }}>
         {hasHeader && (
           <Stack spacing={1} sx={{ textAlign: titleAlign }}>
@@ -1398,7 +1432,7 @@ const ServiceGrid = ({
               sx={{
                 maxWidth: "100%",
                 maxHeight: "80vh",
-                borderRadius: 2,
+                borderRadius: websiteRadius(2),
                 border: "1px solid rgba(255,255,255,0.2)",
               }}
             />
@@ -1587,7 +1621,7 @@ const CollectionShowcase = ({
                                 maxWidth: imageWidth,
                                 aspectRatio: "1 / 1",
                                 objectFit: "cover",
-                                borderRadius: 3,
+                                borderRadius: websiteRadius(3),
                                 border: "1px solid rgba(148,163,184,0.24)",
                                 boxShadow: "0 16px 32px rgba(15,23,42,0.12)",
                               }}
@@ -1785,6 +1819,7 @@ const GalleryCarousel = ({
   aspectRatio = "4 / 3" // enforce a consistent frame so mixed sizes look uniform
 }) => {
   const imgs = toArray(images);
+  const resolvedMax = toContainerMax(maxWidth);
   const reduced = usePrefersReducedMotion();
   const [index, setIndex, setPaused] = useAutoplay(
     imgs.length,
@@ -1794,7 +1829,7 @@ const GalleryCarousel = ({
   const go = (dir) => setIndex((i) => (i + dir + imgs.length) % imgs.length);
 
   return (
-    <Container maxWidth={toContainerMax(maxWidth)}>
+    <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false}>
       {title && (
         <HtmlTypo variant="h4" sx={{ mb: 0.5, fontWeight: 800, textAlign: titleAlign || "left" }}>
           {title}
@@ -1806,7 +1841,7 @@ const GalleryCarousel = ({
         </HtmlTypo>
       )}
       <Box
-        sx={{ position: "relative", borderRadius: 3, overflow: "hidden" }}
+        sx={{ position: "relative", borderRadius: websiteRadius(3), overflow: "hidden" }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
@@ -2029,7 +2064,7 @@ const PricingTable = ({
       <Box
         className="pricing-side"
         sx={{
-          borderRadius: 3,
+          borderRadius: websiteRadius(3),
           overflow: "hidden",
           height: "100%",
           position: "relative",
@@ -2192,7 +2227,7 @@ const PricingTable = ({
                   flexDirection: "column",
                   gap: 2,
                   textAlign: "center",
-                  borderRadius: 4,
+                  borderRadius: websiteRadius(4),
                   p: 3,
                   background: "var(--page-card-bg, rgba(6,10,22,0.78))",
                   border: "1px solid rgba(255,255,255,0.15)",
@@ -2392,7 +2427,7 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
           sx={{
             background: "var(--page-card-bg, rgba(255,255,255,0.92))",
             color: "var(--page-heading-color, inherit)",
-            borderRadius: "var(--page-card-radius, 18px)",
+              borderRadius: "var(--page-card-radius, 4px)",
             boxShadow: "var(--page-card-shadow, 0 18px 48px rgba(15,23,42,0.08))",
             border: "1px solid color-mix(in srgb, var(--page-body-color, rgba(15,23,42,0.2)) 12%, transparent)",
             overflow: "hidden",
@@ -2910,7 +2945,7 @@ const CTA = ({ title, subtitle, buttonText, buttonLink, titleAlign, maxWidth }) 
         textAlign: titleAlign || "center",
         background: "var(--page-card-bg, rgba(255,255,255,0.92))",
         color: "var(--page-heading-color, inherit)",
-        borderRadius: "var(--page-card-radius, 18px)",
+        borderRadius: "var(--page-card-radius, 4px)",
         boxShadow: "var(--page-card-shadow, 0 18px 48px rgba(15,23,42,0.08))",
         border: "1px solid color-mix(in srgb, var(--page-body-color, rgba(15,23,42,0.2)) 12%, transparent)",
       }}
@@ -2963,7 +2998,7 @@ const FreeText = ({
   color = "inherit",
   background = "transparent",
   padding = 8,
-  borderRadius = 8,
+  borderRadius = 4,
   editable = true,
 }) => {
   const ref = useRef(null);
@@ -3016,7 +3051,7 @@ const FreeText = ({
           color,
           background,
           padding,
-          borderRadius,
+          borderRadius: websiteRadius(borderRadius),
           outline: "1px dashed rgba(0,0,0,0.2)",
           cursor: "move",
           userSelect: "text",
@@ -3051,7 +3086,7 @@ const Video = ({ title, description, url, poster, titleAlign, maxWidth }) => (
         {description}
       </HtmlTypo>
     )}
-    <Box sx={{ borderRadius: 3, overflow: "hidden", boxShadow: 2, lineHeight: 0 }}>
+    <Box sx={{ borderRadius: websiteRadius(3), overflow: "hidden", boxShadow: 2, lineHeight: 0 }}>
       {toEmbedUrl(url)?.includes("youtube.com") || toEmbedUrl(url)?.includes("youtu.be") || toEmbedUrl(url)?.includes("vimeo.com") ? (
         <Box sx={{ position: "relative", pt: "56.25%" }}>
           <iframe
@@ -3103,7 +3138,7 @@ const VideoStorySplit = ({
   const videoFirst = String(videoPosition || "left").toLowerCase() !== "right";
   const resolvedMax = toContainerMax(maxWidth);
   const paddingValue = typeof contentPadding === "number" ? `${contentPadding}px` : contentPadding;
-  const radiusValue = typeof borderRadius === "number" ? borderRadius : 4;
+  const radiusValue = typeof borderRadius === "number" ? websiteRadius(borderRadius) : websiteRadius(4);
   const resolvedContentBackground = themeDriven
     ? "var(--page-secondary-bg, var(--page-card-bg, rgba(255,255,255,0.92)))"
     : contentBackground;
@@ -3123,7 +3158,7 @@ const VideoStorySplit = ({
           alignItems: "stretch",
           width: "100%",
           overflow: "hidden",
-          borderRadius: radiusValue,
+          borderRadius: `${radiusValue}px`,
           border: "1px solid color-mix(in srgb, var(--page-heading-color, rgba(0,0,0,0.16)) 12%, rgba(255,255,255,0.12))",
           boxShadow: "var(--page-card-shadow, 0 24px 64px rgba(0,0,0,0.18))",
           backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
@@ -3290,7 +3325,7 @@ const LogoCloud = ({
   badgeStyle = {},
   tabs = [],
   tabsAlign = "center",
-  cardRadius = 12,
+  cardRadius = 4,
   imageShape = "rounded",
 }) => {
   const entries = toArray(logos)
@@ -3320,10 +3355,10 @@ const LogoCloud = ({
   const resolvedSupportingAlign = supportingTextAlign || resolvedTitleAlign;
   const shapeMetrics = (shape) => {
     const normalized = typeof shape === "string" ? shape.toLowerCase() : "rounded";
-    if (normalized === "rectangle") return { width: 248, height: 160, radius: 12 };
+    if (normalized === "rectangle") return { width: 248, height: 160, radius: websiteRadius(4) };
     if (normalized === "circle") return { width: 224, height: 224, radius: "50%" };
     if (normalized === "square") return { width: 224, height: 224, radius: 0 };
-    return { width: 224, height: 224, radius: 18 };
+    return { width: 224, height: 224, radius: websiteRadius(4) };
   };
 
   const renderGrid = () => (
@@ -3439,7 +3474,7 @@ const LogoCloud = ({
               color: themeDriven
                 ? "var(--page-heading-color, currentColor)"
                 : "#f8fafc",
-              borderRadius: "var(--page-card-radius, 14px)",
+              borderRadius: "var(--page-card-radius, 4px)",
               px: 3,
               py: 3,
               minWidth: 220,
@@ -3473,7 +3508,7 @@ const LogoCloud = ({
     );
   };
 
-  const resolvedCardRadius = Number(cardRadius) || 12;
+  const resolvedCardRadius = websiteRadius(Number(cardRadius) || 4);
 
   const renderCards = () => (
     <Grid
@@ -3535,7 +3570,7 @@ const LogoCloud = ({
                   objectFit: "cover",
                   objectPosition: "center",
                   display: "block",
-                  borderRadius: 18,
+                  borderRadius: websiteRadius(4),
                   border: themeDriven
                     ? "1px solid color-mix(in srgb, var(--page-heading-color, rgba(0,0,0,0.18)) 10%, rgba(255,255,255,0.15))"
                     : "1px solid rgba(203,255,247,0.55)",
@@ -3722,7 +3757,7 @@ const LogoCloud = ({
                 textTransform: "uppercase",
                 letterSpacing: ".2em",
                 fontWeight: 700,
-                borderRadius: 999,
+                borderRadius: websiteRadius(4),
               }}
             >
               {tab.label}
@@ -3813,7 +3848,7 @@ const LogoCarousel = ({
             minWidth: { xs: "100%", sm: 280 },
             maxWidth: 320,
             textAlign: "center",
-            borderRadius: "var(--page-card-radius, 16px)",
+            borderRadius: "var(--page-card-radius, 4px)",
             backdropFilter: themeDriven ? "var(--page-card-blur, none)" : "blur(12px)",
             backgroundColor: themeDriven
               ? "var(--page-card-bg, rgba(255,255,255,0.92))"
@@ -3995,7 +4030,7 @@ const TestimonialCarousel = ({
                     className="testimonial-card"
                     sx={{
                       backgroundColor: "background.paper",
-                      borderRadius: 2,
+                      borderRadius: websiteRadius(2),
                       border: "1px solid",
                       borderColor: "divider",
                       boxShadow: "0 10px 24px rgba(15,23,42,0.08)",
@@ -4101,7 +4136,7 @@ const FeaturePillars = ({
 
   const cardPadding = Number(card?.padding ?? 24);
   const contentGap = Number(card?.gap ?? 12);
-  const radius = Number(card?.radius ?? 24);
+  const radius = websiteRadius(Number(card?.radius ?? 4));
   const iconSize = Number(card?.iconSize ?? 48);
   const gridGapPx = Number(card?.gridGap ?? 32);
   const gridSpacing = Math.max(3, clamp(Math.round(gridGapPx / 8), 1, 6));
@@ -4280,7 +4315,7 @@ const FeaturePillars = ({
                 sx={{
                   px: 1.2,
                   py: 0.5,
-                  borderRadius: 999,
+                  borderRadius: websiteRadius(4),
                   backgroundColor: chipBg,
                   color: chipColor,
                   border: `1px solid ${chipBorder}`,
@@ -4308,7 +4343,7 @@ const FeaturePillars = ({
               display: "inline-flex",
               px: 2.4,
               py: 0.75,
-              borderRadius: 999,
+              borderRadius: websiteRadius(4),
               backgroundColor: badgeSurface,
               color: badgeText,
               fontSize: 12,
@@ -4435,8 +4470,8 @@ const FeatureStories = ({
 
   const rawPadding = card?.padding ?? 26;
   const padding = typeof rawPadding === "number" ? `${rawPadding}px` : rawPadding;
-  const rawRadius = card?.radius ?? 16;
-  const radius = typeof rawRadius === "number" ? `${rawRadius}px` : rawRadius;
+  const rawRadius = card?.radius ?? 4;
+  const radius = typeof rawRadius === "number" ? toWebsiteRadiusPx(rawRadius) : toWebsiteRadiusPx(4);
   const rawGap = card?.gap ?? 32;
   const gap = typeof rawGap === "number" ? Number(rawGap) : rawGap;
   const gapXs = card?.gapXs ?? (typeof gap === "number" ? Math.min(gap, 28) : gap);
@@ -4505,7 +4540,7 @@ const FeatureStories = ({
             sx={{
               px: 1.75,
               py: 0.65,
-              borderRadius: 999,
+              borderRadius: websiteRadius(4),
               backgroundColor: legendBg,
               color: legendColor,
               fontSize: 12,
@@ -4704,7 +4739,7 @@ const FeatureStories = ({
                         sx={{
                           px: 1.2,
                           py: 0.45,
-                          borderRadius: 999,
+                          borderRadius: websiteRadius(4),
                           backgroundColor: chipBgDefault,
                           color: chipColorDefault,
                           border: `1px solid ${chipBorderDefault}`,
@@ -4754,7 +4789,7 @@ const FeatureStories = ({
                 sx={{
                   px: 1.75,
                   py: 0.7,
-                  borderRadius: 999,
+                  borderRadius: websiteRadius(4),
                   backgroundColor: metricBg,
                   color: metricColor,
                   fontWeight: 600,
@@ -4800,7 +4835,7 @@ const TestimonialTiles = ({
 
   const padding = Number(card?.padding ?? 16);
   const gap = Number(card?.gap ?? 10);
-  const radius = Number(card?.radius ?? 16);
+  const radius = websiteRadius(Number(card?.radius ?? 4));
   const avatarSize = Number(card?.avatarSize ?? 30);
 
   const interval = clamp(intervalMs || 4000, 1500, 12000);
@@ -4843,7 +4878,7 @@ const TestimonialTiles = ({
             sx={{
               px: 1,
               py: 0.5,
-              borderRadius: 999,
+              borderRadius: websiteRadius(4),
               backgroundColor: themeDriven
                 ? "color-mix(in srgb, var(--page-link-color, #2563eb) 12%, rgba(255,255,255,0.88))"
                 : "rgba(255,220,200,0.3)",
@@ -4867,7 +4902,7 @@ const TestimonialTiles = ({
           sx={{
             width: avatarSize,
             height: avatarSize,
-            borderRadius: avatarSize / 3,
+            borderRadius: websiteRadius(4),
             background: themeDriven
               ? "color-mix(in srgb, var(--page-link-color, #2563eb) 8%, rgba(255,255,255,0.86))"
               : "rgba(255,220,200,0.2)",
@@ -5100,7 +5135,7 @@ const ContactBlock = ({ title, intro, email, phone, address, mapEmbedUrl, titleA
       </Grid>
       <Grid item xs={12} md={6}>
         {mapEmbedUrl ? (
-          <Box sx={{ borderRadius: 2, overflow: "hidden", height: 260 }}>
+          <Box sx={{ borderRadius: websiteRadius(2), overflow: "hidden", height: 260 }}>
             <iframe
               src={mapEmbedUrl}
               width="100%"
@@ -5128,7 +5163,7 @@ const MapEmbed = ({
   query = "",
   embedUrl = "",
   height = 320,
-  borderRadius = 16,
+  borderRadius = 4,
   maxWidth = "lg",
   title = "",
   titleAlign = "left"
@@ -5149,7 +5184,7 @@ const MapEmbed = ({
       )}
       <Box
         sx={{
-          borderRadius: borderRadius ?? 16,
+          borderRadius: websiteRadius(borderRadius ?? 4),
           overflow: "hidden",
           boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
           border: "1px solid rgba(148,163,184,0.18)",
@@ -5210,7 +5245,7 @@ const BookingCtaBar = ({
           className="booking-cta-card"
           sx={{
             p: 2,
-            borderRadius: 3,
+            borderRadius: websiteRadius(3),
             boxShadow: 6,
             bgcolor: "var(--page-card-bg, rgba(255,255,255,0.12))",
             display: "flex",
@@ -5302,7 +5337,7 @@ const Gallery = ({
   const ratio = parseAspectRatio(resolvedTile?.aspectRatio);
   const thumbSize = ratio ? { w: 800, h: Math.round(800 / ratio), fit: "crop" } : { w: 800, fit: "crop" };
   const fullSize = { w: 2000, fit: "max" };
-  const borderRadius = resolvedTile?.borderRadius ?? 3;
+  const borderRadius = websiteRadius(resolvedTile?.borderRadius ?? 3);
   const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
   const hoverLift = resolvedTile?.hoverLift ?? false;
   const lightboxOn = resolvedLightbox?.enabled ?? false;
@@ -5492,7 +5527,7 @@ const Gallery = ({
               sx={{
                 maxWidth: "100%",
                 maxHeight: "80vh",
-                borderRadius: 3,
+                borderRadius: websiteRadius(3),
                 border: "1px solid rgba(255,255,255,0.15)",
                 backgroundColor: "#111827",
               }}
@@ -5529,6 +5564,7 @@ const VideoGallery = ({
   ctaLink,
 }) => {
   const list = Array.isArray(videos) ? videos : [];
+  const resolvedMax = toContainerMax(maxWidth);
   const resolvedTile = tile || {
     aspectRatio: tileAspectRatio,
     borderRadius: tileBorderRadius,
@@ -5565,7 +5601,7 @@ const VideoGallery = ({
     return Number.isFinite(n) ? n : null;
   };
   const ratio = parseAspectRatio(resolvedTile?.aspectRatio);
-  const borderRadius = resolvedTile?.borderRadius ?? 3;
+  const borderRadius = websiteRadius(resolvedTile?.borderRadius ?? 3);
   const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
   const hoverLift = resolvedTile?.hoverLift ?? false;
   const lightboxOn = resolvedLightbox?.enabled ?? false;
@@ -5638,7 +5674,7 @@ const VideoGallery = ({
   const allowAutoplay = !(smDown || lowData || prefersReducedMotion);
 
   return (
-    <Container maxWidth={toContainerMax(maxWidth)}>
+    <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false}>
       {title && (
         <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "left" }}>
           {title}
@@ -5796,7 +5832,7 @@ const VideoGallery = ({
               sx={{
                 maxWidth: "100%",
                 maxHeight: "80vh",
-                borderRadius: 3,
+                borderRadius: websiteRadius(3),
                 border: "1px solid rgba(255,255,255,0.15)",
                 backgroundColor: "#111827",
                 overflow: "hidden",
@@ -5882,6 +5918,15 @@ function RenderSectionsInner({
     0,
     240
   );
+  const fullBleedFrameTypes = new Set([
+    "heroCarousel",
+    "hero",
+    "videoEmbed",
+    "galleryCarousel",
+    "featureZigzag",
+    "featureZigzagModern",
+    "videoGallery",
+  ]);
   const { sectionBaseSx, frame } = useSectionFrame({ layout, sectionSpacing, defaultGutterX: defGX });
 
   // Build page-level background CSS (sx) + CSS variables (style)
@@ -5897,7 +5942,7 @@ const pageWrapSx = {
 
   /* NEW — Button styling that reads our CSS vars (with safe fallbacks) */
   "& .MuiButton-root": {
-    borderRadius: "var(--page-btn-radius, 10px)",
+    borderRadius: "var(--page-btn-radius, 4px)",
     textTransform: "none",
   },
   "& .MuiButton-contained": {
@@ -5933,7 +5978,7 @@ const pageWrapSx = {
 
   // cards
   "--page-card-bg":     pageStyle.cardBg || colorWithOpacity(pageStyle.cardColor || "#ffffff", pageStyle.cardOpacity ?? 0.92),
-  "--page-card-radius": pageStyle.cardRadius != null ? `${pageStyle.cardRadius}px` : undefined,
+  "--page-card-radius": pageStyle.cardRadius != null ? toWebsiteRadiusPx(pageStyle.cardRadius) : undefined,
   "--page-card-shadow": pageStyle.cardShadow || undefined,
   "--page-card-blur":   pageStyle.cardBlur ? `${pageStyle.cardBlur}px` : undefined,
 
@@ -5943,7 +5988,7 @@ const pageWrapSx = {
   // BUTTONS (NEW)
   "--page-btn-bg":     pageStyle.btnBg     ?? undefined,
   "--page-btn-color":  pageStyle.btnColor  ?? undefined,
-  "--page-btn-radius": pageStyle.btnRadius != null ? `${pageStyle.btnRadius}px` : undefined,
+  "--page-btn-radius": pageStyle.btnRadius != null ? toWebsiteRadiusPx(pageStyle.btnRadius) : undefined,
 
   // Secondary background (accent band)
   "--page-secondary-bg":
@@ -6008,9 +6053,18 @@ return (
           perSectionSx.mb = 0;
         }
 
+        const effectiveProps = fullBleedFrameTypes.has(s?.type)
+          ? { ...props, maxWidth: false }
+          : props;
+
         return (
           <Section key={s?.id || i} id={s?.id} sx={perSectionSx}>
-            {frame(<Cmp {...props} />, props)}
+            {frame(
+              <Cmp {...effectiveProps} />,
+              fullBleedFrameTypes.has(s?.type)
+                ? { ...effectiveProps, layoutOverride: "full", gutterX: 0 }
+                : effectiveProps
+            )}
           </Section>
         );
       })}

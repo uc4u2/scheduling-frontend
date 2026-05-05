@@ -56,6 +56,7 @@ import ClientDashboard from "../ClientDashboard";
 import { JobsListEmbedded } from "../public/PublicJobsListPage";
 import { JobsDetailEmbedded } from "../public/PublicJobDetailPage";
 import buildImgixUrl from "../../utils/imgix";
+import { clampWebsiteRadius } from "../../utils/websiteRadius";
 import { safeHtml } from "../../utils/safeHtml";
 import {
   cloneFooterColumns,
@@ -72,6 +73,7 @@ import JsonLd from "../../components/seo/JsonLd";
 import { getTenantHostMode } from "../../utils/tenant";
 import TimezoneSelect from "../../components/TimezoneSelect";
 import { getUserTimezone, formatTimezoneLabel } from "../../utils/timezone";
+import { toWebsiteRadiusPx } from "../../utils/websiteRadius";
 
 const LEGAL_FALLBACK_CONTENT = {
   privacy: {
@@ -425,12 +427,12 @@ const pageStyleToCssVars = (style) => {
   assign("--page-body-font", style.bodyFont);
   assign("--page-hero-heading-shadow", style.heroHeadingShadow);
   assign("--page-card-bg", style.cardBg || style.cardColor);
-  assign("--page-card-radius", style.cardRadius != null ? `${style.cardRadius}px` : undefined);
+  assign("--page-card-radius", toWebsiteRadiusPx(style.cardRadius));
   assign("--page-card-shadow", style.cardShadow);
   assign("--page-card-blur", style.cardBlur != null ? `${style.cardBlur}px` : undefined);
   assign("--page-btn-bg", style.btnBg);
   assign("--page-btn-color", style.btnColor);
-  assign("--page-btn-radius", style.btnRadius != null ? `${style.btnRadius}px` : undefined);
+  assign("--page-btn-radius", toWebsiteRadiusPx(style.btnRadius));
   return Object.keys(vars).length ? vars : null;
 };
 
@@ -2456,7 +2458,7 @@ const siteTitle = useMemo(() => {
               sx={{
                 p: { xs: 3, md: 4 },
                 textAlign: "center",
-                borderRadius: 3,
+                borderRadius: `${clampWebsiteRadius(3)}px`,
                 border: (theme) => `1px solid ${theme.palette.divider}`,
                 backgroundColor: "var(--page-card-bg, #fff)",
               }}
@@ -2884,7 +2886,7 @@ const siteTitle = useMemo(() => {
             fullWidth
             sx={{
               mt: 2,
-              borderRadius: 999,
+              borderRadius: "var(--page-btn-radius, 4px)",
               backgroundColor: "var(--page-link-color, var(--sched-primary))",
               color: "#fff",
             }}
@@ -2934,7 +2936,7 @@ const siteTitle = useMemo(() => {
                 )}
               </>
             ) : (
-              <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: 2, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
+              <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: `${clampWebsiteRadius(2)}px`, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
                 <Typography variant="h3" fontWeight={800} gutterBottom>Welcome to {company?.name ?? "our business"}</Typography>
                 <Typography variant="body1" color="text.secondary">We’re getting our site ready. In the meantime, you can browse and book services.</Typography>
                 <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 3 }}>
