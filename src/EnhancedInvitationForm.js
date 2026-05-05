@@ -2259,14 +2259,14 @@ const handlePreview = () => {
       {!isCustomProfession && (
         <>
           <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
-            Candidate experience
+            Candidate intake requirements
           </Typography>
           <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
             <Stack spacing={2}>
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Candidate form
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Intake configuration
                   </Typography>
                   <Tooltip title="This controls the intake form fields and questionnaires shown after the candidate clicks the invite link. It does not change the email content unless you choose to override it.">
                     <IconButton size="small">
@@ -2274,11 +2274,14 @@ const handlePreview = () => {
                     </IconButton>
                   </Tooltip>
                 </Stack>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>
+                  Choose the intake form and document-upload requirement the candidate will see after opening the invitation link.
+                </Typography>
                 {availableTemplates.length > 0 ? (
                   <TextField
                     select
                     fullWidth
-                    label={templatesLoading ? "Loading candidate forms" : "Select candidate form"}
+                    label={templatesLoading ? "Loading intake forms" : "Select intake form"}
                     value={sendWithoutForm ? "" : selectedTemplateId || ""}
                     onChange={(e) => {
                       const value = Number(e.target.value);
@@ -2326,21 +2329,22 @@ const handlePreview = () => {
                     {templatesError}
                   </Alert>
                 )}
+                <TextField
+                  select
+                  label="Document upload"
+                  helperText="Set whether the candidate must upload a resume or supporting document during intake."
+                  value={documentUploadMode}
+                  onChange={(e) => setDocumentUploadMode(e.target.value)}
+                  fullWidth
+                  sx={{ mt: 2 }}
+                >
+                  {DOCUMENT_UPLOAD_MODE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Box>
-
-              <TextField
-                select
-                label="Candidate document upload"
-                value={documentUploadMode}
-                onChange={(e) => setDocumentUploadMode(e.target.value)}
-                fullWidth
-              >
-                {DOCUMENT_UPLOAD_MODE_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
 
               <Accordion
                 expanded={candidatePreviewExpanded}
