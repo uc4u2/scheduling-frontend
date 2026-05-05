@@ -30,3 +30,26 @@ Schedulaa’s recruiting tools live in the Manager Portal Overview shortcuts and
 - “Where do I search candidates?” → Manager Portal → Overview → Candidate Search (or Employee Portal → Candidate Search).
 - “Where do I open a candidate profile?” → Manager Portal → Overview → Candidate Profile.
 - “Where are candidate invitations and forms?” → Employee Portal → Invitations or Candidate Forms.
+
+## Invitation model
+
+Candidate invitations now use three separate layers:
+
+1. `Candidate form template`
+- controls the candidate-facing intake structure
+- controls custom questions
+- controls core intake field visibility and requiredness
+
+2. `Save Defaults`
+- saves recruiter-side preferences
+- saves recruiter/company helper fields
+- saves the current candidate experience setup for the selected profession
+
+3. `Sent invitation`
+- is the final invitation for one candidate
+- includes the resolved form choice, document upload mode, questionnaires, and email overrides
+
+Important:
+- core intake fields are fixed operational fields
+- they are configurable as `hidden`, `optional`, or `required`
+- they are not meant to be rebuilt as arbitrary custom fields
