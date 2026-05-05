@@ -511,6 +511,11 @@ const normaliseCoreIntakeFields = (value) => {
   return CORE_INTAKE_FIELD_DEFAULTS.map((field) => defaults.get(field.key));
 };
 
+const normaliseDocumentUploadMode = (value) => {
+  const mode = String(value || "").trim().toLowerCase();
+  return ["hidden", "optional", "required"].includes(mode) ? mode : "optional";
+};
+
 const INVITE_NAME_FIELDS = {
   recruiter: ["candidateName"],
   custom: ["candidateName", "clientName"],
@@ -917,6 +922,10 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       });
       const full = res?.data || null;
       setSelectedTemplate(full);
+      setDocumentUploadMode((prev) => {
+        const nextMode = normaliseDocumentUploadMode(full?.schema?.document_upload_mode);
+        return prev === nextMode ? prev : nextMode;
+      });
       const nextTemplate = buildTemplateFromFormTemplate(full);
       if (nextTemplate) {
         setTemplate(nextTemplate);
@@ -1344,11 +1353,15 @@ const handlePreview = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!active) return;
-        const full = res?.data || null;
-        setSelectedTemplate(full);
-        const nextTemplate = buildTemplateFromFormTemplate(full);
-        if (nextTemplate) {
-          setTemplate(nextTemplate);
+      const full = res?.data || null;
+      setSelectedTemplate(full);
+      setDocumentUploadMode((prev) => {
+        const nextMode = normaliseDocumentUploadMode(full?.schema?.document_upload_mode);
+        return prev === nextMode ? prev : nextMode;
+      });
+      const nextTemplate = buildTemplateFromFormTemplate(full);
+      if (nextTemplate) {
+        setTemplate(nextTemplate);
         }
       } catch {
         if (!active) return;
