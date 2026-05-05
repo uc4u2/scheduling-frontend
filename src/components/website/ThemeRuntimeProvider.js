@@ -3,6 +3,7 @@ import React, { useMemo } from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline, GlobalStyles } from "@mui/material";
 import { deepmerge } from "@mui/utils";
+import { clampWebsiteRadius } from "../../utils/websiteRadius";
 
 /** Basic color validator for MUI palette strings */
 function isValidColor(c) {
@@ -76,7 +77,7 @@ export default function ThemeRuntimeProvider({ overrides, children }) {
         secondary: { main: "#9c27b0" },
         background: { default: "#ffffff" },
       },
-      shape: { borderRadius: 10 },
+      shape: { borderRadius: 4 },
       typography: {
         fontFamily:
           "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
@@ -90,7 +91,7 @@ export default function ThemeRuntimeProvider({ overrides, children }) {
           styleOverrides: {
             root: {
               backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
-              borderRadius: "var(--page-card-radius, 12px)",
+              borderRadius: "var(--page-card-radius, 4px)",
               boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
               backdropFilter: "var(--page-card-blur, none)",
             },
@@ -154,9 +155,10 @@ export default function ThemeRuntimeProvider({ overrides, children }) {
         "--page-heading-color": "inherit",
         "--page-link-color": "var(--sched-primary)",
         "--page-card-bg": "rgba(255,255,255,0.92)",
-        "--page-card-radius": "12px",
+        "--page-card-radius": `${clampWebsiteRadius(4)}px`,
         "--page-card-shadow": "0 8px 30px rgba(0,0,0,0.08)",
         "--page-card-blur": "none",
+        "--page-btn-radius": `${clampWebsiteRadius(4)}px`,
         "--page-heading-font": "inherit",
         "--page-body-font": "inherit",
 

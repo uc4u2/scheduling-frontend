@@ -28,9 +28,11 @@ import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { useEmbedConfig } from "../../embed";
 import PublicPageShell, { usePublicSite } from "./PublicPageShell";
+import { clampWebsiteRadius } from "../../utils/websiteRadius";
 import { getTenantHostMode } from "../../utils/tenant";
 import { addPackageToCart, CartErrorCodes } from "../../utils/cart";
 import PublicCatalogFilters, { UNCATEGORIZED_VALUE } from "../../components/public/PublicCatalogFilters";
+import { toWebsiteRadiusPx } from "../../utils/websiteRadius";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 
@@ -158,12 +160,12 @@ const pageStyleToCssVars = (style) => {
   assign("--page-hero-heading-shadow", style.heroHeadingShadow);
   assign("--page-body-bg", style.backgroundColor);
   assign("--page-card-bg", style.cardBg || style.cardColor);
-  assign("--page-card-radius", toPx(style.cardRadius));
+  assign("--page-card-radius", toWebsiteRadiusPx(style.cardRadius));
   assign("--page-card-shadow", style.cardShadow);
   assign("--page-card-blur", toPx(style.cardBlur));
   assign("--page-btn-bg", style.btnBg);
   assign("--page-btn-color", style.btnColor);
-  assign("--page-btn-radius", toPx(style.btnRadius));
+  assign("--page-btn-radius", toWebsiteRadiusPx(style.btnRadius));
   return vars;
 };
 
@@ -883,7 +885,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
           PaperProps={{
             sx: {
               maxWidth: 560,
-              borderRadius: 2,
+              borderRadius: `${clampWebsiteRadius(2)}px`,
               overflow: "hidden",
             },
           }}

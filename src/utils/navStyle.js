@@ -1,4 +1,6 @@
 // src/utils/navStyle.js
+import { clampWebsiteRadius } from "./websiteRadius";
+
 export const NAV_STYLE_DEFAULT = Object.freeze({
   variant: "pill",
   font_weight: 600,
@@ -6,7 +8,7 @@ export const NAV_STYLE_DEFAULT = Object.freeze({
   item_spacing: 12,
   padding_x: 20,
   padding_y: 10,
-  border_radius: 999,
+  border_radius: 4,
   // Default to the page link colour first so builders can change nav colour
   // without hunting for theme overrides. Falls back to the primary token.
   bg: "var(--page-link-color, var(--sched-primary, #6366F1))",
@@ -60,7 +62,9 @@ export const normalizeNavStyle = (raw = {}) => {
   base.item_spacing = numeric("item_spacing", base.item_spacing, 0, 160);
   base.padding_x = numeric("padding_x", base.padding_x, 0, 200);
   base.padding_y = numeric("padding_y", base.padding_y, 0, 200);
-  base.border_radius = numeric("border_radius", base.border_radius, 0, 9999);
+  base.border_radius = clampWebsiteRadius(
+    numeric("border_radius", base.border_radius, 2, 4)
+  );
   base.brand_font_size = numeric("brand_font_size", base.brand_font_size, 10, 64);
 
   return base;

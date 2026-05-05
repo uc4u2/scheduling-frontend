@@ -11,6 +11,7 @@ import { publicSite } from "../../utils/api"; // added for edit guard + data fet
 import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
 import { getTenantHostMode } from "../../utils/tenant";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
+import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../utils/websiteRadius";
 
 const PublicSiteContext = createContext(null);
 
@@ -100,12 +101,12 @@ const pageStyleToCssVars = (style) => {
   assign("--page-body-font", style.bodyFont);
   assign("--page-hero-heading-shadow", style.heroHeadingShadow);
   assign("--page-card-bg", style.cardBg || style.cardColor);
-  assign("--page-card-radius", toPx(style.cardRadius));
+  assign("--page-card-radius", toWebsiteRadiusPx(style.cardRadius));
   assign("--page-card-shadow", style.cardShadow);
   assign("--page-card-blur", toPx(style.cardBlur));
   assign("--page-btn-bg", style.btnBg);
   assign("--page-btn-color", style.btnColor);
-  assign("--page-btn-radius", toPx(style.btnRadius));
+  assign("--page-btn-radius", toWebsiteRadiusPx(style.btnRadius));
   return Object.keys(vars).length ? vars : null;
 };
 
@@ -516,7 +517,7 @@ function ShellInner({
             ".MuiButton-containedPrimary": {
               backgroundColor: accentBg,
               color: accentText,
-              borderRadius: "var(--page-btn-radius, 12px)",
+              borderRadius: "var(--page-btn-radius, 4px)",
               boxShadow: "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))",
               textTransform: "none",
               fontWeight: 600,
@@ -536,7 +537,7 @@ function ShellInner({
             ".MuiButton-outlinedPrimary": {
               borderColor: accentBg,
               color: accentBg,
-              borderRadius: "var(--page-btn-radius, 12px)",
+              borderRadius: "var(--page-btn-radius, 4px)",
               textTransform: "none",
               fontWeight: 600,
             },
@@ -566,7 +567,7 @@ function ShellInner({
               color: accentBg,
             },
             ".MuiChip-root": {
-              borderRadius: 999,
+              borderRadius: clampWebsiteRadius(4),
             },
             ".MuiChip-root.MuiChip-outlined": {
               borderColor: accentBorder,
@@ -590,7 +591,7 @@ function ShellInner({
             ".MuiAlert-standardInfo": {
               backgroundColor: infoBg,
               color: infoColor,
-              borderRadius: "var(--page-card-radius, 12px)",
+              borderRadius: "var(--page-card-radius, 4px)",
               border: `1px solid ${accentBorder}`,
             },
             ".MuiAlert-standardInfo .MuiAlert-icon": {
@@ -599,7 +600,7 @@ function ShellInner({
             ".MuiAlert-standardWarning": {
               backgroundColor: warnBg,
               color: warnColor,
-              borderRadius: "var(--page-card-radius, 12px)",
+              borderRadius: "var(--page-card-radius, 4px)",
               border: `1px solid ${accentBorder}`,
             },
             ".MuiAlert-standardWarning .MuiAlert-icon": {
