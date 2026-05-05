@@ -60,6 +60,12 @@ const SUBMISSION_STATUS_OPTIONS = [
   { label: "Converted", value: "converted" },
 ];
 
+const DOCUMENT_UPLOAD_MODE_OPTIONS = [
+  { value: "hidden", label: "Hidden" },
+  { value: "optional", label: "Optional" },
+  { value: "required", label: "Required" },
+];
+
 const professionLabelMap = new Map(
   PROFESSION_OPTIONS.map((option) => [option.value, option.label])
 );
@@ -90,10 +96,8 @@ const emptyTemplateForm = {
     2
   ),
   coreFields: [],
+  documentUploadMode: "optional",
 };
-
-const EMPTY_SCHEMA_TEXT = emptyTemplateForm.schemaText.trim();
-const EMPTY_FIELDS_TEXT = emptyTemplateForm.fieldsText.trim();
 
 const RESERVED_FIELD_KEYS = [
   "candidate_name",
@@ -133,6 +137,11 @@ const normaliseCoreFields = (value) => {
     });
   });
   return CORE_INTAKE_DEFAULTS.map((field) => defaults.get(field.key));
+};
+
+const normaliseDocumentUploadMode = (value) => {
+  const mode = String(value || "").trim().toLowerCase();
+  return DOCUMENT_UPLOAD_MODE_OPTIONS.some((option) => option.value === mode) ? mode : "optional";
 };
 
 const normaliseFieldKey = (value, fallback = "field") =>
@@ -353,9 +362,6 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
     );
     return value || QUESTIONNAIRE_LIMITS.maxFileMb;
   }, [attachmentsStorage]);
-
-  const attachmentsScanningEnabled =
-    attachmentsStorage?.scanning_enabled ?? attachmentsStorage?.scanningEnabled ?? QUESTIONNAIRE_LIMITS.scanningEnabled;
 
   const authHeaders = useMemo(
     () => (token ? { Authorization: `Bearer ${token}` } : {}),
@@ -682,7 +688,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
         setAttachmentsDialogLoading(false);
       }
     },
-    [enqueueSnackbar, token]
+    [enqueueSnackbar]
   );
 
   const handleCloseAttachments = useCallback(() => {
@@ -920,6 +926,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
       ...emptyTemplateForm,
       professionKey: seededProfession,
       coreFields: normaliseCoreFields([]),
+      documentUploadMode: "optional",
     };
 
     setTemplateDialogMode("create");
@@ -949,6 +956,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
           ...emptyTemplateForm,
           professionKey: seededProfession,
           coreFields: normaliseCoreFields([]),
+          documentUploadMode: "optional",
         };
         setTemplateDialogMode("create");
         setTemplateForm(nextForm);
@@ -974,7 +982,12 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
 
     setTemplateDialogMode("edit");
     setTemplateDialogError("");
-    setTemplateForm({ ...emptyTemplateForm, id: template.id, coreFields: normaliseCoreFields([]) });
+    setTemplateForm({
+      ...emptyTemplateForm,
+      id: template.id,
+      coreFields: normaliseCoreFields([]),
+      documentUploadMode: "optional",
+    });
     setTemplateDialogLoading(true);
     const result = parseTemplateFields(emptyTemplateForm.fieldsText);
     setTemplateFields(result.fields);
@@ -1008,6 +1021,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
         schemaText: JSON.stringify(data.schema || {}, null, 2),
         fieldsText: serialiseTemplateFields(fieldsResult.fields),
         coreFields: normaliseCoreFields(data.core_fields),
+        documentUploadMode: normaliseDocumentUploadMode(data?.schema?.document_upload_mode),
       });
     } catch (err) {
       const detail = err.response?.data?.error || err.message || "Failed to load template";
@@ -1079,6 +1093,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
       schemaText: nextSchema,
       fieldsText: nextFieldsText,
       coreFields: normaliseCoreFields(prev.coreFields),
+      documentUploadMode: prev.documentUploadMode || "optional",
     }));
   }, [defaultBlueprint, templateFieldMap, templateForm.professionKey, templateForm.schemaText, templateForm.fieldsText]);
   const handleTemplateSubmit = async () => {
@@ -1164,6 +1179,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
 
     const mergedSchema = {
       ...(schema && typeof schema === 'object' && !Array.isArray(schema) ? schema : {}),
+      document_upload_mode: normaliseDocumentUploadMode(templateForm.documentUploadMode),
       fields: schemaSectionFields,
       sections: schemaSections,
     };
@@ -1857,6 +1873,30 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
                 <Typography variant="body2" color="text.secondary">
                   Control the fixed booking basics here. Keep custom questions in the field builder below.
                 </Typography>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Document upload
+                    </Typography>
+                    <TextField
+                      select
+                      label="Mode"
+                      value={normaliseDocumentUploadMode(templateForm.documentUploadMode)}
+                      onChange={handleTemplateFormChange("documentUploadMode")}
+                      size="small"
+                      sx={{ maxWidth: 220 }}
+                    >
+                      {DOCUMENT_UPLOAD_MODE_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <Typography variant="body2" color="text.secondary">
+                      This controls whether the candidate must upload a resume or supporting document during intake.
+                    </Typography>
+                  </Stack>
+                </Paper>
                 {normaliseCoreFields(templateForm.coreFields).map((field) => (
                   <Paper key={field.key} variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1.5}>
@@ -1983,5 +2023,3 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
   });
 
 export default CandidateFormsPanel;
-
-
