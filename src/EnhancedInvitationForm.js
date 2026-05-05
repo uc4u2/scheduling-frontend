@@ -450,6 +450,13 @@ const BOOKING_CAPTURED_FIELD_KEYS = new Set([
 ]);
 
 const RECRUITER_DEFAULTS_KEY = "recruiterDefaults";
+const CORE_INTAKE_FIELD_DEFAULTS = [
+  { key: "candidateName", label: "Your name", mode: "required" },
+  { key: "candidateEmail", label: "Email", mode: "required" },
+  { key: "candidatePhone", label: "Phone number", mode: "required" },
+  { key: "candidatePosition", label: "Purpose of this appointment", mode: "required" },
+  { key: "linkedin", label: "Reference link (optional)", mode: "optional" },
+];
 
 const normaliseInvitationDefaults = (value) => {
   const payload = value && typeof value === "object" ? value : {};
@@ -485,6 +492,24 @@ const normaliseInvitationDefaults = (value) => {
     ...payload,
     candidateExperienceByProfession: normalisedByProfession,
   };
+};
+
+const normaliseCoreIntakeFields = (value) => {
+  const defaults = new Map(CORE_INTAKE_FIELD_DEFAULTS.map((field) => [field.key, { ...field }]));
+  const incoming = Array.isArray(value) ? value : [];
+  incoming.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const key = String(item.key || "").trim();
+    if (!defaults.has(key)) return;
+    const current = defaults.get(key);
+    const mode = String(item.mode || current.mode).trim().toLowerCase();
+    defaults.set(key, {
+      ...current,
+      label: String(item.label || current.label).trim() || current.label,
+      mode: ["hidden", "optional", "required"].includes(mode) ? mode : current.mode,
+    });
+  });
+  return CORE_INTAKE_FIELD_DEFAULTS.map((field) => defaults.get(field.key));
 };
 
 const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate }) => {
@@ -720,6 +745,37 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       .filter(Boolean)
       .slice(0, 4);
   }, [selectedTemplate]);
+
+  const candidatePreviewDetails = useMemo(() => {
+    const coreFields = normaliseCoreIntakeFields(selectedTemplate?.core_fields);
+    const visibleCoreFields = coreFields.filter((field) => field.mode !== "hidden");
+    const hiddenCoreFields = coreFields.filter((field) => field.mode === "hidden");
+    const customFields = (Array.isArray(selectedTemplate?.fields) ? selectedTemplate.fields : [])
+      .filter((field) => !BOOKING_CAPTURED_FIELD_KEYS.has(String(field?.key || "").trim().toLowerCase()))
+      .filter((field) => field?.config?.hidden !== true)
+      .filter((field) => !String(field?.key || "").trim().toLowerCase().startsWith("__placeholder"))
+      .map((field) => ({
+        label: field?.label || field?.key || "Field",
+        required: field?.is_required !== false,
+      }));
+    const questionnaires = profession === "doctor"
+      ? selectedQuestionnaires
+          .map((assignment) => {
+            const templateMatch = availableQuestionnaires.find((item) => item.id === assignment.template_id);
+            return {
+              id: assignment.template_id,
+              label: templateMatch?.name || `Questionnaire #${assignment.template_id}`,
+              required: assignment.required !== false,
+            };
+          })
+      : [];
+    return {
+      visibleCoreFields,
+      hiddenCoreFields,
+      customFields,
+      questionnaires,
+    };
+  }, [availableQuestionnaires, profession, selectedQuestionnaires, selectedTemplate]);
 
   const extractSubjectAndBody = (rawTemplate) => {
     if (!rawTemplate || typeof rawTemplate !== "string") {
@@ -2310,7 +2366,8 @@ const handlePreview = () => {
                   </Stack>
                 </AccordionSummary>
                 <AccordionDetails>
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  <Stack spacing={2}>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                     <Chip size="small" label={`Profession: ${professionLabel}`} />
                     <Chip
                       size="small"
@@ -2355,6 +2412,68 @@ const handlePreview = () => {
                     )}
                     {requiredVisibleFieldLabels.length > 0 && (
                       <Chip size="small" label={`Required fields: ${requiredVisibleFieldLabels.join(", ")}`} />
+                    )}
+                    </Stack>
+
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        Candidate will see
+                      </Typography>
+                      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                        {candidatePreviewDetails.visibleCoreFields.map((field) => (
+                          <Chip
+                            key={field.key}
+                            size="small"
+                            variant="outlined"
+                            label={`${field.label}${field.mode === "required" ? " *" : ""}`}
+                          />
+                        ))}
+                        {candidatePreviewDetails.visibleCoreFields.length === 0 && (
+                          <Typography variant="body2" color="text.secondary">
+                            No core intake fields are visible.
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Stack>
+
+                    {candidatePreviewDetails.customFields.length > 0 && (
+                      <Stack spacing={1}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          Additional form fields
+                        </Typography>
+                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                          {candidatePreviewDetails.customFields.map((field, index) => (
+                            <Chip
+                              key={`${field.label}-${index}`}
+                              size="small"
+                              label={`${field.label}${field.required ? " *" : ""}`}
+                            />
+                          ))}
+                        </Stack>
+                      </Stack>
+                    )}
+
+                    {candidatePreviewDetails.questionnaires.length > 0 && (
+                      <Stack spacing={1}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          Attached questionnaires
+                        </Typography>
+                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                          {candidatePreviewDetails.questionnaires.map((field) => (
+                            <Chip
+                              key={field.id}
+                              size="small"
+                              label={`${field.label}${field.required ? " *" : ""}`}
+                            />
+                          ))}
+                        </Stack>
+                      </Stack>
+                    )}
+
+                    {candidatePreviewDetails.hiddenCoreFields.length > 0 && (
+                      <Typography variant="body2" color="text.secondary">
+                        Hidden from candidate: {candidatePreviewDetails.hiddenCoreFields.map((field) => field.label).join(", ")}.
+                      </Typography>
                     )}
                   </Stack>
                 </AccordionDetails>
