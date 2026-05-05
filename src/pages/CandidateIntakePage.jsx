@@ -47,6 +47,42 @@ const BOOKING_CAPTURED_KEYS = new Set([
   
 ]);
 
+const CORE_FIELD_DEFAULTS = [
+  { key: "candidateName", label: "Your name", placeholder: "", help_text: "", mode: "required" },
+  { key: "candidateEmail", label: "Email", placeholder: "", help_text: "", mode: "required" },
+  { key: "candidatePhone", label: "Phone number", placeholder: "", help_text: "", mode: "required" },
+  { key: "candidatePosition", label: "Purpose of this appointment", placeholder: "", help_text: "", mode: "required" },
+  { key: "linkedin", label: "Reference link (optional)", placeholder: "", help_text: "", mode: "optional" },
+];
+
+const CORE_FIELD_VALUE_MAP = {
+  candidateName: "candidateName",
+  candidateEmail: "candidateEmail",
+  candidatePhone: "candidatePhone",
+  candidatePosition: "candidatePosition",
+  linkedin: "linkedin",
+};
+
+const normaliseCoreFields = (value) => {
+  const defaults = new Map(CORE_FIELD_DEFAULTS.map((field) => [field.key, { ...field }]));
+  const incoming = Array.isArray(value) ? value : [];
+  incoming.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const key = String(item.key || "").trim();
+    if (!defaults.has(key)) return;
+    const current = defaults.get(key);
+    const mode = String(item.mode || current.mode).trim().toLowerCase();
+    defaults.set(key, {
+      ...current,
+      label: String(item.label || current.label).trim() || current.label,
+      placeholder: String(item.placeholder || "").trim(),
+      help_text: String(item.help_text || "").trim(),
+      mode: ["hidden", "optional", "required"].includes(mode) ? mode : current.mode,
+    });
+  });
+  return CORE_FIELD_DEFAULTS.map((field) => defaults.get(field.key));
+};
+
 const normaliseOptions = (options) => {
   if (!options) return [];
   if (Array.isArray(options)) {
@@ -211,6 +247,11 @@ const CandidateIntakePage = () => {
     candidatePosition: "",
     linkedin: "",
   });
+
+  const visibleCoreFields = useMemo(
+    () => normaliseCoreFields(template?.core_fields).filter((field) => field.mode !== "hidden"),
+    [template?.core_fields]
+  );
 
   const [questionnaires, setQuestionnaires] = useState([]);
   const [storageInfo, setStorageInfo] = useState(QUESTIONNAIRE_LIMITS);
@@ -642,8 +683,15 @@ const CandidateIntakePage = () => {
       return;
     }
     const { candidateName, candidateEmail, candidatePhone, candidatePosition, linkedin } = candidateBasics;
-    if (!candidateName || !candidateEmail || !candidatePhone || !candidatePosition) {
-      setBookingMessage({ severity: "warning", message: "Please provide your name, email, phone, and position before booking." });
+    const missingRequiredCoreFields = normaliseCoreFields(template?.core_fields).filter((field) => {
+      if (field.mode !== "required") {
+        return false;
+      }
+      const targetKey = CORE_FIELD_VALUE_MAP[field.key];
+      return targetKey ? !String(candidateBasics[targetKey] || "").trim() : false;
+    });
+    if (missingRequiredCoreFields.length) {
+      setBookingMessage({ severity: "warning", message: "Please provide all required details before booking." });
       return;
     }
     setBookingMessage({ severity: "info", message: "" });
@@ -709,7 +757,7 @@ const CandidateIntakePage = () => {
     } finally {
       setBookingSaving(false);
     }
-  }, [submission?.recruiter_id, selectedSlot, candidateBasics, resumeFile, token, timezone]);
+  }, [submission?.recruiter_id, selectedSlot, candidateBasics, resumeFile, token, timezone, template?.core_fields]);
 
 
   const handleSubmit = useCallback(async () => {
@@ -747,6 +795,18 @@ const CandidateIntakePage = () => {
 
     if (documentUploadMode === "required" && !resumeFile && !hasExistingDocument) {
       setError("Please upload the required document before submitting.");
+      return;
+    }
+
+    const missingRequiredCoreFields = normaliseCoreFields(template?.core_fields).filter((field) => {
+      if (field.mode !== "required") {
+        return false;
+      }
+      const targetKey = CORE_FIELD_VALUE_MAP[field.key];
+      return targetKey ? !String(candidateBasics[targetKey] || "").trim() : false;
+    });
+    if (missingRequiredCoreFields.length) {
+      setError("Please complete all required details before submitting.");
       return;
     }
 
@@ -802,7 +862,7 @@ const CandidateIntakePage = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [token, responses, bookingRequired, bookingSuccess, isReadOnly, questionnaires, submissionFiles, documentUploadMode, resumeFile, hasExistingDocument]);
+  }, [token, responses, bookingRequired, bookingSuccess, isReadOnly, questionnaires, submissionFiles, documentUploadMode, resumeFile, hasExistingDocument, candidateBasics, template?.core_fields]);
 
   const heading = submission?.invite_name || template?.name || "Candidate intake";
   const description = template?.description || "Please complete the following information.";
@@ -1227,46 +1287,26 @@ const CandidateIntakePage = () => {
 
             <Box>
               <Stack spacing={2} sx={{ mt: 3 }}>
-                <TextField
-                  label="Your name"
-                  value={candidateBasics.candidateName}
-                  onChange={handleBasicsChange("candidateName")}
-                  required
-                  fullWidth
-                  disabled={bookingSaving || bookingSuccess}
-                />
-                <TextField
-                  label="Email"
-                  type="email"
-                  value={candidateBasics.candidateEmail}
-                  onChange={handleBasicsChange("candidateEmail")}
-                  required
-                  fullWidth
-                  disabled={bookingSaving || bookingSuccess}
-                />
-                <TextField
-                  label="Phone number"
-                  value={candidateBasics.candidatePhone}
-                  onChange={handleBasicsChange("candidatePhone")}
-                  required
-                  fullWidth
-                  disabled={bookingSaving || bookingSuccess}
-                />
-                <TextField
-                  label="Purpose of this appointment"
-                  value={candidateBasics.candidatePosition}
-                  onChange={handleBasicsChange("candidatePosition")}
-                  required
-                  fullWidth
-                  disabled={bookingSaving || bookingSuccess}
-                />
-                <TextField
-                  label="Reference link (optional)"
-                  value={candidateBasics.linkedin}
-                  onChange={handleBasicsChange("linkedin")}
-                  fullWidth
-                  disabled={bookingSaving || bookingSuccess}
-                />
+                {visibleCoreFields.map((field) => {
+                  const targetKey = CORE_FIELD_VALUE_MAP[field.key];
+                  if (!targetKey) {
+                    return null;
+                  }
+                  return (
+                    <TextField
+                      key={field.key}
+                      label={field.label}
+                      placeholder={field.placeholder || undefined}
+                      helperText={field.help_text || undefined}
+                      type={field.key === "candidateEmail" ? "email" : "text"}
+                      value={candidateBasics[targetKey]}
+                      onChange={handleBasicsChange(targetKey)}
+                      required={field.mode === "required"}
+                      fullWidth
+                      disabled={bookingSaving || bookingSuccess}
+                    />
+                  );
+                })}
                 {documentUploadMode !== "hidden" && (
                   <Box>
                     <Typography variant="body2" color="text.secondary" gutterBottom>

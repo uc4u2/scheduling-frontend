@@ -89,6 +89,7 @@ const emptyTemplateForm = {
     null,
     2
   ),
+  coreFields: [],
 };
 
 const EMPTY_SCHEMA_TEXT = emptyTemplateForm.schemaText.trim();
@@ -99,6 +100,40 @@ const RESERVED_FIELD_KEYS = [
   "candidate_email",
   "candidate_phone",
 ];
+
+const CORE_FIELD_MODE_OPTIONS = [
+  { value: "hidden", label: "Hidden" },
+  { value: "optional", label: "Optional" },
+  { value: "required", label: "Required" },
+];
+
+const CORE_INTAKE_DEFAULTS = [
+  { key: "candidateName", label: "Your name", placeholder: "", help_text: "", mode: "required" },
+  { key: "candidateEmail", label: "Email", placeholder: "", help_text: "", mode: "required" },
+  { key: "candidatePhone", label: "Phone number", placeholder: "", help_text: "", mode: "required" },
+  { key: "candidatePosition", label: "Purpose of this appointment", placeholder: "", help_text: "", mode: "required" },
+  { key: "linkedin", label: "Reference link (optional)", placeholder: "", help_text: "", mode: "optional" },
+];
+
+const normaliseCoreFields = (value) => {
+  const defaults = new Map(CORE_INTAKE_DEFAULTS.map((field) => [field.key, { ...field }]));
+  const incoming = Array.isArray(value) ? value : [];
+  incoming.forEach((item) => {
+    if (!item || typeof item !== "object") return;
+    const key = String(item.key || "").trim();
+    if (!defaults.has(key)) return;
+    const current = defaults.get(key);
+    const mode = String(item.mode || current.mode).trim().toLowerCase();
+    defaults.set(key, {
+      ...current,
+      label: String(item.label || current.label).trim() || current.label,
+      placeholder: String(item.placeholder || "").trim(),
+      help_text: String(item.help_text || "").trim(),
+      mode: CORE_FIELD_MODE_OPTIONS.some((option) => option.value === mode) ? mode : current.mode,
+    });
+  });
+  return CORE_INTAKE_DEFAULTS.map((field) => defaults.get(field.key));
+};
 
 const normaliseFieldKey = (value, fallback = "field") =>
   String(value || fallback)
@@ -207,7 +242,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templateDialogMode, setTemplateDialogMode] = useState("create");
   const [templateDialogLoading, setTemplateDialogLoading] = useState(false);
-  const [templateForm, setTemplateForm] = useState(emptyTemplateForm);
+  const [templateForm, setTemplateForm] = useState({ ...emptyTemplateForm, coreFields: normaliseCoreFields([]) });
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateDialogError, setTemplateDialogError] = useState("");
 
@@ -875,13 +910,17 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
     setTemplateDialogOpen(false);
     setTemplateDialogError("");
     setTemplateDialogLoading(false);
-    setTemplateForm(emptyTemplateForm);
+    setTemplateForm({ ...emptyTemplateForm, coreFields: normaliseCoreFields([]) });
   };
 
   const openCreateTemplate = () => {
     const seededProfession =
       templateProfession || effectiveProfessionKey || defaultProfessionKey || "";
-    const nextForm = { ...emptyTemplateForm, professionKey: seededProfession };
+    const nextForm = {
+      ...emptyTemplateForm,
+      professionKey: seededProfession,
+      coreFields: normaliseCoreFields([]),
+    };
 
     setTemplateDialogMode("create");
     setTemplateForm(nextForm);
@@ -906,7 +945,11 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
         }
         const seededProfession =
           professionKey || templateProfession || effectiveProfessionKey || defaultProfessionKey || "";
-        const nextForm = { ...emptyTemplateForm, professionKey: seededProfession };
+        const nextForm = {
+          ...emptyTemplateForm,
+          professionKey: seededProfession,
+          coreFields: normaliseCoreFields([]),
+        };
         setTemplateDialogMode("create");
         setTemplateForm(nextForm);
         setTemplateDialogError("");
@@ -931,7 +974,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
 
     setTemplateDialogMode("edit");
     setTemplateDialogError("");
-    setTemplateForm({ ...emptyTemplateForm, id: template.id });
+    setTemplateForm({ ...emptyTemplateForm, id: template.id, coreFields: normaliseCoreFields([]) });
     setTemplateDialogLoading(true);
     const result = parseTemplateFields(emptyTemplateForm.fieldsText);
     setTemplateFields(result.fields);
@@ -964,6 +1007,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
         emailBody: data.email_body || "",
         schemaText: JSON.stringify(data.schema || {}, null, 2),
         fieldsText: serialiseTemplateFields(fieldsResult.fields),
+        coreFields: normaliseCoreFields(data.core_fields),
       });
     } catch (err) {
       const detail = err.response?.data?.error || err.message || "Failed to load template";
@@ -979,6 +1023,18 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
     if (field === "fieldsText") {
       synchroniseTemplateFieldsFromText(value);
     }
+  };
+
+  const handleCoreFieldChange = (fieldKey, prop) => (event) => {
+    const value = event.target.value;
+    setTemplateForm((prev) => ({
+      ...prev,
+      coreFields: normaliseCoreFields(
+        (prev.coreFields || []).map((field) =>
+          field.key === fieldKey ? { ...field, [prop]: value } : field
+        )
+      ),
+    }));
   };
 
   const handleApplyDefaultTemplate = useCallback(() => {
@@ -1022,8 +1078,9 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
       emailBody: blueprint.emailBody,
       schemaText: nextSchema,
       fieldsText: nextFieldsText,
+      coreFields: normaliseCoreFields(prev.coreFields),
     }));
-  }, [defaultBlueprint, templateForm.professionKey, templateForm.schemaText, templateForm.fieldsText]);
+  }, [defaultBlueprint, templateFieldMap, templateForm.professionKey, templateForm.schemaText, templateForm.fieldsText]);
   const handleTemplateSubmit = async () => {
     const isEdit = templateDialogMode === "edit";
 
@@ -1128,6 +1185,7 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
       email_body: templateForm.emailBody,
       schema: mergedSchema,
       fields,
+      core_fields: normaliseCoreFields(templateForm.coreFields),
     };
 
     try {
@@ -1794,6 +1852,65 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
 
               <Divider flexItem />
 
+              <Stack spacing={2}>
+                <Typography variant="h6">Core intake fields</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Control the fixed booking basics here. Keep custom questions in the field builder below.
+                </Typography>
+                {normaliseCoreFields(templateForm.coreFields).map((field) => (
+                  <Paper key={field.key} variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1.5}>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                        <TextField
+                          label="Field"
+                          value={field.key}
+                          size="small"
+                          disabled
+                          sx={{ minWidth: 180 }}
+                        />
+                        <TextField
+                          select
+                          label="Mode"
+                          value={field.mode}
+                          size="small"
+                          onChange={handleCoreFieldChange(field.key, "mode")}
+                          sx={{ minWidth: 160 }}
+                        >
+                          {CORE_FIELD_MODE_OPTIONS.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Stack>
+                      <TextField
+                        label="Label"
+                        value={field.label}
+                        onChange={handleCoreFieldChange(field.key, "label")}
+                        fullWidth
+                        size="small"
+                      />
+                      <TextField
+                        label="Placeholder"
+                        value={field.placeholder}
+                        onChange={handleCoreFieldChange(field.key, "placeholder")}
+                        fullWidth
+                        size="small"
+                      />
+                      <TextField
+                        label="Help text"
+                        value={field.help_text}
+                        onChange={handleCoreFieldChange(field.key, "help_text")}
+                        fullWidth
+                        size="small"
+                      />
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+
+              <Divider flexItem />
+
               <TemplateFieldBuilder
                 fields={templateFields}
                 onChange={handleTemplateFieldsChange}
@@ -1866,12 +1983,5 @@ const CandidateFormsPanel = forwardRef(({ token, apiUrl }, ref) => {
   });
 
 export default CandidateFormsPanel;
-
-
-
-
-
-
-
 
 
