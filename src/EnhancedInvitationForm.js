@@ -10,7 +10,6 @@ import {
   AccordionSummary,
   AccordionDetails,
   MenuItem,
-  Divider,
   Drawer,
   Stack,
   Checkbox,
@@ -512,6 +511,31 @@ const normaliseCoreIntakeFields = (value) => {
   return CORE_INTAKE_FIELD_DEFAULTS.map((field) => defaults.get(field.key));
 };
 
+const INVITE_NAME_FIELDS = {
+  recruiter: ["candidateName"],
+  custom: ["candidateName", "clientName"],
+  teacher: ["parentName", "studentName", "clientName"],
+  fitness_coach: ["clientName"],
+  therapist: ["clientName"],
+  doctor: ["patientName", "clientName"],
+  photographer: ["clientName"],
+  consultant: ["clientName"],
+  lawyer: ["clientName"],
+  real_estate: ["clientName"],
+  salon: ["clientName"],
+  tax_advisor: ["clientName"],
+  financial_advisor: ["clientName"],
+  tutor: ["studentName", "clientName"],
+  event_planner: ["clientName"],
+  contractor: ["clientName"],
+  coach_life: ["clientName"],
+  it_support: ["clientName"],
+  repair_service: ["clientName"],
+  counselor: ["clientName"],
+  notary: ["clientName"],
+  cleaning: ["clientName"],
+};
+
 const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate }) => {
   const theme = useTheme();
   const [isInitialising, setIsInitialising] = useState(true);
@@ -557,8 +581,8 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
   const selectedDocumentUploadLabel =
     DOCUMENT_UPLOAD_MODE_OPTIONS.find((option) => option.value === documentUploadMode)?.label || "Optional";
   const candidatePreviewSummary = sendWithoutForm
-    ? `Candidate form not attached · Document upload ${selectedDocumentUploadLabel.toLowerCase()}`
-    : `Candidate form selected · Document upload ${selectedDocumentUploadLabel.toLowerCase()}`;
+    ? `Booking link only · document upload ${selectedDocumentUploadLabel.toLowerCase()}`
+    : `Form + booking link · document upload ${selectedDocumentUploadLabel.toLowerCase()}`;
 
 
   // Updated formData with all profession fields (as you requested)
@@ -653,32 +677,7 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
 
   const toSnakeCase = (value) => value.replace(/([A-Z])/g, "_$1").toLowerCase();
 
-  const INVITE_NAME_FIELDS = {
-    recruiter: ['candidateName'],
-    custom: ['candidateName', 'clientName'],
-    teacher: ['parentName', 'studentName', 'clientName'],
-    fitness_coach: ['clientName'],
-    therapist: ['clientName'],
-    doctor: ['patientName', 'clientName'],
-    photographer: ['clientName'],
-    consultant: ['clientName'],
-    lawyer: ['clientName'],
-    real_estate: ['clientName'],
-    salon: ['clientName'],
-    tax_advisor: ['clientName'],
-    financial_advisor: ['clientName'],
-    tutor: ['studentName', 'clientName'],
-    event_planner: ['clientName'],
-    contractor: ['clientName'],
-    coach_life: ['clientName'],
-    it_support: ['clientName'],
-    repair_service: ['clientName'],
-    counselor: ['clientName'],
-    notary: ['clientName'],
-    cleaning: ['clientName'],
-  };
-
-  const resolveInviteName = () => {
+  const resolveInviteName = useCallback(() => {
     const fields = INVITE_NAME_FIELDS[profession] || ['clientName', 'parentName', 'studentName', 'patientName', 'candidateName', 'recruiterName'];
     for (const field of fields) {
       const value = formData[field];
@@ -687,9 +686,9 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       }
     }
     return '';
-  };
+  }, [formData, profession]);
 
-  const buildTemplateVariables = () => {
+  const buildTemplateVariables = useCallback(() => {
     const variables = {};
     Object.keys(formData).forEach((key) => {
       const snakeKey = toSnakeCase(key);
@@ -727,7 +726,7 @@ const EnhancedInvitationForm = ({ token, embedded = false, onOpenCreateTemplate 
       variables.candidate_email = clientEmail;
     }
     return variables;
-  };
+  }, [formData, profession, professionOptions, resolveInviteName, selectedTemplate?.name]);
 
   const templateQuestionnaireCount = useMemo(() => {
     if (profession !== "doctor") {
@@ -2368,56 +2367,56 @@ const handlePreview = () => {
                 <AccordionDetails>
                   <Stack spacing={2}>
                     <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    <Chip size="small" label={`Profession: ${professionLabel}`} />
-                    <Chip
-                      size="small"
-                      label={`Candidate form: ${sendWithoutForm ? "None" : (selectedTemplate?.name || "None")}`}
-                      sx={
-                        sendWithoutForm
-                          ? undefined
-                          : {
-                              backgroundColor: "primary.50",
-                              borderColor: "primary.200",
-                              color: "primary.dark",
-                              fontWeight: 600,
-                            }
-                      }
-                      variant={sendWithoutForm ? "filled" : "outlined"}
-                    />
-                    <Chip size="small" label={`Document upload: ${selectedDocumentUploadLabel}`} />
-                    <Chip
-                      size="small"
-                      label="Booking link: Yes"
-                      sx={{
-                        backgroundColor: "success.50",
-                        borderColor: "success.200",
-                        color: "success.dark",
-                        fontWeight: 600,
-                      }}
-                      variant="outlined"
-                    />
-                    <Chip
-                      size="small"
-                      label="Email includes booking/profile link: Yes"
-                      sx={{
-                        backgroundColor: "success.50",
-                        borderColor: "success.200",
-                        color: "success.dark",
-                        fontWeight: 600,
-                      }}
-                      variant="outlined"
-                    />
-                    {templateQuestionnaireCount > 0 && (
-                      <Chip size="small" label={`Questionnaires: ${templateQuestionnaireCount}`} />
-                    )}
-                    {requiredVisibleFieldLabels.length > 0 && (
-                      <Chip size="small" label={`Required fields: ${requiredVisibleFieldLabels.join(", ")}`} />
-                    )}
+                      <Chip size="small" label={`Profession: ${professionLabel}`} />
+                      <Chip
+                        size="small"
+                        label={`Candidate form: ${sendWithoutForm ? "None" : (selectedTemplate?.name || "None")}`}
+                        sx={
+                          sendWithoutForm
+                            ? undefined
+                            : {
+                                backgroundColor: "primary.50",
+                                borderColor: "primary.200",
+                                color: "primary.dark",
+                                fontWeight: 600,
+                              }
+                        }
+                        variant={sendWithoutForm ? "filled" : "outlined"}
+                      />
+                      <Chip size="small" label={`Document upload: ${selectedDocumentUploadLabel}`} />
+                      <Chip
+                        size="small"
+                        label="Booking link: Yes"
+                        sx={{
+                          backgroundColor: "success.50",
+                          borderColor: "success.200",
+                          color: "success.dark",
+                          fontWeight: 600,
+                        }}
+                        variant="outlined"
+                      />
+                      <Chip
+                        size="small"
+                        label="Email includes booking/profile link: Yes"
+                        sx={{
+                          backgroundColor: "success.50",
+                          borderColor: "success.200",
+                          color: "success.dark",
+                          fontWeight: 600,
+                        }}
+                        variant="outlined"
+                      />
+                      {templateQuestionnaireCount > 0 && (
+                        <Chip size="small" label={`Questionnaires: ${templateQuestionnaireCount}`} />
+                      )}
+                      {requiredVisibleFieldLabels.length > 0 && (
+                        <Chip size="small" label={`Required fields: ${requiredVisibleFieldLabels.join(", ")}`} />
+                      )}
                     </Stack>
 
                     <Stack spacing={1}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        Candidate will see
+                        Candidate sees
                       </Typography>
                       <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                         {candidatePreviewDetails.visibleCoreFields.map((field) => (
@@ -2430,7 +2429,7 @@ const handlePreview = () => {
                         ))}
                         {candidatePreviewDetails.visibleCoreFields.length === 0 && (
                           <Typography variant="body2" color="text.secondary">
-                            No core intake fields are visible.
+                            No core intake fields are shown.
                           </Typography>
                         )}
                       </Stack>
@@ -2472,7 +2471,7 @@ const handlePreview = () => {
 
                     {candidatePreviewDetails.hiddenCoreFields.length > 0 && (
                       <Typography variant="body2" color="text.secondary">
-                        Hidden from candidate: {candidatePreviewDetails.hiddenCoreFields.map((field) => field.label).join(", ")}.
+                        Not shown to candidate: {candidatePreviewDetails.hiddenCoreFields.map((field) => field.label).join(", ")}.
                       </Typography>
                     )}
                   </Stack>
