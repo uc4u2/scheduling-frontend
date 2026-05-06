@@ -747,6 +747,84 @@ featureStories: () => ({
       ],
     },
   }),
+  serviceHoverSlider: () => ({
+    type: "serviceHoverSlider",
+    props: {
+      title: "Services we provide",
+      subtitle: "",
+      cardsDesktop: 4,
+      cardsTablet: 2,
+      cardsMobile: 1,
+      gap: 12,
+      imageHeight: 392,
+      zoomScale: 1.08,
+      showDots: true,
+      showArrows: true,
+      maxWidth: "xl",
+      items: [
+        {
+          title: "Facials and Peels",
+          image: "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Microneedling",
+          image: "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Laser Facials",
+          image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Body Treatments",
+          image: "https://images.unsplash.com/photo-1519415943484-9fa1873496d4?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Skin Tightening",
+          image: "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Wellness Therapy",
+          image: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Skin Rejuvenation",
+          image: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Hydration Therapy",
+          image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Glow Facials",
+          image: "https://images.unsplash.com/photo-1600334129128-685c5582fd35?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Brows and Lashes",
+          image: "https://images.unsplash.com/photo-1620331311520-246422fd82f9?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Relaxation Massage",
+          image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+        {
+          title: "Reflexology",
+          image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=1200&auto=format&fit=crop",
+          link: "?page=services-classic",
+        },
+      ],
+    },
+  }),
   contact: () => ({
     type: "contact",
     props: {

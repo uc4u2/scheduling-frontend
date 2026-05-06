@@ -577,6 +577,33 @@ featureStories: {
     ],
   },
 
+  serviceHoverSlider: {
+    fields: [
+      { name: "title", type: "string", label: "Section title" },
+      { name: "subtitle", type: "text", label: "Subtitle (optional)" },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Slides",
+        fields: [
+          { name: "title", type: "string", label: "Title" },
+          { name: "image", type: "image", label: "Image" },
+          { name: "link", type: "string", label: "Link (optional)" },
+        ],
+      },
+      { name: "cardsDesktop", type: "number", label: "Cards on desktop" },
+      { name: "cardsTablet", type: "number", label: "Cards on tablet" },
+      { name: "cardsMobile", type: "number", label: "Cards on mobile" },
+      { name: "gap", type: "number", label: "Gap (px)" },
+      { name: "imageHeight", type: "number", label: "Image height (px)" },
+      { name: "zoomScale", type: "number", label: "Hover zoom" },
+      { name: "showArrows", type: "boolean", label: "Show arrows" },
+      { name: "showDots", type: "boolean", label: "Show dots" },
+      { name: "titleAlign", type: "string", label: "Title alignment" },
+      { name: "maxWidth", type: "string", label: "Max width" },
+    ],
+  },
+
   footer: {
     fields: [
       { name: "text", type: "string", label: "Text" },

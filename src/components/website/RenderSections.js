@@ -1515,6 +1515,251 @@ const ServiceGrid = ({
   );
 };
 
+const ServiceHoverSlider = ({
+  title,
+  subtitle,
+  items = [],
+  titleAlign = "center",
+  maxWidth = "full",
+  cardsDesktop = 4,
+  cardsTablet = 2,
+  cardsMobile = 1,
+  gap = 12,
+  imageHeight = 392,
+  zoomScale = 1.08,
+  showArrows = true,
+  showDots = true,
+}) => {
+  const entries = toArray(items)
+    .map((item) => ({
+      title: toPlain(item?.title ?? item?.name ?? ""),
+      image: item?.image || item?.imageUrl || "",
+      link: item?.link || item?.href || item?.ctaLink || "",
+    }))
+    .filter((item) => item.title || item.image);
+
+  const theme = useTheme();
+  const mdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const smUp = useMediaQuery(theme.breakpoints.up("sm"));
+  const reduced = usePrefersReducedMotion();
+
+  const perDesktop = clamp(Number(cardsDesktop) || 4, 1, 6);
+  const perTablet = clamp(Number(cardsTablet) || 2, 1, perDesktop);
+  const perMobile = clamp(Number(cardsMobile) || 1, 1, perTablet);
+  const cardsPerView = mdUp ? perDesktop : smUp ? perTablet : perMobile;
+  const safeGap = clamp(Number(gap) || 12, 0, 40);
+  const safeHeight = clamp(Number(imageHeight) || 392, 220, 620);
+  const safeScale = clamp(Number(zoomScale) || 1.08, 1, 1.3);
+  const pageCount = Math.max(1, entries.length - cardsPerView + 1);
+
+  const [index, setIndex, setPaused] = useAutoplay(pageCount, 4800, reduced || pageCount <= 1);
+
+  useEffect(() => {
+    setIndex((prev) => {
+      if (prev >= pageCount) return Math.max(0, pageCount - 1);
+      return prev;
+    });
+  }, [pageCount, setIndex]);
+
+  if (!entries.length) return null;
+
+  const trackWidth = `${(entries.length / cardsPerView) * 100}%`;
+  const slideWidth = `${100 / entries.length}%`;
+  const translate = `-${(100 / entries.length) * index}%`;
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)} disableGutters={maxWidth === "full"}>
+      {title && (
+        <HtmlTypo
+          variant="h3"
+          sx={{
+            mb: subtitle ? 1.5 : 3,
+            fontWeight: 400,
+            textAlign: titleAlign,
+            color: "var(--page-heading-color, currentColor)",
+          }}
+        >
+          {title}
+        </HtmlTypo>
+      )}
+      {subtitle && (
+        <HtmlTypo
+          variant="body1"
+          sx={{
+            mb: 4,
+            textAlign: titleAlign,
+            color: "var(--page-body-color, text.secondary)",
+          }}
+        >
+          {subtitle}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{ position: "relative" }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <Box sx={{ overflow: "hidden", px: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              width: trackWidth,
+              transform: `translateX(${translate})`,
+              transition: "transform 420ms cubic-bezier(.2,.8,.2,1)",
+            }}
+          >
+            {entries.map((item, idx) => {
+              const content = (
+                <Box
+                  sx={{
+                    position: "relative",
+                    height: safeHeight,
+                    borderRadius: websiteRadius(4),
+                    overflow: "hidden",
+                    backgroundColor: "#f4f4f4",
+                    boxShadow: "0 12px 26px rgba(15,23,42,0.08)",
+                    "& img": {
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                      filter: "grayscale(1)",
+                      transform: "scale(1)",
+                      transition: "transform 360ms ease, filter 360ms ease",
+                    },
+                    "&:hover img": {
+                      filter: "grayscale(0)",
+                      transform: `scale(${safeScale})`,
+                    },
+                    "&:hover .service-hover-slider-label": {
+                      transform: "translate(-50%, -50%) scale(1.04)",
+                    },
+                  }}
+                >
+                  {item.image ? (
+                    <Box
+                      component="img"
+                      src={buildImgixUrl(item.image, { w: 1400, fit: "crop" })}
+                      alt={item.title || ""}
+                      loading="lazy"
+                    />
+                  ) : null}
+                  <Box
+                    className="service-hover-slider-label"
+                    sx={{
+                      position: "absolute",
+                      left: "50%",
+                      top: "50%",
+                      transform: "translate(-50%, -50%)",
+                      transition: "transform 320ms ease",
+                      px: 2,
+                      width: "100%",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        textAlign: "center",
+                        color: "#121212",
+                        fontSize: { xs: "1.5rem", md: "1.8rem" },
+                        lineHeight: 1.1,
+                        textShadow: "0 1px 1px rgba(255,255,255,0.4)",
+                      }}
+                    >
+                      {item.title}
+                    </Typography>
+                  </Box>
+                </Box>
+              );
+
+              return (
+                <Box
+                  key={idx}
+                  sx={{
+                    width: slideWidth,
+                    flex: `0 0 ${slideWidth}`,
+                    px: `${safeGap / 2}px`,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {item.link ? (
+                    <Box component="a" href={item.link} sx={{ display: "block", textDecoration: "none", color: "inherit" }}>
+                      {content}
+                    </Box>
+                  ) : (
+                    content
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+        {showArrows && pageCount > 1 && (
+          <>
+            <IconButton
+              onClick={() => setIndex((prev) => (prev === 0 ? pageCount - 1 : prev - 1))}
+              sx={{
+                position: "absolute",
+                left: 4,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 48,
+                height: 48,
+                borderRadius: websiteRadius(2),
+                bgcolor: "rgba(255,255,255,0.78)",
+                border: "1px solid rgba(15,23,42,0.14)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.95)" },
+              }}
+            >
+              <ArrowBackIosNewIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              onClick={() => setIndex((prev) => (prev === pageCount - 1 ? 0 : prev + 1))}
+              sx={{
+                position: "absolute",
+                right: 4,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 48,
+                height: 48,
+                borderRadius: websiteRadius(2),
+                bgcolor: "rgba(255,255,255,0.78)",
+                border: "1px solid rgba(15,23,42,0.14)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.95)" },
+              }}
+            >
+              <ArrowForwardIosIcon fontSize="small" />
+            </IconButton>
+          </>
+        )}
+      </Box>
+      {showDots && pageCount > 1 && (
+        <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2.5 }}>
+          {Array.from({ length: pageCount }).map((_, dotIdx) => (
+            <Box
+              key={dotIdx}
+              onClick={() => setIndex(dotIdx)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setIndex(dotIdx)}
+              sx={{
+                width: dotIdx === index ? 20 : 12,
+                height: 4,
+                borderRadius: 999,
+                bgcolor:
+                  dotIdx === index
+                    ? "var(--page-link-color, rgba(15,23,42,0.82))"
+                    : "rgba(15,23,42,0.28)",
+                cursor: "pointer",
+                transition: "all 180ms ease",
+              }}
+            />
+          ))}
+        </Stack>
+      )}
+    </Container>
+  );
+};
+
 const CollectionShowcase = ({
   title,
   subtitle,
@@ -6151,6 +6396,7 @@ const registry = {
   featureZigzagModern: FeatureZigzagModern,
   testimonialCarousel: TestimonialCarousel,
   serviceGrid: ServiceGrid,
+  serviceHoverSlider: ServiceHoverSlider,
   collectionShowcase: CollectionShowcase,
   serviceGridSmart: SmartServiceGrid,
   gallery: Gallery,

@@ -145,6 +145,7 @@ const BLOCK_PREVIEWS = {
   galleryCarousel: "/block-previews/galleryCarousel.png",
   faq: "/block-previews/faq.png",
   serviceGrid: "/block-previews/serviceGrid.png",
+  serviceHoverSlider: "/website-builder/section-thumbs/service-hover-slider.svg",
   teamGrid: "/block-previews/teamGrid.png",
   contact: "/block-previews/contact.png",
   contactForm: "/block-previews/contactForm.png",
@@ -159,6 +160,7 @@ const BLOCK_PREVIEWS = {
 const SECTION_TYPE_THUMBNAILS = {
   stats: "/website-builder/section-thumbs/stats-band.png",
   mapEmbed: "/website-builder/section-thumbs/map-embed-split.svg",
+  serviceHoverSlider: "/website-builder/section-thumbs/service-hover-slider.svg",
 };
 /** Local shims so the app renders even if helpers aren’t exported yet */
 const CollapsibleSection = ({
@@ -4517,6 +4519,7 @@ const autoProvisionIfEmpty = useCallback(
     ["logoCarousel", "manager.visualBuilder.sections.add.logoCarousel"],
     ["faq", "manager.visualBuilder.sections.add.faq"],
     ["serviceGrid", "manager.visualBuilder.sections.add.services"],
+    ["serviceHoverSlider", "manager.visualBuilder.sections.add.serviceHoverSlider"],
     ["serviceGridSmart", "manager.visualBuilder.sections.add.serviceGridSmart"],
     ["teamGrid", "manager.visualBuilder.sections.add.teamGrid"],
     ["teamMetrics", "manager.visualBuilder.sections.add.teamMetrics"],
