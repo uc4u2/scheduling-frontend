@@ -188,39 +188,24 @@ export default function GoogleReviewCta({
           <CloseIcon fontSize="small" />
         </IconButton>
       )}
-      <Stack
-        direction="row"
-        spacing={isFloating ? { xs: 0.55, sm: 1.2 } : 1.6}
-        alignItems="flex-start"
-        sx={{
-          pr: isFloating ? { xs: 1.45, sm: 3 } : 0,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {GoogleMark}
-        <Stack spacing={isFloating ? { xs: 0.28, sm: 0.75 } : 1} sx={{ minWidth: 0 }}>
-          <Stack spacing={isFloating ? { xs: 0.08, sm: 0.35 } : 0.5}>
-            <Stack direction="row" spacing={{ xs: 0.32, sm: 1 }} alignItems="center" flexWrap="wrap">
+      {isFloating ? (
+        <Stack
+          direction="row"
+          spacing={{ xs: 0.75, sm: 1 }}
+          alignItems="center"
+          sx={{
+            pr: { xs: 1.45, sm: 3 },
+            position: "relative",
+            zIndex: 1,
+            width: "fit-content",
+            maxWidth: "100%",
+          }}
+        >
+          <Stack direction="row" spacing={{ xs: 0.45, sm: 0.7 }} alignItems="center" sx={{ minWidth: 0 }}>
+            {GoogleMark}
+            <Box sx={{ display: "flex", alignItems: "center", lineHeight: 1 }}>
               {starRow}
-            </Stack>
-            {!isFloating && (
-              <Typography
-                variant="h6"
-                fontWeight={850}
-                sx={{
-                  lineHeight: 1.18,
-                  color: tenantText,
-                }}
-              >
-                Loved your visit? Share your experience on Google.
-              </Typography>
-            )}
-            {!isFloating && (
-              <Typography variant="body2" sx={{ color: tenantMuted }}>
-                Your public review helps future clients choose with confidence. Opens Google in a new tab.
-              </Typography>
-            )}
+            </Box>
           </Stack>
           <Button
             component="a"
@@ -228,22 +213,23 @@ export default function GoogleReviewCta({
             target="_blank"
             rel="noopener noreferrer"
             variant="contained"
-            size={isFloating ? "small" : "medium"}
-            endIcon={isFloating && isXs ? null : <LaunchIcon fontSize="small" />}
+            size="small"
+            endIcon={isXs ? null : <LaunchIcon fontSize="small" />}
             sx={{
-              alignSelf: "flex-start",
-              borderRadius: 1.25,
-              minHeight: isFloating ? { xs: 22, sm: 30 } : 36,
-              px: isFloating ? { xs: 0.72, sm: 1.5 } : 2,
-              py: isFloating ? { xs: 0.18, sm: 0.45 } : 0.75,
+              alignSelf: "center",
+              borderRadius: 1.1,
+              minHeight: { xs: 24, sm: 30 },
+              px: { xs: 0.85, sm: 1.3 },
+              py: { xs: 0.24, sm: 0.45 },
               textTransform: "none",
               fontWeight: 800,
-              fontSize: isFloating ? { xs: "0.6rem", sm: "0.78rem" } : undefined,
+              fontSize: { xs: "0.62rem", sm: "0.76rem" },
+              whiteSpace: "nowrap",
               bgcolor: tenantAccent,
               boxShadow: `0 10px 22px ${tenantAccentSoft}`,
               "& .MuiButton-endIcon": {
-                ml: { xs: 0.35, sm: 0.65 },
-                "& svg": { fontSize: { xs: "0.82rem", sm: "1rem" } },
+                ml: { xs: 0.35, sm: 0.55 },
+                "& svg": { fontSize: { xs: "0.8rem", sm: "0.95rem" } },
               },
               "&:hover": {
                 bgcolor: tenantAccent,
@@ -255,7 +241,71 @@ export default function GoogleReviewCta({
             {buttonLabel}
           </Button>
         </Stack>
-      </Stack>
+      ) : (
+        <Stack
+          direction="row"
+          spacing={1.6}
+          alignItems="flex-start"
+          sx={{
+            pr: 0,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {GoogleMark}
+          <Stack spacing={1} sx={{ minWidth: 0 }}>
+            <Stack spacing={0.5}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                {starRow}
+              </Stack>
+              <Typography
+                variant="h6"
+                fontWeight={850}
+                sx={{
+                  lineHeight: 1.18,
+                  color: tenantText,
+                }}
+              >
+                Loved your visit? Share your experience on Google.
+              </Typography>
+              <Typography variant="body2" sx={{ color: tenantMuted }}>
+                Your public review helps future clients choose with confidence. Opens Google in a new tab.
+              </Typography>
+            </Stack>
+            <Button
+              component="a"
+              href={safeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="contained"
+              size="medium"
+              endIcon={<LaunchIcon fontSize="small" />}
+              sx={{
+                alignSelf: "flex-start",
+                borderRadius: 1.25,
+                minHeight: 36,
+                px: 2,
+                py: 0.75,
+                textTransform: "none",
+                fontWeight: 800,
+                bgcolor: tenantAccent,
+                boxShadow: `0 10px 22px ${tenantAccentSoft}`,
+                "& .MuiButton-endIcon": {
+                  ml: 0.65,
+                  "& svg": { fontSize: "1rem" },
+                },
+                "&:hover": {
+                  bgcolor: tenantAccent,
+                  filter: "brightness(0.93)",
+                  boxShadow: `0 12px 26px ${tenantAccentSoft}`,
+                },
+              }}
+            >
+              {buttonLabel}
+            </Button>
+          </Stack>
+        </Stack>
+      )}
     </Paper>
   );
 
