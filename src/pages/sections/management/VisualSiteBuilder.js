@@ -5236,26 +5236,21 @@ const autoProvisionIfEmpty = useCallback(
               />
               <ListItemButton
                 selected={selectedId === p.id}
-              onClick={() => {
-                const lifted = withLiftedLayout(p);
-                setSelectedId(lifted.id);
-                setEditing(lifted);
-                setSelectedBlock(-1);
-                setPagesListOpen(true);
-                setPageSettingsOpen(true);
-              }}
-            >
-              <ListItemText primary={p.title || p.slug} secondary={p.slug} />
-            </ListItemButton>
-            <IconButton
-              size="small"
-              onClick={(e) => handlePageMenuOpen(e, p)}
-              sx={{ ml: 0.5 }}
-            >
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-          </ListItem>
-        ))}
+                onClick={() => {
+                  openBuilderPage(p);
+                }}
+              >
+                <ListItemText primary={p.title || p.slug} secondary={p.slug} />
+              </ListItemButton>
+              <IconButton
+                size="small"
+                onClick={(e) => handlePageMenuOpen(e, p)}
+                sx={{ ml: 0.5 }}
+              >
+                <MoreVertIcon fontSize="small" />
+              </IconButton>
+            </ListItem>
+          ))}
       </List>
       <Menu
         anchorEl={pageMenuAnchor}
@@ -5959,6 +5954,34 @@ const renderableSections = safeSections(editing)
   .map((section, idx) => ({ section, idx }))
   .filter(({ section }) => section.type !== "pageStyle");
 
+const openBuilderPage = useCallback(
+  async (pageLike) => {
+    if (!pageLike) return;
+    try {
+      let nextPage = pageLike;
+      if (
+        companyId &&
+        pageLike?.id &&
+        (!pageLike?.content || !Array.isArray(pageLike?.content?.sections))
+      ) {
+        const full = await wb.getPage(companyId, pageLike.id);
+        nextPage = full?.data || full || pageLike;
+      }
+      const lifted = ensureSectionIds(withLiftedLayout(nextPage));
+      setSelectedId(lifted.id);
+      setEditing(lifted);
+      setSelectedBlock(-1);
+      setPagesListOpen(true);
+      setPageSettingsOpen(true);
+      requestAnimationFrame(() => scrollCanvasToTop());
+    } catch (e) {
+      console.error(e);
+      setErr(t("manager.visualBuilder.errors.loadPage", "Failed to open page."));
+    }
+  },
+  [companyId, t]
+);
+
 const CanvasColumn = (
   <SectionCard
     title={t("manager.visualBuilder.canvas.title")}
@@ -6018,6 +6041,11 @@ const CanvasColumn = (
         }}
         onRemoveFooterItem={handleFooterItemRemove}
         onRemoveHeaderItem={handleHeaderItemRemove}
+        onPreviewOpenPage={(item) => {
+          if (!item?.id) return;
+          const match = pages.find((p) => p.id === item.id);
+          openBuilderPage(match || item);
+        }}
       >
         <Box
           sx={{

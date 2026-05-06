@@ -1,7 +1,6 @@
 // src/components/website/schemas/index.js
 export const SCHEMA_REGISTRY = {
   hero: {
-    note: "Use Hero (Carousel) when you need multiple hero images with autoplay and slide timing.",
     fields: [
       { name: "heading", type: "string", label: "Heading" },
       { name: "subheading", type: "text", label: "Subheading", minRows: 2 },
@@ -548,6 +547,28 @@ featureStories: {
       { name: "address", type: "string", label: "Address" },
       { name: "mapEmbedUrl", type: "string", label: "Map Embed URL" },
       { name: "title", type: "string", label: "Title (optional)" },
+    ],
+  },
+
+  mapEmbed: {
+    fields: [
+      { name: "title", type: "string", label: "Title (optional)" },
+      { name: "eyebrow", type: "string", label: "Eyebrow (optional)" },
+      { name: "body", type: "text", label: "Body (optional)" },
+      { name: "ctaText", type: "string", label: "CTA text (optional)" },
+      { name: "ctaHref", type: "string", label: "CTA link (optional)" },
+      { name: "detailOneTitle", type: "string", label: "Detail 1 title (optional)" },
+      { name: "detailOneText", type: "text", label: "Detail 1 text (optional)" },
+      { name: "detailTwoTitle", type: "string", label: "Detail 2 title (optional)" },
+      { name: "detailTwoText", type: "text", label: "Detail 2 text (optional)" },
+      { name: "detailThreeTitle", type: "string", label: "Detail 3 title (optional)" },
+      { name: "detailThreeText", type: "text", label: "Detail 3 text (optional)" },
+      { name: "provider", type: "string", label: "Provider" },
+      { name: "query", type: "string", label: "Address / query" },
+      { name: "embedUrl", type: "string", label: "Embed URL (optional)" },
+      { name: "height", type: "number", label: "Height (px)" },
+      { name: "borderRadius", type: "number", label: "Border radius (px)" },
+      { name: "maxWidth", type: "string", label: "Max width" },
     ],
   },
 

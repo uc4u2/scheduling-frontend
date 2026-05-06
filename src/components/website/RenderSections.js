@@ -5166,7 +5166,17 @@ const MapEmbed = ({
   borderRadius = 4,
   maxWidth = "lg",
   title = "",
-  titleAlign = "left"
+  titleAlign = "left",
+  eyebrow = "",
+  body = "",
+  ctaText = "",
+  ctaHref = "",
+  detailOneTitle = "",
+  detailOneText = "",
+  detailTwoTitle = "",
+  detailTwoText = "",
+  detailThreeTitle = "",
+  detailThreeText = "",
 }) => {
   const resolvedUrl = (() => {
     if (embedUrl) return embedUrl;
@@ -5175,6 +5185,167 @@ const MapEmbed = ({
     return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
   })();
 
+  const detailBlocks = [
+    { title: detailOneTitle, text: detailOneText },
+    { title: detailTwoTitle, text: detailTwoText },
+    { title: detailThreeTitle, text: detailThreeText },
+  ].filter((item) => toPlain(item.title) || toPlain(item.text));
+
+  const useSplitLayout =
+    Boolean(toPlain(body)) ||
+    Boolean(toPlain(eyebrow)) ||
+    Boolean(toPlain(ctaText)) ||
+    Boolean(toPlain(ctaHref)) ||
+    detailBlocks.length > 0;
+
+  const mapCard = (
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        minHeight: typeof height === "number" ? `${height}px` : height,
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: websiteRadius(borderRadius ?? 4),
+        overflow: "hidden",
+        boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
+        border: "1px solid rgba(148,163,184,0.18)",
+        backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
+      }}
+    >
+      {resolvedUrl ? (
+        <Box
+          component="iframe"
+          title={query || "Map"}
+          src={resolvedUrl}
+          loading="lazy"
+          style={{ border: 0 }}
+          sx={{ width: "100%", height: "100%", minHeight: typeof height === "number" ? `${height}px` : height, flex: 1 }}
+          allowFullScreen
+        />
+      ) : (
+        <Box sx={{ p: 4, textAlign: "center", color: "text.secondary" }}>
+          Map unavailable
+        </Box>
+      )}
+    </Box>
+  );
+
+  if (useSplitLayout) {
+    return (
+      <Container maxWidth={toContainerMax(maxWidth)}>
+        <Grid container spacing={{ xs: 3, md: 5 }} alignItems="stretch">
+          <Grid item xs={12} md={5} lg={4}>
+            <Stack spacing={2.25}>
+              {eyebrow ? (
+                <HtmlTypo
+                  variant="overline"
+                  sx={{
+                    letterSpacing: "0.18em",
+                    color: "var(--page-body-color, rgba(15,23,42,0.72))",
+                  }}
+                >
+                  {eyebrow}
+                </HtmlTypo>
+              ) : null}
+              {title ? (
+                <HtmlTypo
+                  variant="h2"
+                  sx={{
+                    fontWeight: 700,
+                    lineHeight: 1.12,
+                    letterSpacing: "-0.03em",
+                    fontSize: "clamp(2.1rem, 4.4vw, 4rem)",
+                    color: "var(--page-heading-color, #1f2937)",
+                    maxWidth: 440,
+                  }}
+                >
+                  {title}
+                </HtmlTypo>
+              ) : null}
+              {body ? (
+                <HtmlTypo
+                  variant="body1"
+                  sx={{
+                    color: "var(--page-body-color, text.secondary)",
+                    maxWidth: 500,
+                    fontSize: "1.02rem",
+                    lineHeight: 1.65,
+                  }}
+                >
+                  {body}
+                </HtmlTypo>
+              ) : null}
+              {ctaText && ctaHref ? (
+                <Box>
+                  <Button
+                    component="a"
+                    href={ctaHref}
+                    variant="contained"
+                    sx={{
+                      borderRadius: "var(--page-btn-radius, 4px)",
+                      textTransform: "none",
+                      px: 2.75,
+                      py: 1.15,
+                    }}
+                  >
+                    {ctaText}
+                  </Button>
+                </Box>
+              ) : null}
+              {detailBlocks.length ? (
+                <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ pt: 1 }}>
+                  {detailBlocks.map((item, idx) => (
+                    <Grid item xs={12} sm={detailBlocks.length === 1 ? 12 : 6} key={`${item.title || "detail"}-${idx}`}>
+                      <Box
+                        sx={{
+                          height: "100%",
+                          borderTop: "1px solid rgba(148,163,184,0.16)",
+                          pt: 1.75,
+                        }}
+                      >
+                        {item.title ? (
+                          <HtmlTypo
+                            variant="overline"
+                            sx={{
+                              letterSpacing: "0.16em",
+                              fontWeight: 700,
+                              color: "var(--page-heading-color, #1f2937)",
+                              fontSize: "0.72rem",
+                            }}
+                          >
+                            {item.title}
+                          </HtmlTypo>
+                        ) : null}
+                        {item.text ? (
+                          <HtmlTypo
+                            variant="body2"
+                            sx={{
+                              mt: 1,
+                              color: "var(--page-body-color, text.secondary)",
+                              whiteSpace: "pre-line",
+                              lineHeight: 1.6,
+                              fontSize: "0.98rem",
+                            }}
+                          >
+                            {item.text}
+                          </HtmlTypo>
+                        ) : null}
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : null}
+            </Stack>
+          </Grid>
+          <Grid item xs={12} md={7} lg={8} sx={{ display: "flex" }}>
+            {mapCard}
+          </Grid>
+        </Grid>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
@@ -5182,31 +5353,7 @@ const MapEmbed = ({
           {title}
         </HtmlTypo>
       )}
-      <Box
-        sx={{
-          borderRadius: websiteRadius(borderRadius ?? 4),
-          overflow: "hidden",
-          boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
-          border: "1px solid rgba(148,163,184,0.18)",
-          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
-        }}
-      >
-        {resolvedUrl ? (
-          <Box
-            component="iframe"
-            title={query || "Map"}
-            src={resolvedUrl}
-            loading="lazy"
-            style={{ border: 0 }}
-            sx={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}
-            allowFullScreen
-          />
-        ) : (
-          <Box sx={{ p: 4, textAlign: "center", color: "text.secondary" }}>
-            Map unavailable
-          </Box>
-        )}
-      </Box>
+      {mapCard}
     </Container>
   );
 };
