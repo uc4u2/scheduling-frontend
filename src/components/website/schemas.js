@@ -402,6 +402,33 @@ export const SCHEMA_REGISTRY = {
     ],
   },
 
+  reviewEditorialGrid: {
+    title: "Review Editorial Grid",
+    fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
+      { name: "title", type: "richinline", label: "Title" },
+      { name: "subtitle", type: "richtext", label: "Subtitle", minRows: 3 },
+      { name: "reviewCountLabel", type: "text", label: "Review count label" },
+      { name: "platformLabel", type: "text", label: "Platform / brand label" },
+      {
+        name: "entries",
+        type: "objectArray",
+        label: "Review entries",
+        fields: [
+          { name: "name", type: "text", label: "Name" },
+          { name: "badge", type: "text", label: "Badge" },
+          { name: "text", type: "text", label: "Review text", minRows: 4 },
+          { name: "image", type: "image", label: "Image" },
+          { name: "imageAlt", type: "text", label: "Image alt" }
+        ],
+      },
+      { name: "buttonText", type: "text", label: "Button text" },
+      { name: "buttonLink", type: "text", label: "Button link" },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth", type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+    ],
+  },
+
   /* -------------------- FEATURE PILLARS --------------------- */
   featurePillars: {
     title: "Feature Pillars",

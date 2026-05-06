@@ -146,6 +146,7 @@ const BLOCK_PREVIEWS = {
   faq: "/block-previews/faq.png",
   serviceGrid: "/block-previews/serviceGrid.png",
   serviceHoverSlider: "/website-builder/section-thumbs/service-hover-slider.svg",
+  reviewEditorialGrid: "/website-builder/section-thumbs/review-editorial-grid.svg",
   teamGrid: "/block-previews/teamGrid.png",
   contact: "/block-previews/contact.png",
   contactForm: "/block-previews/contactForm.png",
@@ -162,6 +163,7 @@ const SECTION_TYPE_THUMBNAILS = {
   stats: "/website-builder/section-thumbs/stats-band.png",
   mapEmbed: "/website-builder/section-thumbs/map-embed-split.svg",
   serviceHoverSlider: "/website-builder/section-thumbs/service-hover-slider.svg",
+  reviewEditorialGrid: "/website-builder/section-thumbs/review-editorial-grid.svg",
   popupCta: "/block-previews/cta.png",
 };
 /** Local shims so the app renders even if helpers aren’t exported yet */
@@ -4530,6 +4532,7 @@ const autoProvisionIfEmpty = useCallback(
     ["stats", "manager.visualBuilder.sections.add.stats"],
     ["videoGallery", "manager.visualBuilder.sections.add.videoGallery"],
     ["blogList", "manager.visualBuilder.sections.add.blogList"],
+    ["reviewEditorialGrid", "Review Editorial Grid"],
     ["mapEmbed", "manager.visualBuilder.sections.add.mapEmbed"],
     ["contact", "manager.visualBuilder.sections.add.contact"],
     ["contactForm", "manager.visualBuilder.sections.add.contactForm"],
@@ -6161,7 +6164,7 @@ const CanvasColumn = (
               layout={editingPreview.layout || "boxed"}
               sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
               defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
-              editorPreview
+              editorPreview={false}
             />
           ) : (
             <Box
