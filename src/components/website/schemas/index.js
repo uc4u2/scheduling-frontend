@@ -62,6 +62,32 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  reviewEditorialGrid: {
+    fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
+      { name: "title", type: "string", label: "Title" },
+      { name: "subtitle", type: "text", label: "Subtitle", minRows: 3 },
+      { name: "reviewCountLabel", type: "string", label: "Review count label" },
+      { name: "platformLabel", type: "string", label: "Platform label" },
+      {
+        name: "entries",
+        type: "objectArray",
+        label: "Review entries",
+        fields: [
+          { name: "name", type: "string", label: "Name" },
+          { name: "badge", type: "string", label: "Badge" },
+          { name: "text", type: "text", label: "Review text", minRows: 4 },
+          { name: "image", type: "image", label: "Image" },
+          { name: "imageAlt", type: "string", label: "Image alt" },
+        ],
+      },
+      { name: "buttonText", type: "string", label: "Button text" },
+      { name: "buttonLink", type: "string", label: "Button link" },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left", "center", "right"], default: "center" },
+      { name: "maxWidth", type: "string", label: "Max width", default: "xl" },
+    ],
+  },
+
   logoCloud: {
     fields: [
       { name: "title", type: "string", label: "Title" },

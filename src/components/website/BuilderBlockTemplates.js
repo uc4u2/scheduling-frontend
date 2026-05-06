@@ -706,6 +706,50 @@ featureStories: () => ({
       ],
     },
   }),
+  reviewEditorialGrid: () => ({
+    type: "reviewEditorialGrid",
+    props: {
+      followSiteTheme: true,
+      title: "What clients are saying",
+      subtitle: "Use this section for review highlights, verified client quotes, and a button that points to your reviews or contact page.",
+      reviewCountLabel: "Rated 5 stars by recent clients",
+      platformLabel: "Client reviews",
+      titleAlign: "center",
+      maxWidth: "xl",
+      buttonText: "Read more reviews",
+      buttonLink: "?page=reviews",
+      entries: [
+        {
+          name: "Alyssa M.",
+          badge: "Verified client",
+          text: "The team made the process easy from the first conversation through the final handoff. Communication stayed clear and the result matched exactly what we planned for.",
+          image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=1200&auto=format&fit=crop",
+          imageAlt: "Project review image one",
+        },
+        {
+          name: "Daniel R.",
+          badge: "Verified client",
+          text: "We appreciated the mix of planning detail, responsiveness, and finish quality. It felt organized the whole way through and the final result looks great in the space.",
+          image: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=1200&auto=format&fit=crop",
+          imageAlt: "Project review image two",
+        },
+        {
+          name: "Priya S.",
+          badge: "Verified client",
+          text: "What stood out most was how carefully the project was scoped before work started. That made the install smooth and helped avoid surprises later.",
+          image: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1200&auto=format&fit=crop",
+          imageAlt: "Project review image three",
+        },
+        {
+          name: "Marcus T.",
+          badge: "Verified client",
+          text: "The finished work feels intentional and well executed. We would use this section to highlight the kind of feedback that helps future clients feel confident.",
+          image: "https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=1200&auto=format&fit=crop",
+          imageAlt: "Project review image four",
+        },
+      ],
+    },
+  }),
   faq: () => ({
     type: "faq",
     props: {

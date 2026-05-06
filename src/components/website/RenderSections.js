@@ -5322,6 +5322,206 @@ const TestimonialTiles = ({
   );
 };
 
+const ReviewEditorialGrid = ({
+  followSiteTheme = true,
+  title = "",
+  subtitle = "",
+  reviewCountLabel = "",
+  platformLabel = "",
+  entries = [],
+  buttonText = "",
+  buttonLink = "",
+  maxWidth = "xl",
+  titleAlign = "center",
+}) => {
+  const themeDriven = followSiteTheme !== false;
+  const items = toArray(entries)
+    .map((item) => ({
+      name: item?.name ?? "",
+      badge: item?.badge ?? "",
+      ratingLabel: item?.ratingLabel ?? "",
+      text: item?.text ?? "",
+      image: item?.image ?? "",
+      imageAlt: item?.imageAlt ?? "",
+    }))
+    .filter((item) => item.name || item.text || item.image);
+
+  if (!items.length) return null;
+
+  const headingColor = themeDriven ? "var(--page-heading-color, #2b2119)" : "#2b2119";
+  const bodyColor = themeDriven ? "var(--page-body-color, rgba(43,33,25,0.82))" : "rgba(43,33,25,0.82)";
+  const dividerColor = themeDriven
+    ? "color-mix(in srgb, var(--page-heading-color, #2b2119) 18%, rgba(255,255,255,0.24))"
+    : "rgba(43,33,25,0.18)";
+  const softBadgeColor = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #3b2416) 70%, #16a34a 30%)"
+    : "#2f6f3e";
+  const starColor = "#1f2937";
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      <Stack spacing={3.5}>
+        {(title || subtitle) && (
+          <Stack spacing={0.8} sx={{ textAlign: titleAlign }}>
+            {title ? (
+              <HtmlTypo
+                variant="h4"
+                sx={{
+                  fontWeight: 800,
+                  color: headingColor,
+                  textAlign: titleAlign,
+                }}
+              >
+                {title}
+              </HtmlTypo>
+            ) : null}
+            {subtitle ? (
+              <HtmlTypo
+                variant="body1"
+                sx={{
+                  color: bodyColor,
+                  textAlign: titleAlign,
+                }}
+              >
+                {subtitle}
+              </HtmlTypo>
+            ) : null}
+          </Stack>
+        )}
+
+        {(reviewCountLabel || platformLabel) && (
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "center" }}
+            spacing={1.5}
+          >
+            <Stack spacing={0.5}>
+              <Box sx={{ color: starColor, letterSpacing: "0.18em", fontSize: 20, lineHeight: 1 }}>
+                ★★★★★
+              </Box>
+              {reviewCountLabel ? (
+                <HtmlTypo variant="subtitle2" sx={{ fontWeight: 700, color: headingColor }}>
+                  {reviewCountLabel}
+                </HtmlTypo>
+              ) : null}
+            </Stack>
+            {platformLabel ? (
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ color: headingColor }}>
+                <Box component="span" sx={{ color: "#10b981", fontSize: 18, lineHeight: 1 }}>★</Box>
+                <HtmlTypo variant="subtitle1" sx={{ fontWeight: 800 }}>
+                  {platformLabel}
+                </HtmlTypo>
+              </Stack>
+            ) : null}
+          </Stack>
+        )}
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            gap: { xs: 3, md: 0 },
+          }}
+        >
+          {items.map((item, idx) => {
+            return (
+              <Box
+                key={`${item.name || "review"}-${idx}`}
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) 196px" },
+                  alignItems: "stretch",
+                  borderTop: `1px solid ${dividerColor}`,
+                  borderRight: {
+                    xs: "none",
+                    md: idx % 2 === 0 ? `1px solid ${dividerColor}` : "none",
+                  },
+                  pt: 2,
+                  pb: 2,
+                  pr: { xs: 0, md: idx % 2 === 0 ? 2 : 0 },
+                  pl: { xs: 0, md: idx % 2 === 1 ? 2 : 0 },
+                  columnGap: 2,
+                }}
+              >
+                <Stack
+                  spacing={1.1}
+                  sx={{
+                    order: 0,
+                    minWidth: 0,
+                  }}
+                >
+                  <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
+                    {item.name ? (
+                      <HtmlTypo variant="subtitle1" sx={{ fontWeight: 800, color: headingColor }}>
+                        {item.name}
+                      </HtmlTypo>
+                    ) : null}
+                    {item.badge ? (
+                      <HtmlTypo
+                        variant="caption"
+                        sx={{
+                          fontWeight: 700,
+                          color: softBadgeColor,
+                        }}
+                      >
+                        {item.badge}
+                      </HtmlTypo>
+                    ) : null}
+                  </Stack>
+                  <Box sx={{ color: starColor, letterSpacing: "0.12em", fontSize: 16, lineHeight: 1 }}>
+                    ★★★★★
+                  </Box>
+                  {item.text ? (
+                    <HtmlTypo variant="body2" sx={{ color: bodyColor, lineHeight: 1.65 }}>
+                      {item.text}
+                    </HtmlTypo>
+                  ) : null}
+                </Stack>
+                {item.image ? (
+                  <Box
+                    component="img"
+                    src={item.image}
+                    alt={toPlain(item.imageAlt) || ""}
+                    loading="lazy"
+                    sx={{
+                      order: 1,
+                      width: "100%",
+                      height: { xs: 220, md: 236 },
+                      objectFit: "cover",
+                      borderRadius: websiteRadius(2),
+                      mt: { xs: 1.5, md: 0 },
+                    }}
+                  />
+                ) : null}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {buttonText ? (
+          <Stack direction="row" justifyContent="center" sx={{ pt: 0.5 }}>
+            <Button
+              component="a"
+              href={buttonLink || "#"}
+              variant="contained"
+              sx={{
+                borderRadius: "var(--page-btn-radius, 4px)",
+                px: 2.8,
+                py: 1.05,
+                textTransform: "none",
+                fontWeight: 800,
+              }}
+            >
+              {toPlain(buttonText)}
+            </Button>
+          </Stack>
+        ) : null}
+      </Stack>
+    </Container>
+  );
+};
+
 const Stats = ({
   title,
   subtitle,
@@ -5916,6 +6116,171 @@ const PopupCta = ({
   const usesSideImage = image && (imagePosition === "left" || imagePosition === "right");
   const usesTopImage = image && !usesBackground && !usesSideImage;
   const darkVariant = themeVariant === "dark";
+  const popupCard = (
+    <Paper
+      elevation={0}
+      sx={{
+        position: "relative",
+        zIndex: 1,
+        width: "100%",
+        maxWidth: `${widthPx}px`,
+        overflow: "hidden",
+        borderRadius: websiteRadius(4),
+        border: "1px solid rgba(148,163,184,0.18)",
+        boxShadow: "0 32px 100px rgba(15,23,42,0.28)",
+        bgcolor: darkVariant ? "#111827" : "var(--page-card-bg, rgba(255,255,255,0.98))",
+        color: darkVariant ? "#f8fafc" : "var(--page-heading-color, #1f2937)",
+      }}
+    >
+      {showCloseButton && (
+        <IconButton
+          size="small"
+          aria-label="Close popup"
+          onClick={dismiss}
+          sx={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            zIndex: 2,
+            bgcolor: "rgba(255,255,255,0.76)",
+            border: "1px solid rgba(148,163,184,0.2)",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.92)" },
+          }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      )}
+      {usesBackground && image ? (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `linear-gradient(180deg, rgba(15,23,42,${overlayOpacity}), rgba(15,23,42,${overlayOpacity * 1.5})), url(${image})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.22,
+          }}
+        />
+      ) : null}
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          display: "grid",
+          gridTemplateColumns: usesSideImage
+            ? { xs: "1fr", md: imagePosition === "left" ? "0.92fr 1.08fr" : "1.08fr 0.92fr" }
+            : "1fr",
+        }}
+      >
+        {usesSideImage && image ? (
+          <Box
+            component="img"
+            src={image}
+            alt={toPlain(imageAlt) || ""}
+            loading="lazy"
+            sx={{
+              width: "100%",
+              height: "100%",
+              minHeight: { xs: 180, md: `${Math.max(240, Number(imageHeight) || 220)}px` },
+              objectFit: "cover",
+              order: imagePosition === "left" ? 0 : 1,
+            }}
+          />
+        ) : null}
+        <Box
+          sx={{
+            order: usesSideImage && imagePosition === "left" ? 1 : 0,
+            p: { xs: 2.25, md: 3.25 },
+          }}
+        >
+          {usesTopImage && image ? (
+            <Box
+              component="img"
+              src={image}
+              alt={toPlain(imageAlt) || ""}
+              loading="lazy"
+              sx={{
+                width: "100%",
+                height: `${Math.max(160, Number(imageHeight) || 220)}px`,
+                objectFit: "cover",
+                borderRadius: websiteRadius(3),
+                mb: 2,
+              }}
+            />
+          ) : null}
+          <Stack spacing={1.6} sx={{ textAlign: "center", alignItems: "center" }}>
+            {eyebrow ? (
+              <HtmlTypo
+                variant="overline"
+                sx={{
+                  letterSpacing: "0.16em",
+                  textAlign: "center",
+                  color: darkVariant ? "rgba(248,250,252,0.72)" : "var(--page-body-color, rgba(15,23,42,0.72))",
+                }}
+              >
+                {eyebrow}
+              </HtmlTypo>
+            ) : null}
+            {title ? (
+              <HtmlTypo
+                variant="h3"
+                sx={{
+                  fontWeight: 800,
+                  lineHeight: 1.08,
+                  fontSize: { xs: "2rem", md: "2.6rem" },
+                  textAlign: "center",
+                  color: darkVariant ? "#f8fafc" : "var(--page-heading-color, #1f2937)",
+                }}
+              >
+                {title}
+              </HtmlTypo>
+            ) : null}
+            {body ? (
+              <HtmlTypo
+                variant="body1"
+                sx={{
+                  textAlign: "center",
+                  color: darkVariant ? "rgba(248,250,252,0.82)" : "var(--page-body-color, rgba(15,23,42,0.82))",
+                  lineHeight: 1.65,
+                }}
+              >
+                {body}
+              </HtmlTypo>
+            ) : null}
+            {ctaText ? (
+              <Box sx={{ pt: 0.6, display: "flex", justifyContent: "center", width: "100%" }}>
+                <Button
+                  component="a"
+                  href={ctaLink || "#"}
+                  variant="contained"
+                  onClick={dismiss}
+                  sx={{
+                    borderRadius: "var(--page-btn-radius, 4px)",
+                    px: 2.4,
+                    py: 1.05,
+                    textTransform: "none",
+                    fontWeight: 800,
+                  }}
+                >
+                  {toPlain(ctaText)}
+                </Button>
+              </Box>
+            ) : null}
+          </Stack>
+        </Box>
+      </Box>
+    </Paper>
+  );
+
+  if (editorPreview) {
+    return (
+      <Container maxWidth={false} disableGutters>
+        <Box sx={{ display: "flex", justifyContent: "center", px: { xs: 1, md: 2 }, py: 2 }}>
+          {popupCard}
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Box
@@ -5938,156 +6303,7 @@ const PopupCta = ({
           backdropFilter: "blur(4px)",
         }}
       />
-      <Paper
-        elevation={0}
-        sx={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: `${widthPx}px`,
-          overflow: "hidden",
-          borderRadius: websiteRadius(4),
-          border: "1px solid rgba(148,163,184,0.18)",
-          boxShadow: "0 32px 100px rgba(15,23,42,0.28)",
-          bgcolor: darkVariant ? "#111827" : "var(--page-card-bg, rgba(255,255,255,0.98))",
-          color: darkVariant ? "#f8fafc" : "var(--page-heading-color, #1f2937)",
-        }}
-      >
-        {showCloseButton && (
-          <IconButton
-            size="small"
-            aria-label="Close popup"
-            onClick={dismiss}
-            sx={{
-              position: "absolute",
-              top: 10,
-              right: 10,
-              zIndex: 2,
-              bgcolor: "rgba(255,255,255,0.76)",
-              border: "1px solid rgba(148,163,184,0.2)",
-              "&:hover": { bgcolor: "rgba(255,255,255,0.92)" },
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        )}
-        {usesBackground && image ? (
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: `linear-gradient(180deg, rgba(15,23,42,${overlayOpacity}), rgba(15,23,42,${overlayOpacity * 1.5})), url(${image})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              opacity: 0.22,
-            }}
-          />
-        ) : null}
-        <Box
-          sx={{
-            position: "relative",
-            zIndex: 1,
-            display: "grid",
-            gridTemplateColumns: usesSideImage
-              ? { xs: "1fr", md: imagePosition === "left" ? "0.92fr 1.08fr" : "1.08fr 0.92fr" }
-              : "1fr",
-          }}
-        >
-          {usesSideImage && image ? (
-            <Box
-              component="img"
-              src={image}
-              alt={toPlain(imageAlt) || ""}
-              loading="lazy"
-              sx={{
-                width: "100%",
-                height: "100%",
-                minHeight: { xs: 180, md: `${Math.max(240, Number(imageHeight) || 220)}px` },
-                objectFit: "cover",
-                order: imagePosition === "left" ? 0 : 1,
-              }}
-            />
-          ) : null}
-          <Box
-            sx={{
-              order: usesSideImage && imagePosition === "left" ? 1 : 0,
-              p: { xs: 2.25, md: 3.25 },
-            }}
-          >
-            {usesTopImage && image ? (
-              <Box
-                component="img"
-                src={image}
-                alt={toPlain(imageAlt) || ""}
-                loading="lazy"
-                sx={{
-                  width: "100%",
-                  height: `${Math.max(160, Number(imageHeight) || 220)}px`,
-                  objectFit: "cover",
-                  borderRadius: websiteRadius(3),
-                  mb: 2,
-                }}
-              />
-            ) : null}
-            <Stack spacing={1.6}>
-              {eyebrow ? (
-                <HtmlTypo
-                  variant="overline"
-                  sx={{
-                    letterSpacing: "0.16em",
-                    color: darkVariant ? "rgba(248,250,252,0.72)" : "var(--page-body-color, rgba(15,23,42,0.72))",
-                  }}
-                >
-                  {eyebrow}
-                </HtmlTypo>
-              ) : null}
-              {title ? (
-                <HtmlTypo
-                  variant="h3"
-                  sx={{
-                    fontWeight: 800,
-                    lineHeight: 1.08,
-                    fontSize: { xs: "2rem", md: "2.6rem" },
-                    color: darkVariant ? "#f8fafc" : "var(--page-heading-color, #1f2937)",
-                  }}
-                >
-                  {title}
-                </HtmlTypo>
-              ) : null}
-              {body ? (
-                <HtmlTypo
-                  variant="body1"
-                  sx={{
-                    color: darkVariant ? "rgba(248,250,252,0.82)" : "var(--page-body-color, rgba(15,23,42,0.82))",
-                    lineHeight: 1.65,
-                  }}
-                >
-                  {body}
-                </HtmlTypo>
-              ) : null}
-              {ctaText ? (
-                <Box sx={{ pt: 0.6 }}>
-                  <Button
-                    component="a"
-                    href={ctaLink || "#"}
-                    variant="contained"
-                    onClick={dismiss}
-                    sx={{
-                      borderRadius: "var(--page-btn-radius, 4px)",
-                      px: 2.4,
-                      py: 1.05,
-                      textTransform: "none",
-                      fontWeight: 800,
-                    }}
-                  >
-                    {toPlain(ctaText)}
-                  </Button>
-                </Box>
-              ) : null}
-            </Stack>
-          </Box>
-        </Box>
-      </Paper>
+      {popupCard}
     </Box>
   );
 };
@@ -6743,6 +6959,7 @@ const registry = {
   testimonials: Testimonials,
   featurePillars: FeaturePillars,
   featureStories: FeatureStories,
+  reviewEditorialGrid: ReviewEditorialGrid,
   testimonialTiles: TestimonialTiles,
   logoCarousel: LogoCarousel,
   pricingTable: PricingTable,
