@@ -130,6 +130,37 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  serviceHoverSlider: {
+    title: "Service Hover Slider",
+    fields: [
+      { name: "title", type: "richinline", label: "Section title" },
+      { name: "subtitle", type: "richtext", label: "Subtitle", minRows: 2 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Slides",
+        fields: [
+          { name: "title", type: "richinline", label: "Title" },
+          { name: "image", type: "image", label: "Image" },
+          { name: "link", type: "string", label: "Link (optional)" },
+        ],
+      },
+      { name: "cardsDesktop", type: "number", label: "Cards on desktop", min: 1, max: 6, step: 1, default: 4 },
+      { name: "cardsTablet", type: "number", label: "Cards on tablet", min: 1, max: 4, step: 1, default: 2 },
+      { name: "cardsMobile", type: "number", label: "Cards on mobile", min: 1, max: 2, step: 1, default: 1 },
+      { name: "gap", type: "number", label: "Gap (px)", min: 0, max: 40, step: 1, default: 12 },
+      { name: "imageHeight", type: "number", label: "Image height (px)", min: 220, max: 620, step: 4, default: 392 },
+      { name: "zoomScale", type: "number", label: "Hover zoom", min: 1, max: 1.3, step: 0.01, default: 1.08 },
+      { name: "showArrows", type: "boolean", label: "Show arrows", default: true },
+      { name: "showDots", type: "boolean", label: "Show dots", default: true },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth", type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"], default: "full" },
+      { name: "gutterX", type: "number", label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft", type: "boolean", label: "Bleed left" },
+      { name: "bleedRight", type: "boolean", label: "Bleed right" }
+    ]
+  },
+
   serviceGridSmart: {
     title: "Service Grid (Smart / Data-bound)",
     fields: [

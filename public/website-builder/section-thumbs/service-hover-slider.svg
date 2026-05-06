@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220" fill="none">
+  <rect width="320" height="220" rx="8" fill="#f7eef1"/>
+  <rect x="92" y="16" width="136" height="10" rx="5" fill="#5b3442"/>
+  <rect x="104" y="32" width="112" height="3" rx="1.5" fill="#c84f7a"/>
+  <rect x="14" y="56" width="66" height="122" rx="10" fill="#d9d9d9"/>
+  <rect x="90" y="56" width="66" height="122" rx="10" fill="#e5d4c6"/>
+  <rect x="166" y="56" width="66" height="122" rx="10" fill="#d9d9d9"/>
+  <rect x="242" y="56" width="66" height="122" rx="10" fill="#ededed"/>
+  <rect x="24" y="122" width="46" height="6" rx="3" fill="#1d1d1d" opacity="0.82"/>
+  <rect x="98" y="122" width="50" height="6" rx="3" fill="#1d1d1d" opacity="0.82"/>
+  <rect x="174" y="122" width="50" height="6" rx="3" fill="#1d1d1d" opacity="0.82"/>
+  <rect x="250" y="122" width="50" height="6" rx="3" fill="#1d1d1d" opacity="0.82"/>
+  <rect x="12" y="112" width="12" height="26" rx="4" fill="rgba(255,255,255,0.88)" stroke="#d0d0d0"/>
+  <path d="M19 125L16 122L19 119" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="296" y="112" width="12" height="26" rx="4" fill="rgba(255,255,255,0.88)" stroke="#d0d0d0"/>
+  <path d="M301 119L304 122L301 125" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="148" y="190" width="24" height="4" rx="2" fill="#c84f7a"/>
+  <rect x="176" y="190" width="10" height="4" rx="2" fill="#8f8f8f"/>
+  <rect x="190" y="190" width="10" height="4" rx="2" fill="#8f8f8f"/>
+</svg>
