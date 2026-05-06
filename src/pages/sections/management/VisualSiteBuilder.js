@@ -149,6 +149,7 @@ const BLOCK_PREVIEWS = {
   teamGrid: "/block-previews/teamGrid.png",
   contact: "/block-previews/contact.png",
   contactForm: "/block-previews/contactForm.png",
+  popupCta: "/block-previews/cta.png",
   cta: "/block-previews/cta.png",
   pricingTable: "/block-previews/workshopsCommissions.png",
   bookingCtaBar: "/block-previews/bookingCtaBar.png",
@@ -161,6 +162,7 @@ const SECTION_TYPE_THUMBNAILS = {
   stats: "/website-builder/section-thumbs/stats-band.png",
   mapEmbed: "/website-builder/section-thumbs/map-embed-split.svg",
   serviceHoverSlider: "/website-builder/section-thumbs/service-hover-slider.svg",
+  popupCta: "/block-previews/cta.png",
 };
 /** Local shims so the app renders even if helpers aren’t exported yet */
 const CollapsibleSection = ({
@@ -4531,6 +4533,7 @@ const autoProvisionIfEmpty = useCallback(
     ["mapEmbed", "manager.visualBuilder.sections.add.mapEmbed"],
     ["contact", "manager.visualBuilder.sections.add.contact"],
     ["contactForm", "manager.visualBuilder.sections.add.contactForm"],
+    ["popupCta", "Popup CTA"],
     ["cta", "manager.visualBuilder.sections.add.cta"],
     ["bookingCtaBar", "manager.visualBuilder.sections.add.bookingCtaBar"],
     ["footer", "manager.visualBuilder.sections.add.footer"],
@@ -6158,6 +6161,7 @@ const CanvasColumn = (
               layout={editingPreview.layout || "boxed"}
               sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
               defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
+              editorPreview
             />
           ) : (
             <Box
@@ -6258,6 +6262,7 @@ const CanvasColumn = (
                             defaultGutterX={
                               editingPreview?.content?.meta?.defaultGutterX
                             }
+                            editorPreview={blk?.type === "popupCta"}
                           />
                         </Box>
                         <Box

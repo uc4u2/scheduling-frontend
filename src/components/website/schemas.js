@@ -1104,6 +1104,33 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  popupCta: {
+    title: "Popup CTA",
+    fields: [
+      { name: "enabled", type: "boolean", label: "Enabled", default: false },
+      { name: "triggerMode", type: "select", label: "Trigger mode", options: ["delay", "scroll", "immediate"], default: "delay" },
+      { name: "delaySeconds", type: "number", label: "Delay (seconds)", min: 0, max: 60, step: 1, default: 8 },
+      { name: "scrollPercent", type: "number", label: "Scroll trigger (%)", min: 1, max: 100, step: 1, default: 45 },
+      { name: "showOncePerSession", type: "boolean", label: "Show once per session", default: true },
+      { name: "dismissDays", type: "number", label: "Dismiss for days", min: 0, max: 90, step: 1, default: 7 },
+      { name: "showCloseButton", type: "boolean", label: "Show close button", default: true },
+      { name: "showOnMobile", type: "boolean", label: "Show on mobile", default: true },
+      { name: "showOnDesktop", type: "boolean", label: "Show on desktop", default: true },
+      { name: "themeVariant", type: "select", label: "Theme variant", options: ["light", "dark", "image"], default: "light" },
+      { name: "eyebrow", type: "richinline", label: "Eyebrow" },
+      { name: "title", type: "richinline", label: "Title" },
+      { name: "body", type: "richtext", label: "Body", minRows: 4 },
+      { name: "ctaText", type: "richinline", label: "CTA text" },
+      { name: "ctaLink", type: "string", label: "CTA link (URL)" },
+      { name: "image", type: "image", label: "Image / background" },
+      { name: "imageAlt", type: "string", label: "Image alt text" },
+      { name: "imagePosition", type: "select", label: "Image position", options: ["top", "left", "right", "background"], default: "top" },
+      { name: "imageHeight", type: "number", label: "Image height (px)", min: 120, max: 480, step: 4, default: 220 },
+      { name: "overlayOpacity", type: "number", label: "Image overlay opacity", min: 0, max: 0.8, step: 0.01, default: 0.18 },
+      { name: "maxWidth", type: "select", label: "Popup width", options: ["xs", "sm", "md", "lg"], default: "sm" },
+    ]
+  },
+
   /* -------------------- PAGE STYLE (BACKGROUND) -------------------- */
   pageStyle: {
     title: "Page Style (Background)",
