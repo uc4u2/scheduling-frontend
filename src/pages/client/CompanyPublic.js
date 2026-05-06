@@ -1326,6 +1326,7 @@ export default function CompanyPublic({ slugOverride }) {
 
   // Prefer live manager settings when available to reflect changes immediately.
   const nav = (settings?.nav_overrides || sitePayload?.nav_overrides || {});
+  const menuSource = String(nav?.menu_source || "pages").toLowerCase();
   const isOn = (v) => (v === false || v === 0) ? false : (typeof v === "string" ? !/^(0|false|no|off)$/i.test(v.trim()) : Boolean(v ?? true));
   // Auth state — client
   const token = (typeof localStorage !== "undefined" && localStorage.getItem("token")) || "";
@@ -2068,7 +2069,10 @@ const siteTitle = useMemo(() => {
     [rootPath, slugForHref, pages]
   );
 
-  const headerNavItems = Array.isArray(headerConfig?.nav_items) ? headerConfig.nav_items : [];
+  const headerNavItems =
+    menuSource === "manual" && Array.isArray(headerConfig?.nav_items)
+      ? headerConfig.nav_items
+      : [];
   const currentSlugSafe = String(currentPage?.slug || "").toLowerCase();
 
   const headerNavItemsResolved = useMemo(() => {
