@@ -879,6 +879,32 @@ featureStories: () => ({
       ]
     }
   }),
+  popupCta: () => ({
+    type: "popupCta",
+    props: {
+      enabled: false,
+      triggerMode: "delay",
+      delaySeconds: 8,
+      scrollPercent: 45,
+      showOncePerSession: true,
+      dismissDays: 7,
+      showCloseButton: true,
+      showOnMobile: true,
+      showOnDesktop: true,
+      themeVariant: "light",
+      eyebrow: "Special offer",
+      title: "Ready to take the next step?",
+      body: "Use this popup to highlight a promotion, a consultation, or a quote request. Update the image, text, and button link to fit the page.",
+      ctaText: "Explore services",
+      ctaLink: "?page=services-classic",
+      image: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?q=80&w=1200&auto=format&fit=crop",
+      imageAlt: "Popup preview image",
+      imagePosition: "top",
+      imageHeight: 220,
+      maxWidth: "sm",
+      overlayOpacity: 0.18,
+    }
+  }),
   footer: () => ({
     type: "footer",
     props: {

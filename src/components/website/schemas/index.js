@@ -36,6 +36,32 @@ export const SCHEMA_REGISTRY = {
   },
 
   // Added a small enhancement so this block is nicely mapped in the simple inspector
+  popupCta: {
+    fields: [
+      { name: "enabled", type: "boolean", label: "Enabled", default: false },
+      { name: "triggerMode", type: "select", label: "Trigger mode", options: ["delay", "scroll", "immediate"], default: "delay" },
+      { name: "delaySeconds", type: "number", label: "Delay (seconds)", default: 8 },
+      { name: "scrollPercent", type: "number", label: "Scroll trigger (%)", default: 45 },
+      { name: "showOncePerSession", type: "boolean", label: "Show once per session", default: true },
+      { name: "dismissDays", type: "number", label: "Dismiss for days", default: 7 },
+      { name: "showCloseButton", type: "boolean", label: "Show close button", default: true },
+      { name: "showOnMobile", type: "boolean", label: "Show on mobile", default: true },
+      { name: "showOnDesktop", type: "boolean", label: "Show on desktop", default: true },
+      { name: "themeVariant", type: "select", label: "Theme variant", options: ["light", "dark", "image"], default: "light" },
+      { name: "eyebrow", type: "string", label: "Eyebrow" },
+      { name: "title", type: "string", label: "Title" },
+      { name: "body", type: "text", label: "Body", minRows: 4 },
+      { name: "ctaText", type: "string", label: "CTA text" },
+      { name: "ctaLink", type: "string", label: "CTA link" },
+      { name: "image", type: "image", label: "Image / background" },
+      { name: "imageAlt", type: "string", label: "Image alt text" },
+      { name: "imagePosition", type: "select", label: "Image position", options: ["top", "left", "right", "background"], default: "top" },
+      { name: "imageHeight", type: "number", label: "Image height (px)", default: 220 },
+      { name: "overlayOpacity", type: "number", label: "Image overlay opacity", default: 0.18 },
+      { name: "maxWidth", type: "string", label: "Popup width", default: "sm" },
+    ]
+  },
+
   logoCloud: {
     fields: [
       { name: "title", type: "string", label: "Title" },

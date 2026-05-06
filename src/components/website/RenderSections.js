@@ -5,7 +5,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import {
   Box, Container, Stack, Typography, Button, Grid, Card, CardContent, CardMedia,
   Divider, Accordion, AccordionSummary, AccordionDetails, Chip, IconButton, Avatar,
-  Dialog
+  Dialog, Paper
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -5784,6 +5784,314 @@ const Footer = ({ text, maxWidth }) => (
   </Container>
 );
 
+const POPUP_MAX_WIDTH = {
+  xs: 380,
+  sm: 460,
+  md: 560,
+  lg: 680,
+};
+
+const PopupCta = ({
+  enabled = false,
+  triggerMode = "delay",
+  delaySeconds = 8,
+  scrollPercent = 45,
+  showOncePerSession = true,
+  dismissDays = 7,
+  showCloseButton = true,
+  showOnMobile = true,
+  showOnDesktop = true,
+  themeVariant = "light",
+  eyebrow = "",
+  title = "",
+  body = "",
+  ctaText = "Learn more",
+  ctaLink = "#",
+  image = "",
+  imageAlt = "",
+  imagePosition = "top",
+  imageHeight = 220,
+  overlayOpacity = 0.18,
+  maxWidth = "sm",
+  popupId = "popup",
+  editorPreview = false,
+}) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [open, setOpen] = useState(Boolean(editorPreview));
+  const storageKey = useMemo(() => {
+    if (typeof window === "undefined") return `popup-cta:${popupId}`;
+    return `popup-cta:${window.location.pathname}${window.location.search}:${popupId}`;
+  }, [popupId]);
+
+  useEffect(() => {
+    if (editorPreview) {
+      setOpen(true);
+      return undefined;
+    }
+    if (!enabled) {
+      setOpen(false);
+      return undefined;
+    }
+    if ((isMobile && !showOnMobile) || (!isMobile && !showOnDesktop)) {
+      setOpen(false);
+      return undefined;
+    }
+    if (typeof window === "undefined") return undefined;
+
+    const now = Date.now();
+    const dismissedUntil = Number(window.localStorage.getItem(`${storageKey}:until`) || 0);
+    const sessionDismissed = window.sessionStorage.getItem(`${storageKey}:session`);
+    if (dismissedUntil > now) return undefined;
+    if (showOncePerSession && sessionDismissed === "1") return undefined;
+
+    let timer = 0;
+    let detached = false;
+    const openPopup = () => {
+      if (!detached) setOpen(true);
+    };
+
+    if (triggerMode === "immediate") {
+      openPopup();
+      return undefined;
+    }
+
+    if (triggerMode === "scroll") {
+      const threshold = Math.max(1, Math.min(100, Number(scrollPercent) || 45));
+      const onScroll = () => {
+        const doc = document.documentElement;
+        const maxScroll = (doc.scrollHeight - window.innerHeight) || 1;
+        const progress = (window.scrollY / maxScroll) * 100;
+        if (progress >= threshold) {
+          window.removeEventListener("scroll", onScroll);
+          openPopup();
+        }
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+      return () => {
+        detached = true;
+        window.removeEventListener("scroll", onScroll);
+      };
+    }
+
+    timer = window.setTimeout(openPopup, Math.max(0, Number(delaySeconds) || 0) * 1000);
+    return () => {
+      detached = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [
+    delaySeconds,
+    dismissDays,
+    editorPreview,
+    enabled,
+    isMobile,
+    scrollPercent,
+    showOnDesktop,
+    showOnMobile,
+    showOncePerSession,
+    storageKey,
+    triggerMode,
+  ]);
+
+  const dismiss = () => {
+    setOpen(false);
+    if (typeof window === "undefined" || editorPreview) return;
+    if (showOncePerSession) {
+      window.sessionStorage.setItem(`${storageKey}:session`, "1");
+    }
+    const days = Math.max(0, Number(dismissDays) || 0);
+    if (days > 0) {
+      window.localStorage.setItem(
+        `${storageKey}:until`,
+        String(Date.now() + days * 24 * 60 * 60 * 1000)
+      );
+    }
+  };
+
+  if (!open) return null;
+
+  const widthPx = POPUP_MAX_WIDTH[maxWidth] || POPUP_MAX_WIDTH.sm;
+  const usesBackground = imagePosition === "background";
+  const usesSideImage = image && (imagePosition === "left" || imagePosition === "right");
+  const usesTopImage = image && !usesBackground && !usesSideImage;
+  const darkVariant = themeVariant === "dark";
+
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        inset: 0,
+        zIndex: (t) => t.zIndex.modal + 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: { xs: 2, md: 3 },
+      }}
+    >
+      <Box
+        onClick={dismiss}
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(15,23,42,0.44)",
+          backdropFilter: "blur(4px)",
+        }}
+      />
+      <Paper
+        elevation={0}
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: `${widthPx}px`,
+          overflow: "hidden",
+          borderRadius: websiteRadius(4),
+          border: "1px solid rgba(148,163,184,0.18)",
+          boxShadow: "0 32px 100px rgba(15,23,42,0.28)",
+          bgcolor: darkVariant ? "#111827" : "var(--page-card-bg, rgba(255,255,255,0.98))",
+          color: darkVariant ? "#f8fafc" : "var(--page-heading-color, #1f2937)",
+        }}
+      >
+        {showCloseButton && (
+          <IconButton
+            size="small"
+            aria-label="Close popup"
+            onClick={dismiss}
+            sx={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              zIndex: 2,
+              bgcolor: "rgba(255,255,255,0.76)",
+              border: "1px solid rgba(148,163,184,0.2)",
+              "&:hover": { bgcolor: "rgba(255,255,255,0.92)" },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        )}
+        {usesBackground && image ? (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `linear-gradient(180deg, rgba(15,23,42,${overlayOpacity}), rgba(15,23,42,${overlayOpacity * 1.5})), url(${image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.22,
+            }}
+          />
+        ) : null}
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            display: "grid",
+            gridTemplateColumns: usesSideImage
+              ? { xs: "1fr", md: imagePosition === "left" ? "0.92fr 1.08fr" : "1.08fr 0.92fr" }
+              : "1fr",
+          }}
+        >
+          {usesSideImage && image ? (
+            <Box
+              component="img"
+              src={image}
+              alt={toPlain(imageAlt) || ""}
+              loading="lazy"
+              sx={{
+                width: "100%",
+                height: "100%",
+                minHeight: { xs: 180, md: `${Math.max(240, Number(imageHeight) || 220)}px` },
+                objectFit: "cover",
+                order: imagePosition === "left" ? 0 : 1,
+              }}
+            />
+          ) : null}
+          <Box
+            sx={{
+              order: usesSideImage && imagePosition === "left" ? 1 : 0,
+              p: { xs: 2.25, md: 3.25 },
+            }}
+          >
+            {usesTopImage && image ? (
+              <Box
+                component="img"
+                src={image}
+                alt={toPlain(imageAlt) || ""}
+                loading="lazy"
+                sx={{
+                  width: "100%",
+                  height: `${Math.max(160, Number(imageHeight) || 220)}px`,
+                  objectFit: "cover",
+                  borderRadius: websiteRadius(3),
+                  mb: 2,
+                }}
+              />
+            ) : null}
+            <Stack spacing={1.6}>
+              {eyebrow ? (
+                <HtmlTypo
+                  variant="overline"
+                  sx={{
+                    letterSpacing: "0.16em",
+                    color: darkVariant ? "rgba(248,250,252,0.72)" : "var(--page-body-color, rgba(15,23,42,0.72))",
+                  }}
+                >
+                  {eyebrow}
+                </HtmlTypo>
+              ) : null}
+              {title ? (
+                <HtmlTypo
+                  variant="h3"
+                  sx={{
+                    fontWeight: 800,
+                    lineHeight: 1.08,
+                    fontSize: { xs: "2rem", md: "2.6rem" },
+                    color: darkVariant ? "#f8fafc" : "var(--page-heading-color, #1f2937)",
+                  }}
+                >
+                  {title}
+                </HtmlTypo>
+              ) : null}
+              {body ? (
+                <HtmlTypo
+                  variant="body1"
+                  sx={{
+                    color: darkVariant ? "rgba(248,250,252,0.82)" : "var(--page-body-color, rgba(15,23,42,0.82))",
+                    lineHeight: 1.65,
+                  }}
+                >
+                  {body}
+                </HtmlTypo>
+              ) : null}
+              {ctaText ? (
+                <Box sx={{ pt: 0.6 }}>
+                  <Button
+                    component="a"
+                    href={ctaLink || "#"}
+                    variant="contained"
+                    onClick={dismiss}
+                    sx={{
+                      borderRadius: "var(--page-btn-radius, 4px)",
+                      px: 2.4,
+                      py: 1.05,
+                      textTransform: "none",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {toPlain(ctaText)}
+                  </Button>
+                </Box>
+              ) : null}
+            </Stack>
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
+  );
+};
+
 // Sticky conversion booster
 const BookingCtaBar = ({
   text = "Ready to book?",
@@ -6453,6 +6761,7 @@ const registry = {
   contact: ContactBlock,
   mapEmbed: MapEmbed,
   contactForm: ContactFormSection,
+  popupCta: PopupCta,
   footer: Footer,
   bookingCtaBar: BookingCtaBar
 };
@@ -6465,12 +6774,15 @@ function RenderSectionsInner({
   layout = "boxed",
   sectionSpacing = 6,
   defaultGutterX,
+  editorPreview = false,
 }) {
   const safeSections = Array.isArray(sections) ? sections : [];
   const [pageStyle, contentSections] = useMemo(
     () => pickPageStyle(safeSections),
     [safeSections]
   );
+  const popupSections = contentSections.filter((section) => section?.type === "popupCta");
+  const flowSections = contentSections.filter((section) => section?.type !== "popupCta");
   const defGX = defaultGutterX ?? pageStyle.gutterX;
   const bottomSpacing = clamp(
     Number(pageStyle.pageBottomSpacing) || 0,
@@ -6579,7 +6891,7 @@ return (
       />
     )}
     <Stack spacing={{ xs: 2.5, md: 4 }} sx={{ position: "relative", zIndex: 1 }}>
-      {contentSections.map((s, i) => {
+      {flowSections.map((s, i) => {
         const Cmp = registry[s?.type];
         if (!Cmp) return null;
         const props = s.props || {};
@@ -6607,7 +6919,7 @@ return (
             ? { mb: s.props.spaceBelow } // optional gap BELOW (theme units)
             : {}),
         };
-        if (i === contentSections.length - 1) {
+        if (i === flowSections.length - 1) {
           perSectionSx.pb = `${bottomSpacing}px`;
           perSectionSx.mb = 0;
         }
@@ -6628,6 +6940,14 @@ return (
         );
       })}
     </Stack>
+    {popupSections.map((s, i) => (
+      <PopupCta
+        key={s?.id || `popup-${i}`}
+        {...(s?.props || {})}
+        popupId={s?.id || `popup-${i}`}
+        editorPreview={editorPreview}
+      />
+    ))}
   </Box>
 );
 }
