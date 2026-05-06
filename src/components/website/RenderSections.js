@@ -80,6 +80,78 @@ function HtmlTypo({ variant = "body1", sx, children, ...rest }) {
   );
 }
 
+function parseAnimatedStatValue(raw) {
+  const text = toPlain(raw ?? "").trim();
+  if (!text) return null;
+  const match = text.match(/^([^0-9]*)(\d+(?:\.\d+)?)(.*)$/);
+  if (!match) return null;
+  const [, prefix = "", numText = "", suffix = ""] = match;
+  const target = Number(numText);
+  if (!Number.isFinite(target)) return null;
+  const decimals = (numText.split(".")[1] || "").length;
+  return { prefix, suffix, target, decimals };
+}
+
+function useInViewOnce() {
+  const ref = useRef(null);
+  const [seen, setSeen] = useState(false);
+
+  useEffect(() => {
+    if (seen || typeof window === "undefined") return undefined;
+    const node = ref.current;
+    if (!node) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setSeen(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.25 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [seen]);
+
+  return [ref, seen];
+}
+
+function CountUpValue({ value, active, durationMs = 1400 }) {
+  const parsed = useMemo(() => parseAnimatedStatValue(value), [value]);
+  const [displayValue, setDisplayValue] = useState(() => toPlain(value ?? ""));
+
+  useEffect(() => {
+    const finalText = toPlain(value ?? "");
+    if (!parsed || !active) {
+      setDisplayValue(finalText);
+      return undefined;
+    }
+
+    let frame = 0;
+    let start = 0;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / durationMs, 1);
+      const current = parsed.target * progress;
+      const formatted =
+        parsed.decimals > 0 ? current.toFixed(parsed.decimals) : String(Math.round(current));
+      setDisplayValue(`${parsed.prefix}${formatted}${parsed.suffix}`);
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(step);
+      } else {
+        setDisplayValue(finalText);
+      }
+    };
+
+    frame = window.requestAnimationFrame(step);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [active, durationMs, parsed, value]);
+
+  return displayValue;
+}
+
 /** Convert schema maxWidth ("full" => false) to MUI Container prop */
 function toContainerMax(maxWidth) {
   if (maxWidth === "full" || maxWidth === false) return false;
@@ -5009,17 +5081,24 @@ const Stats = ({
   title,
   subtitle,
   items = [],
+  columns,
   titleAlign,
   maxWidth,
   disclaimer,
   titleColor,
   subtitleColor,
   followSiteTheme = true,
+  style = "cards",
+  animateValues = false,
+  countDurationMs = 1400,
 }) => {
   const themeDriven = followSiteTheme !== false;
   const list = toArray(items);
+  const [sectionRef, sectionSeen] = useInViewOnce();
+  const resolvedStyle = String(style || "cards").toLowerCase() === "band" ? "band" : "cards";
+  const columnCount = Math.max(1, Math.min(6, Number(columns) || Math.min(Math.max(list.length, 1), 4)));
   return (
-    <Container maxWidth={toContainerMax(maxWidth)}>
+    <Container maxWidth={toContainerMax(maxWidth)} ref={sectionRef}>
       {title && (
         <HtmlTypo
           variant="h4"
@@ -5056,28 +5135,86 @@ const Stats = ({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
-          gap: 3,
+          gridTemplateColumns:
+            resolvedStyle === "band"
+              ? {
+                  xs: "repeat(2, minmax(0, 1fr))",
+                  sm: `repeat(${Math.min(columnCount, 2)}, minmax(0, 1fr))`,
+                  md: `repeat(${columnCount}, minmax(0, 1fr))`,
+                }
+              : { xs: "1fr", sm: "repeat(2, 1fr)", md: `repeat(${Math.min(columnCount, 4)}, 1fr)` },
+          gap: resolvedStyle === "band" ? { xs: 3, md: 4 } : 3,
           maxWidth: 1200,
           mx: "auto",
+          alignItems: "stretch",
         }}
       >
         {list.map((s, i) => (
-          <Card key={i} sx={{ textAlign: "center", p: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 120 }}>
-            <Typography
-              variant="h4"
-              fontWeight={900}
-              sx={{ color: "var(--page-heading-color, currentColor)" }}
+          resolvedStyle === "band" ? (
+            <Box
+              key={i}
+              sx={{
+                textAlign: "center",
+                py: { xs: 1.5, md: 2.5 },
+                px: { xs: 1, md: 1.5 },
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: { xs: 90, md: 120 },
+              }}
             >
-              {toPlain(s.value)}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{ color: "var(--page-body-color, text.secondary)" }}
-            >
-              {toPlain(s.label)}
-            </Typography>
-          </Card>
+              <Typography
+                component="div"
+                sx={{
+                  color: "var(--page-heading-color, currentColor)",
+                  fontWeight: 700,
+                  fontSize: { xs: "2.35rem", md: "3.2rem" },
+                  lineHeight: 1,
+                  letterSpacing: "-0.03em",
+                  mb: 1.25,
+                }}
+              >
+                <CountUpValue
+                  value={s.value}
+                  active={animateValues && sectionSeen}
+                  durationMs={countDurationMs}
+                />
+              </Typography>
+              <Typography
+                variant="overline"
+                sx={{
+                  color: "var(--page-body-color, text.secondary)",
+                  letterSpacing: "0.18em",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  fontSize: "0.9rem",
+                }}
+              >
+                {toPlain(s.label)}
+              </Typography>
+            </Box>
+          ) : (
+            <Card key={i} sx={{ textAlign: "center", p: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 120 }}>
+              <Typography
+                variant="h4"
+                fontWeight={900}
+                sx={{ color: "var(--page-heading-color, currentColor)" }}
+              >
+                <CountUpValue
+                  value={s.value}
+                  active={animateValues && sectionSeen}
+                  durationMs={countDurationMs}
+                />
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: "var(--page-body-color, text.secondary)" }}
+              >
+                {toPlain(s.label)}
+              </Typography>
+            </Card>
+          )
         ))}
       </Box>
       {disclaimer && (

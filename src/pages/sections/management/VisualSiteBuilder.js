@@ -152,6 +152,13 @@ const BLOCK_PREVIEWS = {
   pricingTable: "/block-previews/workshopsCommissions.png",
   bookingCtaBar: "/block-previews/bookingCtaBar.png",
   footer: "/block-previews/footer.png",
+  stats: "/website-builder/section-thumbs/stats-band.png",
+  mapEmbed: "/website-builder/section-thumbs/map-embed-split.svg",
+};
+
+const SECTION_TYPE_THUMBNAILS = {
+  stats: "/website-builder/section-thumbs/stats-band.png",
+  mapEmbed: "/website-builder/section-thumbs/map-embed-split.svg",
 };
 /** Local shims so the app renders even if helpers aren’t exported yet */
 const CollapsibleSection = ({
@@ -5818,10 +5825,35 @@ const autoProvisionIfEmpty = useCallback(
                       setSelectedBlock(realIndex);
                       requestAnimationFrame(() => scrollCanvasToSection(realIndex));
                     }}
-                    sx={{ justifyContent: "flex-start" }}
+                    sx={{
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      px: 1.25,
+                      py: 1,
+                    }}
                     fullWidth
                   >
-                    {i + 1}. {t(`manager.visualBuilder.sections.types.${blk.type}`, { defaultValue: blk.type })}
+                    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: "100%" }}>
+                      {SECTION_TYPE_THUMBNAILS[blk.type] ? (
+                        <Box
+                          component="img"
+                          src={SECTION_TYPE_THUMBNAILS[blk.type]}
+                          alt={`${blk.type} preview`}
+                          sx={{
+                            width: 64,
+                            height: 44,
+                            objectFit: "cover",
+                            borderRadius: 1,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : null}
+                      <Box sx={{ minWidth: 0 }}>
+                        {i + 1}. {t(`manager.visualBuilder.sections.types.${blk.type}`, { defaultValue: blk.type })}
+                      </Box>
+                    </Stack>
                   </Button>
                 </Tooltip>
               );

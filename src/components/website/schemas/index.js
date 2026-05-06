@@ -289,7 +289,12 @@ featureStories: {
   stats: {
     fields: [
       { name: "title", type: "string", label: "Title" },
+      { name: "subtitle", type: "string", label: "Subtitle (optional)" },
       { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
+      { name: "style", type: "select", label: "Style", options: ["cards", "band"], default: "cards" },
+      { name: "animateValues", type: "boolean", label: "Count up on scroll", default: false },
+      { name: "countDurationMs", type: "number", label: "Count duration (ms)", min: 300, max: 6000, default: 1400 },
+      { name: "columns", type: "number", label: "Columns", min: 1, max: 6, default: 4 },
       {
         name: "items", type: "objectArray", label: "Stats", fields: [
           { name: "value", type: "string", label: "Value (e.g., 99.95%)" },
