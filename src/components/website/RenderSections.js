@@ -6312,11 +6312,15 @@ const PopupCta = ({
 const BookingCtaBar = ({
   text = "Ready to book?",
   title = "",
-  buttonText = "See availability",
-  buttonLink = "/services",
+  buttonText = "",
+  buttonLink = "",
+  ctaText = "",
+  ctaLink = "",
   titleAlign
 }) => {
   const resolvedText = title || text;
+  const resolvedButtonText = ctaText || buttonText || "See availability";
+  const resolvedButtonLink = ctaLink || buttonLink || "/services";
   const inlineAlignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(String(resolvedText || ""));
   const inlineAlign = inlineAlignMatch ? inlineAlignMatch[1].toLowerCase() : null;
   const align = ((titleAlign || inlineAlign || "left") + "").toLowerCase();
@@ -6348,8 +6352,8 @@ const BookingCtaBar = ({
           >
             {resolvedText}
           </HtmlTypo>
-          <Button href={buttonLink} variant="contained" size="large">
-            {toPlain(buttonText)}
+          <Button href={resolvedButtonLink} variant="contained" size="large">
+            {toPlain(resolvedButtonText)}
           </Button>
         </Box>
       </Container>
