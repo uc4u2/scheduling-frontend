@@ -202,31 +202,20 @@ export default function GoogleReviewCta({
         <Stack spacing={isFloating ? { xs: 0.28, sm: 0.75 } : 1} sx={{ minWidth: 0 }}>
           <Stack spacing={isFloating ? { xs: 0.08, sm: 0.35 } : 0.5}>
             <Stack direction="row" spacing={{ xs: 0.32, sm: 1 }} alignItems="center" flexWrap="wrap">
-              <Typography
-                variant="overline"
-                sx={{
-                  color: tenantMuted,
-                  letterSpacing: { xs: "0.08em", sm: "0.15em" },
-                  lineHeight: 1.1,
-                  fontWeight: 850,
-                  fontSize: isFloating ? { xs: "0.42rem", sm: "0.63rem" } : "0.72rem",
-                }}
-              >
-                Google Reviews
-              </Typography>
               {starRow}
             </Stack>
-            <Typography
-              variant={isFloating ? "body1" : "h6"}
-              fontWeight={850}
-              sx={{
-                lineHeight: 1.18,
-                color: tenantText,
-                fontSize: isFloating ? { xs: "0.78rem", sm: "1rem" } : undefined,
-              }}
-            >
-              {isFloating ? "Share your experience" : "Loved your visit? Share your experience on Google."}
-            </Typography>
+            {!isFloating && (
+              <Typography
+                variant="h6"
+                fontWeight={850}
+                sx={{
+                  lineHeight: 1.18,
+                  color: tenantText,
+                }}
+              >
+                Loved your visit? Share your experience on Google.
+              </Typography>
+            )}
             {!isFloating && (
               <Typography variant="body2" sx={{ color: tenantMuted }}>
                 Your public review helps future clients choose with confidence. Opens Google in a new tab.
