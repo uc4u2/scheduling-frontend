@@ -5559,6 +5559,7 @@ const MapEmbed = ({
   detailTwoText = "",
   detailThreeTitle = "",
   detailThreeText = "",
+  matchHeight = true,
 }) => {
   const resolvedUrl = (() => {
     if (embedUrl) return embedUrl;
@@ -5584,7 +5585,7 @@ const MapEmbed = ({
     <Box
       sx={{
         width: "100%",
-        height: "100%",
+        height: matchHeight ? "100%" : "auto",
         minHeight: typeof height === "number" ? `${height}px` : height,
         display: "flex",
         flexDirection: "column",
@@ -5614,113 +5615,141 @@ const MapEmbed = ({
   );
 
   if (useSplitLayout) {
+    const containerMax = toContainerMax(maxWidth);
+    const contentStack = (
+      <Stack spacing={2.25}>
+        {eyebrow ? (
+          <HtmlTypo
+            variant="overline"
+            sx={{
+              letterSpacing: "0.18em",
+              color: "var(--page-body-color, rgba(15,23,42,0.72))",
+            }}
+          >
+            {eyebrow}
+          </HtmlTypo>
+        ) : null}
+        {title ? (
+          <HtmlTypo
+            variant="h2"
+            sx={{
+              fontWeight: 700,
+              lineHeight: 1.12,
+              letterSpacing: "-0.03em",
+              fontSize: "clamp(2.1rem, 4.4vw, 4rem)",
+              color: "var(--page-heading-color, #1f2937)",
+              maxWidth: 440,
+            }}
+          >
+            {title}
+          </HtmlTypo>
+        ) : null}
+        {body ? (
+          <HtmlTypo
+            variant="body1"
+            sx={{
+              color: "var(--page-body-color, text.secondary)",
+              maxWidth: 500,
+              fontSize: "1.02rem",
+              lineHeight: 1.65,
+            }}
+          >
+            {body}
+          </HtmlTypo>
+        ) : null}
+        {ctaText && ctaHref ? (
+          <Box>
+            <Button
+              component="a"
+              href={ctaHref}
+              variant="contained"
+              sx={{
+                borderRadius: "var(--page-btn-radius, 4px)",
+                textTransform: "none",
+                px: 2.75,
+                py: 1.15,
+              }}
+            >
+              {ctaText}
+            </Button>
+          </Box>
+        ) : null}
+        {detailBlocks.length ? (
+          <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ pt: 1 }}>
+            {detailBlocks.map((item, idx) => (
+              <Grid item xs={12} sm={detailBlocks.length === 1 ? 12 : 6} key={`${item.title || "detail"}-${idx}`}>
+                <Box
+                  sx={{
+                    height: "100%",
+                    borderTop: "1px solid rgba(148,163,184,0.16)",
+                    pt: 1.75,
+                  }}
+                >
+                  {item.title ? (
+                    <HtmlTypo
+                      variant="overline"
+                      sx={{
+                        letterSpacing: "0.16em",
+                        fontWeight: 700,
+                        color: "var(--page-heading-color, #1f2937)",
+                        fontSize: "0.72rem",
+                      }}
+                    >
+                      {item.title}
+                    </HtmlTypo>
+                  ) : null}
+                  {item.text ? (
+                    <HtmlTypo
+                      variant="body2"
+                      sx={{
+                        mt: 1,
+                        color: "var(--page-body-color, text.secondary)",
+                        whiteSpace: "pre-line",
+                        lineHeight: 1.6,
+                        fontSize: "0.98rem",
+                      }}
+                    >
+                      {item.text}
+                    </HtmlTypo>
+                  ) : null}
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        ) : null}
+      </Stack>
+    );
+
+    if (!matchHeight) {
+      return (
+        <Container maxWidth={containerMax} disableGutters={containerMax === false}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "minmax(320px, 0.9fr) minmax(640px, 1.45fr)",
+                lg: "minmax(340px, 0.85fr) minmax(760px, 1.55fr)",
+              },
+              columnGap: { xs: 0, md: 4, lg: 5 },
+              rowGap: { xs: 3, md: 0 },
+              alignItems: "start",
+            }}
+          >
+            <Box>{contentStack}</Box>
+            <Box sx={{ display: "flex", alignItems: "flex-start" }}>{mapCard}</Box>
+          </Box>
+        </Container>
+      );
+    }
+
     return (
-      <Container maxWidth={toContainerMax(maxWidth)}>
+      <Container maxWidth={containerMax} disableGutters={containerMax === false}>
         <Grid container spacing={{ xs: 3, md: 5 }} alignItems="stretch">
           <Grid item xs={12} md={5} lg={4}>
-            <Stack spacing={2.25}>
-              {eyebrow ? (
-                <HtmlTypo
-                  variant="overline"
-                  sx={{
-                    letterSpacing: "0.18em",
-                    color: "var(--page-body-color, rgba(15,23,42,0.72))",
-                  }}
-                >
-                  {eyebrow}
-                </HtmlTypo>
-              ) : null}
-              {title ? (
-                <HtmlTypo
-                  variant="h2"
-                  sx={{
-                    fontWeight: 700,
-                    lineHeight: 1.12,
-                    letterSpacing: "-0.03em",
-                    fontSize: "clamp(2.1rem, 4.4vw, 4rem)",
-                    color: "var(--page-heading-color, #1f2937)",
-                    maxWidth: 440,
-                  }}
-                >
-                  {title}
-                </HtmlTypo>
-              ) : null}
-              {body ? (
-                <HtmlTypo
-                  variant="body1"
-                  sx={{
-                    color: "var(--page-body-color, text.secondary)",
-                    maxWidth: 500,
-                    fontSize: "1.02rem",
-                    lineHeight: 1.65,
-                  }}
-                >
-                  {body}
-                </HtmlTypo>
-              ) : null}
-              {ctaText && ctaHref ? (
-                <Box>
-                  <Button
-                    component="a"
-                    href={ctaHref}
-                    variant="contained"
-                    sx={{
-                      borderRadius: "var(--page-btn-radius, 4px)",
-                      textTransform: "none",
-                      px: 2.75,
-                      py: 1.15,
-                    }}
-                  >
-                    {ctaText}
-                  </Button>
-                </Box>
-              ) : null}
-              {detailBlocks.length ? (
-                <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ pt: 1 }}>
-                  {detailBlocks.map((item, idx) => (
-                    <Grid item xs={12} sm={detailBlocks.length === 1 ? 12 : 6} key={`${item.title || "detail"}-${idx}`}>
-                      <Box
-                        sx={{
-                          height: "100%",
-                          borderTop: "1px solid rgba(148,163,184,0.16)",
-                          pt: 1.75,
-                        }}
-                      >
-                        {item.title ? (
-                          <HtmlTypo
-                            variant="overline"
-                            sx={{
-                              letterSpacing: "0.16em",
-                              fontWeight: 700,
-                              color: "var(--page-heading-color, #1f2937)",
-                              fontSize: "0.72rem",
-                            }}
-                          >
-                            {item.title}
-                          </HtmlTypo>
-                        ) : null}
-                        {item.text ? (
-                          <HtmlTypo
-                            variant="body2"
-                            sx={{
-                              mt: 1,
-                              color: "var(--page-body-color, text.secondary)",
-                              whiteSpace: "pre-line",
-                              lineHeight: 1.6,
-                              fontSize: "0.98rem",
-                            }}
-                          >
-                            {item.text}
-                          </HtmlTypo>
-                        ) : null}
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : null}
-            </Stack>
+            {contentStack}
           </Grid>
-          <Grid item xs={12} md={7} lg={8} sx={{ display: "flex" }}>
+          <Grid item xs={12} md={7} lg={8} sx={{ display: "flex", alignItems: "stretch" }}>
             {mapCard}
           </Grid>
         </Grid>

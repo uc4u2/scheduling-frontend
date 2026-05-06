@@ -572,6 +572,7 @@ featureStories: {
       { name: "query", type: "string", label: "Address / query" },
       { name: "embedUrl", type: "string", label: "Embed URL (optional)" },
       { name: "height", type: "number", label: "Height (px)" },
+      { name: "matchHeight", type: "boolean", label: "Match text-column height" },
       { name: "borderRadius", type: "number", label: "Border radius (px)" },
       { name: "maxWidth", type: "string", label: "Max width" },
     ],

@@ -899,6 +899,7 @@ export const SCHEMA_REGISTRY = {
       { name: "query",       type: "string",     label: "Address / query" },
       { name: "embedUrl",    type: "string",     label: "Embed URL (optional)" },
       { name: "height",      type: "number",     label: "Height (px)", min: 180, max: 900, step: 10, default: 320 },
+      { name: "matchHeight", type: "boolean",    label: "Match text-column height", default: true },
       { name: "borderRadius",type: "number",     label: "Border radius (px)", min: 0, max: 64, step: 1, default: 16 },
       { name: "titleAlign",  type: "select",     label: "Title alignment", options: ["left","center","right"], default: "left" },
       { name: "maxWidth",    type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
