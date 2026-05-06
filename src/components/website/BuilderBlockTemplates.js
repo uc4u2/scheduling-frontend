@@ -743,6 +743,31 @@ featureStories: () => ({
 
     
   }),
+  mapEmbed: () => ({
+    type: "mapEmbed",
+    props: {
+      title: "Contact Details",
+      eyebrow: "Visit our studio",
+      body:
+        "We would love to hear from you and meet you in person. Share your address, contact details, hours, and a clear booking path beside the map.",
+      ctaText: "Book appointment",
+      ctaHref: "?page=contact",
+      detailOneTitle: "Main location",
+      detailOneText: "123 Main Street\nYour City, ST 12345",
+      detailTwoTitle: "Office hours",
+      detailTwoText: "Monday - Friday: 9AM - 6PM\nSaturday: 10AM - 4PM",
+      detailThreeTitle: "Contact",
+      detailThreeText: "Call: +1 (555) 123-4567\nEmail: hello@example.com",
+      provider: "google",
+      query: "123 Main Street, Your City",
+      embedUrl: "",
+      height: 380,
+      borderRadius: 2,
+      titleAlign: "left",
+      maxWidth: "xl",
+      gutterX: 0,
+    },
+  }),
   contactForm: () => ({
     type: "contactForm",
     props: {

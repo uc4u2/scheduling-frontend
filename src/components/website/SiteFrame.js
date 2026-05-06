@@ -101,6 +101,7 @@ export default function SiteFrame({
   onTogglePageMenu,
   onRemoveFooterItem,
   onRemoveHeaderItem,
+  onPreviewOpenPage,
 }) {
   const theme = useTheme(); // will be overridden by ThemeRuntimeProvider below
   const isPreview = disableFetch && Boolean(initialSite);
@@ -723,6 +724,8 @@ export default function SiteFrame({
       {navLinks.map((item, idx) => {
         const props = resolveLinkProps(item.href);
         const active = Boolean(props?.to && pathname.includes(String(props.to).split("?")[0]));
+        const previewOpensBuilderPage =
+          isPreview && typeof onPreviewOpenPage === "function" && item?.id;
         return (
           <Box
             key={`${item.label}-${idx}`}
@@ -738,6 +741,15 @@ export default function SiteFrame({
               color="inherit"
               size="small"
               sx={navButtonStyling(active)}
+              onClick={
+                previewOpensBuilderPage
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPreviewOpenPage(item);
+                    }
+                  : undefined
+              }
             >
               {item.label || "Link"}
             </Button>
