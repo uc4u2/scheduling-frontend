@@ -571,7 +571,12 @@ export const SCHEMA_REGISTRY = {
     title: "Stats",
     fields: [
       { name: "title",       type: "richinline", label: "Title", labelKey: "manager.visualBuilder.schemas.testimonials.fields.title" },
+      { name: "subtitle",    type: "richinline", label: "Subtitle (optional)" },
       { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
+      { name: "style",       type: "select", label: "Style", options: ["cards", "band"], default: "cards" },
+      { name: "animateValues", type: "boolean", label: "Count up on scroll", default: false },
+      { name: "countDurationMs", type: "number", label: "Count duration (ms)", min: 300, max: 6000, step: 100, default: 1400 },
+      { name: "columns",     type: "number", label: "Columns", min: 1, max: 6, step: 1, default: 4 },
       {
         name: "items",
         type: "objectArray",
