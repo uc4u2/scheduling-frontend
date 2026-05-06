@@ -716,6 +716,24 @@ featureStories: () => ({
       ],
     },
   }),
+  stats: () => ({
+    type: "stats",
+    props: {
+      title: "",
+      subtitle: "",
+      style: "band",
+      animateValues: true,
+      countDurationMs: 1600,
+      columns: 4,
+      maxWidth: "xl",
+      items: [
+        { value: "5☆", label: "Highly rated" },
+        { value: "500+", label: "Satisfied clients" },
+        { value: "2 cities", label: "Service area" },
+        { value: "20.7K", label: "Instagram followers" },
+      ],
+    },
+  }),
   serviceGrid: () => ({
     type: "serviceGrid",
     props: {
