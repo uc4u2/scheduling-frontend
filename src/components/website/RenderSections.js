@@ -6311,11 +6311,13 @@ const PopupCta = ({
 // Sticky conversion booster
 const BookingCtaBar = ({
   text = "Ready to book?",
+  title = "",
   buttonText = "See availability",
   buttonLink = "/services",
   titleAlign
 }) => {
-  const inlineAlignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(String(text || ""));
+  const resolvedText = title || text;
+  const inlineAlignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(String(resolvedText || ""));
   const inlineAlign = inlineAlignMatch ? inlineAlignMatch[1].toLowerCase() : null;
   const align = ((titleAlign || inlineAlign || "left") + "").toLowerCase();
   const isCenter = align === "center";
@@ -6344,7 +6346,7 @@ const BookingCtaBar = ({
             className="booking-cta-text"
             sx={{ fontWeight: 700, m: 0, textAlign: titleAlign ? align : undefined }}
           >
-            {text}
+            {resolvedText}
           </HtmlTypo>
           <Button href={buttonLink} variant="contained" size="large">
             {toPlain(buttonText)}
