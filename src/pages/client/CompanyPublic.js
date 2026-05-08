@@ -1730,13 +1730,19 @@ export default function CompanyPublic({ slugOverride }) {
     return { bodySections: body, postReviewSections: post, footerSections: tail };
   }, [patchedSections]);
   const pageStartsWithHero = useMemo(() => {
-    const firstRenderable = (bodySections || []).find(
+    const fallbackSections = Array.isArray(currentPage?.content?.sections)
+      ? currentPage.content.sections
+      : [];
+    const sourceSections = Array.isArray(bodySections) && bodySections.length
+      ? bodySections
+      : fallbackSections;
+    const firstRenderable = sourceSections.find(
       (sec) => sec && String(sec.type || "").toLowerCase() !== "pagestyle"
     );
     if (!firstRenderable) return false;
     const type = String(firstRenderable.type || "").replace(/[\s_-]+/g, "").toLowerCase();
     return HERO_SECTION_TYPES.has(type);
-  }, [bodySections]);
+  }, [bodySections, currentPage]);
 
   const activePageStyle = useMemo(() => {
     return specialPageStyle || extractPageStyleProps(currentPage) || siteDefaultPageStyle || null;
