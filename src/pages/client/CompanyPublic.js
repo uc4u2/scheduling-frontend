@@ -1729,6 +1729,25 @@ export default function CompanyPublic({ slugOverride }) {
 
     return { bodySections: body, postReviewSections: post, footerSections: tail };
   }, [patchedSections]);
+  const overrideLeadSections = useMemo(() => {
+    if (!renderOverride) return [];
+    const sourceSections = Array.isArray(currentPage?.content?.sections)
+      ? currentPage.content.sections
+      : [];
+    const heroSections = [];
+    for (const sec of sourceSections) {
+      if (!sec) continue;
+      const normalizedType = String(sec.type || "")
+        .replace(/[\s_-]+/g, "")
+        .toLowerCase();
+      if (!normalizedType || normalizedType === "pagestyle") continue;
+      if (HERO_SECTION_TYPES.has(normalizedType)) {
+        heroSections.push(sec);
+      }
+      break;
+    }
+    return heroSections;
+  }, [renderOverride, currentPage]);
   const pageStartsWithHero = useMemo(() => {
     const fallbackSections = Array.isArray(currentPage?.content?.sections)
       ? currentPage.content.sections
@@ -2920,7 +2939,17 @@ const siteTitle = useMemo(() => {
         }}
       >
         {overrideContent ? (
-          overrideContent
+          <>
+            {overrideLeadSections.length > 0 && (
+              <Container
+                maxWidth={pageLayout === "full" ? false : "lg"}
+                sx={{ pt: 0, pb: 0 }}
+              >
+                <RenderSections sections={overrideLeadSections} layout={pageLayout} />
+              </Container>
+            )}
+            {overrideContent}
+          </>
         ) : (
           <Container
             maxWidth={pageLayout === "full" ? false : "lg"}
