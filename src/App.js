@@ -430,6 +430,13 @@ const LegacyMobileAppRedirect = () => {
   return <Navigate to={redirectTarget} replace />;
 };
 
+const CustomDomainSlugRedirect = () => {
+  const { "*": splat } = useParams();
+  const location = useLocation();
+  const remainder = String(splat || "").replace(/^\/+/, "");
+  const targetPath = remainder ? `/${remainder}` : "/";
+  return <Navigate to={`${targetPath}${location.search || ""}`} replace />;
+};
 
 const AppContent = ({ token, setToken }) => {
   const nativeRuntime = isNativeRuntime();
@@ -711,7 +718,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/reviews" element={<PublicReviewList slugOverride={tenantSlug} />} />
               <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
               <Route path="/tip/:appointmentId" element={<PublicTip slugOverride={tenantSlug} />} />
-              <Route path="/:slug/*" element={<Navigate to="/" replace />} />
+              <Route path="/:slug/*" element={<CustomDomainSlugRedirect />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}
@@ -806,43 +813,47 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/candidate/login/:token" element={<CandidateLoginCallbackPage />} />
           <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
-          <Route path="/public/:companySlug/jobs" element={<PublicJobsListPage />} />
-          <Route path="/public/:companySlug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
-          <Route path="/:slug/jobs" element={<PublicJobsListPage />} />
-          <Route path="/:slug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
+          {!isCustomDomain && (
+            <>
+              <Route path="/public/:companySlug/jobs" element={<PublicJobsListPage />} />
+              <Route path="/public/:companySlug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
+              <Route path="/:slug/jobs" element={<PublicJobsListPage />} />
+              <Route path="/:slug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
 
-          {/* Client Public Booking Flow - specific routes first */}
-          <Route path="/:slug/services" element={<ServiceList />} />
-          <Route path="/:slug/services/:serviceId" element={<ServiceDetails />} />
-          <Route path="/:slug/services/:serviceId/employees" element={<EmployeeList />} />
-          <Route path="/:slug/services/:serviceId/employees/:employeeId" element={<EmployeeProfile />} />
+              {/* Client Public Booking Flow - specific routes first */}
+              <Route path="/:slug/services" element={<ServiceList />} />
+              <Route path="/:slug/services/:serviceId" element={<ServiceDetails />} />
+              <Route path="/:slug/services/:serviceId/employees" element={<EmployeeList />} />
+              <Route path="/:slug/services/:serviceId/employees/:employeeId" element={<EmployeeProfile />} />
 
-          <Route path="/:slug/products" element={<ProductList />} />
+              <Route path="/:slug/products" element={<ProductList />} />
 
-          <Route path="/:slug/products/:productId" element={<ProductDetails />} />
+              <Route path="/:slug/products/:productId" element={<ProductDetails />} />
 
-          <Route path="/:slug/basket" element={<MyBasket />} />
+              <Route path="/:slug/basket" element={<MyBasket />} />
 
-          {/* Checkout */}
-          <Route path="/:slug/checkout" element={<Checkout />} />
+              {/* Checkout */}
+              <Route path="/:slug/checkout" element={<Checkout />} />
 
-          {/* Booking */}
-          <Route path="/client/book/:slug/:serviceId/:employeeId" element={<EmployeeBooking />} />
-          <Route path="/:slug/book/:employeeId/:serviceId" element={<EmployeeBooking />} />
-          <Route path="/:slug/book" element={<EmployeeBooking />} />
+              {/* Booking */}
+              <Route path="/client/book/:slug/:serviceId/:employeeId" element={<EmployeeBooking />} />
+              <Route path="/:slug/book/:employeeId/:serviceId" element={<EmployeeBooking />} />
+              <Route path="/:slug/book" element={<EmployeeBooking />} />
 
-          {/* Booking confirmation & cancel */}
-          <Route path="/client/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
-          <Route path="/:slug/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
-          <Route path="/:slug/checkout/return" element={<BookingConfirmation />} />
-          <Route path="/client/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
-          <Route path="/:slug/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
-          <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />
-          <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
-          <Route path="/:slug/pay/:appointmentId" element={<PublicAppointmentPayPage />} />
+              {/* Booking confirmation & cancel */}
+              <Route path="/client/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
+              <Route path="/:slug/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
+              <Route path="/:slug/checkout/return" element={<BookingConfirmation />} />
+              <Route path="/client/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
+              <Route path="/:slug/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
+              <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />
+              <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
+              <Route path="/:slug/pay/:appointmentId" element={<PublicAppointmentPayPage />} />
+              <Route path="/:slug/meet/:artistId" element={<MeetWithArtistPage />} />
+            </>
+          )}
           <Route path="/estimate/:token" element={<PublicEstimatePage />} />
           <Route path="/book-slot/:recruiterId/:token" element={<CandidateBooking />} />
-          <Route path="/:slug/meet/:artistId" element={<MeetWithArtistPage />} />
           <Route path="/settings/payments/stripe/return" element={<StripeConnectReturn />} />
 <Route path="/settings/payments/stripe/refresh" element={<StripeConnectReturn />} />
           {/* Website templates (manager) */}
@@ -1016,16 +1027,20 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/calendar" element={<CalendarView />} />
           <Route path="/analytics" element={<AnalyticsDashboard token={token} />} />          <Route path="/cancel-booking" element={<CancelBooking />} />
           <Route path="/cancel-booking/:token" element={<CancelBooking />} />
-          <Route path="/:slug/review/:appointmentId" element={<PublicReview />} />
-          <Route path="/:slug/tip/:appointmentId" element={<PublicTip />} />
-          <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
-          <Route path="/:slug/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
+          {!isCustomDomain && (
+            <>
+              <Route path="/:slug/review/:appointmentId" element={<PublicReview />} />
+              <Route path="/:slug/tip/:appointmentId" element={<PublicTip />} />
+              <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
+              <Route path="/:slug/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
+            </>
+          )}
           <Route path="/manage/website/layout-lab" element={<LayoutTuningLab />} />
 
           {/* Canonical public page LAST so specific /:slug/... routes win */}
           <Route path="/client/reschedule" element={<ClientRescheduleGateway />} />
           <Route path="/client/cancel" element={<ClientCancelGateway />} />
-          <Route path="/:slug" element={<CompanyPublic />} />
+          {!isCustomDomain && <Route path="/:slug" element={<CompanyPublic />} />}
 
           {/* 404 */}
           <Route path="*" element={<Typography sx={{ mt: 5, textAlign: "center" }}>Page Not Found</Typography>} />
