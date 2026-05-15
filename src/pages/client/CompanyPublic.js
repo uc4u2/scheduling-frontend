@@ -2322,6 +2322,21 @@ const siteTitle = useMemo(() => {
     ]
   );
 
+  const mobileDrawerTextColor = useMemo(() => {
+    const candidate =
+      activePageCssVars?.["--page-body-color"] ||
+      activePageCssVars?.["--page-heading-color"] ||
+      headerConfig?.scrolled_text_color ||
+      headerConfig?.text_color ||
+      theme.palette.text.primary;
+    return candidate || theme.palette.text.primary;
+  }, [
+    activePageCssVars,
+    headerConfig?.scrolled_text_color,
+    headerConfig?.text_color,
+    theme.palette.text.primary,
+  ]);
+
   const renderMobileNavButtons = () => (
     <Stack spacing={1} alignItems="stretch">
       {navItemsToRender.map((item) => {
@@ -2334,7 +2349,7 @@ const siteTitle = useMemo(() => {
               variant="text"
               sx={{
                 justifyContent: "flex-start",
-                color: resolvedHeaderTextColor,
+                color: mobileDrawerTextColor,
               }}
               onClick={() => {
                 item.onClick();
@@ -2357,7 +2372,7 @@ const siteTitle = useMemo(() => {
             variant="text"
             sx={{
               justifyContent: "flex-start",
-              color: resolvedHeaderTextColor,
+              color: mobileDrawerTextColor,
             }}
             {...commonProps}
               onClick={handleMobileClose}
@@ -2887,7 +2902,7 @@ const siteTitle = useMemo(() => {
               theme.palette.mode === "dark"
                 ? "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92))"
                 : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96))",
-            color: resolvedHeaderTextColor,
+            color: mobileDrawerTextColor,
             backdropFilter: "blur(18px)",
             WebkitBackdropFilter: "blur(18px)",
             borderBottom: "1px solid rgba(148,163,184,0.18)",
@@ -2899,7 +2914,7 @@ const siteTitle = useMemo(() => {
           <Typography variant="subtitle1" fontWeight={700}>
             {navBrandName}
           </Typography>
-          <IconButton onClick={handleMobileClose} sx={{ color: resolvedHeaderTextColor }}>
+          <IconButton onClick={handleMobileClose} sx={{ color: mobileDrawerTextColor }}>
             <CloseIcon />
           </IconButton>
         </Box>
