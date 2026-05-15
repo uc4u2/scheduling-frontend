@@ -187,6 +187,7 @@ export default function EmployeeAvailabilityCalendar({
     "&:focus-visible": focusRing,
   });
   const displayTimezone =
+    userTz ||
     slots.find((s) => s?.timezone)?.timezone ||
     priceInfo?.timezone ||
     "UTC";
@@ -508,7 +509,10 @@ export default function EmployeeAvailabilityCalendar({
     const chosen = {
       date: selectedDate,
       start_time: selectedTime,
-      timezone: slots.find((s) => s.start_time === selectedTime)?.timezone || displayTimezone,
+      timezone:
+        userTz ||
+        slots.find((s) => s.start_time === selectedTime)?.timezone ||
+        displayTimezone,
     };
 
     if (typeof onSlotSelect === "function") {
