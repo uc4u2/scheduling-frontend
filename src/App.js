@@ -48,6 +48,7 @@ import ContactPage from "./landing/pages/ContactPage";
 import FAQPage from "./landing/pages/FAQPage";
 import WebsiteBuilderPage from "./landing/pages/WebsiteBuilderPage";
 import PlatformPage from "./landing/pages/PlatformPage";
+import PricingPage from "./landing/pages/PricingPage";
 import BookingHubPage from "./landing/pages/booking/BookingHubPage";
 import SalonBookingPage from "./landing/pages/booking/SalonBookingPage";
 import SpaBookingPage from "./landing/pages/booking/SpaBookingPage";
@@ -220,6 +221,7 @@ export const ThemeModeContext = createContext({
 });
 
 const APP_MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
+const SHOW_LOCAL_PRICING_PREVIEW = process.env.NODE_ENV !== "production";
 
 const ExternalRedirect = ({ to }) => {
   useEffect(() => {
@@ -742,6 +744,9 @@ const AppContent = ({ token, setToken }) => {
             </Route>
               <Route element={<PublicLayout token={token} setToken={setToken} />}>
                 <Route path="/pricing" element={<ExternalRedirect to={APP_MARKETING_PRICING_URL} />} />
+                {SHOW_LOCAL_PRICING_PREVIEW ? (
+                  <Route path="/pricing-local" element={<PricingPage />} />
+                ) : null}
                 <Route path="/compare" element={<CompareHubPage />} />
                 <Route path="/compare/:vendor" element={<ComparisonPage />} />
                 <Route path="/alternatives" element={<AlternativesHubPage />} />

@@ -555,7 +555,7 @@ const PlanFinder = ({
                   fullWidth
                 >
                   {planLoadingKey === recommendation?.planKey
-                    ? "Starting checkout..."
+                    ? "Starting your free trial..."
                     : `Start 14-day free trial with ${planLabel}`}
                 </Button>
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
@@ -586,7 +586,7 @@ const PlanFinder = ({
                 </Typography>
                 {recommendation?.setupKey === null ? (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25, lineHeight: 1.7 }}>
-                    You can build it yourself with the included website builder.
+                    Build it yourself with the included website builder. You can add setup help later if needed.
                   </Typography>
                 ) : null}
                 <Typography
@@ -625,7 +625,7 @@ const PlanFinder = ({
                     sx={{ mt: 2, borderRadius: 999, textTransform: "none" }}
                     fullWidth
                   >
-                    Talk to sales for Growth Setup
+                    Talk to sales about Growth Setup
                   </Button>
                 ) : recommendation?.setupKey === "premium" ? (
                   <Button
@@ -635,7 +635,7 @@ const PlanFinder = ({
                     sx={{ mt: 2, borderRadius: 999, textTransform: "none" }}
                     fullWidth
                   >
-                    Talk to sales for Premium Setup
+                    Talk to sales about Premium Setup
                   </Button>
                 ) : null}
               </Paper>
@@ -659,7 +659,7 @@ const PlanFinder = ({
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {recommendation?.setupKey
-                    ? `Optional setup: ${recommendation.setupLabel} - ${setupPrice} ${recommendation.setupKey === "premium" ? "" : "one-time"}`
+                    ? `Optional one-time setup: ${recommendation.setupLabel} - ${setupPrice}`
                     : "Website setup: Not needed. You can build it yourself."}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ pt: 0.5 }}>
@@ -683,6 +683,10 @@ const PlanFinder = ({
                 {upgradeGuidance}
               </Typography>
             </Paper>
+
+            <Typography variant="body2" color="text.secondary">
+              You can start with the monthly plan first and add website setup later.
+            </Typography>
 
             <Stack spacing={1.25}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} flexWrap="wrap">
