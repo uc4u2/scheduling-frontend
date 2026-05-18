@@ -5,6 +5,9 @@ import {
   Stack,
   Paper,
   Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Alert,
   Table,
   TableHead,
@@ -21,14 +24,24 @@ import HubIcon from "@mui/icons-material/Hub";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import PublicIcon from "@mui/icons-material/Public";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import Meta from "../../components/Meta";
 import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import PricingTable from "../components/PricingTable";
+import PlanFinder from "../components/PlanFinder";
+import WebsiteSetupCards from "../components/WebsiteSetupCards";
 import platformMap from "../../assets/marketing/platform-map.svg";
 import JsonLd from "../../components/seo/JsonLd";
 import api from "../../utils/api";
+import {
+  SUBSCRIPTION_PLANS,
+  WEBSITE_SETUP_SERVICES,
+  QUOTE_TO_INVOICE_SECTION,
+  BUSINESS_FINANCE_COMPARISON,
+  PRICING_FAQS,
+} from "../data/pricingCatalog";
 
 const HERO_PRIMARY_CTA_TO = "/register";
 const HERO_SECONDARY_CTA_TO = "#plans";
@@ -74,111 +87,6 @@ const DEFAULT_HERO = {
   },
   mediaAlt: "Schedulaa pricing overview showing plans and platform map",
 };
-
-const DEFAULT_PLANS = [
-  {
-    key: "starter",
-  name: "Starter",
-  price: "$19.99/mo",
-  priceCents: 1999,
-  description:
-    "Launch your website and take bookings and payments for solo professionals.",
-  trialNote: "14-day free trial • Cancel anytime",
-  features: [
-    { type: "heading", text: "Core platform" },
-    "Unified booking, website, and payments.",
-    "Secure client and staff portals.",
-    "Website builder with branded pages and templates.",
-    "Online booking, confirmations, and client portal.",
-    "Public “Book with me” link.",
-    "Stripe Checkout with automatic tax compliance.",
-    { type: "heading", text: "Operational basics" },
-    "Booking notifications and reminders.",
-    "Embeddable booking widgets.",
-    "Stripe refunds and payment history.",
-    "Basic role-based access.",
-    { type: "heading", text: "Time & reporting" },
-    "Basic time tracking tied to bookings and shifts.",
-    "CSV/PDF exports for worked hours and revenue.",
-    { type: "heading", text: "Capacity" },
-    "1 staff seat and 1 location (department) included.",
-    "Custom domain + automatic SSL included.",
-    "Upgrade for onboarding workflows.",
-  ],
-    ctaLabel: "Start 14-day free trial",
-    ctaTo: HERO_PRIMARY_CTA_TO,
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "$49.99/mo",
-    priceCents: 4999,
-    positioning: "Run daily operations from one system.",
-  description:
-    "For small teams that need scheduling, automation, and analytics.",
-  trialNote: "14-day free trial • Cancel anytime",
-  features: [
-    "Everything in Starter.",
-    { type: "heading", text: "Time & Labor" },
-    "Shift-based clock-in and clock-out.",
-    "Break enforcement and auto-deductions.",
-    "Overtime and anomaly flags.",
-    { type: "heading", text: "Payroll" },
-    "Full payroll runs included (no per-run fees).",
-    "Payroll-ready approvals and audit trails.",
-    "Payroll exports to QuickBooks & Xero.",
-    "Payroll processing with Employee Payslip Portal (self-serve PDFs).",
-    { type: "heading", text: "Access & control" },
-    "Role-based access for managers and staff.",
-    "Staff permissions and visibility controls.",
-    "Department scheduling and shared calendars.",
-    "Shift swaps, approvals, and live rosters.",
-    { type: "heading", text: "Analytics & marketing" },
-    "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
-    "Advanced Analytics (bookings, revenue, client segments).",
-    { type: "heading", text: "Capacity" },
-    "Up to 5 staff seats and 1 location (department) included.",
-    "Automated Canadian stat holiday pay and accruals.",
-    "Priority support (business hours).",
-    ],
-    ctaLabel: "Start 14-day free trial",
-    ctaTo: HERO_PRIMARY_CTA_TO,
-    highlight: true,
-    badge: "Most popular",
-  },
-  {
-    key: "business",
-    name: "Business",
-    price: "$119.99/mo",
-    priceCents: 11999,
-    description:
-    "Built for compliance, audits, and multi-location (department) operations.",
-    trialNote: "14-day free trial • Cancel anytime",
-    features: [
-    "Everything in Pro.",
-    { type: "heading", text: "Time & Labor" },
-    "Shift-based clock-in and clock-out with break enforcement.",
-    "Overtime, anomaly flags, and audit-ready time records.",
-    { type: "heading", text: "Payroll" },
-    "Full payroll runs included (no per-run fees).",
-    { type: "heading", text: "Governance & compliance" },
-    "Audit-ready payroll and compliance records.",
-    "Compliance-ready tax exports (W-2, T4, ROE).",
-    "Multi-location (department) payroll and reporting.",
-    { type: "heading", text: "Advanced control" },
-    "Branch-level permissions.",
-    "Bulk scheduling controls (close / keep windows).",
-    "Audit-ready operations with reduced compliance risk.",
-    { type: "heading", text: "Capacity" },
-      "10 staff seats and up to 5 locations (departments) included.",
-      "Add seats for $9/mo each.",
-      "Free branded website included when using Payroll + Scheduling.",
-    ],
-    ctaLabel: "Start 14-day free trial",
-    ctaTo: HERO_PRIMARY_CTA_TO,
-  },
-];
-
 
 const DEFAULT_ADDONS = {
   title: "Popular add-ons",
@@ -255,7 +163,7 @@ const PricingPage = () => {
   const [searchParams] = useSearchParams();
   const marketing = theme.marketing || {};
   const [ctaLoadingKey, setCtaLoadingKey] = useState("");
-  const [addonLoading, setAddonLoading] = useState(false);
+  const [setupLoadingKey, setSetupLoadingKey] = useState("");
   const [addonError, setAddonError] = useState("");
   const [ctaError, setCtaError] = useState("");
   const [promoConfig, setPromoConfig] = useState(null);
@@ -280,11 +188,10 @@ const PricingPage = () => {
   }, []);
 
   const content = useMemo(() => t("landing.pricingPage", { returnObjects: true }), [t]);
-  const websiteDesignService = content?.websiteDesignService || {};
   const metaContent = content?.meta || DEFAULT_META;
   const heroContent = content?.hero || DEFAULT_HERO;
-  const plansContent = content?.plans?.table || {};
-  const assurancesContent = content?.assurances || {};
+  const plansContent = useMemo(() => content?.plans?.table || {}, [content]);
+  const assurancesContent = useMemo(() => content?.assurances || {}, [content]);
   const ribbonContent = content?.ribbon || DEFAULT_RIBBON;
   const ctaContent = content?.ctaBanner || DEFAULT_CTA;
   const includedContent = content?.included || {};
@@ -314,7 +221,7 @@ const PricingPage = () => {
         "@type": "Product",
         name: "Schedulaa Pro",
         brand: { "@type": "Brand", name: "Schedulaa" },
-        description: "Scheduling, marketing campaigns, advanced analytics; up to 5 staff, 1 location (department).",
+        description: "Team scheduling, payroll-ready workflows, staff visibility, and richer service-business operations.",
         offers: {
           "@type": "Offer",
           price: "49.99",
@@ -328,7 +235,7 @@ const PricingPage = () => {
         "@type": "Product",
         name: "Schedulaa Business",
         brand: { "@type": "Brand", name: "Schedulaa" },
-        description: "Advanced payroll exports, audits, compliance docs; 10 staff, 5 locations (departments) included.",
+        description: "Quote-to-invoice operations, work orders, inventory, reporting, and finance-ready workflows for service businesses.",
         offers: {
           "@type": "Offer",
           price: "119.99",
@@ -447,7 +354,7 @@ const PricingPage = () => {
   }, [assurancesContent, theme]);
 
   const plans = useMemo(() => {
-    const list = plansContent?.list?.length ? plansContent.list : DEFAULT_PLANS;
+    const list = SUBSCRIPTION_PLANS;
     const defaultPriceCents = {
       starter: 1999,
       pro: 4999,
@@ -502,7 +409,7 @@ const PricingPage = () => {
         anchorId: plan.anchorId || plan.key || plan.name,
       };
     });
-  }, [plansContent, heroContent, promoConfig, t]);
+  }, [heroContent, promoConfig, t]);
 
   const addons = useMemo(() => {
     if (plansContent?.addons?.items?.length) {
@@ -558,15 +465,20 @@ const PricingPage = () => {
     }
   }, [navigate]);
 
-  const handleWebsiteDesignCheckout = useCallback(async () => {
+  const handleSetupSelection = useCallback(async (service) => {
+    if (!service?.key) return;
     setAddonError("");
+    if (service.ctaMode === "contact") {
+      navigate(`/contact?topic=${encodeURIComponent(`website-setup-${service.key}`)}`);
+      return;
+    }
     const token =
       typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
     if (!token) {
       navigate("/login?redirect=/pricing");
       return;
     }
-    setAddonLoading(true);
+    setSetupLoadingKey(service.key);
     try {
       const res = await api.post("/api/manager/website-design/checkout");
       const url = res?.data?.checkout_url;
@@ -588,7 +500,7 @@ const PricingPage = () => {
           "Unable to start checkout."
       );
     } finally {
-      setAddonLoading(false);
+      setSetupLoadingKey("");
     }
   }, [navigate]);
 
@@ -693,63 +605,75 @@ const PricingPage = () => {
       )}
 
       <Box id="plans" sx={{ px: { xs: 2, md: 6 }, pb: { xs: 10, md: 12 } }}>
+        <PlanFinder
+          plans={plans}
+          onPlanSelect={handleCheckout}
+          onSetupSelect={handleSetupSelection}
+          planLoadingKey={ctaLoadingKey}
+          setupLoadingKey={setupLoadingKey}
+          comparePlansHref="#plans-grid"
+        />
         {ctaError && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {ctaError}
           </Alert>
         )}
-        <PricingTable
-          plans={plans}
-          addons={addons.items}
-          addonsTitle={addons.title}
-          addonHeaders={addons.headers}
-          onCtaClick={handleCheckout}
-          ctaLoadingKey={ctaLoadingKey}
-        />
+        <Box id="plans-grid">
+          <PricingTable
+            plans={plans}
+            addons={addons.items}
+            addonsTitle={addons.title}
+            addonHeaders={addons.headers}
+            onCtaClick={handleCheckout}
+            ctaLoadingKey={ctaLoadingKey}
+          />
+        </Box>
         <Paper
           elevation={0}
           sx={{
-            mt: { xs: 3, md: 4 },
+            mt: { xs: 4, md: 5 },
             p: { xs: 2.5, md: 3 },
             borderRadius: 3,
             border: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            alignItems={{ xs: "flex-start", md: "center" }}
-            justifyContent="space-between"
-          >
-            <Box>
-              <Typography variant="h6" fontWeight={700}>
-                {websiteDesignService.title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {websiteDesignService.description}
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.75 }}
-              >
-                {websiteDesignService.includes}
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              onClick={handleWebsiteDesignCheckout}
-              disabled={addonLoading}
-            >
-              {addonLoading ? websiteDesignService.loadingCta : websiteDesignService.cta}
-            </Button>
+          <Stack spacing={2}>
+            <Typography variant="h5" fontWeight={800}>
+              {QUOTE_TO_INVOICE_SECTION.title}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {QUOTE_TO_INVOICE_SECTION.subtitle}
+            </Typography>
+            <Stack component="ul" spacing={1} sx={{ pl: 2, m: 0 }}>
+              {QUOTE_TO_INVOICE_SECTION.bullets.map((item) => (
+                <Typography key={item} component="li" variant="body2" color="text.secondary">
+                  {item}
+                </Typography>
+              ))}
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <Button component="a" href="#business" variant="contained">
+                See Business plan
+              </Button>
+              <Button component={Link} to="/contact" variant="outlined">
+                Talk to sales
+              </Button>
+            </Stack>
           </Stack>
-          {addonError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {addonError}
-            </Alert>
-          )}
         </Paper>
+        <WebsiteSetupCards
+          title={WEBSITE_SETUP_SERVICES.title}
+          subtitle={WEBSITE_SETUP_SERVICES.subtitle}
+          note={WEBSITE_SETUP_SERVICES.note}
+          services={WEBSITE_SETUP_SERVICES.items}
+          onSelect={handleSetupSelection}
+          loadingKey={setupLoadingKey}
+        />
+        {addonError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {addonError}
+          </Alert>
+        )}
         <Paper
           elevation={0}
           sx={{
@@ -814,7 +738,8 @@ const PricingPage = () => {
                   <TableCell>{comparisonRows.bestFor?.starter}</TableCell>
                   <TableCell>{comparisonRows.bestFor?.pro}</TableCell>
                   <TableCell>
-                    {comparisonRows.bestFor?.business}
+                    {comparisonRows.bestFor?.business ||
+                      "Quote-to-invoice operations teams"}
                   </TableCell>
                 </TableRow>
                 <TableRow>
@@ -969,8 +894,7 @@ const PricingPage = () => {
                 </TableRow>
                 <TableRow>
                   <TableCell>
-                    {comparisonRows.payroll?.processing ||
-                      "Payroll processing (US & Canada)"}
+                    {"Payroll-ready records (US & Canada)"}
                   </TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.yes}</TableCell>
@@ -995,8 +919,7 @@ const PricingPage = () => {
                 </TableRow>
                 <TableRow>
                   <TableCell>
-                    {comparisonRows.payroll?.exports ||
-                      "Advanced payroll exports & audits"}
+                    {"Payroll exports and accountant-ready handoff"}
                   </TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
@@ -1034,14 +957,14 @@ const PricingPage = () => {
                 </TableRow>
                 <TableRow>
                   <TableCell>
-                    {comparisonRows.compliance?.w2}
+                    {"W-2 export support"}
                   </TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>{comparisonRows.compliance?.t4}</TableCell>
+                  <TableCell>{"T4 & ROE export support"}</TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.yes}</TableCell>
@@ -1094,6 +1017,22 @@ const PricingPage = () => {
                   <TableCell>{comparisonValues.dash}</TableCell>
                   <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    {comparisonRows.businessFinance?.section ||
+                      BUSINESS_FINANCE_COMPARISON.section}
+                  </TableCell>
+                </TableRow>
+                {BUSINESS_FINANCE_COMPARISON.rows.map((row) => (
+                  <TableRow key={row.key}>
+                    <TableCell>
+                      {comparisonRows.businessFinance?.[row.key] || row.label}
+                    </TableCell>
+                    <TableCell>{comparisonValues.dash}</TableCell>
+                    <TableCell>{comparisonValues.dash}</TableCell>
+                    <TableCell>{comparisonValues.yes}</TableCell>
+                  </TableRow>
+                ))}
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
                     {comparisonRows.automation?.section}
@@ -1290,6 +1229,35 @@ const PricingPage = () => {
             />
           </Paper>
         </Stack>
+        <Paper
+          elevation={0}
+          sx={{
+            mt: { xs: 4, md: 5 },
+            p: { xs: 2.5, md: 3 },
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Typography variant="h5" fontWeight={800} gutterBottom>
+            Pricing FAQ
+          </Typography>
+          <Stack spacing={1}>
+            {PRICING_FAQS.map((item) => (
+              <Accordion key={item.question} disableGutters elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 2, "&:before": { display: "none" } }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {item.question}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.answer}
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </Stack>
+        </Paper>
       </Box>
 
       <Box sx={{ px: { xs: 2, md: 6 }, pb: { xs: 8, md: 10 }, textAlign: "center" }}>
