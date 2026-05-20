@@ -91,8 +91,8 @@ export default function AddMemberHelpDrawer({ open, onClose, anchor, width }) {
           icon={<SecurityOutlinedIcon color="primary" />}
           items={[
             "HR onboarding access lets someone manage onboarding forms, candidate profiles, employee/profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual posting.",
-            "Supervisor access gives operational shift/time tools and leave approve/reject/cancel, but not Leave Settings, reports, accruals, carryover, or balance adjustments.",
-            "Collect payments (self only) lets an employee process payments for their own bookings.",
+            "Supervisor access gives operational shift/time tools, leave approve/reject/cancel, and company-wide Booking Checkout for a trusted lead who may need to charge for any staff member's customer.",
+            "Collect payments (self only) lets an employee use Booking Checkout for their own bookings only.",
             "Payroll access opens payroll/tax tools, the full Business Finance workspace, plus Leave Reports, leave balance corrections, accrual posting, and carryover apply.",
           ]}
         />
