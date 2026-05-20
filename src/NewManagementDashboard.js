@@ -2781,7 +2781,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Supervisor access</Typography>
                                 <Tooltip
-                                  title="Supervisor access: operational scheduling, time tracking, fraud/anomaly review, swap approvals, master calendar, and leave approve/reject/cancel. No Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply."
+                                  title="Supervisor access: operational scheduling, time tracking, fraud/anomaly review, swap approvals, master calendar, leave approve/reject/cancel, and company-wide Booking Checkout. Use this for a trusted lead who may need to charge for any staff member's customer. No Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Supervisor access help">
@@ -2802,7 +2802,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Collect payments (self only)</Typography>
                                 <Tooltip
-                                  title="Allow this employee to collect payments for their own bookings only. This does not grant payroll, leave settings, reports, or company-wide checkout access."
+                                  title="Allow this employee to use Booking Checkout for their own bookings only. This is for charging their own customers, not the whole team. It does not grant payroll, leave settings, reports, or company-wide checkout access."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Collect payments access help">
