@@ -9,7 +9,12 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -29,9 +34,12 @@ import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import {
+  createBillingRecipient,
+  createSimilarFinanceInvoice,
   createFinanceInvoicePaymentLink,
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
+  listBillingRecipients,
   updateFinanceInvoice,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
@@ -58,6 +66,7 @@ const blankForm = {
   terms: "",
   po_number: "",
   payment_terms: "",
+  payment_instructions: "",
   billing_notes_internal: "",
   billing_recipient: blankBillingRecipient,
 };
@@ -93,6 +102,7 @@ const buildFormFromInvoice = (invoice) => ({
   terms: invoice?.terms || "",
   po_number: invoice?.custom_fields_json?.po_number || "",
   payment_terms: invoice?.custom_fields_json?.payment_terms || "",
+  payment_instructions: invoice?.custom_fields_json?.payment_instructions || "",
   billing_notes_internal: invoice?.custom_fields_json?.billing_notes_internal || "",
   billing_recipient: {
     ...blankBillingRecipient,
@@ -105,6 +115,7 @@ export default function FinanceInvoiceDetailDialog({
   invoiceId,
   onClose,
   onSaved,
+  onOpenInvoice,
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const [loading, setLoading] = useState(false);
@@ -113,9 +124,15 @@ export default function FinanceInvoiceDetailDialog({
   const [warning, setWarning] = useState("");
   const [invoice, setInvoice] = useState(null);
   const [form, setForm] = useState(blankForm);
+  const [billingRecipients, setBillingRecipients] = useState([]);
+  const [billingRecipientsLoading, setBillingRecipientsLoading] = useState(false);
+  const [billingRecipientsError, setBillingRecipientsError] = useState("");
+  const [selectedBillingRecipientId, setSelectedBillingRecipientId] = useState("");
+  const [savingBillingRecipient, setSavingBillingRecipient] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [offlinePaymentDialogOpen, setOfflinePaymentDialogOpen] = useState(false);
   const [printOpening, setPrintOpening] = useState(false);
+  const [creatingSimilar, setCreatingSimilar] = useState(false);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -141,6 +158,37 @@ export default function FinanceInvoiceDetailDialog({
       active = false;
     };
   }, [invoiceId, open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    const loadBillingRecipients = async () => {
+      if (active) {
+        setBillingRecipientsLoading(true);
+        setBillingRecipientsError("");
+      }
+      try {
+        const items = await listBillingRecipients();
+        if (!active) return;
+        setBillingRecipients(Array.isArray(items) ? items : []);
+      } catch (err) {
+        if (active) {
+          setBillingRecipients([]);
+          setBillingRecipientsError(
+            err?.response?.data?.error ||
+              err?.message ||
+              "Unable to load saved billing recipients."
+          );
+        }
+      } finally {
+        if (active) setBillingRecipientsLoading(false);
+      }
+    };
+    loadBillingRecipients();
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   const totalLabel = useMemo(
     () => formatCurrency(invoice?.total, invoice?.currency),
@@ -178,6 +226,75 @@ export default function FinanceInvoiceDetailDialog({
       },
     }));
 
+  const applySavedBillingRecipient = () => {
+    const recipient = billingRecipients.find((row) => String(row.id) === String(selectedBillingRecipientId));
+    if (!recipient) return;
+    setForm((prev) => ({
+      ...prev,
+      billing_recipient: {
+        ...blankBillingRecipient,
+        company_name: recipient.company_name || "",
+        contact_name: recipient.contact_name || "",
+        email: recipient.email || "",
+        phone: recipient.phone || "",
+        address_street: recipient.address_street || "",
+        address_city: recipient.address_city || "",
+        address_state: recipient.address_state || "",
+        address_province: recipient.address_province || "",
+        address_zip: recipient.address_zip || "",
+        address_country: recipient.address_country || "",
+        tax_id: recipient.tax_id || "",
+      },
+    }));
+    enqueueSnackbar("Saved billing recipient copied into this invoice.", { variant: "success" });
+  };
+
+  const handleSaveBillingRecipient = async () => {
+    const companyName = String(form.billing_recipient.company_name || "").trim();
+    if (!companyName) {
+      enqueueSnackbar("Enter a company or recipient name before saving billing details.", {
+        variant: "warning",
+      });
+      return;
+    }
+    setSavingBillingRecipient(true);
+    setError("");
+    try {
+      const recipient = await createBillingRecipient({
+        company_name: companyName,
+        contact_name: form.billing_recipient.contact_name || "",
+        email: form.billing_recipient.email || "",
+        phone: form.billing_recipient.phone || "",
+        address_street: form.billing_recipient.address_street || "",
+        address_city: form.billing_recipient.address_city || "",
+        address_state: form.billing_recipient.address_state || "",
+        address_province: form.billing_recipient.address_province || "",
+        address_zip: form.billing_recipient.address_zip || "",
+        address_country: form.billing_recipient.address_country || "",
+        tax_id: form.billing_recipient.tax_id || "",
+      });
+      if (recipient?.id != null) {
+        setBillingRecipients((prev) => {
+          const next = Array.isArray(prev) ? [...prev] : [];
+          const existingIndex = next.findIndex((row) => String(row.id) === String(recipient.id));
+          if (existingIndex >= 0) next[existingIndex] = recipient;
+          else next.unshift(recipient);
+          return next;
+        });
+        setSelectedBillingRecipientId(String(recipient.id));
+      }
+      enqueueSnackbar("Billing details saved for next time.", { variant: "success" });
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Unable to save billing details for later reuse."
+      );
+    } finally {
+      setSavingBillingRecipient(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError("");
@@ -192,6 +309,7 @@ export default function FinanceInvoiceDetailDialog({
         billing_recipient: form.billing_recipient,
         po_number: form.po_number,
         payment_terms: form.payment_terms,
+        payment_instructions: form.payment_instructions,
         billing_notes_internal: form.billing_notes_internal,
       });
       const nextInvoice = payload?.invoice || null;
@@ -273,6 +391,32 @@ export default function FinanceInvoiceDetailDialog({
     setRefundDialogOpen(false);
   };
 
+  const handleCreateSimilarInvoice = async () => {
+    if (!invoice?.id) return;
+    setCreatingSimilar(true);
+    setError("");
+    try {
+      const payload = await createSimilarFinanceInvoice(invoice.id);
+      const nextInvoice = payload?.invoice || null;
+      if (!nextInvoice?.id) {
+        throw new Error("New invoice was not returned.");
+      }
+      enqueueSnackbar(`Similar invoice created: ${nextInvoice.invoice_number || `#${nextInvoice.id}`}.`, {
+        variant: "success",
+      });
+      onSaved?.(nextInvoice);
+      if (onOpenInvoice) {
+        onOpenInvoice(nextInvoice.id);
+      } else {
+        onClose?.();
+      }
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Unable to create similar invoice.");
+    } finally {
+      setCreatingSimilar(false);
+    }
+  };
+
   const handleOfflinePaymentSaved = (payload) => {
     const nextInvoice = payload?.invoice || null;
     if (nextInvoice) {
@@ -342,31 +486,114 @@ export default function FinanceInvoiceDetailDialog({
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Stack spacing={1}>
                   <Typography variant="subtitle1" fontWeight={700}>
-                    Payments & Refunds
-                  </Typography>
-                  <Typography variant="body2">
-                    Payment status: {formatStatusLabel(invoice?.payment_status || invoice?.status || "pending")}
+                    Invoice payment summary
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Payment link: {invoice?.payment_link_exists ? "Created" : invoice?.payment_link_ready ? "Ready to create" : "Unavailable"}
+                    See the current balance, payment link state, and the next billing actions without leaving the invoice.
                   </Typography>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
+                      gap: 1.25,
+                    }}
+                  >
+                    {[
+                      {
+                        label: "Invoice total",
+                        value: formatCurrency(invoice?.total, invoice?.currency),
+                        helper: `Status: ${formatStatusLabel(invoice?.payment_status || invoice?.status || "pending")}`,
+                      },
+                      {
+                        label: "Paid so far",
+                        value: formatCurrency(paymentSummary?.total_recorded_paid_amount, invoice?.currency),
+                        helper: `Online ${formatCurrency(paymentSummary?.online_paid_amount, invoice?.currency)} • Offline ${formatCurrency(paymentSummary?.offline_paid_amount, invoice?.currency)}`,
+                      },
+                      {
+                        label: "Balance due",
+                        value: formatCurrency(paymentSummary?.remaining_balance, invoice?.currency),
+                        helper:
+                          remainingBalance > 0
+                            ? "Action needed"
+                            : "Nothing left to collect",
+                      },
+                      {
+                        label: "Payment link",
+                        value: invoice?.payment_link_exists
+                          ? "Ready"
+                          : invoice?.payment_link_ready
+                            ? "Can create"
+                            : "Unavailable",
+                        helper: formatPaymentOriginLabel(paymentSummary?.payment_origin),
+                      },
+                    ].map((row) => (
+                      <Paper
+                        key={row.label}
+                        variant="outlined"
+                        sx={{ p: 1.5, borderRadius: 2, backgroundColor: "background.default" }}
+                      >
+                        <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                          {row.label}
+                        </Typography>
+                        <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>
+                          {row.value}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {row.helper}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button
+                      variant="contained"
+                      startIcon={<PaymentOutlinedIcon />}
+                      onClick={handleCopyPaymentLink}
+                      disabled={loading || saving || !invoice?.payment_link_ready}
+                    >
+                      {invoice?.hosted_invoice_url ? "Copy payment link" : "Create payment link"}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<LaunchIcon />}
+                      onClick={handleOpenPaymentLink}
+                      disabled={loading || saving || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
+                    >
+                      Open payment page
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<LocalPrintshopOutlinedIcon />}
+                      onClick={handleOpenPrintView}
+                      disabled={!invoice?.id || printOpening}
+                    >
+                      Print / Save PDF
+                    </Button>
+                    {canRecordOfflinePayment ? (
+                      <Button
+                        variant="outlined"
+                        startIcon={<PaymentOutlinedIcon />}
+                        onClick={() => setOfflinePaymentDialogOpen(true)}
+                      >
+                        Record offline payment
+                      </Button>
+                    ) : null}
+                    {canIssueRefund ? (
+                      <Button
+                        variant="outlined"
+                        startIcon={<ReplayOutlinedIcon />}
+                        onClick={() => setRefundDialogOpen(true)}
+                      >
+                        Issue refund
+                      </Button>
+                    ) : null}
+                  </Stack>
                   <Typography variant="body2" color="text.secondary">
-                    Payment origin: {formatPaymentOriginLabel(paymentSummary?.payment_origin)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Online payment state: {paymentSummary?.online_payment_present ? "Stripe payment captured" : "No Stripe payment captured"}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Online paid amount: {formatCurrency(paymentSummary?.online_paid_amount, invoice?.currency)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Offline paid amount: {formatCurrency(paymentSummary?.offline_paid_amount, invoice?.currency)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Total recorded paid: {formatCurrency(paymentSummary?.total_recorded_paid_amount, invoice?.currency)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Remaining balance: {formatCurrency(paymentSummary?.remaining_balance, invoice?.currency)}
+                    {paymentSummary?.online_payment_present
+                      ? "A Stripe payment has already been captured for this invoice."
+                      : invoice?.payment_link_ready
+                        ? "A hosted payment page can be created for this invoice."
+                        : "A payment link is unavailable until the invoice has a client and a positive total."}
                   </Typography>
                   {paymentSummary?.payment_method_summary ? (
                     <Typography variant="body2" color="text.secondary">
@@ -409,26 +636,6 @@ export default function FinanceInvoiceDetailDialog({
                       ))}
                     </Stack>
                   ) : null}
-                  {canIssueRefund ? (
-                    <Button
-                      variant="outlined"
-                      startIcon={<ReplayOutlinedIcon />}
-                      onClick={() => setRefundDialogOpen(true)}
-                      sx={{ alignSelf: "flex-start", mt: 0.5 }}
-                    >
-                      Issue refund
-                    </Button>
-                  ) : null}
-                  {canRecordOfflinePayment ? (
-                    <Button
-                      variant="outlined"
-                      startIcon={<PaymentOutlinedIcon />}
-                      onClick={() => setOfflinePaymentDialogOpen(true)}
-                      sx={{ alignSelf: "flex-start", mt: canIssueRefund ? 0 : 0.5 }}
-                    >
-                      Record offline payment
-                    </Button>
-                  ) : null}
                 </Stack>
               </Paper>
 
@@ -468,12 +675,79 @@ export default function FinanceInvoiceDetailDialog({
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="subtitle1" fontWeight={700}>
-                      Billing Recipient
+                      Billing details
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Billing recipient is the company/person shown on the invoice. It can differ from the operational client.
+                      This invoice keeps its own billing snapshot. You can copy a saved billing recipient into the invoice, then save it without changing older invoices.
                     </Typography>
                   </Box>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "flex-start" }}>
+                    <FormControl fullWidth>
+                      <InputLabel shrink>Saved billing recipient</InputLabel>
+                      <Select
+                        label="Saved billing recipient"
+                        displayEmpty
+                        notched
+                        value={selectedBillingRecipientId}
+                        onChange={(event) => setSelectedBillingRecipientId(event.target.value)}
+                        renderValue={(value) => {
+                          if (!value) {
+                            if (billingRecipientsLoading) return "Loading saved billing recipients...";
+                            if (billingRecipients.length === 0) return "No saved billing recipients yet";
+                            return "Choose a saved billing recipient";
+                          }
+                          const recipient = billingRecipients.find(
+                            (row) => String(row.id) === String(value)
+                          );
+                          return (
+                            recipient?.company_name ||
+                            recipient?.contact_name ||
+                            recipient?.email ||
+                            `Recipient #${value}`
+                          );
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>
+                            {billingRecipientsLoading
+                              ? "Loading saved billing recipients..."
+                              : billingRecipients.length === 0
+                                ? "No saved billing recipients yet"
+                                : "Choose a saved billing recipient"}
+                          </em>
+                        </MenuItem>
+                        {billingRecipients.map((recipient) => (
+                          <MenuItem key={recipient.id} value={String(recipient.id)}>
+                            {recipient.company_name || recipient.contact_name || recipient.email || `Recipient #${recipient.id}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText>
+                        {billingRecipientsError ||
+                          (billingRecipients.length
+                            ? `${billingRecipients.length} saved recipient${
+                                billingRecipients.length === 1 ? "" : "s"
+                              } available`
+                            : "Save the current billing details, then reuse them here later.")}
+                      </FormHelperText>
+                    </FormControl>
+                    <Button
+                      variant="outlined"
+                      onClick={applySavedBillingRecipient}
+                      disabled={!selectedBillingRecipientId}
+                      sx={{ minWidth: { md: 180 } }}
+                    >
+                      Apply saved recipient
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSaveBillingRecipient}
+                      disabled={savingBillingRecipient}
+                      sx={{ minWidth: { md: 180 } }}
+                    >
+                      {savingBillingRecipient ? "Saving..." : "Save for next time"}
+                    </Button>
+                  </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                       fullWidth
@@ -546,12 +820,6 @@ export default function FinanceInvoiceDetailDialog({
                       value={coalesceText(form.billing_recipient.tax_id)}
                       onChange={(event) => setBillingField("tax_id", event.target.value)}
                     />
-                    <TextField
-                      fullWidth
-                      label="Internal billing note"
-                      value={coalesceText(form.billing_notes_internal)}
-                      onChange={(event) => setField("billing_notes_internal", event.target.value)}
-                    />
                   </Stack>
                 </Stack>
               </Paper>
@@ -559,7 +827,7 @@ export default function FinanceInvoiceDetailDialog({
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Stack spacing={2}>
                   <Typography variant="subtitle1" fontWeight={700}>
-                    Invoice Admin Fields
+                    Invoice document
                   </Typography>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
@@ -595,7 +863,8 @@ export default function FinanceInvoiceDetailDialog({
                   </Stack>
                   <TextField
                     fullWidth
-                    label="Description"
+                    label="Customer message"
+                    helperText="Use this for a short invoice summary or what the client is being billed for."
                     value={form.description}
                     onChange={(event) => setField("description", event.target.value)}
                   />
@@ -603,7 +872,8 @@ export default function FinanceInvoiceDetailDialog({
                     fullWidth
                     multiline
                     minRows={3}
-                    label="Notes"
+                    label="Customer notes"
+                    helperText="Visible on the invoice. Good for thank-you notes, job context, or what happens next."
                     value={form.notes}
                     onChange={(event) => setField("notes", event.target.value)}
                   />
@@ -611,9 +881,28 @@ export default function FinanceInvoiceDetailDialog({
                     fullWidth
                     multiline
                     minRows={3}
-                    label="Terms"
+                    label="Payment terms"
+                    helperText="Visible on the invoice. Example: due on receipt, net 7, or payment due before delivery."
                     value={form.terms}
                     onChange={(event) => setField("terms", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    label="Payment instructions"
+                    helperText="Visible on the invoice and print view. Example: e-transfer email, bank transfer details, cheque payee, or cash instructions."
+                    value={form.payment_instructions}
+                    onChange={(event) => setField("payment_instructions", event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    label="Internal notes"
+                    helperText="Internal only. Not intended for the client-facing invoice."
+                    value={coalesceText(form.billing_notes_internal)}
+                    onChange={(event) => setField("billing_notes_internal", event.target.value)}
                   />
                 </Stack>
               </Paper>
@@ -672,19 +961,10 @@ export default function FinanceInvoiceDetailDialog({
           </Button>
           <Button
             variant="outlined"
-            startIcon={<LocalPrintshopOutlinedIcon />}
-            onClick={handleOpenPrintView}
-            disabled={!invoice?.id || printOpening}
+            onClick={handleCreateSimilarInvoice}
+            disabled={loading || saving || creatingSimilar || !invoice?.id}
           >
-            Print / Save PDF
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PaymentOutlinedIcon />}
-            onClick={handleCopyPaymentLink}
-            disabled={loading || saving || !invoice?.payment_link_ready}
-          >
-            Create / Copy Payment Link
+            {creatingSimilar ? "Creating..." : "Create similar invoice"}
           </Button>
           <Button
             variant="outlined"
@@ -697,14 +977,6 @@ export default function FinanceInvoiceDetailDialog({
             disabled={!invoice?.hosted_invoice_url}
           >
             Copy Existing Link
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<LaunchIcon />}
-            onClick={handleOpenPaymentLink}
-            disabled={loading || saving || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
-          >
-            Open Payment Link
           </Button>
           <Button variant="contained" onClick={handleSave} disabled={loading || saving}>
             {saving ? "Saving..." : "Save changes"}
