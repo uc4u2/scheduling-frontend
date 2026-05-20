@@ -32,3 +32,9 @@ export const extractApiErrorMessage = async (err, fallback = "Request failed.") 
   }
   return err?.message || fallback;
 };
+
+export const isLikelyDownloadHandoffError = (err) => {
+  if (err?.response) return false;
+  const message = String(err?.message || "").trim().toLowerCase();
+  return message === "network error" || message === "failed to fetch";
+};
