@@ -1669,6 +1669,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     if (hasHrAccess) allowedGroups.add("employee-group");
     if (canManageShifts || canManageOnboarding || canManagePayroll) allowedGroups.add("shifts-group");
     if (canManagePayroll) allowedGroups.add("payroll-group");
+    if (canManagePayroll) allowedGroups.add("finance-group");
     const base = menuConfig
       .filter((item) => allowedGroups.has(item.key))
       .map((item) => {
@@ -2822,7 +2823,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Payroll access</Typography>
                                 <Tooltip
-                                  title="Payroll access: payroll runs, saved payrolls, tax forms, ROE, T4/W-2, invoices, Leave Reports, leave balance corrections, accrual posting, and carryover apply. Does not grant Leave Settings or leave approval."
+                                  title="Payroll access: payroll runs, saved payrolls, tax forms, ROE, T4/W-2, payroll invoices, plus the full Business Finance workspace. It also includes Leave Reports, leave balance corrections, accrual posting, and carryover apply. Does not grant Leave Settings or leave approval."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Payroll access help">
