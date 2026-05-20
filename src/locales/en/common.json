@@ -1991,10 +1991,48 @@
           "count_other": "{{count}} estimates"
         },
         "templateShortcut": {
-          "title": "Template shortcut",
-          "description": "Save the estimate currently open in the editor as a reusable starting point.",
+          "title": "Estimate templates",
+          "description": "Save the notes, terms, and line items from the estimate currently open in the editor, then reuse them for future estimates.",
+          "whatGetsSaved": "What gets saved: notes, terms, and line items only.",
+          "whatDoesNotSave": "Not saved: client, dates, status, approval, and payment information.",
+          "openEstimateFirst": "Open an estimate in the editor first, then save its structure as a template.",
           "templateName": "Template name",
-          "saveCurrent": "Save current estimate as template"
+          "saveCurrent": "Save estimate structure as template",
+          "manage": "Manage templates"
+        },
+        "templateManager": {
+          "title": "Manage estimate templates",
+          "empty": "No templates yet. Save an estimate structure first, then manage it here.",
+          "archive": "Archive template",
+          "status": {
+            "active": "Active",
+            "archived": "Archived"
+          },
+          "meta": {
+            "lineCount": "{{count}} line items",
+            "updated": "Updated {{value}}"
+          },
+          "fields": {
+            "name": "Template name",
+            "description": "Description",
+            "notes": "Default notes",
+            "terms": "Default terms"
+          },
+          "preview": {
+            "title": "Saved line items",
+            "help": "Line items are shown here so you can review what this template will prefill in a new estimate.",
+            "qty": "Qty",
+            "empty": "No line items saved in this template yet."
+          },
+          "snackbar": {
+            "saved": "Template updated.",
+            "archived": "Template archived."
+          },
+          "errors": {
+            "nameRequired": "Template name is required.",
+            "saveFailed": "Unable to update template.",
+            "archiveFailed": "Unable to archive template."
+          }
         },
         "empty": {
           "title": "No estimates yet",

@@ -54,9 +54,11 @@ import {
   createEstimateTemplate,
   createEstimateShareLink,
   createFinanceInvoicePaymentLink,
+  deleteEstimateTemplate,
   duplicateEstimate,
   downloadFinanceEstimatePdf,
   getEstimate,
+  getEstimateTemplate,
   getFinanceInvoicePrintHtml,
   listEstimateTemplates,
   listEstimates,
@@ -64,6 +66,7 @@ import {
   reopenEstimateResponse,
   sendEstimate,
   sendEstimateEmail,
+  updateEstimateTemplate,
   updateEstimate,
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
@@ -239,6 +242,11 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailMessage, setEmailMessage] = useState("");
   const [expandedOpen, setExpandedOpen] = useState(false);
   const [postConvertInvoice, setPostConvertInvoice] = useState(null);
+  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateEditor, setTemplateEditor] = useState(null);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateArchiveId, setTemplateArchiveId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -272,6 +280,32 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     }
   }, [createNonce]);
 
+  useEffect(() => {
+    if (!templates.length) {
+      setSelectedTemplateId("");
+      setTemplateEditor(null);
+      return;
+    }
+    if (!selectedTemplateId || !templates.some((row) => String(row.id) === String(selectedTemplateId))) {
+      setSelectedTemplateId(String(templates[0].id));
+    }
+  }, [templates, selectedTemplateId]);
+
+  useEffect(() => {
+    const selected = templates.find((row) => String(row.id) === String(selectedTemplateId));
+    if (!selected) return;
+    setTemplateEditor({
+      id: selected.id,
+      name: selected.name || "",
+      description: selected.description || "",
+      default_notes: selected.default_notes || "",
+      default_terms: selected.default_terms || "",
+      line_items: Array.isArray(selected.line_items) ? selected.line_items : [],
+      is_active: Boolean(selected.is_active),
+      updated_at: selected.updated_at || null,
+    });
+  }, [selectedTemplateId, templates]);
+
   const saveAsTemplate = async () => {
     if (!editing || !templateName) {
       enqueueSnackbar(tEstimate("snackbar.templateNameRequired", "Open an estimate and enter a template name first."), { variant: "warning" });
@@ -282,13 +316,71 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         name: templateName,
         default_notes: editing.notes || "",
         default_terms: editing.terms || "",
-        line_items_json: Array.isArray(editing.line_items) ? editing.line_items : [],
+        line_items: Array.isArray(editing.line_items) ? editing.line_items : [],
       });
       enqueueSnackbar(tEstimate("snackbar.templateSaved", "Estimate template saved."), { variant: "success" });
       setTemplateName("");
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.saveTemplateFailed", "Unable to save template."), { variant: "error" });
+    }
+  };
+
+  const openTemplateManager = () => {
+    setTemplateManagerOpen(true);
+  };
+
+  const refreshTemplateEditor = async (templateId) => {
+    const payload = await getEstimateTemplate(templateId);
+    const row = payload?.template || payload;
+    if (!row) return;
+    setTemplateEditor({
+      id: row.id,
+      name: row.name || "",
+      description: row.description || "",
+      default_notes: row.default_notes || "",
+      default_terms: row.default_terms || "",
+      line_items: Array.isArray(row.line_items) ? row.line_items : [],
+      is_active: Boolean(row.is_active),
+      updated_at: row.updated_at || null,
+    });
+  };
+
+  const handleTemplateSave = async () => {
+    if (!templateEditor?.id) return;
+    if (!String(templateEditor.name || "").trim()) {
+      enqueueSnackbar(tEstimate("templateManager.errors.nameRequired", "Template name is required."), { variant: "warning" });
+      return;
+    }
+    try {
+      setTemplateSaving(true);
+      await updateEstimateTemplate(templateEditor.id, {
+        name: String(templateEditor.name || "").trim(),
+        description: templateEditor.description || "",
+        default_notes: templateEditor.default_notes || "",
+        default_terms: templateEditor.default_terms || "",
+      });
+      enqueueSnackbar(tEstimate("templateManager.snackbar.saved", "Template updated."), { variant: "success" });
+      await load();
+      await refreshTemplateEditor(templateEditor.id);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("templateManager.errors.saveFailed", "Unable to update template."), { variant: "error" });
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const handleTemplateArchive = async (templateId) => {
+    if (!templateId) return;
+    try {
+      setTemplateArchiveId(templateId);
+      await deleteEstimateTemplate(templateId);
+      enqueueSnackbar(tEstimate("templateManager.snackbar.archived", "Template archived."), { variant: "success" });
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("templateManager.errors.archiveFailed", "Unable to archive template."), { variant: "error" });
+    } finally {
+      setTemplateArchiveId(null);
     }
   };
 
@@ -1097,16 +1189,30 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
             <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} alignItems={{ lg: "center" }} justifyContent="space-between">
               <Stack spacing={0.35}>
                 <Typography variant="subtitle2" fontWeight={800}>
-                  {tEstimate("templateShortcut.title", "Template shortcut")}
+                  {tEstimate("templateShortcut.title", "Estimate templates")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {tEstimate("templateShortcut.description", "Save the estimate currently open in the editor as a reusable starting point.")}
+                  {tEstimate("templateShortcut.description", "Save the notes, terms, and line items from the estimate currently open in the editor, then reuse them for future estimates.")}
                 </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {tEstimate("templateShortcut.whatGetsSaved", "What gets saved: notes, terms, and line items only.")}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {tEstimate("templateShortcut.whatDoesNotSave", "Not saved: client, dates, status, approval, and payment information.")}
+                </Typography>
+                {!editing ? (
+                  <Typography variant="caption" color="text.secondary">
+                    {tEstimate("templateShortcut.openEstimateFirst", "Open an estimate in the editor first, then save its structure as a template.")}
+                  </Typography>
+                ) : null}
               </Stack>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
-                <TextField size="small" label={tEstimate("templateShortcut.templateName", "Template name")} value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
-                <Button variant="outlined" onClick={saveAsTemplate} sx={{ whiteSpace: "nowrap" }}>
-                  {tEstimate("templateShortcut.saveCurrent", "Save current estimate as template")}
+                <TextField size="small" disabled={!editing} label={tEstimate("templateShortcut.templateName", "Template name")} value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
+                <Button variant="outlined" onClick={saveAsTemplate} disabled={!editing || !String(templateName || "").trim()} sx={{ whiteSpace: "nowrap" }}>
+                  {tEstimate("templateShortcut.saveCurrent", "Save estimate structure as template")}
+                </Button>
+                <Button variant="text" onClick={openTemplateManager} sx={{ whiteSpace: "nowrap" }}>
+                  {tEstimate("templateShortcut.manage", "Manage templates")}
                 </Button>
               </Stack>
             </Stack>
@@ -1272,6 +1378,138 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         <DialogActions>
           <Button onClick={() => setPostConvertInvoice(null)}>
             {tEstimate("common.close", "Close")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={templateManagerOpen}
+        onClose={templateSaving ? undefined : () => setTemplateManagerOpen(false)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>{tEstimate("templateManager.title", "Manage estimate templates")}</DialogTitle>
+        <DialogContent dividers>
+          {!templates.length ? (
+            <Alert severity="info">
+              {tEstimate("templateManager.empty", "No templates yet. Save an estimate structure first, then manage it here.")}
+            </Alert>
+          ) : (
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2.5}>
+              <Stack spacing={1} sx={{ width: { xs: "100%", md: 300 }, flexShrink: 0 }}>
+                {templates.map((template) => {
+                  const selected = String(template.id) === String(selectedTemplateId);
+                  return (
+                    <Paper
+                      key={template.id}
+                      variant="outlined"
+                      onClick={() => setSelectedTemplateId(String(template.id))}
+                      sx={{
+                        p: 1.25,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        borderColor: selected ? "primary.main" : "divider",
+                        bgcolor: selected ? "action.hover" : "background.paper",
+                      }}
+                    >
+                      <Stack spacing={0.5}>
+                        <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2" fontWeight={800}>{template.name}</Typography>
+                          <Chip
+                            size="small"
+                            label={template.is_active ? tEstimate("templateManager.status.active", "Active") : tEstimate("templateManager.status.archived", "Archived")}
+                            color={template.is_active ? "success" : "default"}
+                            variant="outlined"
+                          />
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          {tEstimate("templateManager.meta.lineCount", "{{count}} line items", { count: Array.isArray(template.line_items) ? template.line_items.length : 0 })}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {template.updated_at
+                            ? tEstimate("templateManager.meta.updated", "Updated {{value}}", { value: formatDateTimeInTz(template.updated_at, timezone) })
+                            : tEstimate("fallbacks.dash", "-")}
+                        </Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+
+              <Stack spacing={1.5} sx={{ flex: 1, minWidth: 0 }}>
+                {templateEditor ? (
+                  <>
+                    <TextField
+                      label={tEstimate("templateManager.fields.name", "Template name")}
+                      value={templateEditor.name}
+                      onChange={(e) => setTemplateEditor((prev) => ({ ...prev, name: e.target.value }))}
+                      fullWidth
+                    />
+                    <TextField
+                      label={tEstimate("templateManager.fields.description", "Description")}
+                      value={templateEditor.description}
+                      onChange={(e) => setTemplateEditor((prev) => ({ ...prev, description: e.target.value }))}
+                      fullWidth
+                    />
+                    <TextField
+                      label={tEstimate("templateManager.fields.notes", "Default notes")}
+                      value={templateEditor.default_notes}
+                      onChange={(e) => setTemplateEditor((prev) => ({ ...prev, default_notes: e.target.value }))}
+                      multiline
+                      minRows={3}
+                      fullWidth
+                    />
+                    <TextField
+                      label={tEstimate("templateManager.fields.terms", "Default terms")}
+                      value={templateEditor.default_terms}
+                      onChange={(e) => setTemplateEditor((prev) => ({ ...prev, default_terms: e.target.value }))}
+                      multiline
+                      minRows={3}
+                      fullWidth
+                    />
+                    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                      <Stack spacing={0.75}>
+                        <Typography variant="subtitle2" fontWeight={800}>
+                          {tEstimate("templateManager.preview.title", "Saved line items")}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {tEstimate("templateManager.preview.help", "Line items are shown here so you can review what this template will prefill in a new estimate.")}
+                        </Typography>
+                        {Array.isArray(templateEditor.line_items) && templateEditor.line_items.length ? (
+                          <Stack spacing={0.5}>
+                            {templateEditor.line_items.map((line, idx) => (
+                              <Typography key={`${templateEditor.id}-line-${idx}`} variant="body2" color="text.secondary">
+                                {`- ${line.description || tEstimate("lineItems.presets.custom", "Custom")} • ${tEstimate("templateManager.preview.qty", "Qty")} ${Number(line.quantity || 0)} • ${formatCurrency(line.unit_price || 0)}`}
+                              </Typography>
+                            ))}
+                          </Stack>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            {tEstimate("templateManager.preview.empty", "No line items saved in this template yet.")}
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Paper>
+                  </>
+                ) : null}
+              </Stack>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {templateEditor?.id ? (
+            <Button
+              color="warning"
+              onClick={() => handleTemplateArchive(templateEditor.id)}
+              disabled={templateSaving || templateArchiveId === templateEditor.id}
+            >
+              {tEstimate("templateManager.archive", "Archive template")}
+            </Button>
+          ) : null}
+          <Button onClick={() => setTemplateManagerOpen(false)} disabled={templateSaving}>
+            {tEstimate("common.close", "Close")}
+          </Button>
+          <Button onClick={handleTemplateSave} variant="contained" disabled={!templateEditor?.id || templateSaving}>
+            {templateSaving ? tEstimate("common.saving", "Saving...") : tEstimate("common.saveChanges", "Save changes")}
           </Button>
         </DialogActions>
       </Dialog>
