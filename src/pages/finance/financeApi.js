@@ -136,6 +136,12 @@ export const listEstimateTemplates = (params = {}) =>
   unwrap(api.get("/finance/estimate-templates", { params }));
 export const createEstimateTemplate = (payload) =>
   unwrap(api.post("/finance/estimate-templates", payload));
+export const getEstimateTemplate = (id) =>
+  unwrap(api.get(`/finance/estimate-templates/${id}`));
+export const updateEstimateTemplate = (id, payload) =>
+  unwrap(api.patch(`/finance/estimate-templates/${id}`, payload));
+export const deleteEstimateTemplate = (id) =>
+  unwrap(api.delete(`/finance/estimate-templates/${id}`));
 
 export const listWorkOrders = (params = {}) => unwrap(api.get("/finance/work-orders", { params }));
 export const getWorkOrder = (id) => unwrap(api.get(`/finance/work-orders/${id}`));

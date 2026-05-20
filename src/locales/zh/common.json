@@ -1965,10 +1965,48 @@
           "count_other": "{{count}} 个报价单"
         },
         "templateShortcut": {
-          "title": "模板快捷方式",
-          "description": "把当前在编辑器中打开的报价单保存为可重复使用的起点。",
+          "title": "报价模板",
+          "description": "保存当前编辑器中这份报价单里的备注、条款和明细行，之后可在新的报价单中重复使用。",
+          "whatGetsSaved": "会保存的内容：仅备注、条款和明细行。",
+          "whatDoesNotSave": "不会保存的内容：客户、日期、状态、批准结果和付款信息。",
+          "openEstimateFirst": "请先在编辑器中打开一份报价单，然后再把它的结构保存为模板。",
           "templateName": "模板名称",
-          "saveCurrent": "将当前报价单保存为模板"
+          "saveCurrent": "将报价结构保存为模板",
+          "manage": "管理模板"
+        },
+        "templateManager": {
+          "title": "管理报价模板",
+          "empty": "还没有模板。请先保存一个报价结构，然后在这里管理它。",
+          "archive": "归档模板",
+          "status": {
+            "active": "启用",
+            "archived": "已归档"
+          },
+          "meta": {
+            "lineCount": "{{count}} 行",
+            "updated": "更新于 {{value}}"
+          },
+          "fields": {
+            "name": "模板名称",
+            "description": "说明",
+            "notes": "默认备注",
+            "terms": "默认条款"
+          },
+          "preview": {
+            "title": "已保存的明细行",
+            "help": "这里会显示明细行，方便你确认这个模板在新报价单中会预填哪些内容。",
+            "qty": "数量",
+            "empty": "这个模板里还没有保存任何明细行。"
+          },
+          "snackbar": {
+            "saved": "模板已更新。",
+            "archived": "模板已归档。"
+          },
+          "errors": {
+            "nameRequired": "模板名称为必填项。",
+            "saveFailed": "无法更新模板。",
+            "archiveFailed": "无法归档模板。"
+          }
         },
         "empty": {
           "title": "还没有报价单",
