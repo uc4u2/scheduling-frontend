@@ -93,7 +93,7 @@ export default function AddMemberHelpDrawer({ open, onClose, anchor, width }) {
             "HR onboarding access lets someone manage onboarding forms, candidate profiles, employee/profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual posting.",
             "Supervisor access gives operational shift/time tools and leave approve/reject/cancel, but not Leave Settings, reports, accruals, carryover, or balance adjustments.",
             "Collect payments (self only) lets an employee process payments for their own bookings.",
-            "Payroll access opens payroll/tax tools plus Leave Reports, leave balance corrections, accrual posting, and carryover apply.",
+            "Payroll access opens payroll/tax tools, the full Business Finance workspace, plus Leave Reports, leave balance corrections, accrual posting, and carryover apply.",
           ]}
         />
 

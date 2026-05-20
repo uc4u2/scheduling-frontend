@@ -46,7 +46,7 @@ const COPY = {
         "Limited HR onboarding: HR tabs and read-only candidate profiles only. No employee profile edits, leave admin, reports, balances, accruals, or carryover.",
         "Supervisor access: operational shift/time tools and leave approve/reject/cancel. No Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply.",
         "Collect payments (self only): allows booking checkout for the employee's own clients.",
-        "Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices, Leave Reports, leave balance corrections, accrual posting, and carryover apply. It does not grant Leave Settings or leave approval.",
+        "Payroll access: payroll runs, tax forms, ROE, T4/W-2, payroll invoices, and the full Business Finance workspace. It also includes Leave Reports, leave balance corrections, accrual posting, and carryover apply. It does not grant Leave Settings or leave approval.",
       ],
     },
     availability: {
@@ -61,7 +61,7 @@ const COPY = {
       items: [
         "HR coordinator: Employee + HR onboarding access.",
         "Team lead: Employee + Supervisor access.",
-        "Payroll admin: Employee + Payroll access.",
+        "Payroll admin / finance admin: Employee + Payroll access.",
         "HR/payroll hybrid: Employee + HR onboarding access + Payroll access.",
       ],
     },
