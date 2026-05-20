@@ -22,6 +22,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -253,6 +254,22 @@ export default function FinanceInvoiceDetailDialog({
     remainingBalance > 0 &&
     !["refunded", "void"].includes(String(invoice?.status || "").toLowerCase()) &&
     !paymentSummary?.online_payment_present;
+  const offlinePaymentDisabledReason = useMemo(() => {
+    const status = String(invoice?.status || "").toLowerCase();
+    if (status === "refunded") {
+      return tDetail("tooltips.offlinePaymentRefunded", "Offline payment is unavailable because this invoice is refunded.");
+    }
+    if (status === "void") {
+      return tDetail("tooltips.offlinePaymentVoid", "Offline payment is unavailable because this invoice is void.");
+    }
+    if (!(remainingBalance > 0)) {
+      return tDetail("tooltips.offlinePaymentNoBalance", "Offline payment is available only when this invoice still has a balance due.");
+    }
+    if (paymentSummary?.online_payment_present) {
+      return tDetail("tooltips.offlinePaymentAlreadyPaidOnline", "This invoice already has an online payment recorded. No offline payment is needed.");
+    }
+    return "";
+  }, [invoice?.status, paymentSummary?.online_payment_present, remainingBalance, tDetail]);
   const hasHostedLink = Boolean(invoice?.hosted_invoice_url);
   const relatedWorkOrders = invoice?.related_work_orders || [];
 
@@ -391,12 +408,26 @@ export default function FinanceInvoiceDetailDialog({
   };
 
   const handleOpenPaymentLink = async () => {
+    if (!invoiceId) return;
     const hostedUrl = invoice?.hosted_invoice_url;
-    if (!hostedUrl) {
-      await handleCopyPaymentLink();
-      return;
+    try {
+      let checkoutUrl = hostedUrl || "";
+      if (!checkoutUrl) {
+        const payload = await createFinanceInvoicePaymentLink(invoiceId);
+        checkoutUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url || "";
+        if (!checkoutUrl) {
+          throw new Error(tDetail("errors.paymentLinkUnavailable", "Payment link is not available yet."));
+        }
+        const nextInvoice = payload?.invoice || null;
+        if (nextInvoice) {
+          setInvoice((prev) => ({ ...(prev || {}), ...nextInvoice }));
+        }
+        onSaved?.(nextInvoice || invoice);
+      }
+      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || tDetail("errors.openPaymentLink", "Unable to open the payment page."));
     }
-    window.open(hostedUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleOpenPrintView = async () => {
@@ -661,15 +692,18 @@ export default function FinanceInvoiceDetailDialog({
                         ? tDetail("actions.downloadingPdf", "Downloading PDF...")
                         : tDetail("actions.downloadPdf", "Download PDF")}
                     </Button>
-                    {canRecordOfflinePayment ? (
-                      <Button
-                        variant="outlined"
-                        startIcon={<PaymentOutlinedIcon />}
-                        onClick={() => setOfflinePaymentDialogOpen(true)}
-                      >
-                        {tDetail("actions.recordOfflinePayment", "Record offline payment")}
-                      </Button>
-                    ) : null}
+                    <Tooltip title={canRecordOfflinePayment ? "" : offlinePaymentDisabledReason}>
+                      <span>
+                        <Button
+                          variant="outlined"
+                          startIcon={<PaymentOutlinedIcon />}
+                          onClick={() => setOfflinePaymentDialogOpen(true)}
+                          disabled={!canRecordOfflinePayment}
+                        >
+                          {tDetail("actions.recordOfflinePayment", "Record offline payment")}
+                        </Button>
+                      </span>
+                    </Tooltip>
                     {canIssueRefund ? (
                       <Button
                         variant="outlined"

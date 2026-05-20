@@ -240,11 +240,26 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   };
 
   const handleOpenPaymentLink = async (row) => {
-    if (row?.payment_link_exists && row?.hosted_invoice_url) {
-      window.open(row.hosted_invoice_url, "_blank", "noopener,noreferrer");
-      return;
+    const invoiceId = row?.id || row?.invoice_id;
+    if (!invoiceId) return;
+    setPaymentLinkBusyId(invoiceId);
+    setError("");
+    try {
+      let checkoutUrl = row?.payment_link_exists && row?.hosted_invoice_url ? row.hosted_invoice_url : "";
+      if (!checkoutUrl) {
+        const payload = await createFinanceInvoicePaymentLink(invoiceId);
+        checkoutUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url || "";
+        if (!checkoutUrl) {
+          throw new Error(tInvoice("errors.paymentLinkUnavailable", "Payment link is not available yet."));
+        }
+        await load();
+      }
+      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || tInvoice("errors.openPaymentLink", "Unable to open the payment page."));
+    } finally {
+      setPaymentLinkBusyId(null);
     }
-    await handleCopyPaymentLink(row?.invoice_id);
   };
 
   const handlePrintInvoice = async (invoiceId) => {
