@@ -34,6 +34,7 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import LinkIcon from "@mui/icons-material/Link";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -54,6 +55,7 @@ import {
   createEstimateShareLink,
   createFinanceInvoicePaymentLink,
   duplicateEstimate,
+  downloadFinanceEstimatePdf,
   getEstimate,
   getFinanceInvoicePrintHtml,
   listEstimateTemplates,
@@ -67,6 +69,24 @@ import {
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
+import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
+
+const downloadBlob = (response, fallbackName) => {
+  const blob =
+    response?.data instanceof Blob
+      ? response.data
+      : new Blob([response?.data], {
+          type: response?.headers?.["content-type"] || "application/octet-stream",
+        });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+};
 
 const statusFlagChipSx = {
   height: 24,
@@ -211,6 +231,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [templateName, setTemplateName] = useState("");
   const [linkBusyId, setLinkBusyId] = useState(null);
   const [paymentLinkBusyId, setPaymentLinkBusyId] = useState(null);
+  const [pdfBusyId, setPdfBusyId] = useState(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [emailTarget, setEmailTarget] = useState(null);
@@ -383,6 +404,29 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     }
   };
 
+  const handleDownloadEstimatePdf = async (item) => {
+    try {
+      setPdfBusyId(item.id);
+      const res = await downloadFinanceEstimatePdf(item.id);
+      downloadBlob(res, `estimate-${item.estimate_number || item.id}.pdf`);
+      enqueueSnackbar(tEstimate("snackbar.estimatePdfDownloaded", "Estimate PDF downloaded."), {
+        variant: "success",
+      });
+    } catch (err) {
+      if (isLikelyDownloadHandoffError(err)) {
+        enqueueSnackbar(tEstimate("snackbar.downloadStarted", "Download started in your browser or download manager."), {
+          variant: "info",
+        });
+        return;
+      }
+      enqueueSnackbar(await extractApiErrorMessage(err, tEstimate("errors.downloadPdfFailed", "Unable to download estimate PDF.")), {
+        variant: "error",
+      });
+    } finally {
+      setPdfBusyId(null);
+    }
+  };
+
   const ensurePaymentLink = async (item) => {
     if (!item?.converted_invoice_id) {
       throw new Error(tEstimate("errors.convertFirst", "Convert the estimate to an invoice first."));
@@ -532,7 +576,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const buildRowActions = (item) => {
     const canOpenInvoice = Boolean(item.converted_invoice_id);
     const isConverted = item.status === "converted_to_invoice";
-    const rowBusy = linkBusyId === item.id || paymentLinkBusyId === item.id;
+    const rowBusy = linkBusyId === item.id || paymentLinkBusyId === item.id || pdfBusyId === item.id;
     const hasPaymentLink = Boolean(item.converted_invoice_hosted_invoice_url);
     const hasClientResponse = Boolean(item.client_accepted_at || item.client_rejected_at);
 
@@ -633,6 +677,14 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         help: tEstimate("actionHelp.printPdf", "Open the clean browser print view for save-as-PDF or printing."),
         icon: <LocalPrintshopOutlinedIcon fontSize="small" />,
         onClick: () => handlePrintEstimate(item),
+        disabled: rowBusy,
+      },
+      {
+        key: "download-pdf",
+        label: tEstimate("actions.downloadPdf", "Download PDF"),
+        help: tEstimate("actionHelp.downloadPdf", "Generate a direct PDF file for this estimate."),
+        icon: <PictureAsPdfOutlinedIcon fontSize="small" />,
+        onClick: () => handleDownloadEstimatePdf(item),
         disabled: rowBusy,
       },
       { type: "divider", key: "divider-1" },

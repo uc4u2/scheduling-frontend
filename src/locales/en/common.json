@@ -1669,7 +1669,8 @@
         "reports": "Reports",
         "profitability": "Profitability",
         "taxSummary": "Tax Summary",
-        "monthEnd": "Month-End"
+        "monthEnd": "Month-End",
+        "invoices": "Invoices"
       },
       "shared": {
         "statuses": {
@@ -1693,7 +1694,9 @@
           "paid": "Paid",
           "partial_refund": "Partially Refunded",
           "refunded": "Refunded",
-          "void": "Void"
+          "void": "Void",
+          "partial_payment": "Partially Paid",
+          "payment_failed": "Payment Failed"
         }
       },
       "overview": {
@@ -1949,7 +1952,8 @@
           "openPaymentLinkFailed": "Unable to open payment link.",
           "reopenFailed": "Unable to reopen estimate.",
           "convertFailed": "Unable to convert estimate to invoice.",
-          "copySummaryFailed": "Unable to copy estimate summary."
+          "copySummaryFailed": "Unable to copy estimate summary.",
+          "downloadPdfFailed": "Unable to download estimate PDF."
         },
         "snackbar": {
           "templateNameRequired": "Open an estimate and enter a template name first.",
@@ -1968,7 +1972,8 @@
           "summaryCopied": "Estimate summary copied.",
           "updated": "Estimate updated.",
           "created": "Estimate created.",
-          "workOrderCreated": "Work order created from estimate."
+          "workOrderCreated": "Work order created from estimate.",
+          "estimatePdfDownloaded": "Estimate PDF downloaded."
         },
         "page": {
           "title": "Estimates",
@@ -2059,7 +2064,8 @@
           "markRejected": "Mark Rejected",
           "duplicate": "Duplicate",
           "createWorkOrder": "Create Work Order",
-          "reviseResend": "Revise and Resend"
+          "reviseResend": "Revise and Resend",
+          "downloadPdf": "Download PDF"
         },
         "actionHelp": {
           "edit": "Open the estimate editor with the current billing snapshot and line items.",
@@ -2077,7 +2083,8 @@
           "openPaymentLink": "Open the hosted Stripe invoice/payment page for this converted invoice.",
           "openInvoice": "Open the finance invoice detail dialog.",
           "createWorkOrder": "Move the approved estimate into operational job execution.",
-          "reviseResend": "Reopen the client response flow so you can adjust and resend the estimate."
+          "reviseResend": "Reopen the client response flow so you can adjust and resend the estimate.",
+          "downloadPdf": "Generate a direct PDF file for this estimate."
         },
         "summary": {
           "estimateHeader": "Estimate {{estimateNumber}}",
@@ -2176,6 +2183,56 @@
             "saving": "Saving...",
             "saveChanges": "Save changes",
             "createEstimate": "Create estimate"
+          }
+        },
+        "fields": {
+          "templateChoose": "Choose a template",
+          "templateEmpty": "No templates yet",
+          "templateHelp": "Apply a saved estimate template to prefill notes, terms, and line items.",
+          "templateEmptyHelp": "Save an estimate as a template first, then reuse it here later."
+        },
+        "lineItems": {
+          "fields": {
+            "preset": "Preset"
+          },
+          "presets": {
+            "service": "Service",
+            "flatFee": "Flat fee",
+            "hourlyWork": "Hourly work",
+            "materials": "Materials",
+            "custom": "Custom"
+          },
+          "presetMeta": {
+            "service": {
+              "description": "General service or appointment work.",
+              "quantityLabel": "Qty",
+              "quantityHelper": "Use for visits or service units.",
+              "descriptionPlaceholder": "Example: Deep cleaning service"
+            },
+            "flat_fee": {
+              "description": "One fixed-price service or package.",
+              "quantityLabel": "Qty",
+              "quantityHelper": "Usually 1 for a package or fixed-price job.",
+              "descriptionPlaceholder": "Example: Website setup package"
+            },
+            "hourly_work": {
+              "description": "Labor billed by hours.",
+              "quantityLabel": "Hours",
+              "quantityHelper": "Enter the number of hours worked.",
+              "descriptionPlaceholder": "Example: Consultation or repair labor"
+            },
+            "materials": {
+              "description": "Physical items, supplies, or products used in the job.",
+              "quantityLabel": "Qty",
+              "quantityHelper": "Use units, pieces, or boxes.",
+              "descriptionPlaceholder": "Example: Paint, filters, or hardware"
+            },
+            "custom": {
+              "description": "Anything that does not fit the standard presets.",
+              "quantityLabel": "Qty",
+              "quantityHelper": "Use any billing unit that fits the job.",
+              "descriptionPlaceholder": "Describe the custom charge"
+            }
           }
         }
       },
@@ -3129,6 +3186,309 @@
           "estimatedMarginGross": "Estimated margin gross",
           "estimatedMarginNet": "Estimated margin net",
           "refundReviewNote": "Review refund activity before final accounting handoff. Refunds do not block month-end, but they do affect net cash and net tax."
+        }
+      },
+      "invoices": {
+        "title": "Invoices",
+        "subtitle": "Manage sent, unpaid, paid, and repeat invoices from one place.",
+        "helper": "Need to create a new invoice? Start with an estimate, then convert it to an invoice when the client is ready. For repeat billing, open a past invoice and use Create similar invoice.",
+        "filters": {
+          "title": "Find and manage invoices",
+          "search": "Search invoices",
+          "searchPlaceholder": "Invoice number, client name, email, or billing recipient",
+          "status": "Status",
+          "statusAll": "All",
+          "statusPending": "Pending / unpaid",
+          "statusPaid": "Paid",
+          "statusPartial": "Partially paid",
+          "statusOverdue": "Overdue",
+          "paymentLink": "Payment link",
+          "paymentLinkAll": "All",
+          "paymentLinkHas": "Has payment link",
+          "paymentLinkMissing": "Missing payment link"
+        },
+        "actions": {
+          "startWithEstimate": "Start with estimate",
+          "howItWorks": "How invoices work",
+          "refresh": "Refresh",
+          "openInvoice": "Open invoice",
+          "copyPaymentLink": "Copy payment link",
+          "createPaymentLink": "Create / copy payment link",
+          "openPaymentPage": "Open payment page",
+          "print": "Print / Save PDF",
+          "printing": "Opening...",
+          "createSimilar": "Create similar invoice",
+          "creatingSimilar": "Creating...",
+          "creatingLink": "Working...",
+          "expandView": "Expand View",
+          "close": "Close",
+          "downloadPdf": "Download PDF",
+          "downloadingPdf": "Downloading PDF..."
+        },
+        "labels": {
+          "clientFallback": "Client",
+          "client": "Client",
+          "noEmail": "No email",
+          "source": "Source",
+          "businessFinance": "Business Finance",
+          "total": "Total",
+          "paid": "Paid",
+          "balanceDue": "Balance due",
+          "issueDate": "Issue date",
+          "dueDate": "Due date",
+          "paymentLink": "Payment link",
+          "paymentOrigin": "Payment status"
+        },
+        "status": {
+          "overdue": "Overdue",
+          "paymentLinkHas": "Has payment link",
+          "paymentLinkMissing": "Missing payment link"
+        },
+        "empty": {
+          "title": "No invoices yet",
+          "description": "Invoices are created when you convert an approved estimate or create a similar invoice from a past invoice. Create an estimate first, then convert it to an invoice. Once you have invoices, they will appear here for payment tracking, printing, and repeat billing.",
+          "action": "Create estimate",
+          "learn": "Learn how invoices work"
+        },
+        "errors": {
+          "loadFailed": "Unable to load invoices.",
+          "paymentLinkUnavailable": "Payment link is not available yet.",
+          "paymentLink": "Unable to create or copy the payment link.",
+          "print": "Unable to open the invoice print view.",
+          "similar": "Unable to create a similar invoice.",
+          "similarMissingInvoice": "New invoice was not returned.",
+          "pdf": "Unable to download the invoice PDF."
+        },
+        "snackbar": {
+          "paymentLinkCopied": "Payment link copied.",
+          "printBlocked": "Print window was blocked. Please allow popups and try again.",
+          "similarCreated": "Similar invoice created: {{invoice}}."
+        },
+        "help": {
+          "title": "How invoices work",
+          "subtitle": "Start with an estimate for new work. Use Create similar invoice for repeat billing.",
+          "closeAria": "Close invoice help",
+          "sections": [
+            {
+              "title": "New custom-price job",
+              "bullets": [
+                "Go to Estimates.",
+                "Create an estimate for the client.",
+                "Add services, materials, pricing, and terms.",
+                "Convert the estimate to an invoice when the client is ready to pay.",
+                "Add payment instructions, create a payment link, then send or print the invoice."
+              ]
+            },
+            {
+              "title": "Repeat daily, weekly, monthly, or ad-hoc invoice",
+              "bullets": [
+                "Open a previous invoice.",
+                "Click Create similar invoice.",
+                "Review the new issue date, due date, line items, and amount.",
+                "Create a fresh payment link for the new invoice.",
+                "Send it to the client or print it."
+              ]
+            },
+            {
+              "title": "Saved billing details",
+              "bullets": [
+                "Use saved billing recipients when the same company name, address, or tax ID repeats.",
+                "Applying a saved billing recipient copies it into the invoice snapshot.",
+                "Old invoices do not change when saved billing details change later."
+              ]
+            },
+            {
+              "title": "Payment options",
+              "bullets": [
+                "Use the online payment link when the client should pay by card.",
+                "Use payment instructions for e-transfer, bank transfer, cheque, or other customer payment steps.",
+                "Record cash, cheque, terminal, or transfer payments through offline payment recording inside the invoice detail.",
+                "Use Print / Save PDF when the client needs a printable invoice copy."
+              ]
+            },
+            {
+              "title": "Important safety note",
+              "bullets": [
+                "Invoices keep their own billing snapshot for financial history.",
+                "Payment records, refunds, and Stripe payment links are not copied when you create a similar invoice."
+              ]
+            }
+          ]
+        },
+        "toolbar": {
+          "count_one": "{{count}} invoice",
+          "count_other": "{{count}} invoices"
+        }
+      },
+      "invoiceDetail": {
+        "title": "Finance Invoice Detail",
+        "common": {
+          "saving": "Saving...",
+          "saveChanges": "Save changes"
+        },
+        "errors": {
+          "loadFailed": "Unable to load invoice.",
+          "billingRecipientsLoad": "Unable to load saved billing recipients.",
+          "billingRecipientNameRequired": "Enter a company or recipient name before saving billing details.",
+          "billingRecipientSave": "Unable to save billing details for later reuse.",
+          "saveFailed": "Unable to save invoice.",
+          "paymentLinkUnavailable": "Payment link is not available yet.",
+          "paymentLinkCreate": "Unable to create payment link.",
+          "printBlocked": "Print window was blocked. Please allow popups and try again.",
+          "printOpen": "Unable to open the print view.",
+          "similarMissingInvoice": "New invoice was not returned.",
+          "similarCreate": "Unable to create similar invoice.",
+          "pdfDownload": "Unable to download the PDF."
+        },
+        "snackbar": {
+          "billingRecipientApplied": "Saved billing recipient copied into this invoice.",
+          "billingRecipientSaved": "Billing details saved for next time.",
+          "invoiceSaved": "Invoice document details saved.",
+          "paymentLinkCopied": "Payment link copied.",
+          "similarCreated": "Similar invoice created: {{invoice}}."
+        },
+        "warnings": {
+          "hostedLinkLocked": "Payment link already exists. Billing/document edits update Schedulaa records but may not change the already-created Stripe hosted invoice."
+        },
+        "header": {
+          "invoiceFallback": "Invoice",
+          "currencyFallback": "USD",
+          "paymentLinkReady": "Payment link ready",
+          "paymentLinkCreatable": "Payment link can be created",
+          "paymentLinkUnavailable": "Payment link unavailable",
+          "total": "Total"
+        },
+        "summary": {
+          "title": "Invoice payment summary",
+          "subtitle": "See the current balance, payment link state, and the next billing actions without leaving the invoice.",
+          "cards": {
+            "invoiceTotal": "Invoice total",
+            "status": "Status: {{status}}",
+            "paidSoFar": "Paid so far",
+            "paidBreakdown": "Online {{online}} • Offline {{offline}}",
+            "balanceDue": "Balance due",
+            "actionNeeded": "Action needed",
+            "nothingLeft": "Nothing left to collect",
+            "paymentLink": "Payment link",
+            "ready": "Ready",
+            "canCreate": "Can create",
+            "unavailable": "Unavailable"
+          },
+          "notes": {
+            "stripeCaptured": "A Stripe payment has already been captured for this invoice.",
+            "hostedPageAvailable": "A hosted payment page can be created for this invoice.",
+            "paymentLinkUnavailable": "A payment link is unavailable until the invoice has a client and a positive total.",
+            "offlineMethods": "Offline payment methods: {{methods}}",
+            "refundedAmount": "Refunded amount: {{amount}}",
+            "remainingRefundable": "Remaining refundable: {{amount}}",
+            "refundEligibility": "Refund eligibility: {{status}}",
+            "refundEligible": "Eligible for Stripe refund",
+            "refundUnavailable": "Stripe refund not available"
+          },
+          "sections": {
+            "offlineHistory": "Offline payment history",
+            "refundHistory": "Refund history"
+          }
+        },
+        "paymentOrigins": {
+          "pending": "Pending",
+          "online": "Paid online",
+          "offline": "Paid offline",
+          "mixed": "Mixed online and offline",
+          "partiallyPaidOffline": "Partially paid offline"
+        },
+        "client": {
+          "title": "Client Summary",
+          "noClient": "No client",
+          "noEmail": "No email",
+          "relatedEstimate": "Estimate: {{number}} • {{title}} • {{status}}",
+          "estimateFallback": "Estimate",
+          "relatedWorkOrders": "Related work orders",
+          "workOrderFallback": "Work order"
+        },
+        "billing": {
+          "title": "Billing details",
+          "subtitle": "This invoice keeps its own billing snapshot. You can copy a saved billing recipient into the invoice, then save it without changing older invoices.",
+          "savedRecipient": "Saved billing recipient",
+          "loadingRecipients": "Loading saved billing recipients...",
+          "noRecipients": "No saved billing recipients yet",
+          "chooseRecipient": "Choose a saved billing recipient",
+          "recipientCountOne": "1 saved recipient available",
+          "recipientCountOther": "{{count}} saved recipients available",
+          "recipientEmptyHelp": "Save the current billing details, then reuse them here later.",
+          "applyRecipient": "Apply saved recipient",
+          "saveForNextTime": "Save for next time",
+          "fields": {
+            "companyName": "Company / Recipient name",
+            "contactName": "Contact name",
+            "email": "Billing email",
+            "phone": "Billing phone",
+            "street": "Address street",
+            "city": "City",
+            "stateProvince": "State / Province",
+            "postalZip": "Postal / ZIP",
+            "country": "Country",
+            "taxId": "Tax ID"
+          }
+        },
+        "document": {
+          "title": "Invoice document",
+          "fields": {
+            "issueDate": "Issue date",
+            "dueDate": "Due date",
+            "poNumber": "PO number",
+            "paymentTermsShort": "Payment terms",
+            "customerMessage": "Customer message",
+            "customerNotes": "Customer notes",
+            "paymentTerms": "Payment terms",
+            "paymentInstructions": "Payment instructions",
+            "internalNotes": "Internal notes"
+          },
+          "helpers": {
+            "customerMessage": "Use this for a short invoice summary or what the client is being billed for.",
+            "customerNotes": "Visible on the invoice. Good for thank-you notes, job context, or what happens next.",
+            "paymentTerms": "Visible on the invoice. Example: due on receipt, net 7, or payment due before delivery.",
+            "paymentInstructions": "Visible on the invoice and print view. Example: e-transfer email, bank transfer details, cheque payee, or cash instructions.",
+            "internalNotes": "Internal only. Not intended for the client-facing invoice."
+          }
+        },
+        "lineItems": {
+          "title": "Line Items and Totals",
+          "taxInclusiveInfo": "Tax-inclusive estimates may show entered line prices separately from taxable base. Totals remain the source of truth.",
+          "columns": {
+            "description": "Description",
+            "qty": "Qty",
+            "unitPrice": "Unit price",
+            "amount": "Amount",
+            "taxable": "Taxable",
+            "taxRate": "Tax rate"
+          },
+          "totals": {
+            "subtotal": "Subtotal: {{amount}}",
+            "tax": "Tax: {{amount}}",
+            "discount": "Discount: {{amount}}",
+            "total": "Total: {{amount}}"
+          }
+        },
+        "actions": {
+          "copyPaymentLink": "Copy payment link",
+          "createPaymentLink": "Create payment link",
+          "openPaymentPage": "Open payment page",
+          "print": "Print / Save PDF",
+          "recordOfflinePayment": "Record offline payment",
+          "issueRefund": "Issue refund",
+          "close": "Close",
+          "creating": "Creating...",
+          "createSimilarInvoice": "Create similar invoice",
+          "copyExistingLink": "Copy Existing Link",
+          "downloadPdf": "Download PDF",
+          "downloadingPdf": "Downloading PDF..."
+        },
+        "labels": {
+          "noDate": "No date",
+          "unknown": "unknown",
+          "yes": "Yes",
+          "no": "No"
         }
       }
     }

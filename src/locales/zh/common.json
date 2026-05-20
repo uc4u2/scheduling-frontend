@@ -1643,7 +1643,8 @@
         "reports": "报表",
         "profitability": "盈利能力",
         "taxSummary": "税务汇总",
-        "monthEnd": "月末"
+        "monthEnd": "月末",
+        "invoices": "发票"
       },
       "shared": {
         "statuses": {
@@ -1667,7 +1668,9 @@
           "paid": "已付款",
           "partial_refund": "部分退款",
           "refunded": "已退款",
-          "void": "已作废"
+          "void": "已作废",
+          "partial_payment": "部分付款",
+          "payment_failed": "支付失败"
         }
       },
       "overview": {
@@ -1923,7 +1926,8 @@
           "openPaymentLinkFailed": "无法打开付款链接。",
           "reopenFailed": "无法重新打开报价单。",
           "convertFailed": "无法将报价单转换为发票。",
-          "copySummaryFailed": "无法复制报价单摘要。"
+          "copySummaryFailed": "无法复制报价单摘要。",
+          "downloadPdfFailed": "无法下载报价 PDF。"
         },
         "snackbar": {
           "templateNameRequired": "请先打开一个报价单并输入模板名称。",
@@ -1942,7 +1946,8 @@
           "summaryCopied": "报价单摘要已复制。",
           "updated": "报价单已更新。",
           "created": "报价单已创建。",
-          "workOrderCreated": "已根据报价单创建工单。"
+          "workOrderCreated": "已根据报价单创建工单。",
+          "estimatePdfDownloaded": "报价 PDF 已下载。"
         },
         "page": {
           "title": "报价单",
@@ -2033,7 +2038,8 @@
           "markRejected": "标记为已拒绝",
           "duplicate": "复制",
           "createWorkOrder": "创建工单",
-          "reviseResend": "修改并重新发送"
+          "reviseResend": "修改并重新发送",
+          "downloadPdf": "下载 PDF"
         },
         "actionHelp": {
           "edit": "打开报价单编辑器，查看当前账单快照和项目行。",
@@ -2051,7 +2057,8 @@
           "openPaymentLink": "打开该已转换发票的托管 Stripe 发票/付款页面。",
           "openInvoice": "打开财务发票详情。",
           "createWorkOrder": "将已批准报价单推进到执行工单。",
-          "reviseResend": "重新打开客户回复流程，以便修改并重新发送报价单。"
+          "reviseResend": "重新打开客户回复流程，以便修改并重新发送报价单。",
+          "downloadPdf": "为此报价直接生成 PDF 文件。"
         },
         "summary": {
           "estimateHeader": "报价单 {{estimateNumber}}",
@@ -2150,6 +2157,56 @@
             "saving": "保存中...",
             "saveChanges": "保存更改",
             "createEstimate": "创建报价单"
+          }
+        },
+        "fields": {
+          "templateChoose": "选择模板",
+          "templateEmpty": "还没有模板",
+          "templateHelp": "应用已保存的报价模板，预填备注、条款和明细行。",
+          "templateEmptyHelp": "请先将报价保存为模板，之后即可在这里重复使用。"
+        },
+        "lineItems": {
+          "fields": {
+            "preset": "预设"
+          },
+          "presets": {
+            "service": "服务",
+            "flatFee": "固定费用",
+            "hourlyWork": "按小时计费",
+            "materials": "材料",
+            "custom": "自定义"
+          },
+          "presetMeta": {
+            "service": {
+              "description": "通用服务或预约类工作。",
+              "quantityLabel": "数量",
+              "quantityHelper": "适用于上门次数或服务单位。",
+              "descriptionPlaceholder": "例如：深度清洁服务"
+            },
+            "flat_fee": {
+              "description": "一次性固定价格的服务或套餐。",
+              "quantityLabel": "数量",
+              "quantityHelper": "套餐或固定价项目通常填 1。",
+              "descriptionPlaceholder": "例如：网站搭建套餐"
+            },
+            "hourly_work": {
+              "description": "按工时计费的人工。",
+              "quantityLabel": "小时",
+              "quantityHelper": "填写实际工作小时数。",
+              "descriptionPlaceholder": "例如：咨询或维修人工"
+            },
+            "materials": {
+              "description": "工作中使用的实物、耗材或产品。",
+              "quantityLabel": "数量",
+              "quantityHelper": "可使用件数、数量或箱数。",
+              "descriptionPlaceholder": "例如：油漆、滤芯或五金件"
+            },
+            "custom": {
+              "description": "任何不适合标准预设的收费项。",
+              "quantityLabel": "数量",
+              "quantityHelper": "使用最适合该工作的计费单位。",
+              "descriptionPlaceholder": "请描述这项自定义收费"
+            }
           }
         }
       },
@@ -3103,6 +3160,309 @@
           "estimatedMarginGross": "预计毛利",
           "estimatedMarginNet": "预计净利",
           "refundReviewNote": "在最终移交给会计前，请复核退款活动。退款不会阻止月末结账，但会影响净现金和净税额。"
+        }
+      },
+      "invoices": {
+        "title": "发票",
+        "subtitle": "在一个页面中管理已发送、未付款、已付款和重复使用的发票。",
+        "helper": "要创建新发票，请先从报价开始，在客户准备付款时再转换为发票。对于重复收费，请打开旧发票并使用“创建相似发票”。",
+        "filters": {
+          "title": "查找并管理发票",
+          "search": "搜索发票",
+          "searchPlaceholder": "发票编号、客户姓名、邮箱或账单收件人",
+          "status": "状态",
+          "statusAll": "全部",
+          "statusPending": "待处理 / 未付款",
+          "statusPaid": "已付款",
+          "statusPartial": "部分付款",
+          "statusOverdue": "已逾期",
+          "paymentLink": "付款链接",
+          "paymentLinkAll": "全部",
+          "paymentLinkHas": "有付款链接",
+          "paymentLinkMissing": "缺少付款链接"
+        },
+        "actions": {
+          "startWithEstimate": "从报价开始",
+          "howItWorks": "发票如何运作",
+          "refresh": "刷新",
+          "openInvoice": "打开发票",
+          "copyPaymentLink": "复制付款链接",
+          "createPaymentLink": "创建 / 复制付款链接",
+          "openPaymentPage": "打开付款页面",
+          "print": "打印 / 保存 PDF",
+          "printing": "正在打开...",
+          "createSimilar": "创建相似发票",
+          "creatingSimilar": "正在创建...",
+          "creatingLink": "处理中...",
+          "expandView": "展开查看",
+          "close": "关闭",
+          "downloadPdf": "下载 PDF",
+          "downloadingPdf": "正在下载 PDF..."
+        },
+        "labels": {
+          "clientFallback": "客户",
+          "client": "客户",
+          "noEmail": "无邮箱",
+          "source": "来源",
+          "businessFinance": "业务财务",
+          "total": "总额",
+          "paid": "已付",
+          "balanceDue": "应付余额",
+          "issueDate": "开票日期",
+          "dueDate": "到期日期",
+          "paymentLink": "付款链接",
+          "paymentOrigin": "付款状态"
+        },
+        "status": {
+          "overdue": "已逾期",
+          "paymentLinkHas": "有付款链接",
+          "paymentLinkMissing": "缺少付款链接"
+        },
+        "empty": {
+          "title": "还没有发票",
+          "description": "当你将已批准的报价转换为发票，或从过去的发票创建相似发票时，发票就会出现。请先创建报价，再将其转换为发票。创建后，发票会显示在这里，方便跟踪付款、打印和重复开票。",
+          "action": "创建报价",
+          "learn": "了解发票流程"
+        },
+        "errors": {
+          "loadFailed": "无法加载发票。",
+          "paymentLinkUnavailable": "付款链接暂时不可用。",
+          "paymentLink": "无法创建或复制付款链接。",
+          "print": "无法打开发票打印视图。",
+          "similar": "无法创建相似发票。",
+          "similarMissingInvoice": "未返回新发票。",
+          "pdf": "无法下载发票 PDF。"
+        },
+        "snackbar": {
+          "paymentLinkCopied": "付款链接已复制。",
+          "printBlocked": "打印窗口被阻止。请允许弹窗后再试。",
+          "similarCreated": "已创建相似发票：{{invoice}}。"
+        },
+        "help": {
+          "title": "发票如何运作",
+          "subtitle": "新工作先从报价开始。重复收费请使用创建相似发票。",
+          "closeAria": "关闭发票帮助",
+          "sections": [
+            {
+              "title": "新的自定义报价工作",
+              "bullets": [
+                "进入报价页面。",
+                "为客户创建报价。",
+                "添加服务、材料、价格和条款。",
+                "当客户准备付款时，将报价转换为发票。",
+                "添加付款说明，创建付款链接，然后发送或打印发票。"
+              ]
+            },
+            {
+              "title": "每日、每周、每月或临时重复发票",
+              "bullets": [
+                "打开之前的发票。",
+                "点击“创建相似发票”。",
+                "检查新的开票日期、到期日期、明细行和金额。",
+                "为新发票创建新的付款链接。",
+                "将其发送给客户或打印出来。"
+              ]
+            },
+            {
+              "title": "已保存的账单信息",
+              "bullets": [
+                "当公司名称、地址或税号经常重复时，请使用已保存的账单收件人。",
+                "应用已保存的账单收件人会将其复制到发票快照中。",
+                "以后即使保存的账单信息发生变化，旧发票也不会自动改变。"
+              ]
+            },
+            {
+              "title": "付款方式",
+              "bullets": [
+                "当客户需要刷卡付款时，请使用在线付款链接。",
+                "对于电子转账、银行转账、支票或其他付款步骤，请使用付款说明。",
+                "现金、支票、终端机或转账付款，请在发票详情中通过离线付款记录功能登记。",
+                "当客户需要可打印版本时，请使用“打印 / 保存 PDF”。"
+              ]
+            },
+            {
+              "title": "重要安全说明",
+              "bullets": [
+                "发票会保留自己的账单快照，用于财务历史记录。",
+                "创建相似发票时，不会复制付款记录、退款记录和 Stripe 付款链接。"
+              ]
+            }
+          ]
+        },
+        "toolbar": {
+          "count_one": "{{count}} 张发票",
+          "count_other": "{{count}} 张发票"
+        }
+      },
+      "invoiceDetail": {
+        "title": "财务发票详情",
+        "common": {
+          "saving": "正在保存...",
+          "saveChanges": "保存更改"
+        },
+        "errors": {
+          "loadFailed": "无法加载发票。",
+          "billingRecipientsLoad": "无法加载已保存的账单收件人。",
+          "billingRecipientNameRequired": "保存账单信息前请输入公司名称或收件人名称。",
+          "billingRecipientSave": "无法保存账单信息以便下次复用。",
+          "saveFailed": "无法保存发票。",
+          "paymentLinkUnavailable": "付款链接暂时不可用。",
+          "paymentLinkCreate": "无法创建付款链接。",
+          "printBlocked": "打印窗口被阻止。请允许弹窗后再试。",
+          "printOpen": "无法打开打印视图。",
+          "similarMissingInvoice": "未返回新发票。",
+          "similarCreate": "无法创建相似发票。",
+          "pdfDownload": "无法下载 PDF。"
+        },
+        "snackbar": {
+          "billingRecipientApplied": "已将保存的账单收件人复制到此发票中。",
+          "billingRecipientSaved": "账单信息已保存以供下次使用。",
+          "invoiceSaved": "发票文档详情已保存。",
+          "paymentLinkCopied": "付款链接已复制。",
+          "similarCreated": "已创建相似发票：{{invoice}}。"
+        },
+        "warnings": {
+          "hostedLinkLocked": "付款链接已存在。账单/文档编辑会更新 Schedulaa 记录，但可能不会更改已创建的 Stripe 托管发票。"
+        },
+        "header": {
+          "invoiceFallback": "发票",
+          "currencyFallback": "USD",
+          "paymentLinkReady": "付款链接已就绪",
+          "paymentLinkCreatable": "可以创建付款链接",
+          "paymentLinkUnavailable": "付款链接不可用",
+          "total": "总额"
+        },
+        "summary": {
+          "title": "发票付款摘要",
+          "subtitle": "无需离开发票即可查看当前余额、付款链接状态以及下一步收款操作。",
+          "cards": {
+            "invoiceTotal": "发票总额",
+            "status": "状态：{{status}}",
+            "paidSoFar": "已付款",
+            "paidBreakdown": "在线 {{online}} • 线下 {{offline}}",
+            "balanceDue": "应付余额",
+            "actionNeeded": "需要操作",
+            "nothingLeft": "无需再收款",
+            "paymentLink": "付款链接",
+            "ready": "已就绪",
+            "canCreate": "可创建",
+            "unavailable": "不可用"
+          },
+          "notes": {
+            "stripeCaptured": "此发票已经捕获了一笔 Stripe 付款。",
+            "hostedPageAvailable": "可以为此发票创建托管付款页面。",
+            "paymentLinkUnavailable": "在发票存在客户且金额为正之前，付款链接不可用。",
+            "offlineMethods": "线下付款方式：{{methods}}",
+            "refundedAmount": "已退款金额：{{amount}}",
+            "remainingRefundable": "剩余可退款金额：{{amount}}",
+            "refundEligibility": "退款资格：{{status}}",
+            "refundEligible": "可进行 Stripe 退款",
+            "refundUnavailable": "Stripe 退款不可用"
+          },
+          "sections": {
+            "offlineHistory": "线下付款记录",
+            "refundHistory": "退款记录"
+          }
+        },
+        "paymentOrigins": {
+          "pending": "待处理",
+          "online": "在线已付",
+          "offline": "线下已付",
+          "mixed": "线上与线下混合支付",
+          "partiallyPaidOffline": "部分线下付款"
+        },
+        "client": {
+          "title": "客户摘要",
+          "noClient": "无客户",
+          "noEmail": "无邮箱",
+          "relatedEstimate": "报价：{{number}} • {{title}} • {{status}}",
+          "estimateFallback": "报价",
+          "relatedWorkOrders": "相关工单",
+          "workOrderFallback": "工单"
+        },
+        "billing": {
+          "title": "账单详情",
+          "subtitle": "此发票会保留自己的账单快照。你可以将保存的账单收件人复制到发票中，然后保存，而不会影响旧发票。",
+          "savedRecipient": "已保存的账单收件人",
+          "loadingRecipients": "正在加载已保存的账单收件人...",
+          "noRecipients": "还没有已保存的账单收件人",
+          "chooseRecipient": "选择一个已保存的账单收件人",
+          "recipientCountOne": "已有 1 个保存的账单收件人",
+          "recipientCountOther": "已有 {{count}} 个保存的账单收件人",
+          "recipientEmptyHelp": "先保存当前账单信息，以后就能在这里重复使用。",
+          "applyRecipient": "应用已保存收件人",
+          "saveForNextTime": "保存以便下次使用",
+          "fields": {
+            "companyName": "公司 / 收件人名称",
+            "contactName": "联系人姓名",
+            "email": "账单邮箱",
+            "phone": "账单电话",
+            "street": "街道地址",
+            "city": "城市",
+            "stateProvince": "州 / 省",
+            "postalZip": "邮编",
+            "country": "国家",
+            "taxId": "税号"
+          }
+        },
+        "document": {
+          "title": "发票文档",
+          "fields": {
+            "issueDate": "开票日期",
+            "dueDate": "到期日期",
+            "poNumber": "PO 编号",
+            "paymentTermsShort": "付款条款",
+            "customerMessage": "客户消息",
+            "customerNotes": "客户备注",
+            "paymentTerms": "付款条款",
+            "paymentInstructions": "付款说明",
+            "internalNotes": "内部备注"
+          },
+          "helpers": {
+            "customerMessage": "用于简短说明发票内容或向客户收费的项目。",
+            "customerNotes": "会显示在发票上，适合感谢语、工作背景或后续安排。",
+            "paymentTerms": "会显示在发票上。例如：收到即付、7 天账期，或交付前付款。",
+            "paymentInstructions": "会显示在发票和打印视图中。例如：电子转账邮箱、银行转账信息、支票抬头或现金说明。",
+            "internalNotes": "仅供内部使用，不会用于面向客户的发票。"
+          }
+        },
+        "lineItems": {
+          "title": "明细与总计",
+          "taxInclusiveInfo": "含税报价可能会将录入价格与应税基数分开显示。总计仍然是最终依据。",
+          "columns": {
+            "description": "描述",
+            "qty": "数量",
+            "unitPrice": "单价",
+            "amount": "金额",
+            "taxable": "应税",
+            "taxRate": "税率"
+          },
+          "totals": {
+            "subtotal": "小计：{{amount}}",
+            "tax": "税额：{{amount}}",
+            "discount": "折扣：{{amount}}",
+            "total": "总计：{{amount}}"
+          }
+        },
+        "actions": {
+          "copyPaymentLink": "复制付款链接",
+          "createPaymentLink": "创建付款链接",
+          "openPaymentPage": "打开付款页面",
+          "print": "打印 / 保存 PDF",
+          "recordOfflinePayment": "记录线下付款",
+          "issueRefund": "发起退款",
+          "close": "关闭",
+          "creating": "正在创建...",
+          "createSimilarInvoice": "创建相似发票",
+          "copyExistingLink": "复制现有链接",
+          "downloadPdf": "下载 PDF",
+          "downloadingPdf": "正在下载 PDF..."
+        },
+        "labels": {
+          "noDate": "无日期",
+          "unknown": "未知",
+          "yes": "是",
+          "no": "否"
         }
       }
     }

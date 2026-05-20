@@ -49,49 +49,24 @@ const makeLine = (line = {}, index = 0) => ({
 const LINE_ITEM_PRESETS = {
   service: {
     key: "service",
-    label: "Service",
-    description: "General service or appointment work.",
     item_type: "service",
-    quantityLabel: "Qty",
-    quantityHelper: "Use for visits or service units.",
-    descriptionPlaceholder: "Example: Deep cleaning service",
   },
   flat_fee: {
     key: "flat_fee",
-    label: "Flat fee",
-    description: "One fixed-price service or package.",
     item_type: "service",
     quantity: 1,
-    quantityLabel: "Qty",
-    quantityHelper: "Usually 1 for a package or fixed-price job.",
-    descriptionPlaceholder: "Example: Website setup package",
   },
   hourly_work: {
     key: "hourly_work",
-    label: "Hourly work",
-    description: "Labor billed by hours.",
     item_type: "service",
-    quantityLabel: "Hours",
-    quantityHelper: "Enter the number of hours worked.",
-    descriptionPlaceholder: "Example: Consultation or repair labor",
   },
   materials: {
     key: "materials",
-    label: "Materials",
-    description: "Physical items, supplies, or products used in the job.",
     item_type: "material",
-    quantityLabel: "Qty",
-    quantityHelper: "Use units, pieces, or boxes.",
-    descriptionPlaceholder: "Example: Paint, filters, or hardware",
   },
   custom: {
     key: "custom",
-    label: "Custom",
-    description: "Anything that does not fit the standard presets.",
     item_type: "custom",
-    quantityLabel: "Qty",
-    quantityHelper: "Use any billing unit that fits the job.",
-    descriptionPlaceholder: "Describe the custom charge",
   },
 };
 
@@ -171,6 +146,24 @@ export default function EstimateEditorDialog({
   const tEstimate = React.useCallback(
     (key, fallback, options = {}) => t(`manager.finance.estimates.editor.${key}`, { defaultValue: fallback, ...options }),
     [t]
+  );
+  const presetMetaFor = React.useCallback(
+    (line) => {
+      const presetMeta = getPresetMeta(line);
+      const key = presetMeta.key;
+      return {
+        ...presetMeta,
+        label: tEstimate(`lineItems.presets.${key}`, presetMeta.key),
+        description: tEstimate(`lineItems.presetMeta.${key}.description`, ""),
+        quantityLabel: tEstimate(
+          `lineItems.presetMeta.${key}.quantityLabel`,
+          key === "hourly_work" ? "Hours" : tEstimate("lineItems.fields.qty", "Qty")
+        ),
+        quantityHelper: tEstimate(`lineItems.presetMeta.${key}.quantityHelper`, ""),
+        descriptionPlaceholder: tEstimate(`lineItems.presetMeta.${key}.descriptionPlaceholder`, ""),
+      };
+    },
+    [tEstimate]
   );
   const currencyOptions = useMemo(() => getCurrencyOptions(), []);
   const [activeCurrency, setActiveCurrency] = useState(() => getDefaultEstimateCurrency(taxContext || {}));
@@ -560,7 +553,7 @@ export default function EstimateEditorDialog({
                 }}
               >
                 {(() => {
-                  const presetMeta = getPresetMeta(line);
+                  const presetMeta = presetMetaFor(line);
                   return (
                 <Grid container spacing={1.5} alignItems="center">
                   <Grid item xs={12} md={3}>

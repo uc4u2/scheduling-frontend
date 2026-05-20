@@ -1,8 +1,52 @@
-import api from "../../utils/api";
+import api, { API_BASE_URL } from "../../utils/api";
+import { getAuthedCompanyId } from "../../utils/authedCompany";
 
 const unwrap = async (promise) => {
   const res = await promise;
   return res.data;
+};
+
+const fetchBinary = async (path) => {
+  const token =
+    typeof localStorage !== "undefined" ? localStorage.getItem("token") || "" : "";
+  const companyId = getAuthedCompanyId?.();
+  const response = await fetch(`${String(API_BASE_URL).replace(/\/$/, "")}${path}`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(companyId ? { "X-Company-Id": String(companyId) } : {}),
+    },
+    credentials: "omit",
+  });
+
+  if (!response.ok) {
+    let message = "Request failed.";
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await response.json();
+        message =
+          payload?.message ||
+          payload?.error_description ||
+          payload?.error ||
+          payload?.error_code ||
+          message;
+      } else {
+        const text = await response.text();
+        if (text) message = text;
+      }
+    } catch {}
+    const error = new Error(message);
+    throw error;
+  }
+
+  const blob = await response.blob();
+  const headers = {
+    "content-type": response.headers.get("content-type") || blob.type || "application/octet-stream",
+    "content-disposition": response.headers.get("content-disposition") || "",
+    "content-length": response.headers.get("content-length") || "",
+  };
+  return { data: blob, headers, status: response.status };
 };
 
 const pickArray = (payload, keys = ["items", "data", "recruiters"]) => {
@@ -59,6 +103,8 @@ export const duplicateEstimate = (id) => unwrap(api.post(`/finance/estimates/${i
 export const convertEstimateToInvoice = (id) => unwrap(api.post(`/finance/estimates/${id}/convert-to-invoice`));
 export const reopenEstimateResponse = (id) =>
   unwrap(api.post(`/finance/estimates/${id}/reopen-response`));
+export const downloadFinanceEstimatePdf = (id) =>
+  fetchBinary(`/finance/estimates/${id}/pdf`);
 export const createFinanceInvoicePaymentLink = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-payment-link`));
 export const createSimilarFinanceInvoice = (id) =>
@@ -66,6 +112,8 @@ export const createSimilarFinanceInvoice = (id) =>
 export const listFinanceInvoices = (params = {}) =>
   unwrap(api.get("/finance/invoices", { params }));
 export const getFinanceInvoice = (id) => unwrap(api.get(`/finance/invoices/${id}`));
+export const downloadFinanceInvoicePdf = (id) =>
+  fetchBinary(`/finance/invoices/${id}/pdf`);
 export const getFinanceInvoicePrintHtml = async (id) => {
   const res = await api.get(`/finance/invoices/${id}/print`, {
     responseType: "text",

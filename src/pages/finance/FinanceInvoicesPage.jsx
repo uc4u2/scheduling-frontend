@@ -5,6 +5,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Drawer,
   FormControl,
   Grid,
@@ -24,6 +28,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import LibraryAddOutlinedIcon from "@mui/icons-material/LibraryAddOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseIcon from "@mui/icons-material/Close";
@@ -32,60 +37,32 @@ import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
 import FinanceInvoiceDetailDialog from "./FinanceInvoiceDetailDialog";
+import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 import {
   createFinanceInvoicePaymentLink,
   createSimilarFinanceInvoice,
+  downloadFinanceInvoicePdf,
   getFinanceInvoicePrintHtml,
   listFinanceInvoices,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
 
-const HELP_SECTIONS = [
-  {
-    title: "New custom-price job",
-    bullets: [
-      "Go to Estimates.",
-      "Create an estimate for the client.",
-      "Add services, materials, pricing, and terms.",
-      "Convert the estimate to an invoice when the client is ready to pay.",
-      "Add payment instructions, create a payment link, then send or print the invoice.",
-    ],
-  },
-  {
-    title: "Repeat daily, weekly, monthly, or ad-hoc invoice",
-    bullets: [
-      "Open a previous invoice.",
-      "Click Create similar invoice.",
-      "Review the new issue date, due date, line items, and amount.",
-      "Create a fresh payment link for the new invoice.",
-      "Send it to the client or print it.",
-    ],
-  },
-  {
-    title: "Saved billing details",
-    bullets: [
-      "Use saved billing recipients when the same company name, address, or tax ID repeats.",
-      "Applying a saved billing recipient copies it into the invoice snapshot.",
-      "Old invoices do not change when saved billing details change later.",
-    ],
-  },
-  {
-    title: "Payment options",
-    bullets: [
-      "Use the online payment link when the client should pay by card.",
-      "Use payment instructions for e-transfer, bank transfer, cheque, or other customer payment steps.",
-      "Record cash, cheque, terminal, or transfer payments through offline payment recording inside the invoice detail.",
-      "Use Print / Save PDF when the client needs a printable invoice copy.",
-    ],
-  },
-  {
-    title: "Important safety note",
-    bullets: [
-      "Invoices keep their own billing snapshot for financial history.",
-      "Payment records, refunds, and Stripe payment links are not copied when you create a similar invoice.",
-    ],
-  },
-];
+const downloadBlob = (response, fallbackName) => {
+  const blob =
+    response?.data instanceof Blob
+      ? response.data
+      : new Blob([response?.data], {
+          type: response?.headers?.["content-type"] || "application/pdf",
+        });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+};
 
 const isOverdue = (invoice) => {
   const dueDate = invoice?.due_date;
@@ -97,12 +74,9 @@ const isOverdue = (invoice) => {
   return Number.isFinite(due.getTime()) && due < now;
 };
 
-const paymentLinkLabel = (row) => {
-  if (row?.payment_link_exists) return "Has payment link";
-  return "Missing payment link";
-};
+function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice }) {
+  const sections = tInvoice("help.sections", [], { returnObjects: true });
 
-function InvoiceWorkflowHelpDrawer({ open, onClose }) {
   return (
     <Drawer
       anchor="right"
@@ -113,17 +87,20 @@ function InvoiceWorkflowHelpDrawer({ open, onClose }) {
       <Stack sx={{ height: "100%" }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}>
           <Box>
-            <Typography variant="h6" fontWeight={800}>How invoices work</Typography>
+            <Typography variant="h6" fontWeight={800}>{tInvoice("help.title", "How invoices work")}</Typography>
             <Typography variant="body2" color="text.secondary">
-              Start with an estimate for new work. Use Create similar invoice for repeat billing.
+              {tInvoice(
+                "help.subtitle",
+                "Start with an estimate for new work. Use Create similar invoice for repeat billing."
+              )}
             </Typography>
           </Box>
-          <IconButton onClick={onClose} aria-label="Close invoice help">
+          <IconButton onClick={onClose} aria-label={tInvoice("help.closeAria", "Close invoice help")}>
             <CloseIcon />
           </IconButton>
         </Stack>
         <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto" }}>
-          {HELP_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <Paper key={section.title} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
                 {section.title}
@@ -150,6 +127,26 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     (key, fallback, options = {}) => t(`manager.finance.invoices.${key}`, { defaultValue: fallback, ...options }),
     [t]
   );
+  const paymentLinkLabel = useCallback(
+    (row) =>
+      row?.payment_link_exists
+        ? tInvoice("status.paymentLinkHas", "Has payment link")
+        : tInvoice("status.paymentLinkMissing", "Missing payment link"),
+    [tInvoice]
+  );
+  const paymentOriginLabel = useCallback(
+    (row) => {
+      const value = String(row?.payment_origin || row?.payment_status || row?.status || "").trim().toLowerCase();
+      if (!value) return "-";
+      return t(`manager.finance.shared.statuses.${value}`, {
+        defaultValue: value
+          .split("_")
+          .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : ""))
+          .join(" "),
+      });
+    },
+    [t]
+  );
 
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState(null);
@@ -161,10 +158,12 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [expandedOpen, setExpandedOpen] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceDialogId, setInvoiceDialogId] = useState(null);
   const [paymentLinkBusyId, setPaymentLinkBusyId] = useState(null);
   const [printBusyId, setPrintBusyId] = useState(null);
+  const [pdfBusyId, setPdfBusyId] = useState(null);
   const [similarBusyId, setSimilarBusyId] = useState(null);
 
   const load = useCallback(async () => {
@@ -228,7 +227,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       const payload = await createFinanceInvoicePaymentLink(invoiceId);
       const checkoutUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url || "";
       if (!checkoutUrl) {
-        throw new Error("Payment link is not available yet.");
+        throw new Error(tInvoice("errors.paymentLinkUnavailable", "Payment link is not available yet."));
       }
       await navigator.clipboard.writeText(checkoutUrl);
       enqueueSnackbar(tInvoice("snackbar.paymentLinkCopied", "Payment link copied."), { variant: "success" });
@@ -269,16 +268,39 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     }
   };
 
+  const handleDownloadInvoicePdf = async (row) => {
+    const invoiceId = row?.invoice_id || row?.id;
+    setPdfBusyId(invoiceId);
+    setError("");
+    try {
+      const res = await downloadFinanceInvoicePdf(invoiceId);
+      downloadBlob(res, `finance-invoice-${row?.invoice_number || invoiceId}.pdf`);
+      enqueueSnackbar(tInvoice("snackbar.pdfDownloaded", "Invoice PDF downloaded."), { variant: "success" });
+    } catch (err) {
+      if (isLikelyDownloadHandoffError(err)) {
+        enqueueSnackbar(
+          tInvoice("snackbar.downloadStarted", "Download started in your browser or download manager."),
+          { variant: "info" }
+        );
+        return;
+      }
+      setError(await extractApiErrorMessage(err, tInvoice("errors.pdf", "Unable to download the invoice PDF.")));
+    } finally {
+      setPdfBusyId(null);
+    }
+  };
+
   const handleCreateSimilarInvoice = async (invoiceId) => {
     setSimilarBusyId(invoiceId);
     setError("");
     try {
       const payload = await createSimilarFinanceInvoice(invoiceId);
       const nextInvoice = payload?.invoice || null;
-      if (!nextInvoice?.id) throw new Error("New invoice was not returned.");
+      if (!nextInvoice?.id) throw new Error(tInvoice("errors.similarMissingInvoice", "New invoice was not returned."));
       enqueueSnackbar(
-        tInvoice("snackbar.similarCreated", "Similar invoice created.") +
-          ` ${nextInvoice.invoice_number || `#${nextInvoice.id}`}`,
+        tInvoice("snackbar.similarCreated", "Similar invoice created: {{invoice}}.", {
+          invoice: nextInvoice.invoice_number || `#${nextInvoice.id}`,
+        }),
         { variant: "success" }
       );
       await load();
@@ -289,6 +311,8 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       setSimilarBusyId(null);
     }
   };
+
+  const invoiceCountLabel = pagination?.total || filteredItems.length;
 
   const helperCard = (
     <Paper variant="outlined" sx={{ p: 2.25, borderRadius: 3 }}>
@@ -308,6 +332,14 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<OpenInFullIcon />}
+            onClick={() => setExpandedOpen(true)}
+            disabled={loading || filteredItems.length === 0}
+          >
+            {tInvoice("actions.expandView", "Expand View")}
+          </Button>
           <Button variant="contained" startIcon={<AddTaskIcon />} onClick={() => onNavigate?.("finance-estimates")}>
             {tInvoice("actions.startWithEstimate", "Start with estimate")}
           </Button>
@@ -319,7 +351,150 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           </Button>
         </Stack>
       </Stack>
+      <Chip
+        label={tInvoice(
+          Number(invoiceCountLabel) === 1 ? "toolbar.count_one" : "toolbar.count_other",
+          Number(invoiceCountLabel) === 1 ? "{{count}} invoice" : "{{count}} invoices",
+          { count: invoiceCountLabel }
+        )}
+        variant="outlined"
+        sx={{ alignSelf: { xs: "flex-start", lg: "center" }, mt: 1.5, fontWeight: 700 }}
+      />
     </Paper>
+  );
+
+  const renderInvoiceCards = (rows) => (
+    <Grid container spacing={1.5}>
+      {rows.map((row) => (
+        <Grid item xs={12} key={row.id || row.invoice_id}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ lg: "flex-start" }}>
+                <Box>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="h6" fontWeight={800}>
+                      {row.invoice_number || `#${row.id}`}
+                    </Typography>
+                    <FinanceStatusChip status={row.payment_status || row.status} />
+                    {isOverdue(row) ? <Chip size="small" color="error" label={tInvoice("status.overdue", "Overdue")} /> : null}
+                    <Chip size="small" variant="outlined" label={paymentLinkLabel(row)} />
+                  </Stack>
+                  <Typography variant="body1" fontWeight={600} sx={{ mt: 0.5 }}>
+                    {row.billing_display_name || row.client_name || tInvoice("labels.clientFallback", "Client")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {row.client_name && row.billing_display_name && row.client_name !== row.billing_display_name
+                      ? `${tInvoice("labels.client", "Client")}: ${row.client_name}${row.client_email ? ` • ${row.client_email}` : ""}`
+                      : row.client_email || tInvoice("labels.noEmail", "No email")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                    {row.related_estimate_number
+                      ? `${tInvoice("labels.source", "Source")}: ${row.related_estimate_number}`
+                      : `${tInvoice("labels.source", "Source")}: ${tInvoice("labels.businessFinance", "Business Finance")}`}
+                  </Typography>
+                </Box>
+                <Stack spacing={0.5} alignItems={{ xs: "flex-start", lg: "flex-end" }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    {tInvoice("labels.total", "Total")}
+                  </Typography>
+                  <Typography variant="h5" fontWeight={800}>
+                    {formatCurrency(row.amount, row.currency)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tInvoice("labels.paid", "Paid")}: {formatCurrency(row.total_recorded_paid_amount, row.currency)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tInvoice("labels.balanceDue", "Balance due")}: {formatCurrency(row.remaining_balance, row.currency)}
+                  </Typography>
+                </Stack>
+              </Stack>
+
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} md={3}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    {tInvoice("labels.issueDate", "Issue date")}
+                  </Typography>
+                  <Typography variant="body2">{row.issue_date || "-"}</Typography>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    {tInvoice("labels.dueDate", "Due date")}
+                  </Typography>
+                  <Typography variant="body2">{row.due_date || "-"}</Typography>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    {tInvoice("labels.paymentLink", "Payment link")}
+                  </Typography>
+                  <Typography variant="body2">{paymentLinkLabel(row)}</Typography>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    {tInvoice("labels.paymentOrigin", "Payment status")}
+                  </Typography>
+                  <Typography variant="body2">{paymentOriginLabel(row)}</Typography>
+                </Grid>
+              </Grid>
+
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                <Button variant="contained" startIcon={<OpenInFullIcon />} onClick={() => openInvoice(row.invoice_id || row.id)}>
+                  {tInvoice("actions.openInvoice", "Open invoice")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => handleCopyPaymentLink(row.invoice_id || row.id)}
+                  disabled={paymentLinkBusyId === (row.invoice_id || row.id)}
+                >
+                  {paymentLinkBusyId === (row.invoice_id || row.id)
+                    ? tInvoice("actions.creatingLink", "Working...")
+                    : row.payment_link_exists
+                      ? tInvoice("actions.copyPaymentLink", "Copy payment link")
+                      : tInvoice("actions.createPaymentLink", "Create / copy payment link")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => handleOpenPaymentLink(row)}
+                >
+                  {tInvoice("actions.openPaymentPage", "Open payment page")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LocalPrintshopOutlinedIcon />}
+                  onClick={() => handlePrintInvoice(row.invoice_id || row.id)}
+                  disabled={printBusyId === (row.invoice_id || row.id)}
+                >
+                  {printBusyId === (row.invoice_id || row.id)
+                    ? tInvoice("actions.printing", "Opening...")
+                    : tInvoice("actions.print", "Print / Save PDF")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<PictureAsPdfOutlinedIcon />}
+                  onClick={() => handleDownloadInvoicePdf(row)}
+                  disabled={pdfBusyId === (row.invoice_id || row.id)}
+                >
+                  {pdfBusyId === (row.invoice_id || row.id)
+                    ? tInvoice("actions.downloadingPdf", "Downloading PDF...")
+                    : tInvoice("actions.downloadPdf", "Download PDF")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LibraryAddOutlinedIcon />}
+                  onClick={() => handleCreateSimilarInvoice(row.invoice_id || row.id)}
+                  disabled={similarBusyId === (row.invoice_id || row.id)}
+                >
+                  {similarBusyId === (row.invoice_id || row.id)
+                    ? tInvoice("actions.creatingSimilar", "Creating...")
+                    : tInvoice("actions.createSimilar", "Create similar invoice")}
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        </Grid>
+      ))}
+    </Grid>
   );
 
   return (
@@ -405,127 +580,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           </Stack>
         </Paper>
       ) : (
-        <Grid container spacing={1.5}>
-          {filteredItems.map((row) => (
-            <Grid item xs={12} key={row.id || row.invoice_id}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-                <Stack spacing={1.5}>
-                  <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ lg: "flex-start" }}>
-                    <Box>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                        <Typography variant="h6" fontWeight={800}>
-                          {row.invoice_number || `#${row.id}`}
-                        </Typography>
-                        <FinanceStatusChip status={row.payment_status || row.status} />
-                        {isOverdue(row) ? <Chip size="small" color="error" label={tInvoice("status.overdue", "Overdue")} /> : null}
-                        <Chip size="small" variant="outlined" label={paymentLinkLabel(row)} />
-                      </Stack>
-                      <Typography variant="body1" fontWeight={600} sx={{ mt: 0.5 }}>
-                        {row.billing_display_name || row.client_name || tInvoice("labels.clientFallback", "Client")}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {row.client_name && row.billing_display_name && row.client_name !== row.billing_display_name
-                          ? `${tInvoice("labels.client", "Client")}: ${row.client_name}${row.client_email ? ` • ${row.client_email}` : ""}`
-                          : row.client_email || tInvoice("labels.noEmail", "No email")}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-                        {row.related_estimate_number
-                          ? `${tInvoice("labels.source", "Source")}: ${row.related_estimate_number}`
-                          : `${tInvoice("labels.source", "Source")}: ${tInvoice("labels.businessFinance", "Business Finance")}`}
-                      </Typography>
-                    </Box>
-                    <Stack spacing={0.5} alignItems={{ xs: "flex-start", lg: "flex-end" }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
-                        {tInvoice("labels.total", "Total")}
-                      </Typography>
-                      <Typography variant="h5" fontWeight={800}>
-                        {formatCurrency(row.amount, row.currency)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {tInvoice("labels.paid", "Paid")}: {formatCurrency(row.total_recorded_paid_amount, row.currency)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {tInvoice("labels.balanceDue", "Balance due")}: {formatCurrency(row.remaining_balance, row.currency)}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-
-                  <Grid container spacing={1.25}>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
-                        {tInvoice("labels.issueDate", "Issue date")}
-                      </Typography>
-                      <Typography variant="body2">{row.issue_date || "-"}</Typography>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
-                        {tInvoice("labels.dueDate", "Due date")}
-                      </Typography>
-                      <Typography variant="body2">{row.due_date || "-"}</Typography>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
-                        {tInvoice("labels.paymentLink", "Payment link")}
-                      </Typography>
-                      <Typography variant="body2">{paymentLinkLabel(row)}</Typography>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
-                        {tInvoice("labels.paymentOrigin", "Payment status")}
-                      </Typography>
-                      <Typography variant="body2">{row.payment_origin || row.payment_status || row.status || "-"}</Typography>
-                    </Grid>
-                  </Grid>
-
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
-                    <Button variant="contained" startIcon={<OpenInFullIcon />} onClick={() => openInvoice(row.invoice_id || row.id)}>
-                      {tInvoice("actions.openInvoice", "Open invoice")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<ContentCopyIcon />}
-                      onClick={() => handleCopyPaymentLink(row.invoice_id || row.id)}
-                      disabled={paymentLinkBusyId === (row.invoice_id || row.id)}
-                    >
-                      {paymentLinkBusyId === (row.invoice_id || row.id)
-                        ? tInvoice("actions.creatingLink", "Working...")
-                        : row.payment_link_exists
-                          ? tInvoice("actions.copyPaymentLink", "Copy payment link")
-                          : tInvoice("actions.createPaymentLink", "Create / copy payment link")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<LaunchIcon />}
-                      onClick={() => handleOpenPaymentLink(row)}
-                    >
-                      {tInvoice("actions.openPaymentPage", "Open payment page")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<LocalPrintshopOutlinedIcon />}
-                      onClick={() => handlePrintInvoice(row.invoice_id || row.id)}
-                      disabled={printBusyId === (row.invoice_id || row.id)}
-                    >
-                      {printBusyId === (row.invoice_id || row.id)
-                        ? tInvoice("actions.printing", "Opening...")
-                        : tInvoice("actions.print", "Print / Save PDF")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<LibraryAddOutlinedIcon />}
-                      onClick={() => handleCreateSimilarInvoice(row.invoice_id || row.id)}
-                      disabled={similarBusyId === (row.invoice_id || row.id)}
-                    >
-                      {similarBusyId === (row.invoice_id || row.id)
-                        ? tInvoice("actions.creatingSimilar", "Creating...")
-                        : tInvoice("actions.createSimilar", "Create similar invoice")}
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
+        renderInvoiceCards(filteredItems)
       )}
 
       <FinancePagination
@@ -551,7 +606,29 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         }}
       />
 
-      <InvoiceWorkflowHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <InvoiceWorkflowHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} tInvoice={tInvoice} />
+
+      <Dialog open={expandedOpen} onClose={() => setExpandedOpen(false)} fullWidth maxWidth="xl">
+        <DialogTitle>{tInvoice("title", "Invoices")}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {renderInvoiceCards(filteredItems)}
+            <FinancePagination
+              pagination={pagination}
+              page={page}
+              perPage={perPage}
+              onPageChange={setPage}
+              onPerPageChange={(next) => {
+                setPerPage(next);
+                setPage(1);
+              }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExpandedOpen(false)}>{tInvoice("actions.close", "Close")}</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -8,7 +8,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import EmailIcon from "@mui/icons-material/Email";
 import api, { API_BASE_URL } from "../../utils/api";
 import dayjs  from "dayjs";
-import { extractApiErrorMessage } from "../../utils/apiError";
+import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 
 /* ──────────────────────────────────────────────────────────
    Helper – ensure we always send a valid YYYY-MM
@@ -21,12 +21,13 @@ const monthOrFallback = (month, startISO) =>
 ────────────────────────────────────────────────────────── */
 const triggerDownload = (blob, filename) => {
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+  link.href = url;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(link.href);
   document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 };
 
 /* ──────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export default function DownloadPayrollButton({
 }) {
   const [busy  , setBusy  ] = useState(false);
   const [snack , setSnack ] = useState({ open: false, msg: "", sev: "info" });
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 
   /* ───────── main handler ───────── */
   const handleDownload = async (fmt, emailToEmployee = false) => {
@@ -138,12 +140,14 @@ export default function DownloadPayrollButton({
           `/automation/payroll/finalize-and-export`,
           pdfPayload,
           {
-            headers     : { Authorization: `Bearer ${token}` },
+            headers     : authHeaders,
             responseType: "blob",
           }
         );
         triggerDownload(
-          new Blob([resp.data], { type: resp.headers["content-type"] }),
+          resp.data instanceof Blob
+            ? resp.data
+            : new Blob([resp.data], { type: resp.headers["content-type"] || "application/pdf" }),
           `payslip_${safeMonth}_${recruiterId}.pdf`
         );
         setSnack({
@@ -192,12 +196,14 @@ export default function DownloadPayrollButton({
       /* 4️⃣  Fetch CSV/XLSX blob */
       const resp = await api.get(exportURL.toString(), {
         responseType: "blob",
-        headers     : { Authorization: `Bearer ${token}` },
+        headers     : authHeaders,
       });
 
       /* 5️⃣  Trigger download */
       triggerDownload(
-        new Blob([resp.data], { type: resp.headers["content-type"] }),
+        resp.data instanceof Blob
+          ? resp.data
+          : new Blob([resp.data], { type: resp.headers["content-type"] || "application/octet-stream" }),
         `payroll_${safeMonth}_${recruiterId}.${fmt}`
       );
       setSnack({
@@ -209,6 +215,14 @@ export default function DownloadPayrollButton({
       });
     } catch (err) {
       console.error(err);
+      if (isLikelyDownloadHandoffError(err)) {
+        setSnack({
+          open: true,
+          sev: "info",
+          msg: "Download started in your browser or download manager.",
+        });
+        return;
+      }
       const message = await extractApiErrorMessage(err, "Export failed.");
       setSnack({ open: true, sev: "error", msg: `Export failed: ${message}` });
     } finally {
