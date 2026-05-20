@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import AddTaskIcon from "@mui/icons-material/AddTask";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import RequestQuoteOutlinedIcon from "@mui/icons-material/RequestQuoteOutlined";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import PaidIcon from "@mui/icons-material/Paid";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -20,6 +21,7 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import FinanceOverviewPage from "./FinanceOverviewPage";
 import QuoteRequestsPage from "./QuoteRequestsPage";
 import EstimatesPage from "./EstimatesPage";
+import FinanceInvoicesPage from "./FinanceInvoicesPage";
 import ExpensesPage from "./ExpensesPage";
 import FinanceReportsPage from "./FinanceReportsPage";
 import WorkOrdersPage from "./WorkOrdersPage";
@@ -44,6 +46,7 @@ const TAB_ORDER = [
   { key: "finance-overview", labelKey: "manager.finance.tabs.overview", labelFallback: "Overview", icon: <DashboardIcon fontSize="small" /> },
   { key: "finance-quotes", labelKey: "manager.finance.tabs.quotes", labelFallback: "Quotes", icon: <ReceiptLongIcon fontSize="small" /> },
   { key: "finance-estimates", labelKey: "manager.finance.tabs.estimates", labelFallback: "Estimates", icon: <AddTaskIcon fontSize="small" /> },
+  { key: "finance-invoices", labelKey: "manager.finance.tabs.invoices", labelFallback: "Invoices", icon: <RequestQuoteOutlinedIcon fontSize="small" /> },
   { key: "finance-work-orders", labelKey: "manager.finance.tabs.workOrders", labelFallback: "Work Orders", icon: <AssignmentIcon fontSize="small" /> },
   { key: "finance-inventory", labelKey: "manager.finance.tabs.materialsSupplies", labelFallback: "Materials & Supplies", icon: <Inventory2OutlinedIcon fontSize="small" /> },
   { key: "finance-purchases", labelKey: "manager.finance.tabs.purchases", labelFallback: "Purchases", icon: <ShoppingCartOutlinedIcon fontSize="small" /> },
@@ -117,6 +120,8 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
         return <QuoteRequestsPage createNonce={quickAction?.type === "quote" ? quickAction.nonce : 0} onNavigate={handleNavigate} />;
       case "finance-estimates":
         return <EstimatesPage createNonce={quickAction?.type === "estimate" ? quickAction.nonce : 0} onNavigate={handleNavigate} />;
+      case "finance-invoices":
+        return <FinanceInvoicesPage onNavigate={handleNavigate} />;
       case "finance-work-orders":
         return (
           <WorkOrdersPage

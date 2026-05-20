@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormHelperText,
   Grid,
   IconButton,
   InputLabel,
@@ -36,6 +37,7 @@ import {
 
 const makeLine = (line = {}, index = 0) => ({
   id: line.id || `line-${Date.now()}-${index}`,
+  preset_key: line.preset_key || (line.item_type === "material" ? "materials" : line.item_type === "custom" ? "custom" : "service"),
   item_type: line.item_type || "service",
   description: line.description || "",
   quantity: line.quantity ?? 1,
@@ -43,6 +45,59 @@ const makeLine = (line = {}, index = 0) => ({
   taxable: Boolean(line.taxable),
   tax_rate: line.tax_rate ?? "",
 });
+
+const LINE_ITEM_PRESETS = {
+  service: {
+    key: "service",
+    label: "Service",
+    description: "General service or appointment work.",
+    item_type: "service",
+    quantityLabel: "Qty",
+    quantityHelper: "Use for visits or service units.",
+    descriptionPlaceholder: "Example: Deep cleaning service",
+  },
+  flat_fee: {
+    key: "flat_fee",
+    label: "Flat fee",
+    description: "One fixed-price service or package.",
+    item_type: "service",
+    quantity: 1,
+    quantityLabel: "Qty",
+    quantityHelper: "Usually 1 for a package or fixed-price job.",
+    descriptionPlaceholder: "Example: Website setup package",
+  },
+  hourly_work: {
+    key: "hourly_work",
+    label: "Hourly work",
+    description: "Labor billed by hours.",
+    item_type: "service",
+    quantityLabel: "Hours",
+    quantityHelper: "Enter the number of hours worked.",
+    descriptionPlaceholder: "Example: Consultation or repair labor",
+  },
+  materials: {
+    key: "materials",
+    label: "Materials",
+    description: "Physical items, supplies, or products used in the job.",
+    item_type: "material",
+    quantityLabel: "Qty",
+    quantityHelper: "Use units, pieces, or boxes.",
+    descriptionPlaceholder: "Example: Paint, filters, or hardware",
+  },
+  custom: {
+    key: "custom",
+    label: "Custom",
+    description: "Anything that does not fit the standard presets.",
+    item_type: "custom",
+    quantityLabel: "Qty",
+    quantityHelper: "Use any billing unit that fits the job.",
+    descriptionPlaceholder: "Describe the custom charge",
+  },
+};
+
+const getPresetMeta = (line) =>
+  LINE_ITEM_PRESETS[line?.preset_key] ||
+  LINE_ITEM_PRESETS[line?.item_type === "material" ? "materials" : line?.item_type === "custom" ? "custom" : "service"];
 
 const blankForm = (taxContext = {}) => ({
   client_id: "",
@@ -231,6 +286,25 @@ export default function EstimateEditorDialog({
     }));
   };
 
+  const applyLinePreset = (lineId, presetKey) => {
+    const preset = LINE_ITEM_PRESETS[presetKey] || LINE_ITEM_PRESETS.custom;
+    setForm((prev) => ({
+      ...prev,
+      line_items: prev.line_items.map((line) => {
+        if (line.id !== lineId) return line;
+        const next = {
+          ...line,
+          preset_key: preset.key,
+          item_type: preset.item_type,
+        };
+        if (preset.quantity !== undefined) {
+          next.quantity = preset.quantity;
+        }
+        return applyDefaultTaxRate(next, effectiveTaxContext);
+      }),
+    }));
+  };
+
   const addLine = () => {
     setForm((prev) => ({
       ...prev,
@@ -332,14 +406,37 @@ export default function EstimateEditorDialog({
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>{tEstimate("fields.template", "Template")}</InputLabel>
-                <Select label={tEstimate("fields.template", "Template")} value="" onChange={(e) => applyTemplate(e.target.value)}>
+                <InputLabel shrink>{tEstimate("fields.template", "Template")}</InputLabel>
+                <Select
+                  label={tEstimate("fields.template", "Template")}
+                  value=""
+                  displayEmpty
+                  notched
+                  renderValue={() =>
+                    templates.length
+                      ? tEstimate("fields.templateChoose", "Choose a template")
+                      : tEstimate("fields.templateEmpty", "No templates yet")
+                  }
+                  onChange={(e) => applyTemplate(e.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>
+                      {templates.length
+                        ? tEstimate("fields.templateChoose", "Choose a template")
+                        : tEstimate("fields.templateEmpty", "No templates yet")}
+                    </em>
+                  </MenuItem>
                   {templates.map((template) => (
                     <MenuItem key={template.id} value={template.id}>
                       {template.name}
                     </MenuItem>
                   ))}
                 </Select>
+                <FormHelperText>
+                  {templates.length
+                    ? tEstimate("fields.templateHelp", "Apply a saved estimate template to prefill notes, terms, and line items.")
+                    : tEstimate("fields.templateEmptyHelp", "Save an estimate as a template first, then reuse it here later.")}
+                </FormHelperText>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -462,7 +559,26 @@ export default function EstimateEditorDialog({
                   border: `1px solid ${theme.palette.divider}`,
                 }}
               >
+                {(() => {
+                  const presetMeta = getPresetMeta(line);
+                  return (
                 <Grid container spacing={1.5} alignItems="center">
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      select
+                      fullWidth
+                      label={tEstimate("lineItems.fields.preset", "Preset")}
+                      value={line.preset_key || presetMeta.key}
+                      onChange={(e) => applyLinePreset(line.id, e.target.value)}
+                      helperText={presetMeta.description}
+                    >
+                      <MenuItem value="service">{tEstimate("lineItems.presets.service", "Service")}</MenuItem>
+                      <MenuItem value="flat_fee">{tEstimate("lineItems.presets.flatFee", "Flat fee")}</MenuItem>
+                      <MenuItem value="hourly_work">{tEstimate("lineItems.presets.hourlyWork", "Hourly work")}</MenuItem>
+                      <MenuItem value="materials">{tEstimate("lineItems.presets.materials", "Materials")}</MenuItem>
+                      <MenuItem value="custom">{tEstimate("lineItems.presets.custom", "Custom")}</MenuItem>
+                    </TextField>
+                  </Grid>
                   <Grid item xs={12} md={2}>
                     <TextField select fullWidth label={tEstimate("lineItems.fields.type", "Type")} value={line.item_type} onChange={(e) => setLineField(line.id, "item_type", e.target.value)}>
                       <MenuItem value="service">{tEstimate("lineItems.types.service", "Service")}</MenuItem>
@@ -470,11 +586,25 @@ export default function EstimateEditorDialog({
                       <MenuItem value="custom">{tEstimate("lineItems.types.custom", "Custom")}</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} md={4}>
-                    <TextField fullWidth label={tEstimate("lineItems.fields.description", "Description")} value={line.description} onChange={(e) => setLineField(line.id, "description", e.target.value)} />
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      label={tEstimate("lineItems.fields.description", "Description")}
+                      placeholder={presetMeta.descriptionPlaceholder}
+                      value={line.description}
+                      onChange={(e) => setLineField(line.id, "description", e.target.value)}
+                    />
                   </Grid>
                   <Grid item xs={6} md={1.5}>
-                    <TextField fullWidth label={tEstimate("lineItems.fields.qty", "Qty")} type="number" inputProps={{ step: "0.01" }} value={line.quantity} onChange={(e) => setLineField(line.id, "quantity", e.target.value)} />
+                    <TextField
+                      fullWidth
+                      label={presetMeta.quantityLabel || tEstimate("lineItems.fields.qty", "Qty")}
+                      type="number"
+                      inputProps={{ step: "0.01" }}
+                      value={line.quantity}
+                      onChange={(e) => setLineField(line.id, "quantity", e.target.value)}
+                      helperText={presetMeta.quantityHelper}
+                    />
                   </Grid>
                   <Grid item xs={6} md={2}>
                     <TextField
@@ -516,6 +646,8 @@ export default function EstimateEditorDialog({
                     </IconButton>
                   </Grid>
                 </Grid>
+                  );
+                })()}
               </Box>
             ))}
           </Stack>

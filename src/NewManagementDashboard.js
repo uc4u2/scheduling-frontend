@@ -66,6 +66,7 @@ import {
   AssignmentTurnedIn,
   Article,
   ReceiptLong,
+  RequestQuoteOutlined,
   History,
   Settings,
   Api as ApiIcon,
@@ -239,6 +240,7 @@ const menuConfig = [
       { labelKey: "manager.finance.tabs.overview", key: "finance-overview", icon: <Dashboard /> },
       { labelKey: "manager.finance.tabs.quotes", key: "finance-quotes", icon: <ReceiptLong /> },
       { labelKey: "manager.finance.tabs.estimates", key: "finance-estimates", icon: <AssignmentTurnedIn /> },
+      { labelKey: "manager.finance.tabs.invoices", key: "finance-invoices", icon: <RequestQuoteOutlined /> },
       { labelKey: "manager.finance.tabs.workOrders", key: "finance-work-orders", icon: <Assignment /> },
       { labelKey: "manager.finance.tabs.materialsSupplies", key: "finance-inventory", icon: <Inventory2Outlined /> },
       { labelKey: "manager.finance.tabs.purchases", key: "finance-purchases", icon: <ShoppingCartOutlined /> },
@@ -1761,6 +1763,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       "finance-group-setup",
       "finance-quotes",
       "finance-estimates",
+      "finance-invoices",
       "finance-work-orders",
       "finance-inventory",
       "finance-vendors",
@@ -3465,6 +3468,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "finance-group-setup":
       case "finance-quotes":
       case "finance-estimates":
+      case "finance-invoices":
       case "finance-work-orders":
       case "finance-inventory":
       case "finance-vendors":

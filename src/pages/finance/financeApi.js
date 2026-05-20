@@ -61,6 +61,8 @@ export const reopenEstimateResponse = (id) =>
   unwrap(api.post(`/finance/estimates/${id}/reopen-response`));
 export const createFinanceInvoicePaymentLink = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-payment-link`));
+export const createSimilarFinanceInvoice = (id) =>
+  unwrap(api.post(`/finance/invoices/${id}/create-similar`));
 export const listFinanceInvoices = (params = {}) =>
   unwrap(api.get("/finance/invoices", { params }));
 export const getFinanceInvoice = (id) => unwrap(api.get(`/finance/invoices/${id}`));
@@ -244,6 +246,16 @@ export const exportAccountantCsv = (payload) =>
 export const listManagerClients = async () => {
   const res = await api.get("/booking/clients");
   return pickArray(res.data, ["items", "data"]);
+};
+
+export const listBillingRecipients = async (params = {}) => {
+  const res = await api.get("/manager/billing-recipients", { params });
+  return pickArray(res.data?.recipients || res.data, ["recipients", "items", "data"]);
+};
+
+export const createBillingRecipient = async (payload) => {
+  const res = await api.post("/manager/billing-recipients", payload);
+  return res.data?.recipient || res.data;
 };
 
 export const listRecruitersForAssignment = async () => {

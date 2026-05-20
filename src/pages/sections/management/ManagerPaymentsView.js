@@ -1980,6 +1980,10 @@ export default function ManagerPaymentsView({ connect }) {
           onSaved={() => {
             loadBookings();
           }}
+          onOpenInvoice={(nextInvoiceId) => {
+            setSelectedInvoiceId(nextInvoiceId);
+            setInvoiceDetailOpen(true);
+          }}
         />
 
         {/* Charge dialog */}

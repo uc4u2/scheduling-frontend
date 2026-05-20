@@ -55,6 +55,7 @@ import {
   createFinanceInvoicePaymentLink,
   duplicateEstimate,
   getEstimate,
+  getFinanceInvoicePrintHtml,
   listEstimateTemplates,
   listEstimates,
   listManagerClients,
@@ -216,6 +217,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [expandedOpen, setExpandedOpen] = useState(false);
+  const [postConvertInvoice, setPostConvertInvoice] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -436,15 +438,40 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     try {
       const res = await convertEstimateToInvoice(item.id);
       const invoiceNumber = res?.invoice?.invoice_number || res?.invoice_number || res?.invoice?.number;
+      const invoiceId = res?.invoice?.id || res?.invoice_id;
       enqueueSnackbar(
         invoiceNumber
           ? tEstimate("snackbar.invoiceCreatedWithNumber", "Invoice created: {{invoiceNumber}}.", { invoiceNumber })
           : tEstimate("snackbar.invoiceCreated", "Invoice created."),
         { variant: "success" }
       );
+      if (invoiceId) {
+        setPostConvertInvoice({
+          id: invoiceId,
+          invoiceNumber: invoiceNumber || `#${invoiceId}`,
+          estimateNumber: item?.estimate_number || "",
+        });
+      }
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.convertFailed", "Unable to convert estimate to invoice."), { variant: "error" });
+    }
+  };
+
+  const handlePrintInvoice = async (invoiceId) => {
+    try {
+      const html = await getFinanceInvoicePrintHtml(invoiceId);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const printWindow = window.open(blobUrl, "_blank", "noopener,noreferrer");
+      if (!printWindow) {
+        URL.revokeObjectURL(blobUrl);
+        enqueueSnackbar(tEstimate("errors.openPrintFailed", "Unable to open print view."), { variant: "warning" });
+        return;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.openPrintFailed", "Unable to open print view."), { variant: "error" });
     }
   };
 
@@ -1114,7 +1141,88 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         onSaved={async () => {
           await load();
         }}
+        onOpenInvoice={(nextInvoiceId) => {
+          setInvoiceDialogId(nextInvoiceId);
+          setInvoiceDialogOpen(true);
+        }}
       />
+      <Dialog
+        open={Boolean(postConvertInvoice)}
+        onClose={() => setPostConvertInvoice(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>{tEstimate("postConvert.title", "Invoice created")}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Typography variant="body1" fontWeight={600}>
+              {postConvertInvoice?.invoiceNumber || tEstimate("postConvert.invoiceFallback", "New invoice")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {postConvertInvoice?.estimateNumber
+                ? tEstimate(
+                    "postConvert.subtitleWithEstimate",
+                    "The estimate {{estimateNumber}} is now a finance invoice. Choose the next billing action.",
+                    { estimateNumber: postConvertInvoice.estimateNumber }
+                  )
+                : tEstimate(
+                    "postConvert.subtitle",
+                    "The estimate is now a finance invoice. Choose the next billing action."
+                  )}
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+              <Button
+                variant="contained"
+                startIcon={<DescriptionOutlinedIcon fontSize="small" />}
+                onClick={() => {
+                  if (!postConvertInvoice?.id) return;
+                  setInvoiceDialogId(postConvertInvoice.id);
+                  setInvoiceDialogOpen(true);
+                  setPostConvertInvoice(null);
+                }}
+              >
+                {tEstimate("postConvert.openInvoice", "Open invoice")}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<PaymentOutlinedIcon fontSize="small" />}
+                onClick={async () => {
+                  if (!postConvertInvoice?.id) return;
+                  try {
+                    const payload = await createFinanceInvoicePaymentLink(postConvertInvoice.id);
+                    const publicUrl = payload?.checkout_url || payload?.invoice?.hosted_invoice_url;
+                    if (!publicUrl) {
+                      throw new Error(tEstimate("errors.paymentLinkUnavailable", "Payment link is not available."));
+                    }
+                    await navigator.clipboard.writeText(publicUrl);
+                    enqueueSnackbar(tEstimate("snackbar.paymentLinkCopied", "Payment link copied."), { variant: "success" });
+                    await load();
+                  } catch (err) {
+                    enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.createPaymentLinkFailed", "Unable to create payment link."), { variant: "error" });
+                  }
+                }}
+              >
+                {tEstimate("postConvert.copyPaymentLink", "Create / copy payment link")}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<LocalPrintshopOutlinedIcon fontSize="small" />}
+                onClick={() => {
+                  if (!postConvertInvoice?.id) return;
+                  handlePrintInvoice(postConvertInvoice.id);
+                }}
+              >
+                {tEstimate("postConvert.printInvoice", "Print invoice")}
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPostConvertInvoice(null)}>
+            {tEstimate("common.close", "Close")}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{tEstimate("emailDialog.title", "Send Estimate")}</DialogTitle>
         <DialogContent dividers>
