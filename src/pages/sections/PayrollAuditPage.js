@@ -118,6 +118,9 @@ export default function PayrollAuditPage() {
     return /[zZ]|[+-]\d{2}:?\d{2}/.test(iso) ? iso : `${iso}Z`;
   };
 
+  const formatEmployeeLabel = (row) =>
+    row?.employee_name || (row?.employee_id ? `Employee #${row.employee_id}` : "Employee");
+
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -377,7 +380,7 @@ export default function PayrollAuditPage() {
                   <TableCell>
                     <Stack spacing={0.25}>
                       <Typography variant="body2" fontWeight={700}>
-                        {row.employee_name || `Employee #${row.employee_id}`}
+                        {formatEmployeeLabel(row)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {row.employee_email || "—"}
@@ -506,7 +509,7 @@ export default function PayrollAuditPage() {
                 <Stack spacing={0.75}>
                   <Typography variant="subtitle2" fontWeight={700}>Summary</Typography>
                   <Typography variant="body2">
-                    <strong>Employee:</strong> {selectedAudit.employee_name || `Employee #${selectedAudit.employee_id}`}
+                    <strong>Employee:</strong> {formatEmployeeLabel(selectedAudit)}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Actor:</strong> {selectedAudit.actor_name || selectedAudit.finalized_by_email || selectedAudit.finalized_by_id || "—"}
