@@ -220,13 +220,30 @@ export default function FinanceReceiptInboxCreateExpenseDialog({
             </Grid>
             {taxContext ? (
               <Grid item xs={12}>
-                <Alert severity="info">
-                  Company tax settings: <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
-                  {" • "}Display currency: <strong>{taxContext.display_currency || form.currency}</strong>
-                  {" • "}Prices include tax: <strong>{taxContext.prices_include_tax ? "ON" : "OFF"}</strong>
-                  {taxContext.default_tax_rate != null ? (
-                    <>{" • "}Default tax rate: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong></>
-                  ) : null}
+                <Alert severity={taxContext.warning ? "warning" : "info"}>
+                  <Stack spacing={0.75}>
+                    <Typography variant="body2" fontWeight={700}>
+                      Business Finance tax defaults
+                    </Typography>
+                    <Typography variant="body2">
+                      Jurisdiction: <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
+                      {" • "}Currency: <strong>{taxContext.display_currency || form.currency}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Prices include tax: <strong>{taxContext.prices_include_tax ? "ON" : "OFF"}</strong>
+                      {taxContext.tax_label ? <>{" • "}Label: <strong>{taxContext.tax_label}</strong></> : null}
+                      {taxContext.default_tax_rate != null ? (
+                        <>{" • "}Default tax: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong></>
+                      ) : null}
+                    </Typography>
+                    {taxContext.warning ? (
+                      <Typography variant="caption" color="text.secondary">{taxContext.warning}</Typography>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        Use these defaults for this expense, then override the tax amount only when needed.
+                      </Typography>
+                    )}
+                  </Stack>
                 </Alert>
               </Grid>
             ) : null}

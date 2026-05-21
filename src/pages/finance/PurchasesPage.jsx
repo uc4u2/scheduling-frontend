@@ -27,6 +27,7 @@ import {
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
@@ -47,6 +48,7 @@ import {
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinancePagination from "./components/FinancePagination";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 
 const blankLine = {
   inventory_item_id: "",
@@ -98,7 +100,7 @@ const formatMoney = (value, currency = "USD") =>
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
-function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit, defaultCurrency, taxContext }) {
+function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit, defaultCurrency, taxContext, onNavigate }) {
   const { t } = useTranslation();
   const tPurchases = React.useCallback(
     (key, fallback, options = {}) => t(`manager.finance.purchases.dialog.${key}`, { defaultValue: fallback, ...options }),
@@ -200,29 +202,49 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit, defa
           <Alert severity="info">{tPurchases("receiptInfo", "Receipt files are metadata-only in this phase. Paste links or short notes instead of uploading binaries.")}</Alert>
           {taxContext ? (
             <Alert severity={currencyMismatch || taxContext.warning ? "warning" : "info"}>
-              <Stack spacing={0.5}>
+              <Stack spacing={0.75}>
+                <Typography variant="body2" fontWeight={700}>
+                  {tPurchases("taxContext.summary", "Business Finance tax defaults")}
+                </Typography>
                 <Typography variant="body2">
-                  {tPurchases("taxContext.summary", "Company tax settings")}:{" "}
-                  <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
+                  {tPurchases("taxContext.location", "Jurisdiction")}: <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
                   {" • "}
-                  {tPurchases("taxContext.displayCurrency", "Display currency")}: <strong>{taxContext.display_currency || form.currency || "USD"}</strong>
-                  {" • "}
+                  {tPurchases("taxContext.displayCurrency", "Currency")}: <strong>{taxContext.display_currency || form.currency || "USD"}</strong>
+                </Typography>
+                <Typography variant="body2">
                   {tPurchases("taxContext.pricesIncludeTax", "Prices include tax")}: <strong>{taxContext.prices_include_tax ? tPurchases("taxContext.on", "ON") : tPurchases("taxContext.off", "OFF")}</strong>
+                  {taxContext.tax_label ? (
+                    <>
+                      {" • "}
+                      {tPurchases("taxContext.taxLabel", "Label")}: <strong>{taxContext.tax_label}</strong>
+                    </>
+                  ) : null}
                   {taxContext.default_tax_rate != null ? (
                     <>
                       {" • "}
-                      {tPurchases("taxContext.defaultTaxRate", "Default tax rate")}: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong>
+                      {tPurchases("taxContext.defaultTaxRate", "Default tax")}: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong>
                     </>
                   ) : null}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {taxContext.warning || tPurchases("taxContext.helper", "These settings come from Company Profile / Checkout settings. Use them as the default for this purchase, then override tax amounts on individual lines when needed.")}
+                  {taxContext.warning || tPurchases("taxContext.helper", "Use these as the default for this purchase, then override tax amounts on individual lines only when needed.")}
                 </Typography>
                 {currencyMismatch ? (
                   <Typography variant="caption" color="warning.main">
                     {tPurchases("taxContext.currencyMismatch", "This purchase uses a different currency than your current company display currency. Keep it only if that is intentional.")}
                   </Typography>
                 ) : null}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {tPurchases(
+                      "taxContext.manageHelper",
+                      "Need to confirm or override the Business Finance default tax profile?"
+                    )}
+                  </Typography>
+                  <Button size="small" variant="text" onClick={() => onNavigate?.("finance-overview")}>
+                    {tPurchases("taxContext.manageAction", "Manage Business Finance tax")}
+                  </Button>
+                </Stack>
                 {taxContext.default_tax_rate != null ? (
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
                     <Button
@@ -281,7 +303,7 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit, defa
                 <Button startIcon={<AddIcon />} onClick={addLine}>{tPurchases("lineItems.addLine", "Add line")}</Button>
               </Stack>
               {form.line_items.map((line, index) => (
-                <Grid container spacing={2} key={`purchase-line-${index}`} alignItems="center">
+                <Grid container spacing={1.5} key={`purchase-line-${index}`} alignItems="flex-start">
                   <Grid item xs={12} md={3}>
                     <FormControl fullWidth>
                       <InputLabel>{tPurchases("lineItems.stockItem", "Stock item")}</InputLabel>
@@ -293,7 +315,7 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit, defa
                   <Grid item xs={12} md={3}><TextField fullWidth label={tPurchases("lineItems.description", "Description")} value={line.description} onChange={(e) => setLine(index, "description", e.target.value)} /></Grid>
                   <Grid item xs={12} sm={4} md={2}><TextField fullWidth label={tPurchases("lineItems.quantity", "Quantity")} value={line.quantity} onChange={(e) => setLine(index, "quantity", e.target.value)} /></Grid>
                   <Grid item xs={12} sm={4} md={2}><TextField fullWidth label={tPurchases("lineItems.unitCost", "Unit cost")} value={line.unit_cost} onChange={(e) => setLine(index, "unit_cost", e.target.value)} /></Grid>
-                  <Grid item xs={12} sm={4} md={1.5}>
+                  <Grid item xs={12} sm={8} md={1.5}>
                     <TextField
                       fullWidth
                       label={tPurchases("lineItems.tax", "Tax")}
@@ -306,23 +328,27 @@ function PurchaseDialog({ open, onClose, vendors, inventoryItems, onSubmit, defa
                       }
                     />
                   </Grid>
-                  <Grid item xs={12} md={0.5}>
-                    {taxContext?.default_tax_rate != null ? (
-                      <Button
-                        size="small"
-                        variant="text"
-                        onClick={() => applyDefaultTaxToLine(index)}
-                        disabled={computeLineDefaultTax(line, taxContext) == null}
-                        sx={{ minWidth: 0, px: 0.5 }}
-                      >
-                        {tPurchases("lineItems.applyTax", "Apply")}
-                      </Button>
-                    ) : null}
+                  <Grid item xs={6} sm={2} md={0.75}>
+                    <Stack direction="row" justifyContent={{ xs: "flex-start", md: "center" }} sx={{ pt: { md: 1 } }}>
+                      {taxContext?.default_tax_rate != null ? (
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => applyDefaultTaxToLine(index)}
+                          disabled={computeLineDefaultTax(line, taxContext) == null}
+                          sx={{ minWidth: 0, px: 0.5 }}
+                        >
+                          {tPurchases("lineItems.applyTax", "Apply")}
+                        </Button>
+                      ) : null}
+                    </Stack>
                   </Grid>
-                  <Grid item xs={12} md={0.5}>
-                    <IconButton onClick={() => removeLine(index)} disabled={form.line_items.length === 1}>
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
+                  <Grid item xs={6} sm={2} md={0.75}>
+                    <Stack direction="row" justifyContent={{ xs: "flex-end", md: "center" }} sx={{ pt: { md: 0.5 } }}>
+                      <IconButton onClick={() => removeLine(index)} disabled={form.line_items.length === 1}>
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
                   </Grid>
                 </Grid>
               ))}
@@ -370,9 +396,26 @@ function PurchaseDetailDialog({ open, onClose, purchase }) {
   );
   const activeCurrency = useMemo(() => getDefaultPurchaseCurrency(), []);
   const purchaseCurrency = normalizeCurrency(purchase?.currency || activeCurrency) || activeCurrency;
+  const [activityOpen, setActivityOpen] = useState(false);
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{tPurchases("title", "Purchase detail")}</DialogTitle>
+      <DialogTitle>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }}>
+          <Typography variant="inherit">
+            {tPurchases("title", "Purchase detail")}
+          </Typography>
+          {purchase?.id ? (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<HistoryOutlinedIcon />}
+              onClick={() => setActivityOpen(true)}
+            >
+              {tPurchases("activity.open", "Activity log")}
+            </Button>
+          ) : null}
+        </Stack>
+      </DialogTitle>
       <DialogContent dividers>
         {purchase ? (
           <Stack spacing={2}>
@@ -412,11 +455,19 @@ function PurchaseDetailDialog({ open, onClose, purchase }) {
         ) : null}
       </DialogContent>
       <DialogActions><Button onClick={onClose}>{tPurchases("common.close", "Close")}</Button></DialogActions>
+      <FinanceAuditTimeline
+        entityType="purchase"
+        entityId={purchase?.id}
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+        title={tPurchases("activity.title", "Purchase activity")}
+        emptyText={tPurchases("activity.empty", "No purchase activity recorded yet.")}
+      />
     </Dialog>
   );
 }
 
-export default function PurchasesPage({ createNonce = 0 }) {
+export default function PurchasesPage({ createNonce = 0, onNavigate }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const tPurchases = React.useCallback(
@@ -585,6 +636,7 @@ export default function PurchasesPage({ createNonce = 0 }) {
         inventoryItems={inventoryItems}
         defaultCurrency={normalizeCurrency(taxContext?.display_currency || activeCurrency) || activeCurrency}
         taxContext={taxContext}
+        onNavigate={onNavigate}
         onSubmit={handleCreate}
       />
       <PurchaseDetailDialog open={detailOpen} onClose={() => setDetailOpen(false)} purchase={selectedPurchase} />

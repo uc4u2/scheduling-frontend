@@ -135,7 +135,12 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
       case "finance-vendors":
         return <VendorsPage />;
       case "finance-purchases":
-        return <PurchasesPage createNonce={quickAction?.type === "purchase" ? quickAction.nonce : 0} />;
+        return (
+          <PurchasesPage
+            createNonce={quickAction?.type === "purchase" ? quickAction.nonce : 0}
+            onNavigate={handleNavigate}
+          />
+        );
       case "finance-field-reports":
         return <FieldReportsPage onNavigate={handleNavigate} />;
       case "finance-reviews":
@@ -149,6 +154,7 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
           <ExpensesPage
             createNonce={quickAction?.type === "expense" ? quickAction.nonce : 0}
             shortcutState={quickAction?.type === "navigation" ? quickAction.payload || null : null}
+            onNavigate={handleNavigate}
           />
         );
       case "finance-reports":

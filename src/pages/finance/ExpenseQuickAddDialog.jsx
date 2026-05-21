@@ -27,7 +27,9 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import { useTranslation } from "react-i18next";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import {
   createExpense,
   createVendor,
@@ -177,6 +179,7 @@ export default function ExpenseQuickAddDialog({
   open,
   onClose,
   onSaved,
+  onNavigate,
   expense,
   categories = [],
   clients = [],
@@ -202,6 +205,7 @@ export default function ExpenseQuickAddDialog({
   const [autoFilledTaxAmount, setAutoFilledTaxAmount] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const selectedVendor = useMemo(
     () => vendors.find((item) => Number(item.id) === Number(form.vendor_id))
@@ -290,9 +294,10 @@ export default function ExpenseQuickAddDialog({
       setReceiptEntries(Array.isArray(expense.receipt_files) ? expense.receipt_files : []);
       setPersistedExpenseId(expense.id || null);
     } else {
+      const nextCurrency = getDefaultFinanceCurrency(taxContext);
       setForm({
-        ...getBlankExpenseForm(getDefaultFinanceCurrency(taxContext)),
-        currency: activeCurrency,
+        ...getBlankExpenseForm(nextCurrency),
+        currency: nextCurrency,
       });
       setReceiptEntries([]);
       setPersistedExpenseId(null);
@@ -492,7 +497,23 @@ export default function ExpenseQuickAddDialog({
   return (
     <>
       <Dialog open={open} onClose={loading ? undefined : onClose} fullWidth maxWidth="md">
-        <DialogTitle>{expense ? tExpenses("title.edit", "Edit expense") : tExpenses("title.add", "Add expense")}</DialogTitle>
+        <DialogTitle>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }}>
+            <Typography variant="inherit">
+              {expense ? tExpenses("title.edit", "Edit expense") : tExpenses("title.add", "Add expense")}
+            </Typography>
+            {expense?.id ? (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<HistoryOutlinedIcon />}
+                onClick={() => setActivityOpen(true)}
+              >
+                {tExpenses("activity.open", "Activity log")}
+              </Button>
+            ) : null}
+          </Stack>
+        </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             {error ? <Alert severity="error">{error}</Alert> : null}
@@ -564,29 +585,49 @@ export default function ExpenseQuickAddDialog({
               {taxContext ? (
                 <Grid item xs={12}>
                   <Alert severity={currencyMismatch || taxContext.warning ? "warning" : "info"}>
-                    <Stack spacing={0.5}>
+                    <Stack spacing={0.75}>
+                      <Typography variant="body2" fontWeight={700}>
+                        {tExpenses("taxContext.summary", "Business Finance tax defaults")}
+                      </Typography>
                       <Typography variant="body2">
-                        {tExpenses("taxContext.summary", "Company tax settings")}:{" "}
-                        <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
+                        {tExpenses("taxContext.location", "Jurisdiction")}: <strong>{taxContext.tax_country_code || "—"} / {taxContext.tax_region_code || "—"}</strong>
                         {" • "}
-                        {tExpenses("taxContext.displayCurrency", "Display currency")}: <strong>{taxContext.display_currency || form.currency || "USD"}</strong>
-                        {" • "}
+                        {tExpenses("taxContext.displayCurrency", "Currency")}: <strong>{taxContext.display_currency || form.currency || "USD"}</strong>
+                      </Typography>
+                      <Typography variant="body2">
                         {tExpenses("taxContext.pricesIncludeTax", "Prices include tax")}: <strong>{taxContext.prices_include_tax ? tExpenses("taxContext.on", "ON") : tExpenses("taxContext.off", "OFF")}</strong>
+                        {taxContext.tax_label ? (
+                          <>
+                            {" • "}
+                            {tExpenses("taxContext.taxLabel", "Label")}: <strong>{taxContext.tax_label}</strong>
+                          </>
+                        ) : null}
                         {taxContext.default_tax_rate != null ? (
                           <>
                             {" • "}
-                            {tExpenses("taxContext.defaultTaxRate", "Default tax rate")}: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong>
+                            {tExpenses("taxContext.defaultTaxRate", "Default tax")}: <strong>{Number(taxContext.default_tax_rate).toFixed(2)}%</strong>
                           </>
                         ) : null}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {taxContext.warning || tExpenses("taxContext.helper", "These settings come from Company Profile / Checkout settings. Use them as the default for this expense, then override only when this record needs a different tax treatment.")}
+                        {taxContext.warning || tExpenses("taxContext.helper", "Use these as the default for this expense. Override only when this record needs different tax treatment.")}
                       </Typography>
                       {currencyMismatch ? (
                         <Typography variant="caption" color="warning.main">
                           {tExpenses("taxContext.currencyMismatch", "This expense uses a different currency than your current company display currency. Keep it only if that is intentional.")}
                         </Typography>
                       ) : null}
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {tExpenses(
+                            "taxContext.manageHelper",
+                            "Need to confirm or override the Business Finance default tax profile?"
+                          )}
+                        </Typography>
+                        <Button size="small" variant="text" onClick={() => onNavigate?.("finance-overview")}>
+                          {tExpenses("taxContext.manageAction", "Manage Business Finance tax")}
+                        </Button>
+                      </Stack>
                       {taxContext.default_tax_rate != null ? (
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
                           <Button
@@ -847,6 +888,15 @@ export default function ExpenseQuickAddDialog({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <FinanceAuditTimeline
+        entityType="expense"
+        entityId={expense?.id}
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+        title={tExpenses("activity.title", "Expense activity")}
+        emptyText={tExpenses("activity.empty", "No expense activity recorded yet.")}
+      />
 
       <QuickVendorDialog
         open={vendorDialogOpen}

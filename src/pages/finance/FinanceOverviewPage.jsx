@@ -15,6 +15,7 @@ import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import FinanceSalesTaxProfileCard from "./components/FinanceSalesTaxProfileCard";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import { getFinanceOverview, getFinanceOwnerSnapshot, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
 
@@ -232,6 +233,8 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
           "These are the current company defaults for Business Finance estimates, expenses, purchases, reports, and month-end review."
         )}
       />
+
+      <FinanceSalesTaxProfileCard onUpdatedTaxContext={setTaxContext} />
 
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
         <Stack spacing={2}>

@@ -34,6 +34,7 @@ import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import FinanceStatusChip from "./components/FinanceStatusChip";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
@@ -810,6 +811,13 @@ export default function FinanceInvoiceDetailDialog({
                   ) : null}
                 </Stack>
               </Paper>
+
+              <FinanceAuditTimeline
+                entityType="invoice"
+                entityId={invoice?.id}
+                title={tDetail("audit.title", "Invoice activity")}
+                emptyText={tDetail("audit.empty", "No audit records yet.")}
+              />
 
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Stack spacing={2}>

@@ -26,6 +26,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { createEstimate, updateEstimate } from "./financeApi";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import {
@@ -106,19 +107,16 @@ const hasMeaningfulRate = (value) => {
   return Number(value) > 0;
 };
 
-const applyDefaultTaxRate = (line, taxContext) => {
-  if (!line?.taxable) return line;
-  if (hasMeaningfulRate(line.tax_rate)) return line;
-  if (taxContext?.default_tax_rate == null) return line;
-  return { ...line, tax_rate: String(taxContext.default_tax_rate) };
-};
-
 const computePreviewLine = (line, taxContext = {}) => {
   const quantity = toNumber(line.quantity, 1);
   const unitPrice = toNumber(line.unit_price, 0);
   const gross = roundMoney(quantity * unitPrice);
   const taxable = Boolean(line.taxable);
-  const taxRate = hasMeaningfulRate(line.tax_rate) ? toNumber(line.tax_rate, 0) : 0;
+  const taxRate = hasMeaningfulRate(line.tax_rate)
+    ? toNumber(line.tax_rate, 0)
+    : taxable && taxContext?.default_tax_rate != null
+    ? toNumber(taxContext.default_tax_rate, 0)
+    : 0;
   if (!taxable || taxRate <= 0) {
     return { base: gross, tax: 0, gross };
   }
@@ -136,6 +134,7 @@ export default function EstimateEditorDialog({
   open,
   onClose,
   onSaved,
+  onNavigate,
   estimate,
   clients = [],
   templates = [],
@@ -214,9 +213,7 @@ export default function EstimateEditorDialog({
         internal_notes: estimate.internal_notes || "",
         discount_total: estimate.discount_total ?? 0,
         line_items: Array.isArray(estimate.line_items) && estimate.line_items.length
-          ? estimate.line_items.map((line, idx) =>
-              applyDefaultTaxRate(makeLine(line, idx), estimate.tax_context || taxContext || {})
-            )
+          ? estimate.line_items.map((line, idx) => makeLine(line, idx))
           : [makeLine()],
       });
     } else {
@@ -251,9 +248,7 @@ export default function EstimateEditorDialog({
       notes: template.default_notes || prev.notes,
       terms: template.default_terms || prev.terms,
       line_items: Array.isArray(template.line_items) && template.line_items.length
-        ? template.line_items.map((line, idx) =>
-            applyDefaultTaxRate(makeLine(line, idx), effectiveTaxContext)
-          )
+        ? template.line_items.map((line, idx) => makeLine(line, idx))
         : prev.line_items,
     }));
   };
@@ -269,9 +264,6 @@ export default function EstimateEditorDialog({
         if (field === "taxable") {
           if (!value) {
             next.tax_rate = "";
-          } else if (!hasMeaningfulRate(next.tax_rate)) {
-            const withDefault = applyDefaultTaxRate(next, effectiveTaxContext);
-            next.tax_rate = withDefault.tax_rate;
           }
         }
         return next;
@@ -293,7 +285,7 @@ export default function EstimateEditorDialog({
         if (preset.quantity !== undefined) {
           next.quantity = preset.quantity;
         }
-        return applyDefaultTaxRate(next, effectiveTaxContext);
+        return next;
       }),
     }));
   };
@@ -301,7 +293,7 @@ export default function EstimateEditorDialog({
   const addLine = () => {
     setForm((prev) => ({
       ...prev,
-      line_items: [...prev.line_items, applyDefaultTaxRate(makeLine({}, prev.line_items.length), effectiveTaxContext)],
+      line_items: [...prev.line_items, makeLine({}, prev.line_items.length)],
     }));
   };
 
@@ -488,6 +480,12 @@ export default function EstimateEditorDialog({
                       ? tEstimate("taxContext.includedMessage", "Prices include tax. Tax is backed out from taxable line prices.")
                       : tEstimate("taxContext.addedMessage", "Tax is added on top based on your company tax settings.")}
                   </Typography>
+                  <Typography variant="body2">
+                    {tEstimate(
+                      "taxContext.taxableLineRule",
+                      "Company default tax applies only to line items marked Taxable = Yes."
+                    )}
+                  </Typography>
                   {currencyMismatch ? (
                     <Typography variant="body2" color="warning.main">
                       {tEstimate("taxContext.currencyMismatch", "This estimate uses a different currency than your current company display currency. Keep it only if that is intentional.")}
@@ -501,6 +499,17 @@ export default function EstimateEditorDialog({
                   {effectiveTaxContext?.warning ? (
                     <Typography variant="body2">{effectiveTaxContext.warning}</Typography>
                   ) : null}
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {tEstimate(
+                        "taxContext.manageHelper",
+                        "Need to confirm or override the Business Finance default tax profile?"
+                      )}
+                    </Typography>
+                    <Button size="small" variant="text" onClick={() => onNavigate?.("finance-overview")}>
+                      {tEstimate("taxContext.manageAction", "Manage Business Finance tax")}
+                    </Button>
+                  </Stack>
                 </Stack>
               </Alert>
             </Grid>
@@ -543,7 +552,7 @@ export default function EstimateEditorDialog({
                 {tEstimate("lineItems.addLine", "Add line")}
               </Button>
             </Stack>
-            {form.line_items.map((line) => (
+              {form.line_items.map((line) => (
               <Box
                 key={line.id}
                 sx={{
@@ -555,7 +564,7 @@ export default function EstimateEditorDialog({
                 {(() => {
                   const presetMeta = presetMetaFor(line);
                   return (
-                <Grid container spacing={1.5} alignItems="center">
+                <Grid container spacing={1.5} alignItems="flex-start">
                   <Grid item xs={12} md={3}>
                     <TextField
                       select
@@ -610,33 +619,72 @@ export default function EstimateEditorDialog({
                       helperText={effectiveTaxContext?.prices_include_tax ? tEstimate("lineItems.taxIncludedPrice", "Tax-included price") : tEstimate("lineItems.preTaxPrice", "Pre-tax price")}
                     />
                   </Grid>
-                  <Grid item xs={6} md={1.5}>
+                  <Grid item xs={12} md={8.5}>
+                    <Grid container spacing={1.5} alignItems="flex-start">
+                      <Grid item xs={12} sm={6} md={5}>
                     <TextField
                       fullWidth
-                      label={tEstimate("lineItems.fields.taxPercent", "Tax %")}
+                      label={tEstimate("lineItems.fields.taxPercentOptional", "Tax % (optional)")}
                       type="number"
                       inputProps={{ step: "0.01" }}
                       value={line.tax_rate}
                       onChange={(e) => setLineField(line.id, "tax_rate", e.target.value)}
                       disabled={!line.taxable}
+                      helperText={
+                        line.taxable
+                          ? effectiveTaxContext?.default_tax_rate != null
+                            ? tEstimate(
+                                "lineItems.fields.taxPercentHelperDefault",
+                                "Leave blank to use company default: {{label}} {{rate}}%",
+                                {
+                                  label: effectiveTaxContext?.tax_label || tEstimate("taxContext.defaultFallback", "Default tax"),
+                                  rate: Number(effectiveTaxContext.default_tax_rate).toFixed(3).replace(/\.?0+$/, ""),
+                                }
+                              )
+                            : tEstimate(
+                                "lineItems.fields.taxPercentHelperManual",
+                                "Enter a tax rate manually or confirm Business Finance sales tax settings."
+                              )
+                          : tEstimate("lineItems.fields.taxPercentHelperNotTaxable", "Set Taxable to Yes to apply tax.")
+                      }
                     />
                   </Grid>
-                  <Grid item xs={4} md={1}>
+                      <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       select
                       fullWidth
                       label={tEstimate("lineItems.fields.taxable", "Taxable")}
                       value={line.taxable ? "yes" : "no"}
                       onChange={(e) => setLineField(line.id, "taxable", e.target.value === "yes")}
+                      helperText={
+                        line.taxable
+                          ? tEstimate(
+                              "lineItems.fields.taxableHelperYes",
+                              "Uses the entered Tax % or your company default when Tax % is blank."
+                            )
+                          : tEstimate(
+                              "lineItems.fields.taxableHelperNo",
+                            "No tax is applied to this line."
+                          )
+                      }
                     >
                       <MenuItem value="yes">{tEstimate("lineItems.taxableYes", "Yes")}</MenuItem>
                       <MenuItem value="no">{tEstimate("lineItems.taxableNo", "No")}</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid item xs={2} md={0.5}>
-                    <IconButton onClick={() => removeLine(line.id)} disabled={form.line_items.length === 1}>
-                      <DeleteOutlineIcon />
-                    </IconButton>
+                      <Grid item xs={12} md={3}>
+                        <Stack
+                          direction="row"
+                          justifyContent={{ xs: "flex-end", md: "center" }}
+                          alignItems="center"
+                          sx={{ height: "100%", pt: { md: 0.5 } }}
+                        >
+                          <IconButton onClick={() => removeLine(line.id)} disabled={form.line_items.length === 1}>
+                            <DeleteOutlineIcon />
+                          </IconButton>
+                        </Stack>
+                      </Grid>
+                    </Grid>
                   </Grid>
                 </Grid>
                   );
@@ -661,6 +709,16 @@ export default function EstimateEditorDialog({
                 <Typography variant="body2">{tEstimate("totals.total", "Total")}: {preview.total.toFixed(2)}</Typography>
               </Stack>
             </Grid>
+            {estimate?.id ? (
+              <Grid item xs={12}>
+                <FinanceAuditTimeline
+                  entityType="estimate"
+                  entityId={estimate.id}
+                  title={tEstimate("audit.title", "Estimate activity")}
+                  emptyText={tEstimate("audit.empty", "No audit records yet.")}
+                />
+              </Grid>
+            ) : null}
           </Grid>
         </Stack>
       </DialogContent>

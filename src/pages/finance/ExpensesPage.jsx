@@ -73,7 +73,7 @@ const formatDateInput = (value) => {
   }
 };
 
-export default function ExpensesPage({ createNonce, shortcutState = null }) {
+export default function ExpensesPage({ createNonce, shortcutState = null, onNavigate }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const tExpenses = React.useCallback(
@@ -960,6 +960,7 @@ export default function ExpensesPage({ createNonce, shortcutState = null }) {
           enqueueSnackbar(editing ? tExpenses("snackbar.expenseUpdated", "Expense updated.") : tExpenses("snackbar.expenseAdded", "Expense added."), { variant: "success" });
           await load();
         }}
+        onNavigate={onNavigate}
         expense={editing}
         categories={categories.filter((category) => category.is_active !== false)}
         clients={clients}

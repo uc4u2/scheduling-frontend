@@ -79,6 +79,11 @@ const normalizeRecruiterRow = (row = {}) => {
 export const getFinanceOverview = () => unwrap(api.get("/finance/overview"));
 export const getFinanceSummary = (params = {}) => unwrap(api.get("/finance/reports/summary", { params }));
 export const getFinanceTaxContext = () => unwrap(api.get("/finance/tax-context"));
+export const getFinanceSalesTaxProfile = () => unwrap(api.get("/finance/sales-tax-profile"));
+export const updateFinanceSalesTaxProfile = (payload) =>
+  unwrap(api.patch("/finance/sales-tax-profile", payload));
+export const getFinanceAuditLogs = (params = {}) =>
+  unwrap(api.get("/finance/audit-logs", { params }));
 export const getFinanceOwnerSnapshot = (params = {}) =>
   unwrap(api.get("/finance/reports/owner-snapshot", { params }));
 
