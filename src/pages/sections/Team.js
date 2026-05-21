@@ -1532,7 +1532,9 @@ const asLocalDate = (ymd) => {
 };
 
   // NEW — enterprise week/day options
-  const [innerCalView, setInnerCalView] = useState("timeGridWeek"); // "timeGridWeek" | "timeGridDay"
+  const [innerCalView, setInnerCalView] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 600 ? "timeGridDay" : "timeGridWeek"
+  ); // "timeGridWeek" | "timeGridDay"
   const [granularity, setGranularity] = useState("00:30:00");       // 15/30/60
   const [timeFmt12h, setTimeFmt12h] = useState(false);
   const [showWeekends, setShowWeekends] = useState(true);
@@ -1605,6 +1607,12 @@ const asLocalDate = (ymd) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("schedulaa.showTimeOffOnShiftCalendar", showTimeOffOnCalendar ? "true" : "false");
   }, [showTimeOffOnCalendar]);
+
+  useEffect(() => {
+    if (isSmDown) {
+      setInnerCalView((current) => (current === "timeGridWeek" ? "timeGridDay" : current));
+    }
+  }, [isSmDown]);
 
   /* -------------------------------- filters --------------------------------- */
   const [departments, setDepartments] = useState([]);
@@ -1830,6 +1838,7 @@ const [templateFormData, setTemplateFormData] = useState({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   const [shiftAuditOpen, setShiftAuditOpen] = useState(false);
+  const [scheduleAuditOpen, setScheduleAuditOpen] = useState(false);
   const [leaveDetailOpen, setLeaveDetailOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
   const editingShiftRecruiter = useMemo(() => {
@@ -3827,9 +3836,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     headerToolbar: {
       left: "prev,next",
       center: "title",
-      right: "timeGridWeek,timeGridDay,dayGridMonth",
+      right: isSmDown ? "" : "timeGridWeek,timeGridDay,dayGridMonth",
     },
     initialView: innerCalView,
+    titleFormat: isSmDown ? { month: "short", day: "numeric" } : undefined,
   };
 
   /* --------------------------------- render --------------------------------- */
@@ -3908,7 +3918,21 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           ".fc .fc-toolbar-title": {
             fontWeight: 700,
             color: theme.palette.text.primary,
+            fontSize: isSmDown ? "1.05rem" : undefined,
+            textAlign: "center",
           },
+          ".fc .fc-toolbar.fc-header-toolbar": isSmDown
+            ? {
+                alignItems: "stretch",
+                gap: 8,
+              }
+            : {},
+          ".fc .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk": isSmDown
+            ? {
+                display: "flex",
+                justifyContent: "center",
+              }
+            : {},
           ".fc .fc-col-header-cell-cushion": {
             color: theme.palette.text.primary,
             fontWeight: 600,
@@ -3925,6 +3949,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         spacing={2}
         sx={{ mb: 2 }}
       >
+        {!isSmDown && (
         <Box>
           <Typography variant="h5" fontWeight={700}>
             Shift Management
@@ -3933,8 +3958,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             Plan, assign, and manage team schedules in one place.
           </Typography>
         </Box>
+        )}
 	        {shiftManagementTab === "schedule" && (
 	        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Button variant="outlined" onClick={() => setScheduleAuditOpen(true)}>
+            Activity log
+          </Button>
 	          <Button
 	            variant={showSmartShift ? "contained" : "outlined"}
 	            onClick={() => setShowSmartShift((v) => !v)}
@@ -4267,6 +4296,30 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
       {/* =============================== WEEK/DAY MODE ============================== */}
       <>
+          {isSmDown && (
+            <Paper
+              sx={{
+                p: 1,
+                mb: 1.5,
+                borderRadius: 1,
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: "background.paper",
+              }}
+              elevation={0}
+            >
+              <ToggleButtonGroup
+                size="small"
+                value={innerCalView}
+                exclusive
+                fullWidth
+                onChange={(_, v) => v && setInnerCalView(v)}
+              >
+                <ToggleButton value="timeGridDay">Day</ToggleButton>
+                <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                <ToggleButton value="dayGridMonth">Month</ToggleButton>
+              </ToggleButtonGroup>
+            </Paper>
+          )}
           <Paper
             sx={{
               p: compactDensity ? 1 : 2,
@@ -5326,6 +5379,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         title="Shift activity"
         entityTypes={["shift"]}
         entityId={editingShift?.id}
+      />
+      <ShiftAdminAuditTimeline
+        open={scheduleAuditOpen}
+        onClose={() => setScheduleAuditOpen(false)}
+        title="Shift management activity"
+        emptyText="No shift-management activity recorded yet."
+        entityTypes={["shift"]}
       />
 
       {/* ============================ Template Editor Modal ============================ */}

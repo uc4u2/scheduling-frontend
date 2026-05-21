@@ -152,7 +152,19 @@ export default function ShiftAdminAuditTimeline({
   }, []);
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 560 }, p: 2 } }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      sx={{
+        zIndex: (theme) => theme.zIndex.modal + 2,
+        "& .MuiDrawer-paper": {
+          width: { xs: "100%", sm: 560 },
+          p: 2,
+          zIndex: (theme) => theme.zIndex.modal + 2,
+        },
+      }}
+    >
       <Stack spacing={1.5}>
         <Stack direction="row" spacing={1} alignItems="center">
           <HistoryOutlinedIcon fontSize="small" color="action" />

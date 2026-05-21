@@ -56,6 +56,7 @@ import {
   uploadReceiptInbox,
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import FinancePagination from "./components/FinancePagination";
 
 const formatMoney = (value, currency = "USD") =>
@@ -98,6 +99,7 @@ export default function ExpensesPage({ createNonce, shortcutState = null, onNavi
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [expenseAuditOpen, setExpenseAuditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -501,6 +503,7 @@ export default function ExpensesPage({ createNonce, shortcutState = null, onNavi
           <Button variant="outlined" onClick={load}>{tExpenses("toolbar.refresh", "Refresh")}</Button>
         </Stack>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+          <Button variant="outlined" onClick={() => setExpenseAuditOpen(true)}>{tExpenses("toolbar.activityLog", "Activity log")}</Button>
           <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>{tExpenses("toolbar.addExpenseCategory", "Add Expense Category")}</Button>
           <Button variant="contained" onClick={() => { setEditing(null); setDialogOpen(true); }}>{tExpenses("toolbar.addExpense", "Add Expense")}</Button>
         </Stack>
@@ -1092,6 +1095,13 @@ export default function ExpensesPage({ createNonce, shortcutState = null, onNavi
           enqueueSnackbar(tExpenses("receiptInbox.snackbar.linked", "Receipt linked to expense."), { variant: "success" });
           await load();
         }}
+      />
+      <FinanceAuditTimeline
+        open={expenseAuditOpen}
+        onClose={() => setExpenseAuditOpen(false)}
+        entityType="expense"
+        title={tExpenses("audit.title", "Expense activity")}
+        emptyText={tExpenses("audit.empty", "No expense audit records yet.")}
       />
 
       <FinanceReceiptInboxCreateExpenseDialog

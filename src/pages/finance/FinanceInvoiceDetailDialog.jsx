@@ -180,6 +180,7 @@ export default function FinanceInvoiceDetailDialog({
   const [printOpening, setPrintOpening] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [creatingSimilar, setCreatingSimilar] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -532,7 +533,16 @@ export default function FinanceInvoiceDetailDialog({
   return (
     <>
       <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="lg">
-        <DialogTitle>{tDetail("title", "Finance Invoice Detail")}</DialogTitle>
+        <DialogTitle>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }}>
+            <Typography variant="inherit">{tDetail("title", "Finance Invoice Detail")}</Typography>
+            {invoice?.id ? (
+              <Button size="small" variant="contained" onClick={() => setAuditOpen(true)}>
+                {tDetail("audit.open", "Activity log")}
+              </Button>
+            ) : null}
+          </Stack>
+        </DialogTitle>
         <DialogContent dividers sx={{ maxHeight: "72vh" }}>
           {loading ? (
             <Stack alignItems="center" sx={{ py: 6 }}>
@@ -1148,6 +1158,14 @@ export default function FinanceInvoiceDetailDialog({
         invoice={invoice}
         onClose={() => setOfflinePaymentDialogOpen(false)}
         onSaved={handleOfflinePaymentSaved}
+      />
+      <FinanceAuditTimeline
+        open={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        entityType="invoice"
+        entityId={invoice?.id}
+        title={tDetail("audit.title", "Invoice activity")}
+        emptyText={tDetail("audit.empty", "No audit records yet.")}
       />
     </>
   );

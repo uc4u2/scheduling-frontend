@@ -232,6 +232,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [hideEmployeeAvailabilityTab, setHideEmployeeAvailabilityTab] = useState(false);
   const [policyLoading, setPolicyLoading] = useState(false);
   const [smartShiftAuditRunId, setSmartShiftAuditRunId] = useState(null);
+  const [smartShiftAuditOpen, setSmartShiftAuditOpen] = useState(false);
 
   const recruiterNameById = useMemo(() => {
     const map = new Map();
@@ -1259,6 +1260,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             </Typography>
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Button variant="outlined" size="small" onClick={() => setSmartShiftAuditOpen(true)}>
+              Admin activity
+            </Button>
             <FormControlLabel
               sx={{ ml: 0 }}
               control={
@@ -2623,6 +2627,13 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         title="Smart Shift admin activity"
         entityTypes={["smart_shift_run"]}
         entityId={smartShiftAuditRunId}
+      />
+      <ShiftAdminAuditTimeline
+        open={smartShiftAuditOpen}
+        onClose={() => setSmartShiftAuditOpen(false)}
+        title="Smart Shift admin activity"
+        emptyText="No Smart Shift admin activity recorded yet."
+        entityTypes={["smart_shift_run", "smart_shift_rule", "smart_shift_exception", "smart_shift_preference"]}
       />
     </Stack>
   );

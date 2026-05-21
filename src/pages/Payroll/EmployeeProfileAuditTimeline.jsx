@@ -99,16 +99,40 @@ export default function EmployeeProfileAuditTimeline({
       anchor="right"
       open={open}
       onClose={onClose}
+      sx={{
+        zIndex: (theme) => theme.zIndex.modal + 2,
+        "& .MuiDrawer-paper": {
+          zIndex: (theme) => theme.zIndex.modal + 2,
+        },
+      }}
       PaperProps={{
         sx: {
           width: { xs: "100%", md: 520 },
-          p: 2,
+          height: "100dvh",
+          maxHeight: "100dvh",
           backgroundColor: "#f8fbff",
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          overflowX: "hidden",
         },
       }}
     >
-      <Stack spacing={2} sx={{ height: "100%" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.5}>
+      <Stack spacing={2} sx={{ minHeight: "100%", flex: 1, p: 2 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          spacing={1.5}
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            pt: 0.25,
+            pb: 0.5,
+            bgcolor: "#f8fbff",
+          }}
+        >
           <Box>
             <Typography variant="h6" fontWeight={800}>
               {title}
@@ -143,7 +167,7 @@ export default function EmployeeProfileAuditTimeline({
         ) : null}
 
         {!loading && !error ? (
-          <Stack spacing={1.25} sx={{ overflowY: "auto", pr: 0.5 }}>
+          <Stack spacing={1.25} sx={{ pr: 0.5, pb: 2 }}>
             {logs.map((log, idx) => {
               const expanded = expandedLogId === log.id;
               const diffEntries = Object.entries(log.diff || {});

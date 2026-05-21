@@ -978,6 +978,14 @@ return (
       <Stack direction="row" spacing={1} alignItems="center">
         <Button
           component={RouterLink}
+          to="/manager/payroll/audit"
+          variant="outlined"
+          size="small"
+        >
+          Payroll Audit
+        </Button>
+        <Button
+          component={RouterLink}
           to="/manager/payroll/retirement"
           variant="outlined"
           size="small"

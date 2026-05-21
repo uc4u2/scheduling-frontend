@@ -37,6 +37,7 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
   const [auditSwapId, setAuditSwapId] = useState(null);
+  const [swapAuditOpen, setSwapAuditOpen] = useState(false);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
@@ -108,6 +109,12 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
           <Typography sx={headerStyle} flexGrow={1}>
             Shift-Swap Approvals
           </Typography>
+          <Button size="small" variant="outlined" onClick={(event) => {
+            event.stopPropagation();
+            setSwapAuditOpen(true);
+          }}>
+            Activity log
+          </Button>
           {loading ? (
             <CircularProgress size={18} />
           ) : (
@@ -232,6 +239,13 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
         title="Shift swap activity"
         entityTypes={["shift_swap"]}
         entityId={auditSwapId}
+      />
+      <ShiftAdminAuditTimeline
+        open={swapAuditOpen}
+        onClose={() => setSwapAuditOpen(false)}
+        title="Shift swap activity"
+        emptyText="No shift-swap activity recorded yet."
+        entityTypes={["shift_swap"]}
       />
     </>
   );

@@ -72,6 +72,7 @@ import {
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 
 const downloadBlob = (response, fallbackName) => {
@@ -231,6 +232,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [workOrderSeed, setWorkOrderSeed] = useState(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceDialogId, setInvoiceDialogId] = useState(null);
+  const [estimateAuditOpen, setEstimateAuditOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [linkBusyId, setLinkBusyId] = useState(null);
   const [paymentLinkBusyId, setPaymentLinkBusyId] = useState(null);
@@ -1134,6 +1136,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               </Typography>
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button variant="outlined" onClick={() => setEstimateAuditOpen(true)}>
+                {tEstimate("toolbar.activityLog", "Activity log")}
+              </Button>
               <Button variant="outlined" startIcon={<OpenInFullIcon />} onClick={() => setExpandedOpen(true)} disabled={loading || items.length === 0}>
                 {tEstimate("toolbar.expandView", "Expand View")}
               </Button>
@@ -1304,6 +1309,13 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           setInvoiceDialogId(nextInvoiceId);
           setInvoiceDialogOpen(true);
         }}
+      />
+      <FinanceAuditTimeline
+        open={estimateAuditOpen}
+        onClose={() => setEstimateAuditOpen(false)}
+        entityType="estimate"
+        title={tEstimate("audit.pageTitle", "Estimate activity")}
+        emptyText={tEstimate("audit.pageEmpty", "No estimate audit records yet.")}
       />
       <Dialog
         open={Boolean(postConvertInvoice)}

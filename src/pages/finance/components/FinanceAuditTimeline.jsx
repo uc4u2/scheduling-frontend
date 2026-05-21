@@ -225,10 +225,10 @@ export default function FinanceAuditTimeline({
   const [error, setError] = React.useState("");
   const [items, setItems] = React.useState([]);
 
-  const shouldLoad = typeof open === "boolean" ? open : Boolean(entityType && entityId);
+  const shouldLoad = typeof open === "boolean" ? open : Boolean(entityType);
 
   React.useEffect(() => {
-    if (!entityType || !entityId || !shouldLoad) {
+    if (!entityType || !shouldLoad) {
       if (typeof open !== "boolean") setItems([]);
       return;
     }
@@ -237,7 +237,7 @@ export default function FinanceAuditTimeline({
     setError("");
     getFinanceAuditLogs({
       entity_type: entityType,
-      entity_id: entityId,
+      entity_id: entityId || undefined,
       include_snapshots: true,
       limit: 25,
     })
@@ -273,6 +273,12 @@ export default function FinanceAuditTimeline({
         anchor="right"
         open={open}
         onClose={onClose}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 2,
+          "& .MuiDrawer-paper": {
+            zIndex: (theme) => theme.zIndex.modal + 2,
+          },
+        }}
         PaperProps={{
           sx: {
             width: { xs: "100%", md: 520 },
