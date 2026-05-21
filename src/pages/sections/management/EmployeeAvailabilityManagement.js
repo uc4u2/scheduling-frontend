@@ -33,6 +33,7 @@ import {
   formatAvailabilityLeaveTooltip,
   isAvailabilityBlockedByLeave,
 } from "./utils/availabilityRows";
+import ShiftAdminAuditTimeline from "../ShiftAdminAuditTimeline";
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHIFT_LOOKAHEAD_DAYS = 21;
 const availabilityConflictMessage = (err, fallback) => {
@@ -72,6 +73,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [availabilityConflict, setAvailabilityConflict] = useState(null);
+  const [availabilityAuditOpen, setAvailabilityAuditOpen] = useState(false);
 
   /* ─────────────────────────────── Daily‑window state ─────────────────────────── */
   const [wDayFrom, setWDayFrom] = useState("");
@@ -580,6 +582,9 @@ useEffect(() => {
             <Button size="small" variant="outlined" onClick={loadAssignedShifts} disabled={loadingShifts}>
               Refresh metrics
             </Button>
+            <Button size="small" variant="text" onClick={() => setAvailabilityAuditOpen(true)}>
+              Activity log
+            </Button>
           </Stack>
           {loadingShifts ? (
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
@@ -641,6 +646,13 @@ useEffect(() => {
           )}
         </Paper>
       )}
+      <ShiftAdminAuditTimeline
+        open={availabilityAuditOpen && Boolean(selectedEmployeeId)}
+        onClose={() => setAvailabilityAuditOpen(false)}
+        title="Availability activity"
+        entityTypes={["availability"]}
+        employeeId={selectedEmployeeId}
+      />
 
       {/* Tabs */}
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>

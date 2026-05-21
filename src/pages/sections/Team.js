@@ -65,6 +65,7 @@ import { formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import SmartShiftPlannerPanel from "./management/SmartShiftPlannerPanel";
 import WorkforceCostAnalytics from "./management/WorkforceCostAnalytics";
+import ShiftAdminAuditTimeline from "./ShiftAdminAuditTimeline";
 import ThemedDateField, { ThemedMonthField, ThemedTimeField } from "../../components/ui/ThemedDateField";
 
 // ------------------------------------------------------------------------------------
@@ -1836,6 +1837,7 @@ const [templateFormData, setTemplateFormData] = useState({
   /* ----------------------------- shift form/modal ---------------------------- */
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
+  const [shiftAuditOpen, setShiftAuditOpen] = useState(false);
   const [leaveDetailOpen, setLeaveDetailOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
   const editingShiftRecruiter = useMemo(() => {
@@ -5333,20 +5335,27 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           >
             {editingShift ? (
               <>
-                <Button variant="contained" onClick={handleUpdateShift}>
-                  {shiftHandlingMode === "time_off"
-                    ? "Mark as time off"
-                    : shiftHandlingMode === "delete"
-                    ? "Delete shift only"
-                    : "Update Shift"}
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={handleDeleteShift}
-                >
-                  Delete shift only
-                </Button>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: "100%" }} justifyContent="space-between">
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Button variant="contained" onClick={handleUpdateShift}>
+                      {shiftHandlingMode === "time_off"
+                        ? "Mark as time off"
+                        : shiftHandlingMode === "delete"
+                        ? "Delete shift only"
+                        : "Update Shift"}
+                    </Button>
+                    <Button variant="text" onClick={() => setShiftAuditOpen(true)}>
+                      Activity log
+                    </Button>
+                  </Stack>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleDeleteShift}
+                  >
+                    Delete shift only
+                  </Button>
+                </Stack>
               </>
             ) : (
               <Button
@@ -5360,6 +5369,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Box>
         </Box>
       </Modal>
+      <ShiftAdminAuditTimeline
+        open={shiftAuditOpen && Boolean(editingShift?.id)}
+        onClose={() => setShiftAuditOpen(false)}
+        title="Shift activity"
+        entityTypes={["shift"]}
+        entityId={editingShift?.id}
+      />
 
       {/* ============================ Template Editor Modal ============================ */}
       <Modal open={templateModalOpen} onClose={() => setTemplateModalOpen(false)}>
