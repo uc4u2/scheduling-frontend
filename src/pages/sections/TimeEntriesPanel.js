@@ -55,6 +55,7 @@ import {
   formatLeaveWarningReason,
   getLeaveReviewVisibility,
 } from "./utils/leaveReviewVisibility";
+import ShiftAdminAuditTimeline from "./ShiftAdminAuditTimeline";
 
 const statusColor = {
   assigned: "default",
@@ -911,6 +912,7 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
   const [rosterUpdatedAt, setRosterUpdatedAt] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [entryAuditTarget, setEntryAuditTarget] = useState(null);
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [detailEntries, setDetailEntries] = useState([]);
   const [detailSummary, setDetailSummary] = useState(null);
@@ -3311,6 +3313,11 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                               ))
                             : anomalyChips(entry)}
                         </Stack>
+                        {!entryIsLeave ? (
+                          <Button size="small" sx={{ mt: 0.5, px: 0 }} onClick={() => setEntryAuditTarget(entry)}>
+                            Activity log
+                          </Button>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -3330,6 +3337,13 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
           <Button onClick={() => setDetailOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+      <ShiftAdminAuditTimeline
+        open={Boolean(entryAuditTarget?.id)}
+        onClose={() => setEntryAuditTarget(null)}
+        title="Time entry activity"
+        entityTypes={["time_entry"]}
+        entityId={entryAuditTarget?.id}
+      />
     </>
   );
 };

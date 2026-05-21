@@ -24,6 +24,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../utils/api";
 import dayjs from "dayjs";
+import ShiftAdminAuditTimeline from "../pages/sections/ShiftAdminAuditTimeline";
 
 // adjust the path if your folder structure differs
 import { STATUS, POLL_MS } from "../utils/shiftSwap";
@@ -35,6 +36,7 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
   const [error, setError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
+  const [auditSwapId, setAuditSwapId] = useState(null);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
@@ -205,6 +207,7 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
                     {open && (
                       <Button onClick={() => resendEmail(swap.id)}>Resend e-mail</Button>
                     )}
+                    <Button onClick={() => setAuditSwapId(swap.id)}>Activity log</Button>
                   </Stack>
                 </Paper>
               );
@@ -223,6 +226,13 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
           {snackbar.msg}
         </Alert>
       </Snackbar>
+      <ShiftAdminAuditTimeline
+        open={Boolean(auditSwapId)}
+        onClose={() => setAuditSwapId(null)}
+        title="Shift swap activity"
+        entityTypes={["shift_swap"]}
+        entityId={auditSwapId}
+      />
     </>
   );
 };

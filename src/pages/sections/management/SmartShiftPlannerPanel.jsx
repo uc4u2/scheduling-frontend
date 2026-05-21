@@ -33,6 +33,7 @@ import { DateTime } from "luxon";
 import { api, smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
 import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
+import ShiftAdminAuditTimeline from "../ShiftAdminAuditTimeline";
 
 const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
 const DEFAULT_VISIBLE_SUGGESTIONS = 50;
@@ -230,6 +231,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [reportOverrideByRecruiter, setReportOverrideByRecruiter] = useState({});
   const [hideEmployeeAvailabilityTab, setHideEmployeeAvailabilityTab] = useState(false);
   const [policyLoading, setPolicyLoading] = useState(false);
+  const [smartShiftAuditRunId, setSmartShiftAuditRunId] = useState(null);
 
   const recruiterNameById = useMemo(() => {
     const map = new Map();
@@ -2183,6 +2185,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   </Stack>
                   <Stack direction="row" spacing={1}>
                     <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
+                    <Button size="small" onClick={() => setSmartShiftAuditRunId(r.run_id)}>Admin activity</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteRun(r.run_id)}>Delete</Button>
                   </Stack>
                 </Stack>
@@ -2614,6 +2617,13 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           )}
         </Stack>
       </Drawer>
+      <ShiftAdminAuditTimeline
+        open={Boolean(smartShiftAuditRunId)}
+        onClose={() => setSmartShiftAuditRunId(null)}
+        title="Smart Shift admin activity"
+        entityTypes={["smart_shift_run"]}
+        entityId={smartShiftAuditRunId}
+      />
     </Stack>
   );
 };

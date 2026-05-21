@@ -511,6 +511,11 @@ export const leaveSettings = {
     api.get("/manager/leave-admin/audit-logs", { params, ...config }).then((r) => r.data),
 };
 
+export const shiftAdmin = {
+  getAuditLogs: (params = {}, config = {}) =>
+    api.get("/manager/shifts/audit-logs", { params, ...config }).then((r) => r.data),
+};
+
 /* ------------------------------ Invitation Questionnaire Assignments ------------------------------ */
 export const invitationQuestionnaires = {
   list: (invitationId, config = {}) =>
@@ -1586,6 +1591,6 @@ export const smartShifts = {
 };
 
 // Default namespace export
-export const apiHelpers = { api, website, websiteAdmin, publicSite, wb, websiteDomains, stripeConnect, isStripeOnboardingIncomplete, questionnaires, invitationQuestionnaires, questionnaireUploadsApi, candidateIntakeApi, settingsApi, smartShifts };
+export const apiHelpers = { api, website, websiteAdmin, publicSite, wb, websiteDomains, stripeConnect, isStripeOnboardingIncomplete, questionnaires, invitationQuestionnaires, questionnaireUploadsApi, candidateIntakeApi, settingsApi, smartShifts, shiftAdmin };
 
 export default api;
