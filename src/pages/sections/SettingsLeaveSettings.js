@@ -3275,6 +3275,20 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
 
           <Divider />
 
+          <HelpSection title="Activity log" status="Audit visibility" statusColor="primary">
+            <Typography variant="body2">
+              Use <strong>Activity log</strong> in Leave Settings to review who changed leave settings, balance policies, entitlement policies, accrual posting actions, entitlement apply actions, and carryover apply actions.
+            </Typography>
+            <Typography variant="body2">
+              The activity log shows readable before/after changes for settings and policies. Run-based events stay high-level here and continue to use the existing ledger, accrual run, carryover run, and entitlement run tables as the operational source of truth.
+            </Typography>
+            <Typography variant="body2">
+              Example: if a manager asks why Vacation carryover rules changed, open Activity log to see who changed the policy and when, then use Leave Reports if you need row-level carryover run detail.
+            </Typography>
+          </HelpSection>
+
+          <Divider />
+
           <HelpSection title="Bookings and availability guardrails" status="Operational safety" statusColor="success">
             <Typography variant="body2">
               Active client bookings are protected before approval. If an employee has a booked appointment during the requested leave window, the manager must cancel, reschedule, or reassign that booking before approving leave.

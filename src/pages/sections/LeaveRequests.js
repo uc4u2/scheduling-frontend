@@ -522,6 +522,9 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
           <Typography variant="body2">
             Example: if a manager asks why vacation balance dropped, open the ledger and look for a leave approval deduction or manual adjustment with its timestamp and reason.
           </Typography>
+          <Typography variant="body2">
+            Use <strong>Activity log</strong> in the leave details drawer to see who reviewed the request, changed its status, or adjusted the balance context. Use <strong>Adjustment history</strong> in the Leave balances section to focus on manual balance changes for that employee and leave type.
+          </Typography>
         </Stack>
       </Paper>
 
