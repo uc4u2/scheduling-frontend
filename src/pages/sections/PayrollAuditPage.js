@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../utils/api";
+import api, { API_BASE_URL } from "../../utils/api";
 import {
   Box,
   Chip,
@@ -36,6 +36,64 @@ import { getUserTimezone } from "../../utils/timezone";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import { extractApiErrorMessage } from "../../utils/apiError";
 import ThemedDateField from "../../components/ui/ThemedDateField";
+
+const downloadBlob = (response, fallbackName) => {
+  const blob =
+    response?.data instanceof Blob
+      ? response.data
+      : new Blob([response?.data], {
+          type: response?.headers?.["content-type"] || "application/pdf",
+        });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+};
+
+const fetchBinary = async (path) => {
+  const authToken =
+    typeof localStorage !== "undefined" ? localStorage.getItem("token") || "" : "";
+  const companyId =
+    typeof localStorage !== "undefined" ? localStorage.getItem("company_id") || "" : "";
+
+  const response = await fetch(`${String(API_BASE_URL).replace(/\/$/, "")}${path}`, {
+    method: "GET",
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(companyId ? { "X-Company-Id": String(companyId) } : {}),
+    },
+    credentials: "omit",
+  });
+
+  if (!response.ok) {
+    let message = "PDF download failed.";
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await response.json();
+        message = payload?.message || payload?.error || message;
+      } else {
+        const text = await response.text();
+        if (text) message = text;
+      }
+    } catch {}
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  return {
+    data: blob,
+    headers: {
+      "content-type": response.headers.get("content-type") || blob.type || "application/pdf",
+      "content-disposition": response.headers.get("content-disposition") || "",
+    },
+    status: response.status,
+  };
+};
 
 export default function PayrollAuditPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -159,18 +217,8 @@ export default function PayrollAuditPage() {
     setDownloading(true);
     setErrorMessage("");
     try {
-      const res = await api.get(`/automation/payroll/audit/${id}/pdf`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: res.headers["content-type"] || "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `payroll_${id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      const res = await fetchBinary(`/automation/payroll/audit/${id}/pdf`);
+      downloadBlob(res, `payroll_${id}.pdf`);
     } catch (err) {
       console.error("PDF download failed", err?.response?.data || err.message);
       setErrorMessage(await extractApiErrorMessage(err, "PDF download failed."));
