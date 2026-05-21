@@ -41,6 +41,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SectionCard from "../../components/ui/SectionCard";
+import LeaveAdminAuditTimeline from "./LeaveAdminAuditTimeline";
 import SettingsLeaveInsights from "./SettingsLeaveInsights";
 import SettingsLeaveReports from "./SettingsLeaveReports";
 import { leaveSettings } from "../../utils/api";
@@ -913,6 +914,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
   const [setupProfileOpen, setSetupProfileOpen] = useState(false);
   const [unsavedBannerDismissed, setUnsavedBannerDismissed] = useState(false);
   const [leaveAreaTab, setLeaveAreaTab] = useState("settings");
+  const [activityLogOpen, setActivityLogOpen] = useState(false);
   const activeLeaveAreaTab = forcedAreaTab || leaveAreaTab;
 
   const dirty = useMemo(() => settings && original && hasLeaveSettingsChanges(settings, original), [settings, original]);
@@ -2792,6 +2794,13 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                   <Button
                     size="small"
                     variant="outlined"
+                    onClick={() => setActivityLogOpen(true)}
+                  >
+                    Activity log
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
                     startIcon={<HelpOutlineIcon />}
                     onClick={() => setHelpOpen(true)}
                   >
@@ -3780,6 +3789,20 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
           )}
         </Stack>
       </Drawer>
+      <LeaveAdminAuditTimeline
+        open={activityLogOpen}
+        onClose={() => setActivityLogOpen(false)}
+        title="Leave admin activity"
+        emptyText="No leave admin activity recorded yet."
+        entityTypes={[
+          "leave_settings",
+          "balance_policy",
+          "entitlement_policy",
+          "entitlement_apply_run",
+          "accrual_run",
+          "carryover_run",
+        ]}
+      />
     </Stack>
   );
 };
