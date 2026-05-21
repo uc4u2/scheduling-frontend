@@ -525,6 +525,14 @@ useEffect(() => {
       <Typography variant="h5" gutterBottom>
         Employee Availability Management
       </Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+        <Button variant="outlined" onClick={() => setAvailabilityAuditOpen(true)}>
+          Activity log
+        </Button>
+        <Typography variant="body2" color="text.secondary" sx={{ alignSelf: "center" }}>
+          Review manager availability changes for all employees or narrow the drawer to the selected employee.
+        </Typography>
+      </Stack>
 
       <Stack spacing={2} sx={{ mb: 2 }}>
         <TextField
@@ -647,11 +655,11 @@ useEffect(() => {
         </Paper>
       )}
       <ShiftAdminAuditTimeline
-        open={availabilityAuditOpen && Boolean(selectedEmployeeId)}
+        open={availabilityAuditOpen}
         onClose={() => setAvailabilityAuditOpen(false)}
         title="Availability activity"
         entityTypes={["availability"]}
-        employeeId={selectedEmployeeId}
+        employeeId={selectedEmployeeId || undefined}
       />
 
       {/* Tabs */}

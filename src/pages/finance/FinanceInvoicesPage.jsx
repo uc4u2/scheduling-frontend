@@ -36,6 +36,7 @@ import AddTaskIcon from "@mui/icons-material/AddTask";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
+import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import FinanceInvoiceDetailDialog from "./FinanceInvoiceDetailDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 import {
@@ -161,6 +162,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [expandedOpen, setExpandedOpen] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceDialogId, setInvoiceDialogId] = useState(null);
+  const [invoiceAuditOpen, setInvoiceAuditOpen] = useState(false);
   const [paymentLinkBusyId, setPaymentLinkBusyId] = useState(null);
   const [printBusyId, setPrintBusyId] = useState(null);
   const [pdfBusyId, setPdfBusyId] = useState(null);
@@ -521,6 +523,11 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           <Typography variant="subtitle1" fontWeight={700}>
             {tInvoice("filters.title", "Find and manage invoices")}
           </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end">
+            <Button variant="outlined" onClick={() => setInvoiceAuditOpen(true)}>
+              {tInvoice("filters.activityLog", "Activity log")}
+            </Button>
+          </Stack>
           <Grid container spacing={1.5}>
             <Grid item xs={12} md={6} lg={5}>
               <TextField
@@ -619,6 +626,13 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           setInvoiceDialogOpen(true);
           load();
         }}
+      />
+      <FinanceAuditTimeline
+        open={invoiceAuditOpen}
+        onClose={() => setInvoiceAuditOpen(false)}
+        entityType="invoice"
+        title={tInvoice("audit.pageTitle", "Invoice activity")}
+        emptyText={tInvoice("audit.pageEmpty", "No invoice audit records yet.")}
       />
 
       <InvoiceWorkflowHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} tInvoice={tInvoice} />

@@ -1838,6 +1838,7 @@ const [templateFormData, setTemplateFormData] = useState({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   const [shiftAuditOpen, setShiftAuditOpen] = useState(false);
+  const [scheduleAuditOpen, setScheduleAuditOpen] = useState(false);
   const [leaveDetailOpen, setLeaveDetailOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
   const editingShiftRecruiter = useMemo(() => {
@@ -3960,6 +3961,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         )}
 	        {shiftManagementTab === "schedule" && (
 	        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Button variant="outlined" onClick={() => setScheduleAuditOpen(true)}>
+            Activity log
+          </Button>
 	          <Button
 	            variant={showSmartShift ? "contained" : "outlined"}
 	            onClick={() => setShowSmartShift((v) => !v)}
@@ -5375,6 +5379,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         title="Shift activity"
         entityTypes={["shift"]}
         entityId={editingShift?.id}
+      />
+      <ShiftAdminAuditTimeline
+        open={scheduleAuditOpen}
+        onClose={() => setScheduleAuditOpen(false)}
+        title="Shift management activity"
+        emptyText="No shift-management activity recorded yet."
+        entityTypes={["shift"]}
       />
 
       {/* ============================ Template Editor Modal ============================ */}

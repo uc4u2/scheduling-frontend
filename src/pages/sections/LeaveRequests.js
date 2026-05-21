@@ -945,6 +945,9 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
         </Box>
         {leaveWorkspaceTab === "requests" && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button variant="outlined" onClick={() => setRequestActivityOpen(true)}>
+              Request activity
+            </Button>
             <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setLeaveHelpOpen(true)}>
               Help guide
             </Button>
@@ -1289,7 +1292,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               <Button size="small" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setLeaveHelpOpen(true)}>
                 Help
               </Button>
-              <Button size="small" variant="outlined" onClick={() => setRequestActivityOpen(true)}>
+              <Button size="small" variant="contained" onClick={() => setRequestActivityOpen(true)}>
                 Activity log
               </Button>
               <IconButton onClick={closeLeaveDetails} aria-label="Close leave details">
@@ -2120,10 +2123,10 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
       <LeaveAdminAuditTimeline
         open={requestActivityOpen}
         onClose={() => setRequestActivityOpen(false)}
-        title="Leave request activity"
+        title={selectedLeave?.id ? "Leave request activity" : "Leave request activity"}
         emptyText="No leave-request activity recorded yet."
         entityTypes={["leave_request"]}
-        entityId={selectedLeave?.id}
+        entityId={selectedLeave?.id || undefined}
       />
       <LeaveAdminAuditTimeline
         open={balanceActivityOpen}

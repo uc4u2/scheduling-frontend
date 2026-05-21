@@ -249,6 +249,12 @@ export default function LeaveAdminAuditTimeline({
       anchor="right"
       open={open}
       onClose={onClose}
+      sx={{
+        zIndex: (theme) => theme.zIndex.modal + 2,
+        "& .MuiDrawer-paper": {
+          zIndex: (theme) => theme.zIndex.modal + 2,
+        },
+      }}
       PaperProps={{
         sx: {
           width: { xs: "100%", md: 540 },

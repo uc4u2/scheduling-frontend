@@ -487,6 +487,7 @@ export default function PurchasesPage({ createNonce = 0, onNavigate }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [purchaseAuditOpen, setPurchaseAuditOpen] = useState(false);
   const [messages, setMessages] = useState([]);
 
   const load = async () => {
@@ -569,7 +570,10 @@ export default function PurchasesPage({ createNonce = 0, onNavigate }) {
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-          <Button variant="contained" onClick={() => setEditorOpen(true)}>{tPurchases("toolbar.createPurchase", "Create purchase")}</Button>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button variant="outlined" onClick={() => setPurchaseAuditOpen(true)}>{tPurchases("toolbar.activityLog", "Activity log")}</Button>
+            <Button variant="contained" onClick={() => setEditorOpen(true)}>{tPurchases("toolbar.createPurchase", "Create purchase")}</Button>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -640,6 +644,13 @@ export default function PurchasesPage({ createNonce = 0, onNavigate }) {
         onSubmit={handleCreate}
       />
       <PurchaseDetailDialog open={detailOpen} onClose={() => setDetailOpen(false)} purchase={selectedPurchase} />
+      <FinanceAuditTimeline
+        open={purchaseAuditOpen}
+        onClose={() => setPurchaseAuditOpen(false)}
+        entityType="purchase"
+        title={tPurchases("audit.title", "Purchase activity")}
+        emptyText={tPurchases("audit.empty", "No purchase audit records yet.")}
+      />
     </Stack>
   );
 }

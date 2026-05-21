@@ -169,6 +169,7 @@ export default function EstimateEditorDialog({
   const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [auditOpen, setAuditOpen] = useState(false);
   const effectiveTaxContext = useMemo(
     () => estimate?.tax_context || taxContext || {},
     [estimate?.tax_context, taxContext]
@@ -357,7 +358,18 @@ export default function EstimateEditorDialog({
 
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} fullWidth maxWidth="lg">
-      <DialogTitle>{estimate ? tEstimate("title.edit", "Edit estimate") : tEstimate("title.new", "New estimate")}</DialogTitle>
+      <DialogTitle>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }}>
+          <Typography variant="inherit">
+            {estimate ? tEstimate("title.edit", "Edit estimate") : tEstimate("title.new", "New estimate")}
+          </Typography>
+          {estimate?.id ? (
+            <Button size="small" variant="contained" onClick={() => setAuditOpen(true)}>
+              {tEstimate("audit.open", "Activity log")}
+            </Button>
+          ) : null}
+        </Stack>
+      </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
@@ -730,6 +742,14 @@ export default function EstimateEditorDialog({
           {loading ? tEstimate("common.saving", "Saving...") : estimate ? tEstimate("common.saveChanges", "Save changes") : tEstimate("common.createEstimate", "Create estimate")}
         </Button>
       </DialogActions>
+      <FinanceAuditTimeline
+        open={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        entityType="estimate"
+        entityId={estimate?.id}
+        title={tEstimate("audit.title", "Estimate activity")}
+        emptyText={tEstimate("audit.empty", "No audit records yet.")}
+      />
     </Dialog>
   );
 }

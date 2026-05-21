@@ -913,6 +913,7 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
   const [rosterUpdatedAt, setRosterUpdatedAt] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [entryAuditTarget, setEntryAuditTarget] = useState(null);
+  const [timeAuditOpen, setTimeAuditOpen] = useState(false);
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [detailEntries, setDetailEntries] = useState([]);
   const [detailSummary, setDetailSummary] = useState(null);
@@ -2002,6 +2003,13 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  startIcon={<HistoryIcon />}
+                  onClick={() => setTimeAuditOpen(true)}
+                >
+                  Activity log
+                </Button>
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
@@ -3343,6 +3351,13 @@ const TimeEntriesPanel = ({ recruiters = EMPTY_RECRUITERS }) => {
         title="Time entry activity"
         entityTypes={["time_entry"]}
         entityId={entryAuditTarget?.id}
+      />
+      <ShiftAdminAuditTimeline
+        open={timeAuditOpen}
+        onClose={() => setTimeAuditOpen(false)}
+        title="Time tracking activity"
+        emptyText="No time-entry activity recorded yet."
+        entityTypes={["time_entry"]}
       />
     </>
   );
