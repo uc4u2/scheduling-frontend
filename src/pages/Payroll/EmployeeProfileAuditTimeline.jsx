@@ -15,6 +15,8 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { api } from "../../utils/api";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 const ACTION_LABELS = {
   profile_updated: "Profile updated",
@@ -31,15 +33,6 @@ const formatValue = (value) => {
   return String(value);
 };
 
-const formatTimestamp = (value) => {
-  if (!value) return "";
-  try {
-    return new Date(value).toLocaleString();
-  } catch (err) {
-    return value;
-  }
-};
-
 export default function EmployeeProfileAuditTimeline({
   employeeId,
   open,
@@ -50,28 +43,45 @@ export default function EmployeeProfileAuditTimeline({
   infoText = "This audit trail shows who changed the employee profile, when it changed, and the before/after values for curated fields only.",
   emptyText = "No employee profile changes have been logged yet.",
 }) {
+  const PAGE_SIZE = 25;
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [logs, setLogs] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState(null);
   const [showSnapshots, setShowSnapshots] = useState(false);
+  const timezone = useMemo(() => getUserTimezone(), []);
 
   useEffect(() => {
     if (!open || !employeeId) return;
     let ignore = false;
+    const initialPage = 1;
+    setLoading(true);
+    setLoadingMore(false);
+    setError("");
+    setLogs([]);
+    setPage(initialPage);
+    setTotal(0);
+    setHasMore(false);
     const load = async () => {
-      setLoading(true);
-      setError("");
       try {
         const res = await api.get(`/manager/employees/${employeeId}/audit-logs`, {
           params: {
             include_snapshots: showSnapshots ? 1 : 0,
-            limit: 50,
+            limit: PAGE_SIZE,
+            page: initialPage,
             action: actionFilter || undefined,
           },
         });
         if (!ignore) {
-          setLogs(res.data?.logs || []);
+          const nextLogs = Array.isArray(res.data?.logs) ? res.data.logs : [];
+          const nextTotal = Number(res.data?.total || 0);
+          setLogs(nextLogs);
+          setTotal(nextTotal);
+          setHasMore(Boolean(res.data?.has_more ?? (initialPage * PAGE_SIZE < nextTotal)));
         }
       } catch (err) {
         if (!ignore) {
@@ -88,6 +98,33 @@ export default function EmployeeProfileAuditTimeline({
       ignore = true;
     };
   }, [employeeId, open, showSnapshots, actionFilter]);
+
+  const handleLoadMore = async () => {
+    if (!employeeId || loading || loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    setError("");
+    try {
+      const res = await api.get(`/manager/employees/${employeeId}/audit-logs`, {
+        params: {
+          include_snapshots: showSnapshots ? 1 : 0,
+          limit: PAGE_SIZE,
+          page: nextPage,
+          action: actionFilter || undefined,
+        },
+      });
+      const nextLogs = Array.isArray(res.data?.logs) ? res.data.logs : [];
+      const nextTotal = Number(res.data?.total || total || 0);
+      setLogs((prev) => [...prev, ...nextLogs]);
+      setPage(nextPage);
+      setTotal(nextTotal);
+      setHasMore(Boolean(res.data?.has_more ?? (nextPage * PAGE_SIZE < nextTotal)));
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to load more employee activity.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const emptyState = useMemo(
     () => !loading && !error && Array.isArray(logs) && logs.length === 0,
@@ -168,6 +205,11 @@ export default function EmployeeProfileAuditTimeline({
 
         {!loading && !error ? (
           <Stack spacing={1.25} sx={{ pr: 0.5, pb: 2 }}>
+            {!!total ? (
+              <Typography variant="caption" color="text.secondary">
+                Showing {logs.length} of {total}
+              </Typography>
+            ) : null}
             {logs.map((log, idx) => {
               const expanded = expandedLogId === log.id;
               const diffEntries = Object.entries(log.diff || {});
@@ -217,7 +259,7 @@ export default function EmployeeProfileAuditTimeline({
                         ) : null}
                       </Stack>
                       <Typography variant="caption" color="text.secondary">
-                        {formatTimestamp(log.created_at)}
+                        {log.created_at ? formatDateTimeInTz(log.created_at, timezone) : ""}
                       </Typography>
                     </Stack>
 
@@ -307,6 +349,17 @@ export default function EmployeeProfileAuditTimeline({
                 </Paper>
               );
             })}
+            {hasMore ? (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {loadingMore ? "Loading..." : "Load more"}
+              </Button>
+            ) : null}
           </Stack>
         ) : null}
       </Stack>

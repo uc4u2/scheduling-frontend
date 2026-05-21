@@ -16,8 +16,11 @@ import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
 import { shiftAdmin } from "../../utils/api";
-import { formatDateTimeInTz } from "../../utils/datetime";
-import { getUserTimezone } from "../../utils/timezone";
+import {
+  formatDateTimeInTz,
+  formatLocalDateAndTimeInTz,
+} from "../../utils/datetime";
+import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 
 const ACTION_LABELS = {
   shift_created: "Shift created",
@@ -98,6 +101,24 @@ const prettifyField = (field) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const SHIFT_LOCAL_DATETIME_FIELDS = new Set(["clock_in", "clock_out", "break_start", "break_end"]);
+const SHIFT_LOCAL_TIME_FIELDS = new Set(["start_time", "end_time"]);
+
+const formatShiftFieldValue = (field, value, snapshot, entryTimezone, viewerTimezone) => {
+  if (value === null || value === undefined || value === "") return "—";
+  if (field === "timezone") return formatTimezoneLabel(value) || String(value);
+  if (SHIFT_LOCAL_DATETIME_FIELDS.has(field) && typeof value === "string") {
+    return formatDateTimeInTz(value, entryTimezone || viewerTimezone);
+  }
+  if (SHIFT_LOCAL_TIME_FIELDS.has(field) && typeof value === "string") {
+    const dateValue = snapshot?.date;
+    if (dateValue) {
+      return formatLocalDateAndTimeInTz(dateValue, value, entryTimezone || viewerTimezone);
+    }
+  }
+  return formatValue(value);
+};
+
 export default function ShiftAdminAuditTimeline({
   open,
   onClose,
@@ -110,18 +131,29 @@ export default function ShiftAdminAuditTimeline({
   dateFrom,
   dateTo,
 }) {
+  const PAGE_SIZE = 25;
   const timezone = React.useMemo(() => getUserTimezone(), []);
   const [loading, setLoading] = React.useState(false);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState("");
   const [items, setItems] = React.useState([]);
+  const [page, setPage] = React.useState(1);
+  const [total, setTotal] = React.useState(0);
+  const [hasMore, setHasMore] = React.useState(false);
   const [expandedIds, setExpandedIds] = React.useState({});
 
   React.useEffect(() => {
     if (!open) return;
     let active = true;
+    const initialPage = 1;
     setLoading(true);
+    setLoadingMore(false);
     setError("");
-    const params = { include_snapshots: true, limit: 50 };
+    setItems([]);
+    setPage(initialPage);
+    setTotal(0);
+    setHasMore(false);
+    const params = { include_snapshots: true, limit: PAGE_SIZE, page: initialPage };
     if (entityTypes?.length) params.entity_type = entityTypes;
     if (entityId) params.entity_id = entityId;
     if (employeeId) params.employee_id = employeeId;
@@ -133,7 +165,11 @@ export default function ShiftAdminAuditTimeline({
       .getAuditLogs(params)
       .then((data) => {
         if (!active) return;
-        setItems(Array.isArray(data?.logs) ? data.logs : []);
+        const nextItems = Array.isArray(data?.logs) ? data.logs : [];
+        const nextTotal = Number(data?.total || 0);
+        setItems(nextItems);
+        setTotal(nextTotal);
+        setHasMore(initialPage * PAGE_SIZE < nextTotal);
       })
       .catch((err) => {
         if (!active) return;
@@ -150,6 +186,36 @@ export default function ShiftAdminAuditTimeline({
   const toggleExpanded = React.useCallback((id) => {
     setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
+
+  const handleLoadMore = React.useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    const params = { include_snapshots: true, limit: PAGE_SIZE, page: nextPage };
+    if (entityTypes?.length) params.entity_type = entityTypes;
+    if (entityId) params.entity_id = entityId;
+    if (employeeId) params.employee_id = employeeId;
+    if (action) params.action = action;
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    setLoadingMore(true);
+    setError("");
+    shiftAdmin
+      .getAuditLogs(params)
+      .then((data) => {
+        const nextItems = Array.isArray(data?.logs) ? data.logs : [];
+        const nextTotal = Number(data?.total || total || 0);
+        setItems((prev) => [...prev, ...nextItems]);
+        setPage(nextPage);
+        setTotal(nextTotal);
+        setHasMore(nextPage * PAGE_SIZE < nextTotal);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.error || "Failed to load more activity.");
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  }, [action, dateFrom, dateTo, employeeId, entityId, entityTypes, hasMore, loading, loadingMore, page, total]);
 
   return (
     <Drawer
@@ -182,6 +248,11 @@ export default function ShiftAdminAuditTimeline({
 
         {!loading && !error && items.length ? (
           <Stack spacing={1.25}>
+            {!!total ? (
+              <Typography variant="caption" color="text.secondary">
+                Showing {items.length} of {total}
+              </Typography>
+            ) : null}
             {items.map((entry, index) => {
               const expanded = Boolean(expandedIds[entry.id]);
               const diffs = entry?.diff && typeof entry.diff === "object" ? Object.entries(entry.diff) : [];
@@ -199,7 +270,10 @@ export default function ShiftAdminAuditTimeline({
                           {entry.created_at ? formatDateTimeInTz(entry.created_at, timezone) : "—"}
                         </Typography>
                         {entry.message ? <Typography variant="body2" color="text.secondary">{entry.message}</Typography> : null}
-                        {entry.employee_id ? <Typography variant="caption" color="text.secondary">Employee #{entry.employee_id}</Typography> : null}
+                        <Typography variant="caption" color="text.secondary">
+                          {entry.employee_id ? `Employee #${entry.employee_id}` : "Shift activity"}
+                          {entry.timezone ? ` · ${formatTimezoneLabel(entry.timezone) || entry.timezone}` : ""}
+                        </Typography>
                       </Stack>
                       <Button size="small" variant="text" endIcon={expanded ? <ExpandLessOutlinedIcon /> : <ExpandMoreOutlinedIcon />} onClick={() => toggleExpanded(entry.id)}>
                         View changes
@@ -214,8 +288,26 @@ export default function ShiftAdminAuditTimeline({
                               <Paper key={field} variant="outlined" sx={{ p: 1.1, borderRadius: 1.5 }}>
                                 <Typography variant="caption" color="text.secondary" fontWeight={700}>{prettifyField(field)}</Typography>
                                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 0.35 }}>
-                                  <Typography variant="body2"><strong>Before:</strong> {formatValue(delta?.before)}</Typography>
-                                  <Typography variant="body2"><strong>After:</strong> {formatValue(delta?.after)}</Typography>
+                                  <Typography variant="body2">
+                                    <strong>Before:</strong>{" "}
+                                    {formatShiftFieldValue(
+                                      field,
+                                      delta?.before,
+                                      entry?.before,
+                                      entry?.before?.timezone || entry?.timezone,
+                                      timezone
+                                    )}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    <strong>After:</strong>{" "}
+                                    {formatShiftFieldValue(
+                                      field,
+                                      delta?.after,
+                                      entry?.after,
+                                      entry?.after?.timezone || entry?.timezone,
+                                      timezone
+                                    )}
+                                  </Typography>
                                 </Stack>
                               </Paper>
                             ))}
@@ -259,6 +351,17 @@ export default function ShiftAdminAuditTimeline({
                 </Box>
               );
             })}
+            {hasMore ? (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {loadingMore ? "Loading..." : "Load more"}
+              </Button>
+            ) : null}
           </Stack>
         ) : null}
 

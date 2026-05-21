@@ -2476,6 +2476,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             profile_image_url: rec?.profile_image_url || rec?.avatar || null,
             status: s.status,
             timezone: s.timezone,
+            local_start_time: getShiftLocalStart(s),
+            local_end_time: getShiftLocalEnd(s),
             on_leave: isOnLeave,
             leave_id: s.leave_id || null,
             leave_type: s.leave_type || null,
@@ -3363,10 +3365,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       viewType === "dayGridMonth";
     const isWeekView = viewType.startsWith("timeGridWeek");
     const isDayView = viewType.startsWith("timeGridDay");
-    const startTime = arg.timeText || "";
-    const endTime = arg.event.end
-      ? format(arg.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm")
-      : "";
+    const startTime = xp.local_start_time || arg.timeText || "";
+    const endTime =
+      xp.local_end_time ||
+      (arg.event.end ? format(arg.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm") : "");
     const issueCount =
       (xp.late_minutes > 0 ? 1 : 0) +
       (xp.break_missing_minutes > 0 ? 1 : 0) +
@@ -3767,8 +3769,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const eventDidMount = (info) => {
     const xp = info.event.extendedProps || {};
     const emp = xp.recruiter_name || `Emp ${xp.recruiter_id || ""}`;
-    const start = info.event.start ? format(info.event.start, timeFmt12h ? "hh:mmaaa" : "HH:mm") : "";
-    const end = info.event.end ? format(info.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm") : "";
+    const start = xp.local_start_time || (info.event.start ? format(info.event.start, timeFmt12h ? "hh:mmaaa" : "HH:mm") : "");
+    const end = xp.local_end_time || (info.event.end ? format(info.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm") : "");
     const loc = xp.location ? `\nLocation: ${xp.location}` : "";
     const note = xp.note ? `\nNote: ${xp.note}` : "";
     if (xp.on_leave) {
