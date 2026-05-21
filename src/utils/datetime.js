@@ -56,6 +56,46 @@ export const formatDateTimeInTz = (isoString, tz, opts = DateTime.DATETIME_MED_W
   }
 };
 
+export const formatLocalDateTimeInTz = (
+  localDateTimeString,
+  tz,
+  opts = DateTime.DATETIME_MED
+) => {
+  if (!localDateTimeString) return "";
+  try {
+    const normalized = String(localDateTimeString).trim().replace(" ", "T");
+    const parsed = DateTime.fromISO(normalized, { zone: tz || "UTC" });
+    if (!parsed.isValid) {
+      return String(localDateTimeString);
+    }
+    return parsed.toLocaleString(opts);
+  } catch {
+    return String(localDateTimeString);
+  }
+};
+
+export const formatLocalDateAndTimeInTz = (
+  dateValue,
+  timeValue,
+  tz,
+  opts = DateTime.DATETIME_MED
+) => {
+  if (!dateValue || !timeValue) return "";
+  try {
+    const normalizedDate = String(dateValue).trim().slice(0, 10);
+    const normalizedTime = String(timeValue).trim().slice(0, 8);
+    const parsed = DateTime.fromISO(`${normalizedDate}T${normalizedTime}`, {
+      zone: tz || "UTC",
+    });
+    if (!parsed.isValid) {
+      return `${normalizedDate} ${normalizedTime}`;
+    }
+    return parsed.toLocaleString(opts);
+  } catch {
+    return `${dateValue} ${timeValue}`;
+  }
+};
+
 export const toInputDateTimeInTz = (value, tz) => {
   if (!value) return "";
   try {

@@ -53,6 +53,10 @@ function FinanceAuditTimelineContent({
   loading,
   error,
   items,
+  total,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }) {
   const timezone = React.useMemo(() => getUserTimezone(), []);
   const [expandedIds, setExpandedIds] = React.useState({});
@@ -86,6 +90,11 @@ function FinanceAuditTimelineContent({
 
       {!loading && !error && items.length ? (
         <Stack spacing={1.25}>
+          {!!total ? (
+            <Typography variant="caption" color="text.secondary">
+              Showing {items.length} of {total}
+            </Typography>
+          ) : null}
           {items.map((entry, index) => {
             const expanded = Boolean(expandedIds[entry.id]);
             const diffs = entry?.diff && typeof entry.diff === "object" ? Object.entries(entry.diff) : [];
@@ -207,6 +216,17 @@ function FinanceAuditTimelineContent({
               </Box>
             );
           })}
+          {hasMore ? (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={onLoadMore}
+              disabled={loadingMore}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              {loadingMore ? "Loading..." : "Load more"}
+            </Button>
+          ) : null}
         </Stack>
       ) : null}
     </Stack>
@@ -221,29 +241,53 @@ export default function FinanceAuditTimeline({
   open,
   onClose,
 }) {
+  const PAGE_SIZE = 25;
   const [loading, setLoading] = React.useState(false);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState("");
   const [items, setItems] = React.useState([]);
+  const [page, setPage] = React.useState(1);
+  const [total, setTotal] = React.useState(0);
+  const [hasMore, setHasMore] = React.useState(false);
 
   const shouldLoad = typeof open === "boolean" ? open : Boolean(entityType);
 
   React.useEffect(() => {
     if (!entityType || !shouldLoad) {
-      if (typeof open !== "boolean") setItems([]);
+      if (typeof open !== "boolean") {
+        setItems([]);
+        setPage(1);
+        setTotal(0);
+        setHasMore(false);
+      }
       return;
     }
     let active = true;
+    const initialPage = 1;
     setLoading(true);
+    setLoadingMore(false);
     setError("");
+    setItems([]);
+    setPage(initialPage);
+    setTotal(0);
+    setHasMore(false);
     getFinanceAuditLogs({
       entity_type: entityType,
       entity_id: entityId || undefined,
       include_snapshots: true,
-      limit: 25,
+      limit: PAGE_SIZE,
+      page: initialPage,
     })
       .then((payload) => {
         if (!active) return;
-        setItems(Array.isArray(payload?.items) ? payload.items : []);
+        const nextItems = Array.isArray(payload?.items) ? payload.items : [];
+        const pagination = payload?.pagination || {};
+        const nextTotal = Number(pagination?.total || nextItems.length || 0);
+        const nextPage = Number(pagination?.page || initialPage);
+        const nextPages = Number(pagination?.pages || 1);
+        setItems(nextItems);
+        setTotal(nextTotal);
+        setHasMore(nextPage < nextPages);
       })
       .catch((err) => {
         if (!active) return;
@@ -257,6 +301,37 @@ export default function FinanceAuditTimeline({
     };
   }, [entityId, entityType, shouldLoad, open]);
 
+  const handleLoadMore = React.useCallback(() => {
+    if (!entityType || loading || loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    setError("");
+    getFinanceAuditLogs({
+      entity_type: entityType,
+      entity_id: entityId || undefined,
+      include_snapshots: true,
+      limit: PAGE_SIZE,
+      page: nextPage,
+    })
+      .then((payload) => {
+        const nextItems = Array.isArray(payload?.items) ? payload.items : [];
+        const pagination = payload?.pagination || {};
+        const nextTotal = Number(pagination?.total || total || 0);
+        const returnedPage = Number(pagination?.page || nextPage);
+        const nextPages = Number(pagination?.pages || returnedPage);
+        setItems((prev) => [...prev, ...nextItems]);
+        setPage(returnedPage);
+        setTotal(nextTotal);
+        setHasMore(returnedPage < nextPages);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.error || err?.message || "Unable to load more activity.");
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  }, [entityId, entityType, hasMore, loading, loadingMore, page, total]);
+
   const content = (
     <FinanceAuditTimelineContent
       title={title}
@@ -264,6 +339,10 @@ export default function FinanceAuditTimeline({
       loading={loading}
       error={error}
       items={items}
+      total={total}
+      hasMore={hasMore}
+      loadingMore={loadingMore}
+      onLoadMore={handleLoadMore}
     />
   );
 

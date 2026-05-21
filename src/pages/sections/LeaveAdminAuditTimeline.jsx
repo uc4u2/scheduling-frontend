@@ -16,8 +16,11 @@ import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
 import { leaveSettings } from "../../utils/api";
-import { formatDateTimeInTz } from "../../utils/datetime";
-import { getUserTimezone } from "../../utils/timezone";
+import {
+  formatDateTimeInTz,
+  formatLocalDateAndTimeInTz,
+} from "../../utils/datetime";
+import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 
 const ACTION_LABELS = {
   settings_updated: "Settings updated",
@@ -77,6 +80,25 @@ const prettifyField = (field) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const LEAVE_LOCAL_TIME_FIELDS = new Set(["start_time", "end_time"]);
+const LEAVE_VIEWER_DATETIME_FIELDS = new Set(["reviewed_at", "withdrawn_at", "cancelled_at"]);
+
+const formatLeaveFieldValue = (field, value, snapshot, entryTimezone, viewerTimezone) => {
+  if (value === null || value === undefined || value === "") return "—";
+  if (field === "timezone") return formatTimezoneLabel(value) || String(value);
+  if (LEAVE_LOCAL_TIME_FIELDS.has(field) && typeof value === "string") {
+    const dateField = field === "end_time" ? "end_date" : "start_date";
+    const dateValue = snapshot?.[dateField];
+    if (dateValue) {
+      return formatLocalDateAndTimeInTz(dateValue, value, entryTimezone || viewerTimezone);
+    }
+  }
+  if (LEAVE_VIEWER_DATETIME_FIELDS.has(field) && typeof value === "string") {
+    return formatDateTimeInTz(value, viewerTimezone);
+  }
+  return formatValue(value);
+};
+
 function LeaveAdminAuditTimelineContent({ title, emptyText, loading, error, items }) {
   const timezone = React.useMemo(() => getUserTimezone(), []);
   const [expandedIds, setExpandedIds] = React.useState({});
@@ -127,9 +149,13 @@ function LeaveAdminAuditTimelineContent({ title, emptyText, loading, error, item
                         <Typography variant="caption" color="text.secondary">
                           Leave type: {String(entry.leave_type).replace(/_/g, " ")}
                           {entry.employee_id ? ` · Employee #${entry.employee_id}` : ""}
+                          {entry.timezone ? ` · ${formatTimezoneLabel(entry.timezone) || entry.timezone}` : ""}
                         </Typography>
                       ) : entry.employee_id ? (
-                        <Typography variant="caption" color="text.secondary">Employee #{entry.employee_id}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Employee #{entry.employee_id}
+                          {entry.timezone ? ` · ${formatTimezoneLabel(entry.timezone) || entry.timezone}` : ""}
+                        </Typography>
                       ) : null}
                     </Stack>
                     <Button size="small" variant="text" endIcon={expanded ? <ExpandLessOutlinedIcon /> : <ExpandMoreOutlinedIcon />} onClick={() => toggleExpanded(entry.id)}>
@@ -147,8 +173,26 @@ function LeaveAdminAuditTimelineContent({ title, emptyText, loading, error, item
                                 {prettifyField(field)}
                               </Typography>
                               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 0.35 }}>
-                                <Typography variant="body2"><strong>Before:</strong> {formatValue(delta?.before)}</Typography>
-                                <Typography variant="body2"><strong>After:</strong> {formatValue(delta?.after)}</Typography>
+                                <Typography variant="body2">
+                                  <strong>Before:</strong>{" "}
+                                  {formatLeaveFieldValue(
+                                    field,
+                                    delta?.before,
+                                    entry?.before,
+                                    entry?.before?.timezone || entry?.timezone,
+                                    timezone
+                                  )}
+                                </Typography>
+                                <Typography variant="body2">
+                                  <strong>After:</strong>{" "}
+                                  {formatLeaveFieldValue(
+                                    field,
+                                    delta?.after,
+                                    entry?.after,
+                                    entry?.after?.timezone || entry?.timezone,
+                                    timezone
+                                  )}
+                                </Typography>
                               </Stack>
                             </Paper>
                           ))}
@@ -209,15 +253,26 @@ export default function LeaveAdminAuditTimeline({
   leaveType,
   action,
 }) {
+  const PAGE_SIZE = 25;
   const [loading, setLoading] = React.useState(false);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState("");
   const [items, setItems] = React.useState([]);
+  const [page, setPage] = React.useState(1);
+  const [total, setTotal] = React.useState(0);
+  const [hasMore, setHasMore] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
     let active = true;
+    const initialPage = 1;
     setLoading(true);
+    setLoadingMore(false);
     setError("");
+    setItems([]);
+    setPage(initialPage);
+    setTotal(0);
+    setHasMore(false);
     leaveSettings
       .getAdminAuditLogs({
         entity_type: entityTypes.join(","),
@@ -226,11 +281,16 @@ export default function LeaveAdminAuditTimeline({
         leave_type: leaveType || undefined,
         action: action || undefined,
         include_snapshots: true,
-        limit: 50,
+        limit: PAGE_SIZE,
+        page: initialPage,
       })
       .then((payload) => {
         if (!active) return;
-        setItems(Array.isArray(payload?.logs) ? payload.logs : []);
+        const nextItems = Array.isArray(payload?.logs) ? payload.logs : [];
+        const nextTotal = Number(payload?.total || 0);
+        setItems(nextItems);
+        setTotal(nextTotal);
+        setHasMore(initialPage * PAGE_SIZE < nextTotal);
       })
       .catch((err) => {
         if (!active) return;
@@ -243,6 +303,38 @@ export default function LeaveAdminAuditTimeline({
       active = false;
     };
   }, [open, entityId, employeeId, leaveType, action, entityTypes]);
+
+  const handleLoadMore = React.useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    setError("");
+    leaveSettings
+      .getAdminAuditLogs({
+        entity_type: entityTypes.join(","),
+        entity_id: entityId || undefined,
+        employee_id: employeeId || undefined,
+        leave_type: leaveType || undefined,
+        action: action || undefined,
+        include_snapshots: true,
+        limit: PAGE_SIZE,
+        page: nextPage,
+      })
+      .then((payload) => {
+        const nextItems = Array.isArray(payload?.logs) ? payload.logs : [];
+        const nextTotal = Number(payload?.total || total || 0);
+        setItems((prev) => [...prev, ...nextItems]);
+        setPage(nextPage);
+        setTotal(nextTotal);
+        setHasMore(nextPage * PAGE_SIZE < nextTotal);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.error || err?.message || "Unable to load more leave admin activity.");
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  }, [action, employeeId, entityId, entityTypes, hasMore, leaveType, loading, loadingMore, page, total]);
 
   return (
     <Drawer
@@ -269,6 +361,26 @@ export default function LeaveAdminAuditTimeline({
         error={error}
         items={items}
       />
+      {!loading && !error ? (
+        <Stack spacing={1.25} sx={{ px: 2, pb: 2 }}>
+          {!!total ? (
+            <Typography variant="caption" color="text.secondary">
+              Showing {items.length} of {total}
+            </Typography>
+          ) : null}
+          {hasMore ? (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              {loadingMore ? "Loading..." : "Load more"}
+            </Button>
+          ) : null}
+        </Stack>
+      ) : null}
     </Drawer>
   );
 }
