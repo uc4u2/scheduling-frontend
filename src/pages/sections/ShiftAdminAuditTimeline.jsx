@@ -101,6 +101,9 @@ const prettifyField = (field) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const formatEmployeeLabel = (entry) =>
+  entry?.employee_name || (entry?.employee_id ? `Employee #${entry.employee_id}` : "Shift activity");
+
 const SHIFT_LOCAL_DATETIME_FIELDS = new Set(["clock_in", "clock_out", "break_start", "break_end"]);
 const SHIFT_LOCAL_TIME_FIELDS = new Set(["start_time", "end_time"]);
 
@@ -271,7 +274,7 @@ export default function ShiftAdminAuditTimeline({
                         </Typography>
                         {entry.message ? <Typography variant="body2" color="text.secondary">{entry.message}</Typography> : null}
                         <Typography variant="caption" color="text.secondary">
-                          {entry.employee_id ? `Employee #${entry.employee_id}` : "Shift activity"}
+                          {formatEmployeeLabel(entry)}
                           {entry.timezone ? ` · ${formatTimezoneLabel(entry.timezone) || entry.timezone}` : ""}
                         </Typography>
                       </Stack>

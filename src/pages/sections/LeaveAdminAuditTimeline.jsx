@@ -80,6 +80,9 @@ const prettifyField = (field) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+const formatEmployeeLabel = (entry) =>
+  entry?.employee_name || (entry?.employee_id ? `Employee #${entry.employee_id}` : "");
+
 const LEAVE_LOCAL_TIME_FIELDS = new Set(["start_time", "end_time"]);
 const LEAVE_VIEWER_DATETIME_FIELDS = new Set(["reviewed_at", "withdrawn_at", "cancelled_at"]);
 
@@ -148,12 +151,12 @@ function LeaveAdminAuditTimelineContent({ title, emptyText, loading, error, item
                       {entry.leave_type ? (
                         <Typography variant="caption" color="text.secondary">
                           Leave type: {String(entry.leave_type).replace(/_/g, " ")}
-                          {entry.employee_id ? ` · Employee #${entry.employee_id}` : ""}
+                          {formatEmployeeLabel(entry) ? ` · ${formatEmployeeLabel(entry)}` : ""}
                           {entry.timezone ? ` · ${formatTimezoneLabel(entry.timezone) || entry.timezone}` : ""}
                         </Typography>
-                      ) : entry.employee_id ? (
+                      ) : formatEmployeeLabel(entry) ? (
                         <Typography variant="caption" color="text.secondary">
-                          Employee #{entry.employee_id}
+                          {formatEmployeeLabel(entry)}
                           {entry.timezone ? ` · ${formatTimezoneLabel(entry.timezone) || entry.timezone}` : ""}
                         </Typography>
                       ) : null}
