@@ -409,6 +409,7 @@ const LeaveReportsHelpDrawer = ({ open, onClose }) => (
         <HelpText>Download CSV files for accountants. Activity and Liability also support PDF summaries for quick review.</HelpText>
         <HelpText>Use warnings to identify missing rates, disabled carryover, skipped accrual rows, or policy gaps before accounting close.</HelpText>
         <HelpText>When using Carryover preview, managers can apply carryover manually after review. Apply posts leave ledger adjustments only and never pays employees automatically.</HelpText>
+        <HelpText>For who-changed-what admin history, use the Activity log in Leave Settings or the leave review workspace. Leave Reports stays focused on accounting and operational history, not primary write-audit workflows.</HelpText>
       </HelpSection>
 
       <Divider />
@@ -832,6 +833,9 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
       >
         <Stack spacing={2}>
           {metaError && <Alert severity="warning" variant="outlined">{metaError}</Alert>}
+          <Alert severity="info" variant="outlined">
+            Need manager/admin change history? Use <strong>Activity log</strong> in Leave Settings or the leave review workspace. Leave Reports remains the read-only accounting and run-history view.
+          </Alert>
           <Grid container spacing={1.5} alignItems="center">
             <Grid item xs={12} md={3}>
               <TextField
