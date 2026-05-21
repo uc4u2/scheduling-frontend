@@ -507,6 +507,8 @@ export const leaveSettings = {
     api.get("/manager/leave-accounting-report", { params, ...config }).then((r) => r.data),
   applyCarryover: (payload, config = {}) =>
     api.post("/manager/leave-carryover/apply", payload, config).then((r) => r.data),
+  getAdminAuditLogs: (params = {}, config = {}) =>
+    api.get("/manager/leave-admin/audit-logs", { params, ...config }).then((r) => r.data),
 };
 
 /* ------------------------------ Invitation Questionnaire Assignments ------------------------------ */
