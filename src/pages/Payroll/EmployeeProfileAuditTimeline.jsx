@@ -44,6 +44,11 @@ export default function EmployeeProfileAuditTimeline({
   employeeId,
   open,
   onClose,
+  actionFilter = "",
+  title = "Activity log",
+  subtitle = "Employee profile changes only. Sensitive values stay masked here.",
+  infoText = "This audit trail shows who changed the employee profile, when it changed, and the before/after values for curated fields only.",
+  emptyText = "No employee profile changes have been logged yet.",
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -62,6 +67,7 @@ export default function EmployeeProfileAuditTimeline({
           params: {
             include_snapshots: showSnapshots ? 1 : 0,
             limit: 50,
+            action: actionFilter || undefined,
           },
         });
         if (!ignore) {
@@ -81,7 +87,7 @@ export default function EmployeeProfileAuditTimeline({
     return () => {
       ignore = true;
     };
-  }, [employeeId, open, showSnapshots]);
+  }, [employeeId, open, showSnapshots, actionFilter]);
 
   const emptyState = useMemo(
     () => !loading && !error && Array.isArray(logs) && logs.length === 0,
@@ -105,10 +111,10 @@ export default function EmployeeProfileAuditTimeline({
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.5}>
           <Box>
             <Typography variant="h6" fontWeight={800}>
-              Activity log
+              {title}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Employee profile changes only. Sensitive values stay masked here.
+              {subtitle}
             </Typography>
           </Box>
           <Button
@@ -121,7 +127,7 @@ export default function EmployeeProfileAuditTimeline({
         </Stack>
 
         <Alert severity="info" variant="outlined">
-          This audit trail shows who changed the employee profile, when it changed, and the before/after values for curated fields only.
+          {infoText}
         </Alert>
 
         {loading ? (
@@ -133,7 +139,7 @@ export default function EmployeeProfileAuditTimeline({
         {error ? <Alert severity="error">{error}</Alert> : null}
 
         {emptyState ? (
-          <Alert severity="info">No employee profile changes have been logged yet.</Alert>
+          <Alert severity="info">{emptyText}</Alert>
         ) : null}
 
         {!loading && !error ? (

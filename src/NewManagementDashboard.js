@@ -144,6 +144,7 @@ import RecruiterAvailabilityTracker from "./RecruiterAvailabilityTracker";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
 import EmployeeManagementHelpDrawer from "./pages/sections/management/components/EmployeeManagementHelpDrawer";
+import EmployeeProfileAuditTimeline from "./pages/Payroll/EmployeeProfileAuditTimeline";
 import MobileManagerHome from "./components/manager/MobileManagerHome";
 import BusinessFinanceShell from "./pages/finance/BusinessFinanceShell";
 
@@ -1806,6 +1807,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   const [conversionRequests, setConversionRequests] = useState([]);
   const [conversionLoading, setConversionLoading] = useState(false);
   const [employeeHelpOpen, setEmployeeHelpOpen] = useState(false);
+  const [permissionAuditEmployee, setPermissionAuditEmployee] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [confirmArchiveId, setConfirmArchiveId] = useState(null);
@@ -2833,6 +2835,17 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                               </Stack>
                             )}
 
+                            {isManager && (
+                              <Button
+                                size="small"
+                                variant="text"
+                                sx={{ mt: 1, alignSelf: "flex-start", px: 0.5 }}
+                                onClick={() => setPermissionAuditEmployee(e)}
+                              >
+                                Permission activity
+                              </Button>
+                            )}
+
                             <Stack
                               direction={{ xs: "column", sm: "row" }}
                               spacing={1}
@@ -2922,10 +2935,20 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                 {error || message}
               </Alert>
             </Snackbar>
-            <EmployeeManagementHelpDrawer
-              open={employeeHelpOpen}
-              onClose={() => setEmployeeHelpOpen(false)}
-            />
+      <EmployeeManagementHelpDrawer
+        open={employeeHelpOpen}
+        onClose={() => setEmployeeHelpOpen(false)}
+      />
+      <EmployeeProfileAuditTimeline
+        employeeId={permissionAuditEmployee?.id || ""}
+        open={Boolean(permissionAuditEmployee)}
+        onClose={() => setPermissionAuditEmployee(null)}
+        actionFilter="permissions_updated"
+        title="Permission activity"
+        subtitle="Permission and access changes for this employee only."
+        infoText="This timeline shows who changed manager-facing access flags such as HR, supervisor, payroll, and payment permissions."
+        emptyText="No permission changes have been logged for this employee yet."
+      />
           </Box>
         );
 
