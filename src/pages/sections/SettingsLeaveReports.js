@@ -36,6 +36,7 @@ import SectionCard from "../../components/ui/SectionCard";
 import api, { leaveSettings } from "../../utils/api";
 import { LEAVE_TYPE_OPTIONS, formatLeaveTypeLabel } from "./utils/leaveSettings";
 import ThemedDateField from "../../components/ui/ThemedDateField";
+import LeaveAdminAuditTimeline from "./LeaveAdminAuditTimeline";
 
 const REPORT_TYPES = [
   { value: "activity", label: "Activity", description: "Leave request history and payroll-readiness context." },
@@ -646,6 +647,7 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
   const [carryoverConfirmOpen, setCarryoverConfirmOpen] = useState(false);
   const [applyingCarryover, setApplyingCarryover] = useState(false);
   const [applyResult, setApplyResult] = useState(null);
+  const [adminActivityOpen, setAdminActivityOpen] = useState(false);
 
   const selectedReportType = useMemo(
     () => REPORT_TYPES.find((item) => item.value === filters.report_type) || REPORT_TYPES[0],
@@ -664,6 +666,21 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
   const isCarryoverRunsReport = filters.report_type === "carryover_runs";
   const isCarryoverRowsReport = filters.report_type === "carryover_run_rows";
   const isCarryoverReport = isCarryoverPreviewReport || isCarryoverRunsReport || isCarryoverRowsReport;
+  const adminActivityEntityTypes = useMemo(() => {
+    if (isAccrualReport) return ["accrual_run"];
+    if (isCarryoverReport) return ["carryover_run"];
+    return [];
+  }, [isAccrualReport, isCarryoverReport]);
+  const adminActivityTitle = isAccrualReport
+    ? "Accrual posting activity"
+    : isCarryoverReport
+      ? "Carryover activity"
+      : "Leave admin activity";
+  const adminActivityEmptyText = isAccrualReport
+    ? "No accrual posting activity recorded yet."
+    : isCarryoverReport
+      ? "No carryover activity recorded yet."
+      : "No leave admin activity recorded yet.";
 
   useEffect(() => {
     let mounted = true;
@@ -816,6 +833,11 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {(isAccrualReport || isCarryoverReport) && (
+            <Button variant="outlined" onClick={() => setAdminActivityOpen(true)}>
+              Admin activity
+            </Button>
+          )}
           {isCarryoverReport && (
             <Button variant="outlined" color="success" startIcon={<HelpOutlineIcon />} onClick={() => setCarryoverHelpOpen(true)}>
               How carryover works
@@ -1230,6 +1252,13 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
       </Dialog>
       <LeaveReportsHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
       <CarryoverHelpDrawer open={carryoverHelpOpen} onClose={() => setCarryoverHelpOpen(false)} />
+      <LeaveAdminAuditTimeline
+        open={adminActivityOpen}
+        onClose={() => setAdminActivityOpen(false)}
+        title={adminActivityTitle}
+        emptyText={adminActivityEmptyText}
+        entityTypes={adminActivityEntityTypes}
+      />
     </Stack>
   );
 }
