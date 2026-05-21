@@ -43,6 +43,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import EmployeeProfileAuditTimeline from "./EmployeeProfileAuditTimeline";
 
 const CANADA_PROVINCES = [
   "AB",
@@ -152,6 +153,7 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [onboardingSendSuccess, setOnboardingSendSuccess] = useState(false);
   const [payrollExpanded, setPayrollExpanded] = useState(true);
   const [snapshotExpanded, setSnapshotExpanded] = useState(false);
+  const [activityLogOpen, setActivityLogOpen] = useState(false);
   const [retirementPlan, setRetirementPlan] = useState(null);
   const [retirementElection, setRetirementElection] = useState({
     contrib_percent: "",
@@ -890,6 +892,11 @@ const FRONTEND_ORIGIN = (() => {
                 <Button size="small" variant="outlined" component={RouterLink} to={`/manager/team?recruiter=${selectedId}`}>
                   Open shifts
                 </Button>
+                {selectedId && (
+                  <Button size="small" variant="outlined" onClick={() => setActivityLogOpen(true)}>
+                    Activity log
+                  </Button>
+                )}
                 <Button size="small" variant="text" onClick={() => fetchDocuments(selectedId)} disabled={docLoading}>
                   Refresh documents
                 </Button>
@@ -1801,11 +1808,23 @@ const FRONTEND_ORIGIN = (() => {
           )}
 
           <Box sx={{ mt: 3 }}>
-            <Button variant="contained" onClick={handleSubmit}>
-              {t("manager.employeeProfiles.actions.save")}
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+              <Button variant="contained" onClick={handleSubmit}>
+                {t("manager.employeeProfiles.actions.save")}
+              </Button>
+              {selectedId && (
+                <Button variant="outlined" onClick={() => setActivityLogOpen(true)}>
+                  Activity log
+                </Button>
+              )}
+            </Stack>
           </Box>
         </Paper>
+        <EmployeeProfileAuditTimeline
+          employeeId={selectedId}
+          open={activityLogOpen}
+          onClose={() => setActivityLogOpen(false)}
+        />
         </>
       )}
 

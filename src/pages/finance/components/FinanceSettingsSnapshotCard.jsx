@@ -11,7 +11,7 @@ export default function FinanceSettingsSnapshotCard({
   const chips = [
     {
       key: "jurisdiction",
-      label: `Tax ${taxContext.tax_country_code || "—"} / ${taxContext.tax_region_code || "—"}`,
+      label: `Jurisdiction ${taxContext.tax_country_code || "—"} / ${taxContext.tax_region_code || "—"}`,
     },
     {
       key: "currency",
@@ -19,21 +19,28 @@ export default function FinanceSettingsSnapshotCard({
     },
     {
       key: "prices-include-tax",
-      label: `Prices include tax ${taxContext.prices_include_tax ? "ON" : "OFF"}`,
+      label: `Tax incl. ${taxContext.prices_include_tax ? "ON" : "OFF"}`,
     },
   ];
 
   if (taxContext.default_tax_rate != null) {
     chips.push({
       key: "default-tax-rate",
-      label: `Default tax ${Number(taxContext.default_tax_rate).toFixed(2)}%`,
+      label: `Default ${Number(taxContext.default_tax_rate).toFixed(2)}%`,
+    });
+  }
+
+  if (taxContext.tax_label) {
+    chips.push({
+      key: "tax-label",
+      label: taxContext.tax_label,
     });
   }
 
   if (taxContext.charge_currency_mode) {
     chips.push({
       key: "charge-currency-mode",
-      label: `Charge mode ${String(taxContext.charge_currency_mode).replaceAll("_", " ")}`,
+      label: `Charge ${String(taxContext.charge_currency_mode).replaceAll("_", " ")}`,
     });
   }
 
@@ -51,6 +58,15 @@ export default function FinanceSettingsSnapshotCard({
             <Chip key={chip.key} size="small" variant="outlined" label={chip.label} />
           ))}
         </Stack>
+        {taxContext.tax_components?.length ? (
+          <Typography variant="caption" color="text.secondary">
+            Components: {taxContext.tax_components.map((row) => `${row.code} ${Number(row.rate || 0).toFixed(3)}%`).join(" + ")}
+          </Typography>
+        ) : null}
+        <Typography variant="caption" color="text.secondary">
+          Source: {taxContext.default_tax_rate_source || "manual required"}
+          {taxContext.confirmed_by_manager ? " • confirmed by manager" : ""}
+        </Typography>
         {taxContext.warning ? <Alert severity="warning">{taxContext.warning}</Alert> : null}
       </Stack>
     </Paper>

@@ -1271,6 +1271,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           enqueueSnackbar(editing ? tEstimate("snackbar.updated", "Estimate updated.") : tEstimate("snackbar.created", "Estimate created."), { variant: "success" });
           await load();
         }}
+        onNavigate={onNavigate}
         estimate={editing}
         clients={clients}
         templates={templates}

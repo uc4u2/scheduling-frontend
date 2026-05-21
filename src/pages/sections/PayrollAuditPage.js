@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import api from "../../utils/api";
 import {
   Box,
+  Chip,
   Grid,
-  TextField,
   Button,
   Select,
   MenuItem,
@@ -27,6 +27,8 @@ import {
   DialogContent,
   DialogActions,
   Alert,
+  Divider,
+  Collapse,
 } from "@mui/material";
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
@@ -63,11 +65,10 @@ export default function PayrollAuditPage() {
   const [pageSize, setPageSize] = useState(50);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [snapshot, setSnapshot] = useState(null);
-  const [diff, setDiff] = useState(null);
-  const [pdfAuditId, setPdfAuditId] = useState(null);
+  const [selectedAudit, setSelectedAudit] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showRaw, setShowRaw] = useState(false);
   const userTz = getUserTimezone();
   const latestEntryByPeriod = rows.reduce((acc, row) => {
     const key = `${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`;
@@ -111,6 +112,47 @@ export default function PayrollAuditPage() {
   }, [recruiterId, region, startDate, endDate, overwritesOnly, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+
+  const actionLabel = (value) => {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "create") return "Created";
+    if (normalized === "update") return "Overwritten";
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "Updated";
+  };
+
+  const actionColor = (value) => {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "create") return "success";
+    if (normalized === "update") return "warning";
+    return "default";
+  };
+
+  const regionLabel = (value) => {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "ca") return "Canada";
+    if (normalized === "qc") return "Québec";
+    if (normalized === "us") return "United States";
+    if (normalized === "other") return "Other";
+    return normalized ? normalized.toUpperCase() : "—";
+  };
+
+  const formatValue = (value) => {
+    if (value === null || value === undefined || value === "") return "—";
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(2);
+    if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
+    if (typeof value === "object") return JSON.stringify(value, null, 2);
+    return String(value);
+  };
+
+  const prettyFieldLabel = (field) =>
+    String(field || "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  const selectedAuditDiffEntries = selectedAudit?.diff_json && typeof selectedAudit.diff_json === "object"
+    ? Object.entries(selectedAudit.diff_json)
+    : [];
 
   const handleDownloadPdf = async (id) => {
     if (!id) return;
@@ -260,7 +302,7 @@ export default function PayrollAuditPage() {
                 <TableCell>Region</TableCell>
                 <TableCell>Employee</TableCell>
                 <TableCell>Action</TableCell>
-                <TableCell>Snapshot</TableCell>
+                <TableCell>Status</TableCell>
                 <TableCell>Finalized By</TableCell>
                 <TableCell>Finalized At</TableCell>
                 <TableCell>Details</TableCell>
@@ -281,15 +323,47 @@ export default function PayrollAuditPage() {
                   <TableCell>
                     {row.start_date} → {row.end_date}
                   </TableCell>
-                  <TableCell>{row.region?.toUpperCase() || "—"}</TableCell>
-                  <TableCell>{row.employee_id}</TableCell>
-                  <TableCell>{row.action}</TableCell>
                   <TableCell>
-                    {latestEntryByPeriod[`${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`] === row.id
-                      ? "Latest"
-                      : "Historical"}
+                    <Chip size="small" variant="outlined" label={regionLabel(row.region)} />
                   </TableCell>
-                  <TableCell>{row.finalized_by_email || row.finalized_by_id || "—"}</TableCell>
+                  <TableCell>
+                    <Stack spacing={0.25}>
+                      <Typography variant="body2" fontWeight={700}>
+                        {row.employee_name || `Employee #${row.employee_id}`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.employee_email || "—"}
+                        {row.employee_department ? ` • ${row.employee_department}` : ""}
+                      </Typography>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" color={actionColor(row.action)} variant="outlined" label={actionLabel(row.action)} />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      variant={latestEntryByPeriod[`${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`] === row.id ? "filled" : "outlined"}
+                      color={latestEntryByPeriod[`${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`] === row.id ? "primary" : "default"}
+                      label={
+                        latestEntryByPeriod[`${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`] === row.id
+                          ? "Latest"
+                          : "Historical"
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Stack spacing={0.25}>
+                      <Typography variant="body2" fontWeight={700}>
+                        {row.actor_name || row.finalized_by_email || row.finalized_by_id || "—"}
+                      </Typography>
+                      {row.finalized_by_email ? (
+                        <Typography variant="caption" color="text.secondary">
+                          {row.finalized_by_email}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  </TableCell>
                   <TableCell>
                     {row.created_at ? formatDateTimeInTz(coerceUtcIso(row.created_at), userTz) : "—"}
                   </TableCell>
@@ -299,12 +373,11 @@ export default function PayrollAuditPage() {
                         size="small"
                         variant="outlined"
                         onClick={() => {
-                          setSnapshot(row.snapshot_json || null);
-                          setDiff(row.diff_json || null);
-                          setPdfAuditId(row.id || null);
+                          setSelectedAudit(row);
+                          setShowRaw(false);
                         }}
                       >
-                        View snapshot
+                        View details
                       </Button>
                       <Button
                         size="small"
@@ -358,45 +431,119 @@ export default function PayrollAuditPage() {
         </Stack>
       </Stack>
       <Dialog
-        open={!!snapshot || !!diff}
+        open={!!selectedAudit}
         onClose={() => {
-          setSnapshot(null);
-          setDiff(null);
-          setPdfAuditId(null);
+          setSelectedAudit(null);
+          setShowRaw(false);
         }}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Snapshot / Diff</DialogTitle>
+        <DialogTitle>Payroll audit detail</DialogTitle>
         <DialogContent>
-          <Typography variant="subtitle2" gutterBottom>
-            Snapshot
-          </Typography>
-          <Box component="pre" sx={{ maxHeight: 300, overflow: "auto", p: 1, bgcolor: "grey.100" }}>
-            {snapshot ? JSON.stringify(snapshot, null, 2) : "No snapshot"}
-          </Box>
-          <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
-            Diff (old → new)
-          </Typography>
-          <Box component="pre" sx={{ maxHeight: 300, overflow: "auto", p: 1, bgcolor: "grey.100" }}>
-            {diff ? JSON.stringify(diff, null, 2) : "No diff"}
-          </Box>
-          {pdfAuditId ? (
-            <Button
-              sx={{ mt: 2 }}
-              disabled={downloading}
-              onClick={() => handleDownloadPdf(pdfAuditId)}
-            >
-              {downloading ? "Downloading…" : "Open PDF"}
-            </Button>
+          {selectedAudit ? (
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip size="small" color={actionColor(selectedAudit.action)} variant="outlined" label={actionLabel(selectedAudit.action)} />
+                <Chip
+                  size="small"
+                  variant={latestEntryByPeriod[`${selectedAudit.employee_id || "na"}|${selectedAudit.region || "na"}|${selectedAudit.start_date || "na"}|${selectedAudit.end_date || "na"}`] === selectedAudit.id ? "filled" : "outlined"}
+                  color={latestEntryByPeriod[`${selectedAudit.employee_id || "na"}|${selectedAudit.region || "na"}|${selectedAudit.start_date || "na"}|${selectedAudit.end_date || "na"}`] === selectedAudit.id ? "primary" : "default"}
+                  label={latestEntryByPeriod[`${selectedAudit.employee_id || "na"}|${selectedAudit.region || "na"}|${selectedAudit.start_date || "na"}|${selectedAudit.end_date || "na"}`] === selectedAudit.id ? "Latest authoritative snapshot" : "Historical overwrite snapshot"}
+                />
+                <Chip size="small" variant="outlined" label={regionLabel(selectedAudit.region)} />
+              </Stack>
+
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Stack spacing={0.75}>
+                  <Typography variant="subtitle2" fontWeight={700}>Summary</Typography>
+                  <Typography variant="body2">
+                    <strong>Employee:</strong> {selectedAudit.employee_name || `Employee #${selectedAudit.employee_id}`}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Actor:</strong> {selectedAudit.actor_name || selectedAudit.finalized_by_email || selectedAudit.finalized_by_id || "—"}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Period:</strong> {selectedAudit.start_date} → {selectedAudit.end_date}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Finalized at:</strong> {selectedAudit.created_at ? formatDateTimeInTz(coerceUtcIso(selectedAudit.created_at), userTz) : "—"}
+                  </Typography>
+                </Stack>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                  What changed
+                </Typography>
+                {selectedAuditDiffEntries.length ? (
+                  <Stack spacing={1}>
+                    {selectedAuditDiffEntries.map(([field, delta]) => (
+                      <Paper key={field} variant="outlined" sx={{ p: 1.25 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                          {prettyFieldLabel(field)}
+                        </Typography>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 0.35 }}>
+                          <Typography variant="body2">
+                            <strong>Before:</strong> {formatValue(delta?.before)}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>After:</strong> {formatValue(delta?.after)}
+                          </Typography>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No field-level diff was captured for this payroll audit record.
+                  </Typography>
+                )}
+              </Paper>
+
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setShowRaw((prev) => !prev)}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {showRaw ? "Hide raw snapshot / diff" : "Show raw snapshot / diff"}
+              </Button>
+              <Collapse in={showRaw}>
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Raw snapshot
+                    </Typography>
+                    <Box component="pre" sx={{ maxHeight: 300, overflow: "auto", p: 1, bgcolor: "grey.100" }}>
+                      {JSON.stringify(selectedAudit.snapshot_json || {}, null, 2)}
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Raw diff
+                    </Typography>
+                    <Box component="pre" sx={{ maxHeight: 300, overflow: "auto", p: 1, bgcolor: "grey.100" }}>
+                      {JSON.stringify(selectedAudit.diff_json || {}, null, 2)}
+                    </Box>
+                  </Box>
+                </Stack>
+              </Collapse>
+              <Divider />
+              <Button
+                disabled={downloading || !selectedAudit.id}
+                onClick={() => handleDownloadPdf(selectedAudit.id)}
+              >
+                {downloading ? "Downloading…" : "Download PDF snapshot"}
+              </Button>
+            </Stack>
           ) : null}
         </DialogContent>
         <DialogActions>
           <Button
             onClick={() => {
-              setSnapshot(null);
-              setDiff(null);
-              setPdfAuditId(null);
+              setSelectedAudit(null);
+              setShowRaw(false);
             }}
           >
             Close
