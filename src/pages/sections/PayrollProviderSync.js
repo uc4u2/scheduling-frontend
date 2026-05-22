@@ -171,6 +171,7 @@ export default function PayrollProviderSync({
   endDate,
   payFrequency,
   payroll,
+  recruiters = [],
   filteredRecruiters = [],
   setSnackbar,
 }) {
@@ -215,26 +216,49 @@ export default function PayrollProviderSync({
     provider_item_id: "",
     provider_item_name: "",
   });
+  const [providerScopeMode, setProviderScopeMode] = useState("all_filtered");
+  const [providerSelectedEmployeeIds, setProviderSelectedEmployeeIds] = useState([]);
   const runPanelRef = useRef(null);
 
-  const availableEmployeeIds = useMemo(() => {
-    if (exportAllEmployees) {
-      if (departmentFilter) {
-        return truthyIds(filteredRecruiters.map((row) => row.id));
-      }
-      return [];
-    }
+  const scopedRecruiters = useMemo(
+    () => (departmentFilter ? filteredRecruiters : recruiters),
+    [departmentFilter, filteredRecruiters, recruiters]
+  );
+  const scopedRecruiterIds = useMemo(
+    () => truthyIds(scopedRecruiters.map((row) => row.id)),
+    [scopedRecruiters]
+  );
+  const defaultProviderEmployeeIds = useMemo(() => {
     if (Array.isArray(exportEmployeeIds) && exportEmployeeIds.length) {
       return truthyIds(exportEmployeeIds);
     }
-    if (selectedRecruiter) {
+    if (!exportAllEmployees && selectedRecruiter) {
       return [String(selectedRecruiter)];
     }
     return [];
-  }, [departmentFilter, exportAllEmployees, exportEmployeeIds, filteredRecruiters, selectedRecruiter]);
+  }, [exportAllEmployees, exportEmployeeIds, selectedRecruiter]);
+  const defaultProviderScopeMode = useMemo(() => {
+    if (defaultProviderEmployeeIds.length > 1) return "custom";
+    if (defaultProviderEmployeeIds.length === 1) return "single";
+    return "all_filtered";
+  }, [defaultProviderEmployeeIds]);
+  const availableEmployeeIds = useMemo(() => {
+    if (providerScopeMode === "single") {
+      return providerSelectedEmployeeIds[0] ? [providerSelectedEmployeeIds[0]] : [];
+    }
+    if (providerScopeMode === "custom") {
+      return providerSelectedEmployeeIds;
+    }
+    return scopedRecruiterIds;
+  }, [providerScopeMode, providerSelectedEmployeeIds, scopedRecruiterIds]);
+  const selectedEmployeeNames = useMemo(() => {
+    const byId = new Map(scopedRecruiters.map((row) => [String(row.id), `${row.first_name} ${row.last_name}`.trim()]));
+    return availableEmployeeIds.map((id) => byId.get(String(id)) || `Employee ${id}`);
+  }, [availableEmployeeIds, scopedRecruiters]);
 
   const missingDates = !startDate || !endDate;
-  const noExplicitEmployees = !exportAllEmployees && availableEmployeeIds.length === 0;
+  const noExplicitEmployees =
+    (providerScopeMode === "single" || providerScopeMode === "custom") && availableEmployeeIds.length === 0;
   const canPrepare = !missingDates;
 
   // Province/state is still owned inside PayrollFilters. For this first pass,
@@ -359,6 +383,11 @@ export default function PayrollProviderSync({
   useEffect(() => {
     setEmployeePage(0);
   }, [employeeFilter, employeeSearch, selectedRunId]);
+
+  useEffect(() => {
+    setProviderScopeMode(defaultProviderScopeMode);
+    setProviderSelectedEmployeeIds(defaultProviderEmployeeIds);
+  }, [defaultProviderEmployeeIds, defaultProviderScopeMode]);
 
   useEffect(() => {
     if (selectedRunId && runData?.id !== selectedRunId) {
@@ -656,6 +685,38 @@ export default function PayrollProviderSync({
     (validationData?.csv_blocking_errors || []).length === 0;
   const csvDownloadAllowed = validationData?.csv_download_allowed ?? true;
   const csvBlockingErrors = validationData?.csv_blocking_errors || [];
+  const chipSx = {
+    active: {
+      bgcolor: "#173a7a",
+      color: "#ffffff",
+      border: "1px solid #173a7a",
+      fontWeight: 700,
+    },
+    neutral: {
+      bgcolor: "#eef3ff",
+      color: "#173a7a",
+      border: "1px solid #cad8ff",
+      fontWeight: 700,
+    },
+    success: {
+      bgcolor: "#1f6b43",
+      color: "#ffffff",
+      border: "1px solid #1f6b43",
+      fontWeight: 700,
+    },
+    warning: {
+      bgcolor: "#fff1cf",
+      color: "#6f4600",
+      border: "1px solid #f2cb6b",
+      fontWeight: 700,
+    },
+    danger: {
+      bgcolor: "#ffe1df",
+      color: "#8a1c16",
+      border: "1px solid #ef9a95",
+      fontWeight: 700,
+    },
+  };
 
   const employeeMappingRows = useMemo(() => {
     const mappedRows = employeeMappings.filter((row) => row.provider === provider);
@@ -807,10 +868,10 @@ export default function PayrollProviderSync({
           Provider Sync prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Official payroll is completed in QuickBooks or your payroll provider.
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
-          <Chip color="warning" variant="outlined" label="QuickBooks official import format: not verified yet" />
-          <Chip color="success" variant="outlined" label="Provider Sync = recommended payroll handoff workflow" />
+          <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />
+          <Chip label="Provider Sync = recommended payroll handoff workflow" sx={chipSx.success} />
         </Stack>
-        <Alert severity="warning" sx={{ mt: 2 }}>
+        <Alert severity="info" sx={{ mt: 2 }}>
           QuickBooks official import format: not verified yet.
         </Alert>
       </Paper>
@@ -836,9 +897,9 @@ export default function PayrollProviderSync({
           </Grid>
           <Grid item xs={12} md={8}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
-              <Chip label="QuickBooks" color={provider === "quickbooks" ? "primary" : "default"} />
-              <Chip label="CSV fallback" color={provider === "csv_provider" ? "primary" : "default"} />
-              <Chip label="Xero coming later" variant="outlined" />
+              <Chip label="QuickBooks" sx={provider === "quickbooks" ? chipSx.active : chipSx.neutral} />
+              <Chip label="CSV fallback" sx={provider === "csv_provider" ? chipSx.active : chipSx.neutral} />
+              <Chip label="Xero coming later" sx={chipSx.neutral} />
             </Stack>
           </Grid>
         </Grid>
@@ -925,7 +986,7 @@ export default function PayrollProviderSync({
                   <Chip
                     key={key}
                     size="small"
-                    color={missingPayItemKeys.includes(key) ? "warning" : "success"}
+                    sx={missingPayItemKeys.includes(key) ? chipSx.warning : chipSx.success}
                     label={payItemLabel[key] || key}
                   />
                 ))}
@@ -941,7 +1002,7 @@ export default function PayrollProviderSync({
             {optionalMappedPayItemKeys.length ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 {optionalMappedPayItemKeys.map((key) => (
-                  <Chip key={key} size="small" variant="outlined" label={payItemLabel[key] || key} />
+                  <Chip key={key} size="small" sx={chipSx.neutral} label={payItemLabel[key] || key} />
                 ))}
               </Stack>
             ) : (
@@ -956,7 +1017,7 @@ export default function PayrollProviderSync({
           Prepare payroll-ready data
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Use the current Payroll page filters to prepare payroll-ready inputs, preview provider payload, download provider CSV, and complete payroll inside the provider.
+          Use Provider Sync filters below to prepare payroll-ready inputs, preview provider payload, download provider CSV, and complete payroll inside the provider.
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
           Provider Sync CSV is the recommended handoff for accountants, payroll providers, and QuickBooks review workflows. Use this CSV for live QuickBooks/accountant testing. It is not yet a verified official QuickBooks Payroll import format.
@@ -968,16 +1029,92 @@ export default function PayrollProviderSync({
         )}
         {noExplicitEmployees && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            No employee was selected while “all employees” is off. If you continue, the backend may run for available employees in the selected period or department if supported.
+            No Provider Sync employees are selected yet. Choose one employee or a custom employee list before preparing payroll-ready data.
           </Alert>
         )}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="provider-sync-scope-label">Provider Sync employee scope</InputLabel>
+              <Select
+                labelId="provider-sync-scope-label"
+                label="Provider Sync employee scope"
+                value={providerScopeMode}
+                onChange={(event) => {
+                  const nextMode = event.target.value;
+                  setProviderScopeMode(nextMode);
+                  if (nextMode === "all_filtered") {
+                    setProviderSelectedEmployeeIds([]);
+                  } else if (nextMode === "single") {
+                    setProviderSelectedEmployeeIds(defaultProviderEmployeeIds.slice(0, 1));
+                  } else {
+                    setProviderSelectedEmployeeIds(defaultProviderEmployeeIds);
+                  }
+                }}
+              >
+                <MenuItem value="all_filtered">
+                  {departmentFilter ? "All employees in selected department" : "All employees in Provider Sync"}
+                </MenuItem>
+                <MenuItem value="single">One employee only</MenuItem>
+                <MenuItem value="custom">Custom employee selection</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          {providerScopeMode === "single" && (
+            <Grid item xs={12} md={8}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="provider-sync-single-employee-label">Employee</InputLabel>
+                <Select
+                  labelId="provider-sync-single-employee-label"
+                  label="Employee"
+                  value={providerSelectedEmployeeIds[0] || ""}
+                  onChange={(event) => setProviderSelectedEmployeeIds(event.target.value ? [String(event.target.value)] : [])}
+                >
+                  {scopedRecruiters.map((row) => (
+                    <MenuItem key={row.id} value={String(row.id)}>
+                      {row.first_name} {row.last_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+          {providerScopeMode === "custom" && (
+            <Grid item xs={12} md={8}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="provider-sync-custom-employees-label">Employees</InputLabel>
+                <Select
+                  multiple
+                  labelId="provider-sync-custom-employees-label"
+                  label="Employees"
+                  value={providerSelectedEmployeeIds}
+                  onChange={(event) => setProviderSelectedEmployeeIds(truthyIds(event.target.value))}
+                  renderValue={(selected) =>
+                    truthyIds(selected)
+                      .map((id) => {
+                        const row = scopedRecruiters.find((item) => String(item.id) === String(id));
+                        return row ? `${row.first_name} ${row.last_name}` : id;
+                      })
+                      .join(", ")
+                  }
+                >
+                  {scopedRecruiters.map((row) => (
+                    <MenuItem key={row.id} value={String(row.id)}>
+                      {row.first_name} {row.last_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+        </Grid>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>Region:</strong> {region || "—"}</Typography></Grid>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>Start date:</strong> {startDate || "—"}</Typography></Grid>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>End date:</strong> {endDate || "—"}</Typography></Grid>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>Pay frequency:</strong> {payFrequency || "—"}</Typography></Grid>
           <Grid item xs={12} md={6}><Typography variant="body2"><strong>Department filter:</strong> {departmentFilter || "All departments"}</Typography></Grid>
-          <Grid item xs={12} md={6}><Typography variant="body2"><strong>Selected employees:</strong> {availableEmployeeIds.length ? availableEmployeeIds.join(", ") : exportAllEmployees ? "All available employees" : "Backend default scope"}</Typography></Grid>
+          <Grid item xs={12} md={6}><Typography variant="body2"><strong>Selected employees:</strong> {providerScopeMode === "all_filtered" ? `${scopedRecruiterIds.length || 0} employee(s) in Provider Sync scope` : selectedEmployeeNames.join(", ") || "None selected"}</Typography></Grid>
         </Grid>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <Button variant="contained" onClick={handlePreview} disabled={!canPrepare || previewLoading}>
@@ -1192,7 +1329,7 @@ export default function PayrollProviderSync({
                 <Grid item xs={12} md={2}>
                   <Chip
                     size="small"
-                    color={row.provider_employee_id ? "success" : "warning"}
+                    sx={row.provider_employee_id ? chipSx.success : chipSx.warning}
                     label={row.provider_employee_id ? "Mapped" : row.source === "run_unmapped" ? "Current run unmapped" : "Needs mapping"}
                   />
                 </Grid>
@@ -1396,10 +1533,10 @@ export default function PayrollProviderSync({
                   <TableCell>{line.provider_item_id || "—"}</TableCell>
                   <TableCell>
                     {line.is_valid ? (
-                      <Chip size="small" color="success" label="Valid" />
+                      <Chip size="small" sx={chipSx.success} label="Valid" />
                     ) : (
                       <Stack spacing={0.5}>
-                        <Chip size="small" color="warning" label="Needs attention" />
+                        <Chip size="small" sx={chipSx.warning} label="Needs attention" />
                         {line.errors?.map((error, index) => (
                           <Typography variant="caption" color="error" key={`${line.line_id}-${index}`}>
                             {error?.code || error?.message}
