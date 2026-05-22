@@ -18,6 +18,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import { payrollProviderSyncApi } from "../../utils/api";
@@ -88,6 +89,36 @@ const adjustmentTypeLabels = {
   family_bonus: "family bonus",
 };
 
+const payItemLabel = {
+  regular_hours: "regular hours",
+  overtime_1_5: "overtime 1.5x",
+  paid_leave: "paid leave",
+  holiday_hours: "holiday hours",
+  vacation_pay: "vacation pay",
+  tips: "tips",
+  bonus: "bonus",
+  attendance_bonus: "attendance bonus",
+  performance_bonus: "performance bonus",
+  commission: "commission",
+  shift_premium: "shift premium",
+  travel_allowance: "travel allowance",
+  non_taxable_reimbursement: "non-taxable reimbursement",
+  parental_top_up: "parental top-up",
+  family_bonus: "family bonus",
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
+};
+
+const formatNumber = (value) => {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
 export default function PayrollProviderSync({
   departmentFilter,
   selectedRecruiter,
@@ -123,6 +154,16 @@ export default function PayrollProviderSync({
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [bootstrapPayItemsLoading, setBootstrapPayItemsLoading] = useState(false);
   const [bootstrapEmployeesLoading, setBootstrapEmployeesLoading] = useState(false);
+  const [mappingLoading, setMappingLoading] = useState(false);
+  const [employeeMappings, setEmployeeMappings] = useState([]);
+  const [payItemMappings, setPayItemMappings] = useState([]);
+  const [runHistory, setRunHistory] = useState([]);
+  const [employeeMappingDrafts, setEmployeeMappingDrafts] = useState({});
+  const [payItemDraft, setPayItemDraft] = useState({
+    local_key: "",
+    provider_item_id: "",
+    provider_item_name: "",
+  });
 
   const availableEmployeeIds = useMemo(() => {
     if (exportAllEmployees) {
@@ -154,6 +195,24 @@ export default function PayrollProviderSync({
     }
   };
 
+  const loadMappingData = async () => {
+    setMappingLoading(true);
+    try {
+      const [employeeRes, payItemRes, runsRes] = await Promise.all([
+        payrollProviderSyncApi.listEmployeeMappings(provider),
+        payrollProviderSyncApi.listPayItemMappings(provider),
+        payrollProviderSyncApi.listRuns({ provider, limit: 10 }),
+      ]);
+      setEmployeeMappings(employeeRes?.items || []);
+      setPayItemMappings(payItemRes?.items || []);
+      setRunHistory(runsRes?.items || []);
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to load provider mappings/history."), "error");
+    } finally {
+      setMappingLoading(false);
+    }
+  };
+
   const loadSetupStatus = async () => {
     setStatusLoading(true);
     setSetupError("");
@@ -172,8 +231,9 @@ export default function PayrollProviderSync({
 
   useEffect(() => {
     loadSetupStatus();
+    loadMappingData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [provider]);
 
   const buildRunPayload = () => ({
     provider,
@@ -213,6 +273,7 @@ export default function PayrollProviderSync({
     try {
       const data = await payrollProviderSyncApi.createFromRaw(buildRunPayload());
       setRunData(data?.run || data);
+      await loadMappingData();
       showMessage("Provider run created.", "success");
     } catch (err) {
       const message = await buildRequestErrorMessage(err, "Failed to create provider run.");
@@ -229,6 +290,7 @@ export default function PayrollProviderSync({
       const data = await payrollProviderSyncApi.validateRun(runData.id);
       setValidationData(data?.result || data);
       setRunData(data?.run || runData);
+      await loadMappingData();
       showMessage("Provider run validated.", "success");
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Run validation failed."), "error");
@@ -243,6 +305,7 @@ export default function PayrollProviderSync({
     try {
       const data = await payrollProviderSyncApi.quickbooksPayloadPreview(runData.id);
       setPayloadPreview(data);
+      await loadMappingData();
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Failed to preview provider payload."), "error");
     } finally {
@@ -264,6 +327,7 @@ export default function PayrollProviderSync({
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      await loadMappingData();
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Failed to download provider CSV."), "error");
     } finally {
@@ -276,6 +340,7 @@ export default function PayrollProviderSync({
     try {
       await payrollProviderSyncApi.bootstrapPayItemDefaults("quickbooks");
       await loadSetupStatus();
+      await loadMappingData();
       showMessage("Pay item placeholders created.", "success");
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Failed to bootstrap pay item placeholders."), "error");
@@ -289,6 +354,7 @@ export default function PayrollProviderSync({
     try {
       await payrollProviderSyncApi.bootstrapEmployeesFromLegacy("quickbooks");
       await loadSetupStatus();
+      await loadMappingData();
       showMessage("Employee mappings bootstrapped from legacy IDs.", "success");
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Failed to bootstrap employee mappings."), "error");
@@ -302,6 +368,142 @@ export default function PayrollProviderSync({
   const isQuickBooksAccountingOnly =
     provider === "quickbooks" &&
     statusReadiness === "accounting_only";
+
+  const mappedEmployeeIds = useMemo(
+    () =>
+      new Set(
+        employeeMappings
+          .filter((item) => item.provider === provider && item.provider_employee_id)
+          .map((item) => String(item.employee_id))
+      ),
+    [employeeMappings, provider]
+  );
+
+  const mappedPayItemKeys = useMemo(
+    () =>
+      new Set(
+        payItemMappings
+          .filter((item) => item.provider === provider && item.provider_item_id && item.is_active)
+          .map((item) => item.local_key)
+      ),
+    [payItemMappings, provider]
+  );
+
+  const currentRunRows = runData?.employee_rows || [];
+  const currentRunEmployeeIds = useMemo(
+    () => currentRunRows.map((row) => String(row.employee_id)),
+    [currentRunRows]
+  );
+  const unmappedRunEmployees = useMemo(
+    () =>
+      currentRunRows.filter((row) => !row.provider_employee_id && !mappedEmployeeIds.has(String(row.employee_id))),
+    [currentRunRows, mappedEmployeeIds]
+  );
+  const currentRunKeys = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (currentRunRows || []).flatMap((row) =>
+            (row.earning_lines || []).map((line) => line.earning_key).filter(Boolean)
+          )
+        )
+      ).sort(),
+    [currentRunRows]
+  );
+  const requiredPayItemKeys = validationData?.required_pay_item_keys_for_run || currentRunKeys;
+  const missingPayItemKeys = validationData?.missing_pay_item_keys || [];
+  const optionalMappedPayItemKeys = validationData?.optional_mapped_pay_item_keys || Array.from(mappedPayItemKeys).filter((key) => !requiredPayItemKeys.includes(key)).sort();
+  const unmappedEmployeeIdsFromValidation = formatList(validationData?.missing_employee_map_ids).map((id) => String(id));
+  const currentRunMappedEmployeeCount = currentRunEmployeeIds.filter((id) => mappedEmployeeIds.has(String(id))).length;
+  const currentRunUnmappedEmployeeCount = currentRunEmployeeIds.length - currentRunMappedEmployeeCount;
+  const currentRunMappedPayItemCount = requiredPayItemKeys.filter((key) => mappedPayItemKeys.has(key)).length;
+  const adjustmentOnlyLineCount = validationData?.adjustment_only_line_count ?? 0;
+  const invalidNegativeLineIds = formatList(validationData?.invalid_negative_line_ids);
+  const unpaidLeaveVisibilityEmployeeIds = formatList(validationData?.unpaid_leave_visibility_employee_ids);
+  const sourceHashChanged = useMemo(() => {
+    if (!previewData?.source_hash) return false;
+    const previous = (runHistory || []).find(
+      (item) =>
+        item.provider === provider &&
+        item.start_date === startDate &&
+        item.end_date === endDate &&
+        item.source_hash !== previewData.source_hash
+    );
+    return Boolean(previous);
+  }, [previewData, runHistory, provider, startDate, endDate]);
+  const currentPeriodHistory = useMemo(
+    () =>
+      (runHistory || []).filter(
+        (item) =>
+          item.provider === provider &&
+          item.start_date === startDate &&
+          item.end_date === endDate
+      ),
+    [provider, runHistory, startDate, endDate]
+  );
+  const latestPreviousRun = currentPeriodHistory.find((item) => item.id !== runData?.id);
+
+  const handleEmployeeMapChange = (employeeId, value) => {
+    setEmployeeMappingDrafts((prev) => ({ ...prev, [employeeId]: value }));
+  };
+
+  const saveEmployeeMapping = async (row) => {
+    const providerEmployeeId = (employeeMappingDrafts[row.employee_id] || "").trim();
+    if (!providerEmployeeId) {
+      showMessage("Provider employee ID is required.", "warning");
+      return;
+    }
+    try {
+      await payrollProviderSyncApi.linkEmployeeMapping(row.employee_id, {
+        provider,
+        provider_employee_id: providerEmployeeId,
+        provider_display_name: row.employee_name_snapshot,
+      });
+      await loadMappingData();
+      if (runData?.id) {
+        const refreshed = await payrollProviderSyncApi.runDetail(runData.id);
+        setRunData(refreshed?.run || runData);
+        if (validationData) {
+          const validated = await payrollProviderSyncApi.validateRun(runData.id);
+          setValidationData(validated?.result || validationData);
+        }
+      }
+      showMessage("Employee mapping saved.", "success");
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to save employee mapping."), "error");
+    }
+  };
+
+  const savePayItemMapping = async () => {
+    const localKey = (payItemDraft.local_key || "").trim();
+    if (!localKey || !payItemDraft.provider_item_id.trim()) {
+      showMessage("Local key and provider item ID are required.", "warning");
+      return;
+    }
+    const existing = payItemMappings.find((item) => item.local_key === localKey && item.provider_item_id);
+    if (existing) {
+      showMessage("That pay item key is already mapped. Existing mappings are not overwritten here.", "info");
+      return;
+    }
+    try {
+      await payrollProviderSyncApi.upsertPayItemMapping({
+        provider,
+        local_key: localKey,
+        item_category: localKey === "non_taxable_reimbursement" ? "reimbursement" : "earning",
+        provider_item_id: payItemDraft.provider_item_id.trim(),
+        provider_item_name: payItemDraft.provider_item_name.trim() || localKey,
+      });
+      setPayItemDraft({ local_key: "", provider_item_id: "", provider_item_name: "" });
+      await loadMappingData();
+      if (runData?.id && validationData) {
+        const validated = await payrollProviderSyncApi.validateRun(runData.id);
+        setValidationData(validated?.result || validationData);
+      }
+      showMessage("Pay item mapping saved.", "success");
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to save pay item mapping."), "error");
+    }
+  };
 
   return (
     <Stack spacing={3} sx={{ mt: 2 }}>
@@ -400,6 +602,50 @@ export default function PayrollProviderSync({
         {renderJsonList(setupStatus?.missing_required_pay_item_keys)}
         <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>Setup steps</Typography>
         {renderJsonList(setupStatus?.setup_steps)}
+      </Paper>
+
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Mapping readiness
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Required mappings are driven by the lines that exist in the current provider run. Optional mappings are available for future periods but are not blocking this run.
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Mapped employees:</strong> {currentRunMappedEmployeeCount || setupStatus?.employee_mapping_count || 0}</Typography></Grid>
+          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Unmapped employees:</strong> {runData ? currentRunUnmappedEmployeeCount : "—"}</Typography></Grid>
+          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Mapped pay items:</strong> {currentRunMappedPayItemCount || setupStatus?.pay_item_mapping_count || 0}</Typography></Grid>
+          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Missing pay item mappings:</strong> {missingPayItemKeys.length}</Typography></Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2">Required for this run</Typography>
+            {requiredPayItemKeys.length ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {requiredPayItemKeys.map((key) => (
+                  <Chip
+                    key={key}
+                    size="small"
+                    color={missingPayItemKeys.includes(key) ? "warning" : "success"}
+                    label={payItemLabel[key] || key}
+                  />
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">No run-specific pay items yet.</Typography>
+            )}
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="subtitle2">Optional mappings available</Typography>
+            {optionalMappedPayItemKeys.length ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {optionalMappedPayItemKeys.map((key) => (
+                  <Chip key={key} size="small" variant="outlined" label={payItemLabel[key] || key} />
+                ))}
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">No optional mapped keys detected.</Typography>
+            )}
+          </Grid>
+        </Grid>
       </Paper>
 
       <Paper elevation={2} sx={{ p: 3 }}>
@@ -521,6 +767,16 @@ export default function PayrollProviderSync({
       {validationData && (
         <Paper elevation={2} sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>Validation</Typography>
+          {sourceHashChanged && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Source hash changed since an earlier run for this same period. Review the saved adjustments and approved time before exporting.
+            </Alert>
+          )}
+          {isQuickBooksAccountingOnly && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              QuickBooks is connected for accounting only. Live payroll/time submit is not enabled. Use payload preview and Provider Sync CSV, then complete payroll inside QuickBooks.
+            </Alert>
+          )}
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2">Errors</Typography>
@@ -533,9 +789,130 @@ export default function PayrollProviderSync({
             <Grid item xs={12} md={4}><Typography variant="body2"><strong>Missing employee mapping ids:</strong> {formatList(validationData.missing_employee_map_ids).join(", ") || "None"}</Typography></Grid>
             <Grid item xs={12} md={4}><Typography variant="body2"><strong>Missing pay item keys:</strong> {formatList(validationData.missing_pay_item_keys).join(", ") || "None"}</Typography></Grid>
             <Grid item xs={12} md={4}><Typography variant="body2"><strong>Blocked employee ids:</strong> {formatList(validationData.blocked_employee_ids).join(", ") || "None"}</Typography></Grid>
+            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Invalid/negative lines:</strong> {invalidNegativeLineIds.join(", ") || "None"}</Typography></Grid>
+            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Adjustment-only lines:</strong> {adjustmentOnlyLineCount}</Typography></Grid>
+            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Unpaid leave visibility rows:</strong> {unpaidLeaveVisibilityEmployeeIds.join(", ") || "None"}</Typography></Grid>
           </Grid>
         </Paper>
       )}
+
+      {runData && (
+        <Paper elevation={2} sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Employee mapping management
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Legacy external payroll employee IDs are bootstrap-only. Live Provider Sync uses PayrollProviderEmployeeMap only.
+          </Typography>
+          {!unmappedRunEmployees.length && !unmappedEmployeeIdsFromValidation.length ? (
+            <Alert severity="success">All employees in this run have provider employee mappings.</Alert>
+          ) : (
+            <Stack spacing={2}>
+              {unmappedRunEmployees.map((row) => (
+                <Grid container spacing={2} key={row.id} alignItems="center">
+                  <Grid item xs={12} md={3}>
+                    <Typography variant="body2"><strong>{row.employee_name_snapshot || `Employee ${row.employee_id}`}</strong></Typography>
+                    <Typography variant="caption" color="text.secondary">Employee ID {row.employee_id}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={5}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Provider employee ID"
+                      value={employeeMappingDrafts[row.employee_id] ?? ""}
+                      onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>
+                      Save employee mapping
+                    </Button>
+                  </Grid>
+                </Grid>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      )}
+
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Pay item mapping management
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Required earning keys must map before payload preview and Provider Sync CSV can be used safely for this run.
+        </Typography>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="provider-sync-local-key-label">Local key</InputLabel>
+              <Select
+                labelId="provider-sync-local-key-label"
+                label="Local key"
+                value={payItemDraft.local_key}
+                onChange={(event) =>
+                  setPayItemDraft((prev) => ({ ...prev, local_key: event.target.value }))
+                }
+              >
+                {Object.keys(payItemLabel).map((key) => (
+                  <MenuItem key={key} value={key}>
+                    {payItemLabel[key] || key}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Provider item ID"
+              value={payItemDraft.provider_item_id}
+              onChange={(event) =>
+                setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))
+              }
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Provider item name"
+              value={payItemDraft.provider_item_name}
+              onChange={(event) =>
+                setPayItemDraft((prev) => ({ ...prev, provider_item_name: event.target.value }))
+              }
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <Button variant="outlined" onClick={savePayItemMapping}>
+              Save pay item mapping
+            </Button>
+          </Grid>
+        </Grid>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Local key</TableCell>
+              <TableCell>Category</TableCell>
+              <TableCell>Provider item id</TableCell>
+              <TableCell>Provider item name</TableCell>
+              <TableCell>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {payItemMappings.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{payItemLabel[row.local_key] || row.local_key}</TableCell>
+                <TableCell>{row.item_category}</TableCell>
+                <TableCell>{row.provider_item_id || "—"}</TableCell>
+                <TableCell>{row.provider_item_name || "—"}</TableCell>
+                <TableCell>{row.is_active ? "active" : "inactive"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
 
       {payloadPreview && (
         <Paper elevation={2} sx={{ p: 3 }}>
@@ -602,6 +979,62 @@ export default function PayrollProviderSync({
           </Table>
         </Paper>
       )}
+
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Provider run history
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Provider Sync tracks draft, validated, payload-previewed, CSV-exported, failed, and unsupported runs only. It does not claim payroll was submitted, completed, or paid.
+        </Typography>
+        {mappingLoading ? (
+          <CircularProgress size={20} />
+        ) : !runHistory.length ? (
+          <Typography variant="body2" color="text.secondary">No provider runs found yet.</Typography>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Period</TableCell>
+                <TableCell>Provider</TableCell>
+                <TableCell>Created by</TableCell>
+                <TableCell>Created at</TableCell>
+                <TableCell>Source hash</TableCell>
+                <TableCell align="right">Employees</TableCell>
+                <TableCell align="right">Lines</TableCell>
+                <TableCell align="right">Hours</TableCell>
+                <TableCell align="right">Adjustment total</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Payload previewed</TableCell>
+                <TableCell>CSV exported</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {runHistory.map((item) => (
+                <TableRow key={item.id} selected={item.id === runData?.id}>
+                  <TableCell>{item.start_date} to {item.end_date}</TableCell>
+                  <TableCell>{item.provider}</TableCell>
+                  <TableCell>{item.triggered_by_name || item.triggered_by_email || item.triggered_by_id || "—"}</TableCell>
+                  <TableCell>{formatDateTime(item.created_at)}</TableCell>
+                  <TableCell sx={{ maxWidth: 220, overflowWrap: "anywhere" }}>{item.source_hash || "—"}</TableCell>
+                  <TableCell align="right">{formatNumber(item.employee_count)}</TableCell>
+                  <TableCell align="right">{formatNumber(item.time_entry_count)}</TableCell>
+                  <TableCell align="right">{formatNumber(item.total_hours)}</TableCell>
+                  <TableCell align="right">{formatNumber(item.request_payload_json?.adjustments?.adjustment_total)}</TableCell>
+                  <TableCell>{item.status || "draft"}</TableCell>
+                  <TableCell>{item.payload_previewed_at ? formatDateTime(item.payload_previewed_at) : "No"}</TableCell>
+                  <TableCell>{item.csv_exported_at ? formatDateTime(item.csv_exported_at) : "No"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        {latestPreviousRun && previewData?.source_hash && latestPreviousRun.source_hash !== previewData.source_hash && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            The current preview source hash differs from the most recent earlier run for this same period. This usually means approved time or saved Payroll Preview adjustments changed.
+          </Alert>
+        )}
+      </Paper>
     </Stack>
   );
 }

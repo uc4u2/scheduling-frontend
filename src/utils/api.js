@@ -643,6 +643,14 @@ export const payrollProviderSyncApi = {
         params: { provider, ...(config.params || {}) },
       })
       .then((r) => r.data),
+  linkEmployeeMapping: (employeeId, payload = {}, config = {}) =>
+    api
+      .post(
+        `/automation/payroll/provider-mappings/employees/${employeeId}/link`,
+        payload,
+        config
+      )
+      .then((r) => r.data),
   bootstrapEmployeesFromLegacy: (provider = "quickbooks", payload = {}, config = {}) =>
     api
       .post(
@@ -657,6 +665,10 @@ export const payrollProviderSyncApi = {
         ...config,
         params: { provider, ...(config.params || {}) },
       })
+      .then((r) => r.data),
+  upsertPayItemMapping: (payload, config = {}) =>
+    api
+      .post("/automation/payroll/provider-mappings/pay-items", payload, config)
       .then((r) => r.data),
   bootstrapPayItemDefaults: (provider = "quickbooks", payload = {}, config = {}) =>
     api

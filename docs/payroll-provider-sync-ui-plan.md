@@ -228,6 +228,19 @@ Display:
 
 This is read-only status guidance.
 
+### Section 1B: Mapping readiness
+Display:
+- mapped employees count
+- unmapped employees count for the current run
+- mapped pay item count
+- missing pay item mappings
+- required mappings for the current run
+- optional mappings available but not required this period
+
+The UI should distinguish:
+- required because a line exists this period
+- optional because the mapping exists but no line uses it this period
+
 ### Section 2: Prepare run
 Inputs come from existing Payroll page state:
 - department
@@ -290,6 +303,11 @@ Show:
 - missing employee mappings
 - missing pay item mappings
 - blocked employees
+- negative/invalid lines
+- adjustment-only line count
+- unpaid leave visibility rows
+- accounting-only QuickBooks warning
+- live QuickBooks payroll/time submit not enabled
 
 ### Section 5: QuickBooks payload preview
 Action:
@@ -310,6 +328,17 @@ Show:
 - row/line errors
 
 This must remain read-only.
+
+### Section 5B: Mapping management
+Actions:
+- list unmapped employees for the current run
+- save provider employee IDs manually
+- bootstrap employee mappings from legacy IDs
+- save pay item mappings manually
+
+Rules:
+- never use `external_payroll_employee_id` directly except bootstrap
+- do not overwrite existing mappings silently
 
 ### Section 6: CSV fallback
 Action:
@@ -338,6 +367,34 @@ Status/warning copy:
 - show `QuickBooks official import format: not verified yet`
 - show that Provider Sync CSV is recommended for accountant/provider/QuickBooks handoff
 - rename the old Advanced Export provider CSV to `Legacy Finalized Payroll Export`
+
+### Section 7: Run history
+Display recent provider runs with:
+- pay period
+- provider
+- created by
+- created at
+- source hash
+- employee count
+- line count
+- total hours
+- adjustment total
+- status
+- payload previewed yes/no
+- csv exported yes/no
+
+Allowed status framing:
+- draft
+- validated
+- payload_previewed
+- csv_exported
+- failed
+- unsupported
+
+Do not use:
+- payroll_submitted
+- payroll_completed
+- employees_paid
 
 ## Rendering recommendation in Payroll.js
 
@@ -394,6 +451,12 @@ Recommended future labels:
 Recommended helper text:
 - `Connect QuickBooks from Settings → QuickBooks to enable payroll accounting exports.`
 - `Connect Xero from Settings → Xero to enable payroll accounting exports.`
+
+Current safe QuickBooks product statement:
+- Provider Sync can prepare payroll-ready inputs for QuickBooks review workflows
+- QuickBooks payload preview is read-only
+- Provider Sync CSV is the recommended current handoff output
+- official QuickBooks Payroll submit is not implemented
 
 Do not rename them in the provider-sync backend-only branch.
 
