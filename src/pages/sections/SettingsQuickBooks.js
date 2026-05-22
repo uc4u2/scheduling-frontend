@@ -50,6 +50,16 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 
+const connectedChipSx = {
+  "&&": {
+    bgcolor: "#15803d",
+    color: "#ffffff",
+    borderColor: "#166534",
+  },
+  fontWeight: 800,
+  "& .MuiChip-label": { px: 1, color: "#ffffff" },
+};
+
 const PAYROLL_KINDS = [
   "wages_expense",
   "vacation_expense",
@@ -810,6 +820,7 @@ const SettingsQuickBooks = () => {
       label={t("settings.quickbooks.connected", "Connected")}
       color="success"
       size="small"
+      sx={connectedChipSx}
     />
   ) : (
     <Chip
@@ -868,6 +879,35 @@ const SettingsQuickBooks = () => {
                 </Typography>
               )}
             </Stack>
+            {status?.connected && (
+              <Grid container spacing={1}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Environment:</strong> {status.environment || "production"}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Accounting connection:</strong> {status.accounting_scope_connected ? "Ready" : "Missing accounting scope"}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Realm / company id:</strong> {status.realm_id || "—"}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Country / currency:</strong> {[status.country, status.currency].filter(Boolean).join(" / ") || "—"}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+                    <strong>Scopes:</strong> {Array.isArray(status.scopes) && status.scopes.length ? status.scopes.join(", ") : "None returned"}
+                  </Typography>
+                </Grid>
+              </Grid>
+            )}
             {status?.last_synced_at && (
               <Typography variant="body2" color="text.secondary">
                 {t("settings.quickbooks.lastSync", "Last synced: {{value}}", {
