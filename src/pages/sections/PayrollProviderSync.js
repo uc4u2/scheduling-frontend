@@ -123,6 +123,50 @@ const formatNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const employeeLabelFromContext = (employeeId, runRows = [], recruiters = []) => {
+  const normalized = String(employeeId);
+  const runMatch = runRows.find((row) => String(row.employee_id) === normalized);
+  if (runMatch?.employee_name_snapshot) return runMatch.employee_name_snapshot;
+  const recruiterMatch = recruiters.find((row) => String(row.id) === normalized);
+  if (recruiterMatch) return `${recruiterMatch.first_name} ${recruiterMatch.last_name}`.trim();
+  return `Employee ${employeeId}`;
+};
+
+const managerFriendlyMessage = (item, { runRows = [], recruiters = [] } = {}) => {
+  const code = typeof item === "string" ? item : item?.code || item?.message || "";
+  const key = item?.key;
+  const employeeId = item?.employee_id;
+
+  if (code === "QUICKBOOKS_TIME_SCOPE_REQUIRED") {
+    return "Live QuickBooks payroll/time submit is not enabled. CSV export is still available.";
+  }
+  if (code === "MISSING_PAY_ITEM_MAP" && key) {
+    return `${payItemLabel[key] || key} needs a QuickBooks/provider pay item mapping.`;
+  }
+  if (code === "MISSING_EMPLOYEE_MAPPING" && employeeId) {
+    return `${employeeLabelFromContext(employeeId, runRows, recruiters)} needs to be mapped to a QuickBooks/provider employee.`;
+  }
+  if (code === "MISSING_REGION_METADATA") {
+    return "Employee country/province is missing.";
+  }
+  if (typeof item === "string") return item;
+  return item?.message || item?.code || JSON.stringify(item);
+};
+
+const renderManagerMessages = (items = [], context = {}) => {
+  const list = formatList(items);
+  if (!list.length) return <Typography variant="body2" color="text.secondary">None</Typography>;
+  return (
+    <Box component="ul" sx={{ m: 0, pl: 3 }}>
+      {list.map((item, index) => (
+        <li key={`${index}-${typeof item === "string" ? item : item?.code || item?.message || "item"}`}>
+          {managerFriendlyMessage(item, context)}
+        </li>
+      ))}
+    </Box>
+  );
+};
+
 const CORE_PAY_ITEM_KEYS = [
   "regular_hours",
   "overtime_1_5",
@@ -211,11 +255,13 @@ export default function PayrollProviderSync({
   const [employeeFilter, setEmployeeFilter] = useState("current_run_unmapped");
   const [employeePage, setEmployeePage] = useState(0);
   const [employeeMappingDrafts, setEmployeeMappingDrafts] = useState({});
+  const [missingPayItemDrafts, setMissingPayItemDrafts] = useState({});
   const [payItemDraft, setPayItemDraft] = useState({
     local_key: "",
     provider_item_id: "",
     provider_item_name: "",
   });
+  const [overrideScopeEnabled, setOverrideScopeEnabled] = useState(false);
   const [providerScopeMode, setProviderScopeMode] = useState("all_filtered");
   const [providerSelectedEmployeeIds, setProviderSelectedEmployeeIds] = useState([]);
   const runPanelRef = useRef(null);
@@ -229,20 +275,20 @@ export default function PayrollProviderSync({
     [scopedRecruiters]
   );
   const defaultProviderEmployeeIds = useMemo(() => {
-    if (Array.isArray(exportEmployeeIds) && exportEmployeeIds.length) {
-      return truthyIds(exportEmployeeIds);
-    }
-    if (!exportAllEmployees && selectedRecruiter) {
+    if (selectedRecruiter) {
       return [String(selectedRecruiter)];
     }
-    return [];
-  }, [exportAllEmployees, exportEmployeeIds, selectedRecruiter]);
+    return scopedRecruiterIds;
+  }, [scopedRecruiterIds, selectedRecruiter]);
   const defaultProviderScopeMode = useMemo(() => {
     if (defaultProviderEmployeeIds.length > 1) return "custom";
     if (defaultProviderEmployeeIds.length === 1) return "single";
     return "all_filtered";
   }, [defaultProviderEmployeeIds]);
   const availableEmployeeIds = useMemo(() => {
+    if (!overrideScopeEnabled) {
+      return defaultProviderEmployeeIds;
+    }
     if (providerScopeMode === "single") {
       return providerSelectedEmployeeIds[0] ? [providerSelectedEmployeeIds[0]] : [];
     }
@@ -250,7 +296,7 @@ export default function PayrollProviderSync({
       return providerSelectedEmployeeIds;
     }
     return scopedRecruiterIds;
-  }, [providerScopeMode, providerSelectedEmployeeIds, scopedRecruiterIds]);
+  }, [defaultProviderEmployeeIds, overrideScopeEnabled, providerScopeMode, providerSelectedEmployeeIds, scopedRecruiterIds]);
   const selectedEmployeeNames = useMemo(() => {
     const byId = new Map(scopedRecruiters.map((row) => [String(row.id), `${row.first_name} ${row.last_name}`.trim()]));
     return availableEmployeeIds.map((id) => byId.get(String(id)) || `Employee ${id}`);
@@ -258,7 +304,9 @@ export default function PayrollProviderSync({
 
   const missingDates = !startDate || !endDate;
   const noExplicitEmployees =
-    (providerScopeMode === "single" || providerScopeMode === "custom") && availableEmployeeIds.length === 0;
+    overrideScopeEnabled &&
+    (providerScopeMode === "single" || providerScopeMode === "custom") &&
+    availableEmployeeIds.length === 0;
   const canPrepare = !missingDates;
 
   // Province/state is still owned inside PayrollFilters. For this first pass,
@@ -685,6 +733,17 @@ export default function PayrollProviderSync({
     (validationData?.csv_blocking_errors || []).length === 0;
   const csvDownloadAllowed = validationData?.csv_download_allowed ?? true;
   const csvBlockingErrors = validationData?.csv_blocking_errors || [];
+  const activeScopeSummary = overrideScopeEnabled
+    ? `Provider Sync override is active. ${providerScopeMode === "all_filtered" ? `${scopedRecruiterIds.length || 0} employees in override scope.` : selectedEmployeeNames.join(", ") || "No employees selected."}`
+    : "Using current Payroll filters by default.";
+  const currentRunContext = { runRows: currentRunRows, recruiters: scopedRecruiters };
+  const missingEmployeeIssueRows = unmappedRunEmployees.map((row) => ({
+    employee_id: row.employee_id,
+    employee_name: row.employee_name_snapshot || `Employee ${row.employee_id}`,
+    employee_email: row.employee_email_snapshot || "",
+    provider_employee_id: "",
+    source: "run_unmapped",
+  }));
   const chipSx = {
     active: {
       bgcolor: "#173a7a",
@@ -858,6 +917,38 @@ export default function PayrollProviderSync({
     }
   };
 
+  const saveMissingPayItemMapping = async (localKey) => {
+    const draft = missingPayItemDrafts[localKey] || {};
+    const providerItemId = String(draft.provider_item_id || "").trim();
+    const providerItemName = String(draft.provider_item_name || "").trim();
+    if (!providerItemId) {
+      showMessage("Provider item ID is required.", "warning");
+      return;
+    }
+    try {
+      await payrollProviderSyncApi.upsertPayItemMapping({
+        provider,
+        local_key: localKey,
+        item_category: localKey === "non_taxable_reimbursement" ? "reimbursement" : "earning",
+        provider_item_id: providerItemId,
+        provider_item_name: providerItemName || localKey,
+      });
+      setMissingPayItemDrafts((prev) => ({
+        ...prev,
+        [localKey]: { provider_item_id: "", provider_item_name: "" },
+      }));
+      await loadMappingData();
+      if (runData?.id) {
+        const validated = await payrollProviderSyncApi.validateRun(runData.id);
+        setValidationData(validated?.result || validationData);
+        setRunData(validated?.run || runData);
+      }
+      showMessage("Pay item mapping saved.", "success");
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to save pay item mapping."), "error");
+    }
+  };
+
   return (
     <Stack spacing={3} sx={{ mt: 2 }}>
       <Paper elevation={2} sx={{ p: 3 }}>
@@ -961,66 +1052,19 @@ export default function PayrollProviderSync({
         {renderJsonList(setupStatus?.setup_steps)}
       </Paper>
 
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Mapping readiness
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Required mappings are driven by the lines that exist in the current provider run. Optional mappings are available for future periods but are not blocking this run.
-        </Typography>
-        {!runData && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            No current provider run selected yet. Create a provider run or select one from history to see run-specific required mappings.
-          </Alert>
-        )}
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Mapped employees:</strong> {currentRunMappedEmployeeCount || setupStatus?.employee_mapping_count || 0}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Unmapped employees:</strong> {runData ? currentRunUnmappedEmployeeCount : "—"}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Mapped pay items:</strong> {currentRunMappedPayItemCount || setupStatus?.pay_item_mapping_count || 0}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Missing pay item mappings:</strong> {missingPayItemKeys.length}</Typography></Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2">{runData ? "Required for this run" : "Required mappings for a selected run"}</Typography>
-            {runData && requiredPayItemKeys.length ? (
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {requiredPayItemKeys.map((key) => (
-                  <Chip
-                    key={key}
-                    size="small"
-                    sx={missingPayItemKeys.includes(key) ? chipSx.warning : chipSx.success}
-                    label={payItemLabel[key] || key}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Create a provider run or select one from history to see run-specific required mappings.
-              </Typography>
-            )}
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="subtitle2">Optional mappings available</Typography>
-            {optionalMappedPayItemKeys.length ? (
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {optionalMappedPayItemKeys.map((key) => (
-                  <Chip key={key} size="small" sx={chipSx.neutral} label={payItemLabel[key] || key} />
-                ))}
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary">No optional mapped keys detected.</Typography>
-            )}
-          </Grid>
-        </Grid>
-      </Paper>
 
       <Paper elevation={2} sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Prepare payroll-ready data
+          Step 1: Review payroll-ready data
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Use Provider Sync filters below to prepare payroll-ready inputs, preview provider payload, download provider CSV, and complete payroll inside the provider.
+          Provider Sync uses the current Payroll filters by default. Review the active period and employee scope before previewing payroll-ready data.
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
           Provider Sync CSV is the recommended handoff for accountants, payroll providers, and QuickBooks review workflows. Use this CSV for live QuickBooks/accountant testing. It is not yet a verified official QuickBooks Payroll import format.
+        </Alert>
+        <Alert severity={overrideScopeEnabled ? "warning" : "info"} sx={{ mb: 2 }}>
+          {activeScopeSummary}
         </Alert>
         {missingDates && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -1033,89 +1077,113 @@ export default function PayrollProviderSync({
           </Alert>
         )}
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="provider-sync-scope-label">Provider Sync employee scope</InputLabel>
-              <Select
-                labelId="provider-sync-scope-label"
-                label="Provider Sync employee scope"
-                value={providerScopeMode}
-                onChange={(event) => {
-                  const nextMode = event.target.value;
-                  setProviderScopeMode(nextMode);
-                  if (nextMode === "all_filtered") {
-                    setProviderSelectedEmployeeIds([]);
-                  } else if (nextMode === "single") {
-                    setProviderSelectedEmployeeIds(defaultProviderEmployeeIds.slice(0, 1));
-                  } else {
-                    setProviderSelectedEmployeeIds(defaultProviderEmployeeIds);
-                  }
-                }}
-              >
-                <MenuItem value="all_filtered">
-                  {departmentFilter ? "All employees in selected department" : "All employees in Provider Sync"}
-                </MenuItem>
-                <MenuItem value="single">One employee only</MenuItem>
-                <MenuItem value="custom">Custom employee selection</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          {providerScopeMode === "single" && (
-            <Grid item xs={12} md={8}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="provider-sync-single-employee-label">Employee</InputLabel>
-                <Select
-                  labelId="provider-sync-single-employee-label"
-                  label="Employee"
-                  value={providerSelectedEmployeeIds[0] || ""}
-                  onChange={(event) => setProviderSelectedEmployeeIds(event.target.value ? [String(event.target.value)] : [])}
-                >
-                  {scopedRecruiters.map((row) => (
-                    <MenuItem key={row.id} value={String(row.id)}>
-                      {row.first_name} {row.last_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          )}
-          {providerScopeMode === "custom" && (
-            <Grid item xs={12} md={8}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="provider-sync-custom-employees-label">Employees</InputLabel>
-                <Select
-                  multiple
-                  labelId="provider-sync-custom-employees-label"
-                  label="Employees"
-                  value={providerSelectedEmployeeIds}
-                  onChange={(event) => setProviderSelectedEmployeeIds(truthyIds(event.target.value))}
-                  renderValue={(selected) =>
-                    truthyIds(selected)
-                      .map((id) => {
-                        const row = scopedRecruiters.find((item) => String(item.id) === String(id));
-                        return row ? `${row.first_name} ${row.last_name}` : id;
-                      })
-                      .join(", ")
-                  }
-                >
-                  {scopedRecruiters.map((row) => (
-                    <MenuItem key={row.id} value={String(row.id)}>
-                      {row.first_name} {row.last_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          )}
-        </Grid>
-        <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>Region:</strong> {region || "—"}</Typography></Grid>
+          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Province/state:</strong> {provinceOrState || "—"}</Typography></Grid>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>Start date:</strong> {startDate || "—"}</Typography></Grid>
           <Grid item xs={12} md={3}><Typography variant="body2"><strong>End date:</strong> {endDate || "—"}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Pay frequency:</strong> {payFrequency || "—"}</Typography></Grid>
           <Grid item xs={12} md={6}><Typography variant="body2"><strong>Department filter:</strong> {departmentFilter || "All departments"}</Typography></Grid>
-          <Grid item xs={12} md={6}><Typography variant="body2"><strong>Selected employees:</strong> {providerScopeMode === "all_filtered" ? `${scopedRecruiterIds.length || 0} employee(s) in Provider Sync scope` : selectedEmployeeNames.join(", ") || "None selected"}</Typography></Grid>
+          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Pay frequency:</strong> {payFrequency || "—"}</Typography></Grid>
+          <Grid item xs={12} md={9}><Typography variant="body2"><strong>Selected employees:</strong> {selectedEmployeeNames.join(", ") || `${availableEmployeeIds.length || 0} employee(s)`}</Typography></Grid>
         </Grid>
+        <Accordion elevation={0} disableGutters>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">Advanced: Override employee scope for Provider Sync</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 0 }}>
+            <Stack spacing={2}>
+              <Alert severity={overrideScopeEnabled ? "warning" : "info"}>
+                {overrideScopeEnabled
+                  ? "Provider Sync override is active. This tab will ignore the main Payroll employee filter until you turn the override off."
+                  : "Override is off. Provider Sync is using the current Payroll filters."}
+              </Alert>
+              <Button
+                variant={overrideScopeEnabled ? "contained" : "outlined"}
+                onClick={() => setOverrideScopeEnabled((value) => !value)}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                {overrideScopeEnabled ? "Turn off Provider Sync override" : "Turn on Provider Sync override"}
+              </Button>
+              {overrideScopeEnabled && (
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="provider-sync-scope-label">Provider Sync employee scope</InputLabel>
+                      <Select
+                        labelId="provider-sync-scope-label"
+                        label="Provider Sync employee scope"
+                        value={providerScopeMode}
+                        onChange={(event) => {
+                          const nextMode = event.target.value;
+                          setProviderScopeMode(nextMode);
+                          if (nextMode === "all_filtered") {
+                            setProviderSelectedEmployeeIds([]);
+                          } else if (nextMode === "single") {
+                            setProviderSelectedEmployeeIds(defaultProviderEmployeeIds.slice(0, 1));
+                          } else {
+                            setProviderSelectedEmployeeIds(defaultProviderEmployeeIds);
+                          }
+                        }}
+                      >
+                        <MenuItem value="all_filtered">
+                          {departmentFilter ? "All employees in selected department" : "All employees in Provider Sync"}
+                        </MenuItem>
+                        <MenuItem value="single">One employee only</MenuItem>
+                        <MenuItem value="custom">Custom employee selection</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  {providerScopeMode === "single" && (
+                    <Grid item xs={12} md={8}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="provider-sync-single-employee-label">Employee</InputLabel>
+                        <Select
+                          labelId="provider-sync-single-employee-label"
+                          label="Employee"
+                          value={providerSelectedEmployeeIds[0] || ""}
+                          onChange={(event) => setProviderSelectedEmployeeIds(event.target.value ? [String(event.target.value)] : [])}
+                        >
+                          {scopedRecruiters.map((row) => (
+                            <MenuItem key={row.id} value={String(row.id)}>
+                              {row.first_name} {row.last_name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  )}
+                  {providerScopeMode === "custom" && (
+                    <Grid item xs={12} md={8}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="provider-sync-custom-employees-label">Employees</InputLabel>
+                        <Select
+                          multiple
+                          labelId="provider-sync-custom-employees-label"
+                          label="Employees"
+                          value={providerSelectedEmployeeIds}
+                          onChange={(event) => setProviderSelectedEmployeeIds(truthyIds(event.target.value))}
+                          renderValue={(selected) =>
+                            truthyIds(selected)
+                              .map((id) => {
+                                const row = scopedRecruiters.find((item) => String(item.id) === String(id));
+                                return row ? `${row.first_name} ${row.last_name}` : id;
+                              })
+                              .join(", ")
+                          }
+                        >
+                          {scopedRecruiters.map((row) => (
+                            <MenuItem key={row.id} value={String(row.id)}>
+                              {row.first_name} {row.last_name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           <Button variant="contained" onClick={handlePreview} disabled={!canPrepare || previewLoading}>
             {previewLoading ? <CircularProgress size={18} /> : "Preview payroll-ready data"}
@@ -1165,18 +1233,18 @@ export default function PayrollProviderSync({
             <Grid item xs={12} md={6}><Typography variant="body2"><strong>Source hash:</strong> {previewData.source_hash || "—"}</Typography></Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2">Warnings</Typography>
-              {renderJsonList(previewData.warnings)}
+              {renderManagerMessages(previewData.warnings, currentRunContext)}
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2">Errors</Typography>
-              {renderJsonList(previewData.errors)}
+              {renderManagerMessages(previewData.errors, currentRunContext)}
             </Grid>
           </Grid>
         )}
       </Paper>
 
       <Paper elevation={2} sx={{ p: 3 }} ref={runPanelRef}>
-        <Typography variant="h6" gutterBottom>Provider run</Typography>
+        <Typography variant="h6" gutterBottom>Step 3: Create and validate run</Typography>
         {!runData ? (
           <Alert severity="info">
             No provider run selected. Create a run or select one from history.
@@ -1198,12 +1266,12 @@ export default function PayrollProviderSync({
             {csvBlockingErrors.length > 0 && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Fix before CSV</Typography>
-                {renderJsonList(csvBlockingErrors)}
+                {renderManagerMessages(csvBlockingErrors, currentRunContext)}
               </Alert>
             )}
             {validationOnlyCapabilityLimitation && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                Live QuickBooks submit is not enabled for this run. Provider Sync CSV is still available.
+                Live QuickBooks payroll/time submit is not enabled. CSV export is still available.
               </Alert>
             )}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -1223,7 +1291,7 @@ export default function PayrollProviderSync({
 
       {validationData && (
         <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Validation</Typography>
+          <Typography variant="h6" gutterBottom>Step 2: Fix setup issues</Typography>
           {sourceHashChanged && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               Source hash changed since an earlier run for this same period. Review the saved adjustments and approved time before exporting.
@@ -1242,253 +1310,256 @@ export default function PayrollProviderSync({
           {csvBlockingErrors.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Fix before CSV</Typography>
-              {renderJsonList(csvBlockingErrors)}
+              {renderManagerMessages(csvBlockingErrors, currentRunContext)}
             </Alert>
           )}
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2">Errors</Typography>
-              {renderJsonList(validationData.errors)}
+              <Typography variant="subtitle2">Manager view</Typography>
+              {renderManagerMessages(validationData.errors, currentRunContext)}
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2">Warnings</Typography>
-              {renderJsonList(validationData.warnings)}
+              {renderManagerMessages(validationData.warnings, currentRunContext)}
             </Grid>
-            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Missing employee mapping ids:</strong> {formatList(validationData.missing_employee_map_ids).join(", ") || "None"}</Typography></Grid>
-            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Missing pay item keys:</strong> {formatList(validationData.missing_pay_item_keys).join(", ") || "None"}</Typography></Grid>
-            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Blocked employee ids:</strong> {formatList(validationData.blocked_employee_ids).join(", ") || "None"}</Typography></Grid>
-            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Invalid/negative lines:</strong> {invalidNegativeLineIds.join(", ") || "None"}</Typography></Grid>
-            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Adjustment-only lines:</strong> {adjustmentOnlyLineCount}</Typography></Grid>
-            <Grid item xs={12} md={4}><Typography variant="body2"><strong>Unpaid leave visibility rows:</strong> {unpaidLeaveVisibilityEmployeeIds.join(", ") || "None"}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Mapped employees:</strong> {currentRunMappedEmployeeCount || setupStatus?.employee_mapping_count || 0}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Unmapped employees:</strong> {runData ? currentRunUnmappedEmployeeCount : "—"}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Mapped pay items:</strong> {currentRunMappedPayItemCount || setupStatus?.pay_item_mapping_count || 0}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Missing pay item mappings:</strong> {missingPayItemKeys.length}</Typography></Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle2">Required for this run</Typography>
+              {runData && requiredPayItemKeys.length ? (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {requiredPayItemKeys.map((key) => (
+                    <Chip key={key} size="small" sx={missingPayItemKeys.includes(key) ? chipSx.warning : chipSx.success} label={payItemLabel[key] || key} />
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Create a provider run or select one from history to see run-specific required mappings.</Typography>
+              )}
+            </Grid>
           </Grid>
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            {missingEmployeeIssueRows.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
+                <Stack spacing={2}>
+                  {missingEmployeeIssueRows.map((row) => (
+                    <Grid container spacing={2} key={`missing-employee-${row.employee_id}`} alignItems="center">
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2"><strong>{row.employee_name}</strong></Typography>
+                        <Typography variant="caption" color="text.secondary">{row.employee_email || `Employee ID ${row.employee_id}`}</Typography>
+                      </Grid>
+                      <Grid item xs={12} md={5}>
+                        <TextField fullWidth size="small" label="Provider employee ID" value={employeeMappingDrafts[row.employee_id] ?? ""} onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)} />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save employee mapping</Button>
+                      </Grid>
+                    </Grid>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            {missingPayItemKeys.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing pay item mappings</Typography>
+                <Stack spacing={2}>
+                  {missingPayItemKeys.map((key) => (
+                    <Grid container spacing={2} key={`missing-pay-item-${key}`} alignItems="center">
+                      <Grid item xs={12} md={3}>
+                        <Typography variant="body2"><strong>{payItemLabel[key] || key}</strong></Typography>
+                        <Typography variant="caption" color="text.secondary">{managerFriendlyMessage({ code: "MISSING_PAY_ITEM_MAP", key })}</Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Provider item ID"
+                          value={missingPayItemDrafts[key]?.provider_item_id || ""}
+                          onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Provider item name"
+                          value={missingPayItemDrafts[key]?.provider_item_name || ""}
+                          onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        <Button variant="outlined" onClick={() => saveMissingPayItemMapping(key)}>Save</Button>
+                      </Grid>
+                    </Grid>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            {!missingEmployeeIssueRows.length && !missingPayItemKeys.length && !csvBlockingErrors.length && (
+              <Alert severity="success">No run-specific setup issues are blocking CSV handoff right now.</Alert>
+            )}
+            <Accordion elevation={0} disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2">Advanced mapping management</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0 }}>
+                <Stack spacing={3}>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Employee mapping management</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Legacy external payroll employee IDs are bootstrap-only. Live Provider Sync uses PayrollProviderEmployeeMap only.
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={12} md={5}>
+                        <TextField fullWidth size="small" label="Search employees or provider IDs" value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} />
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel id="provider-sync-employee-filter-label">Employee filter</InputLabel>
+                          <Select labelId="provider-sync-employee-filter-label" label="Employee filter" value={employeeFilter} onChange={(event) => { setEmployeeFilter(event.target.value); setEmployeePage(0); }}>
+                            <MenuItem value="current_run_unmapped">Current-run unmapped</MenuItem>
+                            <MenuItem value="unmapped_all">All unmapped</MenuItem>
+                            <MenuItem value="mapped">Mapped only</MenuItem>
+                            <MenuItem value="all">All visible</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} md={3}><Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>Showing {pagedEmployeeMappingRows.length} of {employeeMappingRows.length}</Typography></Grid>
+                    </Grid>
+                    {!employeeMappingRows.length ? (
+                      <Alert severity="success">{runData ? "No employees in the current view need mapping attention." : "No employee mappings to review in the current filter."}</Alert>
+                    ) : (
+                      <Stack spacing={2}>
+                        {pagedEmployeeMappingRows.map((row) => (
+                          <Grid container spacing={2} key={`${row.employee_id}-${row.source}`} alignItems="center">
+                            <Grid item xs={12} md={3}>
+                              <Typography variant="body2"><strong>{row.employee_name || row.employee_name_snapshot || `Employee ${row.employee_id}`}</strong></Typography>
+                              <Typography variant="caption" color="text.secondary">Employee ID {row.employee_id}{row.employee_email ? ` • ${row.employee_email}` : ""}</Typography>
+                            </Grid>
+                            <Grid item xs={12} md={2}>
+                              <Chip size="small" sx={row.provider_employee_id ? chipSx.success : chipSx.warning} label={row.provider_employee_id ? "Mapped" : row.source === "run_unmapped" ? "Current run unmapped" : "Needs mapping"} />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField fullWidth size="small" label="Provider employee ID" value={employeeMappingDrafts[row.employee_id] ?? row.provider_employee_id ?? ""} onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)} />
+                            </Grid>
+                            <Grid item xs={12} md={3}>
+                              <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save employee mapping</Button>
+                            </Grid>
+                          </Grid>
+                        ))}
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button variant="outlined" disabled={employeePage === 0} onClick={() => setEmployeePage((page) => Math.max(0, page - 1))}>Previous</Button>
+                          <Button variant="outlined" disabled={(employeePage + 1) * employeePageSize >= employeeMappingRows.length} onClick={() => setEmployeePage((page) => page + 1)}>Next</Button>
+                        </Stack>
+                      </Stack>
+                    )}
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Pay item mapping management</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Core payroll mappings appear first. Optional payroll adjustment mappings are available for future periods and only become required when those lines exist in a selected run.
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={12} md={4}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel id="provider-sync-local-key-label">Local key</InputLabel>
+                          <Select labelId="provider-sync-local-key-label" label="Local key" value={payItemDraft.local_key} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, local_key: event.target.value }))}>
+                            {sortPayItemKeys(Object.keys(payItemLabel)).map((key) => (
+                              <MenuItem key={key} value={key}>{payItemLabel[key] || key}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Provider item ID" value={payItemDraft.provider_item_id} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))} /></Grid>
+                      <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Provider item name" value={payItemDraft.provider_item_name} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_name: event.target.value }))} /></Grid>
+                      <Grid item xs={12}><Button variant="outlined" onClick={savePayItemMapping}>Save pay item mapping</Button></Grid>
+                    </Grid>
+                    <Typography variant="subtitle2" gutterBottom>Core payroll mappings</Typography>
+                    <Table size="small" sx={{ mb: 2 }}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Local key</TableCell>
+                          <TableCell>Category</TableCell>
+                          <TableCell>Provider item id</TableCell>
+                          <TableCell>Provider item name</TableCell>
+                          <TableCell>Status</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {corePayItemMappings.map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell>{payItemLabel[row.local_key] || row.local_key}</TableCell>
+                            <TableCell>{row.item_category}</TableCell>
+                            <TableCell>{row.provider_item_id || "—"}</TableCell>
+                            <TableCell>{row.provider_item_name || "—"}</TableCell>
+                            <TableCell>{row.is_active ? "active" : "inactive"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <Accordion elevation={0} disableGutters>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="subtitle2">Optional payroll adjustment mappings</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ px: 0 }}>
+                        {!optionalPayItemMappings.length ? (
+                          <Typography variant="body2" color="text.secondary">No optional payroll adjustment mappings are available yet.</Typography>
+                        ) : (
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Local key</TableCell>
+                                <TableCell>Category</TableCell>
+                                <TableCell>Provider item id</TableCell>
+                                <TableCell>Provider item name</TableCell>
+                                <TableCell>Status</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {optionalPayItemMappings.map((row) => (
+                                <TableRow key={row.id}>
+                                  <TableCell>{payItemLabel[row.local_key] || row.local_key}</TableCell>
+                                  <TableCell>{row.item_category}</TableCell>
+                                  <TableCell>{row.provider_item_id || "—"}</TableCell>
+                                  <TableCell>{row.provider_item_name || "—"}</TableCell>
+                                  <TableCell>{row.is_active ? "active" : "inactive"}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </AccordionDetails>
+                    </Accordion>
+                  </Box>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+            <Accordion elevation={0} disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2">Technical validation details</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ px: 0 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2">Technical errors</Typography>
+                    {renderJsonList(validationData.errors)}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2">Technical warnings</Typography>
+                    {renderJsonList(validationData.warnings)}
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
         </Paper>
       )}
 
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Employee mapping management
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Legacy external payroll employee IDs are bootstrap-only. Live Provider Sync uses PayrollProviderEmployeeMap only.
-        </Typography>
-        {!runData && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Select a run from history to focus on its unmapped employees. You can still search all mapped or unmapped employees below.
-          </Alert>
-        )}
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} md={5}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Search employees or provider IDs"
-              value={employeeSearch}
-              onChange={(event) => setEmployeeSearch(event.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="provider-sync-employee-filter-label">Employee filter</InputLabel>
-              <Select
-                labelId="provider-sync-employee-filter-label"
-                label="Employee filter"
-                value={employeeFilter}
-                onChange={(event) => {
-                  setEmployeeFilter(event.target.value);
-                  setEmployeePage(0);
-                }}
-              >
-                <MenuItem value="current_run_unmapped">Current-run unmapped</MenuItem>
-                <MenuItem value="unmapped_all">All unmapped</MenuItem>
-                <MenuItem value="mapped">Mapped only</MenuItem>
-                <MenuItem value="all">All visible</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
-              Showing {pagedEmployeeMappingRows.length} of {employeeMappingRows.length}
-            </Typography>
-          </Grid>
-        </Grid>
-        {!employeeMappingRows.length ? (
-          <Alert severity="success">
-            {runData ? "No employees in the current view need mapping attention." : "No employee mappings to review in the current filter."}
-          </Alert>
-        ) : (
-          <Stack spacing={2}>
-            {pagedEmployeeMappingRows.map((row) => (
-              <Grid container spacing={2} key={`${row.employee_id}-${row.source}`} alignItems="center">
-                <Grid item xs={12} md={3}>
-                  <Typography variant="body2"><strong>{row.employee_name || row.employee_name_snapshot || `Employee ${row.employee_id}`}</strong></Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Employee ID {row.employee_id}
-                    {row.employee_email ? ` • ${row.employee_email}` : ""}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={2}>
-                  <Chip
-                    size="small"
-                    sx={row.provider_employee_id ? chipSx.success : chipSx.warning}
-                    label={row.provider_employee_id ? "Mapped" : row.source === "run_unmapped" ? "Current run unmapped" : "Needs mapping"}
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Provider employee ID"
-                    value={employeeMappingDrafts[row.employee_id] ?? row.provider_employee_id ?? ""}
-                    onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>
-                    Save employee mapping
-                  </Button>
-                </Grid>
-              </Grid>
-            ))}
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button
-                variant="outlined"
-                disabled={employeePage === 0}
-                onClick={() => setEmployeePage((page) => Math.max(0, page - 1))}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={(employeePage + 1) * employeePageSize >= employeeMappingRows.length}
-                onClick={() => setEmployeePage((page) => page + 1)}
-              >
-                Next
-              </Button>
-            </Stack>
-          </Stack>
-        )}
-      </Paper>
-
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Pay item mapping management
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Core payroll mappings appear first. Optional payroll adjustment mappings are available for future periods and only become required when those lines exist in a selected run.
-        </Typography>
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="provider-sync-local-key-label">Local key</InputLabel>
-              <Select
-                labelId="provider-sync-local-key-label"
-                label="Local key"
-                value={payItemDraft.local_key}
-                onChange={(event) =>
-                  setPayItemDraft((prev) => ({ ...prev, local_key: event.target.value }))
-                }
-              >
-                {sortPayItemKeys(Object.keys(payItemLabel)).map((key) => (
-                  <MenuItem key={key} value={key}>
-                    {payItemLabel[key] || key}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Provider item ID"
-              value={payItemDraft.provider_item_id}
-              onChange={(event) =>
-                setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Provider item name"
-              value={payItemDraft.provider_item_name}
-              onChange={(event) =>
-                setPayItemDraft((prev) => ({ ...prev, provider_item_name: event.target.value }))
-              }
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Button variant="outlined" onClick={savePayItemMapping}>
-              Save pay item mapping
-            </Button>
-          </Grid>
-        </Grid>
-        <Typography variant="subtitle2" gutterBottom>
-          Core payroll mappings
-        </Typography>
-        <Table size="small" sx={{ mb: 2 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Local key</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Provider item id</TableCell>
-              <TableCell>Provider item name</TableCell>
-              <TableCell>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {corePayItemMappings.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{payItemLabel[row.local_key] || row.local_key}</TableCell>
-                <TableCell>{row.item_category}</TableCell>
-                <TableCell>{row.provider_item_id || "—"}</TableCell>
-                <TableCell>{row.provider_item_name || "—"}</TableCell>
-                <TableCell>{row.is_active ? "active" : "inactive"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <Accordion elevation={0} disableGutters>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle2">Optional payroll adjustment mappings</Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ px: 0 }}>
-            {!optionalPayItemMappings.length ? (
-              <Typography variant="body2" color="text.secondary">
-                No optional payroll adjustment mappings are available yet.
-              </Typography>
-            ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Local key</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Provider item id</TableCell>
-                    <TableCell>Provider item name</TableCell>
-                    <TableCell>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {optionalPayItemMappings.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{payItemLabel[row.local_key] || row.local_key}</TableCell>
-                      <TableCell>{row.item_category}</TableCell>
-                      <TableCell>{row.provider_item_id || "—"}</TableCell>
-                      <TableCell>{row.provider_item_name || "—"}</TableCell>
-                      <TableCell>{row.is_active ? "active" : "inactive"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </AccordionDetails>
-        </Accordion>
-      </Paper>
-
       {payloadPreview && (
         <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Provider payload preview</Typography>
+          <Typography variant="h6" gutterBottom>Step 4: Export</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Preview provider inputs only. This does not submit official payroll and does not pay employees.
           </Typography>
@@ -1506,6 +1577,10 @@ export default function PayrollProviderSync({
               {payloadPreview.errors.length} provider preview issue(s) were detected.
             </Alert>
           )}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Manager view</Typography>
+            {renderManagerMessages(payloadPreview.errors, currentRunContext)}
+          </Box>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -1552,10 +1627,11 @@ export default function PayrollProviderSync({
         </Paper>
       )}
 
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Provider run history
-        </Typography>
+      <Accordion elevation={2} disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">Advanced: Provider run history</Typography>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Provider Sync tracks draft, validated, payload-previewed, CSV-exported, failed, and unsupported runs only. It does not claim payroll was submitted, completed, or paid.
         </Typography>
@@ -1749,7 +1825,8 @@ export default function PayrollProviderSync({
             The current preview source hash differs from the most recent earlier run for this same period. This usually means approved time or saved Payroll Preview adjustments changed.
           </Alert>
         )}
-      </Paper>
+        </AccordionDetails>
+      </Accordion>
     </Stack>
   );
 }
