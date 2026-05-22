@@ -74,6 +74,20 @@ const truthyIds = (ids = []) =>
     ? ids.map((id) => String(id)).filter(Boolean)
     : [];
 
+const adjustmentTypeLabels = {
+  tips: "tips",
+  bonus: "bonus",
+  attendance_bonus: "attendance bonus",
+  performance_bonus: "performance bonus",
+  commission: "commission",
+  shift_premium: "shift premium",
+  travel_allowance: "travel allowance",
+  non_taxable_reimbursement: "reimbursements",
+  vacation_pay: "vacation pay",
+  parental_top_up: "parental top-up",
+  family_bonus: "family bonus",
+};
+
 export default function PayrollProviderSync({
   departmentFilter,
   selectedRecruiter,
@@ -296,7 +310,7 @@ export default function PayrollProviderSync({
           Payroll Provider Sync
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Prepare approved payroll-ready time and leave data for external payroll providers.
+          Provider Sync prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Official payroll is completed in QuickBooks or your payroll provider.
         </Typography>
       </Paper>
 
@@ -386,7 +400,7 @@ export default function PayrollProviderSync({
           Prepare payroll-ready data
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Use the current Payroll page filters to prepare payroll-ready data, preview provider payload, download provider CSV, and send to provider when supported.
+          Use the current Payroll page filters to prepare payroll-ready inputs, preview provider payload, download provider CSV, and complete payroll inside the provider.
         </Typography>
         {missingDates && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -419,14 +433,38 @@ export default function PayrollProviderSync({
         {previewError && <Alert severity="error" sx={{ mb: 2 }}>{previewError}</Alert>}
         {previewData && (
           <Grid container spacing={2}>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Employees:</strong> {previewData.employee_count ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Lines:</strong> {previewData.line_count ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {previewData.total_hours ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Gross preview total:</strong> {previewData.gross_preview_total ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Regular hours:</strong> {previewData.regular_hours ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Overtime hours:</strong> {previewData.overtime_hours ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Paid leave hours:</strong> {previewData.paid_leave_hours ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Holiday hours:</strong> {previewData.holiday_hours ?? 0}</Typography></Grid>
+            <Grid item xs={12}>
+              {previewData.saved_adjustments_included ? (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Saved Payroll Preview adjustments will be included.
+                </Alert>
+              ) : (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  No saved Payroll Preview adjustments found for this period. Provider Sync will use approved time and leave only.
+                </Alert>
+              )}
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle2" gutterBottom>Operational base</Typography>
+              <Stack spacing={0.75}>
+                <Typography variant="body2"><strong>Employees:</strong> {previewData.employee_count ?? 0}</Typography>
+                <Typography variant="body2"><strong>Lines:</strong> {previewData.line_count ?? 0}</Typography>
+                <Typography variant="body2"><strong>Total hours:</strong> {previewData.total_hours ?? 0}</Typography>
+                <Typography variant="body2"><strong>Regular hours:</strong> {previewData.regular_hours ?? 0}</Typography>
+                <Typography variant="body2"><strong>Overtime hours:</strong> {previewData.overtime_hours ?? 0}</Typography>
+                <Typography variant="body2"><strong>Paid leave hours:</strong> {previewData.paid_leave_hours ?? 0}</Typography>
+                <Typography variant="body2"><strong>Holiday hours:</strong> {previewData.holiday_hours ?? 0}</Typography>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle2" gutterBottom>Saved adjustments</Typography>
+              <Stack spacing={0.75}>
+                <Typography variant="body2"><strong>Adjustment line count:</strong> {previewData.adjustment_line_count ?? 0}</Typography>
+                <Typography variant="body2"><strong>Adjustment total:</strong> {previewData.adjustment_total ?? 0}</Typography>
+                <Typography variant="body2"><strong>Adjustment types found:</strong> {(previewData.adjustment_types_found || []).map((key) => adjustmentTypeLabels[key] || key).join(", ") || "None"}</Typography>
+                <Typography variant="body2"><strong>Gross preview total:</strong> {previewData.gross_preview_total ?? 0}</Typography>
+              </Stack>
+            </Grid>
             <Grid item xs={12} md={6}><Typography variant="body2"><strong>Existing run id:</strong> {previewData.existing_run_id || "—"}</Typography></Grid>
             <Grid item xs={12} md={6}><Typography variant="body2"><strong>Source hash:</strong> {previewData.source_hash || "—"}</Typography></Grid>
             <Grid item xs={12} md={6}>
@@ -451,6 +489,9 @@ export default function PayrollProviderSync({
             <Grid item xs={12} md={3}><Typography variant="body2"><strong>Employee count:</strong> {runData.employee_count ?? 0}</Typography></Grid>
             <Grid item xs={12} md={3}><Typography variant="body2"><strong>Line count:</strong> {runData.time_entry_count ?? 0}</Typography></Grid>
             <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {runData.total_hours ?? 0}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment lines:</strong> {runData.request_payload_json?.adjustments?.adjustment_line_count ?? 0}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment total:</strong> {runData.request_payload_json?.adjustments?.adjustment_total ?? 0}</Typography></Grid>
+            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment types:</strong> {(runData.request_payload_json?.adjustments?.adjustment_types_found || []).map((key) => adjustmentTypeLabels[key] || key).join(", ") || "None"}</Typography></Grid>
             <Grid item xs={12} md={9}><Typography variant="body2"><strong>Source hash:</strong> {runData.source_hash || "—"}</Typography></Grid>
           </Grid>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -490,7 +531,7 @@ export default function PayrollProviderSync({
         <Paper elevation={2} sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>Provider payload preview</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Preview provider payload only. This does not mark payroll submitted and does not pay employees.
+            Preview provider inputs only. This does not submit official payroll and does not pay employees.
           </Typography>
           <Grid container spacing={2} sx={{ mb: 2 }}>
             <Grid item xs={12} md={2}><Typography variant="body2"><strong>Total lines:</strong> {payloadPreview.summary?.total_lines ?? 0}</Typography></Grid>
@@ -514,6 +555,7 @@ export default function PayrollProviderSync({
                 <TableCell>Earning key</TableCell>
                 <TableCell align="right">Hours</TableCell>
                 <TableCell align="right">Rate</TableCell>
+                <TableCell align="right">Amount</TableCell>
                 <TableCell>Provider employee id</TableCell>
                 <TableCell>Provider item id</TableCell>
                 <TableCell>Status / errors</TableCell>
@@ -527,6 +569,7 @@ export default function PayrollProviderSync({
                   <TableCell>{line.earning_key || "—"}</TableCell>
                   <TableCell align="right">{line.hours ?? 0}</TableCell>
                   <TableCell align="right">{line.rate ?? 0}</TableCell>
+                  <TableCell align="right">{line.amount_preview ?? 0}</TableCell>
                   <TableCell>{line.provider_employee_id || "—"}</TableCell>
                   <TableCell>{line.provider_item_id || "—"}</TableCell>
                   <TableCell>

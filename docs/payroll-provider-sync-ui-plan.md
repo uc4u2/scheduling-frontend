@@ -240,6 +240,13 @@ Inputs come from existing Payroll page state:
 Primary action:
 - `Prepare QuickBooks Payroll Data`
 
+Copy guidance:
+- `Provider Sync prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Official payroll is completed in QuickBooks or your payroll provider.`
+- if no saved adjustments exist:
+  - `No saved Payroll Preview adjustments found for this period. Provider Sync will use approved time and leave only.`
+- if saved adjustments exist:
+  - `Saved Payroll Preview adjustments will be included.`
+
 This should call:
 - `raw-preview`
 
@@ -252,6 +259,9 @@ Show:
 - holiday hours
 - paid leave hours
 - gross preview total
+- adjustment line count
+- adjustment total
+- adjustment types found
 - warnings
 - errors
 - duplicate existing run if detected
@@ -311,6 +321,18 @@ This should call:
 Purpose:
 - safe fallback handoff
 - not a claim of provider-completed payroll
+
+Workflow wording:
+- use `Save payroll-ready adjustments`
+- use `Payroll-ready inputs`
+- use `Preview provider payload`
+- use `Download provider CSV`
+- use `Complete payroll inside provider`
+
+Avoid:
+- `Run payroll`
+- `Pay employees`
+- `Submit official payroll`
 
 ## Rendering recommendation in Payroll.js
 
