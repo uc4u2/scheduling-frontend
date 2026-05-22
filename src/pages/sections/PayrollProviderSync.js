@@ -31,6 +31,28 @@ const PROVIDER_OPTIONS = [
 
 const formatList = (items = []) => (Array.isArray(items) ? items.filter(Boolean) : []);
 
+const buildSetupErrorMessage = (status, fallback = "Failed to load provider setup status.") => {
+  const errors = Array.isArray(status?.capabilities?.errors) ? status.capabilities.errors : [];
+  if (errors.includes("QUICKBOOKS_CONNECTION_REQUIRED")) {
+    return "QuickBooks is not connected. Connect QuickBooks in Settings first.";
+  }
+  if (errors.includes("QUICKBOOKS_TIME_SCOPE_REQUIRED")) {
+    return "QuickBooks is connected for accounting, but payroll/time sync is not enabled.";
+  }
+  return (
+    status?.message ||
+    status?.error ||
+    status?.error_code ||
+    fallback
+  );
+};
+
+const buildRequestErrorMessage = async (err, fallback) => {
+  const status = err?.response?.status;
+  const message = await extractApiErrorMessage(err, fallback);
+  return status ? `${message} (HTTP ${status})` : message;
+};
+
 const renderJsonList = (items = []) => {
   const list = formatList(items);
   if (!list.length) return <Typography variant="body2" color="text.secondary">None</Typography>;
@@ -124,8 +146,10 @@ export default function PayrollProviderSync({
     try {
       const data = await payrollProviderSyncApi.setupStatus("quickbooks");
       setSetupStatus(data);
+      const derivedMessage = buildSetupErrorMessage(data, "");
+      setSetupError(derivedMessage);
     } catch (err) {
-      const message = await extractApiErrorMessage(err, "Failed to load provider setup status.");
+      const message = await buildRequestErrorMessage(err, "Failed to load provider setup status.");
       setSetupError(message);
     } finally {
       setStatusLoading(false);
@@ -159,7 +183,7 @@ export default function PayrollProviderSync({
       const data = await payrollProviderSyncApi.rawPreview(buildRunPayload());
       setPreviewData(data?.preview || data);
     } catch (err) {
-      const message = await extractApiErrorMessage(err, "Failed to preview payroll-ready data.");
+      const message = await buildRequestErrorMessage(err, "Failed to preview payroll-ready data.");
       setPreviewError(message);
     } finally {
       setPreviewLoading(false);
@@ -177,7 +201,7 @@ export default function PayrollProviderSync({
       setRunData(data?.run || data);
       showMessage("Provider run created.", "success");
     } catch (err) {
-      const message = await extractApiErrorMessage(err, "Failed to create provider run.");
+      const message = await buildRequestErrorMessage(err, "Failed to create provider run.");
       setRunError(message);
     } finally {
       setCreateLoading(false);
@@ -193,7 +217,7 @@ export default function PayrollProviderSync({
       setRunData(data?.run || runData);
       showMessage("Provider run validated.", "success");
     } catch (err) {
-      showMessage(await extractApiErrorMessage(err, "Run validation failed."), "error");
+      showMessage(await buildRequestErrorMessage(err, "Run validation failed."), "error");
     } finally {
       setValidationLoading(false);
     }
@@ -206,7 +230,7 @@ export default function PayrollProviderSync({
       const data = await payrollProviderSyncApi.quickbooksPayloadPreview(runData.id);
       setPayloadPreview(data);
     } catch (err) {
-      showMessage(await extractApiErrorMessage(err, "Failed to preview provider payload."), "error");
+      showMessage(await buildRequestErrorMessage(err, "Failed to preview provider payload."), "error");
     } finally {
       setPayloadLoading(false);
     }
@@ -227,7 +251,7 @@ export default function PayrollProviderSync({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      showMessage(await extractApiErrorMessage(err, "Failed to download provider CSV."), "error");
+      showMessage(await buildRequestErrorMessage(err, "Failed to download provider CSV."), "error");
     } finally {
       setDownloadLoading(false);
     }
@@ -240,7 +264,7 @@ export default function PayrollProviderSync({
       await loadSetupStatus();
       showMessage("Pay item placeholders created.", "success");
     } catch (err) {
-      showMessage(await extractApiErrorMessage(err, "Failed to bootstrap pay item placeholders."), "error");
+      showMessage(await buildRequestErrorMessage(err, "Failed to bootstrap pay item placeholders."), "error");
     } finally {
       setBootstrapPayItemsLoading(false);
     }
@@ -253,7 +277,7 @@ export default function PayrollProviderSync({
       await loadSetupStatus();
       showMessage("Employee mappings bootstrapped from legacy IDs.", "success");
     } catch (err) {
-      showMessage(await extractApiErrorMessage(err, "Failed to bootstrap employee mappings."), "error");
+      showMessage(await buildRequestErrorMessage(err, "Failed to bootstrap employee mappings."), "error");
     } finally {
       setBootstrapEmployeesLoading(false);
     }
