@@ -19,9 +19,11 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -54,7 +56,11 @@ const buildSetupErrorMessage = (status, fallback = "Failed to load provider setu
 
 const buildRequestErrorMessage = async (err, fallback) => {
   const status = err?.response?.status;
-  const message = await extractApiErrorMessage(err, fallback);
+  const rawMessage = await extractApiErrorMessage(err, fallback);
+  const normalized = String(rawMessage || "").toLowerCase();
+  const message = normalized.includes("duplicate_source_hash")
+    ? "A provider run already exists for this same payroll-ready snapshot. Open the existing run from history instead of creating another duplicate run."
+    : rawMessage;
   return status ? `${message} (HTTP ${status})` : message;
 };
 
@@ -121,6 +127,13 @@ const formatDateTime = (value) => {
 const formatNumber = (value) => {
   const numeric = Number(value || 0);
   return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const shortenHash = (value, size = 12) => {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  if (text.length <= size) return text;
+  return `${text.slice(0, size)}...`;
 };
 
 const employeeLabelFromContext = (employeeId, runRows = [], recruiters = []) => {
@@ -996,7 +1009,11 @@ export default function PayrollProviderSync({
         </Grid>
       </Paper>
 
-      <Paper elevation={2} sx={{ p: 3 }}>
+      <Accordion elevation={2} defaultExpanded={false} disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">QuickBooks connection and setup</Typography>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: 3 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
           <Box>
             <Typography variant="h6">QuickBooks Setup Status</Typography>
@@ -1050,7 +1067,8 @@ export default function PayrollProviderSync({
         {renderJsonList(setupStatus?.missing_required_pay_item_keys)}
         <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>Setup steps</Typography>
         {renderJsonList(setupStatus?.setup_steps)}
-      </Paper>
+        </AccordionDetails>
+      </Accordion>
 
 
       <Paper elevation={2} sx={{ p: 3 }}>
@@ -1230,7 +1248,14 @@ export default function PayrollProviderSync({
               </Stack>
             </Grid>
             <Grid item xs={12} md={6}><Typography variant="body2"><strong>Existing run id:</strong> {previewData.existing_run_id || "—"}</Typography></Grid>
-            <Grid item xs={12} md={6}><Typography variant="body2"><strong>Source hash:</strong> {previewData.source_hash || "—"}</Typography></Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="body2">
+                <strong>Source hash:</strong>{" "}
+                <Tooltip title={previewData.source_hash || "—"}>
+                  <Box component="span" sx={{ fontFamily: "monospace" }}>{shortenHash(previewData.source_hash)}</Box>
+                </Tooltip>
+              </Typography>
+            </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2">Warnings</Typography>
               {renderManagerMessages(previewData.warnings, currentRunContext)}
@@ -1261,7 +1286,14 @@ export default function PayrollProviderSync({
               <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment lines:</strong> {runData.request_payload_json?.adjustments?.adjustment_line_count ?? 0}</Typography></Grid>
               <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment total:</strong> {runData.request_payload_json?.adjustments?.adjustment_total ?? 0}</Typography></Grid>
               <Grid item xs={12} md={3}><Typography variant="body2"><strong>Validation status:</strong> {validationData?.status || "Not validated yet"}</Typography></Grid>
-              <Grid item xs={12} md={12}><Typography variant="body2"><strong>Source hash:</strong> {runData.source_hash || "—"}</Typography></Grid>
+              <Grid item xs={12} md={12}>
+                <Typography variant="body2">
+                  <strong>Source hash:</strong>{" "}
+                  <Tooltip title={runData.source_hash || "—"}>
+                    <Box component="span" sx={{ fontFamily: "monospace" }}>{shortenHash(runData.source_hash)}</Box>
+                  </Tooltip>
+                </Typography>
+              </Grid>
             </Grid>
             {csvBlockingErrors.length > 0 && (
               <Alert severity="warning" sx={{ mb: 2 }}>
@@ -1581,7 +1613,8 @@ export default function PayrollProviderSync({
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Manager view</Typography>
             {renderManagerMessages(payloadPreview.errors, currentRunContext)}
           </Box>
-          <Table size="small">
+          <TableContainer sx={{ overflowX: "auto" }}>
+          <Table size="small" sx={{ minWidth: 980 }}>
             <TableHead>
               <TableRow>
                 <TableCell>Employee</TableCell>
@@ -1624,6 +1657,7 @@ export default function PayrollProviderSync({
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
         </Paper>
       )}
 
@@ -1703,7 +1737,8 @@ export default function PayrollProviderSync({
         ) : !runHistory.length ? (
           <Typography variant="body2" color="text.secondary">No provider runs found yet.</Typography>
         ) : (
-          <Table size="small">
+          <TableContainer sx={{ overflowX: "auto" }}>
+          <Table size="small" sx={{ minWidth: 1240 }}>
             <TableHead>
               <TableRow>
                 <TableCell>Select</TableCell>
@@ -1743,7 +1778,13 @@ export default function PayrollProviderSync({
                   <TableCell>{item.provider}</TableCell>
                   <TableCell>{item.triggered_by_name || item.triggered_by_email || item.triggered_by_id || "—"}</TableCell>
                   <TableCell>{formatDateTime(item.created_at)}</TableCell>
-                  <TableCell sx={{ maxWidth: 220, overflowWrap: "anywhere" }}>{item.source_hash || "—"}</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>
+                    <Tooltip title={item.source_hash || "—"}>
+                      <Box component="span" sx={{ fontFamily: "monospace" }}>
+                        {shortenHash(item.source_hash, 10)}
+                      </Box>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell align="right">{formatNumber(item.employee_count)}</TableCell>
                   <TableCell align="right">{formatNumber(item.time_entry_count)}</TableCell>
                   <TableCell align="right">{formatNumber(item.total_hours)}</TableCell>
@@ -1752,7 +1793,7 @@ export default function PayrollProviderSync({
                   <TableCell>{item.payload_previewed_at ? formatDateTime(item.payload_previewed_at) : "No"}</TableCell>
                   <TableCell>{item.csv_exported_at ? formatDateTime(item.csv_exported_at) : "No"}</TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Stack spacing={0.75} sx={{ minWidth: 110 }}>
                       <Button
                         size="small"
                         variant="outlined"
@@ -1803,6 +1844,7 @@ export default function PayrollProviderSync({
               ))}
             </TableBody>
           </Table>
+          </TableContainer>
         )}
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
           <Button
