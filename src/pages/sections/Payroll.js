@@ -1307,8 +1307,11 @@ return (
         </AccordionSummary>
       <AccordionDetails>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Download finalized payroll exports for the selected pay period. These exports do not initiate bank payments or direct deposit.
+            These exports belong to the older finalized payroll workflow. For accountant, provider, or QuickBooks handoff, use the `Provider Sync` tab instead. These exports do not initiate bank payments or direct deposit.
           </Typography>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Provider Sync CSV is the recommended payroll handoff workflow for accountants and external payroll providers. The legacy export below is only for the older finalized payroll path.
+          </Alert>
 
           <Stack spacing={2}>
             {missingExternalEmployees.length > 0 && (
@@ -1397,10 +1400,10 @@ return (
               <Button variant="outlined" onClick={downloadPayslipsZip} disabled={exporting || isRawPayrollMode}>
                 Download payslips ZIP (PDF)
               </Button>
-              <Tooltip title="Exports paid earnings + pay period info for payroll provider import. Gross pay in this file equals the sum of earnings columns. Vacation accrual is excluded unless paid out. Taxes and net pay are calculated by your payroll provider.">
+              <Tooltip title="Legacy finalized-payroll export only. For the newer provider/accountant/QuickBooks handoff workflow, use Provider Sync instead.">
                 <span>
                   <Button variant="outlined" onClick={downloadProviderImportCsv} disabled={exporting || isRawPayrollMode}>
-                    Download provider import CSV
+                    Legacy Finalized Payroll Export
                   </Button>
                 </span>
               </Tooltip>

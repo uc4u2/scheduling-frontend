@@ -326,13 +326,18 @@ Workflow wording:
 - use `Save payroll-ready adjustments`
 - use `Payroll-ready inputs`
 - use `Preview provider payload`
-- use `Download provider CSV`
+- use `Download Provider Sync CSV`
 - use `Complete payroll inside provider`
 
 Avoid:
 - `Run payroll`
 - `Pay employees`
 - `Submit official payroll`
+
+Status/warning copy:
+- show `QuickBooks official import format: not verified yet`
+- show that Provider Sync CSV is recommended for accountant/provider/QuickBooks handoff
+- rename the old Advanced Export provider CSV to `Legacy Finalized Payroll Export`
 
 ## Rendering recommendation in Payroll.js
 

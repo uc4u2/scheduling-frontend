@@ -312,6 +312,13 @@ export default function PayrollProviderSync({
         <Typography variant="body2" color="text.secondary">
           Provider Sync prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Official payroll is completed in QuickBooks or your payroll provider.
         </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
+          <Chip color="warning" variant="outlined" label="QuickBooks official import format: not verified yet" />
+          <Chip color="success" variant="outlined" label="Provider Sync = recommended payroll handoff workflow" />
+        </Stack>
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          QuickBooks official import format: not verified yet.
+        </Alert>
       </Paper>
 
       <Paper elevation={2} sx={{ p: 3 }}>
@@ -402,6 +409,9 @@ export default function PayrollProviderSync({
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Use the current Payroll page filters to prepare payroll-ready inputs, preview provider payload, download provider CSV, and complete payroll inside the provider.
         </Typography>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Provider Sync CSV is the recommended handoff for accountants, payroll providers, and QuickBooks review workflows. It is not yet a verified official QuickBooks Payroll import format.
+        </Alert>
         {missingDates && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Start date and end date are required before preparing provider-sync data.
@@ -502,7 +512,7 @@ export default function PayrollProviderSync({
               {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
             </Button>
             <Button variant="outlined" onClick={handleCsvDownload} disabled={downloadLoading}>
-              {downloadLoading ? <CircularProgress size={18} /> : "Download provider CSV"}
+              {downloadLoading ? <CircularProgress size={18} /> : "Download Provider Sync CSV (Recommended)"}
             </Button>
           </Stack>
         </Paper>
