@@ -659,11 +659,25 @@ export const payrollProviderSyncApi = {
         config
       )
       .then((r) => r.data),
+  listQuickBooksEmployeeCandidates: (params = {}, config = {}) =>
+    api
+      .get("/automation/payroll/provider-mappings/quickbooks/candidates/employees", {
+        ...config,
+        params,
+      })
+      .then((r) => r.data),
   listPayItemMappings: (provider = "quickbooks", config = {}) =>
     api
       .get("/automation/payroll/provider-mappings/pay-items", {
         ...config,
         params: { provider, ...(config.params || {}) },
+      })
+      .then((r) => r.data),
+  listQuickBooksPayItemCandidates: (params = {}, config = {}) =>
+    api
+      .get("/automation/payroll/provider-mappings/quickbooks/candidates/pay-items", {
+        ...config,
+        params,
       })
       .then((r) => r.data),
   upsertPayItemMapping: (payload, config = {}) =>
