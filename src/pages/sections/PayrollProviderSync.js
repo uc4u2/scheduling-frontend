@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -215,6 +215,7 @@ export default function PayrollProviderSync({
     provider_item_id: "",
     provider_item_name: "",
   });
+  const runPanelRef = useRef(null);
 
   const availableEmployeeIds = useMemo(() => {
     if (exportAllEmployees) {
@@ -244,6 +245,12 @@ export default function PayrollProviderSync({
     if (typeof setSnackbar === "function") {
       setSnackbar({ open: true, message, severity });
     }
+  };
+
+  const focusRunPanel = () => {
+    window.requestAnimationFrame(() => {
+      runPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const loadMappingData = async () => {
@@ -316,6 +323,7 @@ export default function PayrollProviderSync({
         setValidationData(null);
       }
       setPayloadPreview(null);
+      focusRunPanel();
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Failed to load provider run detail."), "error");
     }
@@ -399,6 +407,7 @@ export default function PayrollProviderSync({
       const createdRun = data?.run || data;
       setRunData(createdRun);
       setSelectedRunId(createdRun?.id || null);
+      focusRunPanel();
       await loadMappingData();
       await loadRunHistory({ offset: 0 });
       if (createdRun?.id) {
@@ -464,6 +473,51 @@ export default function PayrollProviderSync({
       showMessage(await buildRequestErrorMessage(err, "Failed to download provider CSV."), "error");
     } finally {
       setDownloadLoading(false);
+    }
+  };
+
+  const handleHistoryValidate = async (runId, fallbackRun) => {
+    try {
+      await loadSelectedRun(runId);
+      const data = await payrollProviderSyncApi.validateRun(runId);
+      setValidationData(data?.result || data);
+      setRunData(data?.run || fallbackRun || null);
+      focusRunPanel();
+      await loadRunHistory();
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Run validation failed."), "error");
+    }
+  };
+
+  const handleHistoryPreviewPayload = async (runId) => {
+    try {
+      await loadSelectedRun(runId);
+      const data = await payrollProviderSyncApi.quickbooksPayloadPreview(runId);
+      setPayloadPreview(data);
+      focusRunPanel();
+      await loadRunHistory();
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to preview provider payload."), "error");
+    }
+  };
+
+  const handleHistoryCsvDownload = async (runId, fallbackProvider) => {
+    try {
+      await loadSelectedRun(runId);
+      const resp = await payrollProviderSyncApi.csvDownload(runId);
+      const blob = new Blob([resp.data], { type: resp.headers["content-type"] || "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `provider_run_${runId}_${fallbackProvider || provider}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      await loadRunHistory();
+      focusRunPanel();
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to download provider CSV."), "error");
     }
   };
 
@@ -600,6 +654,8 @@ export default function PayrollProviderSync({
     Boolean(validationData?.errors?.length) &&
     (validationData?.csv_download_allowed === true) &&
     (validationData?.csv_blocking_errors || []).length === 0;
+  const csvDownloadAllowed = validationData?.csv_download_allowed ?? true;
+  const csvBlockingErrors = validationData?.csv_blocking_errors || [];
 
   const employeeMappingRows = useMemo(() => {
     const mappedRows = employeeMappings.filter((row) => row.provider === provider);
@@ -982,34 +1038,51 @@ export default function PayrollProviderSync({
         )}
       </Paper>
 
-      {runData && (
-        <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Provider run</Typography>
-          {runError && <Alert severity="error" sx={{ mb: 2 }}>{runError}</Alert>}
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Run id:</strong> {runData.id}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Status:</strong> {runData.status || "—"}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Employee count:</strong> {runData.employee_count ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Line count:</strong> {runData.time_entry_count ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {runData.total_hours ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment lines:</strong> {runData.request_payload_json?.adjustments?.adjustment_line_count ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment total:</strong> {runData.request_payload_json?.adjustments?.adjustment_total ?? 0}</Typography></Grid>
-            <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment types:</strong> {(runData.request_payload_json?.adjustments?.adjustment_types_found || []).map((key) => adjustmentTypeLabels[key] || key).join(", ") || "None"}</Typography></Grid>
-            <Grid item xs={12} md={9}><Typography variant="body2"><strong>Source hash:</strong> {runData.source_hash || "—"}</Typography></Grid>
-          </Grid>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button variant="contained" onClick={handleValidateRun} disabled={validationLoading}>
-              {validationLoading ? <CircularProgress size={18} /> : "Validate run"}
-            </Button>
-            <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks"}>
-              {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
-            </Button>
-            <Button variant="outlined" onClick={handleCsvDownload} disabled={downloadLoading}>
-              {downloadLoading ? <CircularProgress size={18} /> : "Download Provider Sync CSV (Recommended)"}
-            </Button>
-          </Stack>
-        </Paper>
-      )}
+      <Paper elevation={2} sx={{ p: 3 }} ref={runPanelRef}>
+        <Typography variant="h6" gutterBottom>Provider run</Typography>
+        {!runData ? (
+          <Alert severity="info">
+            No provider run selected. Create a run or select one from history.
+          </Alert>
+        ) : (
+          <>
+            {runError && <Alert severity="error" sx={{ mb: 2 }}>{runError}</Alert>}
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Run id:</strong> {runData.id}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Status:</strong> {runData.status || "—"}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Employee count:</strong> {runData.employee_count ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Line count:</strong> {runData.time_entry_count ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {runData.total_hours ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment lines:</strong> {runData.request_payload_json?.adjustments?.adjustment_line_count ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment total:</strong> {runData.request_payload_json?.adjustments?.adjustment_total ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Validation status:</strong> {validationData?.status || "Not validated yet"}</Typography></Grid>
+              <Grid item xs={12} md={12}><Typography variant="body2"><strong>Source hash:</strong> {runData.source_hash || "—"}</Typography></Grid>
+            </Grid>
+            {csvBlockingErrors.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Fix before CSV</Typography>
+                {renderJsonList(csvBlockingErrors)}
+              </Alert>
+            )}
+            {validationOnlyCapabilityLimitation && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Live QuickBooks submit is not enabled for this run. Provider Sync CSV is still available.
+              </Alert>
+            )}
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button variant="contained" onClick={handleValidateRun} disabled={validationLoading}>
+                {validationLoading ? <CircularProgress size={18} /> : "Validate run"}
+              </Button>
+              <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks"}>
+                {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
+              </Button>
+              <Button variant="outlined" onClick={handleCsvDownload} disabled={downloadLoading || !csvDownloadAllowed}>
+                {downloadLoading ? <CircularProgress size={18} /> : "Download Provider Sync CSV (Recommended)"}
+              </Button>
+            </Stack>
+          </>
+        )}
+      </Paper>
 
       {validationData && (
         <Paper elevation={2} sx={{ p: 3 }}>
@@ -1027,6 +1100,12 @@ export default function PayrollProviderSync({
           {validationOnlyCapabilityLimitation && (
             <Alert severity="info" sx={{ mb: 2 }}>
               Live QuickBooks submit is unavailable for this run, but CSV fallback is available. Use Provider Sync CSV and complete payroll inside QuickBooks or your payroll provider.
+            </Alert>
+          )}
+          {csvBlockingErrors.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Fix before CSV</Typography>
+              {renderJsonList(csvBlockingErrors)}
             </Alert>
           )}
           <Grid container spacing={2}>
@@ -1427,6 +1506,7 @@ export default function PayrollProviderSync({
                 <TableCell>Status</TableCell>
                 <TableCell>Payload previewed</TableCell>
                 <TableCell>CSV exported</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -1458,6 +1538,54 @@ export default function PayrollProviderSync({
                   <TableCell>{item.status || "draft"}</TableCell>
                   <TableCell>{item.payload_previewed_at ? formatDateTime(item.payload_previewed_at) : "No"}</TableCell>
                   <TableCell>{item.csv_exported_at ? formatDateTime(item.csv_exported_at) : "No"}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          loadSelectedRun(item.id);
+                        }}
+                      >
+                        View run
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleHistoryValidate(item.id, item);
+                        }}
+                      >
+                        Validate
+                      </Button>
+                      {item.provider === "quickbooks" && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleHistoryPreviewPayload(item.id);
+                          }}
+                        >
+                          Preview payload
+                        </Button>
+                      )}
+                      {(item.status === "validated" || item.status === "unsupported" || item.status === "validating") && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleHistoryCsvDownload(item.id, item.provider);
+                          }}
+                        >
+                          Download CSV
+                        </Button>
+                      )}
+                    </Stack>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
