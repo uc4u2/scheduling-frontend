@@ -373,6 +373,13 @@ export default function PayrollProviderSync({
     }
   };
 
+  const payItemHelperText = (key) => {
+    if (key === "vacation_pay") {
+      return "Choose or enter the QuickBooks payroll item used for vacation pay. Until QuickBooks item sync is enabled, this can be a temporary code for CSV testing.";
+    }
+    return "Enter the QuickBooks/payroll item code used for this earning. Until QuickBooks item sync is enabled, this can be a temporary code for CSV testing.";
+  };
+
   const focusRunPanel = () => {
     window.requestAnimationFrame(() => {
       runPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -982,7 +989,7 @@ export default function PayrollProviderSync({
   const saveEmployeeMapping = async (row) => {
     const providerEmployeeId = (employeeMappingDrafts[row.employee_id] || "").trim();
     if (!providerEmployeeId) {
-      showMessage("Provider employee ID is required.", "warning");
+      showMessage("QuickBooks employee ID or payroll employee code is required.", "warning");
       return;
     }
     try {
@@ -1043,7 +1050,7 @@ export default function PayrollProviderSync({
     const providerItemId = String(draft.provider_item_id || "").trim();
     const providerItemName = String(draft.provider_item_name || "").trim();
     if (!providerItemId) {
-      showMessage("Provider item ID is required.", "warning");
+      showMessage("QuickBooks/payroll item code is required.", "warning");
       return;
     }
     try {
@@ -1402,6 +1409,16 @@ export default function PayrollProviderSync({
           {previewMissingEmployeeIssueRows.length > 0 && !validationData && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks.
+              </Alert>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+                <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
+                  <span>
+                    <Button variant="outlined" disabled>Import employees from QuickBooks</Button>
+                  </span>
+                </Tooltip>
+              </Stack>
               <Stack spacing={2}>
                 {previewMissingEmployeeIssueRows.map((row) => (
                   <Grid container spacing={2} key={`preview-missing-employee-${row.employee_id}`} alignItems="center">
@@ -1410,7 +1427,14 @@ export default function PayrollProviderSync({
                       <Typography variant="caption" color="text.secondary">{row.employee_email || `Employee ID ${row.employee_id}`}</Typography>
                     </Grid>
                     <Grid item xs={12} md={5}>
-                      <TextField fullWidth size="small" label="Provider employee ID" value={employeeMappingDrafts[row.employee_id] ?? ""} onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)} />
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="QuickBooks employee ID or payroll employee code"
+                        helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
+                        value={employeeMappingDrafts[row.employee_id] ?? ""}
+                        onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
+                      />
                     </Grid>
                     <Grid item xs={12} md={3}>
                       <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save employee mapping</Button>
@@ -1423,6 +1447,16 @@ export default function PayrollProviderSync({
           {validationData && missingEmployeeIssueRows.length > 0 && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks.
+              </Alert>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+                <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
+                  <span>
+                    <Button variant="outlined" disabled>Import employees from QuickBooks</Button>
+                  </span>
+                </Tooltip>
+              </Stack>
               <Stack spacing={2}>
                 {missingEmployeeIssueRows.map((row) => (
                   <Grid container spacing={2} key={`missing-employee-${row.employee_id}`} alignItems="center">
@@ -1431,7 +1465,14 @@ export default function PayrollProviderSync({
                       <Typography variant="caption" color="text.secondary">{row.employee_email || `Employee ID ${row.employee_id}`}</Typography>
                     </Grid>
                     <Grid item xs={12} md={5}>
-                      <TextField fullWidth size="small" label="Provider employee ID" value={employeeMappingDrafts[row.employee_id] ?? ""} onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)} />
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="QuickBooks employee ID or payroll employee code"
+                        helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
+                        value={employeeMappingDrafts[row.employee_id] ?? ""}
+                        onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
+                      />
                     </Grid>
                     <Grid item xs={12} md={3}>
                       <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save employee mapping</Button>
@@ -1444,6 +1485,16 @@ export default function PayrollProviderSync({
           {previewMissingPayItemKeys.length > 0 && !validationData && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing pay item mappings</Typography>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Today this mapping is manual. Later, once QuickBooks payroll/time API access is enabled, Schedulaa will be able to fetch QuickBooks employees and pay items for easier selection.
+              </Alert>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+                <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
+                  <span>
+                    <Button variant="outlined" disabled>Import pay items from QuickBooks</Button>
+                  </span>
+                </Tooltip>
+              </Stack>
               <Stack spacing={2}>
                 {previewMissingPayItemKeys.map((key) => (
                   <Grid container spacing={2} key={`preview-missing-pay-item-${key}`} alignItems="center">
@@ -1454,7 +1505,8 @@ export default function PayrollProviderSync({
                       <TextField
                         fullWidth
                         size="small"
-                        label="Provider item ID"
+                        label="QuickBooks/payroll item code"
+                        helperText={payItemHelperText(key)}
                         value={missingPayItemDrafts[key]?.provider_item_id || ""}
                         onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
                       />
@@ -1463,7 +1515,7 @@ export default function PayrollProviderSync({
                       <TextField
                         fullWidth
                         size="small"
-                        label="Provider item name"
+                        label="Display name"
                         value={missingPayItemDrafts[key]?.provider_item_name || ""}
                         onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
                       />
@@ -1479,6 +1531,16 @@ export default function PayrollProviderSync({
           {validationData && missingPayItemKeys.length > 0 && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing pay item mappings</Typography>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Today this mapping is manual. Later, once QuickBooks payroll/time API access is enabled, Schedulaa will be able to fetch QuickBooks employees and pay items for easier selection.
+              </Alert>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+                <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
+                  <span>
+                    <Button variant="outlined" disabled>Import pay items from QuickBooks</Button>
+                  </span>
+                </Tooltip>
+              </Stack>
               <Stack spacing={2}>
                 {missingPayItemKeys.map((key) => (
                   <Grid container spacing={2} key={`missing-pay-item-${key}`} alignItems="center">
@@ -1490,7 +1552,8 @@ export default function PayrollProviderSync({
                       <TextField
                         fullWidth
                         size="small"
-                        label="Provider item ID"
+                        label="QuickBooks/payroll item code"
+                        helperText={payItemHelperText(key)}
                         value={missingPayItemDrafts[key]?.provider_item_id || ""}
                         onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
                       />
@@ -1499,7 +1562,7 @@ export default function PayrollProviderSync({
                       <TextField
                         fullWidth
                         size="small"
-                        label="Provider item name"
+                        label="Display name"
                         value={missingPayItemDrafts[key]?.provider_item_name || ""}
                         onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
                       />
@@ -1565,7 +1628,14 @@ export default function PayrollProviderSync({
                             <Chip size="small" sx={row.provider_employee_id ? chipSx.success : chipSx.warning} label={row.provider_employee_id ? "Mapped" : row.source === "run_unmapped" ? "Current run unmapped" : "Needs mapping"} />
                           </Grid>
                           <Grid item xs={12} md={4}>
-                            <TextField fullWidth size="small" label="Provider employee ID" value={employeeMappingDrafts[row.employee_id] ?? row.provider_employee_id ?? ""} onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)} />
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="QuickBooks employee ID or payroll employee code"
+                              helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
+                              value={employeeMappingDrafts[row.employee_id] ?? row.provider_employee_id ?? ""}
+                              onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
+                            />
                           </Grid>
                           <Grid item xs={12} md={3}>
                             <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save employee mapping</Button>
@@ -1595,8 +1665,8 @@ export default function PayrollProviderSync({
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Provider item ID" value={payItemDraft.provider_item_id} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))} /></Grid>
-                    <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Provider item name" value={payItemDraft.provider_item_name} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_name: event.target.value }))} /></Grid>
+                    <Grid item xs={12} md={4}><TextField fullWidth size="small" label="QuickBooks/payroll item code" value={payItemDraft.provider_item_id} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))} /></Grid>
+                    <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Display name" value={payItemDraft.provider_item_name} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_name: event.target.value }))} /></Grid>
                     <Grid item xs={12}><Button variant="outlined" onClick={savePayItemMapping}>Save pay item mapping</Button></Grid>
                   </Grid>
                   <Typography variant="subtitle2" gutterBottom>Core payroll mappings</Typography>
@@ -1605,8 +1675,8 @@ export default function PayrollProviderSync({
                       <TableRow>
                         <TableCell>Local key</TableCell>
                         <TableCell>Category</TableCell>
-                        <TableCell>Provider item id</TableCell>
-                        <TableCell>Provider item name</TableCell>
+                        <TableCell>QuickBooks/payroll item code</TableCell>
+                        <TableCell>Display name</TableCell>
                         <TableCell>Status</TableCell>
                       </TableRow>
                     </TableHead>
@@ -1635,8 +1705,8 @@ export default function PayrollProviderSync({
                             <TableRow>
                               <TableCell>Local key</TableCell>
                               <TableCell>Category</TableCell>
-                              <TableCell>Provider item id</TableCell>
-                              <TableCell>Provider item name</TableCell>
+                              <TableCell>QuickBooks/payroll item code</TableCell>
+                              <TableCell>Display name</TableCell>
                               <TableCell>Status</TableCell>
                             </TableRow>
                           </TableHead>
