@@ -41,6 +41,7 @@ import dayjs from "dayjs";
 import DownloadPayrollButton from "./DownloadPayrollButton";
 import PayrollFilters from "./PayrollFilters";
 import PayrollPreview from "./PayrollPreview";
+import PayrollProviderSync from "./PayrollProviderSync";
 import PayslipModal from "./PayslipModal";
 import { savePayroll, exportPayroll } from "./netpay";
 import ThemedDateField from "../../components/ui/ThemedDateField";
@@ -1216,6 +1217,7 @@ return (
     >
       <ToggleButton value="preview">Preview</ToggleButton>
       <ToggleButton value="history">History</ToggleButton>
+      <ToggleButton value="provider-sync">Provider Sync</ToggleButton>
     </ToggleButtonGroup>
 
       <PayrollFilters
@@ -1278,6 +1280,24 @@ return (
         setSnackbar={setSnackbar}
       />
       </>
+    )}
+
+    {viewMode === "provider-sync" && (
+      <PayrollProviderSync
+        token={token}
+        departmentFilter={departmentFilter}
+        selectedRecruiter={selectedRecruiter}
+        exportAllEmployees={exportAllEmployees}
+        exportEmployeeIds={exportEmployeeIds}
+        region={region}
+        startDate={startDate}
+        endDate={endDate}
+        payFrequency={payFrequency}
+        payroll={payroll}
+        recruiters={recruiters}
+        filteredRecruiters={filteredRecruiters}
+        setSnackbar={setSnackbar}
+      />
     )}
 
     {viewMode === "preview" && (

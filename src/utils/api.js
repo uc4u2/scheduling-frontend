@@ -605,6 +605,69 @@ export const quickbooksIntegration = {
     api.post("/integrations/quickbooks/export-invoices", payload, config).then((r) => r.data),
 };
 
+/* --------------------------- Payroll Provider Sync --------------------------- */
+export const payrollProviderSyncApi = {
+  setupStatus: (provider = "quickbooks", params = {}, config = {}) =>
+    api
+      .get("/automation/payroll/provider-setup/status", {
+        ...config,
+        params: { provider, ...params },
+      })
+      .then((r) => r.data),
+  listRuns: (params = {}, config = {}) =>
+    api.get("/automation/payroll/provider-runs", { ...config, params }).then((r) => r.data),
+  rawPreview: (payload, config = {}) =>
+    api.post("/automation/payroll/provider-runs/raw-preview", payload, config).then((r) => r.data),
+  createFromRaw: (payload, config = {}) =>
+    api.post("/automation/payroll/provider-runs/create-from-raw", payload, config).then((r) => r.data),
+  validateRun: (runId, config = {}) =>
+    api.post(`/automation/payroll/provider-runs/${runId}/validate`, {}, config).then((r) => r.data),
+  runDetail: (runId, config = {}) =>
+    api.get(`/automation/payroll/provider-runs/${runId}`, config).then((r) => r.data),
+  quickbooksPayloadPreview: (runId, config = {}) =>
+    api
+      .get(`/automation/payroll/provider-runs/${runId}/provider-payload-preview`, {
+        ...config,
+        params: { provider: "quickbooks", ...(config.params || {}) },
+      })
+      .then((r) => r.data),
+  csvDownload: (runId, config = {}) =>
+    api.get(`/automation/payroll/provider-runs/${runId}/csv-download`, {
+      ...config,
+      responseType: "blob",
+    }),
+  listEmployeeMappings: (provider = "quickbooks", config = {}) =>
+    api
+      .get("/automation/payroll/provider-mappings/employees", {
+        ...config,
+        params: { provider, ...(config.params || {}) },
+      })
+      .then((r) => r.data),
+  bootstrapEmployeesFromLegacy: (provider = "quickbooks", payload = {}, config = {}) =>
+    api
+      .post(
+        "/automation/payroll/provider-mappings/employees/bootstrap-from-legacy",
+        { provider, ...payload },
+        config
+      )
+      .then((r) => r.data),
+  listPayItemMappings: (provider = "quickbooks", config = {}) =>
+    api
+      .get("/automation/payroll/provider-mappings/pay-items", {
+        ...config,
+        params: { provider, ...(config.params || {}) },
+      })
+      .then((r) => r.data),
+  bootstrapPayItemDefaults: (provider = "quickbooks", payload = {}, config = {}) =>
+    api
+      .post(
+        "/automation/payroll/provider-mappings/pay-items/bootstrap-defaults",
+        { provider, ...payload },
+        config
+      )
+      .then((r) => r.data),
+};
+
 /* --------------------------- Google Calendar Integration --------------------------- */
 export const googleCalendarIntegration = {
   status: (params = {}, config = {}) =>
