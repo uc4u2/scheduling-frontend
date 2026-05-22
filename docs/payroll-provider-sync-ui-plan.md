@@ -366,6 +366,7 @@ Avoid:
 Status/warning copy:
 - show `QuickBooks official import format: not verified yet`
 - show that Provider Sync CSV is recommended for accountant/provider/QuickBooks handoff
+- show `Use this CSV for live QuickBooks/accountant testing`
 - rename the old Advanced Export provider CSV to `Legacy Finalized Payroll Export`
 
 ### Section 7: Run history

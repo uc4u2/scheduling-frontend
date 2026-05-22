@@ -656,7 +656,7 @@ export default function PayrollProviderSync({
           Use the current Payroll page filters to prepare payroll-ready inputs, preview provider payload, download provider CSV, and complete payroll inside the provider.
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Provider Sync CSV is the recommended handoff for accountants, payroll providers, and QuickBooks review workflows. It is not yet a verified official QuickBooks Payroll import format.
+          Provider Sync CSV is the recommended handoff for accountants, payroll providers, and QuickBooks review workflows. Use this CSV for live QuickBooks/accountant testing. It is not yet a verified official QuickBooks Payroll import format.
         </Alert>
         {missingDates && (
           <Alert severity="warning" sx={{ mb: 2 }}>
