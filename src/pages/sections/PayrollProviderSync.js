@@ -879,38 +879,9 @@ export default function PayrollProviderSync({
         employee_name: row.employee_name_snapshot || `Employee ${row.employee_id}`,
         employee_email: row.employee_email_snapshot || "",
         provider_employee_id: "",
-    provider_environment: runData?.provider_environment,
-    source: "run_unmapped",
-  }));
-  const previewMissingEmployeeIssueRows = formatList(previewBlockingErrors)
-    .filter((item) => EMPLOYEE_MAPPING_ERROR_CODES.has(issueCode(item)) && item?.employee_id)
-    .map((item) => {
-      const recruiter = scopedRecruiters.find((row) => String(row.id) === String(item.employee_id));
-      return {
-        employee_id: item.employee_id,
-        employee_name: recruiter ? `${recruiter.first_name} ${recruiter.last_name}`.trim() : employeeLabelFromContext(item.employee_id, [], scopedRecruiters),
-        employee_email: recruiter?.email || "",
-      };
-    });
-  const previewMissingPayItemKeys = sortPayItemKeys(
-    formatList(previewBlockingErrors)
-      .filter((item) => PAY_ITEM_MAPPING_ERROR_CODES.has(issueCode(item)) && item?.key)
-      .map((item) => item.key)
-  );
-  const previewMissingRegionRows = formatList(previewBlockingErrors)
-    .filter((item) => REGION_METADATA_ERROR_CODES.has(issueCode(item)) && item?.employee_id)
-    .map((item) => ({
-      employee_id: item.employee_id,
-      employee_name: employeeLabelFromContext(item.employee_id, [], scopedRecruiters),
-    }));
-  const createRunLabel = hasFixBeforeExportIssues ? "Create run to fix mappings" : "Create provider run";
-  const csvBlockedReasonText = !runData?.id
-    ? "Create or select a provider run first."
-    : !validationData
-      ? "Validate this run before exporting CSV."
-      : csvBlockingErrors.length
-        ? "Fix the items listed in 'Fix before export' before downloading CSV."
-        : "";
+        provider_environment: runData?.provider_environment,
+        source: "run_unmapped",
+      }));
     } else if (employeeFilter === "unmapped_all") {
       rows = mappedRows
         .filter(() => false);
@@ -969,6 +940,35 @@ export default function PayrollProviderSync({
       return true;
     });
   }, [employeeMappings, employeeFilter, employeeSearch, filteredRecruiters, provider, runData?.provider_environment, unmappedRunEmployees]);
+  const previewMissingEmployeeIssueRows = formatList(previewBlockingErrors)
+    .filter((item) => EMPLOYEE_MAPPING_ERROR_CODES.has(issueCode(item)) && item?.employee_id)
+    .map((item) => {
+      const recruiter = scopedRecruiters.find((row) => String(row.id) === String(item.employee_id));
+      return {
+        employee_id: item.employee_id,
+        employee_name: recruiter ? `${recruiter.first_name} ${recruiter.last_name}`.trim() : employeeLabelFromContext(item.employee_id, [], scopedRecruiters),
+        employee_email: recruiter?.email || "",
+      };
+    });
+  const previewMissingPayItemKeys = sortPayItemKeys(
+    formatList(previewBlockingErrors)
+      .filter((item) => PAY_ITEM_MAPPING_ERROR_CODES.has(issueCode(item)) && item?.key)
+      .map((item) => item.key)
+  );
+  const previewMissingRegionRows = formatList(previewBlockingErrors)
+    .filter((item) => REGION_METADATA_ERROR_CODES.has(issueCode(item)) && item?.employee_id)
+    .map((item) => ({
+      employee_id: item.employee_id,
+      employee_name: employeeLabelFromContext(item.employee_id, [], scopedRecruiters),
+    }));
+  const createRunLabel = hasFixBeforeExportIssues ? "Create run to fix mappings" : "Create provider run";
+  const csvBlockedReasonText = !runData?.id
+    ? "Create or select a provider run first."
+    : !validationData
+      ? "Validate this run before exporting CSV."
+      : csvBlockingErrors.length
+        ? "Fix the items listed in 'Fix before export' before downloading CSV."
+        : "";
   const employeePageSize = 10;
   const pagedEmployeeMappingRows = useMemo(
     () => employeeMappingRows.slice(employeePage * employeePageSize, (employeePage + 1) * employeePageSize),
