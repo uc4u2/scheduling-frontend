@@ -144,6 +144,11 @@ const payItemLabel = {
   family_bonus: "family bonus",
 };
 
+const titleize = (value) =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+
 const formatDateTime = (value) => {
   if (!value) return "—";
   const parsed = new Date(value);
@@ -373,6 +378,9 @@ export default function PayrollProviderSync({
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [employeeCandidateSelections, setEmployeeCandidateSelections] = useState({});
   const [payItemCandidateSelections, setPayItemCandidateSelections] = useState({});
+  const [csvSuggestionState, setCsvSuggestionState] = useState({ employee_suggestions: [], pay_item_suggestions: [] });
+  const [csvSuggestionLoading, setCsvSuggestionLoading] = useState(false);
+  const [applySuggestionsLoading, setApplySuggestionsLoading] = useState(false);
   const [payItemDraft, setPayItemDraft] = useState({
     local_key: "",
     provider_item_id: "",
@@ -498,6 +506,23 @@ export default function PayrollProviderSync({
     }
   };
 
+  const loadCsvHandoffSuggestions = async (runId) => {
+    if (!runId || provider !== "quickbooks") {
+      setCsvSuggestionState({ employee_suggestions: [], pay_item_suggestions: [] });
+      return;
+    }
+    setCsvSuggestionLoading(true);
+    try {
+      const data = await payrollProviderSyncApi.csvHandoffSuggestions(runId);
+      setCsvSuggestionState(data || { employee_suggestions: [], pay_item_suggestions: [] });
+    } catch (err) {
+      setCsvSuggestionState({ employee_suggestions: [], pay_item_suggestions: [] });
+      showMessage(await buildRequestErrorMessage(err, "Failed to load CSV handoff suggestions."), "error");
+    } finally {
+      setCsvSuggestionLoading(false);
+    }
+  };
+
   const loadRunHistory = async (overrides = {}) => {
     const params = {
       provider,
@@ -553,6 +578,7 @@ export default function PayrollProviderSync({
       } else {
         setValidationData(null);
       }
+      await loadCsvHandoffSuggestions(runId);
       setPayloadPreview(null);
       focusRunPanel();
     } catch (err) {
@@ -653,6 +679,7 @@ export default function PayrollProviderSync({
         const validated = await payrollProviderSyncApi.validateRun(createdRun.id);
         setValidationData(validated?.result || null);
         setRunData(validated?.run || createdRun);
+        await loadCsvHandoffSuggestions(createdRun.id);
       }
       showMessage("Provider run created.", "success");
     } catch (err) {
@@ -681,6 +708,7 @@ export default function PayrollProviderSync({
       const data = await payrollProviderSyncApi.validateRun(runData.id);
       setValidationData(data?.result || data);
       setRunData(data?.run || runData);
+      await loadCsvHandoffSuggestions(runData.id);
       await loadRunHistory();
       showMessage("Provider run validated.", "success");
     } catch (err) {
@@ -729,6 +757,24 @@ export default function PayrollProviderSync({
       }
     } finally {
       setDownloadLoading(false);
+    }
+  };
+
+  const handleApplyCsvSuggestions = async () => {
+    if (!runData?.id) return;
+    setApplySuggestionsLoading(true);
+    try {
+      const data = await payrollProviderSyncApi.applyCsvHandoffSuggestions(runData.id);
+      setValidationData(data?.result || null);
+      setRunData(data?.run || runData);
+      await loadMappingData();
+      await loadRunHistory();
+      await loadCsvHandoffSuggestions(runData.id);
+      showMessage("Suggested CSV handoff matches applied.", "success");
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to apply suggested CSV handoff matches."), "error");
+    } finally {
+      setApplySuggestionsLoading(false);
     }
   };
 
@@ -1066,9 +1112,28 @@ export default function PayrollProviderSync({
     ? "Create or select a provider run first."
     : !validationData
       ? "Validate this run before exporting CSV."
-      : csvBlockingErrors.length
-        ? "Fix the items listed in 'Fix before export' before downloading CSV."
-        : "";
+        : csvBlockingErrors.length
+          ? "Fix the items listed in 'Fix before export' before downloading CSV."
+          : "";
+  const csvEmployeeSuggestionsById = useMemo(
+    () => Object.fromEntries((csvSuggestionState.employee_suggestions || []).map((item) => [String(item.employee_id), item])),
+    [csvSuggestionState.employee_suggestions]
+  );
+  const csvPayItemSuggestionsByKey = useMemo(
+    () => Object.fromEntries((csvSuggestionState.pay_item_suggestions || []).map((item) => [item.local_key, item])),
+    [csvSuggestionState.pay_item_suggestions]
+  );
+  const onlyMappingCsvBlockers = Boolean(
+    validationData &&
+    csvBlockingErrors.length &&
+    csvBlockingErrors.every((item) => EMPLOYEE_MAPPING_ERROR_CODES.has(issueCode(item)) || PAY_ITEM_MAPPING_ERROR_CODES.has(issueCode(item)))
+  );
+  const canApplyCsvSuggestions = Boolean(
+    runData?.id &&
+    provider === "quickbooks" &&
+    onlyMappingCsvBlockers &&
+    ((csvSuggestionState.employee_suggestions || []).length || (csvSuggestionState.pay_item_suggestions || []).length)
+  );
   const suggestedEmployeeMatches = useMemo(() => {
     const suggestions = {};
     [...previewMissingEmployeeIssueRows, ...missingEmployeeIssueRows].forEach((row) => {
@@ -1201,6 +1266,63 @@ export default function PayrollProviderSync({
         provider_item_name: candidate?.display_name || candidate?.name || "",
       },
     }));
+  };
+
+  const applySuggestedEmployeeMatch = async (row) => {
+    const suggestion = csvSuggestionState.employee_suggestions?.find((item) => String(item.employee_id) === String(row.employee_id));
+    if (!suggestion) {
+      showMessage("No suggested CSV employee match is available for this employee.", "warning");
+      return;
+    }
+    try {
+      await payrollProviderSyncApi.linkEmployeeMapping(row.employee_id, {
+        provider,
+        provider_employee_id: suggestion.provider_employee_id,
+        provider_display_name: suggestion.provider_display_name,
+        source_payload_json: suggestion.metadata || {},
+      });
+      await loadMappingData();
+      if (runData?.id) {
+        const validated = await payrollProviderSyncApi.validateRun(runData.id);
+        setValidationData(validated?.result || validationData);
+        setRunData(validated?.run || runData);
+        await loadCsvHandoffSuggestions(runData.id);
+      }
+      await loadRunHistory();
+      showMessage("Suggested CSV employee match applied.", "success");
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to save suggested employee match."), "error");
+    }
+  };
+
+  const applySuggestedPayItemMatch = async (localKey) => {
+    const suggestion = csvSuggestionState.pay_item_suggestions?.find((item) => item.local_key === localKey);
+    if (!suggestion) {
+      showMessage("No suggested payroll item is available for this key.", "warning");
+      return;
+    }
+    try {
+      await payrollProviderSyncApi.upsertPayItemMapping({
+        provider,
+        local_key: localKey,
+        item_category: suggestion.item_category || (localKey === "non_taxable_reimbursement" ? "reimbursement" : "earning"),
+        provider_item_id: suggestion.provider_item_id,
+        provider_item_code: suggestion.provider_item_id,
+        provider_item_name: suggestion.provider_item_name,
+        metadata_json: suggestion.metadata || {},
+      });
+      await loadMappingData();
+      if (runData?.id) {
+        const validated = await payrollProviderSyncApi.validateRun(runData.id);
+        setValidationData(validated?.result || validationData);
+        setRunData(validated?.run || runData);
+        await loadCsvHandoffSuggestions(runData.id);
+      }
+      await loadRunHistory();
+      showMessage("Suggested payroll item applied.", "success");
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to save suggested payroll item."), "error");
+    }
   };
 
   return (
@@ -1532,11 +1654,26 @@ export default function PayrollProviderSync({
               Live QuickBooks payroll/time submit is not enabled. CSV export is still available.
             </Alert>
           )}
+          {canApplyCsvSuggestions && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>CSV handoff suggestions are ready</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                These suggested matches are used to create the CSV handoff. They do not submit payroll to QuickBooks.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={handleApplyCsvSuggestions}
+                disabled={applySuggestionsLoading}
+              >
+                {applySuggestionsLoading ? "Applying suggested matches..." : "Apply suggested CSV handoff matches"}
+              </Button>
+            </Alert>
+          )}
           {previewMissingEmployeeIssueRows.length > 0 && !validationData && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
               <Alert severity="info" sx={{ mb: 2 }}>
-                Today this mapping is manual. Later, once QuickBooks payroll/time API access is enabled, Schedulaa will be able to fetch QuickBooks employees and pay items for easier selection.
+                Schedulaa can generate a CSV handoff match for this employee. This is used for the CSV export only. Direct QuickBooks sync will require the real QuickBooks employee later.
               </Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
                 <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
@@ -1553,42 +1690,42 @@ export default function PayrollProviderSync({
                       <Typography variant="caption" color="text.secondary">{row.employee_email || `Employee ID ${row.employee_id}`}</Typography>
                     </Grid>
                     <Grid item xs={12} md={5}>
-                      <Autocomplete
-                        options={employeeCandidateState.items}
-                        loading={candidateLoading}
-                        value={employeeCandidateSelections[row.employee_id] || suggestedEmployeeMatches[row.employee_id] || null}
-                        onChange={(_, value) => handleEmployeeCandidateSelect(row.employee_id, value)}
-                        getOptionLabel={(option) => option?.display_name || option?.name || option?.email || option?.id || ""}
-                        isOptionEqualToValue={(option, value) => String(option?.id || "") === String(value?.id || "")}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            label="Match to QuickBooks employee"
-                            helperText={employeeCandidateState.available ? "Choose the matching QuickBooks employee if available." : (employeeCandidateState.reason || "For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks.")}
-                          />
-                        )}
-                        noOptionsText={employeeCandidateState.reason || "No QuickBooks employee candidates available."}
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Suggested CSV employee match"
+                        value={csvEmployeeSuggestionsById[String(row.employee_id)]?.provider_employee_id || ""}
+                        helperText={csvEmployeeSuggestionsById[String(row.employee_id)]?.provider_display_name || "No suggested CSV employee match available."}
+                        InputProps={{ readOnly: true }}
                       />
                     </Grid>
                     <Grid item xs={12} md={3}>
-                      <Accordion elevation={0} disableGutters>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="body2">Advanced manual entry</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ px: 0 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="QuickBooks employee ID or payroll employee code"
-                            helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
-                            value={employeeMappingDrafts[row.employee_id] ?? ""}
-                            onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
-                            sx={{ mb: 1 }}
-                          />
-                          <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save match</Button>
-                        </AccordionDetails>
-                      </Accordion>
+                      <Stack spacing={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => applySuggestedEmployeeMatch(row)}
+                          disabled={!csvEmployeeSuggestionsById[String(row.employee_id)]}
+                        >
+                          Use suggested employee match
+                        </Button>
+                        <Accordion elevation={0} disableGutters>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="body2">Advanced manual entry</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ px: 0 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="QuickBooks employee ID or payroll employee code"
+                              helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
+                              value={employeeMappingDrafts[row.employee_id] ?? ""}
+                              onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
+                              sx={{ mb: 1 }}
+                            />
+                            <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save match</Button>
+                          </AccordionDetails>
+                        </Accordion>
+                      </Stack>
                     </Grid>
                   </Grid>
                 ))}
@@ -1599,7 +1736,7 @@ export default function PayrollProviderSync({
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
               <Alert severity="info" sx={{ mb: 2 }}>
-                Today this mapping is manual. Later, once QuickBooks payroll/time API access is enabled, Schedulaa will be able to fetch QuickBooks employees and pay items for easier selection.
+                Schedulaa can generate a CSV handoff match for this employee. This is used for the CSV export only. Direct QuickBooks sync will require the real QuickBooks employee later.
               </Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
                 <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
@@ -1616,42 +1753,42 @@ export default function PayrollProviderSync({
                       <Typography variant="caption" color="text.secondary">{row.employee_email || `Employee ID ${row.employee_id}`}</Typography>
                     </Grid>
                     <Grid item xs={12} md={5}>
-                      <Autocomplete
-                        options={employeeCandidateState.items}
-                        loading={candidateLoading}
-                        value={employeeCandidateSelections[row.employee_id] || suggestedEmployeeMatches[row.employee_id] || null}
-                        onChange={(_, value) => handleEmployeeCandidateSelect(row.employee_id, value)}
-                        getOptionLabel={(option) => option?.display_name || option?.name || option?.email || option?.id || ""}
-                        isOptionEqualToValue={(option, value) => String(option?.id || "") === String(value?.id || "")}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            label="Match to QuickBooks employee"
-                            helperText={employeeCandidateState.available ? "Choose the matching QuickBooks employee if available." : (employeeCandidateState.reason || "For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks.")}
-                          />
-                        )}
-                        noOptionsText={employeeCandidateState.reason || "No QuickBooks employee candidates available."}
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Suggested CSV employee match"
+                        value={csvEmployeeSuggestionsById[String(row.employee_id)]?.provider_employee_id || ""}
+                        helperText={csvEmployeeSuggestionsById[String(row.employee_id)]?.provider_display_name || "No suggested CSV employee match available."}
+                        InputProps={{ readOnly: true }}
                       />
                     </Grid>
                     <Grid item xs={12} md={3}>
-                      <Accordion elevation={0} disableGutters>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="body2">Advanced manual entry</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ px: 0 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="QuickBooks employee ID or payroll employee code"
-                            helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
-                            value={employeeMappingDrafts[row.employee_id] ?? ""}
-                            onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
-                            sx={{ mb: 1 }}
-                          />
-                          <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save match</Button>
-                        </AccordionDetails>
-                      </Accordion>
+                      <Stack spacing={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => applySuggestedEmployeeMatch(row)}
+                          disabled={!csvEmployeeSuggestionsById[String(row.employee_id)]}
+                        >
+                          Use suggested employee match
+                        </Button>
+                        <Accordion elevation={0} disableGutters>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="body2">Advanced manual entry</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ px: 0 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="QuickBooks employee ID or payroll employee code"
+                              helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
+                              value={employeeMappingDrafts[row.employee_id] ?? ""}
+                              onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
+                              sx={{ mb: 1 }}
+                            />
+                            <Button variant="outlined" onClick={() => saveEmployeeMapping(row)}>Save match</Button>
+                          </AccordionDetails>
+                        </Accordion>
+                      </Stack>
                     </Grid>
                   </Grid>
                 ))}
@@ -1662,7 +1799,7 @@ export default function PayrollProviderSync({
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing pay item mappings</Typography>
               <Alert severity="info" sx={{ mb: 2 }}>
-                Today this mapping is manual. Later, once QuickBooks payroll/time API access is enabled, Schedulaa will be able to fetch QuickBooks employees and pay items for easier selection.
+                These suggested matches are used to create the CSV handoff. They do not submit payroll to QuickBooks.
               </Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
                 <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
@@ -1675,58 +1812,53 @@ export default function PayrollProviderSync({
                 {previewMissingPayItemKeys.map((key) => (
                   <Grid container spacing={2} key={`preview-missing-pay-item-${key}`} alignItems="center">
                     <Grid item xs={12} md={3}>
-                      <Typography variant="body2"><strong>{payItemLabel[key] || key}</strong></Typography>
-                      {suggestedPayItemMatches[key] && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Suggested match: {suggestedPayItemMatches[key]?.display_name || suggestedPayItemMatches[key]?.name}
-                        </Typography>
-                      )}
+                      <Typography variant="body2"><strong>{titleize(payItemLabel[key] || key)}</strong></Typography>
                     </Grid>
                     <Grid item xs={12} md={4}>
-                      <Autocomplete
-                        options={payItemCandidateState.items}
-                        loading={candidateLoading}
-                        value={payItemCandidateSelections[key] || suggestedPayItemMatches[key] || null}
-                        onChange={(_, value) => handlePayItemCandidateSelect(key, value)}
-                        getOptionLabel={(option) => option?.display_name || option?.name || option?.id || ""}
-                        isOptionEqualToValue={(option, value) => String(option?.id || "") === String(value?.id || "")}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            label="Match to QuickBooks payroll/pay item"
-                            helperText={payItemCandidateState.available ? payItemHelperText(key) : (payItemCandidateState.reason || payItemHelperText(key))}
-                          />
-                        )}
-                        noOptionsText={payItemCandidateState.reason || "No QuickBooks pay item candidates available."}
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Suggested payroll item"
+                        value={csvPayItemSuggestionsByKey[key]?.provider_item_id || ""}
+                        helperText={csvPayItemSuggestionsByKey[key]?.provider_item_name || payItemHelperText(key)}
+                        InputProps={{ readOnly: true }}
                       />
                     </Grid>
                     <Grid item xs={12} md={3}>
-                      <Accordion elevation={0} disableGutters>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="body2">Advanced manual entry</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ px: 0 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="QuickBooks/payroll item code"
-                            helperText={payItemHelperText(key)}
-                            value={missingPayItemDrafts[key]?.provider_item_id || ""}
-                            onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
-                            sx={{ mb: 1 }}
-                          />
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Display name"
-                            value={missingPayItemDrafts[key]?.provider_item_name || ""}
-                            onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
-                            sx={{ mb: 1 }}
-                          />
-                          <Button variant="outlined" onClick={() => saveMissingPayItemMapping(key)}>Save match</Button>
-                        </AccordionDetails>
-                      </Accordion>
+                      <Stack spacing={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => applySuggestedPayItemMatch(key)}
+                          disabled={!csvPayItemSuggestionsByKey[key]}
+                        >
+                          Use suggested payroll item
+                        </Button>
+                        <Accordion elevation={0} disableGutters>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="body2">Advanced manual entry</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ px: 0 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="QuickBooks/payroll item code"
+                              helperText={payItemHelperText(key)}
+                              value={missingPayItemDrafts[key]?.provider_item_id || ""}
+                              onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
+                              sx={{ mb: 1 }}
+                            />
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Display name"
+                              value={missingPayItemDrafts[key]?.provider_item_name || ""}
+                              onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
+                              sx={{ mb: 1 }}
+                            />
+                            <Button variant="outlined" onClick={() => saveMissingPayItemMapping(key)}>Save match</Button>
+                          </AccordionDetails>
+                        </Accordion>
+                      </Stack>
                     </Grid>
                   </Grid>
                 ))}
@@ -1737,7 +1869,7 @@ export default function PayrollProviderSync({
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing pay item mappings</Typography>
               <Alert severity="info" sx={{ mb: 2 }}>
-                Today this mapping is manual. Later, once QuickBooks payroll/time API access is enabled, Schedulaa will be able to fetch QuickBooks employees and pay items for easier selection.
+                These suggested matches are used to create the CSV handoff. They do not submit payroll to QuickBooks.
               </Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
                 <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
@@ -1750,59 +1882,54 @@ export default function PayrollProviderSync({
                 {missingPayItemKeys.map((key) => (
                   <Grid container spacing={2} key={`missing-pay-item-${key}`} alignItems="center">
                     <Grid item xs={12} md={3}>
-                      <Typography variant="body2"><strong>{payItemLabel[key] || key}</strong></Typography>
+                      <Typography variant="body2"><strong>{titleize(payItemLabel[key] || key)}</strong></Typography>
                       <Typography variant="caption" color="text.secondary">{managerFriendlyMessage({ code: "MISSING_PAY_ITEM_MAP", key })}</Typography>
-                      {suggestedPayItemMatches[key] && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Suggested match: {suggestedPayItemMatches[key]?.display_name || suggestedPayItemMatches[key]?.name}
-                        </Typography>
-                      )}
                     </Grid>
                     <Grid item xs={12} md={4}>
-                      <Autocomplete
-                        options={payItemCandidateState.items}
-                        loading={candidateLoading}
-                        value={payItemCandidateSelections[key] || suggestedPayItemMatches[key] || null}
-                        onChange={(_, value) => handlePayItemCandidateSelect(key, value)}
-                        getOptionLabel={(option) => option?.display_name || option?.name || option?.id || ""}
-                        isOptionEqualToValue={(option, value) => String(option?.id || "") === String(value?.id || "")}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            size="small"
-                            label="Match to QuickBooks payroll/pay item"
-                            helperText={payItemCandidateState.available ? payItemHelperText(key) : (payItemCandidateState.reason || payItemHelperText(key))}
-                          />
-                        )}
-                        noOptionsText={payItemCandidateState.reason || "No QuickBooks pay item candidates available."}
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Suggested payroll item"
+                        value={csvPayItemSuggestionsByKey[key]?.provider_item_id || ""}
+                        helperText={csvPayItemSuggestionsByKey[key]?.provider_item_name || payItemHelperText(key)}
+                        InputProps={{ readOnly: true }}
                       />
                     </Grid>
                     <Grid item xs={12} md={3}>
-                      <Accordion elevation={0} disableGutters>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="body2">Advanced manual entry</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ px: 0 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="QuickBooks/payroll item code"
-                            helperText={payItemHelperText(key)}
-                            value={missingPayItemDrafts[key]?.provider_item_id || ""}
-                            onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
-                            sx={{ mb: 1 }}
-                          />
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Display name"
-                            value={missingPayItemDrafts[key]?.provider_item_name || ""}
-                            onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
-                            sx={{ mb: 1 }}
-                          />
-                          <Button variant="outlined" onClick={() => saveMissingPayItemMapping(key)}>Save match</Button>
-                        </AccordionDetails>
-                      </Accordion>
+                      <Stack spacing={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => applySuggestedPayItemMatch(key)}
+                          disabled={!csvPayItemSuggestionsByKey[key]}
+                        >
+                          Use suggested payroll item
+                        </Button>
+                        <Accordion elevation={0} disableGutters>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="body2">Advanced manual entry</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ px: 0 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="QuickBooks/payroll item code"
+                              helperText={payItemHelperText(key)}
+                              value={missingPayItemDrafts[key]?.provider_item_id || ""}
+                              onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
+                              sx={{ mb: 1 }}
+                            />
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Display name"
+                              value={missingPayItemDrafts[key]?.provider_item_name || ""}
+                              onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_name: event.target.value } }))}
+                              sx={{ mb: 1 }}
+                            />
+                            <Button variant="outlined" onClick={() => saveMissingPayItemMapping(key)}>Save match</Button>
+                          </AccordionDetails>
+                        </Accordion>
+                      </Stack>
                     </Grid>
                   </Grid>
                 ))}

@@ -631,6 +631,10 @@ export const payrollProviderSyncApi = {
         params: { provider: "quickbooks", ...(config.params || {}) },
       })
       .then((r) => r.data),
+  csvHandoffSuggestions: (runId, config = {}) =>
+    api.get(`/automation/payroll/provider-runs/${runId}/csv-handoff-suggestions`, config).then((r) => r.data),
+  applyCsvHandoffSuggestions: (runId, payload = {}, config = {}) =>
+    api.post(`/automation/payroll/provider-runs/${runId}/apply-csv-handoff-suggestions`, payload, config).then((r) => r.data),
   csvDownload: (runId, config = {}) =>
     api.get(`/automation/payroll/provider-runs/${runId}/csv-download`, {
       ...config,
