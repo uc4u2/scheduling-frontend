@@ -548,8 +548,10 @@ export default function PayrollProviderSync({
       } else if (!selectedRunId && (runsRes?.items || []).length) {
         setSelectedRunId((runsRes.items[0] || {}).id || null);
       }
+      return runsRes;
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Failed to load provider run history."), "error");
+      return null;
     } finally {
       setHistoryLoading(false);
     }
@@ -670,16 +672,15 @@ export default function PayrollProviderSync({
     try {
       const data = await payrollProviderSyncApi.createFromRaw(buildRunPayload());
       const createdRun = data?.run || data;
-      setRunData(createdRun);
-      setSelectedRunId(createdRun?.id || null);
-      focusRunPanel();
       await loadMappingData();
-      await loadRunHistory({ offset: 0 });
-      if (createdRun?.id) {
-        const validated = await payrollProviderSyncApi.validateRun(createdRun.id);
-        setValidationData(validated?.result || null);
-        setRunData(validated?.run || createdRun);
-        await loadCsvHandoffSuggestions(createdRun.id);
+      const historyRes = await loadRunHistory({ offset: 0 });
+      const resolvedRunId = createdRun?.id || data?.id || historyRes?.items?.[0]?.id || null;
+      if (resolvedRunId) {
+        await loadSelectedRun(resolvedRunId);
+      } else {
+        setRunData(createdRun || null);
+        setSelectedRunId(createdRun?.id || null);
+        focusRunPanel();
       }
       showMessage("Provider run created.", "success");
     } catch (err) {
