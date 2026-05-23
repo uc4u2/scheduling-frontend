@@ -69,6 +69,37 @@ const formatCurrency = (val) => {
   return Number.isNaN(numVal) ? "$0.00" : `$${numVal.toFixed(2)}`;
 };
 
+const previewFieldTooltips = {
+  rate:
+    "Use this to review or override the rate for this pay period only. This does not update the employee’s default rate or effective rate history.",
+  vacation_pay:
+    "Shows the vacation amount for this pay period. Depending on the setting below, this may be paid now or tracked as accrued only.",
+  vacation_percent:
+    "This period’s vacation percentage. Changing it here affects this payroll preview only and does not update the employee’s default vacation percentage.",
+  include_vacation_in_gross:
+    "If enabled, vacation is paid in this period and included in gross/net pay. If disabled, vacation may be tracked as accrued instead of paid now.",
+  union_dues:
+    "This period only. To change the default for future periods, update the employee profile.",
+  garnishment:
+    "This period only. To change the default for future periods, update the employee profile.",
+  medical_insurance:
+    "This period only. To change the default for future periods, update the employee profile.",
+  dental_insurance:
+    "This period only. To change the default for future periods, update the employee profile.",
+  life_insurance:
+    "This period only. To change the default for future periods, update the employee profile.",
+  retirement_amount:
+    "This period only. To change the default for future periods, update the employee profile.",
+  deduction:
+    "This period only. To change the default for future periods, update the employee profile.",
+  non_taxable_reimbursement:
+    "This period only. Added for payroll handoff as reimbursement, not taxable wages.",
+  shift_premium:
+    "This period only. Adds extra taxable pay for this pay period without changing future defaults.",
+  parental_top_up:
+    "This period only. Adds employer top-up pay for this pay period without changing future defaults.",
+};
+
 function calculate_gross_with_overtime(hoursWorked, hourlyRate, region = "ca", province = "ON") {
   const hrs = Number(hoursWorked || 0);
   const rate = Number(hourlyRate || 0);
@@ -1055,14 +1086,15 @@ const handleRecalculate = () => {
 </Grid>
 
         <Grid item xs={12} md={3}>
-          <TextField
-            label="Hourly Rate"
-            type="number"
-            value={payroll.rate || 0}
-            onChange={(e) => handleFieldChange("rate", e.target.value)}
-            helperText="Use this to review or override the rate for this pay period only. This does not update the employee’s default rate or effective rate history."
-            fullWidth
-          />
+          <Tooltip title={previewFieldTooltips.rate}>
+            <TextField
+              label="Hourly Rate"
+              type="number"
+              value={payroll.rate || 0}
+              onChange={(e) => handleFieldChange("rate", e.target.value)}
+              fullWidth
+            />
+          </Tooltip>
         </Grid>
         <Grid item xs={12} md={3}>
           <TextField
@@ -1107,38 +1139,16 @@ const handleRecalculate = () => {
         })().map(({ key, label, badge, helperText }) => (
           <Grid item xs={12} md={3} key={key}>
             <Stack spacing={0.5}>
-              <TextField
-                label={label}
-                type="number"
-                value={payroll[key] || 0}
-                onChange={(e) => handleFieldChange(key, e.target.value)}
-                fullWidth
-                helperText={
-                  helperText != null
-                    ? helperText
-                    : {
-                        shift_premium:
-                          "This period only. Adds extra taxable pay for this pay period without changing future defaults.",
-                        parental_top_up:
-                          "This period only. Adds employer top-up pay for this pay period without changing future defaults.",
-                        union_dues:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                        garnishment:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                        medical_insurance:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                        dental_insurance:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                        life_insurance:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                        retirement_amount:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                        deduction:
-                          "This period only. To change the default for future periods, update the employee profile.",
-                      }[key] || ""
-                }
-                InputProps={{ inputProps: { step: "0.01" } }}
-              />
+              <Tooltip title={helperText != null ? helperText : previewFieldTooltips[key] || ""}>
+                <TextField
+                  label={label}
+                  type="number"
+                  value={payroll[key] || 0}
+                  onChange={(e) => handleFieldChange(key, e.target.value)}
+                  fullWidth
+                  InputProps={{ inputProps: { step: "0.01" } }}
+                />
+              </Tooltip>
               {badge ? (
                 <Tooltip title="Starts from the employee’s default setting. Changes here apply to this pay period only and do not update the employee profile.">
                   <FormHelperText component="div" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -1151,14 +1161,15 @@ const handleRecalculate = () => {
         ))}
 
         <Grid item xs={12} md={3}>
-          <TextField
-            label="Non-taxable Reimbursement ($)"
-            type="number"
-            value={payroll.non_taxable_reimbursement || 0}
-            onChange={(e) => handleFieldChange("non_taxable_reimbursement", e.target.value)}
-            fullWidth
-            helperText="This period only. Added for payroll handoff as reimbursement, not taxable wages."
-          />
+          <Tooltip title={previewFieldTooltips.non_taxable_reimbursement}>
+            <TextField
+              label="Non-taxable Reimbursement ($)"
+              type="number"
+              value={payroll.non_taxable_reimbursement || 0}
+              onChange={(e) => handleFieldChange("non_taxable_reimbursement", e.target.value)}
+              fullWidth
+            />
+          </Tooltip>
         </Grid>
       </Grid>
       
@@ -1201,7 +1212,7 @@ const handleRecalculate = () => {
   {/* Vacation Include Checkbox */}
   {!vacationIncludedByDefault(region, payroll?.province) && (
   <Grid item xs={12} md={4}>
-    <Stack spacing={0.5}>
+    <Tooltip title={previewFieldTooltips.include_vacation_in_gross}>
       <FormControlLabel
         control={
           <Checkbox
@@ -1213,26 +1224,24 @@ const handleRecalculate = () => {
         }
         label="Include Vacation in Gross?"
       />
-      <FormHelperText>
-        If enabled, vacation is paid in this period and included in gross/net pay. If disabled, vacation may be tracked as accrued instead of paid now.
-      </FormHelperText>
-    </Stack>
+    </Tooltip>
   </Grid>
 )}
 
 
   {/* Vacation %, RRSP, 401(k), Other Deduction */}
   <Grid item xs={12} md={3}>
-    <TextField
-      label="Vacation %"
-      type="number"
-      fullWidth
-      value={payroll.vacation_percent || 0}
-      onChange={(e) =>
-        handleFieldChange("vacation_percent", Number(e.target.value))
-      }
-      helperText="This period’s vacation percentage. Changing it here affects this payroll preview only and does not update the employee’s default vacation percentage."
-    />
+    <Tooltip title={previewFieldTooltips.vacation_percent}>
+      <TextField
+        label="Vacation %"
+        type="number"
+        fullWidth
+        value={payroll.vacation_percent || 0}
+        onChange={(e) =>
+          handleFieldChange("vacation_percent", Number(e.target.value))
+        }
+      />
+    </Tooltip>
   </Grid>
 
   <Grid item xs={12} md={3}>
