@@ -990,8 +990,9 @@ export default function PayrollProviderSync({
     () => (runHistory || []).find((item) => item.id === selectedRunId) || null,
     [runHistory, selectedRunId]
   );
+  const activeRun = runData || selectedHistoryRun || null;
   const activeRunId = runData?.id || selectedRunId || selectedHistoryRun?.id || null;
-  const currentRunRows = runData?.employee_rows || [];
+  const currentRunRows = activeRun?.employee_rows || [];
   const currentRunEmployeeIds = useMemo(
     () => currentRunRows.map((row) => String(row.employee_id)),
     [currentRunRows]
@@ -1054,8 +1055,8 @@ export default function PayrollProviderSync({
     [provider, runHistory, startDate, endDate]
   );
   const latestPreviousRun = currentPeriodHistory.find((item) => item.id !== runData?.id);
-  const selectedRunAdjustmentTotal = formatNumber(runData?.request_payload_json?.adjustments?.adjustment_total);
-  const selectedRunAdjustmentCount = formatNumber(runData?.request_payload_json?.adjustments?.adjustment_line_count);
+  const selectedRunAdjustmentTotal = formatNumber(activeRun?.request_payload_json?.adjustments?.adjustment_total);
+  const selectedRunAdjustmentCount = formatNumber(activeRun?.request_payload_json?.adjustments?.adjustment_line_count);
   const previewBlockingErrors = formatList(previewData?.errors).filter(isBlockingPreviewIssue);
   const previewCapabilityWarnings = formatList(previewData?.errors).filter(isNonBlockingCapabilityIssue);
   const previewHasNoExportableData = Boolean(previewData) &&
@@ -1065,7 +1066,7 @@ export default function PayrollProviderSync({
     Boolean(validationData?.errors?.length) &&
     (validationData?.csv_download_allowed === true) &&
     (validationData?.csv_blocking_errors || []).length === 0;
-  const csvDownloadAllowed = Boolean(runData?.id && validationData && (validationData?.csv_download_allowed ?? false));
+  const csvDownloadAllowed = Boolean(activeRunId && validationData && (validationData?.csv_download_allowed ?? false));
   const csvBlockingErrors = validationData?.csv_blocking_errors || [];
   const fixBeforeExportIssues = csvBlockingErrors.length ? csvBlockingErrors : previewBlockingErrors;
   const hasFixBeforeExportIssues = fixBeforeExportIssues.length > 0;
@@ -1224,7 +1225,7 @@ export default function PayrollProviderSync({
   const csvReady = Boolean(csvDownloadAllowed);
   const csvStatusTitle = csvReady ? "CSV ready" : "CSV not ready";
   const csvStatusSeverity = csvReady ? "success" : "warning";
-  const csvBlockedReasonText = !runData?.id
+  const csvBlockedReasonText = !activeRunId
     ? "Create or select a provider run first."
     : !validationData
       ? "Check CSV readiness before downloading."
@@ -2291,12 +2292,12 @@ export default function PayrollProviderSync({
             {runNotice && <Alert severity="info" sx={{ mb: 2 }}>{runNotice}</Alert>}
             {runError && <Alert severity="error" sx={{ mb: 2 }}>{runError}</Alert>}
             <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Run ID:</strong> {runData.id}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Period:</strong> {runData.start_date} to {runData.end_date}</Typography></Grid>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Status:</strong> {runStatusLabel(runData.status)}</Typography></Grid>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Employees:</strong> {runData.employee_count ?? 0}</Typography></Grid>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Lines:</strong> {runData.time_entry_count ?? 0}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {runData.total_hours ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Run ID:</strong> {activeRun?.id || "—"}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Period:</strong> {activeRun?.start_date || "—"} to {activeRun?.end_date || "—"}</Typography></Grid>
+              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Status:</strong> {runStatusLabel(activeRun?.status)}</Typography></Grid>
+              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Employees:</strong> {activeRun?.employee_count ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Lines:</strong> {activeRun?.time_entry_count ?? 0}</Typography></Grid>
+              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {activeRun?.total_hours ?? 0}</Typography></Grid>
               <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment lines:</strong> {selectedRunAdjustmentCount}</Typography></Grid>
               <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment total:</strong> {selectedRunAdjustmentTotal}</Typography></Grid>
               <Grid item xs={12} md={3}><Typography variant="body2"><strong>Validation status:</strong> {validationData?.status || "Not validated yet"}</Typography></Grid>
@@ -2308,8 +2309,8 @@ export default function PayrollProviderSync({
               <AccordionDetails sx={{ px: 0 }}>
                 <Typography variant="body2">
                   <strong>Source hash:</strong>{" "}
-                  <Tooltip title={runData.source_hash || "—"}>
-                    <Box component="span" sx={{ fontFamily: "monospace" }}>{shortenHash(runData.source_hash)}</Box>
+                  <Tooltip title={activeRun?.source_hash || "—"}>
+                    <Box component="span" sx={{ fontFamily: "monospace" }}>{shortenHash(activeRun?.source_hash)}</Box>
                   </Tooltip>
                 </Typography>
               </AccordionDetails>
