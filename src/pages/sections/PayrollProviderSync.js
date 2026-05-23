@@ -702,14 +702,21 @@ export default function PayrollProviderSync({
   };
 
   const handleValidateRun = async () => {
-    if (!runData?.id) return;
+    const runId = activeRunId;
+    if (!runId) {
+      showMessage("Create or select a provider run first.", "warning");
+      return;
+    }
     setValidationLoading(true);
     setRunNotice("");
     try {
-      const data = await payrollProviderSyncApi.validateRun(runData.id);
+      if (!runData?.id) {
+        await loadSelectedRun(runId, { validate: false });
+      }
+      const data = await payrollProviderSyncApi.validateRun(runId);
       setValidationData(data?.result || data);
       setRunData(data?.run || runData);
-      await loadCsvHandoffSuggestions(runData.id);
+      await loadCsvHandoffSuggestions(runId);
       await loadRunHistory();
       showMessage("Provider run validated.", "success");
     } catch (err) {
@@ -720,10 +727,17 @@ export default function PayrollProviderSync({
   };
 
   const handlePreviewPayload = async () => {
-    if (!runData?.id) return;
+    const runId = activeRunId;
+    if (!runId) {
+      showMessage("Create or select a provider run first.", "warning");
+      return;
+    }
     setPayloadLoading(true);
     try {
-      const data = await payrollProviderSyncApi.quickbooksPayloadPreview(runData.id);
+      if (!runData?.id) {
+        await loadSelectedRun(runId, { validate: false });
+      }
+      const data = await payrollProviderSyncApi.quickbooksPayloadPreview(runId);
       setPayloadPreview(data);
       await loadRunHistory();
     } catch (err) {
@@ -734,15 +748,22 @@ export default function PayrollProviderSync({
   };
 
   const handleCsvDownload = async () => {
-    if (!runData?.id) return;
+    const runId = activeRunId;
+    if (!runId) {
+      showMessage("Create or select a provider run first.", "warning");
+      return;
+    }
     setDownloadLoading(true);
     try {
-      const resp = await payrollProviderSyncApi.csvDownload(runData.id);
+      if (!runData?.id) {
+        await loadSelectedRun(runId, { validate: false });
+      }
+      const resp = await payrollProviderSyncApi.csvDownload(runId);
       const blob = new Blob([resp.data], { type: resp.headers["content-type"] || "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `provider_run_${runData.id}_${provider}.csv`;
+      a.download = `provider_run_${runId}_${provider}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -882,6 +903,7 @@ export default function PayrollProviderSync({
     () => (runHistory || []).find((item) => item.id === selectedRunId) || null,
     [runHistory, selectedRunId]
   );
+  const activeRunId = runData?.id || selectedRunId || selectedHistoryRun?.id || null;
   const currentRunRows = runData?.employee_rows || [];
   const currentRunEmployeeIds = useMemo(
     () => currentRunRows.map((row) => String(row.employee_id)),
@@ -2121,7 +2143,7 @@ export default function PayrollProviderSync({
 
       <Paper elevation={2} sx={{ p: 3 }} ref={runPanelRef}>
         <Typography variant="h6" gutterBottom>Step 3: Provider run</Typography>
-        {!runData ? (
+        {!activeRunId ? (
           <Alert severity="info">
             No provider run selected. Create a run or select one from history.
           </Alert>
@@ -2165,10 +2187,10 @@ export default function PayrollProviderSync({
               </Alert>
             )}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button variant="contained" onClick={handleValidateRun} disabled={validationLoading}>
+              <Button variant="contained" onClick={handleValidateRun} disabled={validationLoading || !activeRunId}>
                 {validationLoading ? <CircularProgress size={18} /> : "Validate run"}
               </Button>
-              <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks" || !runData?.id}>
+              <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks" || !activeRunId}>
                 {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
               </Button>
               <Tooltip title={csvBlockedReasonText}>
@@ -2188,7 +2210,7 @@ export default function PayrollProviderSync({
         )}
       </Paper>
 
-      {runData && (
+      {activeRunId && (
         <Paper elevation={2} sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>Step 4: Export</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
