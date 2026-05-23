@@ -343,6 +343,7 @@ export default function PayrollProviderSync({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [previewError, setPreviewError] = useState("");
+  const [prepareCsvLoading, setPrepareCsvLoading] = useState(false);
 
   const [createLoading, setCreateLoading] = useState(false);
   const [runData, setRunData] = useState(null);
@@ -659,6 +660,92 @@ export default function PayrollProviderSync({
       setPreviewError(message);
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const handlePrepareCsv = async () => {
+    if (!canPrepare) return;
+    setPrepareCsvLoading(true);
+    setPreviewError("");
+    setRunError("");
+    setRunNotice("");
+    setPayloadPreview(null);
+    try {
+      const previewResponse = await payrollProviderSyncApi.rawPreview(buildRunPayload());
+      const preview = previewResponse?.preview || previewResponse;
+      setPreviewData(preview);
+      if (
+        preview &&
+        formatNumber(preview?.line_count) === 0 &&
+        formatNumber(preview?.adjustment_line_count) === 0
+      ) {
+        setValidationData(null);
+        showMessage("No payroll-ready time, leave, or saved adjustments were found for this selection.", "info");
+        return;
+      }
+
+      let currentRunId = null;
+      try {
+        const createResponse = await payrollProviderSyncApi.createFromRaw(buildRunPayload());
+        const createdRun = createResponse?.run || createResponse;
+        currentRunId = createdRun?.id || createResponse?.id || null;
+      } catch (err) {
+        const duplicateRunId = err?.response?.data?.existing_run_id;
+        const duplicateError = err?.response?.data?.error;
+        if (err?.response?.status === 409 && duplicateError === "duplicate_source_hash" && duplicateRunId) {
+          currentRunId = duplicateRunId;
+          setRunNotice("A provider run already exists for this payroll snapshot. We opened it.");
+        } else {
+          throw err;
+        }
+      }
+
+      const historyRes = await loadRunHistory({ offset: 0 });
+      if (!currentRunId) {
+        currentRunId = historyRes?.items?.[0]?.id || null;
+      }
+      if (!currentRunId) {
+        throw new Error("provider_run_not_available");
+      }
+
+      const detail = await payrollProviderSyncApi.runDetail(currentRunId);
+      setRunData(detail?.run || null);
+      setSelectedRunId(currentRunId);
+
+      let validateResponse = await payrollProviderSyncApi.validateRun(currentRunId);
+      let validation = validateResponse?.result || null;
+      let nextRun = validateResponse?.run || detail?.run || null;
+      setValidationData(validation);
+      setRunData(nextRun);
+
+      const missingEmployeeMappings = (validation?.missing_employee_map_ids || []).length > 0;
+      const missingPayItemMappings = (validation?.missing_pay_item_keys || []).length > 0;
+      const shouldApplySuggestions =
+        provider === "quickbooks" &&
+        ((missingEmployeeMappings && !employeeCandidateState.available) ||
+          (missingPayItemMappings && !payItemCandidateState.available));
+
+      if (shouldApplySuggestions) {
+        const applied = await payrollProviderSyncApi.applyCsvHandoffSuggestions(currentRunId);
+        validation = applied?.result || validation;
+        nextRun = applied?.run || nextRun;
+        setValidationData(validation);
+        setRunData(nextRun);
+        await loadMappingData();
+      }
+
+      await loadCsvHandoffSuggestions(currentRunId);
+      await loadRunHistory({ offset: 0 });
+      focusRunPanel();
+      showMessage(validation?.csv_download_allowed ? "CSV ready." : "CSV not ready yet. Fix the items listed below.", validation?.csv_download_allowed ? "success" : "warning");
+    } catch (err) {
+      const message = err?.message === "provider_run_not_available"
+        ? "Could not determine the current provider run. Refresh and try again."
+        : await buildRequestErrorMessage(err, "Failed to prepare Provider Sync CSV.");
+      setRunError(message);
+      showMessage(message, "error");
+    } finally {
+      setPrepareCsvLoading(false);
     }
   };
 
@@ -1131,10 +1218,16 @@ export default function PayrollProviderSync({
       employee_name: employeeLabelFromContext(item.employee_id, [], scopedRecruiters),
     }));
   const createRunLabel = hasFixBeforeExportIssues ? "Create run to fix mappings" : "Create provider run";
+  const managerBlockingMessages = previewHasNoExportableData
+    ? ["No payroll-ready time, leave, or saved adjustments were found for this selection."]
+    : fixBeforeExportIssues.map((item) => managerFriendlyMessage(item, validationData ? currentRunContext : previewIssueContext));
+  const csvReady = Boolean(csvDownloadAllowed);
+  const csvStatusTitle = csvReady ? "CSV ready" : "CSV not ready";
+  const csvStatusSeverity = csvReady ? "success" : "warning";
   const csvBlockedReasonText = !runData?.id
     ? "Create or select a provider run first."
     : !validationData
-      ? "Validate this run before exporting CSV."
+      ? "Check CSV readiness before downloading."
         : csvBlockingErrors.length
           ? "Fix the items listed in 'Fix before export' before downloading CSV."
           : "";
@@ -1459,7 +1552,7 @@ export default function PayrollProviderSync({
 
       <Paper elevation={2} sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Step 1: Review payroll-ready data
+          1. Review payroll-ready data
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Provider Sync uses the current Payroll filters by default. Review the active period and employee scope before previewing payroll-ready data.
@@ -1589,6 +1682,9 @@ export default function PayrollProviderSync({
           </AccordionDetails>
         </Accordion>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Button variant="contained" onClick={handlePrepareCsv} disabled={!canPrepare || prepareCsvLoading}>
+            {prepareCsvLoading ? <CircularProgress size={18} /> : "Prepare CSV"}
+          </Button>
           <Button variant="contained" onClick={handlePreview} disabled={!canPrepare || previewLoading}>
             {previewLoading ? <CircularProgress size={18} /> : "Preview payroll-ready data"}
           </Button>
@@ -1651,12 +1747,47 @@ export default function PayrollProviderSync({
         )}
       </Paper>
 
-      {(previewData || validationData) && (
+      {(previewData || validationData || runError) && (
         <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Step 2: Fix before export</Typography>
+          <Typography variant="h6" gutterBottom>2. CSV handoff status</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Fix employee mappings, pay item mappings, and employee metadata before exporting Provider Sync CSV.
+            Provider Sync is preparing a CSV handoff only. It is not submitting payroll to QuickBooks.
           </Typography>
+          <Alert severity={csvStatusSeverity} sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>{csvStatusTitle}</Typography>
+            {runError ? (
+              <Typography variant="body2">{runError}</Typography>
+            ) : managerBlockingMessages.length ? (
+              <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                {managerBlockingMessages.map((message, index) => (
+                  <li key={`${index}-${message}`}>
+                    <Typography variant="body2">{message}</Typography>
+                  </li>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2">This selection is ready for CSV handoff.</Typography>
+            )}
+          </Alert>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+            <Tooltip title={csvBlockedReasonText}>
+              <span>
+                <Button variant="contained" onClick={handleCsvDownload} disabled={downloadLoading || !csvDownloadAllowed}>
+                  {downloadLoading ? <CircularProgress size={18} /> : "Download CSV"}
+                </Button>
+              </span>
+            </Tooltip>
+          </Stack>
+          {csvBlockedReasonText && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {csvBlockedReasonText}
+            </Typography>
+          )}
+          <Accordion elevation={0} disableGutters>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle2">Advanced: setup and mapping</Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 0 }}>
           {sourceHashChanged && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               Source hash changed since an earlier run for this same period. Review the saved adjustments and approved time before exporting.
@@ -2138,11 +2269,19 @@ export default function PayrollProviderSync({
               )}
             </AccordionDetails>
           </Accordion>
+            </AccordionDetails>
+          </Accordion>
         </Paper>
       )}
 
-      <Paper elevation={2} sx={{ p: 3 }} ref={runPanelRef}>
-        <Typography variant="h6" gutterBottom>Step 3: Provider run</Typography>
+      <Accordion elevation={2} disableGutters ref={runPanelRef}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">Advanced: current run details</Typography>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: 3 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Current CSV handoff batch details.
+        </Typography>
         {!activeRunId ? (
           <Alert severity="info">
             No provider run selected. Create a run or select one from history.
@@ -2188,7 +2327,7 @@ export default function PayrollProviderSync({
             )}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="contained" onClick={handleValidateRun} disabled={validationLoading || !activeRunId}>
-                {validationLoading ? <CircularProgress size={18} /> : "Validate run"}
+                {validationLoading ? <CircularProgress size={18} /> : "Check CSV readiness"}
               </Button>
               <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks" || !activeRunId}>
                 {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
@@ -2208,11 +2347,15 @@ export default function PayrollProviderSync({
             )}
           </>
         )}
-      </Paper>
+        </AccordionDetails>
+      </Accordion>
 
       {activeRunId && (
-        <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Step 4: Export</Typography>
+        <Accordion elevation={2} disableGutters>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6">Advanced: payload preview and direct sync readiness</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Preview provider inputs only. This does not submit official payroll and does not pay employees.
           </Typography>
@@ -2322,7 +2465,8 @@ export default function PayrollProviderSync({
               </span>
             </Tooltip>
           </Box>
-        </Paper>
+          </AccordionDetails>
+        </Accordion>
       )}
 
       <Accordion elevation={2} disableGutters>
