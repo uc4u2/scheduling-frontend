@@ -1,8 +1,8 @@
-# Payroll Provider Sync UI Plan
+# Payroll Handoff UI Plan
 
 ## Goal
 
-Add a future Payroll Provider Sync UI without breaking or duplicating:
+Add a future Payroll Handoff UI without breaking or duplicating:
 - current Payroll Preview
 - current History view
 - current Raw payroll data page
@@ -102,10 +102,10 @@ In `frontend/src/pages/sections/Payroll.js`:
 Recommended UI labels:
 - `Preview`
 - `History`
-- `Provider Sync`
+- `Payroll Handoff`
 
 Reason:
-- Provider Sync is a pay-period execution workflow
+- Payroll Handoff is a pay-period execution workflow
 - it belongs with payroll run preparation
 - it should stay separate from accounting journal export buttons
 
@@ -177,6 +177,7 @@ Recommended new wrapper shape:
 ## Backend endpoints to use
 
 ### Provider setup / capability
+- `GET /automation/payroll/provider-setup/status?provider=generic_csv`
 - `GET /automation/payroll/provider-setup/status?provider=quickbooks`
 
 Use for:
@@ -210,7 +211,7 @@ Use for:
 - `GET /automation/payroll/provider-runs/<id>/csv-download`
 
 Use for:
-- safe provider-ready raw-time CSV export
+- safe accountant / provider payroll handoff CSV export
 
 ## Recommended Provider Sync UX
 

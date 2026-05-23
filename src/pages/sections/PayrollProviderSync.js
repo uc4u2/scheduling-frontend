@@ -32,9 +32,11 @@ import { payrollProviderSyncApi } from "../../utils/api";
 import { extractApiErrorMessage } from "../../utils/apiError";
 
 const PROVIDER_OPTIONS = [
+  { value: "generic_csv", label: "Generic Accountant CSV" },
   { value: "quickbooks", label: "QuickBooks" },
-  { value: "csv_provider", label: "CSV fallback" },
-  { value: "xero", label: "Xero (coming later)", disabled: true },
+  { value: "check_embedded_placeholder", label: "Check (coming later)", disabled: true },
+  { value: "gusto_embedded_placeholder", label: "Gusto (coming later)", disabled: true },
+  { value: "canada_provider_placeholder", label: "Canadian payroll provider (coming later)", disabled: true },
 ];
 
 const formatList = (items = []) => (Array.isArray(items) ? items.filter(Boolean) : []);
@@ -186,10 +188,10 @@ const managerFriendlyMessage = (item, { runRows = [], recruiters = [] } = {}) =>
     return "Live QuickBooks payroll/time submit is not enabled. CSV export is still available.";
   }
   if (code === "MISSING_PAY_ITEM_MAP" && key) {
-    return `${payItemLabel[key] || key} needs to be matched to a QuickBooks payroll/pay item.`;
+    return `${payItemLabel[key] || key} needs to be matched to a payroll/pay item.`;
   }
   if (code === "MISSING_EMPLOYEE_MAPPING" && employeeId) {
-    return `${employeeLabelFromContext(employeeId, runRows, recruiters)} needs to be matched to a QuickBooks employee.`;
+    return `${employeeLabelFromContext(employeeId, runRows, recruiters)} needs to be matched to a payroll employee.`;
   }
   if (code === "MISSING_REGION_METADATA" && employeeId) {
     return `${employeeLabelFromContext(employeeId, runRows, recruiters)} is missing country/province information.`;
@@ -335,7 +337,7 @@ export default function PayrollProviderSync({
   filteredRecruiters = [],
   setSnackbar,
 }) {
-  const [provider, setProvider] = useState("quickbooks");
+  const [provider, setProvider] = useState("generic_csv");
   const [statusLoading, setStatusLoading] = useState(false);
   const [setupStatus, setSetupStatus] = useState(null);
   const [setupError, setSetupError] = useState("");
@@ -445,11 +447,32 @@ export default function PayrollProviderSync({
     }
   };
 
+  const providerDisplayName =
+    provider === "quickbooks"
+      ? "QuickBooks"
+      : provider === "generic_csv" || provider === "csv_provider"
+        ? "your payroll provider"
+        : "your payroll provider";
+  const employeeMatchLabel =
+    provider === "quickbooks"
+      ? "Match to QuickBooks employee"
+      : "Match to payroll employee";
+  const employeeCodeLabel =
+    provider === "quickbooks"
+      ? "QuickBooks employee ID or payroll employee code"
+      : "Suggested CSV employee match";
+  const payItemCodeLabel =
+    provider === "quickbooks"
+      ? "QuickBooks/payroll item code"
+      : "Suggested payroll item";
+
   const payItemHelperText = (key) => {
-    if (key === "vacation_pay") {
+    if (provider === "quickbooks" && key === "vacation_pay") {
       return "Choose or enter the QuickBooks payroll item used for vacation pay. Until QuickBooks item sync is enabled, this can be a temporary code for CSV testing.";
     }
-    return "Enter the QuickBooks/payroll item code used for this earning. Until QuickBooks item sync is enabled, this can be a temporary code for CSV testing.";
+    return provider === "quickbooks"
+      ? "Enter the QuickBooks/payroll item code used for this earning. Until QuickBooks item sync is enabled, this can be a temporary code for CSV testing."
+      : "Enter the export payroll item code used for this earning. This can be a temporary code for accountant CSV handoff testing.";
   };
 
   const focusRunPanel = () => {
@@ -593,7 +616,7 @@ export default function PayrollProviderSync({
     setStatusLoading(true);
     setSetupError("");
     try {
-      const data = await payrollProviderSyncApi.setupStatus("quickbooks");
+      const data = await payrollProviderSyncApi.setupStatus(provider);
       setSetupStatus(data);
       const derivedMessage = buildSetupErrorMessage(data, "");
       setSetupError(derivedMessage);
@@ -720,10 +743,13 @@ export default function PayrollProviderSync({
 
       const missingEmployeeMappings = (validation?.missing_employee_map_ids || []).length > 0;
       const missingPayItemMappings = (validation?.missing_pay_item_keys || []).length > 0;
-      const shouldApplySuggestions =
-        provider === "quickbooks" &&
+      const quickBooksCandidatesUnavailable =
+        provider !== "quickbooks" ||
         ((missingEmployeeMappings && !employeeCandidateState.available) ||
           (missingPayItemMappings && !payItemCandidateState.available));
+      const shouldApplySuggestions =
+        (provider === "quickbooks" || provider === "generic_csv" || provider === "csv_provider") &&
+        quickBooksCandidatesUnavailable;
 
       if (shouldApplySuggestions) {
         const applied = await payrollProviderSyncApi.applyCsvHandoffSuggestions(currentRunId);
@@ -737,11 +763,11 @@ export default function PayrollProviderSync({
       await loadCsvHandoffSuggestions(currentRunId);
       await loadRunHistory({ offset: 0 });
       focusRunPanel();
-      showMessage(validation?.csv_download_allowed ? "CSV ready." : "CSV not ready yet. Fix the items listed below.", validation?.csv_download_allowed ? "success" : "warning");
+      showMessage(validation?.csv_download_allowed ? "Payroll Handoff CSV ready." : "Payroll Handoff CSV not ready yet. Fix the items listed below.", validation?.csv_download_allowed ? "success" : "warning");
     } catch (err) {
       const message = err?.message === "provider_run_not_available"
-        ? "Could not determine the current provider run. Refresh and try again."
-        : await buildRequestErrorMessage(err, "Failed to prepare Provider Sync CSV.");
+        ? "Could not determine the current payroll handoff batch. Refresh and try again."
+        : await buildRequestErrorMessage(err, "Failed to prepare Payroll Handoff CSV.");
       setRunError(message);
       showMessage(message, "error");
     } finally {
@@ -769,7 +795,7 @@ export default function PayrollProviderSync({
         setSelectedRunId(createdRun?.id || null);
         focusRunPanel();
       }
-      showMessage("Provider run created.", "success");
+      showMessage("Payroll handoff batch created.", "success");
     } catch (err) {
       const status = err?.response?.status;
       const duplicateRunId = err?.response?.data?.existing_run_id;
@@ -805,7 +831,7 @@ export default function PayrollProviderSync({
       setRunData(data?.run || runData);
       await loadCsvHandoffSuggestions(runId);
       await loadRunHistory();
-      showMessage("Provider run validated.", "success");
+      showMessage("Payroll handoff batch checked.", "success");
     } catch (err) {
       showMessage(await buildRequestErrorMessage(err, "Run validation failed."), "error");
     } finally {
@@ -1247,7 +1273,7 @@ export default function PayrollProviderSync({
   );
   const canApplyCsvSuggestions = Boolean(
     runData?.id &&
-    provider === "quickbooks" &&
+    (provider === "quickbooks" || provider === "generic_csv" || provider === "csv_provider") &&
     onlyMappingCsvBlockers &&
     ((csvSuggestionState.employee_suggestions || []).length || (csvSuggestionState.pay_item_suggestions || []).length)
   );
@@ -1285,7 +1311,7 @@ export default function PayrollProviderSync({
   const saveEmployeeMapping = async (row) => {
     const providerEmployeeId = (employeeMappingDrafts[row.employee_id] || "").trim();
     if (!providerEmployeeId) {
-      showMessage("QuickBooks employee ID or payroll employee code is required.", "warning");
+      showMessage(`${employeeCodeLabel} is required.`, "warning");
       return;
     }
     try {
@@ -1346,7 +1372,7 @@ export default function PayrollProviderSync({
     const providerItemId = String(draft.provider_item_id || "").trim();
     const providerItemName = String(draft.provider_item_name || "").trim();
     if (!providerItemId) {
-      showMessage("QuickBooks/payroll item code is required.", "warning");
+      showMessage(`${payItemCodeLabel} is required.`, "warning");
       return;
     }
     try {
@@ -1446,17 +1472,17 @@ export default function PayrollProviderSync({
     <Stack spacing={3} sx={{ mt: 2 }}>
       <Paper elevation={2} sx={{ p: 3 }}>
         <Typography variant="h5" gutterBottom>
-          Payroll Provider Sync
+          Payroll Handoff
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Provider Sync prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Official payroll is completed in QuickBooks or your payroll provider.
+          Payroll Handoff prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Use this file for your accountant or payroll provider.
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
-          <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />
-          <Chip label="Provider Sync = recommended payroll handoff workflow" sx={chipSx.success} />
+          <Chip label="Payroll Handoff = recommended payroll handoff workflow" sx={chipSx.success} />
+          {provider === "quickbooks" && <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />}
         </Stack>
         <Alert severity="info" sx={{ mt: 2 }}>
-          QuickBooks official import format: not verified yet.
+          This export does not submit payroll or pay employees. Direct provider submission will be available only after each provider integration is approved and tested.
         </Alert>
       </Paper>
 
@@ -1481,14 +1507,16 @@ export default function PayrollProviderSync({
           </Grid>
           <Grid item xs={12} md={8}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+              <Chip label="Generic Accountant CSV" sx={provider === "generic_csv" ? chipSx.active : chipSx.neutral} />
               <Chip label="QuickBooks" sx={provider === "quickbooks" ? chipSx.active : chipSx.neutral} />
-              <Chip label="CSV fallback" sx={provider === "csv_provider" ? chipSx.active : chipSx.neutral} />
-              <Chip label="Xero coming later" sx={chipSx.neutral} />
+              <Chip label="Check coming later" sx={chipSx.neutral} />
+              <Chip label="Gusto coming later" sx={chipSx.neutral} />
             </Stack>
           </Grid>
         </Grid>
       </Paper>
 
+      {provider === "quickbooks" && (
       <Accordion elevation={2} defaultExpanded={false} disableGutters>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="h6">QuickBooks connection and setup</Typography>
@@ -1524,9 +1552,9 @@ export default function PayrollProviderSync({
             QuickBooks accounting is connected. Live QuickBooks payroll/time submit is not enabled. CSV fallback is available.
           </Alert>
         )}
-        {provider === "csv_provider" && (
+          {(provider === "generic_csv" || provider === "csv_provider") && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            CSV fallback is available even when provider API submission is unsupported.
+            No provider connection is required for this CSV handoff.
           </Alert>
         )}
 
@@ -1549,6 +1577,7 @@ export default function PayrollProviderSync({
         {renderJsonList(setupStatus?.setup_steps)}
         </AccordionDetails>
       </Accordion>
+      )}
 
 
       <Paper elevation={2} sx={{ p: 3 }}>
@@ -1556,13 +1585,15 @@ export default function PayrollProviderSync({
           1. Review payroll-ready data
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Provider Sync uses the current Payroll filters by default. Review the active period and employee scope before previewing payroll-ready data.
+          Payroll Handoff uses the current Payroll filters by default. Review the active period and employee scope before preparing the CSV handoff.
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Provider Sync CSV is the recommended handoff for accountants, payroll providers, and QuickBooks review workflows. Use this CSV for live QuickBooks/accountant testing. It is not yet a verified official QuickBooks Payroll import format.
+          {provider === "quickbooks"
+            ? "Use this file for your accountant or payroll provider. Direct QuickBooks submission is still future-only."
+            : "Use this file for your accountant or payroll provider. No provider connection is required for this CSV handoff."}
         </Alert>
         <Alert severity={overrideScopeEnabled ? "warning" : "info"} sx={{ mb: 2 }}>
-          {overrideScopeEnabled ? "Provider Sync override is active. This ignores the main Payroll employee filter." : "Using current Payroll filters."}
+          {overrideScopeEnabled ? "Payroll Handoff override is active. This ignores the main Payroll employee filter." : "Using current Payroll filters."}
         </Alert>
         {missingDates && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -1571,7 +1602,7 @@ export default function PayrollProviderSync({
         )}
         {noExplicitEmployees && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            No Provider Sync employees are selected yet. Choose one employee or a custom employee list before preparing payroll-ready data.
+            No payroll handoff employees are selected yet. Choose one employee or a custom employee list before preparing payroll-ready data.
           </Alert>
         )}
         <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -1585,30 +1616,30 @@ export default function PayrollProviderSync({
         </Grid>
         <Accordion elevation={0} disableGutters>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle2">Advanced: Override employee scope for Provider Sync</Typography>
+            <Typography variant="subtitle2">Advanced: Override Payroll Handoff scope</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 0 }}>
             <Stack spacing={2}>
               <Alert severity={overrideScopeEnabled ? "warning" : "info"}>
                 {overrideScopeEnabled
-                  ? "Provider Sync override is active. This tab will ignore the main Payroll employee filter until you turn the override off."
-                  : "Override is off. Provider Sync is using the current Payroll filters."}
+                  ? "Payroll Handoff override is active. This tab will ignore the main Payroll employee filter until you turn the override off."
+                  : "Override is off. Payroll Handoff is using the current Payroll filters."}
               </Alert>
               <Button
                 variant={overrideScopeEnabled ? "contained" : "outlined"}
                 onClick={() => setOverrideScopeEnabled((value) => !value)}
                 sx={{ alignSelf: "flex-start" }}
               >
-                {overrideScopeEnabled ? "Turn off Provider Sync override" : "Turn on Provider Sync override"}
+                {overrideScopeEnabled ? "Turn off Payroll Handoff override" : "Turn on Payroll Handoff override"}
               </Button>
               {overrideScopeEnabled && (
                 <Grid container spacing={2}>
                   <Grid item xs={12} md={4}>
                     <FormControl fullWidth size="small">
-                      <InputLabel id="provider-sync-scope-label">Provider Sync employee scope</InputLabel>
+                      <InputLabel id="provider-sync-scope-label">Payroll Handoff employee scope</InputLabel>
                       <Select
                         labelId="provider-sync-scope-label"
-                        label="Provider Sync employee scope"
+                        label="Payroll Handoff employee scope"
                         value={providerScopeMode}
                         onChange={(event) => {
                           const nextMode = event.target.value;
@@ -1623,7 +1654,7 @@ export default function PayrollProviderSync({
                         }}
                       >
                         <MenuItem value="all_filtered">
-                          {departmentFilter ? "All employees in selected department" : "All employees in Provider Sync"}
+                          {departmentFilter ? "All employees in selected department" : "All employees in Payroll Handoff"}
                         </MenuItem>
                         <MenuItem value="single">One employee only</MenuItem>
                         <MenuItem value="custom">Custom employee selection</MenuItem>
@@ -1708,7 +1739,7 @@ export default function PayrollProviderSync({
               </Alert>
             ) : (
               <Alert severity="info" sx={{ mb: 2 }}>
-                No saved Payroll Preview adjustments found for this period. Provider Sync will use approved time and leave only.
+                No saved Payroll Preview adjustments found for this period. Payroll Handoff will use approved time and leave only.
               </Alert>
             )}
             {previewHasNoExportableData && (
@@ -1752,7 +1783,7 @@ export default function PayrollProviderSync({
         <Paper elevation={2} sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>2. CSV handoff status</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Provider Sync is preparing a CSV handoff only. It is not submitting payroll to QuickBooks.
+            Payroll Handoff is preparing a CSV handoff only. It is not submitting payroll to a provider.
           </Typography>
           <Alert severity={csvStatusSeverity} sx={{ mb: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>{csvStatusTitle}</Typography>
@@ -1828,7 +1859,7 @@ export default function PayrollProviderSync({
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
               <Alert severity="info" sx={{ mb: 2 }}>
-                Schedulaa can generate a CSV handoff match for this employee. This is used for the CSV export only. Direct QuickBooks sync will require the real QuickBooks employee later.
+                Schedulaa can generate a CSV handoff match for this employee. This is used for the CSV export only. Direct provider sync will require the real provider employee later.
               </Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
                 <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
@@ -1871,7 +1902,7 @@ export default function PayrollProviderSync({
                             <TextField
                               fullWidth
                               size="small"
-                              label="QuickBooks employee ID or payroll employee code"
+                              label={employeeCodeLabel}
                               helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
                               value={employeeMappingDrafts[row.employee_id] ?? ""}
                               onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
@@ -1891,7 +1922,7 @@ export default function PayrollProviderSync({
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee mappings</Typography>
               <Alert severity="info" sx={{ mb: 2 }}>
-                Schedulaa can generate a CSV handoff match for this employee. This is used for the CSV export only. Direct QuickBooks sync will require the real QuickBooks employee later.
+                Schedulaa can generate a CSV handoff match for this employee. This is used for the CSV export only. Direct provider sync will require the real provider employee later.
               </Alert>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
                 <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
@@ -1934,7 +1965,7 @@ export default function PayrollProviderSync({
                             <TextField
                               fullWidth
                               size="small"
-                              label="QuickBooks employee ID or payroll employee code"
+                              label={employeeCodeLabel}
                               helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
                               value={employeeMappingDrafts[row.employee_id] ?? ""}
                               onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
@@ -1996,7 +2027,7 @@ export default function PayrollProviderSync({
                             <TextField
                               fullWidth
                               size="small"
-                              label="QuickBooks/payroll item code"
+                              label={payItemCodeLabel}
                               helperText={payItemHelperText(key)}
                               value={missingPayItemDrafts[key]?.provider_item_id || ""}
                               onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
@@ -2067,7 +2098,7 @@ export default function PayrollProviderSync({
                             <TextField
                               fullWidth
                               size="small"
-                              label="QuickBooks/payroll item code"
+                              label={payItemCodeLabel}
                               helperText={payItemHelperText(key)}
                               value={missingPayItemDrafts[key]?.provider_item_id || ""}
                               onChange={(event) => setMissingPayItemDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), provider_item_id: event.target.value } }))}
@@ -2111,7 +2142,7 @@ export default function PayrollProviderSync({
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>Employee mapping management</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Legacy external payroll employee IDs are bootstrap-only. Live Provider Sync uses PayrollProviderEmployeeMap only.
+                    Legacy external payroll employee IDs are bootstrap-only. Live Payroll Handoff uses PayrollProviderEmployeeMap only.
                   </Typography>
                   <Grid container spacing={2} sx={{ mb: 2 }}>
                     <Grid item xs={12} md={5}>
@@ -2147,7 +2178,7 @@ export default function PayrollProviderSync({
                             <TextField
                               fullWidth
                               size="small"
-                              label="QuickBooks employee ID or payroll employee code"
+                              label={employeeCodeLabel}
                               helperText="For CSV testing, you can enter a temporary code. For real QuickBooks sync, this should match the employee record in QuickBooks."
                               value={employeeMappingDrafts[row.employee_id] ?? row.provider_employee_id ?? ""}
                               onChange={(event) => handleEmployeeMapChange(row.employee_id, event.target.value)}
@@ -2181,7 +2212,7 @@ export default function PayrollProviderSync({
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={4}><TextField fullWidth size="small" label="QuickBooks/payroll item code" value={payItemDraft.provider_item_id} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))} /></Grid>
+                    <Grid item xs={12} md={4}><TextField fullWidth size="small" label={payItemCodeLabel} value={payItemDraft.provider_item_id} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_id: event.target.value }))} /></Grid>
                     <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Display name" value={payItemDraft.provider_item_name} onChange={(event) => setPayItemDraft((prev) => ({ ...prev, provider_item_name: event.target.value }))} /></Grid>
                     <Grid item xs={12}><Button variant="outlined" onClick={savePayItemMapping}>Save pay item mapping</Button></Grid>
                   </Grid>
@@ -2191,7 +2222,7 @@ export default function PayrollProviderSync({
                       <TableRow>
                         <TableCell>Local key</TableCell>
                         <TableCell>Category</TableCell>
-                        <TableCell>QuickBooks/payroll item code</TableCell>
+                        <TableCell>{payItemCodeLabel}</TableCell>
                         <TableCell>Display name</TableCell>
                         <TableCell>Status</TableCell>
                       </TableRow>
@@ -2221,7 +2252,7 @@ export default function PayrollProviderSync({
                             <TableRow>
                               <TableCell>Local key</TableCell>
                               <TableCell>Category</TableCell>
-                              <TableCell>QuickBooks/payroll item code</TableCell>
+                              <TableCell>{payItemCodeLabel}</TableCell>
                               <TableCell>Display name</TableCell>
                               <TableCell>Status</TableCell>
                             </TableRow>
@@ -2277,7 +2308,7 @@ export default function PayrollProviderSync({
 
       <Accordion elevation={2} disableGutters ref={runPanelRef}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Advanced: current run details</Typography>
+          <Typography variant="h6">Advanced: current payroll handoff batch</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -2331,12 +2362,12 @@ export default function PayrollProviderSync({
                 {validationLoading ? <CircularProgress size={18} /> : "Check CSV readiness"}
               </Button>
               <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks" || !activeRunId}>
-                {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
+                {payloadLoading ? <CircularProgress size={18} /> : "Preview provider payload"}
               </Button>
               <Tooltip title={csvBlockedReasonText}>
                 <span>
                   <Button variant="outlined" onClick={handleCsvDownload} disabled={downloadLoading || !csvDownloadAllowed}>
-                    {downloadLoading ? <CircularProgress size={18} /> : "Download Provider Sync CSV"}
+                    {downloadLoading ? <CircularProgress size={18} /> : "Download Payroll Handoff CSV"}
                   </Button>
                 </span>
               </Tooltip>
@@ -2354,30 +2385,30 @@ export default function PayrollProviderSync({
       {activeRunId && (
         <Accordion elevation={2} disableGutters>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">Advanced: payload preview and direct sync readiness</Typography>
+          <Typography variant="h6">Advanced: payload preview and direct provider readiness</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Preview provider inputs only. This does not submit official payroll and does not pay employees.
           </Typography>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Live QuickBooks payroll/time submit is not enabled. CSV export is available.
+            Direct provider submission is not enabled. CSV export is available.
           </Alert>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
             <Button variant="outlined" onClick={handlePreviewPayload} disabled={payloadLoading || provider !== "quickbooks"}>
-              {payloadLoading ? <CircularProgress size={18} /> : "Preview QuickBooks payload"}
+              {payloadLoading ? <CircularProgress size={18} /> : "Preview provider payload"}
             </Button>
             <Tooltip title={csvBlockedReasonText}>
               <span>
                 <Button variant="contained" onClick={handleCsvDownload} disabled={downloadLoading || !csvDownloadAllowed}>
-                  {downloadLoading ? <CircularProgress size={18} /> : "Download Provider Sync CSV"}
+                  {downloadLoading ? <CircularProgress size={18} /> : "Download Payroll Handoff CSV"}
                 </Button>
               </span>
             </Tooltip>
           </Stack>
           {!payloadPreview ? (
             <Typography variant="body2" color="text.secondary">
-              Preview QuickBooks payload after validation if you want to inspect the provider input line by line before exporting.
+              Preview the provider payload after validation if you want to inspect the handoff line by line before exporting.
             </Typography>
           ) : (
             <>
@@ -2447,22 +2478,22 @@ export default function PayrollProviderSync({
             </>
           )}
           <Box sx={{ mt: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>Send directly to QuickBooks</Typography>
+            <Typography variant="subtitle1" gutterBottom>Send directly to payroll provider</Typography>
             <Alert severity="info" sx={{ mb: 2 }}>
-              Direct QuickBooks payroll/time submit will be enabled after production credentials, required scopes, and provider support are confirmed.
+              Direct provider submission will be enabled after production credentials, required scopes, and provider support are confirmed.
             </Alert>
             <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} md={4}><Typography variant="body2"><strong>Production connection:</strong> {setupStatus?.provider_environment === "production" ? "Ready" : "Not ready"}</Typography></Grid>
-              <Grid item xs={12} md={4}><Typography variant="body2"><strong>Required scopes:</strong> {formatList(setupStatus?.missing_scopes).length ? "Missing" : "Current scope not sufficient for live submit"}</Typography></Grid>
-              <Grid item xs={12} md={4}><Typography variant="body2"><strong>Partner/premium access:</strong> Not confirmed</Typography></Grid>
+              <Grid item xs={12} md={4}><Typography variant="body2"><strong>Provider selected:</strong> {PROVIDER_OPTIONS.find((item) => item.value === provider)?.label || provider}</Typography></Grid>
+              <Grid item xs={12} md={4}><Typography variant="body2"><strong>Provider account connected:</strong> {provider === "quickbooks" ? (setupStatus?.connection_status === "connected" ? "Connected" : "Not connected") : "Not required for CSV handoff"}</Typography></Grid>
+              <Grid item xs={12} md={4}><Typography variant="body2"><strong>Production access confirmed:</strong> {provider === "quickbooks" ? (setupStatus?.provider_environment === "production" ? "Ready" : "Not ready") : "Coming later"}</Typography></Grid>
               <Grid item xs={12} md={4}><Typography variant="body2"><strong>Employee matching:</strong> {missingEmployeeIssueRows.length ? "Incomplete" : "Ready"}</Typography></Grid>
               <Grid item xs={12} md={4}><Typography variant="body2"><strong>Pay item matching:</strong> {missingPayItemKeys.length ? "Incomplete" : "Ready"}</Typography></Grid>
               <Grid item xs={12} md={4}><Typography variant="body2"><strong>Supported line types:</strong> time-based lines only, not confirmed</Typography></Grid>
-              <Grid item xs={12}><Typography variant="body2"><strong>Unsupported line types today:</strong> tips, bonus, commission, reimbursements, and other amount-only adjustments for direct QuickBooks submit</Typography></Grid>
+              <Grid item xs={12}><Typography variant="body2"><strong>Unsupported line types today:</strong> tips, bonus, commission, reimbursements, and other amount-only adjustments for direct provider submit</Typography></Grid>
             </Grid>
             <Tooltip title="Available after QuickBooks production payroll/time access is enabled.">
               <span>
-                <Button variant="outlined" disabled>Send directly to QuickBooks</Button>
+                <Button variant="outlined" disabled>Send directly to payroll provider</Button>
               </span>
             </Tooltip>
           </Box>
@@ -2472,11 +2503,11 @@ export default function PayrollProviderSync({
 
       <Accordion elevation={2} disableGutters>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Advanced: Provider run history</Typography>
+          <Typography variant="h6">Advanced: payroll handoff history</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Provider Sync tracks draft, validated, payload-previewed, CSV-exported, failed, and unsupported runs only. It does not claim payroll was submitted, completed, or paid.
+          Payroll Handoff tracks draft, validated, payload-previewed, CSV-exported, failed, and unsupported runs only. It does not claim payroll was submitted, completed, or paid.
         </Typography>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={4}>

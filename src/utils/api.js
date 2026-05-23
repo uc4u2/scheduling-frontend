@@ -607,7 +607,7 @@ export const quickbooksIntegration = {
 
 /* --------------------------- Payroll Provider Sync --------------------------- */
 export const payrollProviderSyncApi = {
-  setupStatus: (provider = "quickbooks", params = {}, config = {}) =>
+  setupStatus: (provider = "generic_csv", params = {}, config = {}) =>
     api
       .get("/automation/payroll/provider-setup/status", {
         ...config,
@@ -640,7 +640,7 @@ export const payrollProviderSyncApi = {
       ...config,
       responseType: "blob",
     }),
-  listEmployeeMappings: (provider = "quickbooks", config = {}) =>
+  listEmployeeMappings: (provider = "generic_csv", config = {}) =>
     api
       .get("/automation/payroll/provider-mappings/employees", {
         ...config,
@@ -655,7 +655,7 @@ export const payrollProviderSyncApi = {
         config
       )
       .then((r) => r.data),
-  bootstrapEmployeesFromLegacy: (provider = "quickbooks", payload = {}, config = {}) =>
+  bootstrapEmployeesFromLegacy: (provider = "generic_csv", payload = {}, config = {}) =>
     api
       .post(
         "/automation/payroll/provider-mappings/employees/bootstrap-from-legacy",
@@ -670,7 +670,7 @@ export const payrollProviderSyncApi = {
         params,
       })
       .then((r) => r.data),
-  listPayItemMappings: (provider = "quickbooks", config = {}) =>
+  listPayItemMappings: (provider = "generic_csv", config = {}) =>
     api
       .get("/automation/payroll/provider-mappings/pay-items", {
         ...config,
@@ -688,7 +688,7 @@ export const payrollProviderSyncApi = {
     api
       .post("/automation/payroll/provider-mappings/pay-items", payload, config)
       .then((r) => r.data),
-  bootstrapPayItemDefaults: (provider = "quickbooks", payload = {}, config = {}) =>
+  bootstrapPayItemDefaults: (provider = "generic_csv", payload = {}, config = {}) =>
     api
       .post(
         "/automation/payroll/provider-mappings/pay-items/bootstrap-defaults",
