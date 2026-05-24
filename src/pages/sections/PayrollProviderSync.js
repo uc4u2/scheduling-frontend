@@ -10,6 +10,7 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  Drawer,
   FormControl,
   IconButton,
   Grid,
@@ -29,6 +30,8 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import api, { payrollProviderSyncApi } from "../../utils/api";
 import { extractApiErrorMessage } from "../../utils/apiError";
@@ -204,6 +207,121 @@ const SectionHeading = ({ title, tooltip, variant = "h6", gutterBottom = true })
     ) : null}
   </Stack>
 );
+
+const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
+  const sections = [
+    {
+      title: "What this page does",
+      bullets: [
+        "Payroll Handoff builds a payroll-ready CSV for your accountant or payroll provider.",
+        "It reads the current pay period, employee scope, approved operational payroll data, and saved payroll values.",
+        "It does not pay employees and does not submit payroll directly to providers yet.",
+      ],
+    },
+    {
+      title: "Recommended workflow",
+      bullets: [
+        "1. Open Payroll Preview, review hours, bonus, commission, tips, vacation, and deductions.",
+        "2. Finalize payroll when you want employee-facing payroll and handoff values to match.",
+        "3. Open Provider Sync, preview the payroll-ready data, then prepare and download the CSV.",
+        "4. Use Run history if you need to reopen a previous handoff, compare runs, or re-download a CSV.",
+      ],
+    },
+    {
+      title: "How to read the sections",
+      bullets: [
+        "Review data shows the active employee scope, period, and the source used for payroll values.",
+        "CSV status tells you whether the current selection is ready for export and lists blocking issues if not.",
+        "Current batch shows the selected run metrics, source hash, and validation state for the run you are working with.",
+        "Run history is your audit trail of created, validated, previewed, and exported handoff runs.",
+      ],
+    },
+    {
+      title: "How to read the source labels",
+      bullets: [
+        "Finalized payroll means the CSV is using finalized period payroll values first.",
+        "Saved draft payroll means there is no finalized row, so the CSV is using saved draft payroll values for that period.",
+        "Operational raw means no finalized or saved draft payroll values were found, so the CSV is built from approved time and leave only.",
+      ],
+    },
+    {
+      title: "How to use the filters",
+      bullets: [
+        "The main Payroll page filters control the default employee and date scope for this page.",
+        "Use the override handoff scope only when you intentionally want this tab to ignore the main employee selection.",
+        "Use Run history filters to narrow history by department, employee, status, and date range.",
+      ],
+    },
+  ];
+
+  return (
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{ sx: { width: { xs: "100%", sm: 560 }, maxWidth: "100%" } }}
+    >
+      <Stack sx={{ height: "100%" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}>
+          <Box>
+            <Typography variant="h6" fontWeight={800}>Payroll Handoff help</Typography>
+            <Typography variant="body2" color="text.secondary">
+              How to prepare, validate, read, and export payroll handoff data.
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} aria-label="Close payroll handoff help">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+        <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto" }}>
+          <Alert severity="info" variant="outlined" sx={{ py: 0.75 }}>
+            Payroll Handoff is a CSV export workflow. It is not a direct payroll submission workflow yet.
+          </Alert>
+          {sections.map((section) => (
+            <Paper key={section.title} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                {section.title}
+              </Typography>
+              <Stack spacing={0.75}>
+                {section.bullets.map((bullet) => (
+                  <Typography key={bullet} variant="body2" color="text.secondary">
+                    - {bullet}
+                  </Typography>
+                ))}
+              </Stack>
+            </Paper>
+          ))}
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+              Real-world example: finalized payroll handoff
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              A manager reviews Noah Reed for Mar 26 to Apr 8, adds a bonus and commission, finalizes payroll, then opens Provider Sync. The page shows “Using finalized payroll values for this period.” The manager previews the run, confirms the exported total, downloads the CSV, and sends it to the accountant. If the run needs to be revisited later, the same period can be reopened from Run history.
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+              Real-world example: accrued vacation only
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              A manager finalizes a period where Vacation Pay exists but Include Vacation in Gross is off. The payslip still shows the vacation amount for the period, but Provider Sync warns that vacation was accrued and not included as payable earnings. The CSV exports payable items like holiday, bonus, and commission, but excludes Vacation Pay from the handoff rows.
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+              What to do when something looks wrong
+            </Typography>
+            <Stack spacing={0.75}>
+              <Typography variant="body2" color="text.secondary">- If source says operational raw when you expect finalized values, check whether that period was actually finalized.</Typography>
+              <Typography variant="body2" color="text.secondary">- If CSV status is not ready, fix employee mapping, pay item mapping, or export metadata issues listed in the page.</Typography>
+              <Typography variant="body2" color="text.secondary">- If history shows multiple runs for the same period, compare the source hash and selected run details before exporting again.</Typography>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Stack>
+    </Drawer>
+  );
+};
 
 const managerFriendlyMessage = (item, { runRows = [], recruiters = [] } = {}) => {
   const code = typeof item === "string" ? item : item?.code || item?.message || "";
@@ -421,6 +539,7 @@ export default function PayrollProviderSync({
   const [overrideScopeEnabled, setOverrideScopeEnabled] = useState(false);
   const [providerScopeMode, setProviderScopeMode] = useState("all_filtered");
   const [providerSelectedEmployeeIds, setProviderSelectedEmployeeIds] = useState([]);
+  const [helpOpen, setHelpOpen] = useState(false);
   const runPanelRef = useRef(null);
 
   const scopedRecruiters = useMemo(
@@ -1576,11 +1695,16 @@ export default function PayrollProviderSync({
   return (
     <Stack spacing={3} sx={{ mt: 2 }}>
       <Paper elevation={2} sx={{ p: 3 }}>
-        <SectionHeading
-          title="Payroll Handoff"
-          variant="h5"
-          tooltip="Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values."
-        />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+          <SectionHeading
+            title="Payroll Handoff"
+            variant="h5"
+            tooltip="Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values."
+          />
+          <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
+            How this page works
+          </Button>
+        </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
           <Chip label="Payroll Handoff = recommended payroll handoff workflow" sx={chipSx.success} />
           {provider === "quickbooks" && <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />}
@@ -2662,6 +2786,8 @@ export default function PayrollProviderSync({
           </AccordionDetails>
         </Accordion>
       )}
+
+      <PayrollProviderSyncHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <Accordion elevation={0} disableGutters sx={lowerAccordionSx}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
