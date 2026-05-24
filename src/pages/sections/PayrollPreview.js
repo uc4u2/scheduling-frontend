@@ -1,5 +1,5 @@
 // src/pages/sections/PayrollPreview.js
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import DownloadPayrollButton from "./DownloadPayrollButton";
 import {
   defaultVacationPercent,
@@ -99,49 +99,6 @@ const previewFieldTooltips = {
   parental_top_up:
     "This period only. Adds employer top-up pay for this pay period without changing future defaults.",
 };
-
-const SNAPSHOT_TRACKED_FIELDS = [
-  "rate",
-  "vacation_pay",
-  "vacation_percent",
-  "include_vacation_in_gross",
-  "bonus",
-  "attendance_bonus",
-  "performance_bonus",
-  "commission",
-  "tip",
-  "travel_allowance",
-  "family_bonus",
-  "shift_premium",
-  "parental_top_up",
-  "non_taxable_reimbursement",
-  "union_dues",
-  "garnishment",
-  "medical_insurance",
-  "dental_insurance",
-  "life_insurance",
-  "retirement_amount",
-  "deduction",
-  "tax_credit",
-  "parental_insurance",
-];
-
-const coerceSnapshotValue = (key, value) => {
-  if (key === "include_vacation_in_gross") return Boolean(value);
-  const numeric = Number(value ?? 0);
-  return Number.isFinite(numeric) ? numeric : 0;
-};
-
-const snapshotFromPayroll = (payroll) =>
-  SNAPSHOT_TRACKED_FIELDS.reduce((acc, key) => {
-    acc[key] = coerceSnapshotValue(key, payroll?.[key]);
-    return acc;
-  }, {});
-
-const snapshotsEqual = (left, right) =>
-  SNAPSHOT_TRACKED_FIELDS.every(
-    (key) => coerceSnapshotValue(key, left?.[key]) === coerceSnapshotValue(key, right?.[key])
-  );
 
 function calculate_gross_with_overtime(hoursWorked, hourlyRate, region = "ca", province = "ON") {
   const hrs = Number(hoursWorked || 0);
@@ -305,11 +262,13 @@ export default function PayrollPreview({
   setAutoRecalc,
   handleFieldChange,
   setPayroll,
-  handleSave,
-  saving,
+  /* handleSave removed */
+    
   ytdTotals,
+  
   selectedRecruiter,
   month,
+  
   setSnackbar,
 }) {
   const isCanada = region === "ca";
@@ -490,87 +449,6 @@ export default function PayrollPreview({
   /* Local state */
   const [calculatedNetPay, setCalculatedNetPay] = useState(0);
   const [savingFinalized, setSavingFinalized] = useState(false);
-  const [savedPayrollState, setSavedPayrollState] = useState(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [snapshotStatus, setSnapshotStatus] = useState(null);
-  const dirtyRef = useRef(false);
-  const periodIdentity = useMemo(
-    () =>
-      JSON.stringify([
-        payroll?.recruiter_id || "",
-        payroll?.region || region || "",
-        payroll?.start_date || "",
-        payroll?.end_date || "",
-        payroll?.pay_frequency || "",
-        month || "",
-      ]),
-    [
-      payroll?.recruiter_id,
-      payroll?.region,
-      payroll?.start_date,
-      payroll?.end_date,
-      payroll?.pay_frequency,
-      region,
-      month,
-    ]
-  );
-  useEffect(() => {
-    dirtyRef.current = isDirty;
-  }, [isDirty]);
-
-  useEffect(() => {
-    if (!payroll) return;
-    if (!savedPayrollState || !dirtyRef.current) {
-      setSavedPayrollState(payroll);
-      setIsDirty(false);
-    }
-  }, [periodIdentity, payroll?.id, payroll?.updated_at, payroll?.created_at]);
-
-  const updateDirtyState = (nextPayrollLike) => {
-    if (!savedPayrollState) return;
-    setIsDirty(!snapshotsEqual(snapshotFromPayroll(nextPayrollLike), snapshotFromPayroll(savedPayrollState)));
-  };
-
-  const handleEditableFieldChange = (field, rawValue) => {
-    const nextValue =
-      field === "include_vacation_in_gross"
-        ? Boolean(rawValue)
-        : Number.isFinite(Number(rawValue))
-        ? Number(rawValue)
-        : rawValue;
-    setSnapshotStatus(null);
-    updateDirtyState({ ...payroll, [field]: nextValue });
-    handleFieldChange(field, rawValue);
-  };
-
-  const handleSaveSnapshot = async () => {
-    if (!handleSave) return;
-    setSnapshotStatus(null);
-    const ok = await handleSave({
-      successMessage: null,
-      errorMessage: null,
-    });
-    if (ok) {
-      setSavedPayrollState(payroll);
-      setIsDirty(false);
-      const successMessage =
-        "Saved for this pay period. Payroll Handoff CSV will use these values.";
-      setSnapshotStatus({ severity: "success", message: successMessage });
-      setSnackbar({ open: true, severity: "success", message: successMessage });
-      return;
-    }
-    const errorMessage =
-      "Could not save payroll snapshot. Please try again before downloading Payroll Handoff CSV.";
-    setSnapshotStatus({ severity: "error", message: errorMessage });
-    setSnackbar({ open: true, severity: "error", message: errorMessage });
-  };
-
-  const handleDiscardSnapshotChanges = () => {
-    if (!savedPayrollState) return;
-    setPayroll(savedPayrollState);
-    setIsDirty(false);
-    setSnapshotStatus(null);
-  };
 
   /* ✅ PDF Finalize & Save */
 /* ✅ PDF Finalize & Save --------------------------------------------- */
@@ -1174,82 +1052,6 @@ const handleRecalculate = () => {
 
       <Divider sx={{ my: 2 }} />
 
-      <Box
-        sx={{
-          mb: 2,
-          p: 2,
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 1,
-          bgcolor: "background.paper",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1.5}
-          alignItems={{ xs: "flex-start", md: "center" }}
-        >
-          <Box flexGrow={1}>
-            <Typography variant="subtitle2">Save Payroll Snapshot</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Saves this pay-period snapshot for Payroll Handoff CSV. This does not finalize employee payslips.
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            onClick={handleSaveSnapshot}
-            disabled={saving || !payroll?.recruiter_id || !payroll?.start_date || !payroll?.end_date}
-          >
-            {saving ? <CircularProgress size={18} /> : "Save Payroll Snapshot"}
-          </Button>
-        </Stack>
-        {snapshotStatus && !isDirty && (
-          <Alert severity={snapshotStatus.severity} sx={{ mt: 1.5 }}>
-            {snapshotStatus.message}
-          </Alert>
-        )}
-      </Box>
-
-      {isDirty && (
-        <Box
-          sx={{
-            position: "sticky",
-            bottom: 16,
-            zIndex: 5,
-            mb: 2,
-            p: 1.5,
-            border: "1px solid",
-            borderColor: "warning.light",
-            borderRadius: 1,
-            bgcolor: "background.paper",
-            boxShadow: 3,
-          }}
-        >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={1.5}
-            alignItems={{ xs: "flex-start", md: "center" }}
-          >
-            <Box flexGrow={1}>
-              <Typography variant="subtitle2" color="warning.main">
-                Unsaved payroll changes for this period
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Saved snapshots are used by Payroll Handoff CSV. This does not finalize employee payslips.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1}>
-              <Button variant="outlined" onClick={handleDiscardSnapshotChanges}>
-                Discard changes
-              </Button>
-              <Button variant="contained" onClick={handleSaveSnapshot} disabled={saving}>
-                {saving ? <CircularProgress size={18} /> : "Save Payroll Snapshot"}
-              </Button>
-            </Stack>
-          </Stack>
-        </Box>
-      )}
-
       {/* --------------------------------------------------
          Basics
       -------------------------------------------------- */}
@@ -1289,7 +1091,7 @@ const handleRecalculate = () => {
               label="Hourly Rate"
               type="number"
               value={payroll.rate || 0}
-              onChange={(e) => handleEditableFieldChange("rate", e.target.value)}
+              onChange={(e) => handleFieldChange("rate", e.target.value)}
               fullWidth
             />
           </Tooltip>
@@ -1342,7 +1144,7 @@ const handleRecalculate = () => {
                   label={label}
                   type="number"
                   value={payroll[key] || 0}
-                  onChange={(e) => handleEditableFieldChange(key, e.target.value)}
+                  onChange={(e) => handleFieldChange(key, e.target.value)}
                   fullWidth
                   InputProps={{ inputProps: { step: "0.01" } }}
                 />
@@ -1364,9 +1166,7 @@ const handleRecalculate = () => {
               label="Non-taxable Reimbursement ($)"
               type="number"
               value={payroll.non_taxable_reimbursement || 0}
-              onChange={(e) =>
-                handleEditableFieldChange("non_taxable_reimbursement", e.target.value)
-              }
+              onChange={(e) => handleFieldChange("non_taxable_reimbursement", e.target.value)}
               fullWidth
             />
           </Tooltip>
@@ -1418,7 +1218,7 @@ const handleRecalculate = () => {
           <Checkbox
             checked={!!payroll.include_vacation_in_gross}
             onChange={(e) =>
-              handleEditableFieldChange("include_vacation_in_gross", e.target.checked)
+              handleFieldChange("include_vacation_in_gross", e.target.checked)
             }
           />
         }
@@ -1438,7 +1238,7 @@ const handleRecalculate = () => {
         fullWidth
         value={payroll.vacation_percent || 0}
         onChange={(e) =>
-          handleEditableFieldChange("vacation_percent", Number(e.target.value))
+          handleFieldChange("vacation_percent", Number(e.target.value))
         }
       />
     </Tooltip>
@@ -1828,10 +1628,6 @@ const handleRecalculate = () => {
         </Box>
       )}
 
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
-        Employee payslip actions finalize employee-facing records. Payroll Handoff CSV uses the saved payroll snapshot above and does not require payslip finalization.
-      </Typography>
-
       <DownloadPayrollButton
         recruiterId={payroll.recruiter_id}
         payroll={payroll}
@@ -2058,50 +1854,35 @@ const handleRecalculate = () => {
       {/* Help Drawer */}
       <PayrollPreviewHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
-{/* Browser draft tools */}
-<Box sx={{ my: 2 }}>
-  <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-    Browser draft tools
-  </Typography>
-  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-    Browser draft only. This saves values on this device/browser and does not update payroll records or Payroll Handoff CSV.
-  </Typography>
-  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-    <Tooltip title="Browser draft only. This saves values on this device/browser and does not update payroll records or Payroll Handoff CSV.">
-      <Button
-        onClick={() => {
-          localStorage.setItem(
-            `payroll-template-${selectedRecruiter}-${month}`,
-            JSON.stringify(payroll)
-          );
-          setSnackbar({ open: true, message: "Browser draft saved", severity: "success" });
-        }}
-      >
-        📂 Save browser draft
-      </Button>
-    </Tooltip>
+{/* Template save / load */}
+<Box sx={{ display: "flex", gap: 1, my: 2 }}>
+  <Button
+    onClick={() => {
+      localStorage.setItem(
+        `payroll-template-${selectedRecruiter}-${month}`,
+        JSON.stringify(payroll)
+      );
+      setSnackbar({ open: true, message: "Template saved", severity: "success" });
+    }}
+  >
+    📂 Save Template
+  </Button>
 
-    <Tooltip title="Browser draft only. This saves values on this device/browser and does not update payroll records or Payroll Handoff CSV.">
-      <Button
-        onClick={() => {
-          const data = localStorage.getItem(
-            `payroll-template-${selectedRecruiter}-${month}`
-          );
-          if (data) {
-            const parsed = JSON.parse(data);
-            setPayroll(parsed);
-            setSnapshotStatus(null);
-            updateDirtyState(parsed);
-            setSnackbar({ open: true, message: "Browser draft loaded", severity: "info" });
-          } else {
-            setSnackbar({ open: true, message: "No saved browser draft", severity: "warning" });
-          }
-        }}
-      >
-        💾 Load browser draft
-      </Button>
-    </Tooltip>
-  </Box>
+  <Button
+    onClick={() => {
+      const data = localStorage.getItem(
+        `payroll-template-${selectedRecruiter}-${month}`
+      );
+      if (data) {
+        setPayroll(JSON.parse(data));
+        setSnackbar({ open: true, message: "Template loaded", severity: "info" });
+      } else {
+        setSnackbar({ open: true, message: "No saved template", severity: "warning" });
+      }
+    }}
+  >
+    💾 Load Last
+  </Button>
 </Box>
 
 {/* Misc warnings */}
