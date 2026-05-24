@@ -28,7 +28,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { payrollProviderSyncApi } from "../../utils/api";
+import api, { payrollProviderSyncApi } from "../../utils/api";
 import { extractApiErrorMessage } from "../../utils/apiError";
 
 const PROVIDER_OPTIONS = [
@@ -374,14 +374,17 @@ export default function PayrollProviderSync({
   const [bootstrapEmployeesLoading, setBootstrapEmployeesLoading] = useState(false);
   const [mappingLoading, setMappingLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
   const [employeeMappings, setEmployeeMappings] = useState([]);
   const [payItemMappings, setPayItemMappings] = useState([]);
   const [runHistory, setRunHistory] = useState([]);
   const [runHistoryMeta, setRunHistoryMeta] = useState({ limit: 10, offset: 0, has_more: false });
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [historyStatusFilter, setHistoryStatusFilter] = useState("");
-  const [historyStartFilter, setHistoryStartFilter] = useState("");
-  const [historyEndFilter, setHistoryEndFilter] = useState("");
+  const [historyDepartmentFilter, setHistoryDepartmentFilter] = useState(departmentFilter ? String(departmentFilter) : "");
+  const [historyEmployeeFilter, setHistoryEmployeeFilter] = useState(selectedRecruiter ? String(selectedRecruiter) : "");
+  const [historyStartFilter, setHistoryStartFilter] = useState(startDate || "");
+  const [historyEndFilter, setHistoryEndFilter] = useState(endDate || "");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("current_run_unmapped");
   const [employeePage, setEmployeePage] = useState(0);
@@ -408,6 +411,12 @@ export default function PayrollProviderSync({
   const scopedRecruiters = useMemo(
     () => (departmentFilter ? filteredRecruiters : recruiters),
     [departmentFilter, filteredRecruiters, recruiters]
+  );
+  const historyScopedRecruiters = useMemo(
+    () => (historyDepartmentFilter
+      ? recruiters.filter((row) => String(row.department_id) === String(historyDepartmentFilter))
+      : recruiters),
+    [historyDepartmentFilter, recruiters]
   );
   const scopedRecruiterIds = useMemo(
     () => truthyIds(scopedRecruiters.map((row) => row.id)),
@@ -457,6 +466,45 @@ export default function PayrollProviderSync({
       setSnackbar({ open: true, message, severity });
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    const loadDepartments = async () => {
+      try {
+        const res = await api.get("/api/departments");
+        if (active) {
+          setDepartments(Array.isArray(res?.data) ? res.data : []);
+        }
+      } catch {
+        if (active) {
+          setDepartments([]);
+        }
+      }
+    };
+    loadDepartments();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setHistoryDepartmentFilter(departmentFilter ? String(departmentFilter) : "");
+  }, [departmentFilter]);
+
+  useEffect(() => {
+    setHistoryEmployeeFilter(selectedRecruiter ? String(selectedRecruiter) : "");
+  }, [selectedRecruiter]);
+
+  useEffect(() => {
+    setHistoryStartFilter(startDate || "");
+    setHistoryEndFilter(endDate || "");
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    if (historyEmployeeFilter && !historyScopedRecruiters.some((row) => String(row.id) === String(historyEmployeeFilter))) {
+      setHistoryEmployeeFilter("");
+    }
+  }, [historyEmployeeFilter, historyScopedRecruiters]);
 
   const providerDisplayName =
     provider === "quickbooks"
@@ -564,6 +612,8 @@ export default function PayrollProviderSync({
       limit: overrides.limit ?? runHistoryMeta.limit ?? 10,
       offset: overrides.offset ?? runHistoryMeta.offset ?? 0,
       ...(historyStatusFilter ? { status: historyStatusFilter } : {}),
+      ...(historyDepartmentFilter ? { department_id: historyDepartmentFilter } : {}),
+      ...(historyEmployeeFilter ? { employee_id: historyEmployeeFilter } : {}),
       ...(historyStartFilter ? { start_date: historyStartFilter } : {}),
       ...(historyEndFilter ? { end_date: historyEndFilter } : {}),
       ...overrides,
@@ -2577,6 +2627,47 @@ export default function PayrollProviderSync({
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="provider-sync-history-department-label">Department</InputLabel>
+              <Select
+                labelId="provider-sync-history-department-label"
+                label="Department"
+                value={historyDepartmentFilter}
+                onChange={(event) => {
+                  setHistoryDepartmentFilter(event.target.value);
+                  setHistoryEmployeeFilter("");
+                }}
+              >
+                <MenuItem value="">All departments</MenuItem>
+                {departments.map((department) => (
+                  <MenuItem key={department.id} value={String(department.id)}>
+                    {department.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="provider-sync-history-employee-label">Employee</InputLabel>
+              <Select
+                labelId="provider-sync-history-employee-label"
+                label="Employee"
+                value={historyEmployeeFilter}
+                onChange={(event) => setHistoryEmployeeFilter(event.target.value)}
+              >
+                <MenuItem value="">
+                  {historyDepartmentFilter ? "All employees in selected department" : "All employees"}
+                </MenuItem>
+                {historyScopedRecruiters.map((row) => (
+                  <MenuItem key={row.id} value={String(row.id)}>
+                    {`${row.first_name} ${row.last_name}`.trim()}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
           <Grid item xs={12} md={3}>
             <TextField
               fullWidth
@@ -2599,16 +2690,25 @@ export default function PayrollProviderSync({
               onChange={(event) => setHistoryEndFilter(event.target.value)}
             />
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid item xs={12} md={6}>
             <Stack direction="row" spacing={1}>
               <Button variant="outlined" onClick={() => loadRunHistory({ offset: 0 })}>Apply</Button>
               <Button
                 variant="text"
                 onClick={() => {
                   setHistoryStatusFilter("");
-                  setHistoryStartFilter("");
-                  setHistoryEndFilter("");
-                  loadRunHistory({ offset: 0, status: "", start_date: "", end_date: "" });
+                  setHistoryDepartmentFilter(departmentFilter ? String(departmentFilter) : "");
+                  setHistoryEmployeeFilter(selectedRecruiter ? String(selectedRecruiter) : "");
+                  setHistoryStartFilter(startDate || "");
+                  setHistoryEndFilter(endDate || "");
+                  loadRunHistory({
+                    offset: 0,
+                    status: "",
+                    department_id: departmentFilter ? String(departmentFilter) : "",
+                    employee_id: selectedRecruiter ? String(selectedRecruiter) : "",
+                    start_date: startDate || "",
+                    end_date: endDate || "",
+                  });
                 }}
               >
                 Reset
@@ -2616,6 +2716,9 @@ export default function PayrollProviderSync({
             </Stack>
           </Grid>
         </Grid>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          History scope defaults to the current Payroll page filters. Department and employee filters below narrow company run history to the same scope you are reviewing above.
+        </Alert>
         {selectedHistoryRun && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Selected run #{selectedHistoryRun.id}: {selectedHistoryRun.start_date} to {selectedHistoryRun.end_date} • status {selectedHistoryRun.status || "draft"} • payload previewed {selectedHistoryRun.payload_previewed_at ? "yes" : "no"} • CSV exported {selectedHistoryRun.csv_exported_at ? "yes" : "no"}.
