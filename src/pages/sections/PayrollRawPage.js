@@ -178,6 +178,9 @@ export default function PayrollRawPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Accountant view: finalized rows show payroll truth; preview rows are for review only. Paid and unpaid leave hours are informational columns for reconciliation and do not change formulas here.
       </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+        Preview mode shows saved payroll snapshots. Finalized mode shows finalized payroll records.
+      </Typography>
       {!showFinalizedOnly && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Raw preview ledger only. Estimated leave may appear for review, but it is not finalized paystub truth.

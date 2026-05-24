@@ -877,19 +877,28 @@ useEffect(() => {
     await savePayroll(toSave, token);
   };
 
-  const handleSave = async () => {
+  const handleSave = async ({
+    successMessage = "✅ Payroll saved successfully.",
+    errorMessage = "❌ Failed to save payroll. Check console for details.",
+  } = {}) => {
     if (!payroll) return;
     if (!startDate || !endDate) {
       showMessage("❌ Please set both start and end dates before saving.", "error");
-      return;
+      return false;
     }
     setSaving(true);
     try {
       await handleSavePayroll(payroll);
-      showMessage("✅ Payroll saved successfully.", "success");
+      if (successMessage) {
+        showMessage(successMessage, "success");
+      }
+      return true;
     } catch (err) {
       console.error("Save error:", err);
-      showMessage("❌ Failed to save payroll. Check console for details.", "error");
+      if (errorMessage) {
+        showMessage(errorMessage, "error");
+      }
+      return false;
     } finally {
       setSaving(false);
     }
