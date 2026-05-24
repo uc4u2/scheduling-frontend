@@ -100,6 +100,31 @@ const previewFieldTooltips = {
     "This period only. Adds employer top-up pay for this pay period without changing future defaults.",
 };
 
+const persistedOverrideKeys = [
+  "bonus",
+  "attendance_bonus",
+  "performance_bonus",
+  "commission",
+  "tip",
+  "travel_allowance",
+  "family_bonus",
+  "shift_premium",
+  "parental_top_up",
+  "non_taxable_reimbursement",
+  "union_dues",
+  "garnishment",
+  "medical_insurance",
+  "dental_insurance",
+  "life_insurance",
+  "retirement_amount",
+  "deduction",
+  "tax_credit",
+  "parental_insurance",
+  "rate",
+  "vacation_percent",
+  "include_vacation_in_gross",
+];
+
 function calculate_gross_with_overtime(hoursWorked, hourlyRate, region = "ca", province = "ON") {
   const hrs = Number(hoursWorked || 0);
   const rate = Number(hourlyRate || 0);
@@ -721,11 +746,19 @@ useEffect(() => {
         preview.totalHours
       ) || reg + ot + hol + leave;
 
-      setPayroll((prev) => ({
-        ...prev,
-        ...preview,
-        hours_worked: total,
-      }));
+      setPayroll((prev) => {
+        const next = {
+          ...prev,
+          ...preview,
+          hours_worked: total,
+        };
+        persistedOverrideKeys.forEach((key) => {
+          if (Object.prototype.hasOwnProperty.call(prev || {}, key)) {
+            next[key] = prev[key];
+          }
+        });
+        return next;
+      });
     })
     .catch((err) => {
       console.error("❌ Auto-recalc failed:", err.response?.data || err.message);
@@ -858,11 +891,19 @@ const handleRecalculate = () => {
         preview.totalHours
       ) || reg + ot + hol + leave;
 
-      setPayroll((prev) => ({
-        ...prev,
-        ...preview,
-        hours_worked: total,
-      }));
+      setPayroll((prev) => {
+        const next = {
+          ...prev,
+          ...preview,
+          hours_worked: total,
+        };
+        persistedOverrideKeys.forEach((key) => {
+          if (Object.prototype.hasOwnProperty.call(prev || {}, key)) {
+            next[key] = prev[key];
+          }
+        });
+        return next;
+      });
     })
     .catch((err) => {
       console.error("❌ Preview fetch failed:", err.response?.data || err.message);
