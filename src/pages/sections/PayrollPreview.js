@@ -1257,7 +1257,11 @@ const handleRecalculate = () => {
       <FormControlLabel
         control={
           <Checkbox
-            checked={!!payroll.include_vacation_in_gross}
+            checked={
+              payroll.include_vacation_in_gross === true ||
+              payroll.include_vacation_in_gross === 1 ||
+              payroll.include_vacation_in_gross === "true"
+            }
             onChange={(e) =>
               handleFieldChange("include_vacation_in_gross", e.target.checked)
             }

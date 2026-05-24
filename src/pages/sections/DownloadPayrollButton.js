@@ -105,6 +105,10 @@ export default function DownloadPayrollButton({
 
       /* include manager overrides only if non-zero / provided */
       const maybeAdd = (key, val) => {
+        if (key === "include_vacation_in_gross") {
+          payload[key] = Boolean(val);
+          return;
+        }
         const num = parseFloat(val);
         if (!isNaN(num) && num !== 0) payload[key] = num;
       };

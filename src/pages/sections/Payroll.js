@@ -911,8 +911,9 @@ useEffect(() => {
       "start_date",
       "end_date",
     ].includes(field);
+    const isBoolean = ["include_vacation_in_gross"].includes(field);
 
-    const value = isText ? rawVal : parseFloat(rawVal) || 0;
+    const value = isText ? rawVal : isBoolean ? Boolean(rawVal) : parseFloat(rawVal) || 0;
     const updated = { ...payroll, [field]: value };
 
     setPayroll(updated);
@@ -922,7 +923,12 @@ useEffect(() => {
     try {
       const newData = await runBackendCalculate(updated);
       const { flags = {}, ...rest } = newData;
-      setPayroll((prev) => ({ ...prev, ...rest, flags }));
+      setPayroll((prev) => ({
+        ...prev,
+        ...rest,
+        include_vacation_in_gross: updated.include_vacation_in_gross,
+        flags,
+      }));
     } catch (err) {
       console.error("Field-change calc error:", err);
     }
