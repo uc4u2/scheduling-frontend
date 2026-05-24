@@ -1174,6 +1174,42 @@ const handleRecalculate = () => {
 
       <Divider sx={{ my: 2 }} />
 
+      <Box
+        sx={{
+          mb: 2,
+          p: 2,
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          bgcolor: "background.paper",
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.5}
+          alignItems={{ xs: "flex-start", md: "center" }}
+        >
+          <Box flexGrow={1}>
+            <Typography variant="subtitle2">Save Payroll Snapshot</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Saves this pay-period snapshot for Payroll Handoff CSV. This does not finalize employee payslips.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            onClick={handleSaveSnapshot}
+            disabled={saving || !payroll?.recruiter_id || !payroll?.start_date || !payroll?.end_date}
+          >
+            {saving ? <CircularProgress size={18} /> : "Save Payroll Snapshot"}
+          </Button>
+        </Stack>
+        {snapshotStatus && !isDirty && (
+          <Alert severity={snapshotStatus.severity} sx={{ mt: 1.5 }}>
+            {snapshotStatus.message}
+          </Alert>
+        )}
+      </Box>
+
       {isDirty && (
         <Box
           sx={{
