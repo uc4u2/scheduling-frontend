@@ -123,6 +123,7 @@ export default function Payroll({ token }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [year, setYear] = useState(""); // ✅ NEW
+  const [loadedPersistedPeriodKey, setLoadedPersistedPeriodKey] = useState("");
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -224,6 +225,15 @@ useEffect(() => {
   // ─────────────────────────────────────────────────────────
   const showMessage = (message, severity = "info") =>
     setSnackbar({ open: true, message, severity });
+
+  const currentPeriodKey = JSON.stringify([
+    selectedRecruiter || "",
+    region || "",
+    startDate || "",
+    endDate || "",
+    payFrequency || "",
+    month || "",
+  ]);
 
   const fetchRecruiters = async () => {
     try {
@@ -610,6 +620,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (!selectedRecruiter) return;
+    if (loadedPersistedPeriodKey === currentPeriodKey) return;
     setPayroll((prev) => {
       if (!prev) return prev;
       const next = { ...prev };
@@ -621,11 +632,12 @@ useEffect(() => {
       });
       return next;
     });
-  }, [selectedRecruiter, startDate, endDate, region, payFrequency, recruiterProfile]);
+  }, [selectedRecruiter, startDate, endDate, region, payFrequency, recruiterProfile, loadedPersistedPeriodKey, currentPeriodKey]);
 
   // When recruiter profile arrives later, inject recurring defaults into current payroll
   useEffect(() => {
     if (!recruiterProfile || !payroll) return;
+    if (loadedPersistedPeriodKey === currentPeriodKey) return;
     setPayroll((prev) => {
       if (!prev) return prev;
       const next = { ...prev };
@@ -634,7 +646,7 @@ useEffect(() => {
       });
       return next;
     });
-  }, [recruiterProfile]);
+  }, [recruiterProfile, payroll, loadedPersistedPeriodKey, currentPeriodKey]);
 
   // ─────────────────────────────────────────────────────────
   // Handlers
@@ -644,6 +656,106 @@ useEffect(() => {
     setViewMode(newMode);
     setPayroll(null);
     setPayslipHistory([]);
+    setLoadedPersistedPeriodKey("");
+  };
+
+  const loadFinalizedPayrollSnapshot = async () => {
+    try {
+      const res = await api.get(`/automation/payroll/finalized-entry`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          recruiter_id: selectedRecruiter,
+          region,
+          start_date: startDate,
+          end_date: endDate,
+        },
+      });
+      return res.data || null;
+    } catch (err) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  };
+
+  const loadSavedPayrollSnapshot = async () => {
+    try {
+      const res = await api.get(`/payroll/get`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          recruiter_id: selectedRecruiter,
+          month,
+          region,
+          start_date: startDate,
+          end_date: endDate,
+        },
+      });
+      return res.data || null;
+    } catch (err) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  };
+
+  const buildPreviewBase = (record = {}, { preferCurrentState = false } = {}) => {
+    const choose = (key, fallback = 0) =>
+      preferCurrentState
+        ? payroll?.[key] ?? record?.[key] ?? fallback
+        : record?.[key] ?? payroll?.[key] ?? fallback;
+
+    return {
+      ...record,
+      id: record.id ?? record.payroll_id ?? record.finalized_payroll_id,
+      payroll_id: record.id ?? record.payroll_id ?? record.finalized_payroll_id,
+      recruiter_id: record.recruiter_id ?? record.employee_id ?? selectedRecruiter,
+      employee_name:
+        record.recruiter_name ||
+        record.employee_name ||
+        record.name ||
+        payroll?.employee_name ||
+        payroll?.name ||
+        "",
+      name:
+        record.recruiter_name ||
+        record.employee_name ||
+        record.name ||
+        payroll?.employee_name ||
+        payroll?.name ||
+        "",
+      region,
+      ...(region === "us"
+        ? { state: record.state || record.province || payroll?.state || payroll?.province || "CA" }
+        : { province: record.province || payroll?.province || "ON" }),
+      start_date: record.start_date || startDate,
+      end_date: record.end_date || endDate,
+      pay_frequency: record.pay_frequency || payFrequency,
+      month: record.month || month,
+      rate: choose("rate", 0),
+      hours_worked: choose("hours_worked", 0),
+      vacation_percent: choose("vacation_percent", 4),
+      include_vacation_in_gross:
+        preferCurrentState
+          ? payroll?.include_vacation_in_gross ?? record?.include_vacation_in_gross ?? true
+          : record?.include_vacation_in_gross ?? payroll?.include_vacation_in_gross ?? true,
+      bonus: choose("bonus", 0),
+      attendance_bonus: choose("attendance_bonus", 0),
+      performance_bonus: choose("performance_bonus", 0),
+      commission: choose("commission", 0),
+      tip: choose("tip", 0),
+      parental_insurance: choose("parental_insurance", 0),
+      travel_allowance: choose("travel_allowance", 0),
+      family_bonus: choose("family_bonus", 0),
+      tax_credit: choose("tax_credit", 0),
+      parental_top_up: choose("parental_top_up", 0),
+      shift_premium: choose("shift_premium", 0),
+      medical_insurance: choose("medical_insurance", recurringDefaultMap.medical_insurance ?? 0),
+      dental_insurance: choose("dental_insurance", recurringDefaultMap.dental_insurance ?? 0),
+      life_insurance: choose("life_insurance", recurringDefaultMap.life_insurance ?? 0),
+      retirement_amount: choose("retirement_amount", recurringDefaultMap.retirement_amount ?? 0),
+      deduction: choose("deduction", recurringDefaultMap.deduction ?? 0),
+      union_dues: choose("union_dues", recurringDefaultMap.union_dues ?? 0),
+      garnishment: choose("garnishment", recurringDefaultMap.garnishment ?? 0),
+      non_taxable_reimbursement: choose("non_taxable_reimbursement", 0),
+    };
   };
 
   const handlePreview = async () => {
@@ -651,122 +763,42 @@ useEffect(() => {
       showMessage("❌ Please select recruiter and date range.", "error");
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
-      const genRes = await api.post(
-        `/automation/payroll/generate`,
-        {
-          recruiter_id: selectedRecruiter,
-          region,
-          start_date: startDate,
-          end_date: endDate,
-          pay_frequency: payFrequency,
-          ...(region === "us"
-            ? { state: payroll?.state || payroll?.province || "CA" }
-            : { province: payroll?.province || "ON" }),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const finalizedRecord = await loadFinalizedPayrollSnapshot();
+      const savedRecord = finalizedRecord ? null : await loadSavedPayrollSnapshot();
+      let base;
 
-      const generatedRecord = genRes.data?.payroll || genRes.data || {};
+      if (finalizedRecord) {
+        base = buildPreviewBase(finalizedRecord, { preferCurrentState: false });
+        setLoadedPersistedPeriodKey(currentPeriodKey);
+      } else if (savedRecord) {
+        base = buildPreviewBase(savedRecord, { preferCurrentState: false });
+        setLoadedPersistedPeriodKey(currentPeriodKey);
+      } else {
+        const genRes = await api.post(
+          `/automation/payroll/generate`,
+          {
+            recruiter_id: selectedRecruiter,
+            region,
+            start_date: startDate,
+            end_date: endDate,
+            pay_frequency: payFrequency,
+            ...(region === "us"
+              ? { state: payroll?.state || payroll?.province || "CA" }
+              : { province: payroll?.province || "ON" }),
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-      // fallback-safe merge of required fields (ensure we keep backend id/flags)
-      const base = {
-        ...generatedRecord,
-        id: generatedRecord.id ?? generatedRecord.payroll_id,
-        payroll_id: generatedRecord.id ?? generatedRecord.payroll_id,
-        recruiter_id: selectedRecruiter,
-
-        /* names */
-        employee_name:
-          generatedRecord.recruiter_name ||
-          generatedRecord.employee_name ||
-          generatedRecord.name ||
-          "",
-        name:
-          generatedRecord.recruiter_name ||
-          generatedRecord.employee_name ||
-          generatedRecord.name ||
-          "",
-
-        /* where & when */
-        region,
-        ...(region === "us"
-          ? { state: payroll?.state || payroll?.province || generatedRecord.state || generatedRecord.province || "CA" }
-          : { province: payroll?.province || generatedRecord.province || "ON" }),
-        start_date: startDate,
-        end_date: endDate,
-        pay_frequency: payFrequency,
-        month,
-
-        /* basics */
-        rate: payroll?.rate ?? generatedRecord.rate ?? 0,
-        hours_worked: payroll?.hours_worked ?? generatedRecord.hours_worked ?? 0,
-        vacation_percent:
-          payroll?.vacation_percent ??
-          generatedRecord.vacation_percent ??
-          4,
-        include_vacation_in_gross:
-          payroll?.include_vacation_in_gross ??
-          generatedRecord.include_vacation_in_gross ??
-          true,
-
-        /* ➕ extra earnings */
-        bonus: payroll?.bonus ?? generatedRecord.bonus ?? 0,
-        attendance_bonus:
-          payroll?.attendance_bonus ?? generatedRecord.attendance_bonus ?? 0,
-        performance_bonus:
-          payroll?.performance_bonus ?? generatedRecord.performance_bonus ?? 0,
-        commission: payroll?.commission ?? generatedRecord.commission ?? 0,
-        tip: payroll?.tip ?? generatedRecord.tip ?? 0,
-        parental_insurance:
-          payroll?.parental_insurance ?? generatedRecord.parental_insurance ?? 0,
-        travel_allowance:
-          payroll?.travel_allowance ?? generatedRecord.travel_allowance ?? 0,
-        family_bonus:
-          payroll?.family_bonus ?? generatedRecord.family_bonus ?? 0,
-        tax_credit: payroll?.tax_credit ?? generatedRecord.tax_credit ?? 0,
-        parental_top_up:
-          payroll?.parental_top_up ?? generatedRecord.parental_top_up ?? 0,
-        shift_premium:
-          payroll?.shift_premium ?? generatedRecord.shift_premium ?? 0,
-
-        /* ➖ insurance & retirement overrides (deduction side) */
-        medical_insurance:
-          payroll?.medical_insurance ??
-          generatedRecord.medical_insurance ??
-          recurringDefaultMap.medical_insurance ??
-          0,
-        dental_insurance:
-          payroll?.dental_insurance ??
-          generatedRecord.dental_insurance ??
-          recurringDefaultMap.dental_insurance ??
-          0,
-        life_insurance:
-          payroll?.life_insurance ??
-          generatedRecord.life_insurance ??
-          recurringDefaultMap.life_insurance ??
-          0,
-        retirement_amount:
-          payroll?.retirement_amount ??
-          generatedRecord.retirement_amount ??
-          recurringDefaultMap.retirement_amount ??
-          0,
-        deduction:
-          payroll?.deduction ?? generatedRecord.deduction ?? recurringDefaultMap.deduction ?? 0,
-        union_dues:
-          payroll?.union_dues ?? generatedRecord.union_dues ?? recurringDefaultMap.union_dues ?? 0,
-        garnishment:
-          payroll?.garnishment ?? generatedRecord.garnishment ?? recurringDefaultMap.garnishment ?? 0,
-        non_taxable_reimbursement:
-          payroll?.non_taxable_reimbursement ??
-          generatedRecord.non_taxable_reimbursement ??
-          0,
-      };
+        const generatedRecord = genRes.data?.payroll || genRes.data || {};
+        base = buildPreviewBase(generatedRecord, { preferCurrentState: true });
+        setLoadedPersistedPeriodKey("");
+      }
 
       const calcRes = await api.post(`/payroll/calculate`, base, {
         headers: { Authorization: `Bearer ${token}` },
