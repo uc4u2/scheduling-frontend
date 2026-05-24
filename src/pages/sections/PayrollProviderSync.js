@@ -28,6 +28,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import api, { payrollProviderSyncApi } from "../../utils/api";
 import { extractApiErrorMessage } from "../../utils/apiError";
 
@@ -189,6 +190,19 @@ const employeeLabelFromContext = (employeeId, runRows = [], recruiters = []) => 
   if (recruiterMatch) return `${recruiterMatch.first_name} ${recruiterMatch.last_name}`.trim();
   return `Employee ${employeeId}`;
 };
+
+const SectionHeading = ({ title, tooltip, variant = "h6", gutterBottom = true }) => (
+  <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: gutterBottom ? 1 : 0 }}>
+    <Typography variant={variant}>{title}</Typography>
+    {tooltip ? (
+      <Tooltip title={tooltip}>
+        <IconButton size="small" sx={{ p: 0.25 }}>
+          <InfoOutlinedIcon fontSize="inherit" />
+        </IconButton>
+      </Tooltip>
+    ) : null}
+  </Stack>
+);
 
 const managerFriendlyMessage = (item, { runRows = [], recruiters = [] } = {}) => {
   const code = typeof item === "string" ? item : item?.code || item?.message || "";
@@ -1326,6 +1340,15 @@ export default function PayrollProviderSync({
     : fixBeforeExportIssues.map((item) => managerFriendlyMessage(item, validationData ? currentRunContext : previewIssueContext));
   const csvReady = Boolean(csvDownloadAllowed);
   const csvStatusTitle = csvReady ? "CSV ready" : "CSV not ready";
+  const currentScopeLabel = historyEmployeeFilter
+    ? "Current employee"
+    : historyDepartmentFilter
+      ? "Department"
+      : "Company-wide";
+  const previewSourceChipLabel = `Source: ${titleize((previewPayrollValueSource || "operational_raw").replace("finalized_payroll", "finalized payroll").replace("saved_draft_payroll", "saved draft payroll").replace("operational_raw", "operational raw"))}`;
+  const previewEmployeesChipLabel = `Employees: ${previewData?.employee_count ?? availableEmployeeIds.length ?? 0}`;
+  const previewPeriodChipLabel = `Period: ${(startDate || "—")} to ${(endDate || "—")}`;
+  const previewExportedTotalChipLabel = `Exported total: ${previewData?.gross_preview_total ?? 0}`;
   const csvStatusSeverity = csvReady ? "success" : "warning";
   const csvBlockedReasonText = !activeRunId
     ? "Create or select a provider run first."
@@ -1547,19 +1570,21 @@ export default function PayrollProviderSync({
   return (
     <Stack spacing={3} sx={{ mt: 2 }}>
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          Payroll Handoff
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Payroll Handoff prepares payroll-ready inputs from approved time, payroll-ready leave, and saved Payroll Preview adjustments. Use this file for your accountant or payroll provider.
-        </Typography>
+        <SectionHeading
+          title="Payroll Handoff"
+          variant="h5"
+          tooltip="Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values."
+        />
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
           <Chip label="Payroll Handoff = recommended payroll handoff workflow" sx={chipSx.success} />
           {provider === "quickbooks" && <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />}
         </Stack>
-        <Alert severity="info" sx={{ mt: 2 }}>
-          This export does not submit payroll or pay employees. Direct provider submission will be available only after each provider integration is approved and tested.
-        </Alert>
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
+          <Chip label="CSV handoff only" sx={chipSx.neutral} />
+          <Tooltip title="This workflow exports a CSV for your accountant or payroll provider. It does not submit payroll or pay employees directly.">
+            <Chip label="How it works" sx={chipSx.neutral} />
+          </Tooltip>
+        </Stack>
       </Paper>
 
       <Paper elevation={2} sx={{ p: 3 }}>
@@ -1657,20 +1682,18 @@ export default function PayrollProviderSync({
 
 
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          1. Review payroll-ready data
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Payroll Handoff uses the current Payroll filters by default. Review the active period and employee scope before preparing the CSV handoff.
-        </Typography>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {provider === "quickbooks"
+        <SectionHeading
+          title="Review data"
+          tooltip="Review the employee scope and pay period before previewing or preparing the CSV handoff."
+        />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+          <Chip label={overrideScopeEnabled ? "Scope override active" : "Using current payroll filters"} sx={overrideScopeEnabled ? chipSx.warning : chipSx.neutral} />
+          <Tooltip title={provider === "quickbooks"
             ? "Use this file for your accountant or payroll provider. Direct QuickBooks submission is still future-only."
-            : "Use this file for your accountant or payroll provider. No provider connection is required for this CSV handoff."}
-        </Alert>
-        <Alert severity={overrideScopeEnabled ? "warning" : "info"} sx={{ mb: 2 }}>
-          {overrideScopeEnabled ? "Payroll Handoff override is active. This ignores the main Payroll employee filter." : "Using current Payroll filters."}
-        </Alert>
+            : "Use this file for your accountant or payroll provider. No provider connection is required for this CSV handoff."}>
+            <Chip label="Handoff guidance" sx={chipSx.neutral} />
+          </Tooltip>
+        </Stack>
         {missingDates && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Start date and end date are required before preparing provider-sync data.
@@ -1681,18 +1704,17 @@ export default function PayrollProviderSync({
             No payroll handoff employees are selected yet. Choose one employee or a custom employee list before preparing payroll-ready data.
           </Alert>
         )}
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Region:</strong> {region || "—"}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Province/state:</strong> {provinceOrState || "—"}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Start date:</strong> {startDate || "—"}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>End date:</strong> {endDate || "—"}</Typography></Grid>
-          <Grid item xs={12} md={6}><Typography variant="body2"><strong>Department filter:</strong> {departmentFilter || "All departments"}</Typography></Grid>
-          <Grid item xs={12} md={3}><Typography variant="body2"><strong>Pay frequency:</strong> {payFrequency || "—"}</Typography></Grid>
-          <Grid item xs={12} md={9}><Typography variant="body2"><strong>Selected employees:</strong> {selectedEmployeeNames.join(", ") || `${availableEmployeeIds.length || 0} employee(s)`}</Typography></Grid>
-        </Grid>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+          <Chip label={`Region: ${region || "—"}`} sx={chipSx.neutral} />
+          <Chip label={`Province/state: ${provinceOrState || "—"}`} sx={chipSx.neutral} />
+          <Chip label={`Period: ${(startDate || "—")} to ${(endDate || "—")}`} sx={chipSx.neutral} />
+          <Chip label={`Department: ${departmentFilter || "All departments"}`} sx={chipSx.neutral} />
+          <Chip label={`Employees: ${selectedEmployeeNames.length || availableEmployeeIds.length || 0}`} sx={chipSx.neutral} />
+          <Chip label={`Pay frequency: ${payFrequency || "—"}`} sx={chipSx.neutral} />
+        </Stack>
         <Accordion elevation={0} disableGutters>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle2">Advanced: Override Payroll Handoff scope</Typography>
+            <Typography variant="subtitle2">Advanced: override handoff scope</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 0 }}>
             <Stack spacing={2}>
@@ -1809,6 +1831,12 @@ export default function PayrollProviderSync({
         {previewError && <Alert severity="error" sx={{ mb: 2 }}>{previewError}</Alert>}
         {previewData && (
           <>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+              <Chip label={previewSourceChipLabel} sx={chipSx.active} />
+              <Chip label={previewEmployeesChipLabel} sx={chipSx.neutral} />
+              <Chip label={previewPeriodChipLabel} sx={chipSx.neutral} />
+              <Chip label={previewExportedTotalChipLabel} sx={chipSx.success} />
+            </Stack>
             {previewData.saved_adjustments_included ? (
               <Alert severity="info" sx={{ mb: 2 }}>
                 Saved Payroll Preview adjustments will be included.
@@ -1828,9 +1856,7 @@ export default function PayrollProviderSync({
                 {renderManagerMessages(previewCapabilityWarnings, previewIssueContext)}
               </Alert>
             )}
-            <Alert severity="info" sx={{ mb: 2 }}>
-              {previewPayrollValueSourceMessage}
-            </Alert>
+            <Alert severity="info" sx={{ mb: 2 }}>{previewPayrollValueSourceMessage}</Alert>
             {previewPayrollValueInfoMessages.map((message) => (
               <Alert key={message} severity="warning" sx={{ mb: 2 }}>
                 {message}
@@ -1866,10 +1892,10 @@ export default function PayrollProviderSync({
 
       {(previewData || validationData || runError) && (
         <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>2. CSV handoff status</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Payroll Handoff is preparing a CSV handoff only. It is not submitting payroll to a provider.
-          </Typography>
+          <SectionHeading
+            title="CSV status"
+            tooltip="This section shows whether the current selection is ready to export as a CSV handoff. It does not submit payroll to a provider."
+          />
           <Alert severity={csvStatusSeverity} sx={{ mb: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>{csvStatusTitle}</Typography>
             {runError ? (
@@ -1886,7 +1912,7 @@ export default function PayrollProviderSync({
               <Typography variant="body2">This selection is ready for CSV handoff.</Typography>
             )}
           </Alert>
-          {activeRunId && (
+          {activeRunId && !previewData && (
             <>
               {showActiveRunSourceMessage && (
                 <Alert severity="info" sx={{ mb: 2 }}>
@@ -2407,12 +2433,13 @@ export default function PayrollProviderSync({
 
       <Accordion elevation={2} disableGutters ref={runPanelRef}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Advanced: current payroll handoff batch</Typography>
+          <Typography variant="h6">Current batch</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Current CSV handoff batch details.
-        </Typography>
+        <Tooltip title="Details for the currently selected payroll handoff run, including validation state and source hash.">
+          <Chip label="Batch details" sx={chipSx.neutral} />
+        </Tooltip>
+        <Box sx={{ mb: 2 }} />
         {!activeRunId ? (
           <Alert severity="info">
             No provider run selected. Create a run or select one from history.
@@ -2602,12 +2629,15 @@ export default function PayrollProviderSync({
 
       <Accordion elevation={2} disableGutters>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Advanced: payroll handoff history</Typography>
+          <Typography variant="h6">Run history</Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Payroll Handoff tracks draft, validated, payload-previewed, CSV-exported, failed, and unsupported runs only. It does not claim payroll was submitted, completed, or paid.
-        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+          <Chip label={`History scope: ${currentScopeLabel}`} sx={chipSx.active} />
+          <Tooltip title="Run history shows company payroll handoff runs narrowed by the current history filters. It tracks draft, validated, payload-previewed, CSV-exported, failed, and unsupported runs only.">
+            <Chip label="How history works" sx={chipSx.neutral} />
+          </Tooltip>
+        </Stack>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={4}>
             <FormControl fullWidth size="small">
@@ -2716,9 +2746,6 @@ export default function PayrollProviderSync({
             </Stack>
           </Grid>
         </Grid>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          History scope defaults to the current Payroll page filters. Department and employee filters below narrow company run history to the same scope you are reviewing above.
-        </Alert>
         {selectedHistoryRun && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Selected run #{selectedHistoryRun.id}: {selectedHistoryRun.start_date} to {selectedHistoryRun.end_date} • status {selectedHistoryRun.status || "draft"} • payload previewed {selectedHistoryRun.payload_previewed_at ? "yes" : "no"} • CSV exported {selectedHistoryRun.csv_exported_at ? "yes" : "no"}.
