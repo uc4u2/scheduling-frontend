@@ -205,10 +205,10 @@ const managerFriendlyMessage = (item, { runRows = [], recruiters = [] } = {}) =>
     return `${employeeLabelFromContext(employeeId, runRows, recruiters)} needs to be matched to a payroll employee.`;
   }
   if (code === "MISSING_REGION_METADATA" && employeeId) {
-    return `${employeeLabelFromContext(employeeId, runRows, recruiters)} is missing country/province information.`;
+    return `${employeeLabelFromContext(employeeId, runRows, recruiters)} is missing export location metadata in the employee profile.`;
   }
   if (code === "MISSING_REGION_METADATA") {
-    return "Employee country/province information is missing.";
+    return "Employee export location metadata is missing.";
   }
   if (typeof item === "string") return item;
   return item?.message || item?.code || JSON.stringify(item);
@@ -1107,6 +1107,13 @@ export default function PayrollProviderSync({
   const activeRunPayrollValueSourceMessage = activeRun?.request_payload_json?.payroll_value_source_message
     || payrollValueSourceFallbackMessage(activeRunPayrollValueSource);
   const activeRunPayrollValueInfoMessages = activeRun?.request_payload_json?.payroll_value_info_messages || [];
+  const showPreviewSavedAdjustmentsMessage = Boolean(previewData) &&
+    !previewData.saved_adjustments_included &&
+    previewPayrollValueSource === "operational_raw";
+  const showActiveRunSourceMessage = Boolean(activeRunId) &&
+    (!previewData || activeRunPayrollValueSourceMessage !== previewPayrollValueSourceMessage);
+  const showActiveRunInfoMessages = Boolean(activeRunId) &&
+    (!previewData || JSON.stringify(activeRunPayrollValueInfoMessages) !== JSON.stringify(previewPayrollValueInfoMessages));
   const validationOnlyCapabilityLimitation =
     Boolean(validationData?.errors?.length) &&
     (validationData?.csv_download_allowed === true) &&
@@ -1756,11 +1763,11 @@ export default function PayrollProviderSync({
               <Alert severity="info" sx={{ mb: 2 }}>
                 Saved Payroll Preview adjustments will be included.
               </Alert>
-            ) : (
+            ) : showPreviewSavedAdjustmentsMessage ? (
               <Alert severity="info" sx={{ mb: 2 }}>
                 No saved Payroll Preview adjustments found for this period. Payroll Handoff will use approved time and leave only.
               </Alert>
-            )}
+            ) : null}
             {previewHasNoExportableData && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 No payroll-ready time, leave, or saved adjustments were found for this selection.
@@ -1795,10 +1802,11 @@ export default function PayrollProviderSync({
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Saved adjustments</Typography>
                 <Stack spacing={0.75}>
+                  <Typography variant="body2"><strong>Payroll value source:</strong> {titleize((previewPayrollValueSource || "operational_raw").replace("finalized_payroll", "finalized payroll").replace("saved_draft_payroll", "saved draft payroll").replace("operational_raw", "operational raw"))}</Typography>
                   <Typography variant="body2"><strong>Adjustment line count:</strong> {previewData.adjustment_line_count ?? 0}</Typography>
                   <Typography variant="body2"><strong>Adjustment total:</strong> {previewData.adjustment_total ?? 0}</Typography>
                   <Typography variant="body2"><strong>Adjustment types found:</strong> {(previewData.adjustment_types_found || []).map((key) => adjustmentTypeLabels[key] || key).join(", ") || "None"}</Typography>
-                  <Typography variant="body2"><strong>Gross preview total:</strong> {previewData.gross_preview_total ?? 0}</Typography>
+                  <Typography variant="body2"><strong>Exported payable total:</strong> {previewData.gross_preview_total ?? 0}</Typography>
                 </Stack>
               </Grid>
             </Grid>
@@ -1830,10 +1838,12 @@ export default function PayrollProviderSync({
           </Alert>
           {activeRunId && (
             <>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                {activeRunPayrollValueSourceMessage}
-              </Alert>
-              {activeRunPayrollValueInfoMessages.map((message) => (
+              {showActiveRunSourceMessage && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  {activeRunPayrollValueSourceMessage}
+                </Alert>
+              )}
+              {showActiveRunInfoMessages && activeRunPayrollValueInfoMessages.map((message) => (
                 <Alert key={message} severity="warning" sx={{ mb: 2 }}>
                   {message}
                 </Alert>
@@ -2163,9 +2173,9 @@ export default function PayrollProviderSync({
           )}
           {(previewMissingRegionRows.length > 0 || formatList(csvBlockingErrors).some((item) => REGION_METADATA_ERROR_CODES.has(issueCode(item)))) && (
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee country/province metadata</Typography>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Missing employee export location metadata</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Open employee profiles and fill country/province before exporting CSV.
+                Open employee profiles and fill country/province so Payroll Handoff can attach the correct export location metadata.
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <Button variant="outlined" onClick={openEmployeeProfiles}>Open employee profiles</Button>
