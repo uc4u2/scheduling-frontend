@@ -1102,9 +1102,11 @@ export default function PayrollProviderSync({
   const previewPayrollValueSource = previewData?.payroll_value_source || null;
   const previewPayrollValueSourceMessage = previewData?.payroll_value_source_message
     || payrollValueSourceFallbackMessage(previewPayrollValueSource);
+  const previewPayrollValueInfoMessages = previewData?.payroll_value_info_messages || [];
   const activeRunPayrollValueSource = activeRun?.request_payload_json?.payroll_value_source || null;
   const activeRunPayrollValueSourceMessage = activeRun?.request_payload_json?.payroll_value_source_message
     || payrollValueSourceFallbackMessage(activeRunPayrollValueSource);
+  const activeRunPayrollValueInfoMessages = activeRun?.request_payload_json?.payroll_value_info_messages || [];
   const validationOnlyCapabilityLimitation =
     Boolean(validationData?.errors?.length) &&
     (validationData?.csv_download_allowed === true) &&
@@ -1772,6 +1774,11 @@ export default function PayrollProviderSync({
             <Alert severity="info" sx={{ mb: 2 }}>
               {previewPayrollValueSourceMessage}
             </Alert>
+            {previewPayrollValueInfoMessages.map((message) => (
+              <Alert key={message} severity="warning" sx={{ mb: 2 }}>
+                {message}
+              </Alert>
+            ))}
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Operational base</Typography>
@@ -1822,9 +1829,16 @@ export default function PayrollProviderSync({
             )}
           </Alert>
           {activeRunId && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              {activeRunPayrollValueSourceMessage}
-            </Alert>
+            <>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {activeRunPayrollValueSourceMessage}
+              </Alert>
+              {activeRunPayrollValueInfoMessages.map((message) => (
+                <Alert key={message} severity="warning" sx={{ mb: 2 }}>
+                  {message}
+                </Alert>
+              ))}
+            </>
           )}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
             <Tooltip title={csvBlockedReasonText}>
