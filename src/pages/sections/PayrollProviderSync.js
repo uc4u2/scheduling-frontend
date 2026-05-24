@@ -163,6 +163,17 @@ const formatNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const payrollValueSourceFallbackMessage = (source) => {
+  switch (String(source || "").toLowerCase()) {
+    case "finalized_payroll":
+      return "Using finalized payroll values for this period.";
+    case "saved_draft_payroll":
+      return "Using saved draft payroll preview values for this period. Finalize payroll if you want this CSV to match employee-facing payroll records.";
+    default:
+      return "Using approved operational payroll-ready data. No saved payroll snapshot was found for this period.";
+  }
+};
+
 const shortenHash = (value, size = 12) => {
   const text = String(value || "").trim();
   if (!text) return "—";
@@ -1088,6 +1099,12 @@ export default function PayrollProviderSync({
   const previewHasNoExportableData = Boolean(previewData) &&
     formatNumber(previewData?.line_count) === 0 &&
     formatNumber(previewData?.adjustment_line_count) === 0;
+  const previewPayrollValueSource = previewData?.payroll_value_source || null;
+  const previewPayrollValueSourceMessage = previewData?.payroll_value_source_message
+    || payrollValueSourceFallbackMessage(previewPayrollValueSource);
+  const activeRunPayrollValueSource = activeRun?.request_payload_json?.payroll_value_source || null;
+  const activeRunPayrollValueSourceMessage = activeRun?.request_payload_json?.payroll_value_source_message
+    || payrollValueSourceFallbackMessage(activeRunPayrollValueSource);
   const validationOnlyCapabilityLimitation =
     Boolean(validationData?.errors?.length) &&
     (validationData?.csv_download_allowed === true) &&
@@ -1752,6 +1769,9 @@ export default function PayrollProviderSync({
                 {renderManagerMessages(previewCapabilityWarnings, previewIssueContext)}
               </Alert>
             )}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {previewPayrollValueSourceMessage}
+            </Alert>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Operational base</Typography>
@@ -1801,6 +1821,11 @@ export default function PayrollProviderSync({
               <Typography variant="body2">This selection is ready for CSV handoff.</Typography>
             )}
           </Alert>
+          {activeRunId && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {activeRunPayrollValueSourceMessage}
+            </Alert>
+          )}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
             <Tooltip title={csvBlockedReasonText}>
               <span>
