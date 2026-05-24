@@ -696,6 +696,31 @@ useEffect(() => {
     }
   };
 
+  const persistedOverrideKeys = [
+    "bonus",
+    "attendance_bonus",
+    "performance_bonus",
+    "commission",
+    "tip",
+    "travel_allowance",
+    "family_bonus",
+    "shift_premium",
+    "parental_top_up",
+    "non_taxable_reimbursement",
+    "union_dues",
+    "garnishment",
+    "medical_insurance",
+    "dental_insurance",
+    "life_insurance",
+    "retirement_amount",
+    "deduction",
+    "tax_credit",
+    "parental_insurance",
+    "rate",
+    "vacation_percent",
+    "include_vacation_in_gross",
+  ];
+
   const buildPreviewBase = (record = {}, { preferCurrentState = false } = {}) => {
     const choose = (key, fallback = 0) =>
       preferCurrentState
@@ -847,14 +872,24 @@ useEffect(() => {
         (totalFromPreview ||
           regFromPreview + otFromPreview + holFromPreview + leaveFromPreview) || 0;
 
-      setPayroll({
+      const nextPayroll = {
         ...base,
         ...payrollData,
         id: base.id,
         payroll_id: base.payroll_id,
         hours_worked: hoursFromPreview,
         flags,
-      });
+      };
+
+      if (finalizedRecord || savedRecord) {
+        persistedOverrideKeys.forEach((key) => {
+          if (Object.prototype.hasOwnProperty.call(base, key)) {
+            nextPayroll[key] = base[key];
+          }
+        });
+      }
+
+      setPayroll(nextPayroll);
       showMessage("✅ Payroll preview loaded", "success");
   
     } catch (err) {
