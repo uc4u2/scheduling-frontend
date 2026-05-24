@@ -11,6 +11,7 @@ import {
   CircularProgress,
   Divider,
   FormControl,
+  IconButton,
   Grid,
   InputLabel,
   MenuItem,
@@ -34,7 +35,7 @@ import { extractApiErrorMessage } from "../../utils/apiError";
 
 const PROVIDER_OPTIONS = [
   { value: "generic_csv", label: "Generic Accountant CSV" },
-  { value: "quickbooks", label: "QuickBooks" },
+  { value: "quickbooks", label: "QuickBooks CSV (direct sync later)" },
   { value: "check_embedded_placeholder", label: "Check (coming later)", disabled: true },
   { value: "gusto_embedded_placeholder", label: "Gusto (coming later)", disabled: true },
   { value: "canada_provider_placeholder", label: "Canadian payroll provider (coming later)", disabled: true },
@@ -1241,6 +1242,11 @@ export default function PayrollProviderSync({
       fontWeight: 700,
     },
   };
+  const lowerAccordionSx = {
+    bgcolor: "#fbfcff",
+    border: "1px solid #dbe5ff",
+    boxShadow: "none",
+  };
 
   const employeeMappingRows = useMemo(() => {
     const mappedRows = employeeMappings.filter((row) => row.provider === provider);
@@ -1609,7 +1615,7 @@ export default function PayrollProviderSync({
           <Grid item xs={12} md={8}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
               <Chip label="Generic Accountant CSV" sx={provider === "generic_csv" ? chipSx.active : chipSx.neutral} />
-              <Chip label="QuickBooks" sx={provider === "quickbooks" ? chipSx.active : chipSx.neutral} />
+              <Chip label="QuickBooks direct sync later" sx={provider === "quickbooks" ? chipSx.active : chipSx.neutral} />
               <Chip label="Check coming later" sx={chipSx.neutral} />
               <Chip label="Gusto coming later" sx={chipSx.neutral} />
             </Stack>
@@ -1896,8 +1902,34 @@ export default function PayrollProviderSync({
             title="CSV status"
             tooltip="This section shows whether the current selection is ready to export as a CSV handoff. It does not submit payroll to a provider."
           />
-          <Alert severity={csvStatusSeverity} sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>{csvStatusTitle}</Typography>
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 2,
+              p: 2,
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor:
+                csvStatusSeverity === "success"
+                  ? "#b7e1c4"
+                  : csvStatusSeverity === "warning"
+                    ? "#f2cb6b"
+                    : "#ef9a95",
+              bgcolor:
+                csvStatusSeverity === "success"
+                  ? "#eefaf1"
+                  : csvStatusSeverity === "warning"
+                    ? "#fff8e8"
+                    : "#fff1f0",
+            }}
+          >
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1.25 }} flexWrap="wrap" useFlexGap>
+              <Chip label={csvStatusTitle} sx={csvStatusSeverity === "success" ? chipSx.success : csvStatusSeverity === "warning" ? chipSx.warning : chipSx.danger} />
+              {activeRunId ? <Chip label={`Run: ${activeRunId}`} sx={chipSx.neutral} /> : null}
+              <Chip label={previewSourceChipLabel} sx={chipSx.neutral} />
+              <Chip label={previewEmployeesChipLabel} sx={chipSx.neutral} />
+              <Chip label={previewExportedTotalChipLabel} sx={chipSx.neutral} />
+            </Stack>
             {runError ? (
               <Typography variant="body2">{runError}</Typography>
             ) : managerBlockingMessages.length ? (
@@ -1911,7 +1943,7 @@ export default function PayrollProviderSync({
             ) : (
               <Typography variant="body2">This selection is ready for CSV handoff.</Typography>
             )}
-          </Alert>
+          </Paper>
           {activeRunId && !previewData && (
             <>
               {showActiveRunSourceMessage && (
@@ -1936,9 +1968,11 @@ export default function PayrollProviderSync({
             </Tooltip>
           </Stack>
           {csvBlockedReasonText && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {csvBlockedReasonText}
-            </Typography>
+            <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: "#f7f9fc", border: "1px solid #dbe5ff" }}>
+              <Typography variant="body2" color="text.secondary">
+                {csvBlockedReasonText}
+              </Typography>
+            </Paper>
           )}
           <Accordion elevation={0} disableGutters>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -2431,7 +2465,7 @@ export default function PayrollProviderSync({
         </Paper>
       )}
 
-      <Accordion elevation={2} disableGutters ref={runPanelRef}>
+      <Accordion elevation={0} disableGutters ref={runPanelRef} sx={lowerAccordionSx}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="h6">Current batch</Typography>
         </AccordionSummary>
@@ -2448,17 +2482,17 @@ export default function PayrollProviderSync({
           <>
             {runNotice && <Alert severity="info" sx={{ mb: 2 }}>{runNotice}</Alert>}
             {runError && <Alert severity="error" sx={{ mb: 2 }}>{runError}</Alert>}
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Run ID:</strong> {activeRun?.id || "—"}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Period:</strong> {activeRun?.start_date || "—"} to {activeRun?.end_date || "—"}</Typography></Grid>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Status:</strong> {runStatusLabel(activeRun?.status)}</Typography></Grid>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Employees:</strong> {activeRun?.employee_count ?? 0}</Typography></Grid>
-              <Grid item xs={12} md={2}><Typography variant="body2"><strong>Lines:</strong> {activeRun?.time_entry_count ?? 0}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Total hours:</strong> {activeRun?.total_hours ?? 0}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment lines:</strong> {selectedRunAdjustmentCount}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Adjustment total:</strong> {selectedRunAdjustmentTotal}</Typography></Grid>
-              <Grid item xs={12} md={3}><Typography variant="body2"><strong>Validation status:</strong> {validationData?.status || "Not validated yet"}</Typography></Grid>
-            </Grid>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+              <Chip label={`Run: ${activeRun?.id || "—"}`} sx={chipSx.active} />
+              <Chip label={`Period: ${activeRun?.start_date || "—"} to ${activeRun?.end_date || "—"}`} sx={chipSx.neutral} />
+              <Chip label={`Status: ${runStatusLabel(activeRun?.status)}`} sx={chipSx.neutral} />
+              <Chip label={`Employees: ${activeRun?.employee_count ?? 0}`} sx={chipSx.neutral} />
+              <Chip label={`Lines: ${activeRun?.time_entry_count ?? 0}`} sx={chipSx.neutral} />
+              <Chip label={`Hours: ${activeRun?.total_hours ?? 0}`} sx={chipSx.neutral} />
+              <Chip label={`Adjustment lines: ${selectedRunAdjustmentCount}`} sx={chipSx.neutral} />
+              <Chip label={`Adjustment total: ${selectedRunAdjustmentTotal}`} sx={chipSx.neutral} />
+              <Chip label={`Validation: ${validationData?.status || "Not validated yet"}`} sx={chipSx.neutral} />
+            </Stack>
             <Accordion elevation={0} disableGutters sx={{ mb: 2 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle2">Source hash details</Typography>
@@ -2473,15 +2507,17 @@ export default function PayrollProviderSync({
               </AccordionDetails>
             </Accordion>
             {hasFixBeforeExportIssues && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
+              <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: "#fff8e8", border: "1px solid #f2cb6b" }}>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Fix before export</Typography>
                 {renderManagerMessages(fixBeforeExportIssues, validationData ? currentRunContext : previewIssueContext)}
-              </Alert>
+              </Paper>
             )}
             {validationOnlyCapabilityLimitation && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Live QuickBooks payroll/time submit is not enabled. CSV export is still available.
-              </Alert>
+              <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: "#f7f9fc", border: "1px solid #dbe5ff" }}>
+                <Typography variant="body2">
+                  Live QuickBooks payroll/time submit is not enabled. CSV export is still available.
+                </Typography>
+              </Paper>
             )}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="contained" onClick={handleValidateRun} disabled={validationLoading || !activeRunId}>
@@ -2509,9 +2545,9 @@ export default function PayrollProviderSync({
       </Accordion>
 
       {activeRunId && (
-        <Accordion elevation={2} disableGutters>
+        <Accordion elevation={0} disableGutters sx={lowerAccordionSx}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Advanced: payload preview and direct provider readiness</Typography>
+          <Typography variant="h6">Advanced: provider payload</Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -2627,7 +2663,7 @@ export default function PayrollProviderSync({
         </Accordion>
       )}
 
-      <Accordion elevation={2} disableGutters>
+      <Accordion elevation={0} disableGutters sx={lowerAccordionSx}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="h6">Run history</Typography>
         </AccordionSummary>
