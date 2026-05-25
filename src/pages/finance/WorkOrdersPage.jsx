@@ -73,7 +73,7 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
           per_page: perPage,
         }),
         getWorkOrdersSummary(),
-        listManagerClients(),
+        listManagerClients({ limit: 20 }),
         listEstimates({ limit: 100 }),
       ]);
       setItems(Array.isArray(workOrdersRes?.items) ? workOrdersRes.items : Array.isArray(workOrdersRes) ? workOrdersRes : []);

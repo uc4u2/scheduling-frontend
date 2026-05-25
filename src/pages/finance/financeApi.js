@@ -302,9 +302,14 @@ export const deleteExpenseReceipt = (expenseId, receiptId) =>
 export const exportAccountantCsv = (payload) =>
   api.post("/finance/reports/accountant-export", payload, { responseType: "blob" });
 
-export const listManagerClients = async () => {
-  const res = await api.get("/booking/clients");
+export const listManagerClients = async (params = {}) => {
+  const res = await api.get("/booking/clients", { params });
   return pickArray(res.data, ["items", "data"]);
+};
+
+export const createManagerClient = async (payload) => {
+  const res = await api.post("/booking/clients", payload);
+  return res.data;
 };
 
 export const listBillingRecipients = async (params = {}) => {

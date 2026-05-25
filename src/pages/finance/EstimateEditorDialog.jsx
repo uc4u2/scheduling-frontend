@@ -25,7 +25,10 @@ import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
-import { createEstimate, updateEstimate } from "./financeApi";
+import { createEstimate, createManagerClient, updateEstimate } from "./financeApi";
+import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
+import ClientLookupField from "./ClientLookupField";
+import { buildClientCreatePayload } from "./clientUtils";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
@@ -170,6 +173,9 @@ export default function EstimateEditorDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientSaving, setClientSaving] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "" });
   const effectiveTaxContext = useMemo(
     () => estimate?.tax_context || taxContext || {},
     [estimate?.tax_context, taxContext]
@@ -356,6 +362,30 @@ export default function EstimateEditorDialog({
     }
   };
 
+  const openCreateClient = () => {
+    setClientForm({ name: "", email: "", phone: "" });
+    setClientDialogOpen(true);
+  };
+
+  const handleCreateClient = async () => {
+    const payload = buildClientCreatePayload(clientForm);
+    if (!payload.first_name || !payload.email) {
+      setError(tEstimate("errors.clientCreateRequired", "Client name and email are required to create a new client."));
+      return;
+    }
+    setClientSaving(true);
+    setError("");
+    try {
+      const created = await createManagerClient(payload);
+      setForm((prev) => ({ ...prev, client_id: created.id }));
+      setClientDialogOpen(false);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || tEstimate("errors.clientCreateFailed", "Unable to create client."));
+    } finally {
+      setClientSaving(false);
+    }
+  };
+
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} fullWidth maxWidth="lg">
       <DialogTitle>
@@ -384,22 +414,23 @@ export default function EstimateEditorDialog({
           </Stack>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>{tEstimate("fields.client", "Client")}</InputLabel>
-                <Select
-                  label={tEstimate("fields.client", "Client")}
-                  value={form.client_id}
-                  onChange={(e) => setField("client_id", e.target.value)}
-                >
-                  {clients.map((client) => (
-                    <MenuItem key={client.id} value={client.id}>
-                      {client.first_name || client.last_name
-                        ? `${client.first_name || ""} ${client.last_name || ""}`.trim()
-                        : client.email || tEstimate("fields.clientFallback", "Client #{{id}}", { id: client.id })}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <ClientLookupField
+                label={tEstimate("fields.client", "Client")}
+                value={form.client_id}
+                onChange={(nextId) => setField("client_id", nextId)}
+                helperText={tEstimate("fields.clientHelp", "Choose the official customer record for this estimate.")}
+                placeholder={tEstimate("fields.clientSearchPlaceholder", "Search client: ABC Property Management")}
+                initialOptions={clients}
+                fallbackLabel={tEstimate("fields.clientFallback", "Client")}
+              />
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                <Button size="small" startIcon={<AddIcon fontSize="small" />} onClick={openCreateClient}>
+                  {tEstimate("actions.createClient", "Create new client")}
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  {tEstimate("fields.clientHelperNote", "Can’t find the client? Create it here and keep working on the estimate.")}
+                </Typography>
+              </Stack>
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
@@ -437,7 +468,7 @@ export default function EstimateEditorDialog({
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField fullWidth label={tEstimate("fields.estimateTitle", "Estimate title")} value={form.title} onChange={(e) => setField("title", e.target.value)} />
+              <TextField fullWidth label={tEstimate("fields.estimateTitle", "Estimate title")} placeholder={tEstimate("fields.estimateTitlePlaceholder", "Kitchen exhaust cleaning estimate")} value={form.title} onChange={(e) => setField("title", e.target.value)} />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField fullWidth label={tEstimate("fields.estimateNumber", "Estimate number")} value={form.estimate_number} onChange={(e) => setField("estimate_number", e.target.value)} />
@@ -749,6 +780,16 @@ export default function EstimateEditorDialog({
         entityId={estimate?.id}
         title={tEstimate("audit.title", "Estimate activity")}
         emptyText={tEstimate("audit.empty", "No audit records yet.")}
+      />
+      <ClientQuickCreateDialog
+        open={clientDialogOpen}
+        onClose={() => !clientSaving && setClientDialogOpen(false)}
+        onSubmit={handleCreateClient}
+        form={clientForm}
+        setForm={setClientForm}
+        loading={clientSaving}
+        title={tEstimate("clientDialog.title", "Create new client")}
+        description={tEstimate("clientDialog.description", "Create the official customer record used for estimates, invoices, and work orders.")}
       />
     </Dialog>
   );

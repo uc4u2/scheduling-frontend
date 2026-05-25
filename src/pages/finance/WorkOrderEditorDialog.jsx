@@ -22,7 +22,10 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getUserTimezone, normalizeTimezoneValue } from "../../utils/timezone";
-import { createWorkOrder, updateWorkOrder } from "./financeApi";
+import { createManagerClient, createWorkOrder, updateWorkOrder } from "./financeApi";
+import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
+import ClientLookupField from "./ClientLookupField";
+import { buildClientCreatePayload } from "./clientUtils";
 
 const buildBlankForm = (prefillEstimate) => {
   const defaultTimezone = normalizeTimezoneValue(prefillEstimate?.timezone || getUserTimezone()) || "UTC";
@@ -61,6 +64,9 @@ export default function WorkOrderEditorDialog({
   const [form, setForm] = useState(buildBlankForm(prefillEstimate));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientSaving, setClientSaving] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "" });
 
   const selectedEstimate = useMemo(() => {
     const estimateId = Number(form.finance_estimate_id || 0);
@@ -144,6 +150,25 @@ export default function WorkOrderEditorDialog({
     }
   };
 
+  const handleCreateClient = async () => {
+    const payload = buildClientCreatePayload(clientForm);
+    if (!payload.first_name || !payload.email) {
+      setError(tWorkOrders("errors.clientCreateRequired", "Client name and email are required to create a new client."));
+      return;
+    }
+    setClientSaving(true);
+    setError("");
+    try {
+      const created = await createManagerClient(payload);
+      setForm((current) => ({ ...current, client_id: created.id }));
+      setClientDialogOpen(false);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.clientCreateFailed", "Unable to create client."));
+    } finally {
+      setClientSaving(false);
+    }
+  };
+
   const linkLocked = !!workOrder;
 
   return (
@@ -176,24 +201,16 @@ export default function WorkOrderEditorDialog({
           </Stack>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-            <FormControl fullWidth disabled={linkLocked}>
-              <InputLabel>{tWorkOrders("fields.client", "Client")}</InputLabel>
-              <Select
-                label={tWorkOrders("fields.client", "Client")}
-                value={form.client_id || ""}
-                onChange={(e) => setField("client_id", e.target.value)}
-              >
-                <MenuItem value="">{tWorkOrders("fields.selectClient", "Select client")}</MenuItem>
-                {clients.map((client) => {
-                  const name = `${client.first_name || ""} ${client.last_name || ""}`.trim() || client.email || tWorkOrders("fields.clientFallback", "Client #{{id}}", { id: client.id });
-                  return (
-                    <MenuItem key={client.id} value={client.id}>
-                      {name}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-            </FormControl>
+            <ClientLookupField
+              label={tWorkOrders("fields.client", "Client")}
+              value={form.client_id || ""}
+              onChange={(nextId) => setField("client_id", nextId)}
+              helperText={tWorkOrders("fields.clientSearchHelp", "Search the official customer record by client name, email, or phone.")}
+              placeholder={tWorkOrders("fields.clientSearchPlaceholder", "Search client: ABC Property Management")}
+              initialOptions={clients}
+              fallbackLabel={tWorkOrders("fields.clientFallback", "Client")}
+              disabled={linkLocked}
+            />
             <FormControl fullWidth disabled={linkLocked}>
               <InputLabel>{tWorkOrders("fields.estimate", "Estimate")}</InputLabel>
               <Select
@@ -210,6 +227,23 @@ export default function WorkOrderEditorDialog({
               </Select>
             </FormControl>
           </Stack>
+
+          {!linkLocked ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button
+                size="small"
+                onClick={() => {
+                  setClientForm({ name: "", email: "", phone: "" });
+                  setClientDialogOpen(true);
+                }}
+              >
+                {tWorkOrders("actions.createClient", "Create new client")}
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                {tWorkOrders("fields.clientHelp", "Choose an existing client or create the official customer record before scheduling work.")}
+              </Typography>
+            </Stack>
+          ) : null}
 
           {!workOrder ? (
             <FormControlLabel
@@ -286,6 +320,16 @@ export default function WorkOrderEditorDialog({
           {workOrder ? tWorkOrders("common.save", "Save") : tWorkOrders("common.createWorkOrder", "Create Work Order")}
         </Button>
       </DialogActions>
+      <ClientQuickCreateDialog
+        open={clientDialogOpen}
+        onClose={() => !clientSaving && setClientDialogOpen(false)}
+        onSubmit={handleCreateClient}
+        form={clientForm}
+        setForm={setClientForm}
+        loading={clientSaving}
+        title={tWorkOrders("clientDialog.title", "Create new client")}
+        description={tWorkOrders("clientDialog.description", "Create the official customer record used for work orders, estimates, and invoices.")}
+      />
     </Dialog>
   );
 }

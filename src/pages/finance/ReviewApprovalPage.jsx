@@ -413,17 +413,63 @@ export default function ReviewApprovalPage() {
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
             <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>{tReviews("toolbar.workOrder", "Work order")}</InputLabel>
-              <Select label={tReviews("toolbar.workOrder", "Work order")} value={selectedWorkOrderId} onChange={(e) => { setSelectedWorkOrderId(e.target.value); setPage(1); }}>
+              <InputLabel shrink>{tReviews("toolbar.workOrder", "Work order")}</InputLabel>
+              <Select
+                label={tReviews("toolbar.workOrder", "Work order")}
+                value={selectedWorkOrderId}
+                displayEmpty
+                notched
+                renderValue={(value) => {
+                  if (value) {
+                    const selected = workOrders.find((row) => String(row.id) === String(value));
+                    return selected ? `${selected.work_order_number} • ${selected.title}` : value;
+                  }
+                  return workOrders.length
+                    ? tReviews("toolbar.workOrderPlaceholder", "Select a work order to review")
+                    : tReviews("toolbar.workOrderEmpty", "No work orders are ready for review yet");
+                }}
+                onChange={(e) => { setSelectedWorkOrderId(e.target.value); setPage(1); }}
+              >
+                <MenuItem value="" disabled>
+                  {workOrders.length
+                    ? tReviews("toolbar.workOrderPlaceholder", "Select a work order to review")
+                    : tReviews("toolbar.workOrderEmpty", "No work orders are ready for review yet")}
+                </MenuItem>
                 {workOrders.map((row) => (
                   <MenuItem key={row.id} value={row.id}>{row.work_order_number} • {row.title}</MenuItem>
                 ))}
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>{tReviews("toolbar.fieldReportForNewReview", "Field report for new review")}</InputLabel>
-              <Select label={tReviews("toolbar.fieldReportForNewReview", "Field report for new review")} value={selectedFieldReportId} onChange={(e) => setSelectedFieldReportId(e.target.value)}>
-                <MenuItem value="">{tReviews("toolbar.createEmptyDraftReview", "Create empty draft review")}</MenuItem>
+              <InputLabel shrink>{tReviews("toolbar.fieldReportForNewReview", "Field report for new review")}</InputLabel>
+              <Select
+                label={tReviews("toolbar.fieldReportForNewReview", "Field report for new review")}
+                value={selectedFieldReportId}
+                displayEmpty
+                notched
+                renderValue={(value) => {
+                  if (value) {
+                    const selected = fieldReports.find((row) => String(row.id) === String(value));
+                    return selected
+                      ? `${tReviews("toolbar.reportNumber", "Report #{{id}}", { id: selected.id })} • ${selected.submitted_by_name || selected.submitted_by_recruiter_id}`
+                      : value;
+                  }
+                  if (!selectedWorkOrderId) {
+                    return tReviews("toolbar.selectWorkOrderFirst", "Select a work order first");
+                  }
+                  return fieldReports.length
+                    ? tReviews("toolbar.createEmptyDraftReview", "Create empty draft review")
+                    : tReviews("toolbar.noFieldReportsYet", "No field reports submitted for this work order yet");
+                }}
+                onChange={(e) => setSelectedFieldReportId(e.target.value)}
+              >
+                <MenuItem value="">
+                  {!selectedWorkOrderId
+                    ? tReviews("toolbar.selectWorkOrderFirst", "Select a work order first")
+                    : fieldReports.length
+                      ? tReviews("toolbar.createEmptyDraftReview", "Create empty draft review")
+                      : tReviews("toolbar.noFieldReportsYet", "No field reports submitted for this work order yet")}
+                </MenuItem>
                 {fieldReports.map((row) => (
                   <MenuItem key={row.id} value={row.id}>{tReviews("toolbar.reportNumber", "Report #{{id}}", { id: row.id })} • {row.submitted_by_name || row.submitted_by_recruiter_id}</MenuItem>
                 ))}
@@ -432,7 +478,7 @@ export default function ReviewApprovalPage() {
           </Stack>
           <Stack direction="row" spacing={1}>
             <Button variant="outlined" onClick={loadAll}>{tReviews("toolbar.refresh", "Refresh")}</Button>
-            <Button variant="contained" onClick={handleCreateReview}>{tReviews("toolbar.createReview", "Create review")}</Button>
+            <Button variant="contained" onClick={handleCreateReview} disabled={!selectedWorkOrderId}>{tReviews("toolbar.createReview", "Create review")}</Button>
           </Stack>
         </Stack>
       </Paper>

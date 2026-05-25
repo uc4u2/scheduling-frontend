@@ -256,7 +256,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     try {
       const [estimates, managerClients, templateList] = await Promise.all([
         listEstimates({ status: status || undefined, q: search || undefined, page, per_page: perPage }),
-        listManagerClients(),
+        listManagerClients({ limit: 20 }),
         listEstimateTemplates(),
       ]);
       setItems(Array.isArray(estimates?.items) ? estimates.items : Array.isArray(estimates) ? estimates : []);

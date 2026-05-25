@@ -11,6 +11,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormHelperText,
   Grid,
   IconButton,
   InputLabel,
@@ -45,17 +46,22 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import {
   createEstimateFromQuote,
+  createManagerClient,
   createQuoteRequest,
   linkQuoteClient,
   listManagerClients,
   listQuoteRequests,
   updateQuoteRequest,
 } from "./financeApi";
+import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
+import ClientLookupField from "./ClientLookupField";
+import { buildClientCreatePayload, getClientDisplayName } from "./clientUtils";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
 
 const blankForm = {
+  client_id: "",
   title: "",
   request_type: "",
   description: "",
@@ -200,6 +206,9 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const [newClient, setNewClient] = useState({ name: "", email: "", phone: "" });
   const [confirmEstimateTarget, setConfirmEstimateTarget] = useState(null);
   const [expandedOpen, setExpandedOpen] = useState(false);
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientSaving, setClientSaving] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,7 +221,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
           page,
           per_page: perPage,
         }),
-        listManagerClients(),
+        listManagerClients({ limit: 20 }),
       ]);
       setItems(Array.isArray(quotes?.items) ? quotes.items : Array.isArray(quotes) ? quotes : []);
       setPagination(quotes?.pagination || null);
@@ -246,6 +255,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     setEditing(item);
     setForm({
       title: item.title || "",
+      client_id: item.client_id || "",
       request_type: item.request_type || "",
       description: item.description || "",
       preferred_timeline: item.preferred_timeline || "",
@@ -278,7 +288,10 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     }
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload = {
+        ...form,
+        client_id: form.client_id ? Number(form.client_id) : null,
+      };
       if (editing) {
         await updateQuoteRequest(editing.id, payload);
         enqueueSnackbar(tQuote("snackbar.updated", "Quote request updated."), { variant: "success" });
@@ -292,6 +305,32 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tQuote("errors.saveFailed", "Unable to save quote request."), { variant: "error" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleQuickCreateClient = async () => {
+    const payload = buildClientCreatePayload(clientForm);
+    if (!payload.first_name || !payload.email) {
+      enqueueSnackbar(tQuote("errors.clientNameEmailRequired", "Client name and email are required."), { variant: "error" });
+      return;
+    }
+    setClientSaving(true);
+    try {
+      const created = await createManagerClient(payload);
+      setForm((prev) => ({
+        ...prev,
+        client_id: created.id,
+        contact_name: prev.contact_name || created.first_name || "",
+        contact_email: prev.contact_email || created.email || "",
+        contact_phone: prev.contact_phone || created.phone || "",
+      }));
+      setClientDialogOpen(false);
+      enqueueSnackbar(tQuote("snackbar.clientCreated", "Client created and selected."), { variant: "success" });
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tQuote("errors.clientCreateFailed", "Unable to create client."), { variant: "error" });
+    } finally {
+      setClientSaving(false);
     }
   };
 
@@ -749,37 +788,43 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
             <Box>
               <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.requestDetails", "Request details")}</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.title", "Title")} value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.source", "Source")} value={form.request_type} onChange={(e) => setForm((prev) => ({ ...prev, request_type: e.target.value }))} helperText={tQuote("dialog.fields.sourceHelp", "Examples: Phone call, WhatsApp note, Website form.")} /></Grid>
-                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.preferredTimeline", "Preferred timeline")} value={form.preferred_timeline} onChange={(e) => setForm((prev) => ({ ...prev, preferred_timeline: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.serviceAddress", "Service address")} value={form.service_address} onChange={(e) => setForm((prev) => ({ ...prev, service_address: e.target.value }))} /></Grid>
-                <Grid item xs={12}><TextField fullWidth label={tQuote("dialog.fields.description", "Description")} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} multiline minRows={3} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.title", "Title")} placeholder={tQuote("dialog.fields.titlePlaceholder", "Kitchen exhaust cleaning quote")} value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.source", "Source")} placeholder={tQuote("dialog.fields.sourcePlaceholder", "Phone call")} value={form.request_type} onChange={(e) => setForm((prev) => ({ ...prev, request_type: e.target.value }))} helperText={tQuote("dialog.fields.sourceHelp", "Examples: Phone call, WhatsApp note, Website form.")} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.preferredTimeline", "Preferred timeline")} placeholder={tQuote("dialog.fields.preferredTimelinePlaceholder", "This week")} value={form.preferred_timeline} onChange={(e) => setForm((prev) => ({ ...prev, preferred_timeline: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.serviceAddress", "Service address")} placeholder={tQuote("dialog.fields.serviceAddressPlaceholder", "120 King St W, Toronto, ON")} value={form.service_address} onChange={(e) => setForm((prev) => ({ ...prev, service_address: e.target.value }))} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label={tQuote("dialog.fields.description", "Description")} placeholder={tQuote("dialog.fields.descriptionPlaceholder", "Restaurant needs kitchen exhaust and duct cleaning for one location.")} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} multiline minRows={3} /></Grid>
               </Grid>
             </Box>
 
             <Divider />
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.requestContact", "Request contact")}</Typography>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.requestContact", "Contact person")}</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactName", "Contact name")} value={form.contact_name} onChange={(e) => setForm((prev) => ({ ...prev, contact_name: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactEmail", "Contact email")} value={form.contact_email} onChange={(e) => setForm((prev) => ({ ...prev, contact_email: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactPhone", "Contact phone")} value={form.contact_phone} onChange={(e) => setForm((prev) => ({ ...prev, contact_phone: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactName", "Contact person")} placeholder={tQuote("dialog.fields.contactNamePlaceholder", "Sarah Lee")} value={form.contact_name} onChange={(e) => setForm((prev) => ({ ...prev, contact_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactEmail", "Contact email")} placeholder={tQuote("dialog.fields.contactEmailPlaceholder", "sarah@abcproperty.ca")} value={form.contact_email} onChange={(e) => setForm((prev) => ({ ...prev, contact_email: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactPhone", "Contact phone")} placeholder={tQuote("dialog.fields.contactPhonePlaceholder", "(416) 555-0132")} value={form.contact_phone} onChange={(e) => setForm((prev) => ({ ...prev, contact_phone: e.target.value }))} /></Grid>
               </Grid>
             </Box>
 
             <Divider />
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.linkedClient", "Linked client")}</Typography>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.linkedClient", "Client record")}</Typography>
               <Typography variant="caption" color="text.secondary">
-                {tQuote("dialog.linkedClientHelp", "Contact is who requested the quote. Client is the official customer record used for estimates, invoices, and work orders.")}
+                {tQuote("dialog.linkedClientHelp", "Contact person is who requested the work. Client record is the official customer used for estimates, invoices, and work orders.")}
               </Typography>
               <Paper variant="outlined" sx={{ mt: 1.25, p: 1.5, borderColor: theme.palette.divider }}>
-                {editing?.client_id ? (
+                {editing?.client_id || form.client_id ? (
                   <Stack spacing={1}>
-                    <Typography variant="body2" fontWeight={700}>{editing.client_name || tQuote("dialog.fields.linkedClientFallback", "Linked client")}</Typography>
-                    <Typography variant="body2" color="text.secondary">{editing.client_email || "-"}</Typography>
+                    <Typography variant="body2" fontWeight={700}>
+                      {editing?.client_id
+                        ? editing.client_name || tQuote("dialog.fields.linkedClientFallback", "Linked client")
+                        : getClientDisplayName(clients.find((client) => String(client.id) === String(form.client_id)), tQuote("dialog.fields.linkedClientFallback", "Linked client"))}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {editing?.client_email || clients.find((client) => String(client.id) === String(form.client_id))?.email || "-"}
+                    </Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       <Chip size="small" variant="outlined" color="success" label={tQuote("chips.linked", "Linked")} />
                       {hasEmailMismatch(editing) ? <Chip size="small" variant="outlined" color="warning" label={tQuote("chips.contactDiffers", "Contact differs from client")} /> : null}
@@ -787,11 +832,35 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                     </Stack>
                   </Stack>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    {editing
-                      ? tQuote("dialog.noClientLinked", "No client linked yet.")
-                      : tQuote("dialog.saveBeforeLinking", "Save the quote first, then link or create the client.")}
-                  </Typography>
+                  <Stack spacing={1.25}>
+                    <FormControl fullWidth>
+                      <ClientLookupField
+                        label={tQuote("dialog.fields.clientRecord", "Client record")}
+                        value={form.client_id || ""}
+                        onChange={(nextId, selected) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            client_id: nextId,
+                            contact_name: prev.contact_name || selected?.first_name || "",
+                            contact_email: prev.contact_email || selected?.email || "",
+                            contact_phone: prev.contact_phone || selected?.phone || "",
+                          }));
+                        }}
+                        helperText={tQuote("dialog.fields.clientRecordSearchHelp", "Search the official customer record by client name, email, or phone.")}
+                        placeholder={tQuote("dialog.fields.clientRecordPlaceholder", "Search client: ABC Property Management")}
+                        initialOptions={clients}
+                        fallbackLabel={tQuote("linkDialog.clientFallback", "Client")}
+                      />
+                      <FormHelperText>
+                        {tQuote("dialog.clientRecordHelp", "Use an existing client or create the official customer record for this request.")}
+                      </FormHelperText>
+                    </FormControl>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button variant="outlined" onClick={() => { setClientForm(prefillClientFromContact(form)); setClientDialogOpen(true); }}>
+                        {tQuote("dialog.actions.createNewClient", "Create new client")}
+                      </Button>
+                    </Stack>
+                  </Stack>
                 )}
               </Paper>
               {editing ? (
@@ -824,19 +893,15 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
             <Alert severity="info">{tQuote("linkDialog.info", "Link an existing client or create a client from the request contact.")}</Alert>
-            <FormControl fullWidth>
-              <InputLabel>{tQuote("linkDialog.existingClient", "Existing client")}</InputLabel>
-              <Select label={tQuote("linkDialog.existingClient", "Existing client")} value={linkClientId} onChange={(e) => setLinkClientId(e.target.value)}>
-                <MenuItem value="">{tQuote("linkDialog.createNewInstead", "Create new client instead")}</MenuItem>
-                {clients.map((client) => (
-                  <MenuItem key={client.id} value={client.id}>
-                    {client.first_name || client.last_name
-                      ? `${client.first_name || ""} ${client.last_name || ""}`.trim()
-                      : client.email || tQuote("linkDialog.clientFallback", "Client #{{id}}", { id: client.id })}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <ClientLookupField
+              label={tQuote("linkDialog.existingClient", "Existing client")}
+              value={linkClientId}
+              onChange={(nextId) => setLinkClientId(nextId ? String(nextId) : "")}
+              helperText={tQuote("linkDialog.existingClientHelp", "Search the official customer record by client name, email, or phone.")}
+              placeholder={tQuote("linkDialog.existingClientPlaceholder", "Search client: ABC Property Management")}
+              initialOptions={clients}
+              fallbackLabel={tQuote("linkDialog.clientFallback", "Client")}
+            />
             {!linkClientId ? (
               <Grid container spacing={2}>
                 <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientName", "Client name")} value={newClient.name} onChange={(e) => setNewClient((prev) => ({ ...prev, name: e.target.value }))} /></Grid>
@@ -885,6 +950,16 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
           </Button>
         </DialogActions>
       </Dialog>
+      <ClientQuickCreateDialog
+        open={clientDialogOpen}
+        onClose={() => !clientSaving && setClientDialogOpen(false)}
+        onSubmit={handleQuickCreateClient}
+        form={clientForm}
+        setForm={setClientForm}
+        loading={clientSaving}
+        title={tQuote("clientDialog.title", "Create new client")}
+        description={tQuote("clientDialog.description", "Create the official customer record used for estimates, invoices, and work orders.")}
+      />
     </Stack>
   );
 }

@@ -207,33 +207,28 @@ const COPY = {
         items: [
           { label: "Quotes", text: "Capture custom-price customer requests." },
           { label: "Estimates", text: "Prepare and share customer pricing." },
-          { label: "Work Orders", text: "Plan and manage the job." },
-          { label: "Expenses", text: "Record day-to-day business costs." },
+          { label: "Work Orders", text: "Plan and manage the job once the estimate is accepted." },
+          { label: "Field Reports", text: "See what employees submitted from the field." },
+          { label: "Reviews", text: "Approve what becomes official for billing, inventory, and job close-out." },
+          { label: "Invoices", text: "Bill approved work and manage payment follow-up." },
         ],
       },
       {
-        title: "Field Execution",
+        title: "Operations Support",
         items: [
           { label: "Materials & Supplies", text: "Track stock items and material availability." },
-          { label: "Purchases", text: "Record stock purchases and related expenses." },
-          { label: "Field Reports", text: "Review what employees submitted from the field." },
-          { label: "Reviews", text: "Approve what becomes official for inventory and billing." },
+          { label: "Expenses", text: "Record overhead or job-linked business costs." },
+          { label: "Purchases", text: "Record stock purchases and supplier-side spend." },
+          { label: "Vendors", text: "Keep supplier details in one place." },
         ],
       },
       {
-        title: "Reporting",
+        title: "Accounting & Reporting",
         items: [
           { label: "Profitability", text: "Review job performance before month-end." },
-          { label: "Tax Summary", text: "Review estimated tax for accountant follow-up." },
           { label: "Reports", text: "Export invoices, expenses, and summaries." },
+          { label: "Tax Summary", text: "Review estimated tax for accountant follow-up." },
           { label: "Month-End", text: "Review missing items and prepare exports." },
-        ],
-      },
-      {
-        title: "Setup",
-        items: [
-          { label: "Vendors", text: "Keep supplier details in one place." },
-          { label: "Materials Categories", text: "Organize stock items without mixing them with expense categories." },
         ],
       },
     ],
