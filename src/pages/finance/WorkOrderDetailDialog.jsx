@@ -12,6 +12,7 @@ import {
   Grid,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -30,22 +31,42 @@ import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 
 const ACTIONS_BY_STATUS = {
-  draft: [{ key: "schedule", label: "Schedule", status: "scheduled" }, { key: "cancel", label: "Cancel", status: "cancelled", tone: "warning" }],
+  draft: [{ key: "schedule", label: "Schedule job", status: "scheduled" }, { key: "cancel", label: "Cancel", status: "cancelled", tone: "warning" }],
   scheduled: [
     { key: "moveBackToDraft", label: "Move Back to Draft", status: "draft" },
-    { key: "start", label: "Start", status: "in_progress" },
+    { key: "start", label: "Start job", status: "in_progress" },
     { key: "cancel", label: "Cancel", status: "cancelled", tone: "warning" },
   ],
   in_progress: [
-    { key: "markCompleted", label: "Mark Completed", status: "completed" },
+    { key: "markCompleted", label: "Mark job completed", status: "completed" },
     { key: "cancel", label: "Cancel", status: "cancelled", tone: "warning" },
   ],
   completed: [
-    { key: "moveBackToActive", label: "Move Back to Active", status: "in_progress" },
+    { key: "moveBackToActive", label: "Reopen job", status: "in_progress" },
     { key: "closeJob", label: "Close Job", status: "closed" },
   ],
   closed: [],
   cancelled: [],
+};
+
+const STATUS_HELP = {
+  draft: "Draft means the job record is still being prepared. Dates, team assignments, and materials can still be adjusted before scheduling.",
+  scheduled: "Scheduled means the job has planned dates and is ready for the team, but field work has not started yet.",
+  in_progress: "In progress means the team has started the job and field updates can now come back through reports and manager review.",
+  completed: "Completed means field work is done, but the manager may still need to review follow-up items before final close-out.",
+  closed: "Closed means the job is fully finished for operations. Use this after the work and manager review are complete.",
+  cancelled: "Cancelled means this job will not move forward in its current form.",
+};
+
+const ACTION_HELP = {
+  editJob: "Update the customer, scope, dates, location, notes, or planned materials before the next step.",
+  schedule: "Use this when the draft is ready to become a planned job with dates, instructions, and team assignments.",
+  moveBackToDraft: "Use this if the scheduled job still needs setup changes before the team should treat it as ready.",
+  start: "Use this when the team has actually started the work so the job moves from planned to active.",
+  markCompleted: "Use this when field work is finished and you are ready for final review or close-out.",
+  moveBackToActive: "Use this if completed work needs to reopen because the team must return or fix something.",
+  closeJob: "Use this when operations are fully finished and the work order should be treated as closed.",
+  cancel: "Use this when the job should stop and no longer move forward in the current work-order flow.",
 };
 
 export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onChanged, clients = [], estimates = [] }) {
@@ -114,31 +135,44 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
                   <Typography variant="h5" fontWeight={800}>{workOrder.title}</Typography>
-                  <FinanceStatusChip status={workOrder.status} />
+                  <Tooltip title={tWorkOrders(`statusHelp.${String(workOrder.status || "").toLowerCase()}`, STATUS_HELP[String(workOrder.status || "").toLowerCase()] || "This status shows where the job is in the operational workflow.")}>
+                    <Box sx={{ display: "inline-flex" }}>
+                      <FinanceStatusChip status={workOrder.status} />
+                    </Box>
+                  </Tooltip>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">{workOrder.client_name || tWorkOrders("fallbacks.noClientLinked", "No client linked")}{workOrder.client_email ? ` • ${workOrder.client_email}` : ""}</Typography>
                 <Typography variant="body2" color="text.secondary">{workOrder.location || tWorkOrders("fallbacks.noLocation", "No location set")}</Typography>
-                <Typography variant="body2" color="text.secondary">{workOrder.start_date || "-"} {tWorkOrders("schedule.to", "to")} {workOrder.end_date || "-"}{workOrder.timezone ? ` • ${workOrder.timezone}` : ""}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {tWorkOrders("schedule.windowLabel", "Planned schedule")}: {workOrder.start_date || "-"} {tWorkOrders("schedule.to", "to")} {workOrder.end_date || "-"}{workOrder.timezone ? ` • ${workOrder.timezone}` : ""}
+                </Typography>
               </Box>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "flex-start" }}>
-                <Button variant="outlined" onClick={() => setEditingOpen(true)}>{tWorkOrders("actions.editJob", "Edit Job")}</Button>
+                <Tooltip title={tWorkOrders("actionHelp.editJob", ACTION_HELP.editJob)}>
+                  <Box>
+                    <Button variant="outlined" onClick={() => setEditingOpen(true)}>{tWorkOrders("actions.editJob", "Edit Job")}</Button>
+                  </Box>
+                </Tooltip>
                 {statusActions.map((action) => (
-                  <Button
-                    key={action.status}
-                    variant={action.tone === "warning" ? "outlined" : "contained"}
-                    color={action.tone === "warning" ? "warning" : "primary"}
-                    onClick={() => handleStatus(action.status)}
-                    disabled={savingStatus}
-                  >
-                    {action.label}
-                  </Button>
+                  <Tooltip key={action.status} title={tWorkOrders(`actionHelp.${action.key}`, ACTION_HELP[action.key] || "Update the work order to the next operational step.")}>
+                    <Box>
+                      <Button
+                        variant={action.tone === "warning" ? "outlined" : "contained"}
+                        color={action.tone === "warning" ? "warning" : "primary"}
+                        onClick={() => handleStatus(action.status)}
+                        disabled={savingStatus}
+                      >
+                        {action.label}
+                      </Button>
+                    </Box>
+                  </Tooltip>
                 ))}
               </Stack>
             </Stack>
 
             <Grid container spacing={2}>
-              <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.plannedLaborHours", "Planned labor hours")} value={String(workOrder.planned_labor_hours ?? 0)} accent="primary" /></Grid>
-              <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.plannedLaborCost", "Planned labor cost")} value={formatCurrency(workOrder.planned_labor_cost || 0)} accent="secondary" /></Grid>
+              <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.plannedLaborHours", "Planned labor hours")} value={String(workOrder.planned_labor_hours ?? 0)} helper={tWorkOrders("metrics.plannedLaborHoursHelp", "Hours currently planned across the team assignments for this job.")} accent="primary" /></Grid>
+              <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.plannedLaborCost", "Planned labor cost")} value={formatCurrency(workOrder.planned_labor_cost || 0)} helper={tWorkOrders("metrics.plannedLaborCostHelp", "Expected labor cost before field changes or manager review adjustments.")} accent="secondary" /></Grid>
               <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.assignments", "Assignments")} value={String(workOrder.assignment_count ?? 0)} helper={tWorkOrders("metrics.assignmentsHelp", "Daily rows assigned to the team.")} accent="success" /></Grid>
               <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.fieldReports", "Field reports")} value={String(workOrder.field_report_count ?? 0)} helper={tWorkOrders("metrics.fieldReportsHelp", "Reports submitted from the field.")} accent="info" /></Grid>
               <Grid item xs={12} md={4}><FinanceMetricCard label={tWorkOrders("metrics.pendingReview", "Pending review")} value={String(workOrder.pending_review_count ?? 0)} helper={tWorkOrders("metrics.pendingReviewHelp", "Manager follow-up still needed.")} accent="warning" /></Grid>

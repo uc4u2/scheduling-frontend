@@ -83,17 +83,17 @@ const COPY = {
           "Examples: kitchen leak repair, cabinet repair, custom installation, or any job where the price depends on scope.",
           "Do not use this flow for a simple known-price appointment. If the service, price, employee, and time are already known, use the normal Booking flow instead.",
         ],
-        bullets: ["Title", "Source", "Request Contact", "Service address", "Preferred timeline", "Description", "Visible notes", "Internal notes"],
+        bullets: ["Title", "Source", "Contact person", "Client record", "Service address", "Preferred timeline", "Description", "Visible notes", "Internal notes"],
         footer: "A Quote Request is the starting record. It is not the estimate, invoice, or work order.",
       },
       {
-        title: "2. Link or create the Client",
+        title: "2. Select or create the Client record",
         body: [
-          "Request Contact is the person who asked for the quote.",
-          "Linked Client is the official customer record used for estimates, invoices, and work orders.",
-          "Before creating the estimate, link the quote to the correct client or create a new client from the quote contact.",
+          "Contact person is who asked for the work or quote.",
+          "Client record is the official customer profile used for estimates, invoices, and work orders.",
+          "You can now search for an existing client or create a new client inline from the Quote Request, Estimate, and Work Order dialogs.",
         ],
-        footer: "The estimate, invoice, payment link, and work order should all connect to the official client record.",
+        footer: "The estimate, invoice, payment link, and work order should all connect to the same official client record.",
       },
       {
         title: "3. Direct estimate when you already know the price",
@@ -239,7 +239,7 @@ const COPY = {
         steps: [
           "Customer asks for a price for a kitchen leak repair.",
           "Manager creates a Quote Request in Quotes.",
-          "Manager links or creates the Client record.",
+          "Manager selects an existing client or creates a new client record inline.",
           "Manager creates the Estimate and checks the public estimate page.",
           "Manager sends the estimate link.",
           "Client accepts the estimate.",
