@@ -43,6 +43,7 @@ import {
   Tab,
   Pagination,
   Menu,
+  Drawer,
   GlobalStyles,
   useTheme,
   useMediaQuery,
@@ -67,6 +68,8 @@ import SmartShiftPlannerPanel from "./management/SmartShiftPlannerPanel";
 import WorkforceCostAnalytics from "./management/WorkforceCostAnalytics";
 import ShiftAdminAuditTimeline from "./ShiftAdminAuditTimeline";
 import ThemedDateField, { ThemedMonthField, ThemedTimeField } from "../../components/ui/ThemedDateField";
+import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
+import { SHIFT_SCHEDULE_TUTORIAL_GROUP } from "../../tutorials/appTutorialCatalog";
 
 // ------------------------------------------------------------------------------------
 // Constants & utils
@@ -1839,6 +1842,7 @@ const [templateFormData, setTemplateFormData] = useState({
   const [editingShift, setEditingShift] = useState(null);
   const [shiftAuditOpen, setShiftAuditOpen] = useState(false);
   const [scheduleAuditOpen, setScheduleAuditOpen] = useState(false);
+  const [scheduleGuideOpen, setScheduleGuideOpen] = useState(false);
   const [leaveDetailOpen, setLeaveDetailOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
   const editingShiftRecruiter = useMemo(() => {
@@ -3961,8 +3965,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Typography>
         </Box>
         )}
-	        {shiftManagementTab === "schedule" && (
+        {shiftManagementTab === "schedule" && (
 	        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Button variant="outlined" onClick={() => setScheduleGuideOpen(true)}>
+            Schedule guide
+          </Button>
           <Button variant="outlined" onClick={() => setScheduleAuditOpen(true)}>
             Activity log
           </Button>
@@ -5389,6 +5396,89 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         emptyText="No shift-management activity recorded yet."
         entityTypes={["shift"]}
       />
+      <Drawer
+        anchor="right"
+        open={scheduleGuideOpen}
+        onClose={() => setScheduleGuideOpen(false)}
+        sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 520 }, p: 2 } }}
+      >
+        <Stack spacing={1.5}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" fontWeight={700}>Schedule Guide</Typography>
+            <Button size="small" onClick={() => setScheduleGuideOpen(false)}>Close</Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Practical help for assigning shifts, updating schedule rows, handling time off, and keeping the calendar clean.
+          </Typography>
+
+          <TutorialHelpCard
+            tutorialGroup={SHIFT_SCHEDULE_TUTORIAL_GROUP}
+            title="Quick tutorial"
+            body="Watch the basic shift-management walkthrough while you assign shifts, edit scheduled work, and review calendar options."
+            watchLabel="Watch tutorial"
+            moreLabel="More walkthroughs"
+            youtubeLabel="Watch on YouTube"
+            closeLabel="Close"
+            compact
+          />
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>1) Start with filters and calendar range</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use Department, Select Employees, Status Filter, and Month to narrow the schedule before assigning or reviewing shifts.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>2) Assign a basic shift</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Select at least one employee, then click <strong>Assign Shift</strong>. Choose the date, start time, end time, location, and note before saving.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>3) Edit existing schedule rows</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Click a shift on the calendar to update times, break strategy, paid-break settings, notes, recurring behavior, or availability-slot linkage.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>4) Attendance and time-off handling</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Inside the shift editor, decide whether the row stays scheduled, becomes manager-entered time off, or is removed from the schedule entirely.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>5) Templates and recurring work</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use Shift Template for repeat patterns and the template editor when the team uses the same standard shift blocks often.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>6) Show time off on calendar</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Turn on <strong>Show time off on calendar</strong> when managers need to see approved schedule-context time off next to normal work shifts.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>7) When to use Smart Shift instead</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use the normal schedule flow for direct assignments and day-to-day edits. Open Smart Shift when you need coverage-based suggestions across a wider date range.
+            </Typography>
+          </Box>
+        </Stack>
+      </Drawer>
 
       {/* ============================ Template Editor Modal ============================ */}
       <Modal open={templateModalOpen} onClose={() => setTemplateModalOpen(false)}>

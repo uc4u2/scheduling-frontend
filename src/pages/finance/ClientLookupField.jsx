@@ -3,6 +3,18 @@ import { Autocomplete, CircularProgress, TextField } from "@mui/material";
 import { listManagerClients } from "./financeApi";
 import { getClientDisplayName } from "./clientUtils";
 
+const mergeClientOptions = (...groups) => {
+  const deduped = [];
+  const seen = new Set();
+  groups.flat().forEach((item) => {
+    const key = String(item?.id || "");
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    deduped.push(item);
+  });
+  return deduped;
+};
+
 export default function ClientLookupField({
   label = "Client",
   value,
@@ -17,20 +29,19 @@ export default function ClientLookupField({
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const selected = useMemo(() => {
+    const matchId = String(value || "");
+    if (!matchId) return null;
+    return (
+      options.find((item) => String(item?.id) === matchId) ||
+      (initialOptions || []).find((item) => String(item?.id) === matchId) ||
+      null
+    );
+  }, [initialOptions, options, value]);
+
   useEffect(() => {
-    setOptions((prev) => {
-      const merged = [...(initialOptions || []), ...prev];
-      const deduped = [];
-      const seen = new Set();
-      for (const item of merged) {
-        const key = String(item?.id || "");
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        deduped.push(item);
-      }
-      return deduped;
-    });
-  }, [initialOptions]);
+    setOptions((prev) => mergeClientOptions(initialOptions || [], prev, selected ? [selected] : []));
+  }, [initialOptions, selected]);
 
   useEffect(() => {
     let active = true;
@@ -39,10 +50,14 @@ export default function ClientLookupField({
       setLoading(true);
       try {
         const rows = await listManagerClients({ q: inputValue || undefined, limit: 20 });
-        if (active) setOptions(rows || []);
+        if (active) {
+          setOptions((prev) =>
+            mergeClientOptions(rows || [], selected ? [selected] : [], prev, initialOptions || [])
+          );
+        }
       } catch {
         if (active && !inputValue) {
-          setOptions(initialOptions || []);
+          setOptions(mergeClientOptions(initialOptions || [], selected ? [selected] : []));
         }
       } finally {
         if (active) setLoading(false);
@@ -53,12 +68,7 @@ export default function ClientLookupField({
       active = false;
       clearTimeout(timer);
     };
-  }, [disabled, initialOptions, inputValue]);
-
-  const selected = useMemo(
-    () => options.find((item) => String(item?.id) === String(value || "")) || null,
-    [options, value]
-  );
+  }, [disabled, initialOptions, inputValue, selected]);
 
   return (
     <Autocomplete
@@ -68,7 +78,10 @@ export default function ClientLookupField({
       value={selected}
       loading={loading}
       inputValue={inputValue}
-      onInputChange={(_event, next) => setInputValue(next)}
+      onInputChange={(_event, next, reason) => {
+        if (reason === "reset") return;
+        setInputValue(next);
+      }}
       onChange={(_event, next) => onChange?.(next?.id || "", next || null)}
       getOptionLabel={(option) => getClientDisplayName(option, fallbackLabel)}
       isOptionEqualToValue={(option, current) => String(option?.id) === String(current?.id)}
