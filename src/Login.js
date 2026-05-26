@@ -189,6 +189,14 @@ const Login = ({ setToken, slugOverride = "" }) => {
     return "";
   };
 
+  const upgradeTargetForPlan = (planKey) => {
+    const upgradeQs = new URLSearchParams();
+    if (planKey) upgradeQs.set("plan", planKey);
+    if (intervalParam) upgradeQs.set("interval", intervalParam === "yearly" ? "annual" : intervalParam);
+    if (returnToParam) upgradeQs.set("returnTo", returnToParam);
+    return `/upgrade?${upgradeQs.toString()}`;
+  };
+
   // Resolve and persist company id so builder requests include X-Company-Id
   const resolveAndStoreCompanyId = async (token, hintedCompanyId) => {
     // 1) If backend returned a company id, use it
@@ -280,7 +288,8 @@ const Login = ({ setToken, slugOverride = "" }) => {
           (site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
         if (planParam) {
           localStorage.setItem("pending_plan_key", planParam);
-          navigate(`/pricing?plan=${encodeURIComponent(planParam)}`);
+          if (intervalParam) localStorage.setItem("pending_plan_interval", intervalParam === "yearly" ? "annual" : intervalParam);
+          navigate(upgradeTargetForPlan(planParam));
         } else {
           navigate(next);
         }
@@ -349,7 +358,8 @@ const Login = ({ setToken, slugOverride = "" }) => {
 
       if (planParam) {
         localStorage.setItem("pending_plan_key", planParam);
-        navigate(`/pricing?plan=${encodeURIComponent(planParam)}`);
+        if (intervalParam) localStorage.setItem("pending_plan_interval", intervalParam === "yearly" ? "annual" : intervalParam);
+        navigate(upgradeTargetForPlan(planParam));
         return;
       }
 

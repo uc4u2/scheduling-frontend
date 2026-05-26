@@ -7,6 +7,7 @@ import { isMobileComplianceMode } from "../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../components/mobile/MobileWebOnlyNotice";
 
 const VALID_PLANS = new Set(["starter", "pro", "business"]);
+const VALID_INTERVALS = new Set(["monthly", "annual", "yearly"]);
 
 const fallbackByRole = (role) => {
   if (role === "manager") return "/manager/dashboard";
@@ -21,7 +22,8 @@ const UpgradeBridgePage = () => {
 
   const query = useMemo(() => new URLSearchParams(location.search || ""), [location.search]);
   const plan = String(query.get("plan") || "").toLowerCase();
-  const interval = String(query.get("interval") || "").toLowerCase();
+  const rawInterval = String(query.get("interval") || "").toLowerCase();
+  const interval = rawInterval === "yearly" ? "annual" : rawInterval || "monthly";
   const returnTo = String(query.get("returnTo") || "").trim();
   const mobileComplianceMode = isMobileComplianceMode();
 
@@ -65,9 +67,17 @@ const UpgradeBridgePage = () => {
         });
         return;
       }
+      if (!VALID_INTERVALS.has(rawInterval || "monthly")) {
+        if (!active) return;
+        setState({
+          loading: false,
+          error: "Invalid billing interval. Please return to the pricing page and try again.",
+        });
+        return;
+      }
 
       try {
-        const res = await api.post("/billing/checkout", { plan_key: plan });
+        const res = await api.post("/billing/checkout", { plan_key: plan, interval });
         const url = res?.data?.url;
         if (!url) throw new Error("Checkout URL missing.");
         window.location.href = url;
@@ -89,7 +99,7 @@ const UpgradeBridgePage = () => {
     return () => {
       active = false;
     };
-  }, [interval, mobileComplianceMode, plan, returnTo]);
+  }, [interval, mobileComplianceMode, plan, rawInterval, returnTo]);
 
   if (mobileComplianceMode) {
     return (

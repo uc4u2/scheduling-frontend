@@ -64,6 +64,8 @@ const Register = ({ slugOverride = "" }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const siteParam = (searchParams.get("site") || "").trim();
+  const intervalParam = (searchParams.get("interval") || "").toLowerCase();
+  const returnToParam = (searchParams.get("returnTo") || "").trim();
   const persistedSite =
     typeof localStorage !== "undefined" ? (localStorage.getItem("site") || "").trim() : "";
   const clientSite = useMemo(
@@ -125,12 +127,12 @@ const Register = ({ slugOverride = "" }) => {
       if (targetRole === "client" && clientSite) {
         localStorage.setItem("site", clientSite);
       }
-      const nextPath =
-        targetRole === "client"
-          ? clientSite
-            ? `/login?site=${encodeURIComponent(clientSite)}`
-            : "/login"
-          : "/login";
+      const loginParams = new URLSearchParams();
+      if (targetRole === "client" && clientSite) loginParams.set("site", clientSite);
+      if (selectedPlan) loginParams.set("plan", selectedPlan);
+      if (intervalParam) loginParams.set("interval", intervalParam === "yearly" ? "annual" : intervalParam);
+      if (returnToParam) loginParams.set("returnTo", returnToParam);
+      const nextPath = loginParams.toString() ? `/login?${loginParams.toString()}` : "/login";
       setTimeout(() => navigate(nextPath), 1500);
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed!");
@@ -175,9 +177,10 @@ const Register = ({ slugOverride = "" }) => {
       setSelectedPlan(planParam);
       try {
         localStorage.setItem("pending_plan_key", planParam);
+        if (intervalParam) localStorage.setItem("pending_plan_interval", intervalParam === "yearly" ? "annual" : intervalParam);
       } catch {}
     }
-  }, [searchParams]);
+  }, [intervalParam, searchParams]);
 
   if (authChecking) {
     return (
@@ -227,7 +230,7 @@ const Register = ({ slugOverride = "" }) => {
           )}
           {selectedPlan && (
             <Alert severity="info" sx={{ mb: 2 }}>
-              Plan selected: {selectedPlan.toUpperCase()} — you’ll get a 14-day trial after signup.
+              Plan selected: {selectedPlan.toUpperCase()} {intervalParam ? `(${intervalParam === "yearly" ? "ANNUAL" : intervalParam.toUpperCase()})` : ""} — you’ll get a 14-day trial after signup.
             </Alert>
           )}
 
