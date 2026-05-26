@@ -132,7 +132,7 @@ const DEFAULT_ASSURANCES = [
     key: "enterpriseOnboarding",
     title: "Enterprise onboarding",
     description:
-      "Guided setup for multi-location brands (departments as locations) with tax and payroll mapping.",
+      "Guided setup for multi-location brands using departments as the current operational location unit.",
   },
   {
     key: "roleAccess",
@@ -1129,7 +1129,7 @@ const PricingPage = () => {
                 <TableRow>
                   <TableCell>
                     {comparisonRows.scale?.multiLocation ||
-                      "Multi-location support (use departments as locations)"}
+                      "Multi-location support (operational locations managed through departments)"}
                   </TableCell>
                   <TableCell>{comparisonRows.scale?.starterLocations}</TableCell>
                   <TableCell>{comparisonRows.scale?.proLocations}</TableCell>

@@ -5983,7 +5983,7 @@
                   "type": "heading",
                   "text": "Capacity"
                 },
-                "10 staff seats and up to 5 locations (departments) included.",
+                "10 staff seats and up to 5 locations/departments included.",
                 "Add seats for $9/mo each.",
                 "Free branded website included when using Payroll + Scheduling."
               ],
@@ -6171,7 +6171,7 @@
             "businessSeats": "10",
             "additionalSeats": "Additional staff seats",
             "seatPrice": "$9 / seat",
-            "multiLocation": "Multi-location support (use departments as locations)",
+            "multiLocation": "Multi-location support (operational locations managed through departments)",
             "starterLocations": "1",
             "proLocations": "1",
             "businessLocations": "Up to 2",

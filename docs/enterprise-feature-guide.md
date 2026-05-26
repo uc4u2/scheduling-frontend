@@ -187,7 +187,7 @@ Use this pricing when answering chatbot questions:
 
 - Business — $119.99/mo
   - Everything in Pro
-  - 10 staff seats, 2 locations
+  - 10 staff seats, up to 5 locations/departments
   - Compliance docs (W-2, T4, ROE) with PDF/XML export
   - Advanced payroll exports/audits/tax reports
   - Team scheduling controls (bulk close/keep windows)

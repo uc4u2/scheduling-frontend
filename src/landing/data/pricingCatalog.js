@@ -98,7 +98,7 @@ export const SUBSCRIPTION_PLANS = [
       "Bulk scheduling controls (close / keep windows).",
       "Operational review flows with reduced reconciliation gaps.",
       { type: "heading", text: "Capacity" },
-      "10 staff seats and up to 5 locations (departments) included.",
+      "10 staff seats and up to 5 locations/departments included.",
       "Add seats for $9/mo each.",
       "Free branded website included when using Payroll + Scheduling.",
     ],
