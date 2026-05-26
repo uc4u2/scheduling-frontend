@@ -302,6 +302,17 @@ export const deleteExpenseReceipt = (expenseId, receiptId) =>
 export const exportAccountantCsv = (payload) =>
   api.post("/finance/reports/accountant-export", payload, { responseType: "blob" });
 
+export const listFinanceClients = (params = {}) =>
+  unwrap(api.get("/finance/clients", { params }));
+export const getFinanceClient = (id) =>
+  unwrap(api.get(`/finance/clients/${id}`));
+export const createFinanceClient = (payload) =>
+  unwrap(api.post("/finance/clients", payload));
+export const updateFinanceClient = (id, payload) =>
+  unwrap(api.patch(`/finance/clients/${id}`, payload));
+export const archiveFinanceClient = (id) =>
+  unwrap(api.delete(`/finance/clients/${id}`));
+
 export const listManagerClients = async (params = {}) => {
   const res = await api.get("/booking/clients", { params });
   return pickArray(res.data, ["items", "data"]);

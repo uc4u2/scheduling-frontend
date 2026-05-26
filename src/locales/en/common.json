@@ -1657,6 +1657,7 @@
       },
       "tabs": {
         "overview": "Overview",
+        "clients": "Clients",
         "quotes": "Quotes",
         "estimates": "Estimates",
         "workOrders": "Work Orders",

@@ -6,6 +6,7 @@ import AddTaskIcon from "@mui/icons-material/AddTask";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import RequestQuoteOutlinedIcon from "@mui/icons-material/RequestQuoteOutlined";
 import AssignmentIcon from "@mui/icons-material/Assignment";
+import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
 import PaidIcon from "@mui/icons-material/Paid";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
@@ -19,6 +20,7 @@ import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import FinanceOverviewPage from "./FinanceOverviewPage";
+import FinanceClientsPage from "./FinanceClientsPage";
 import QuoteRequestsPage from "./QuoteRequestsPage";
 import EstimatesPage from "./EstimatesPage";
 import FinanceInvoicesPage from "./FinanceInvoicesPage";
@@ -44,6 +46,7 @@ const GROUP_ALIAS_TO_TAB = {
 
 const TAB_ORDER = [
   { key: "finance-overview", labelKey: "manager.finance.tabs.overview", labelFallback: "Overview", icon: <DashboardIcon fontSize="small" /> },
+  { key: "finance-clients", labelKey: "manager.finance.tabs.clients", labelFallback: "Clients", icon: <PeopleOutlineIcon fontSize="small" /> },
   { key: "finance-quotes", labelKey: "manager.finance.tabs.quotes", labelFallback: "Quotes", icon: <ReceiptLongIcon fontSize="small" /> },
   { key: "finance-estimates", labelKey: "manager.finance.tabs.estimates", labelFallback: "Estimates", icon: <AddTaskIcon fontSize="small" /> },
   { key: "finance-work-orders", labelKey: "manager.finance.tabs.workOrders", labelFallback: "Work Orders", icon: <AssignmentIcon fontSize="small" /> },
@@ -118,6 +121,8 @@ export default function BusinessFinanceShell({ viewKey = "finance-overview", onN
     switch (activeTab) {
       case "finance-quotes":
         return <QuoteRequestsPage createNonce={quickAction?.type === "quote" ? quickAction.nonce : 0} onNavigate={handleNavigate} />;
+      case "finance-clients":
+        return <FinanceClientsPage />;
       case "finance-estimates":
         return <EstimatesPage createNonce={quickAction?.type === "estimate" ? quickAction.nonce : 0} onNavigate={handleNavigate} />;
       case "finance-invoices":

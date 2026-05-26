@@ -205,6 +205,7 @@ const COPY = {
       {
         title: "Daily Operations",
         items: [
+          { label: "Clients", text: "Manage the official customer records used across quotes, estimates, invoices, and work orders." },
           { label: "Quotes", text: "Capture custom-price customer requests." },
           { label: "Estimates", text: "Prepare and share customer pricing." },
           { label: "Work Orders", text: "Plan and manage the job once the estimate is accepted." },
@@ -238,6 +239,7 @@ const COPY = {
         summary: "Use this when the customer needs a custom price before work can be scheduled.",
         steps: [
           "Customer asks for a price for a kitchen leak repair.",
+          "Manager opens Clients only if the official customer record still needs to be created or cleaned up.",
           "Manager creates a Quote Request in Quotes.",
           "Manager selects an existing client or creates a new client record inline.",
           "Manager creates the Estimate and checks the public estimate page.",

@@ -1619,6 +1619,7 @@
       },
       "tabs": {
         "overview": "نمای کلی",
+        "clients": "مشتری‌ها",
         "quotes": "نقل‌قول‌ها",
         "estimates": "برآوردها",
         "workOrders": "دستور کارها",

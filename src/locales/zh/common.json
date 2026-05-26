@@ -1631,6 +1631,7 @@
       },
       "tabs": {
         "overview": "概览",
+        "clients": "客户",
         "quotes": "报价",
         "estimates": "估算",
         "workOrders": "工单",

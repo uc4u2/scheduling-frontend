@@ -239,6 +239,7 @@ const menuConfig = [
     tooltipKey: "manager.finance.groupTooltip",
     children: [
       { labelKey: "manager.finance.tabs.overview", key: "finance-overview", icon: <Dashboard /> },
+      { labelKey: "manager.finance.tabs.clients", key: "finance-clients", icon: <People /> },
       { labelKey: "manager.finance.tabs.quotes", key: "finance-quotes", icon: <ReceiptLong /> },
       { labelKey: "manager.finance.tabs.estimates", key: "finance-estimates", icon: <AssignmentTurnedIn /> },
       { labelKey: "manager.finance.tabs.workOrders", key: "finance-work-orders", icon: <Assignment /> },
@@ -1759,6 +1760,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     // Allow direct Business Finance section routing inside the grouped shell.
     [
       "finance-overview",
+      "finance-clients",
       "finance-group-daily",
       "finance-group-field",
       "finance-group-reports",
@@ -3486,6 +3488,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         return <ManagerInvoicesPage />;
 
       case "finance-overview":
+      case "finance-clients":
       case "finance-group-daily":
       case "finance-group-field":
       case "finance-group-reports":

@@ -1629,6 +1629,7 @@
       },
       "tabs": {
         "overview": "Обзор",
+        "clients": "Клиенты",
         "quotes": "Запросы",
         "estimates": "Сметы",
         "workOrders": "Наряды",
