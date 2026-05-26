@@ -73,6 +73,8 @@ import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
+import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
+import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 
 const downloadBlob = (response, fallbackName) => {
@@ -249,6 +251,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [templateEditor, setTemplateEditor] = useState(null);
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateArchiveId, setTemplateArchiveId] = useState(null);
+  const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1220,6 +1223,42 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   {tEstimate("templateShortcut.manage", "Manage templates")}
                 </Button>
               </Stack>
+            </Stack>
+          </Paper>
+
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              borderRadius: 2.5,
+              borderColor: (theme) => theme.palette.primary.main,
+              background: (theme) => `linear-gradient(180deg, ${theme.palette.action.hover}, ${theme.palette.background.paper})`,
+            }}
+          >
+            <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ lg: "center" }} justifyContent="space-between">
+              <Stack spacing={0.4} sx={{ minWidth: 0 }}>
+                <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 800, letterSpacing: "0.12em" }}>
+                  {tEstimate("tutorial.badge", "Quick tutorial")}
+                </Typography>
+                <Typography variant="subtitle1" fontWeight={800}>
+                  {featuredTutorial.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
+                  {featuredTutorial.purpose}
+                </Typography>
+              </Stack>
+              <Box sx={{ width: { xs: "100%", lg: "auto" }, minWidth: { lg: 300 } }}>
+                <TutorialHelpCard
+                  tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
+                  title={tEstimate("tutorial.badge", "Quick tutorial")}
+                  body={featuredTutorial.purpose}
+                  watchLabel={tEstimate("tutorial.watch", "Watch tutorial")}
+                  moreLabel={tEstimate("tutorial.more", "More walkthroughs")}
+                  youtubeLabel={tEstimate("tutorial.watchYoutube", "Watch on YouTube")}
+                  closeLabel={tEstimate("common.close", "Close")}
+                  compact
+                />
+              </Box>
             </Stack>
           </Paper>
         </Stack>

@@ -49,6 +49,8 @@ import {
 import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
+import TutorialHelpCard from "../../../components/tutorials/TutorialHelpCard";
+import { SERVICE_MANAGEMENT_TUTORIAL_GROUP } from "../../../tutorials/appTutorialCatalog";
 
 const emptyForm = {
   name: "",
@@ -1081,6 +1083,17 @@ const ServiceManagement = ({ token }) => {
         <DialogTitle>{t("manager.service.help.title", "Service setup help")}</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
+            <TutorialHelpCard
+              tutorialGroup={SERVICE_MANAGEMENT_TUTORIAL_GROUP}
+              title="Quick tutorial"
+              body="Watch the service-setup walkthrough while you define booking type, pricing, and client-facing service details."
+              watchLabel="Watch tutorial"
+              moreLabel="More walkthroughs"
+              youtubeLabel="Watch on YouTube"
+              closeLabel={t("manager.service.help.close", "Close")}
+              compact
+            />
+
             <Typography variant="body2" color="text.secondary">
               {t(
                 "manager.service.help.subtitle",

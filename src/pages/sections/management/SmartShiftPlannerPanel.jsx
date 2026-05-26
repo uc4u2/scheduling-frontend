@@ -34,6 +34,8 @@ import { api, smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
 import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 import ShiftAdminAuditTimeline from "../ShiftAdminAuditTimeline";
+import TutorialHelpCard from "../../../components/tutorials/TutorialHelpCard";
+import { SHIFT_MANAGEMENT_TUTORIAL_GROUP } from "../../../tutorials/appTutorialCatalog";
 
 const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
 const DEFAULT_VISIBLE_SUGGESTIONS = 50;
@@ -2238,6 +2240,17 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           <Typography variant="body2" color="text.secondary">
             End-to-end guide for planning shifts quickly and safely.
           </Typography>
+
+          <TutorialHelpCard
+            tutorialGroup={SHIFT_MANAGEMENT_TUTORIAL_GROUP}
+            title="Quick tutorial"
+            body="Watch the Smart Shift walkthrough while you set coverage, generate suggestions, and apply shifts."
+            watchLabel="Watch tutorial"
+            moreLabel="More walkthroughs"
+            youtubeLabel="Watch on YouTube"
+            closeLabel="Close"
+            compact
+          />
 
           <Divider />
           <Box>

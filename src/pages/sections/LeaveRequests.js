@@ -72,6 +72,8 @@ import SettingsLeaveSettings from "./SettingsLeaveSettings";
 import SettingsLeaveInsights from "./SettingsLeaveInsights";
 import SettingsLeaveReports from "./SettingsLeaveReports";
 import LeaveAdminAuditTimeline from "./LeaveAdminAuditTimeline";
+import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
+import { LEAVE_MANAGEMENT_TUTORIAL_GROUP } from "../../tutorials/appTutorialCatalog";
 
 const token = () => localStorage.getItem("token");
 
@@ -455,6 +457,17 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
       <Alert severity="info" variant="outlined">
         Payroll formulas are not changed here. Managers confirm leave records and HR balance ledger entries; payroll still uses the existing payroll workflow.
       </Alert>
+
+      <TutorialHelpCard
+        tutorialGroup={LEAVE_MANAGEMENT_TUTORIAL_GROUP}
+        title="Quick tutorial"
+        body="Watch the leave-review walkthrough while you approve requests, confirm hours, and keep balances aligned."
+        watchLabel="Watch tutorial"
+        moreLabel="More walkthroughs"
+        youtubeLabel="Watch on YouTube"
+        closeLabel="Close leave help"
+        compact
+      />
 
       <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>

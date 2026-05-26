@@ -50,6 +50,8 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import PayrollScenarios from "./PayrollScenarios";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { extractApiErrorMessage, parseApiErrorPayload } from "../../utils/apiError";
+import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
+import { PAYROLL_TUTORIAL_GROUP } from "../../tutorials/appTutorialCatalog";
 
 const columnsToExport = [
   "employee_name",
@@ -1099,6 +1101,19 @@ return (
       <Tab value="scenarios" label="Scenarios" />
     </Tabs>
     <Divider sx={{ mb: 2 }} />
+
+    <TutorialHelpCard
+      tutorialGroup={PAYROLL_TUTORIAL_GROUP}
+      title="Quick tutorial"
+      body="Watch the payroll walkthrough while you review coverage, build a preview, and prepare export-ready handoff files."
+      watchLabel="Watch tutorial"
+      moreLabel="More walkthroughs"
+      youtubeLabel="Watch on YouTube"
+      closeLabel="Close Guide"
+      compact
+    />
+
+    <Divider sx={{ my: 2 }} />
 
     {guideTab === "overview" && (
       <>

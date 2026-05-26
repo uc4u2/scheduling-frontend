@@ -17,6 +17,8 @@ import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import GroupWorkOutlinedIcon from "@mui/icons-material/GroupWorkOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
+import TutorialHelpCard from "../../../../components/tutorials/TutorialHelpCard";
+import { EMPLOYEE_ACCESS_TUTORIAL_GROUP } from "../../../../tutorials/appTutorialCatalog";
 
 const normalizeItems = (items) => (Array.isArray(items) ? items : []);
 
@@ -127,6 +129,19 @@ export default function EmployeeManagementHelpDrawer({ open, onClose, anchor, wi
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {COPY.subtitle}
         </Typography>
+
+        <TutorialHelpCard
+          tutorialGroup={EMPLOYEE_ACCESS_TUTORIAL_GROUP}
+          title="Quick tutorial"
+          body="Watch the employee-access walkthrough while you decide which toggles to enable for each team member."
+          watchLabel="Watch tutorial"
+          moreLabel="More walkthroughs"
+          youtubeLabel="Watch on YouTube"
+          closeLabel={COPY.actions.close}
+          compact
+        />
+
+        <Divider sx={{ my: 2 }} />
 
         <Section
           title={COPY.sections.quickSummary.title}

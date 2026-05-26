@@ -25,6 +25,8 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FolderIcon from "@mui/icons-material/Folder";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import WebsiteAiAssistant from "../../../components/website/WebsiteAiAssistant";
+import TutorialHelpCard from "../../../components/tutorials/TutorialHelpCard";
+import { WEBSITE_BUILDER_TUTORIAL_GROUP } from "../../../tutorials/appTutorialCatalog";
 
 const STEP_CONFIG = [
   { key: "pickPage", Icon: GridViewIcon },
@@ -81,6 +83,19 @@ export default function WebsiteBuilderHelpDrawer({
           <Typography variant="h5">{t("titles.websiteBuilderGuide")}</Typography>
         </Stack>
         <Typography color="text.secondary" sx={{ mb: 2 }}>{t("help.websiteBuilder.description")}</Typography>
+
+        <TutorialHelpCard
+          tutorialGroup={WEBSITE_BUILDER_TUTORIAL_GROUP}
+          title="Quick tutorial"
+          body="Watch the website-builder walkthrough while you edit pages, styles, and publish settings."
+          watchLabel="Watch tutorial"
+          moreLabel="More walkthroughs"
+          youtubeLabel="Watch on YouTube"
+          closeLabel={t("buttons.closeGuide")}
+          compact
+        />
+
+        <Divider sx={{ my: 2 }} />
 
         {(onJumpToPageStyle || onJumpToNavSettings || onJumpToAssets) && (
           <>

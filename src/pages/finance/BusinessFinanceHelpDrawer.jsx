@@ -23,6 +23,8 @@ import { alpha, useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useTranslation } from "react-i18next";
+import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
+import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 
 const COPY = {
   en: {
@@ -31,6 +33,10 @@ const COPY = {
       "A practical guide to quote requests, estimates, invoices, work orders, field reports, reviews, inventory, and reports.",
     closeAria: "Close Business Finance help",
     tabs: ["Workflow", "Real-Life Scenarios"],
+    tutorialTitle: "Quick tutorial",
+    tutorialBody: "Watch the estimate-to-invoice-to-job walkthrough directly from Business Finance when you need a fast refresher.",
+    tutorialWatch: "Watch tutorial",
+    tutorialMore: "More walkthroughs",
     introTitle: "What is Business Finance?",
     introBody: [
       "Business Finance helps you manage custom-price job requests, customer pricing, work orders, materials, employee field reports, expenses, and accountant-ready reports in one place.",
@@ -798,6 +804,21 @@ export default function BusinessFinanceHelpDrawer({ open, onClose }) {
         <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto" }}>
           {tab === 0 ? (
             <>
+              <section>
+                <TutorialHelpCard
+                  tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
+                  title={copy.tutorialTitle}
+                  body={copy.tutorialBody}
+                  watchLabel={copy.tutorialWatch}
+                  moreLabel={copy.tutorialMore}
+                  youtubeLabel="Watch on YouTube"
+                  closeLabel={copy.closeButton}
+                  compact
+                />
+              </section>
+
+              <Divider />
+
               <section>
                 <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>{copy.introTitle}</Typography>
                 <Stack spacing={1}>
