@@ -719,6 +719,24 @@ export const payrollSetupApi = {
     api.get("/automation/payroll/check/status", config).then((r) => r.data),
   getCheckConfig: (config = {}) =>
     api.get("/automation/payroll/check/config", config).then((r) => r.data),
+  getCheckLaunchReadiness: (config = {}) =>
+    api.get("/automation/payroll/check/launch-readiness", config).then((r) => r.data),
+  getCheckOnboardingOverview: (config = {}) =>
+    api.get("/automation/payroll/check/onboarding-overview", config).then((r) => r.data),
+  startCheckEmployerOnboarding: (config = {}) =>
+    api.post("/automation/payroll/check/onboarding/employer/start", {}, config).then((r) => r.data),
+  sendCheckEmployeeOnboardingInvite: (employeeId, payload = {}, config = {}) =>
+    api.post(`/automation/payroll/check/onboarding/employees/${employeeId}/send`, payload, config).then((r) => r.data),
+  resendCheckEmployeeOnboardingInvite: (employeeId, payload = {}, config = {}) =>
+    api.post(`/automation/payroll/check/onboarding/employees/${employeeId}/resend`, payload, config).then((r) => r.data),
+  refreshCheckEmployeeOnboardingStatus: (employeeId, config = {}) =>
+    api.post(`/automation/payroll/check/onboarding/employees/${employeeId}/refresh-status`, {}, config).then((r) => r.data),
+  listCheckOnboardingAuditEvents: (params = {}, config = {}) =>
+    api.get("/automation/payroll/check/onboarding/audit-events", { ...config, params }).then((r) => r.data),
+  listCheckComponentSessions: (config = {}) =>
+    api.get("/automation/payroll/check/component-sessions", config).then((r) => r.data),
+  createCheckComponentSessionPlaceholder: (payload, config = {}) =>
+    api.post("/automation/payroll/check/component-sessions/placeholder", payload, config).then((r) => r.data),
   getCheckCompanyPayload: (config = {}) =>
     api.get("/automation/payroll/check/company-payload", config).then((r) => r.data),
   getCheckWorkplacePayloads: (config = {}) =>
@@ -737,6 +755,10 @@ export const payrollSetupApi = {
     api
       .put(`/api/recruiters/${employeeId}`, { primary_work_location_id: primaryWorkLocationId }, config)
       .then((r) => r.data),
+  getEmployeeCheckOnboarding: (config = {}) =>
+    api.get("/employee/payroll/onboarding", config).then((r) => r.data),
+  startEmployeeCheckOnboarding: (config = {}) =>
+    api.post("/employee/payroll/onboarding/start", {}, config).then((r) => r.data),
 };
 
 /* --------------------------- Google Calendar Integration --------------------------- */

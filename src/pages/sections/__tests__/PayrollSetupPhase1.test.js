@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useMediaQuery } from "@mui/material";
 
 jest.mock("../../../utils/api", () => {
   const api = {
@@ -24,6 +25,15 @@ jest.mock("../../../utils/api", () => {
       updatePayrollSetupProfile: jest.fn(),
       getCheckReadiness: jest.fn(),
       getCheckStatus: jest.fn(),
+      getCheckLaunchReadiness: jest.fn(),
+      getCheckOnboardingOverview: jest.fn(),
+      startCheckEmployerOnboarding: jest.fn(),
+      sendCheckEmployeeOnboardingInvite: jest.fn(),
+      resendCheckEmployeeOnboardingInvite: jest.fn(),
+      refreshCheckEmployeeOnboardingStatus: jest.fn(),
+      listCheckOnboardingAuditEvents: jest.fn(),
+      listCheckComponentSessions: jest.fn(),
+      createCheckComponentSessionPlaceholder: jest.fn(),
       getCheckConfig: jest.fn(),
       getCheckCompanyPayload: jest.fn(),
       getCheckWorkplacePayloads: jest.fn(),
@@ -33,6 +43,8 @@ jest.mock("../../../utils/api", () => {
       syncCheckSandboxEmployees: jest.fn(),
       listEmployeeWorkLocations: jest.fn(),
       updateEmployeePrimaryWorkLocation: jest.fn(),
+      getEmployeeCheckOnboarding: jest.fn(),
+      startEmployeeCheckOnboarding: jest.fn(),
     },
     payrollProviderSyncApi: {
       setupStatus: jest.fn(),
@@ -57,6 +69,8 @@ jest.mock(
   () => ({
     MemoryRouter: ({ children }) => <div>{children}</div>,
     useNavigate: () => jest.fn(),
+    useLocation: () => ({ pathname: "/employee/home" }),
+    Navigate: ({ to }) => <div>Navigate {to}</div>,
   }),
   { virtual: true }
 );
@@ -91,6 +105,13 @@ jest.mock("../../../components/TimezoneSelect", () => ({ value, onChange }) => (
     onChange={(event) => onChange?.(event.target.value)}
   />
 ));
+jest.mock("@mui/material", () => {
+  const actual = jest.requireActual("@mui/material");
+  return {
+    ...actual,
+    useMediaQuery: jest.fn(() => true),
+  };
+});
 jest.mock("../../../utils/currency", () => ({
   getCurrencyOptions: () => [{ code: "USD", label: "USD" }],
   resolveCurrencyForCountry: () => "USD",
@@ -111,6 +132,32 @@ const CompanyProfile = require("../CompanyProfile").default;
 const PayrollProviderSync = require("../PayrollProviderSync").default;
 const EmployeeProfileForm = require("../../Payroll/EmployeeProfileForm").default;
 const AddRecruiter = require("../../../AddRecruiter").default;
+const RecruiterHomePage = require("../../recruiter/RecruiterHomePage").default;
+
+jest.mock("../../../components/recruiter/RecruiterTabs", () => () => <div>Recruiter tabs</div>);
+jest.mock("../../../components/employee/MobileEmployeeHome", () => {
+  const Component = () => <div>Employee home shortcuts</div>;
+  return {
+    __esModule: true,
+    default: Component,
+    employeeShortcutIconMap: {
+      "my-time": <span>time</span>,
+      calendar: <span>calendar</span>,
+      availability: <span>availability</span>,
+      "my-shift": <span>shift</span>,
+      "time-off": <span>timeoff</span>,
+      "shift-swap": <span>swap</span>,
+      "work-orders": <span>workorders</span>,
+      "field-reports": <span>fieldreports</span>,
+      training: <span>training</span>,
+      communications: <span>communications</span>,
+    },
+  };
+});
+jest.mock("../../../components/recruiter/useRecruiterTabsAccess", () => () => ({
+  allowHrAccess: false,
+  isLoading: false,
+}));
 
 const renderWithRouter = (node) => render(<MemoryRouter>{node}</MemoryRouter>);
 
@@ -138,6 +185,18 @@ beforeEach(() => {
     }
     if (url === "/api/website/forms") {
       return Promise.resolve({ data: [{ id: 1, key: "contact", notify_emails: "" }] });
+    }
+    if (url === "/auth/me") {
+      return Promise.resolve({ data: { id: 55, email: "taylor@example.com" } });
+    }
+    if (url === "/profile") {
+      return Promise.resolve({ data: { first_name: "Taylor", last_name: "North" } });
+    }
+    if (url === "/recruiter/profile") {
+      return Promise.resolve({ data: { recruiter: { first_name: "Taylor", last_name: "North" } } });
+    }
+    if (url === "/api/recruiters/55") {
+      return Promise.resolve({ data: { id: 55, first_name: "Taylor", last_name: "North" } });
     }
     return Promise.resolve({ data: [] });
   });
@@ -208,7 +267,92 @@ beforeEach(() => {
     environment: "sandbox",
     status: "not_configured",
     sandbox_sync_enabled: false,
+    check_onboard_enabled: false,
   });
+  mockPayrollSetupApi.getCheckLaunchReadiness.mockResolvedValue({
+    ready_for_sandbox_payload_preview: true,
+    ready_for_sandbox_company_sync: false,
+    ready_for_sandbox_workplace_sync: false,
+    ready_for_sandbox_employee_sync: false,
+    ready_for_real_onboarding_generation: false,
+    ready_for_payroll_preview: false,
+    company_checklist: [
+      { key: "company_profile_exists", value: true, ok: true, severity: "info" },
+      { key: "company_fein_present", value: false, ok: false, severity: "error" },
+    ],
+    workplace_checklist: [
+      { key: "active_work_locations_count", value: 1, ok: true, severity: "info" },
+    ],
+    employee_checklist: [
+      { key: "eligible_employee_count", value: 1, ok: true, severity: "info" },
+    ],
+    onboarding_checklist: [
+      { key: "check_onboard_enabled", value: false, ok: false, severity: "warning" },
+    ],
+    blockers: [{ code: "MISSING_COMPANY_FEIN", message: "Add FEIN/EIN", severity: "error" }],
+    warnings: ["Configure Check sandbox API key before sandbox sync."],
+    next_steps: ["Add FEIN/EIN in Company Profile.", "Preview company payload."],
+    counts: {
+      active_work_locations_count: 1,
+      eligible_employee_count: 1,
+      employees_missing_primary_work_location_count: 0,
+      mapped_workplaces_count: 0,
+      mapped_employee_count: 0,
+      recent_audit_events_count: 0,
+    },
+    employee_rows: [],
+    check_configured: false,
+    check_connected: false,
+    check_mode: "not_connected",
+    environment: "sandbox",
+  });
+  mockPayrollSetupApi.getCheckOnboardingOverview.mockResolvedValue({
+    check_configured: false,
+    check_connected: false,
+    check_mode: "not_connected",
+    environment: "sandbox",
+    company_mapping_status: "not_ready",
+    workplace_mapping_status: "not_mapped",
+    employee_mapping_status: "not_mapped",
+    company_onboard_status: "not_connected",
+    employee_onboard_summary: {
+      total: 1,
+      mapped: 0,
+      completed: 0,
+      needs_attention: 0,
+      blocking: 0,
+      items: [
+        {
+          employee_id: 55,
+          employee_name: "Taylor North",
+          primary_work_location_name: "HQ",
+          check_employee_id: null,
+          onboard_status: "not_started",
+          blocking_steps: [],
+        },
+      ],
+    },
+    requirements_summary: { total: 0, blocking: 0, items: [] },
+    component_sessions_summary: { total: 0, latest: [] },
+    next_steps: ["Sync the company to Check sandbox or production before employer onboarding."],
+    warnings: [],
+    blockers: [],
+  });
+  mockPayrollSetupApi.listCheckComponentSessions.mockResolvedValue({ items: [] });
+  mockPayrollSetupApi.createCheckComponentSessionPlaceholder.mockResolvedValue({
+    item: {
+      id: 1,
+      component_type: "employee_onboard",
+      entity_type: "employee",
+      local_entity_id: 55,
+      status: "pending_config",
+    },
+  });
+  mockPayrollSetupApi.startCheckEmployerOnboarding.mockResolvedValue({});
+  mockPayrollSetupApi.sendCheckEmployeeOnboardingInvite.mockResolvedValue({});
+  mockPayrollSetupApi.resendCheckEmployeeOnboardingInvite.mockResolvedValue({});
+  mockPayrollSetupApi.refreshCheckEmployeeOnboardingStatus.mockResolvedValue({});
+  mockPayrollSetupApi.listCheckOnboardingAuditEvents.mockResolvedValue({ items: [] });
   mockPayrollSetupApi.getCheckCompanyPayload.mockResolvedValue({ payload: { name: "Schedulaa" }, missing_fields: [], warnings: [] });
   mockPayrollSetupApi.getCheckWorkplacePayloads.mockResolvedValue({ items: [] });
   mockPayrollSetupApi.getCheckEmployeePayloads.mockResolvedValue({ items: [] });
@@ -224,6 +368,24 @@ beforeEach(() => {
       },
     ],
   });
+  mockPayrollSetupApi.getEmployeeCheckOnboarding.mockResolvedValue({
+    payroll_intent: "check_embedded_us",
+    check_enabled: false,
+    check_configured: false,
+    check_employee_mapped: false,
+    should_show_card: true,
+    employee_id: 55,
+    employee_name: "Taylor North",
+    primary_payroll_location: { id: 11, name: "HQ" },
+    onboard_status: "not_started",
+    blocking_steps: [],
+    remaining_steps: [],
+    last_session_status: null,
+    can_start_onboarding: false,
+    disabled_reason: "Payroll onboarding will be available once your employer connects Check payroll.",
+    message: "Sensitive payroll setup, including tax forms and bank details, will be completed through Check's secure payroll onboarding flow later.",
+  });
+  mockPayrollSetupApi.startEmployeeCheckOnboarding.mockResolvedValue({});
   mockPayrollProviderSyncApi.setupStatus.mockResolvedValue({
     connection_status: "not_connected",
     readiness: "setup_required",
@@ -324,13 +486,25 @@ test("PayrollProviderSync renders local Check readiness panel and keeps Check in
   );
 
   expect(await screen.findByText(/Check Payroll Readiness/i)).toBeInTheDocument();
+  expect(screen.getByText(/Check Launch Readiness/i)).toBeInTheDocument();
+  expect(screen.getByText(/Use this checklist to prepare for Check sandbox testing/i)).toBeInTheDocument();
+  expect(screen.getByText(/Add FEIN\/EIN in Company Profile/i)).toBeInTheDocument();
   expect(screen.getAllByText(/Check embedded payroll is not live yet/i).length).toBeGreaterThan(0);
   expect(screen.getByText(/Check coming later/i)).toBeInTheDocument();
   expect(mockPayrollSetupApi.getCheckReadiness).toHaveBeenCalled();
   expect(mockPayrollSetupApi.getCheckStatus).toHaveBeenCalled();
+  expect(mockPayrollSetupApi.getCheckLaunchReadiness).toHaveBeenCalled();
+  expect(mockPayrollSetupApi.getCheckOnboardingOverview).toHaveBeenCalled();
   expect(screen.getByRole("button", { name: /Preview company payload/i })).toBeDisabled();
   expect(screen.getByRole("button", { name: /Sync company to sandbox/i })).toBeDisabled();
+  expect(screen.getByText(/Check Payroll Onboarding/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Start employer onboarding/i })).toBeDisabled();
+  expect(screen.getAllByRole("button", { name: /Send invite/i })[0]).toBeDisabled();
+  expect(screen.getAllByRole("button", { name: /Resend invite/i })[0]).toBeDisabled();
+  expect(screen.getByText(/Payroll-sensitive onboarding, including SSN, tax forms, and bank details/i)).toBeInTheDocument();
+  expect(screen.queryByText(/direct deposit/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Check submit/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/Recent onboarding activity/i)).toBeInTheDocument();
 });
 
 test("EmployeeProfileForm shows Primary Payroll Location in Payroll & compliance", async () => {
@@ -416,4 +590,13 @@ test("AddRecruiter shows Canadian labels and payroll-location dropdown when mult
 
   expect(await screen.findByLabelText(/Postal Code/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Primary Payroll Location/i)).toBeInTheDocument();
+});
+
+test("RecruiterHomePage shows employee payroll setup card with disabled onboarding action", async () => {
+  useMediaQuery.mockReturnValue(true);
+  renderWithRouter(<RecruiterHomePage />);
+  expect(await screen.findByText(/Payroll Setup/i)).toBeInTheDocument();
+  expect(screen.getByText(/Sensitive payroll onboarding, including SSN, tax forms, and bank details/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Complete payroll setup/i })).toBeDisabled();
+  expect(screen.queryByText(/direct deposit/i)).not.toBeInTheDocument();
 });

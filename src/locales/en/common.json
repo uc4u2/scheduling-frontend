@@ -7984,13 +7984,13 @@
       },
       "homebase": {
         "competitor": "Homebase",
-        "metaTitle": "Schedulaa vs Homebase | Booking, Break Enforcement, and Payroll vs Shift Scheduling",
-        "metaDescription": "Compare Schedulaa and Homebase. See why service teams that run bookings, break rules, and payroll choose Schedulaa over a shift-only scheduler.",
+        "metaTitle": "Schedulaa vs Homebase | Workforce Ops, Job Lifecycle, and Payroll Handoff vs Shift Scheduling",
+        "metaDescription": "Compare Schedulaa and Homebase. See why service operators choose Schedulaa for hiring, scheduling, field operations, invoicing, and payroll handoff instead of a shift-only scheduler.",
         "heroTitle": "Schedulaa vs Homebase — Which Operations Platform Fits Your Service Team?",
-        "heroSubtitle": "Homebase is great for storefront shift scheduling. Schedulaa unifies client booking, smart breaks, time tracking, and US/CA payroll for service teams.",
+        "heroSubtitle": "Homebase is built for storefront shift scheduling. Schedulaa runs the workforce, hiring, client work, and quote-to-invoice operations behind service teams.",
         "intro": [
-          "Homebase is a popular scheduling/time-clock tool for retail and restaurants. Schedulaa goes further for service teams that juggle bookings, break rules, attendance, and payroll in one workflow.",
-          "If you run appointments, need break enforcement, and want payroll-ready exports, Schedulaa keeps those pieces connected."
+          "Homebase is a popular scheduling and time-clock tool for retail and restaurant teams. Schedulaa now goes far beyond scheduling for service operators that need workforce control, hiring, client workflows, and financial follow-through in one system.",
+          "If you need one database for bookings, quote requests, estimates, work orders, field follow-up, invoicing, payroll-ready hours, and multi-location oversight, Schedulaa covers operational ground that Homebase does not."
         ],
         "executiveOverview": {
           "headers": [
@@ -8001,13 +8001,28 @@
           "rows": [
             {
               "label": "Core Purpose",
-              "schedulaa": "All-in-one operations OS: booking, scheduling, breaks, time tracking, US/CA payroll, QuickBooks/Xero exports.",
+              "schedulaa": "All-in-one Business Operations OS & Workforce Command Center.",
               "competitor": "Scheduling and time tracking for hourly shift teams."
             },
             {
               "label": "Target Industry",
               "schedulaa": "Service teams: salons, clinics, wellness, cleaning, tutors, agencies.",
               "competitor": "Retail, restaurants, hospitality."
+            },
+            {
+              "label": "Job & Financial Lifecycle",
+              "schedulaa": "Strong: quote requests, estimates, client approval, work orders, field reports, inventory, invoicing, hosted invoice payment links, manual payment tracking, and month-end review.",
+              "competitor": "Gap: not supported."
+            },
+            {
+              "label": "Talent Acquisition & Onboarding",
+              "schedulaa": "Strong: job postings, public apply links, applicant tracking, resume handling, and digital onboarding records that feed employee setup and payroll handoff.",
+              "competitor": "Limited: basic shift onboarding."
+            },
+            {
+              "label": "Multi-Location Scalability",
+              "schedulaa": "Strong: unified multi-location operating model with Platform Map planning, department-level permission boundaries, branch-aware operations, and multi-location analytics.",
+              "competitor": "Limited: siloed per-location instances and pricing."
             },
             {
               "label": "Client Booking",
@@ -8059,15 +8074,27 @@
             },
             {
               "label": "Pricing Model",
-              "schedulaa": "Flat tiers + $9 per extra staff; built for 3–100 employees.",
+              "schedulaa": "Flat tiers + per-staff expansion; designed to centralize operations instead of multiplying location tools.",
               "competitor": "Per-location pricing; payroll as add-on."
             }
           ]
         },
         "differentiators": [
           {
+            "title": "Quote-to-Invoice Operations",
+            "body": "Schedulaa covers the full service job loop: quote request, estimate, client approval, work order, assignment, field reporting, invoice, hosted invoice payment links or manual payment tracking, and month-end review. Homebase does not offer quoting, work orders, field reports, inventory, or invoicing."
+          },
+          {
+            "title": "Hiring-to-Payroll Pipeline",
+            "body": "Schedulaa lets teams publish jobs, collect applications, review resumes, manage digital onboarding records, convert approved candidates into employee records, and carry those records into payroll handoff in the same database. Homebase focuses on staffing schedules after the hire already exists."
+          },
+          {
+            "title": "The Platform Map for Scale",
+            "body": "Schedulaa is built for operators managing multiple teams, departments, or branches from one operational map with permission boundaries, local branding options, and roll-up visibility. Homebase growth usually means more location silos, more duplicated setup, and more pricing friction."
+          },
+          {
             "title": "Service-first workflows",
-            "body": "Schedulaa links client bookings to staff availability, break rules, and payroll outputs. Homebase doesn’t handle client booking."
+            "body": "Schedulaa links client bookings to staff availability, break rules, field execution, and payroll outputs. Homebase doesn’t handle client booking or service delivery workflows."
           },
           {
             "title": "Break compliance",
@@ -8079,15 +8106,15 @@
           },
           {
             "title": "Brand + website",
-            "body": "Schedulaa ships a booking-ready site on your domain. Homebase has no website or client-facing booking."
+            "body": "Schedulaa ships branded booking-ready pages on your domain and supports broader operations beyond the time clock. Homebase has no website, no quote flow, and no client-facing service funnel."
           },
           {
             "title": "Shift deviation reporting",
             "body": "Schedulaa shows late starts, early finishes, and long/short shifts vs schedule for every shift. Homebase has no shift deviation analytics."
           },
           {
-            "title": "Fraud prevention",
-            "body": "Schedulaa logs IP and timezone on every punch to flag remote/suspicious clock-ins. Homebase does not include IP auditing."
+            "title": "My Time + compliance signals",
+            "body": "Schedulaa’s My Time workspace gives employees live shift context, weekly hour insights, and IP/device hints, while managers see anomaly and compliance chips for missed breaks, overtime pressure, and suspicious punches. Homebase handles time clocks, but not this level of operational context."
           }
         ],
         "fitMatrix": [
@@ -8105,6 +8132,10 @@
           },
           {
             "scenario": "A business that must prove labor compliance (breaks, overtime, audit logs).",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "A growing field service, trade, or mobile beauty team that needs to quote custom jobs, track field inventory, manage worker shifts, and run payroll in one system.",
             "recommendation": "Schedulaa"
           }
         ],
@@ -8180,6 +8211,21 @@
               "competitor": "US only"
             },
             {
+              "label": "Quotes, estimates, work orders",
+              "schedulaa": "✔",
+              "competitor": "✘"
+            },
+            {
+              "label": "Invoicing + payment tracking",
+              "schedulaa": "✔",
+              "competitor": "✘"
+            },
+            {
+              "label": "Job postings + applicant tracking",
+              "schedulaa": "✔",
+              "competitor": "Limited"
+            },
+            {
               "label": "QuickBooks/Xero export",
               "schedulaa": "✔",
               "competitor": "Limited"
@@ -8208,10 +8254,15 @@
               "label": "Multi-location",
               "schedulaa": "✔",
               "competitor": "✔"
+            },
+            {
+              "label": "Field inventory / material tracking",
+              "schedulaa": "✔",
+              "competitor": "✘"
             }
           ]
         },
-        "conclusion": "Homebase is strong for storefront shift scheduling. Schedulaa is better for service teams that need booking, break enforcement, attendance, and payroll tied together under their own brand."
+        "conclusion": "Homebase is strong for storefront shift scheduling. Schedulaa is the stronger fit for service operators that need workforce control, hiring, booking, quote-to-invoice operations, multi-location oversight, and payroll handoff tied together under one system."
       },
       "when-i-work": {
         "competitor": "When I Work",

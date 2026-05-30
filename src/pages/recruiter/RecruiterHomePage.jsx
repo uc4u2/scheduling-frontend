@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Stack, useMediaQuery } from "@mui/material";
+import { Alert, Button, CircularProgress, Paper, Stack, Typography, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 import MobileEmployeeHome, { employeeShortcutIconMap } from "../../components/employee/MobileEmployeeHome";
 import api from "../../utils/api";
+import { payrollSetupApi } from "../../utils/api";
 
 const getStoredDisplayName = () => {
   if (typeof window === "undefined") return "";
@@ -43,6 +44,10 @@ const RecruiterHomePage = () => {
   const basePath = location.pathname.startsWith("/recruiter") ? "/recruiter" : "/employee";
   const [displayName, setDisplayName] = useState(getStoredDisplayName());
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [payrollOnboarding, setPayrollOnboarding] = useState(null);
+  const [payrollOnboardingLoading, setPayrollOnboardingLoading] = useState(false);
+  const [payrollOnboardingError, setPayrollOnboardingError] = useState("");
+  const [payrollOnboardingActionLoading, setPayrollOnboardingActionLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -114,6 +119,42 @@ const RecruiterHomePage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const loadPayrollOnboarding = async () => {
+      setPayrollOnboardingLoading(true);
+      setPayrollOnboardingError("");
+      try {
+        const data = await payrollSetupApi.getEmployeeCheckOnboarding();
+        if (mounted) setPayrollOnboarding(data || null);
+      } catch (err) {
+        if (mounted) {
+          setPayrollOnboarding(null);
+          setPayrollOnboardingError(err?.response?.data?.message || "Payroll onboarding status is not available yet.");
+        }
+      } finally {
+        if (mounted) setPayrollOnboardingLoading(false);
+      }
+    };
+    loadPayrollOnboarding();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handlePayrollOnboardingStart = async () => {
+    setPayrollOnboardingActionLoading(true);
+    try {
+      await payrollSetupApi.startEmployeeCheckOnboarding();
+      const refreshed = await payrollSetupApi.getEmployeeCheckOnboarding();
+      setPayrollOnboarding(refreshed || null);
+    } catch (err) {
+      setPayrollOnboardingError(err?.response?.data?.message || "Payroll onboarding is not available yet.");
+    } finally {
+      setPayrollOnboardingActionLoading(false);
+    }
+  };
+
   const shortcuts = useMemo(() => [
     { label: "My Time", icon: employeeShortcutIconMap["my-time"], onClick: () => navigate(`${basePath}/my-time`) },
     { label: "Calendar", icon: employeeShortcutIconMap.calendar, onClick: () => navigate(`${basePath}/dashboard?tab=calendar`) },
@@ -135,6 +176,20 @@ const RecruiterHomePage = () => {
     return <Navigate to={`${basePath}/my-time`} replace />;
   }
 
+  const showPayrollSetupCard = Boolean(
+    payrollOnboardingLoading ||
+    payrollOnboardingError ||
+    (
+      payrollOnboarding &&
+      (
+        payrollOnboarding.should_show_card ||
+        payrollOnboarding.check_employee_mapped ||
+        (payrollOnboarding.onboard_status && payrollOnboarding.onboard_status !== "not_started") ||
+        payrollOnboarding.last_session_status
+      )
+    )
+  );
+
   return (
     <ManagementFrame
       title=""
@@ -150,6 +205,41 @@ const RecruiterHomePage = () => {
         isLoading={isLoading}
       />
       <Stack spacing={2} sx={{ mt: 2 }}>
+        {showPayrollSetupCard ? (
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="h6">Payroll Setup</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Sensitive payroll onboarding, including SSN, tax forms, and bank details, will be completed through Check&apos;s secure onboarding flow.
+              </Typography>
+              {payrollOnboardingLoading ? (
+                <CircularProgress size={20} />
+              ) : payrollOnboarding ? (
+                <>
+                  <Typography variant="body2"><strong>Status:</strong> {payrollOnboarding.onboard_status || "Not started"}</Typography>
+                  <Typography variant="body2"><strong>Primary payroll location:</strong> {payrollOnboarding.primary_payroll_location?.name || "Not assigned"}</Typography>
+                  <Typography variant="body2"><strong>Check mapping:</strong> {payrollOnboarding.check_employee_mapped ? "Ready" : "Not ready"}</Typography>
+                  <Button
+                    variant="contained"
+                    onClick={handlePayrollOnboardingStart}
+                    disabled={payrollOnboardingActionLoading || !payrollOnboarding.can_start_onboarding}
+                  >
+                    {payrollOnboardingActionLoading
+                      ? "Preparing..."
+                      : payrollOnboarding.onboard_status === "completed"
+                        ? "Resume payroll setup"
+                        : "Complete payroll setup"}
+                  </Button>
+                  {!payrollOnboarding.can_start_onboarding && payrollOnboarding.disabled_reason ? (
+                    <Alert severity="info">{payrollOnboarding.disabled_reason}</Alert>
+                  ) : null}
+                </>
+              ) : (
+                <Alert severity="info">{payrollOnboardingError || "Payroll onboarding will be available once your employer connects Check payroll."}</Alert>
+              )}
+            </Stack>
+          </Paper>
+        ) : null}
         <MobileEmployeeHome
           displayName={displayName}
           profileImageUrl={profileImageUrl}
