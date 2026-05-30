@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -28,8 +28,9 @@ import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import Snackbar from "@mui/material/Snackbar";
-import api from "./utils/api";
-import { getUserTimezone } from "./utils/timezone";
+import api, { payrollSetupApi } from "./utils/api";
+import { COMPANY_COUNTRY_OPTIONS, formatPostalInput, getAddressWarnings, getPostalHelper, getPostalLabel, getRegionLabel, getRegionOptions, normalizeDisplayCountry, suggestTimezoneForRegion } from "./utils/locationProfile";
+import { getUserTimezone, normalizeTimezoneValue } from "./utils/timezone";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
@@ -61,7 +62,9 @@ const AddRecruiter = () => {
     city: "",
     street: "",
     state: "",
+    country: "",
     postalCode: "",
+    primaryWorkLocationId: "",
     password: "",
     confirmPassword: "",
     agreedToTerms: false,
@@ -82,12 +85,112 @@ const AddRecruiter = () => {
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [payrollLocations, setPayrollLocations] = useState([]);
+  const [payrollSetupProfile, setPayrollSetupProfile] = useState({ payroll_intent: "none" });
   const departments = useDepartments();
   const { status: billingStatus } = useBillingStatus();
   const seatNextBillingLabel = formatBillingNextDateLabel({
     nextBillingDate: seatPreview?.next_billing_date,
     trialEnd: billingStatus?.trial_end,
   });
+
+  const [companyProfile, setCompanyProfile] = useState(null);
+
+  const regionOptions = useMemo(() => getRegionOptions(form.country), [form.country]);
+  const activePayrollLocations = useMemo(
+    () => payrollLocations.filter((row) => row.is_active !== false),
+    [payrollLocations]
+  );
+  const selectedPayrollLocation = useMemo(
+    () =>
+      activePayrollLocations.find((row) => String(row.id) === String(form.primaryWorkLocationId || "")) || null,
+    [activePayrollLocations, form.primaryWorkLocationId]
+  );
+  const addressWarnings = useMemo(() => getAddressWarnings({
+    country: form.country,
+    region: form.state,
+    postalCode: form.postalCode,
+    city: form.city,
+    timezone: form.timezone,
+  }), [form.city, form.country, form.postalCode, form.state, form.timezone]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api.get("/admin/company-profile"),
+      payrollSetupApi.listWorkLocations().catch(() => ({ items: [] })),
+      payrollSetupApi.getPayrollSetupProfile().catch(() => ({ profile: { payroll_intent: "none" } })),
+    ])
+      .then(([companyRes, workLocationRes, setupProfileRes]) => {
+        if (!active) return;
+        const profile = companyRes?.data || {};
+        const items = Array.isArray(workLocationRes?.items) ? workLocationRes.items : [];
+        const activeItems = items.filter((row) => row.is_active !== false);
+        setCompanyProfile(profile);
+        setPayrollLocations(items);
+        setPayrollSetupProfile(setupProfileRes?.profile || { payroll_intent: "none" });
+        const nextCountry = normalizeDisplayCountry(profile.country_code) || 'US';
+        const nextRegion = String(profile.province_code || profile.address_state || '').trim().toUpperCase();
+        const suggestedTimezone =
+          normalizeTimezoneValue(activeItems[0]?.timezone || "") ||
+          normalizeTimezoneValue(profile.timezone || '') ||
+          suggestTimezoneForRegion(nextCountry, nextRegion) ||
+          getUserTimezone();
+        setForm((prev) => ({
+          ...prev,
+          country: prev.country ? normalizeDisplayCountry(prev.country) : nextCountry,
+          state: prev.state || nextRegion,
+          city: prev.city || profile.address_city || '',
+          street: prev.street || profile.address_street || profile.address || '',
+          postalCode: prev.postalCode || formatPostalInput(nextCountry, profile.address_zip || ''),
+          timezone: normalizeTimezoneValue(prev.timezone || '') || suggestedTimezone,
+          primaryWorkLocationId: prev.primaryWorkLocationId || (activeItems.length === 1 ? String(activeItems[0].id) : ""),
+        }));
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    setForm((prev) => {
+      const normalizedCountry = prev.country ? normalizeDisplayCountry(prev.country) : "";
+      const options = getRegionOptions(normalizedCountry);
+      const next = { ...prev, country: normalizedCountry || prev.country };
+      if (options.length && next.state && !options.includes(String(next.state).trim().toUpperCase())) {
+        next.state = '';
+      }
+      const suggestedTimezone = suggestTimezoneForRegion(normalizedCountry, next.state);
+      if (suggestedTimezone && (!normalizeTimezoneValue(next.timezone || '') || normalizeTimezoneValue(next.timezone || '') === normalizeTimezoneValue(companyProfile?.timezone || '') || normalizeTimezoneValue(next.timezone || '') === getUserTimezone())) {
+        next.timezone = suggestedTimezone;
+      }
+      return next;
+    });
+  }, [form.country, form.state, companyProfile]);
+
+  useEffect(() => {
+    if (activePayrollLocations.length === 1 && !form.primaryWorkLocationId) {
+      setForm((prev) => ({ ...prev, primaryWorkLocationId: String(activePayrollLocations[0].id) }));
+    }
+  }, [activePayrollLocations, form.primaryWorkLocationId]);
+
+  useEffect(() => {
+    if (!selectedPayrollLocation) return;
+    const locationCountry = normalizeDisplayCountry(selectedPayrollLocation.country) || form.country || "US";
+    const locationRegion = String(selectedPayrollLocation.state || "").trim().toUpperCase();
+    const locationTimezone =
+      normalizeTimezoneValue(selectedPayrollLocation.timezone || "") ||
+      suggestTimezoneForRegion(locationCountry, locationRegion);
+    setForm((prev) => ({
+      ...prev,
+      country: prev.country || locationCountry,
+      state: prev.state || locationRegion,
+      timezone:
+        normalizeTimezoneValue(prev.timezone || "") ||
+        locationTimezone ||
+        normalizeTimezoneValue(companyProfile?.timezone || "") ||
+        getUserTimezone(),
+    }));
+  }, [companyProfile?.timezone, form.country, selectedPayrollLocation]);
 
 const passwordStrength = useMemo(() => {
   if (!form.password) return "";
@@ -104,7 +207,8 @@ const passwordStrength = useMemo(() => {
 }, [form.password]);
 
   const handleChange = (key) => (event) => {
-    const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
+    const rawValue = event.target.type === "checkbox" ? event.target.checked : event.target.value;
+    const value = key === "country" ? normalizeDisplayCountry(rawValue) : key === "postalCode" ? formatPostalInput(form.country, rawValue) : rawValue;
     setForm((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
   };
@@ -125,6 +229,13 @@ const passwordStrength = useMemo(() => {
     }
     if (form.password !== form.confirmPassword) errors.confirmPassword = "Passwords must match";
     if (!form.agreedToTerms) errors.agreedToTerms = "You must accept the terms";
+    if (
+      payrollSetupProfile?.payroll_intent === "check_embedded_us" &&
+      activePayrollLocations.length > 1 &&
+      !form.primaryWorkLocationId
+    ) {
+      errors.primaryWorkLocationId = "Select a primary payroll location.";
+    }
     return errors;
   };
 
@@ -158,8 +269,11 @@ const passwordStrength = useMemo(() => {
       timezone: form.timezone.trim() || getUserTimezone(),
       address_city: form.city.trim() || null,
       address_street: form.street.trim() || null,
+      province: form.state.trim() || null,
+      country: normalizeDisplayCountry(form.country),
       address_state: form.state.trim() || null,
       address_zip: form.postalCode.trim() || null,
+      primary_work_location_id: form.primaryWorkLocationId ? Number(form.primaryWorkLocationId) : null,
       password: form.password,
       password_confirm: form.confirmPassword,
       agreed_to_terms: form.agreedToTerms,
@@ -181,7 +295,9 @@ const passwordStrength = useMemo(() => {
         city: "",
         street: "",
         state: "",
+        country: normalizeDisplayCountry(companyProfile?.country_code) || "US",
         postalCode: "",
+        primaryWorkLocationId: activePayrollLocations.length === 1 ? String(activePayrollLocations[0].id) : "",
         password: "",
         confirmPassword: "",
         agreedToTerms: false,
@@ -220,6 +336,7 @@ const passwordStrength = useMemo(() => {
             address_city: "city",
             address_state: "state",
             address_zip: "postalCode",
+            primary_work_location_id: "primaryWorkLocationId",
           }[key] || key;
           mapped[mapKey] = value;
         });
@@ -522,8 +639,45 @@ const passwordStrength = useMemo(() => {
                   <MenuItem key={role.value} value={role.value}>
                     {role.label}
                   </MenuItem>
-                ))}
-              </TextField>
+                  ))}
+                </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {activePayrollLocations.length === 0 ? (
+                <Alert severity="info" variant="outlined">
+                  Create a payroll location in Company Profile first.
+                </Alert>
+              ) : activePayrollLocations.length === 1 ? (
+                <TextField
+                  label="Primary Payroll Location"
+                  fullWidth
+                  value={activePayrollLocations[0].name}
+                  helperText="Departments are for teams or services. Payroll Location is the physical work location used for payroll setup."
+                  InputProps={{ readOnly: true }}
+                />
+              ) : (
+                <TextField
+                  select
+                  label="Primary Payroll Location"
+                  fullWidth
+                  value={form.primaryWorkLocationId || ""}
+                  onChange={handleChange("primaryWorkLocationId")}
+                  error={Boolean(fieldErrors.primaryWorkLocationId)}
+                  helperText={
+                    fieldErrors.primaryWorkLocationId ||
+                    "Departments are for teams or services. Payroll Location is the physical work location used for payroll setup."
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Select payroll location</em>
+                  </MenuItem>
+                  {activePayrollLocations.map((location) => (
+                    <MenuItem key={location.id} value={String(location.id)}>
+                      {location.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
               <TimezoneSelect
@@ -553,7 +707,23 @@ const passwordStrength = useMemo(() => {
                 autoComplete="address-line1"
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                select
+                label="Country"
+                fullWidth
+                value={form.country || "US"}
+                onChange={handleChange("country")}
+                helperText="Defaults from company profile when available."
+              >
+                {COMPANY_COUNTRY_OPTIONS.map((option) => (
+                  <MenuItem key={option.code} value={option.code}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
               <TextField
                 label="City"
                 fullWidth
@@ -564,25 +734,47 @@ const passwordStrength = useMemo(() => {
                 autoComplete="address-level2"
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="State / Province"
-                fullWidth
-                value={form.state}
-                onChange={handleChange("state")}
-                error={Boolean(fieldErrors.state)}
-                helperText={fieldErrors.state}
-                autoComplete="address-level1"
-              />
+            <Grid item xs={12} sm={4}>
+              {regionOptions.length ? (
+                <TextField
+                  select
+                  label={getRegionLabel(form.country)}
+                  fullWidth
+                  value={form.state}
+                  onChange={handleChange("state")}
+                  error={Boolean(fieldErrors.state)}
+                  helperText={fieldErrors.state}
+                  autoComplete="address-level1"
+                >
+                  <MenuItem value="">
+                    <em>Select {getRegionLabel(form.country).toLowerCase()}</em>
+                  </MenuItem>
+                  {regionOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <TextField
+                  label={getRegionLabel(form.country)}
+                  fullWidth
+                  value={form.state}
+                  onChange={handleChange("state")}
+                  error={Boolean(fieldErrors.state)}
+                  helperText={fieldErrors.state || "Enter the region used for this address."}
+                  autoComplete="address-level1"
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Postal / ZIP code"
+                label={getPostalLabel(form.country)}
                 fullWidth
                 value={form.postalCode}
                 onChange={handleChange("postalCode")}
                 error={Boolean(fieldErrors.postalCode)}
-                helperText={fieldErrors.postalCode || "CA: A1A 1A1 · US: 12345-6789"}
+                helperText={fieldErrors.postalCode || getPostalHelper(form.country)}
                 autoComplete="postal-code"
               />
             </Grid>
@@ -596,6 +788,12 @@ const passwordStrength = useMemo(() => {
               />
             </Grid>
           </Grid>
+
+          {addressWarnings.length > 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              {addressWarnings.join(" ")}
+            </Alert>
+          )}
 
           <Divider sx={{ my: 3 }} />
 
@@ -700,7 +898,9 @@ const passwordStrength = useMemo(() => {
                   city: "",
                   street: "",
                   state: "",
+                  country: normalizeDisplayCountry(companyProfile?.country_code) || "US",
                   postalCode: "",
+                  primaryWorkLocationId: activePayrollLocations.length === 1 ? String(activePayrollLocations[0].id) : "",
                   password: "",
                   confirmPassword: "",
                   agreedToTerms: false,

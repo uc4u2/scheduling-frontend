@@ -33,7 +33,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import api, { payrollProviderSyncApi } from "../../utils/api";
+import api, { payrollProviderSyncApi, payrollSetupApi } from "../../utils/api";
 import { extractApiErrorMessage } from "../../utils/apiError";
 
 const PROVIDER_OPTIONS = [
@@ -485,6 +485,20 @@ export default function PayrollProviderSync({
   const [statusLoading, setStatusLoading] = useState(false);
   const [setupStatus, setSetupStatus] = useState(null);
   const [setupError, setSetupError] = useState("");
+  const [checkReadinessLoading, setCheckReadinessLoading] = useState(false);
+  const [checkReadiness, setCheckReadiness] = useState(null);
+  const [checkReadinessError, setCheckReadinessError] = useState("");
+  const [checkStatusLoading, setCheckStatusLoading] = useState(false);
+  const [checkStatus, setCheckStatus] = useState(null);
+  const [checkStatusError, setCheckStatusError] = useState("");
+  const [checkPayloadLoading, setCheckPayloadLoading] = useState(false);
+  const [checkPayloadPreview, setCheckPayloadPreview] = useState(null);
+  const [checkActionNotice, setCheckActionNotice] = useState("");
+  const [checkSyncLoading, setCheckSyncLoading] = useState({
+    company: false,
+    workplaces: false,
+    employees: false,
+  });
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
@@ -823,12 +837,81 @@ export default function PayrollProviderSync({
     }
   };
 
+  const loadCheckReadiness = async () => {
+    setCheckReadinessLoading(true);
+    setCheckReadinessError("");
+    try {
+      const data = await payrollSetupApi.getCheckReadiness();
+      setCheckReadiness(data || null);
+    } catch (err) {
+      const message = await buildRequestErrorMessage(err, "Failed to load local Check payroll readiness.");
+      setCheckReadinessError(message);
+    } finally {
+      setCheckReadinessLoading(false);
+    }
+  };
+
+  const loadCheckStatus = async () => {
+    setCheckStatusLoading(true);
+    setCheckStatusError("");
+    try {
+      const data = await payrollSetupApi.getCheckStatus();
+      setCheckStatus(data || null);
+    } catch (err) {
+      const message = await buildRequestErrorMessage(err, "Failed to load Check sandbox status.");
+      setCheckStatusError(message);
+    } finally {
+      setCheckStatusLoading(false);
+    }
+  };
+
+  const handleCheckPayloadPreview = async (kind) => {
+    setCheckPayloadLoading(true);
+    setCheckActionNotice("");
+    try {
+      let data = null;
+      if (kind === "company") data = await payrollSetupApi.getCheckCompanyPayload();
+      if (kind === "workplaces") data = await payrollSetupApi.getCheckWorkplacePayloads();
+      if (kind === "employees") data = await payrollSetupApi.getCheckEmployeePayloads();
+      setCheckPayloadPreview({ kind, data });
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Failed to preview Check payload."), "error");
+    } finally {
+      setCheckPayloadLoading(false);
+    }
+  };
+
+  const handleCheckSandboxSync = async (kind) => {
+    setCheckSyncLoading((prev) => ({ ...prev, [kind]: true }));
+    setCheckActionNotice("");
+    try {
+      let data = null;
+      if (kind === "company") data = await payrollSetupApi.syncCheckSandboxCompany();
+      if (kind === "workplaces") data = await payrollSetupApi.syncCheckSandboxWorkplaces();
+      if (kind === "employees") data = await payrollSetupApi.syncCheckSandboxEmployees();
+      setCheckActionNotice(
+        kind === "company"
+          ? "Company sandbox sync completed."
+          : kind === "workplaces"
+            ? `Workplace sandbox sync completed${data?.synced_count !== undefined ? ` (${data.synced_count} synced)` : ""}.`
+            : `Employee sandbox sync completed${data?.synced_count !== undefined ? ` (${data.synced_count} synced)` : ""}.`
+      );
+      await Promise.all([loadCheckStatus(), loadCheckReadiness()]);
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Check sandbox sync failed."), "error");
+    } finally {
+      setCheckSyncLoading((prev) => ({ ...prev, [kind]: false }));
+    }
+  };
+
   useEffect(() => {
     setRunData(null);
     setValidationData(null);
     setPayloadPreview(null);
     setSelectedRunId(null);
     loadSetupStatus();
+    loadCheckReadiness();
+    loadCheckStatus();
     loadMappingData();
     loadQuickBooksCandidates();
     loadRunHistory({ offset: 0 });
@@ -1745,6 +1828,240 @@ export default function PayrollProviderSync({
             </Stack>
           </Grid>
         </Grid>
+      </Paper>
+
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
+          <Box>
+            <Typography variant="h6">Check Payroll Readiness</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Check embedded payroll is not live yet. This readiness check helps prepare your company data for a future Check-powered payroll integration.
+            </Typography>
+          </Box>
+          <Button variant="outlined" onClick={loadCheckReadiness} disabled={checkReadinessLoading}>
+            {checkReadinessLoading ? <CircularProgress size={18} /> : "Refresh readiness"}
+          </Button>
+        </Stack>
+
+        {checkReadinessError && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {checkReadinessError}
+          </Alert>
+        )}
+
+        {checkStatusError && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {checkStatusError}
+          </Alert>
+        )}
+
+        {checkReadiness && (
+          <Stack spacing={2}>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+              <Button variant="outlined" onClick={loadCheckStatus} disabled={checkStatusLoading}>
+                {checkStatusLoading ? <CircularProgress size={18} /> : "Refresh sandbox status"}
+              </Button>
+              {checkReadiness?.setup_profile?.payroll_intent === "check_embedded_us" && (
+                <>
+                  <Button
+                    variant="outlined"
+                    onClick={() => handleCheckPayloadPreview("company")}
+                    disabled={checkPayloadLoading || !checkStatus?.configured}
+                  >
+                    {checkPayloadLoading && checkPayloadPreview?.kind === "company" ? <CircularProgress size={18} /> : "Preview company payload"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => handleCheckPayloadPreview("workplaces")}
+                    disabled={checkPayloadLoading || !checkStatus?.configured}
+                  >
+                    {checkPayloadLoading && checkPayloadPreview?.kind === "workplaces" ? <CircularProgress size={18} /> : "Preview workplace payloads"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => handleCheckPayloadPreview("employees")}
+                    disabled={checkPayloadLoading || !checkStatus?.configured}
+                  >
+                    {checkPayloadLoading && checkPayloadPreview?.kind === "employees" ? <CircularProgress size={18} /> : "Preview employee payloads"}
+                  </Button>
+                </>
+              )}
+            </Stack>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2"><strong>Intent:</strong> {checkReadiness?.setup_profile?.payroll_intent || "none"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2"><strong>Ready for local Check setup:</strong> {checkReadiness.ready_for_local_check_setup ? "Yes" : "Not yet"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2"><strong>Check connection state:</strong> {checkReadiness.check_mode || "not_connected"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2"><strong>Payroll country:</strong> {checkReadiness?.setup_profile?.payroll_country || "Not set"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2"><strong>Ready for future Check setup:</strong> {checkReadiness.ready_for_check_setup ? "Yes" : "Not yet"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Active work locations:</strong> {checkReadiness?.counts?.active_work_locations ?? 0}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Employees reviewed:</strong> {checkReadiness?.counts?.employees_total ?? 0}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Missing primary payroll location:</strong> {checkReadiness?.counts?.employees_missing_primary_work_location ?? 0}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Multi-state employees:</strong> {checkReadiness?.counts?.multi_state_employee_count ?? 0}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Check configured:</strong> {checkReadiness?.check_configured ? "Yes" : "No"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Company mapped:</strong> {checkReadiness?.check_company_mapped ? "Yes" : "No"}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Mapped workplaces:</strong> {checkReadiness?.mapped_workplaces_count ?? 0}</Typography>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Typography variant="body2"><strong>Mapped employees:</strong> {checkReadiness?.mapped_employees_count ?? 0}</Typography>
+              </Grid>
+            </Grid>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2">Check sandbox foundation</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Check embedded payroll is not live yet. This panel only covers local status, dry-run payloads, and sandbox foundation work.
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2"><strong>Status:</strong> {checkStatus?.status || "not_configured"}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2"><strong>Environment:</strong> {checkStatus?.environment || "sandbox"}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2"><strong>API configured:</strong> {checkStatus?.configured ? "Yes" : "No"}</Typography>
+                  </Grid>
+                </Grid>
+                {checkReadiness?.setup_profile?.payroll_intent === "check_embedded_us" && (
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                    <Button
+                      variant="contained"
+                      onClick={() => handleCheckSandboxSync("company")}
+                      disabled={checkSyncLoading.company || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}
+                    >
+                      {checkSyncLoading.company ? <CircularProgress size={18} /> : "Sync company to sandbox"}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={() => handleCheckSandboxSync("workplaces")}
+                      disabled={checkSyncLoading.workplaces || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}
+                    >
+                      {checkSyncLoading.workplaces ? <CircularProgress size={18} /> : "Sync workplaces to sandbox"}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={() => handleCheckSandboxSync("employees")}
+                      disabled={checkSyncLoading.employees || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}
+                    >
+                      {checkSyncLoading.employees ? <CircularProgress size={18} /> : "Sync employees to sandbox"}
+                    </Button>
+                  </Stack>
+                )}
+                {!checkStatus?.configured && (
+                  <Alert severity="info">Check API is not configured in this environment yet.</Alert>
+                )}
+                {checkStatus?.configured && !checkStatus?.sandbox_sync_enabled && (
+                  <Alert severity="info">Sandbox entity creation is still disabled in this phase.</Alert>
+                )}
+                {checkActionNotice ? <Alert severity="success">{checkActionNotice}</Alert> : null}
+                {checkPayloadPreview ? (
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Latest payload preview: {checkPayloadPreview.kind}
+                    </Typography>
+                    <Box
+                      component="pre"
+                      sx={{
+                        m: 0,
+                        p: 1.5,
+                        overflow: "auto",
+                        borderRadius: 1,
+                        bgcolor: "background.default",
+                        border: 1,
+                        borderColor: "divider",
+                        fontSize: 12,
+                      }}
+                    >
+                      {JSON.stringify(checkPayloadPreview.data, null, 2)}
+                    </Box>
+                  </Box>
+                ) : null}
+              </Stack>
+            </Paper>
+
+            {Array.isArray(checkReadiness?.unsupported_conditions) && checkReadiness.unsupported_conditions.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>Unsupported conditions / blockers</Typography>
+                <Stack spacing={1}>
+                  {checkReadiness.unsupported_conditions.map((item) => (
+                    <Alert key={`${item.code}-${item.message}`} severity={item.severity === "info" ? "info" : item.severity === "warning" ? "warning" : "error"}>
+                      <strong>{item.code}</strong>: {item.message}
+                    </Alert>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {Array.isArray(checkReadiness?.warnings) && checkReadiness.warnings.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>Warnings</Typography>
+                <Stack spacing={1}>
+                  {checkReadiness.warnings.map((item) => (
+                    <Alert key={`${item.code}-${item.message}`} severity="warning">
+                      <strong>{item.code}</strong>: {item.message}
+                    </Alert>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>Missing work location addresses</Typography>
+                {formatList(checkReadiness?.missing_work_location_address).length ? (
+                  <Stack spacing={0.5}>
+                    {checkReadiness.missing_work_location_address.map((item) => (
+                      <Typography key={item.id} variant="body2">
+                        {item.name}: {(item.missing_fields || []).join(", ")}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">None</Typography>
+                )}
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>Employees missing primary payroll location</Typography>
+                {formatList(checkReadiness?.missing_employee_primary_work_location).length ? (
+                  <Stack spacing={0.5}>
+                    {checkReadiness.missing_employee_primary_work_location.slice(0, 8).map((item) => (
+                      <Typography key={item.employee_id} variant="body2">
+                        {item.employee_name}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">None</Typography>
+                )}
+              </Grid>
+            </Grid>
+          </Stack>
+        )}
       </Paper>
 
       {provider === "quickbooks" && (

@@ -34,7 +34,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { api, API_BASE_URL } from "../../utils/api";
+import { api, API_BASE_URL, payrollSetupApi } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
 import { APP_ORIGIN } from "../../config/origins";
 import { isNativeRuntime } from "../../utils/runtime";
@@ -170,6 +170,7 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [payrollLocations, setPayrollLocations] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -244,6 +245,25 @@ const FRONTEND_ORIGIN = (() => {
     }
   }, [visibleRecruiters, selectedId]);
 
+  useEffect(() => {
+    if (!companyId) return;
+    let active = true;
+    payrollSetupApi
+      .listEmployeeWorkLocations()
+      .then((data) => {
+        if (active) {
+          setPayrollLocations(Array.isArray(data?.items) ? data.items.filter((row) => row.is_active !== false) : []);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load payroll locations", err);
+        if (active) setPayrollLocations([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [companyId]);
+
   const handleSelect = async (id) => {
     setSelectedId(id);
     setSnapshotExpanded(false);
@@ -254,6 +274,7 @@ const FRONTEND_ORIGIN = (() => {
       const data = res.data;
       const flatData = {
         ...data,
+        primary_work_location_id: data.primary_work_location_id || "",
         address_street: data.address?.street || "",
         address_city: data.address?.city || "",
         address_state: data.address?.state || "",
@@ -549,6 +570,10 @@ const FRONTEND_ORIGIN = (() => {
           // merge API response but preserve toggles if the API omits them
           ...employee,
           ...data,
+          primary_work_location_id:
+            data.primary_work_location_id !== undefined
+              ? data.primary_work_location_id
+              : employee.primary_work_location_id,
           address_street: data.address?.street || "",
           address_city: data.address?.city || "",
           address_state: data.address?.state || "",
@@ -631,6 +656,16 @@ const FRONTEND_ORIGIN = (() => {
   }, [employee?.country]);
 
   const isCanada = employee?.country === "Canada";
+
+  const employeeCountryCode = useMemo(() => {
+    const raw = String(employee?.country || '').trim().toUpperCase();
+    if (raw === 'CANADA' || raw === 'CA') return 'CA';
+    if (raw === 'USA' || raw === 'UNITED STATES' || raw === 'US') return 'US';
+    return raw || '';
+  }, [employee?.country]);
+
+  const insuranceNumberLabel = employeeCountryCode === 'CA' ? 'Insurance number' : 'Tax ID';
+  const sinLabel = employeeCountryCode === 'CA' ? 'SIN' : employeeCountryCode === 'US' ? 'SSN / Tax ID' : 'Tax ID';
   const postalLabel = isCanada
     ? t("manager.employeeProfiles.form.fields.postalCodeCa")
     : t("manager.employeeProfiles.form.fields.postalCodeUs");
@@ -663,6 +698,16 @@ const FRONTEND_ORIGIN = (() => {
     if (!employee?.department_id) return "";
     return departments.find((dept) => String(dept.id) === String(employee.department_id))?.name || "";
   }, [departments, employee?.department_id]);
+  const activePayrollLocations = useMemo(() => payrollLocations.filter((row) => row.is_active !== false), [payrollLocations]);
+
+  useEffect(() => {
+    if (!employee) return;
+    if (activePayrollLocations.length === 1 && !employee.primary_work_location_id) {
+      setEmployee((prev) =>
+        prev ? { ...prev, primary_work_location_id: activePayrollLocations[0].id } : prev
+      );
+    }
+  }, [activePayrollLocations, employee]);
 
   const publicBookingLink = employee
     ? `${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || ""}/meet/${employee.public_meet_token || employee.id}`
@@ -996,7 +1041,7 @@ const FRONTEND_ORIGIN = (() => {
 
             <Grid item xs={12} md={6}>
               <TextField
-                label={t("manager.employeeProfiles.form.fields.insuranceNumber")}
+                label={insuranceNumberLabel}
                 name="insurance_number"
                 value={employee.insurance_number || ""}
                 onChange={handleChange}
@@ -1006,7 +1051,7 @@ const FRONTEND_ORIGIN = (() => {
 
             <Grid item xs={12} md={6}>
               <TextField
-                label={t("manager.employeeProfiles.form.fields.sin")}
+                label={sinLabel}
                 name="sin"
                 value={employee.sin || ""}
                 onChange={handleChange}
@@ -1536,6 +1581,49 @@ const FRONTEND_ORIGIN = (() => {
                 </Stack>
               </AccordionSummary>
               <AccordionDetails>
+              <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
+                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                  Primary Payroll Location
+                </Typography>
+                {activePayrollLocations.length === 0 ? (
+                  <Alert severity="info" variant="outlined">
+                    Create a payroll location in Company Profile first.
+                  </Alert>
+                ) : activePayrollLocations.length === 1 ? (
+                  <TextField
+                    fullWidth
+                    label="Primary Payroll Location"
+                    value={activePayrollLocations[0].name}
+                    helperText="This company currently has one active payroll location, so it is used as the employee's primary payroll location."
+                    InputProps={{ readOnly: true }}
+                  />
+                ) : (
+                  <FormControl fullWidth>
+                    <InputLabel>Primary Payroll Location</InputLabel>
+                    <Select
+                      label="Primary Payroll Location"
+                      value={employee.primary_work_location_id || ""}
+                      onChange={(event) =>
+                        setEmployee((prev) =>
+                          prev ? { ...prev, primary_work_location_id: event.target.value || "" } : prev
+                        )
+                      }
+                    >
+                      <MenuItem value="">
+                        <em>Select a payroll location</em>
+                      </MenuItem>
+                      {activePayrollLocations.map((location) => (
+                        <MenuItem key={location.id} value={location.id}>
+                          {location.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                  For Check-powered payroll later, sensitive employee tax and bank setup will be completed through the provider onboarding flow.
+                </Typography>
+              </Paper>
               {isManager && (
                 <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
                   <Typography fontWeight={700} gutterBottom>

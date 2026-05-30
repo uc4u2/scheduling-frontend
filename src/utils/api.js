@@ -698,6 +698,47 @@ export const payrollProviderSyncApi = {
       .then((r) => r.data),
 };
 
+export const payrollSetupApi = {
+  listWorkLocations: (config = {}) =>
+    api.get("/automation/payroll/work-locations", config).then((r) => r.data),
+  createWorkLocation: (payload, config = {}) =>
+    api.post("/automation/payroll/work-locations", payload, config).then((r) => r.data),
+  updateWorkLocation: (id, payload, config = {}) =>
+    api.put(`/automation/payroll/work-locations/${id}`, payload, config).then((r) => r.data),
+  deactivateWorkLocation: (id, config = {}) =>
+    api.post(`/automation/payroll/work-locations/${id}/deactivate`, {}, config).then((r) => r.data),
+  backfillDefaultWorkLocation: (config = {}) =>
+    api.post("/automation/payroll/work-locations/backfill-default", {}, config).then((r) => r.data),
+  getPayrollSetupProfile: (config = {}) =>
+    api.get("/automation/payroll/setup-profile", config).then((r) => r.data),
+  updatePayrollSetupProfile: (payload, config = {}) =>
+    api.put("/automation/payroll/setup-profile", payload, config).then((r) => r.data),
+  getCheckReadiness: (params = {}, config = {}) =>
+    api.get("/automation/payroll/check/readiness", { ...config, params }).then((r) => r.data),
+  getCheckStatus: (config = {}) =>
+    api.get("/automation/payroll/check/status", config).then((r) => r.data),
+  getCheckConfig: (config = {}) =>
+    api.get("/automation/payroll/check/config", config).then((r) => r.data),
+  getCheckCompanyPayload: (config = {}) =>
+    api.get("/automation/payroll/check/company-payload", config).then((r) => r.data),
+  getCheckWorkplacePayloads: (config = {}) =>
+    api.get("/automation/payroll/check/workplace-payloads", config).then((r) => r.data),
+  getCheckEmployeePayloads: (config = {}) =>
+    api.get("/automation/payroll/check/employee-payloads", config).then((r) => r.data),
+  syncCheckSandboxCompany: (config = {}) =>
+    api.post("/automation/payroll/check/sandbox/sync-company", {}, config).then((r) => r.data),
+  syncCheckSandboxWorkplaces: (config = {}) =>
+    api.post("/automation/payroll/check/sandbox/sync-workplaces", {}, config).then((r) => r.data),
+  syncCheckSandboxEmployees: (config = {}) =>
+    api.post("/automation/payroll/check/sandbox/sync-employees", {}, config).then((r) => r.data),
+  listEmployeeWorkLocations: (config = {}) =>
+    api.get("/automation/payroll/work-locations", config).then((r) => r.data),
+  updateEmployeePrimaryWorkLocation: (employeeId, primaryWorkLocationId, config = {}) =>
+    api
+      .put(`/api/recruiters/${employeeId}`, { primary_work_location_id: primaryWorkLocationId }, config)
+      .then((r) => r.data),
+};
+
 /* --------------------------- Google Calendar Integration --------------------------- */
 export const googleCalendarIntegration = {
   status: (params = {}, config = {}) =>

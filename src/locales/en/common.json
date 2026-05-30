@@ -1615,7 +1615,7 @@
       },
       "departments": {
         "title": "Departments",
-        "locationHint": "Use departments as locations (for example, Toronto Office, Vegas Office).",
+        "locationHint": "Departments are for teams, services, or internal reporting. Payroll Locations are physical work locations used for payroll setup.",
         "fields": {
           "name": "Department Name",
           "description": "Description"
