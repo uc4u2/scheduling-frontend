@@ -194,6 +194,26 @@ export const adjustInventoryItem = (id, payload) =>
   unwrap(api.post(`/finance/inventory/items/${id}/adjust`, payload));
 export const listInventoryTransactions = (params = {}) =>
   unwrap(api.get("/finance/inventory/transactions", { params }));
+export const downloadFinanceInventoryItemImportTemplate = () =>
+  api.get("/finance/imports/templates/inventory-items", { responseType: "blob" });
+export const previewFinanceInventoryItemImport = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return unwrap(
+    api.post("/finance/imports/inventory-items/preview", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+};
+export const commitFinanceInventoryItemImport = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return unwrap(
+    api.post("/finance/imports/inventory-items/commit", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+};
 
 export const listVendors = (params = {}) => unwrap(api.get("/finance/vendors", { params }));
 export const createVendor = (payload) => unwrap(api.post("/finance/vendors", payload));

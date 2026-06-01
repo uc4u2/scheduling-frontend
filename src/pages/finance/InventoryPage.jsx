@@ -38,14 +38,19 @@ import { useSnackbar } from "notistack";
 import { getActiveCurrency, normalizeCurrency, subscribeToActiveCurrency } from "../../utils/currency";
 import {
   adjustInventoryItem,
+  commitFinanceInventoryItemImport,
   createInventoryCategory,
   createInventoryItem,
   deleteInventoryItem,
+  downloadFinanceInventoryItemImportTemplate,
+  listFinanceImportHistory,
   listInventoryCategories,
   listInventoryItems,
   listInventoryTransactions,
+  previewFinanceInventoryItemImport,
   updateInventoryItem,
 } from "./financeApi";
+import FinanceImportDialog from "./FinanceImportDialog";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinancePagination from "./components/FinancePagination";
 
@@ -101,6 +106,21 @@ const formatDateTime = (value) => {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
 };
+
+function downloadBlobFromResponse(response, fallbackName) {
+  const blob = response?.data;
+  if (!(blob instanceof Blob)) return;
+  const header = response?.headers?.["content-disposition"] || "";
+  const match = /filename=\"?([^\";]+)\"?/i.exec(header);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = match?.[1] || fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 const availabilityChipColor = (state) => {
   switch (state) {
@@ -604,6 +624,7 @@ export default function InventoryPage() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editorCategoryId, setEditorCategoryId] = useState("");
 
@@ -725,6 +746,15 @@ export default function InventoryPage() {
     }
   };
 
+  const handleDownloadImportTemplate = async () => {
+    try {
+      const response = await downloadFinanceInventoryItemImportTemplate();
+      downloadBlobFromResponse(response, "schedulaa-finance-inventory-items-template.csv");
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tInventory("errors.downloadTemplateFailed", "Unable to download inventory import template."), { variant: "error" });
+    }
+  };
+
   return (
     <Stack spacing={2.5}>
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
@@ -825,6 +855,8 @@ export default function InventoryPage() {
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
               <FormControlLabel control={<Checkbox checked={lowStockOnly} onChange={(e) => { setLowStockOnly(e.target.checked); setPage(1); }} />} label={tInventory("toolbar.lowStockOnly", "Low stock only")} />
               <Button variant="outlined" onClick={load}>{tInventory("toolbar.refresh", "Refresh")}</Button>
+              <Button variant="text" onClick={handleDownloadImportTemplate}>{tInventory("toolbar.downloadTemplate", "Download template")}</Button>
+              <Button variant="outlined" onClick={() => setImportOpen(true)}>{tInventory("toolbar.importItems", "Import items")}</Button>
               <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>{tInventory("toolbar.addCategory", "Add Inventory Category")}</Button>
               <Button
                 variant="contained"
@@ -873,7 +905,7 @@ export default function InventoryPage() {
               <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>
                 {tInventory("empty.categoryAction", "Add inventory category")}
               </Button>
-              <Button variant="outlined" disabled>
+              <Button variant="outlined" onClick={() => setImportOpen(true)}>
                 {tInventory("empty.importAction", "Import items from CSV")}
               </Button>
             </Stack>
@@ -1007,6 +1039,49 @@ export default function InventoryPage() {
         open={guideOpen}
         onClose={() => setGuideOpen(false)}
         tInventory={tInventory}
+      />
+
+      <FinanceImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title={tInventory("importDialog.title", "Import inventory items")}
+        importType="inventory_items"
+        entityLabel="inventory items"
+        templateFileName="schedulaa-finance-inventory-items-template.csv"
+        csvStructure={`item_name,inventory_category,sku,description,unit,cost_per_unit,optional_sell_price,low_stock_threshold,vendor_name,taxable,is_active,initial_quantity\nAll Purpose Cleaner,Supplies,CLN-001,General cleaning solution,each,8.50,14.99,10,ABC Supplies,true,true,25\nAir Filter 20x20x1,Parts,FLT-202001,Replacement air filter,each,4.25,9.99,20,North Parts,false,true,50`}
+        description={tInventory("importDialog.description", "Import inventory item master data only. Preview the CSV first, then create only new stock items. Existing items are never overwritten in this phase.")}
+        downloadTemplate={downloadFinanceInventoryItemImportTemplate}
+        previewImport={previewFinanceInventoryItemImport}
+        commitImport={commitFinanceInventoryItemImport}
+        listHistory={listFinanceImportHistory}
+        renderPreviewDetails={(row) => (
+          <Typography variant="caption" color="text.secondary">
+            {[
+              row.normalized_payload?.sku || "No SKU",
+              row.normalized_payload?.category_name
+                ? row.category_status === "will_create_category"
+                  ? `${row.normalized_payload.category_name} • Will create category`
+                  : `${row.normalized_payload.category_name} • Existing category`
+                : "Uncategorized",
+              `${row.normalized_payload?.unit || "each"} • Opening qty ${Number(row.normalized_payload?.initial_quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}`,
+            ].join(" • ")}
+          </Typography>
+        )}
+        renderIssueDetails={(row) =>
+          !(row.errors || []).length && !row.duplicate_match ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+              {row.category_status === "will_create_category"
+                ? "A new custom category will be created during commit."
+                : row.category_status === "uncategorized"
+                  ? "This item will stay uncategorized."
+                  : "Opening quantity will create a stock-in transaction if provided."}
+            </Typography>
+          ) : null
+        }
+        onImported={async () => {
+          await load();
+          setImportOpen(false);
+        }}
       />
 
       <FinancePagination

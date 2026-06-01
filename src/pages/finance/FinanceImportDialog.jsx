@@ -70,6 +70,10 @@ export default function FinanceImportDialog({
   commitImport,
   listHistory,
   onImported,
+  description,
+  renderPreviewDetails,
+  renderIssueDetails,
+  entityLabel,
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
@@ -80,6 +84,7 @@ export default function FinanceImportDialog({
   const [previewing, setPreviewing] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState("");
+  const displayLabel = entityLabel || importType;
 
   useEffect(() => {
     if (!open) return;
@@ -126,7 +131,7 @@ export default function FinanceImportDialog({
     setError("");
     try {
       const payload = await commitImport(file);
-      enqueueSnackbar(`${payload?.imported_count || 0} ${importType} imported.`, { variant: "success" });
+      enqueueSnackbar(`${payload?.imported_count || 0} ${displayLabel} imported.`, { variant: "success" });
       setPreview(payload);
       const historyPayload = await listHistory(importType);
       setHistory(Array.isArray(historyPayload?.items) ? historyPayload.items : []);
@@ -144,7 +149,7 @@ export default function FinanceImportDialog({
       <DialogContent dividers>
         <Stack spacing={2.5}>
           <Typography variant="body2" color="text.secondary">
-            Import official Business Finance {importType}. Preview the CSV first, then create only new rows. Existing rows are never overwritten in this phase.
+            {description || `Import official Business Finance ${displayLabel}. Preview the CSV first, then create only new rows. Existing rows are never overwritten in this phase.`}
           </Typography>
 
           {error ? <Alert severity="error">{error}</Alert> : null}
@@ -221,9 +226,13 @@ export default function FinanceImportDialog({
                         <Typography variant="body2" fontWeight={700}>
                           {row.normalized_payload?.name || `${row.normalized_payload?.first_name || ""} ${row.normalized_payload?.last_name || ""}`.trim() || "Row"}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {row.normalized_payload?.email || row.normalized_payload?.phone || row.normalized_payload?.address || "No secondary fields"}
-                        </Typography>
+                        {renderPreviewDetails ? (
+                          renderPreviewDetails(row)
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            {row.normalized_payload?.email || row.normalized_payload?.phone || row.normalized_payload?.address || "No secondary fields"}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         {(row.errors || []).length ? (
@@ -237,6 +246,7 @@ export default function FinanceImportDialog({
                         ) : (
                           <Typography variant="caption" color="text.secondary">Ready to import</Typography>
                         )}
+                        {renderIssueDetails ? renderIssueDetails(row) : null}
                       </TableCell>
                     </TableRow>
                   ))}
