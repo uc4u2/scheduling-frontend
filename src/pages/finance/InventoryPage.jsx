@@ -1400,9 +1400,23 @@ export default function InventoryPage() {
         title={tInventory("importDialog.title", "Import inventory items")}
         importType="inventory_items"
         entityLabel="inventory items"
+        modes={[
+          {
+            value: "create_new_only",
+            label: tInventory("importDialog.modeCreateOnly", "Create new items only"),
+            description: tInventory("importDialog.modeCreateOnlyHelp", "Existing inventory items stay unchanged."),
+          },
+          {
+            value: "create_and_update_matches",
+            label: tInventory("importDialog.modeCreateAndUpdate", "Create new items and update matching items"),
+            description: tInventory("importDialog.modeCreateAndUpdateHelp", "Matching items are updated after preview. Stock quantities on existing items are not changed."),
+          },
+        ]}
+        defaultMode="create_new_only"
+        showChangePreview
         templateFileName="schedulaa-finance-inventory-items-template.csv"
         csvStructure={`item_name,inventory_category,sku,description,unit,cost_per_unit,optional_sell_price,low_stock_threshold,vendor_name,taxable,is_active,initial_quantity\nAll Purpose Cleaner,Supplies,CLN-001,General cleaning solution,each,8.50,14.99,10,ABC Supplies,true,true,25\nAir Filter 20x20x1,Parts,FLT-202001,Replacement air filter,each,4.25,9.99,20,North Parts,false,true,50`}
-        description={tInventory("importDialog.description", "Import inventory item master data from a spreadsheet. Preview the file first, then create only new stock items. Existing items stay unchanged in this import flow.")}
+        description={tInventory("importDialog.description", "Import inventory item master data from a spreadsheet. Preview the file first, then create new items or update matching item details. Existing stock quantities stay unchanged.")}
         downloadTemplate={downloadFinanceInventoryItemImportTemplate}
         previewImport={previewFinanceInventoryItemImport}
         commitImport={commitFinanceInventoryItemImport}
@@ -1411,6 +1425,7 @@ export default function InventoryPage() {
           <Typography variant="caption" color="text.secondary">
             {[
               row.normalized_payload?.sku || "No SKU",
+              row.matched_item?.label ? `Match: ${row.matched_item.label}` : null,
               row.normalized_payload?.category_name
                 ? row.category_status === "will_create_category"
                   ? `${row.normalized_payload.category_name} • Will create category`
@@ -1421,9 +1436,13 @@ export default function InventoryPage() {
           </Typography>
         )}
         renderIssueDetails={(row) =>
-          !(row.errors || []).length && !row.duplicate_match ? (
+          !(row.errors || []).length ? (
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-              {row.category_status === "will_create_category"
+              {row.status === "no_change"
+                ? "No item-master changes were found for this row."
+                : row.status === "valid_update"
+                  ? "Only item details will be updated. Existing stock quantities stay unchanged."
+                : row.category_status === "will_create_category"
                 ? "A new custom category will be created during commit."
                 : row.category_status === "uncategorized"
                   ? "This item will stay uncategorized."

@@ -208,18 +208,20 @@ export const exportFinanceInventoryItems = (params = {}) =>
   fetchBinary(`/finance/inventory/items/export${buildQueryString(params)}`);
 export const downloadFinanceInventoryItemImportTemplate = () =>
   api.get("/finance/imports/templates/inventory-items", { responseType: "blob" });
-export const previewFinanceInventoryItemImport = (file) => {
+export const previewFinanceInventoryItemImport = (file, options = {}) => {
   const formData = new FormData();
   formData.append("file", file);
+  if (options?.mode) formData.append("mode", options.mode);
   return unwrap(
     api.post("/finance/imports/inventory-items/preview", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     })
   );
 };
-export const commitFinanceInventoryItemImport = (file) => {
+export const commitFinanceInventoryItemImport = (file, options = {}) => {
   const formData = new FormData();
   formData.append("file", file);
+  if (options?.mode) formData.append("mode", options.mode);
   return unwrap(
     api.post("/finance/imports/inventory-items/commit", formData, {
       headers: { "Content-Type": "multipart/form-data" },
