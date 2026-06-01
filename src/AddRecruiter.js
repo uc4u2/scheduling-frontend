@@ -8,8 +8,6 @@ import {
   Divider,
   FormControlLabel,
   Grid,
-  IconButton,
-  InputAdornment,
   MenuItem,
   Paper,
   Stack,
@@ -21,26 +19,30 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import Visibility from "@mui/icons-material/Visibility";
-import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import Snackbar from "@mui/material/Snackbar";
 import api, { payrollSetupApi } from "./utils/api";
 import { COMPANY_COUNTRY_OPTIONS, formatPostalInput, getAddressWarnings, getPostalHelper, getPostalLabel, getRegionLabel, getRegionOptions, normalizeDisplayCountry, suggestTimezoneForRegion } from "./utils/locationProfile";
 import { getUserTimezone, normalizeTimezoneValue } from "./utils/timezone";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
 import useBillingStatus from "./components/billing/useBillingStatus";
 import { formatBillingNextDateLabel } from "./components/billing/billingLabels";
 import AddMemberHelpDrawer from "./pages/sections/management/components/AddMemberHelpDrawer";
+import TeamMemberImportDialog from "./pages/sections/management/components/TeamMemberImportDialog";
+import {
+  commitTeamMemberImport,
+  downloadTeamMemberImportTemplate,
+  listTeamMemberImportHistory,
+  previewTeamMemberImport,
+} from "./api/teamMembers";
 import { isMobileComplianceMode, MOBILE_PAYMENTS_MESSAGE } from "./utils/mobileCompliance";
-
-const PASSWORD_HELP =
-  "8+ chars, uppercase, lowercase, number, and symbol required.";
 
 const ROLE_OPTIONS = [
   { value: "recruiter", label: "Employee" },
@@ -65,14 +67,10 @@ const AddRecruiter = () => {
     country: "",
     postalCode: "",
     primaryWorkLocationId: "",
-    password: "",
-    confirmPassword: "",
-    agreedToTerms: false,
+    confirmAuthority: false,
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitState, setSubmitState] = useState({ status: "idle", message: "" });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [seatDialogOpen, setSeatDialogOpen] = useState(false);
   const [seatInput, setSeatInput] = useState("");
   const [seatNeeded, setSeatNeeded] = useState(0);
@@ -85,6 +83,7 @@ const AddRecruiter = () => {
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [payrollLocations, setPayrollLocations] = useState([]);
   const [payrollSetupProfile, setPayrollSetupProfile] = useState({ payroll_intent: "none" });
   const departments = useDepartments();
@@ -192,20 +191,6 @@ const AddRecruiter = () => {
     }));
   }, [companyProfile?.timezone, form.country, selectedPayrollLocation]);
 
-const passwordStrength = useMemo(() => {
-  if (!form.password) return "";
-  const score = [
-    /[A-Z]/.test(form.password),
-    /[a-z]/.test(form.password),
-    /[0-9]/.test(form.password),
-    /[^A-Za-z0-9]/.test(form.password),
-    form.password.length >= 12,
-  ].filter(Boolean).length;
-  if (score >= 4) return "Strong";
-  if (score >= 3) return "Medium";
-  return "Weak";
-}, [form.password]);
-
   const handleChange = (key) => (event) => {
     const rawValue = event.target.type === "checkbox" ? event.target.checked : event.target.value;
     const value = key === "country" ? normalizeDisplayCountry(rawValue) : key === "postalCode" ? formatPostalInput(form.country, rawValue) : rawValue;
@@ -219,16 +204,7 @@ const passwordStrength = useMemo(() => {
     if (!form.lastName.trim()) errors.lastName = "Required";
     if (!form.email.trim()) errors.email = "Email required";
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) errors.email = "Invalid email";
-    if (!form.password) errors.password = "Password required";
-    else if (!/[A-Z]/.test(form.password) ||
-      !/[a-z]/.test(form.password) ||
-      !/[0-9]/.test(form.password) ||
-      !/[^A-Za-z0-9]/.test(form.password) ||
-      form.password.length < 8) {
-      errors.password = PASSWORD_HELP;
-    }
-    if (form.password !== form.confirmPassword) errors.confirmPassword = "Passwords must match";
-    if (!form.agreedToTerms) errors.agreedToTerms = "You must accept the terms";
+    if (!form.confirmAuthority) errors.confirmAuthority = "Confirmation required";
     if (
       payrollSetupProfile?.payroll_intent === "check_embedded_us" &&
       activePayrollLocations.length > 1 &&
@@ -274,10 +250,7 @@ const passwordStrength = useMemo(() => {
       address_state: form.state.trim() || null,
       address_zip: form.postalCode.trim() || null,
       primary_work_location_id: form.primaryWorkLocationId ? Number(form.primaryWorkLocationId) : null,
-      password: form.password,
-      password_confirm: form.confirmPassword,
-      agreed_to_terms: form.agreedToTerms,
-      terms_version: "2025-11",
+      confirm_authority: form.confirmAuthority,
     };
     try {
       setSubmitState({ status: "loading", message: "" });
@@ -298,9 +271,7 @@ const passwordStrength = useMemo(() => {
         country: normalizeDisplayCountry(companyProfile?.country_code) || "US",
         postalCode: "",
         primaryWorkLocationId: activePayrollLocations.length === 1 ? String(activePayrollLocations[0].id) : "",
-        password: "",
-        confirmPassword: "",
-        agreedToTerms: false,
+        confirmAuthority: false,
       });
       setFieldErrors({});
     } catch (error) {
@@ -329,14 +300,13 @@ const passwordStrength = useMemo(() => {
           const mapKey = {
             first_name: "firstName",
             last_name: "lastName",
-            password_confirm: "confirmPassword",
-            agreed_to_terms: "agreedToTerms",
             department_id: "departmentId",
             address_street: "street",
             address_city: "city",
             address_state: "state",
             address_zip: "postalCode",
             primary_work_location_id: "primaryWorkLocationId",
+            confirm_authority: "confirmAuthority",
           }[key] || key;
           mapped[mapKey] = value;
         });
@@ -483,6 +453,40 @@ const passwordStrength = useMemo(() => {
             >
               Go to Employee Management
             </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadOutlinedIcon fontSize="small" />}
+              sx={{ textTransform: "none", fontWeight: 600 }}
+              onClick={async () => {
+                try {
+                  const response = await downloadTeamMemberImportTemplate();
+                  const blob = response?.data;
+                  if (!(blob instanceof Blob)) throw new Error("Template download failed.");
+                  const url = URL.createObjectURL(blob);
+                  const anchor = document.createElement("a");
+                  anchor.href = url;
+                  anchor.download = "schedulaa-team-members-template.csv";
+                  document.body.appendChild(anchor);
+                  anchor.click();
+                  anchor.remove();
+                  URL.revokeObjectURL(url);
+                } catch (err) {
+                  setSubmitState({ status: "error", message: err?.response?.data?.error || err?.message || "Unable to download the team member template." });
+                }
+              }}
+            >
+              Download template
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<UploadFileOutlinedIcon fontSize="small" />}
+              sx={{ textTransform: "none", fontWeight: 600 }}
+              onClick={() => setImportOpen(true)}
+            >
+              Import team members
+            </Button>
           </Stack>
           <Button
             variant="outlined"
@@ -562,6 +566,10 @@ const passwordStrength = useMemo(() => {
             {seatNotice}
           </Alert>
         )}
+
+        <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+          Team members set their own password through a secure setup invitation. Existing team members stay unchanged in the import flow.
+        </Alert>
 
         <form onSubmit={handleSubmit} noValidate>
           <Grid container spacing={2}>
@@ -797,80 +805,25 @@ const passwordStrength = useMemo(() => {
 
           <Divider sx={{ my: 3 }} />
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                fullWidth
-                value={form.password}
-                onChange={handleChange("password")}
-                error={Boolean(fieldErrors.password)}
-                helperText={fieldErrors.password || PASSWORD_HELP}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end" size="small">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                autoComplete="new-password"
-              />
-              {passwordStrength && (
-                <Typography variant="caption" color="text.secondary">
-                  Strength: {passwordStrength}
-                </Typography>
-              )}
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Confirm password"
-                type={showConfirm ? "text" : "password"}
-                fullWidth
-                value={form.confirmPassword}
-                onChange={handleChange("confirmPassword")}
-                error={Boolean(fieldErrors.confirmPassword)}
-                helperText={fieldErrors.confirmPassword}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowConfirm((prev) => !prev)} edge="end" size="small">
-                        {showConfirm ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                autoComplete="new-password"
-              />
-            </Grid>
-            <Grid item xs={12}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "grey.50" }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Account setup
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Schedulaa creates the account and sends a secure setup invitation. Passwords are not entered by managers on this page.
+              </Typography>
               <FormControlLabel
-                control={<Checkbox required checked={form.agreedToTerms} onChange={handleChange("agreedToTerms")} />}
-                label={
-                  <Typography variant="body2">
-                    I confirm this user agrees to the{" "}
-                    <Button
-                      component={RouterLink}
-                      to="/user-agreement"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      size="small"
-                    >
-                      Schedulaa User Agreement
-                    </Button>
-                    .
-                  </Typography>
-                }
+                control={<Checkbox checked={form.confirmAuthority} onChange={handleChange("confirmAuthority")} />}
+                label="I confirm I am authorized to create this account and send a setup invitation for this team member."
               />
-              {fieldErrors.agreedToTerms && (
+              {fieldErrors.confirmAuthority ? (
                 <Typography variant="caption" color="error">
-                  {fieldErrors.agreedToTerms}
+                  {fieldErrors.confirmAuthority}
                 </Typography>
-              )}
-            </Grid>
-          </Grid>
+              ) : null}
+            </Stack>
+          </Paper>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 3 }}>
             <Button
@@ -901,9 +854,7 @@ const passwordStrength = useMemo(() => {
                   country: normalizeDisplayCountry(companyProfile?.country_code) || "US",
                   postalCode: "",
                   primaryWorkLocationId: activePayrollLocations.length === 1 ? String(activePayrollLocations[0].id) : "",
-                  password: "",
-                  confirmPassword: "",
-                  agreedToTerms: false,
+                  confirmAuthority: false,
                 })
               }
             >
@@ -979,6 +930,18 @@ const passwordStrength = useMemo(() => {
           </DialogActions>
         </Dialog>
         <AddMemberHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
+        <TeamMemberImportDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          downloadTemplate={downloadTeamMemberImportTemplate}
+          previewImport={previewTeamMemberImport}
+          commitImport={commitTeamMemberImport}
+          listHistory={listTeamMemberImportHistory}
+          onImported={async () => {
+            setImportOpen(false);
+            setSubmitState({ status: "success", message: "Team member import completed." });
+          }}
+        />
       </Paper>
     </Box>
   );
