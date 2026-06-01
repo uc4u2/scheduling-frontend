@@ -1107,11 +1107,14 @@ return (
 <Drawer anchor="right" open={guideOpen} onClose={() => setGuideOpen(false)}>
   <Box sx={{ width: 600, p: 3 }}>
     <Typography variant="h5" gutterBottom>
-      Payroll Coverage & Help
+      Schedulaa Payroll Coverage & Guidance
     </Typography>
     <Typography variant="body2" color="text.secondary" gutterBottom>
-      What we support, how calculations work, and step-by-step + scenario guidance.
+      Internal Schedulaa payroll coverage, calculation guidance, and operating walkthroughs. This guide is not an official payroll-provider preview or provider submission workflow.
     </Typography>
+    <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+      If your company is preparing for Check-powered payroll, use <strong>Provider Sync</strong> for Check onboarding, sandbox setup, and future provider-side payroll preview steps. Payroll Preview remains Schedulaa&apos;s internal preparation screen.
+    </Alert>
     <Tabs
       value={guideTab}
       onChange={(_, v) => setGuideTab(v)}
@@ -1127,7 +1130,7 @@ return (
     <TutorialHelpCard
       tutorialGroup={PAYROLL_TUTORIAL_GROUP}
       title="Quick tutorial"
-      body="Watch the payroll walkthrough while you review coverage, build a preview, and prepare export-ready handoff files."
+      body="Watch the Schedulaa payroll walkthrough while you review internal coverage, build a preview, and prepare export-ready handoff files."
       watchLabel="Watch tutorial"
       moreLabel="More walkthroughs"
       youtubeLabel="Watch on YouTube"
@@ -1243,6 +1246,9 @@ return (
         <Typography variant="h6" gutterBottom>How Schedulaa Payroll Works (US & Canada)</Typography>
         <Typography variant="body2" gutterBottom>
           Payroll combines: (1) Company settings (default pay frequency), (2) Employee profile (country/location, rate, CPP/EI flags, union member, recurring payroll defaults like union dues/garnishment/insurance/retirement), (3) Time & leave (approved shifts, paid/unpaid leave, stat holidays), (4) Manager overrides (bonus, commission, tips, shift premium, allowances, one-off reimbursements, per-period adjustments). Every finalize is logged in the Payroll Audit Log (who finalized/overwrote and when).
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          This section describes Schedulaa&apos;s internal payroll engine and export-ready payroll workflow. Provider-led payroll processing, onboarding, and official provider-side preview steps are separate and belong in the Check workspace when embedded payroll is enabled.
         </Typography>
         <Typography variant="body2" gutterBottom>
           Retirement defaults vs employee overrides: United States (401(k)) — Company retirement plans define defaults for all employees; Employee Profile retirement fields are optional overrides only. Canada (RRSP) — No company default exists; Employee Profile RRSP fields are the primary setup. Leaving retirement fields blank always results in no retirement contribution.
