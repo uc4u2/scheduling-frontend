@@ -44,6 +44,7 @@ import {
   createInventoryItem,
   deleteInventoryItem,
   downloadFinanceInventoryItemImportTemplate,
+  exportFinanceInventoryItems,
   listFinanceImportHistory,
   listInventoryCategories,
   listInventoryItems,
@@ -900,10 +901,24 @@ export default function InventoryPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editorCategoryId, setEditorCategoryId] = useState("");
+
+  const inventoryFilterParams = useMemo(
+    () => ({
+      q: search || undefined,
+      category_id: categoryId || undefined,
+      stock_status: stockStatus || undefined,
+      vendor: vendorFilter || undefined,
+      taxable: taxableFilter || undefined,
+      low_stock: lowStockOnly || undefined,
+      active: activeFilter === "all" ? undefined : activeFilter === "active",
+    }),
+    [activeFilter, categoryId, lowStockOnly, search, stockStatus, taxableFilter, vendorFilter]
+  );
 
   const load = async () => {
     setLoading(true);
@@ -912,13 +927,7 @@ export default function InventoryPage() {
       const [categoriesRes, itemsRes] = await Promise.all([
         listInventoryCategories(),
         listInventoryItems({
-          q: search || undefined,
-          category_id: categoryId || undefined,
-          stock_status: stockStatus || undefined,
-          vendor: vendorFilter || undefined,
-          taxable: taxableFilter || undefined,
-          low_stock: lowStockOnly || undefined,
-          active: activeFilter === "all" ? undefined : activeFilter === "active",
+          ...inventoryFilterParams,
           page,
           per_page: perPage,
         }),
@@ -1069,6 +1078,20 @@ export default function InventoryPage() {
     }
   };
 
+  const handleExportInventory = async () => {
+    setExporting(true);
+    try {
+      const response = await exportFinanceInventoryItems(inventoryFilterParams);
+      downloadBlobFromResponse(response, `schedulaa-inventory-items-export-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`);
+      enqueueSnackbar(tInventory("snackbar.exportDownloaded", "Inventory export downloaded."), { variant: "success" });
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || tInventory("errors.exportFailed", "Unable to export inventory. Narrow your filters and try again.");
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <Stack spacing={2.5}>
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
@@ -1171,6 +1194,9 @@ export default function InventoryPage() {
               <Button variant="outlined" onClick={load}>{tInventory("toolbar.refresh", "Refresh")}</Button>
               <Button variant="text" onClick={handleDownloadImportTemplate}>{tInventory("toolbar.downloadTemplate", "Download template")}</Button>
               <Button variant="outlined" onClick={() => setImportOpen(true)}>{tInventory("toolbar.importItems", "Import items")}</Button>
+              <Button variant="outlined" onClick={handleExportInventory} disabled={exporting}>
+                {exporting ? tInventory("toolbar.exportingCsv", "Exporting CSV...") : tInventory("toolbar.exportCsv", "Export CSV")}
+              </Button>
               <Button variant="outlined" onClick={() => setCategoryDialogOpen(true)}>{tInventory("toolbar.addCategory", "Add Inventory Category")}</Button>
               <Button
                 variant="contained"

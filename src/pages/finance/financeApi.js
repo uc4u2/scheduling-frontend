@@ -49,6 +49,16 @@ const fetchBinary = async (path) => {
   return { data: blob, headers, status: response.status };
 };
 
+const buildQueryString = (params = {}) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    searchParams.append(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+};
+
 const pickArray = (payload, keys = ["items", "data", "recruiters"]) => {
   if (Array.isArray(payload)) return payload;
   for (const key of keys) {
@@ -194,6 +204,8 @@ export const adjustInventoryItem = (id, payload) =>
   unwrap(api.post(`/finance/inventory/items/${id}/adjust`, payload));
 export const listInventoryTransactions = (params = {}) =>
   unwrap(api.get("/finance/inventory/transactions", { params }));
+export const exportFinanceInventoryItems = (params = {}) =>
+  fetchBinary(`/finance/inventory/items/export${buildQueryString(params)}`);
 export const downloadFinanceInventoryItemImportTemplate = () =>
   api.get("/finance/imports/templates/inventory-items", { responseType: "blob" });
 export const previewFinanceInventoryItemImport = (file) => {
