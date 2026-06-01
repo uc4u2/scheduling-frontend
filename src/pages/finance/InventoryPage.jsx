@@ -20,6 +20,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -105,6 +106,40 @@ const formatDateTime = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+};
+
+const inventoryMovementTypeLabel = (row, tInventory) => {
+  const sourceType = String(row?.source_type || "").toLowerCase();
+  const type = String(row?.transaction_type || "").toLowerCase();
+  if (sourceType === "import") return tInventory("movement.openingImport", "Opening stock import");
+  if (type === "stock_in" && sourceType === "purchase") return tInventory("movement.purchase", "Purchase");
+  if (type === "stock_in") return tInventory("movement.stockAdded", "Stock added");
+  if (type === "adjustment") return tInventory("movement.manualAdjustment", "Manual adjustment");
+  if (type === "approved_usage") return tInventory("movement.approvedUsage", "Approved usage");
+  if (type === "reversal") return tInventory("movement.reversal", "Reversal");
+  return tInventory("movement.stockMovement", "Stock movement");
+};
+
+const inventoryMovementReason = (item, tInventory) => {
+  if (item?.over_reserved) {
+    return {
+      label: tInventory("replenishment.reasonOverReserved", "Over-reserved"),
+      helper: tInventory("replenishment.actionReservations", "Check reservations before adjusting stock"),
+      color: "error",
+    };
+  }
+  if (Number(item?.pending_usage_quantity || 0) > 0) {
+    return {
+      label: tInventory("replenishment.reasonPending", "Usage review pending"),
+      helper: tInventory("replenishment.actionReview", "Manager review pending"),
+      color: "info",
+    };
+  }
+  return {
+    label: tInventory("replenishment.reasonLow", "Low available stock"),
+    helper: tInventory("replenishment.actionReorder", "Review before reordering"),
+    color: "warning",
+  };
 };
 
 function downloadBlobFromResponse(response, fallbackName) {
@@ -399,11 +434,59 @@ function InventoryTransactionsDialog({ open, onClose, item, transactions, curren
     (key, fallback, options = {}) => t(`manager.finance.materials.${key}`, { defaultValue: fallback, ...options }),
     [t]
   );
+  const [historyFilter, setHistoryFilter] = useState("all");
+
+  useEffect(() => {
+    if (!open) return;
+    setHistoryFilter("all");
+  }, [open]);
+
+  const filteredTransactions = useMemo(() => {
+    if (historyFilter === "all") return transactions;
+    if (historyFilter === "purchase") {
+      return transactions.filter((row) => String(row?.source_type || "").toLowerCase() === "purchase");
+    }
+    if (historyFilter === "import") {
+      return transactions.filter((row) => String(row?.source_type || "").toLowerCase() === "import");
+    }
+    if (historyFilter === "approved_usage") {
+      return transactions.filter((row) => String(row?.transaction_type || "").toLowerCase() === "approved_usage");
+    }
+    if (historyFilter === "adjustment") {
+      return transactions.filter((row) => String(row?.transaction_type || "").toLowerCase() === "adjustment");
+    }
+    if (historyFilter === "stock_in") {
+      return transactions.filter(
+        (row) =>
+          String(row?.transaction_type || "").toLowerCase() === "stock_in" &&
+          String(row?.source_type || "").toLowerCase() !== "purchase" &&
+          String(row?.source_type || "").toLowerCase() !== "import"
+      );
+    }
+    return transactions;
+  }, [historyFilter, transactions]);
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{tInventory("historyDialog.title", "Stock history")}{item?.name ? ` • ${item.name}` : ""}</DialogTitle>
       <DialogContent dividers>
-        {!transactions.length ? (
+        <Stack spacing={2}>
+          <FormControl size="small" sx={{ maxWidth: 240 }}>
+            <InputLabel>{tInventory("historyDialog.filter", "Movement filter")}</InputLabel>
+            <Select
+              value={historyFilter}
+              label={tInventory("historyDialog.filter", "Movement filter")}
+              onChange={(e) => setHistoryFilter(e.target.value)}
+            >
+              <MenuItem value="all">{tInventory("historyDialog.filterAll", "All movement")}</MenuItem>
+              <MenuItem value="stock_in">{tInventory("historyDialog.filterStockAdded", "Stock added")}</MenuItem>
+              <MenuItem value="adjustment">{tInventory("historyDialog.filterAdjustments", "Manual adjustments")}</MenuItem>
+              <MenuItem value="approved_usage">{tInventory("historyDialog.filterApprovedUsage", "Approved usage")}</MenuItem>
+              <MenuItem value="purchase">{tInventory("historyDialog.filterPurchase", "Purchases")}</MenuItem>
+              <MenuItem value="import">{tInventory("historyDialog.filterImport", "Opening stock import")}</MenuItem>
+            </Select>
+          </FormControl>
+        {!filteredTransactions.length ? (
           <Typography variant="body2" color="text.secondary">{tInventory("historyDialog.empty", "No stock transactions yet.")}</Typography>
         ) : (
           <Table size="small">
@@ -418,22 +501,202 @@ function InventoryTransactionsDialog({ open, onClose, item, transactions, curren
               </TableRow>
             </TableHead>
             <TableBody>
-              {transactions.map((row) => (
+              {filteredTransactions.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{formatDateTime(row.created_at)}</TableCell>
-                  <TableCell>{row.transaction_type || "-"}</TableCell>
+                  <TableCell>{inventoryMovementTypeLabel(row, tInventory)}</TableCell>
                   <TableCell>{formatQuantity(row.quantity_delta)}</TableCell>
                   <TableCell>{row.unit_cost != null ? formatMoney(row.unit_cost, currency) : "-"}</TableCell>
-                  <TableCell>{row.source_type || tInventory("historyDialog.manual", "manual")}</TableCell>
+                  <TableCell>{row.source_type ? String(row.source_type).replace(/_/g, " ") : tInventory("historyDialog.manual", "manual")}</TableCell>
                   <TableCell>{row.note || "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
+        </Stack>
       </DialogContent>
       <DialogActions><Button onClick={onClose}>{tInventory("common.close", "Close")}</Button></DialogActions>
     </Dialog>
+  );
+}
+
+function InventoryItemDetailDrawer({
+  open,
+  onClose,
+  item,
+  transactions,
+  loadingTransactions,
+  currency,
+  tInventory,
+  onEdit,
+  onAdjust,
+  onViewHistory,
+  onArchive,
+}) {
+  const recentTransactions = (transactions || []).slice(0, 10);
+  const overReserved = Boolean(item?.over_reserved);
+  const pendingUsage = Number(item?.pending_usage_quantity || 0) > 0;
+
+  return (
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: { xs: "100%", sm: 560, lg: 620 },
+          maxWidth: "100%",
+        },
+      }}
+    >
+      <Stack sx={{ height: "100%" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}` }}>
+          <Box>
+            <Typography variant="h6" fontWeight={900}>
+              {tInventory("detailDrawer.title", "Inventory item details")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {item?.name || tInventory("detailDrawer.item", "Inventory item")}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} aria-label={tInventory("detailDrawer.close", "Close inventory item details")}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+
+        <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto", flex: 1 }}>
+          {!item ? (
+            <Typography variant="body2" color="text.secondary">
+              {tInventory("detailDrawer.noItem", "Select an inventory item to review its availability and recent activity.")}
+            </Typography>
+          ) : (
+            <>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={800}>{tInventory("detailDrawer.identity", "Identity")}</Typography>
+                  <Stack spacing={0.5}>
+                    <Typography variant="h6" fontWeight={800}>{item.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">{item.description || tInventory("detailDrawer.noDescription", "No description")}</Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip size="small" label={item.sku || tInventory("detailDrawer.noSku", "No SKU")} variant="outlined" />
+                    <Chip size="small" label={item.category_name || tInventory("detailDrawer.uncategorized", "Uncategorized")} variant="outlined" />
+                    <Chip size="small" label={item.unit || tInventory("detailDrawer.each", "each")} variant="outlined" />
+                    <Chip size="small" label={item.is_active === false ? tInventory("availability.inactive", "Inactive") : tInventory("detailDrawer.active", "Active")} color={item.is_active === false ? "default" : "success"} variant="outlined" />
+                    <Chip size="small" label={item.taxable ? tInventory("detailDrawer.taxable", "Taxable") : tInventory("detailDrawer.nonTaxable", "Non-taxable")} variant="outlined" />
+                  </Stack>
+                </Stack>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={800}>{tInventory("detailDrawer.availability", "Availability")}</Typography>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.onHand", "On hand")}</Typography><Typography variant="body1" fontWeight={700}>{formatQuantity(item.on_hand_quantity ?? item.current_quantity)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.reserved", "Reserved")}</Typography><Typography variant="body1" fontWeight={700}>{formatQuantity(item.reserved_quantity ?? 0)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.available", "Available")}</Typography><Typography variant="body1" fontWeight={700}>{formatQuantity(item.available_quantity ?? item.current_quantity)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.pendingUsage", "Pending usage review")}</Typography><Typography variant="body1" fontWeight={700}>{formatQuantity(item.pending_usage_quantity ?? 0)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("detailDrawer.approvedUsage", "Approved usage")}</Typography><Typography variant="body1" fontWeight={700}>{formatQuantity(item.approved_used_quantity ?? 0)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.lowStockLevel", "Low stock threshold")}</Typography><Typography variant="body1" fontWeight={700}>{item.low_stock_threshold != null ? formatQuantity(item.low_stock_threshold) : "-"}</Typography></Grid>
+                  </Grid>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip
+                      size="small"
+                      color={availabilityChipColor(item.stock_status || item.stock_conflict_state)}
+                      variant="outlined"
+                      label={availabilityChipLabel(item.stock_status || item.stock_conflict_state, tInventory)}
+                    />
+                    {Number(item.active_reservations_count || 0) > 0 ? (
+                      <Chip size="small" variant="outlined" label={tInventory("detailDrawer.activeReservations", "{{count}} active reservation(s)", { count: item.active_reservations_count || 0 })} />
+                    ) : null}
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">{tInventory("detailDrawer.reservedHelper", "Reserved means planned on active work orders.")}</Typography>
+                  <Typography variant="caption" color="text.secondary">{tInventory("detailDrawer.pendingHelper", "Pending usage means field-reported usage waiting for manager review.")}</Typography>
+                  <Typography variant="caption" color="text.secondary">{tInventory("detailDrawer.approvedHelper", "Approved usage means usage already approved and deducted.")}</Typography>
+                  {overReserved ? (
+                    <Alert severity="warning">
+                      {tInventory("detailDrawer.overReservedWarning", "Reservations are larger than on-hand stock. Review job plans, incoming stock, or manual counts.")}
+                    </Alert>
+                  ) : null}
+                  {pendingUsage ? (
+                    <Alert severity="info">
+                      {tInventory("detailDrawer.pendingUsageNotice", "Field-reported usage is waiting for manager review.")}
+                    </Alert>
+                  ) : null}
+                </Stack>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={800}>{tInventory("detailDrawer.pricingSupplier", "Pricing and supplier")}</Typography>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.cost", "Cost per unit")}</Typography><Typography variant="body1" fontWeight={700}>{formatMoney(item.cost_per_unit, currency)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.sellPrice", "Optional sell price")}</Typography><Typography variant="body1" fontWeight={700}>{item.optional_sell_price != null ? formatMoney(item.optional_sell_price, currency) : "-"}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.inventoryValue", "Inventory value")}</Typography><Typography variant="body1" fontWeight={700}>{formatMoney(item.inventory_value, currency)}</Typography></Grid>
+                    <Grid item xs={6}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.margin", "Margin")}</Typography><Typography variant="body1" fontWeight={700}>{item.gross_margin_amount != null ? `${formatMoney(item.gross_margin_amount, currency)} • ${Number(item.gross_margin_percent || 0).toFixed(1)}%` : "-"}</Typography></Grid>
+                    <Grid item xs={12}><Typography variant="caption" color="text.secondary">{tInventory("table.headers.vendor", "Preferred vendor")}</Typography><Typography variant="body1" fontWeight={700}>{item.vendor_name || "-"}</Typography></Grid>
+                  </Grid>
+                </Stack>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={800}>{tInventory("detailDrawer.activity", "Recent activity")}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {tInventory("detailDrawer.lastUpdated", "Last updated")}: {formatDateTime(item.updated_at)}
+                  </Typography>
+                  {loadingTransactions ? (
+                    <Stack spacing={1}>
+                      <Skeleton variant="rounded" height={52} />
+                      <Skeleton variant="rounded" height={52} />
+                      <Skeleton variant="rounded" height={52} />
+                    </Stack>
+                  ) : recentTransactions.length ? (
+                    <Stack spacing={1}>
+                      {recentTransactions.map((row) => (
+                        <Paper key={row.id} variant="outlined" sx={{ p: 1.25, borderRadius: 1.25 }}>
+                          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                            <Box>
+                              <Typography variant="body2" fontWeight={700}>{inventoryMovementTypeLabel(row, tInventory)}</Typography>
+                              <Typography variant="caption" color="text.secondary">{formatDateTime(row.created_at)}</Typography>
+                            </Box>
+                            <Stack alignItems={{ xs: "flex-start", sm: "flex-end" }} spacing={0.25}>
+                              <Typography variant="body2" fontWeight={700}>{formatQuantity(row.quantity_delta)}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {row.unit_cost != null ? `${formatMoney(row.unit_cost, currency)} / ${item.unit || tInventory("detailDrawer.each", "each")}` : tInventory("detailDrawer.noUnitCost", "No unit cost")}
+                              </Typography>
+                            </Stack>
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+                            {row.source_type ? String(row.source_type).replace(/_/g, " ") : tInventory("historyDialog.manual", "manual")}
+                            {row.total_cost != null ? ` • ${formatMoney(row.total_cost, currency)}` : ""}
+                          </Typography>
+                          {row.note ? (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                              {row.note}
+                            </Typography>
+                          ) : null}
+                        </Paper>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">{tInventory("detailDrawer.noMovements", "No stock movements yet.")}</Typography>
+                  )}
+                </Stack>
+              </Paper>
+            </>
+          )}
+        </Stack>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2.5, borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, flexWrap: "wrap" }}>
+          <Button variant="contained" onClick={onEdit} disabled={!item}>{tInventory("detailDrawer.edit", "Edit item")}</Button>
+          <Button variant="outlined" onClick={onAdjust} disabled={!item}>{tInventory("detailDrawer.adjust", "Adjust stock")}</Button>
+          <Button variant="outlined" onClick={onViewHistory} disabled={!item}>{tInventory("detailDrawer.history", "View full history")}</Button>
+          <Button color="error" variant="outlined" onClick={onArchive} disabled={!item}>{tInventory("detailDrawer.archive", "Archive item")}</Button>
+        </Stack>
+      </Stack>
+    </Drawer>
   );
 }
 
@@ -540,11 +803,22 @@ function ReplenishmentReadinessPanel({ tInventory, items, currency }) {
     .filter((item) => item.is_active !== false && (item.low_available_stock || item.over_reserved || Number(item.pending_usage_quantity || 0) > 0))
     .slice(0, 5);
 
-  const listRow = (row, helper) => (
+  const listRow = (row) => {
+    const reason = inventoryMovementReason(row, tInventory);
+    return (
     <Stack key={row.id} direction="row" justifyContent="space-between" spacing={1.5} alignItems="flex-start" sx={{ py: 0.5 }}>
       <Box>
         <Typography variant="body2" fontWeight={700}>{row.name}</Typography>
-        <Typography variant="caption" color="text.secondary">{helper}</Typography>
+        <Typography variant="caption" color="text.secondary">
+          {[
+            row.vendor_name || tInventory("replenishment.noVendor", "No preferred vendor"),
+            `${tInventory("table.headers.available", "Available")}: ${formatQuantity(row.available_quantity ?? row.current_quantity)}`,
+            row.low_stock_threshold != null ? `${tInventory("table.headers.lowStockLevel", "Threshold")}: ${formatQuantity(row.low_stock_threshold)}` : null,
+          ].filter(Boolean).join(" • ")}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+          {reason.helper}
+        </Typography>
       </Box>
       <Stack spacing={0.25} alignItems="flex-end">
         <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
@@ -553,12 +827,13 @@ function ReplenishmentReadinessPanel({ tInventory, items, currency }) {
         <Chip
           size="small"
           variant="outlined"
-          color={availabilityChipColor(row.stock_status || row.stock_conflict_state)}
-          label={availabilityChipLabel(row.stock_status || row.stock_conflict_state, tInventory)}
+          color={reason.color}
+          label={reason.label}
         />
       </Stack>
     </Stack>
   );
+  };
 
   return (
     <Paper variant="outlined" sx={{ p: 2.25, borderRadius: 1.5 }}>
@@ -577,7 +852,7 @@ function ReplenishmentReadinessPanel({ tInventory, items, currency }) {
         <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.25 }}>
           <Stack spacing={1.25}>
             <Typography variant="subtitle2" fontWeight={800}>{tInventory("replenishment.topAttention", "Needs attention now")}</Typography>
-            {reorderCandidates.length ? reorderCandidates.map((item) => listRow(item, tInventory("replenishment.topAttentionHelper", "Check stock, reservations, pending usage, and vendor timing."))) : null}
+            {reorderCandidates.length ? reorderCandidates.map((item) => listRow(item)) : null}
             {overReserved.length ? (
               <Typography variant="caption" color="error.main">
                 {tInventory("replenishment.overReservedFootnote", "{{count}} item(s) are over-reserved and may need stock correction or job-plan review.", { count: overReserved.length })}
@@ -625,6 +900,8 @@ export default function InventoryPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editorCategoryId, setEditorCategoryId] = useState("");
 
@@ -693,8 +970,24 @@ export default function InventoryPage() {
     }
   };
 
+  const openDetailDrawer = async (item) => {
+    setSelectedItem(item);
+    setTransactions([]);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      const res = await listInventoryTransactions({ item_id: item.id, page: 1, per_page: 25 });
+      setTransactions(Array.isArray(res?.items) ? res.items : []);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tInventory("errors.loadHistoryFailed", "Unable to load stock history."), { variant: "error" });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const handleSaveItem = async (payload) => {
     try {
+      const editingId = selectedItem?.id;
       if (selectedItem?.id && editorOpen) {
         await updateInventoryItem(selectedItem.id, payload);
         enqueueSnackbar(tInventory("snackbar.itemUpdated", "Inventory item updated."), { variant: "success" });
@@ -703,8 +996,16 @@ export default function InventoryPage() {
         enqueueSnackbar(tInventory("snackbar.itemAdded", "Inventory item added."), { variant: "success" });
       }
       setEditorOpen(false);
-      setSelectedItem(null);
       await load();
+      if (detailOpen && editingId) {
+        const refreshed = await listInventoryItems({ page: 1, per_page: 250, q: payload?.name || selectedItem?.name || undefined });
+        const refreshedItem = (Array.isArray(refreshed?.items) ? refreshed.items : []).find((row) => row.id === editingId);
+        if (refreshedItem) {
+          setSelectedItem(refreshedItem);
+        }
+      } else if (!detailOpen) {
+        setSelectedItem(null);
+      }
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tInventory("errors.saveItemFailed", "Unable to save inventory item."), { variant: "error" });
     }
@@ -714,6 +1015,12 @@ export default function InventoryPage() {
     try {
       await deleteInventoryItem(item.id);
       enqueueSnackbar(tInventory("snackbar.itemArchived", "Item archived."), { variant: "success" });
+      if (selectedItem?.id === item.id) {
+        setDetailOpen(false);
+        setHistoryOpen(false);
+        setSelectedItem(null);
+        setTransactions([]);
+      }
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tInventory("errors.archiveItemFailed", "Unable to archive item."), { variant: "error" });
@@ -741,6 +1048,13 @@ export default function InventoryPage() {
       enqueueSnackbar(tInventory("snackbar.stockAdjusted", "Stock adjusted."), { variant: "success" });
       setAdjustOpen(false);
       await load();
+      if (detailOpen && selectedItem?.id) {
+        const refreshed = await listInventoryItems({ page: 1, per_page: 250, q: selectedItem.name || undefined });
+        const refreshedItem = (Array.isArray(refreshed?.items) ? refreshed.items : []).find((row) => row.id === selectedItem.id);
+        if (refreshedItem) setSelectedItem(refreshedItem);
+        const txRes = await listInventoryTransactions({ item_id: selectedItem.id, page: 1, per_page: 25 });
+        setTransactions(Array.isArray(txRes?.items) ? txRes.items : []);
+      }
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tInventory("errors.adjustStockFailed", "Unable to adjust stock."), { variant: "error" });
     }
@@ -939,7 +1253,7 @@ export default function InventoryPage() {
               {items.map((item) => {
                 const overReserved = Number(item.available_quantity || 0) < 0;
                 return (
-                  <TableRow key={item.id} hover>
+                  <TableRow key={item.id} hover sx={{ cursor: "pointer" }} onClick={() => openDetailDrawer(item)}>
                     <TableCell>
                       <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
                       <Typography variant="body2" color="text.secondary">{item.description || tInventory("table.noDescription", "No description")}</Typography>
@@ -990,10 +1304,9 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                        <Button size="small" onClick={() => { setSelectedItem(item); setEditorOpen(true); }}>{tInventory("table.edit", "Edit")}</Button>
-                        <Button size="small" onClick={() => { setSelectedItem(item); setAdjustOpen(true); }}>{tInventory("table.adjustStock", "Adjust stock")}</Button>
-                        <Button size="small" onClick={() => loadTransactionsForItem(item)}>{tInventory("table.history", "History")}</Button>
-                        <Button size="small" color="error" onClick={() => handleDelete(item)}>{tInventory("table.archive", "Archive")}</Button>
+                        <Button size="small" onClick={(e) => { e.stopPropagation(); openDetailDrawer(item); }}>{tInventory("table.view", "View")}</Button>
+                        <Button size="small" onClick={(e) => { e.stopPropagation(); setSelectedItem(item); setAdjustOpen(true); }}>{tInventory("table.adjustStock", "Adjust stock")}</Button>
+                        <Button size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(item); }}>{tInventory("table.archive", "Archive")}</Button>
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -1033,6 +1346,20 @@ export default function InventoryPage() {
         item={selectedItem}
         transactions={transactions}
         currency={activeCurrency}
+      />
+
+      <InventoryItemDetailDrawer
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        item={selectedItem}
+        transactions={transactions}
+        loadingTransactions={detailLoading}
+        currency={activeCurrency}
+        tInventory={tInventory}
+        onEdit={() => setEditorOpen(true)}
+        onAdjust={() => setAdjustOpen(true)}
+        onViewHistory={() => setHistoryOpen(true)}
+        onArchive={() => selectedItem && handleDelete(selectedItem)}
       />
 
       <InventoryGuideDrawer
