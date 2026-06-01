@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   Box,
   Drawer,
   Typography,
@@ -63,11 +64,14 @@ export default function PayrollPreviewHelp({ open, onClose }) {
     <Drawer anchor="right" open={open} onClose={onClose}>
       <Box sx={{ width: 420, p: 3 }}>
         <Typography variant="h5" gutterBottom>
-          Payroll Preview Help
+          Schedulaa Payroll Preview Guide
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          What each field does, and how it affects gross, taxes, and net pay.
+          This guide explains Schedulaa&apos;s internal payroll preview fields and local payroll calculations. It is not an official payroll-provider preview or payroll submission screen.
         </Typography>
+        <Alert severity="info" variant="outlined" sx={{ mt: 2 }}>
+          If your company is preparing for Check-powered payroll, use Provider Sync for Check onboarding, sandbox setup, and future provider-side payroll preview steps. Payroll Preview remains Schedulaa&apos;s internal preparation screen.
+        </Alert>
         <Divider sx={{ my: 2 }} />
         {sections.map((section) => (
           <Box key={section.title} sx={{ mb: 2 }}>

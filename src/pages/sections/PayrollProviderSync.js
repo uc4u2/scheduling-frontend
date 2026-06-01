@@ -7,10 +7,10 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Divider,
-  Drawer,
   FormControl,
   IconButton,
   Grid,
@@ -19,12 +19,14 @@ import {
   Paper,
   Select,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -47,6 +49,13 @@ const PROVIDER_OPTIONS = [
 
 const WORKSPACE_MODE_CHECK = "check";
 const WORKSPACE_MODE_HANDOFF = "handoff";
+const CHECK_SECTION_OVERVIEW = "overview";
+const CHECK_SECTION_SETUP = "setup";
+const CHECK_SECTION_SANDBOX = "sandbox";
+const CHECK_SECTION_ONBOARDING = "onboarding";
+const CHECK_SECTION_PACKAGE = "package";
+const CHECK_SECTION_ACTIVITY = "activity";
+const CHECK_SECTION_TECHNICAL = "technical";
 
 const formatList = (items = []) => (Array.isArray(items) ? items.filter(Boolean) : []);
 
@@ -177,6 +186,177 @@ const onboardingActionLabel = (value) => {
   return labels[normalized] || titleize(normalized);
 };
 
+const humanizeCheckIssue = (issue) => {
+  const code = String(typeof issue === "string" ? issue : issue?.code || issue?.key || "").trim().toUpperCase();
+  const fallbackMessage = typeof issue === "string" ? issue : issue?.message || titleize(code || "needs_attention");
+  const base = { code, title: titleize(code || "needs_attention"), message: fallbackMessage, actionLabel: null, category: "general" };
+  const mapped = {
+    MISSING_COMPANY_FEIN: {
+      title: "Add FEIN/EIN",
+      message: "Add the company FEIN/EIN in Company Profile before starting Check onboarding.",
+      actionLabel: "Open Company Profile",
+      category: "company",
+    },
+    MISSING_COMPANY_ADDRESS: {
+      title: "Complete company address",
+      message: "Check needs a complete U.S. company address for payroll setup.",
+      actionLabel: "Open Company Profile",
+      category: "company",
+    },
+    MISSING_WORK_LOCATION_ADDRESS: {
+      title: "Complete payroll location address",
+      message: "Each active payroll location needs a full address before it can be synced to Check.",
+      actionLabel: "Edit Payroll Locations",
+      category: "location",
+    },
+    MISSING_WORK_LOCATION_ADDRESS_INCOMPLETE: {
+      title: "Complete payroll location address",
+      message: "Some payroll locations are missing required address fields for Check.",
+      actionLabel: "Edit Payroll Locations",
+      category: "location",
+    },
+    CHECK_COMPANY_NOT_MAPPED: {
+      title: "Company not synced to Check",
+      message: "After sandbox credentials are configured, sync the company to Check first.",
+      category: "sandbox",
+    },
+    CHECK_WORKPLACE_NOT_MAPPED: {
+      title: "Payroll location not synced to Check",
+      message: "After company sync is complete, sync payroll locations so Check can create workplaces.",
+      category: "sandbox",
+    },
+    CHECK_EMPLOYEE_NOT_MAPPED: {
+      title: "Employee not synced to Check",
+      message: "After company and workplace sync are complete, sync employees to Check.",
+      actionLabel: "Review employees",
+      category: "employee",
+    },
+    CHECK_ONBOARD_NOT_ENABLED: {
+      title: "Check onboarding is not enabled",
+      message: "Onboarding links will be available after Check sandbox credentials and onboarding access are configured.",
+      category: "onboarding",
+    },
+    TIP_CREDIT_NOT_SUPPORTED_V1: {
+      title: "Tip credit is not supported in v1",
+      message: "Simple tips can be prepared, but tip-credit payroll needs a future advanced workflow.",
+      category: "payroll",
+    },
+    NIGHT_SHIFT_NOT_SUPPORTED: {
+      title: "Overnight shifts are not supported in v1",
+      message: "Schedulaa Payroll v1 does not support overnight shifts for embedded payroll.",
+      category: "payroll",
+    },
+    MISSING_EMPLOYEE_PRIMARY_WORK_LOCATION: {
+      title: "Assign primary payroll locations",
+      message: "Each eligible payroll employee needs a primary payroll location before employee sync and onboarding.",
+      actionLabel: "Review employees",
+      category: "employee",
+    },
+    PRIMARY_PAYROLL_LOCATION_REQUIRED: {
+      title: "Assign primary payroll location",
+      message: "This employee needs a primary payroll location before Check onboarding can begin.",
+      actionLabel: "Review employees",
+      category: "employee",
+    },
+    CHECK_NOT_CONFIGURED: {
+      title: "Check sandbox credentials are not configured",
+      message: "Add Check sandbox credentials in the backend environment before any sandbox sync or onboarding can begin.",
+      category: "connection",
+    },
+    WORK_LOCATION_ADDRESS_INCOMPLETE: {
+      title: "Complete payroll location addresses",
+      message: "Some payroll locations still need full address details before embedded payroll can move forward.",
+      actionLabel: "Edit Payroll Locations",
+      category: "location",
+    },
+    EMPLOYEE_FIELDS_INCOMPLETE: {
+      title: "Review employee payroll fields",
+      message: "Some employees are missing payroll-ready location or identity fields used by local readiness checks.",
+      actionLabel: "Review employees",
+      category: "employee",
+    },
+    MULTI_STATE_REQUIRES_REVIEW: {
+      title: "Review multi-state employees",
+      message: "Employees appear to work across multiple states or provinces. Review this setup before embedded payroll goes live.",
+      actionLabel: "Review employees",
+      category: "employee",
+    },
+  }[code];
+  return mapped ? { ...base, ...mapped } : base;
+};
+
+const summarizeManagerIssues = (...issueGroups) => {
+  const seen = new Set();
+  const result = [];
+  issueGroups.flat().filter(Boolean).forEach((issue) => {
+    const item = humanizeCheckIssue(issue);
+    const signature = `${item.code || item.title}:${item.message}`;
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    result.push(item);
+  });
+  return result;
+};
+
+const aggregateCheckIssues = (...issueGroups) => {
+  const groups = new Map();
+  issueGroups.flat().filter(Boolean).forEach((issue) => {
+    const item = humanizeCheckIssue(issue);
+    const key = `${item.code || item.title}:${item.message}`;
+    const existing = groups.get(key) || { ...item, count: 0 };
+    existing.count += 1;
+    groups.set(key, existing);
+  });
+  return Array.from(groups.values()).map((item) => ({
+    ...item,
+    message_with_count: item.count > 1 ? `${item.message} ${item.count} affected lines.` : item.message,
+  }));
+};
+
+const checkCardStatus = ({ blocked = 0, warning = 0, ready = false }) => {
+  if (blocked > 0) return { label: "Blocked", tone: "danger" };
+  if (warning > 0) return { label: "Needs attention", tone: "warning" };
+  if (ready) return { label: "Ready", tone: "success" };
+  return { label: "Not ready", tone: "neutral" };
+};
+
+const onboardingFilterLabel = (value) => {
+  const labels = {
+    all: "All",
+    missing_location: "Missing payroll location",
+    not_mapped: "Not synced to Check",
+    invite_ready: "Invite ready",
+    invite_sent: "Invite sent",
+    needs_attention: "Needs attention",
+    completed: "Completed",
+  };
+  return labels[value] || titleize(value);
+};
+
+const employeeOnboardingFilterMatch = (row, filterValue) => {
+  switch (filterValue) {
+    case "missing_location":
+      return !row?.primary_work_location_id;
+    case "not_mapped":
+      return !row?.check_employee_id;
+    case "invite_ready":
+      return row?.action_state === "ready";
+    case "invite_sent":
+      return Boolean(row?.last_invite_sent_at);
+    case "needs_attention":
+      return ["needs_attention", "blocking"].includes(String(row?.onboard_status || "").toLowerCase()) || row?.action_state === "missing_primary_work_location";
+    case "completed":
+      return String(row?.onboard_status || "").toLowerCase() === "completed";
+    default:
+      return true;
+  }
+};
+
+const payrollPreviewActionTitle = (preview) => {
+  const blockerCount = Number(preview?.summary?.blocker_count || 0);
+  return blockerCount > 0 ? "Not ready for future Check preview" : "Ready for future Check preview";
+};
+
 const checkPackageStatusLabel = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "supported") return "Supported";
@@ -207,9 +387,48 @@ const checklistValueLabel = (value) => {
   if (value === null || value === undefined || value === "") return "Not set";
   const normalized = String(value).trim().toLowerCase();
   if (normalized === "created_placeholder") return "Prepared";
-  if (normalized === "pending_config") return "Pending config";
+  if (normalized === "pending_config") return "Pending setup";
   if (normalized === "not_connected") return "Not connected";
   return String(value);
+};
+
+const checklistManagerLabel = (key) => {
+  const labels = {
+    company_profile_exists: "Company profile exists",
+    company_country_us: "Company country is U.S.",
+    company_address_complete: "Company address is complete",
+    company_fein_present: "Company FEIN/EIN is present",
+    payroll_intent_check_embedded_us: "Embedded payroll is selected",
+    check_configured: "Check sandbox credentials configured",
+    check_sandbox_sync_enabled: "Sync to Check sandbox enabled",
+    active_work_locations_count: "Active payroll locations",
+    default_work_location_exists: "Default payroll location exists",
+    all_active_locations_have_address: "All active payroll locations have addresses",
+    all_active_locations_have_valid_timezone: "All payroll locations have valid timezones",
+    all_active_locations_have_valid_us_state_zip_if_us: "All U.S. payroll locations have valid state and ZIP",
+    mapped_workplaces_count: "Payroll locations already synced to Check",
+    unmapped_workplaces_count: "Payroll locations not yet synced to Check",
+    total_employee_records_reviewed: "Total employee records reviewed",
+    eligible_payroll_employee_count: "Eligible payroll employees",
+    excluded_records_count: "Excluded records",
+    employees_missing_primary_work_location_count: "Employees missing primary payroll location",
+    mapped_employee_count: "Employees already synced to Check",
+    eligible_employees_not_synced_to_check: "Eligible employees not synced to Check",
+    employees_with_onboarding_complete: "Employees with onboarding complete",
+    archived_employees_excluded: "Archived employees excluded",
+    manager_records_excluded: "Manager records excluded",
+    check_onboard_enabled: "Check onboarding enabled",
+    check_components_enabled: "Onboarding sessions enabled",
+    employer_onboarding_available: "Employer onboarding available",
+    employee_onboarding_available: "Employee onboarding available",
+    latest_employer_session_status: "Latest employer onboarding session",
+    recent_audit_events_count: "Recent onboarding activity events",
+    ready_for_payload_preview: "Ready for data preview for Check",
+    ready_for_sandbox_company_sync: "Ready to sync company to Check sandbox",
+    ready_for_sandbox_workplace_sync: "Ready to sync payroll locations to Check sandbox",
+    ready_for_sandbox_employee_sync: "Ready to sync employees to Check sandbox",
+  };
+  return labels[key] || titleize(key);
 };
 
 const formatDateTime = (value) => {
@@ -264,10 +483,74 @@ const SectionHeading = ({ title, tooltip, variant = "h6", gutterBottom = true })
   </Stack>
 );
 
-const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
-  const sections = [
+const CHECK_HELP_TAB = "check";
+const HANDOFF_HELP_TAB = "handoff";
+
+const PayrollProviderSyncHelpDrawer = ({ open, onClose, activeTab = HANDOFF_HELP_TAB, onChangeTab }) => {
+  const checkSections = [
     {
-      title: "What this page does",
+      title: "What this workspace covers",
+      bullets: [
+        "Schedulaa prepares payroll inputs, employee records, and payroll locations for embedded payroll.",
+        "Check will later handle secure onboarding, taxes, payroll processing, and compliance once sandbox credentials are configured.",
+        "Nothing is sent to Check from this page yet.",
+      ],
+    },
+    {
+      title: "Current rollout status",
+      bullets: [
+        "Check is not live yet in this environment.",
+        "Sandbox credentials, sandbox sync, onboarding access, and component access are still gated.",
+        "This control center is a preparation workspace, not a payroll submission workflow.",
+      ],
+    },
+    {
+      title: "Recommended setup sequence",
+      bullets: [
+        "Complete Company Profile and add FEIN/EIN.",
+        "Add payroll locations and confirm full U.S. addresses and timezones.",
+        "Add employees and assign a primary payroll location to each payroll employee.",
+        "Preview data for Check, then sync sandbox company, payroll locations, and employees later.",
+        "Start employer onboarding, then employee onboarding, then provider payroll preview in a later phase.",
+      ],
+    },
+    {
+      title: "Employer onboarding",
+      bullets: [
+        "An authorized manager or payroll signer will complete company onboarding through Check.",
+        "Sensitive funding, bank, and tax setup belongs in Check, not in Schedulaa.",
+      ],
+    },
+    {
+      title: "Employee onboarding",
+      bullets: [
+        "Employees will complete SSN/TIN, tax forms, and direct deposit through Check later.",
+        "Schedulaa stores only status, mapping, and audit trail data for this flow.",
+      ],
+    },
+    {
+      title: "Common operating scenarios",
+      bullets: [
+        "Scenario A: Simple U.S. salon with one location and five employees is the easiest path.",
+        "Scenario B: Salon or spa with simple paycheck tips works when tipped employees are on and tip credit is off.",
+        "Scenario C: Tip credit business is blocked for v1 and needs a future advanced workflow.",
+        "Scenario D: 100 employees can use bulk select, bulk invite, and bulk status refresh once onboarding is enabled.",
+        "Scenario E: Missing FEIN or payroll location address blocks the flow until fixed.",
+      ],
+    },
+    {
+      title: "Avoid these mistakes",
+      bullets: [
+        "Do not enter SSN, bank, W-4, or direct deposit data in Schedulaa for Check payroll.",
+        "Do not treat Add Member as legal payroll onboarding.",
+        "Do not submit payroll to Check until onboarding and sandbox mapping are complete.",
+      ],
+    },
+  ];
+
+  const handoffSections = [
+    {
+      title: "What this workspace covers",
       bullets: [
         "Payroll Handoff builds a payroll-ready CSV for your accountant or payroll provider.",
         "It reads the current pay period, employee scope, approved operational payroll data, and saved payroll values.",
@@ -284,7 +567,7 @@ const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
       ],
     },
     {
-      title: "How to read the sections",
+      title: "How to read this page",
       bullets: [
         "Review data shows the active employee scope, period, and the source used for payroll values.",
         "CSV status tells you whether the current selection is ready for export and lists blocking issues if not.",
@@ -293,7 +576,7 @@ const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
       ],
     },
     {
-      title: "How to read the source labels",
+      title: "How to read payroll sources",
       bullets: [
         "Finalized payroll means the CSV is using finalized period payroll values first.",
         "Saved draft payroll means there is no finalized row, so the CSV is using saved draft payroll values for that period.",
@@ -301,7 +584,7 @@ const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
       ],
     },
     {
-      title: "How to use the filters",
+      title: "How to use filters",
       bullets: [
         "The main Payroll page filters control the default employee and date scope for this page.",
         "Use the override handoff scope only when you intentionally want this tab to ignore the main employee selection.",
@@ -311,29 +594,35 @@ const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
   ];
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      PaperProps={{ sx: { width: { xs: "100%", sm: 560 }, maxWidth: "100%" } }}
-    >
+    <Paper variant="outlined" sx={{ p: 0, borderRadius: 2, overflow: "hidden" }}>
       <Stack sx={{ height: "100%" }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}>
-          <Box>
-            <Typography variant="h6" fontWeight={800}>Payroll Handoff help</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}>
+            <Box>
+              <Typography variant="h6" fontWeight={800}>Payroll Operations Guide</Typography>
             <Typography variant="body2" color="text.secondary">
-              How to prepare, validate, read, and export payroll handoff data.
+              Choose the workflow that matches this company’s payroll path: Check preparation or CSV handoff.
             </Typography>
           </Box>
-          <IconButton onClick={onClose} aria-label="Close payroll handoff help">
+          <IconButton onClick={onClose} aria-label="Close payroll provider sync guide">
             <CloseIcon />
           </IconButton>
         </Stack>
         <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto" }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, value) => onChangeTab?.(value)}
+            variant="scrollable"
+            allowScrollButtonsMobile
+          >
+            <Tab value={CHECK_HELP_TAB} label="Check Payroll" />
+            <Tab value={HANDOFF_HELP_TAB} label="CSV Handoff" />
+          </Tabs>
           <Alert severity="info" variant="outlined" sx={{ py: 0.75 }}>
-            Payroll Handoff is a CSV export workflow. It is not a direct payroll submission workflow yet.
+            {activeTab === CHECK_HELP_TAB
+              ? "Check is not live in this environment yet. This workspace prepares data only and does not send payroll to Check."
+              : "Payroll Handoff is a CSV export workflow. It is not a direct payroll submission workflow yet."}
           </Alert>
-          {sections.map((section) => (
+          {(activeTab === CHECK_HELP_TAB ? checkSections : handoffSections).map((section) => (
             <Paper key={section.title} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
                 {section.title}
@@ -347,35 +636,39 @@ const PayrollProviderSyncHelpDrawer = ({ open, onClose }) => {
               </Stack>
             </Paper>
           ))}
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-              Real-world example: finalized payroll handoff
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              A manager reviews Noah Reed for Mar 26 to Apr 8, adds a bonus and commission, finalizes payroll, then opens Provider Sync. The page shows “Using finalized payroll values for this period.” The manager previews the run, confirms the exported total, downloads the CSV, and sends it to the accountant. If the run needs to be revisited later, the same period can be reopened from Run history.
-            </Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-              Real-world example: accrued vacation only
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              A manager finalizes a period where Vacation Pay exists but Include Vacation in Gross is off. The payslip still shows the vacation amount for the period, but Provider Sync warns that vacation was accrued and not included as payable earnings. The CSV exports payable items like holiday, bonus, and commission, but excludes Vacation Pay from the handoff rows.
-            </Typography>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-              What to do when something looks wrong
-            </Typography>
-            <Stack spacing={0.75}>
-              <Typography variant="body2" color="text.secondary">- If source says operational raw when you expect finalized values, check whether that period was actually finalized.</Typography>
-              <Typography variant="body2" color="text.secondary">- If CSV status is not ready, fix employee mapping, pay item mapping, or export metadata issues listed in the page.</Typography>
-              <Typography variant="body2" color="text.secondary">- If history shows multiple runs for the same period, compare the source hash and selected run details before exporting again.</Typography>
-            </Stack>
-          </Paper>
+          {activeTab === HANDOFF_HELP_TAB ? (
+            <>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                  Real-world example: finalized payroll handoff
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  A manager reviews Noah Reed for Mar 26 to Apr 8, adds a bonus and commission, finalizes payroll, then opens Provider Sync. The page shows “Using finalized payroll values for this period.” The manager previews the run, confirms the exported total, downloads the CSV, and sends it to the accountant. If the run needs to be revisited later, the same period can be reopened from Run history.
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                  Real-world example: accrued vacation only
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  A manager finalizes a period where Vacation Pay exists but Include Vacation in Gross is off. The payslip still shows the vacation amount for the period, but Provider Sync warns that vacation was accrued and not included as payable earnings. The CSV exports payable items like holiday, bonus, and commission, but excludes Vacation Pay from the handoff rows.
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                  What to do when something looks wrong
+                </Typography>
+                <Stack spacing={0.75}>
+                  <Typography variant="body2" color="text.secondary">- If source says operational raw when you expect finalized values, check whether that period was actually finalized.</Typography>
+                  <Typography variant="body2" color="text.secondary">- If CSV status is not ready, fix employee mapping, pay item mapping, or export metadata issues listed in the page.</Typography>
+                  <Typography variant="body2" color="text.secondary">- If history shows multiple runs for the same period, compare the source hash and selected run details before exporting again.</Typography>
+                </Stack>
+              </Paper>
+            </>
+          ) : null}
         </Stack>
       </Stack>
-    </Drawer>
+    </Paper>
   );
 };
 
@@ -562,6 +855,7 @@ export default function PayrollProviderSync({
   const [checkComponentLoading, setCheckComponentLoading] = useState(false);
   const [checkComponentActionLoading, setCheckComponentActionLoading] = useState(false);
   const [checkEmployeeOnboardingActionLoading, setCheckEmployeeOnboardingActionLoading] = useState({});
+  const [checkBulkActionLoading, setCheckBulkActionLoading] = useState("");
   const [checkPayloadLoading, setCheckPayloadLoading] = useState(false);
   const [checkPayloadPreview, setCheckPayloadPreview] = useState(null);
   const [checkActionNotice, setCheckActionNotice] = useState("");
@@ -625,6 +919,13 @@ export default function PayrollProviderSync({
   const [providerScopeMode, setProviderScopeMode] = useState("all_filtered");
   const [providerSelectedEmployeeIds, setProviderSelectedEmployeeIds] = useState([]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState(HANDOFF_HELP_TAB);
+  const [checkSection, setCheckSection] = useState(CHECK_SECTION_OVERVIEW);
+  const [checkOnboardingSearch, setCheckOnboardingSearch] = useState("");
+  const [checkOnboardingFilter, setCheckOnboardingFilter] = useState("all");
+  const [checkOnboardingPageSize, setCheckOnboardingPageSize] = useState(10);
+  const [checkOnboardingPage, setCheckOnboardingPage] = useState(0);
+  const [checkSelectedEmployeeIds, setCheckSelectedEmployeeIds] = useState([]);
   const runPanelRef = useRef(null);
 
   const scopedRecruiters = useMemo(
@@ -699,6 +1000,106 @@ export default function PayrollProviderSync({
   const shouldShowEmbeddedPlanningCard = !isCheckIntent;
   const providerPickerDisabled = isUnsetIntent;
 
+  const checkWorkspaceSections = [
+    { key: CHECK_SECTION_OVERVIEW, label: "Overview" },
+    { key: CHECK_SECTION_SETUP, label: "Setup checklist" },
+    { key: CHECK_SECTION_SANDBOX, label: "Sandbox sync" },
+    { key: CHECK_SECTION_ONBOARDING, label: "Onboarding" },
+    { key: CHECK_SECTION_PACKAGE, label: "Payroll package" },
+    { key: CHECK_SECTION_ACTIVITY, label: "Activity" },
+    { key: CHECK_SECTION_TECHNICAL, label: "Technical details" },
+  ];
+  const checkOnboardingRows = useMemo(
+    () => Array.isArray(checkOnboardingOverview?.employee_onboard_summary?.items) ? checkOnboardingOverview.employee_onboard_summary.items : [],
+    [checkOnboardingOverview]
+  );
+  const filteredCheckOnboardingRows = useMemo(() => {
+    const search = String(checkOnboardingSearch || "").trim().toLowerCase();
+    return checkOnboardingRows.filter((row) => {
+      const matchesSearch = !search
+        || String(row?.employee_name || "").toLowerCase().includes(search)
+        || String(row?.email || "").toLowerCase().includes(search);
+      return matchesSearch && employeeOnboardingFilterMatch(row, checkOnboardingFilter);
+    });
+  }, [checkOnboardingFilter, checkOnboardingRows, checkOnboardingSearch]);
+  const pagedCheckOnboardingRows = useMemo(() => {
+    const start = checkOnboardingPage * checkOnboardingPageSize;
+    return filteredCheckOnboardingRows.slice(start, start + checkOnboardingPageSize);
+  }, [checkOnboardingPage, checkOnboardingPageSize, filteredCheckOnboardingRows]);
+  const allVisibleCheckEmployeesSelected = pagedCheckOnboardingRows.length > 0
+    && pagedCheckOnboardingRows.every((row) => checkSelectedEmployeeIds.includes(row.employee_id));
+  const selectedCheckEmployeesVisibleCount = pagedCheckOnboardingRows.filter((row) => checkSelectedEmployeeIds.includes(row.employee_id)).length;
+
+  const managerIssues = useMemo(
+    () => summarizeManagerIssues(
+      checkLaunchReadiness?.blockers,
+      (checkLaunchReadiness?.warnings || []).map((message) => ({ message })),
+      checkReadiness?.unsupported_conditions,
+      checkReadiness?.warnings,
+      checkOnboardingOverview?.blockers,
+      checkPackagePreview?.blockers,
+      checkPackagePreview?.warnings
+    ),
+    [checkLaunchReadiness, checkReadiness, checkOnboardingOverview, checkPackagePreview]
+  );
+
+  const companySummary = useMemo(() => {
+    const issues = managerIssues.filter((item) => item.category === "company");
+    return {
+      ...checkCardStatus({
+        blocked: issues.length,
+        warning: (!checkLaunchReadiness?.counts?.active_work_locations_count || !checkLaunchReadiness?.ready_for_sandbox_payload_preview) && issues.length === 0 ? 1 : 0,
+        ready: Boolean(checkLaunchReadiness?.ready_for_sandbox_payload_preview && !issues.length),
+      }),
+      issue: issues[0]?.message || "Company profile, U.S. country, address, and FEIN/EIN are ready for local Check preparation.",
+      cta: "Go to Company Profile",
+    };
+  }, [checkLaunchReadiness, managerIssues]);
+
+  const locationSummary = useMemo(() => {
+    const issues = managerIssues.filter((item) => item.category === "location" || item.category === "sandbox");
+    const needsAttention = Number(checkLaunchReadiness?.counts?.active_work_locations_count || 0) === 0
+      || Number(checkLaunchReadiness?.counts?.mapped_workplaces_count || 0) === 0;
+    return {
+      ...checkCardStatus({
+        blocked: issues.filter((item) => item.category === "location").length,
+        warning: issues.length + (needsAttention ? 1 : 0),
+        ready: Boolean(checkLaunchReadiness?.ready_for_sandbox_workplace_sync && !issues.length),
+      }),
+      issue: issues[0]?.message || "Payroll locations need full addresses, valid timezones, and later Check workplace sync.",
+      cta: "Edit Payroll Locations",
+    };
+  }, [checkLaunchReadiness, managerIssues]);
+
+  const employeeSummary = useMemo(() => {
+    const counts = checkOnboardingOverview?.employee_counts || {};
+    const issues = managerIssues.filter((item) => item.category === "employee");
+    return {
+      ...checkCardStatus({
+        blocked: Number(counts.employees_missing_primary_payroll_location || 0),
+        warning: Number(counts.eligible_employees_not_synced_to_check || 0) + issues.length,
+        ready: Boolean(counts.eligible_payroll_employees > 0 && !issues.length),
+      }),
+      issue: issues[0]?.message || `${counts.eligible_payroll_employees || 0} eligible payroll employees are in scope for Check preparation.`,
+      cta: "Review employees",
+    };
+  }, [checkOnboardingOverview, managerIssues]);
+
+  const connectionSummary = useMemo(() => {
+    const configured = Boolean(checkStatus?.configured);
+    const sandboxSyncEnabled = Boolean(checkStatus?.sandbox_sync_enabled);
+    if (!configured) {
+      return { label: "Not configured", tone: "neutral", issue: "Check sandbox credentials are not configured yet.", cta: "Configure Check sandbox credentials" };
+    }
+    if (!sandboxSyncEnabled) {
+      return { label: "Sandbox sync disabled", tone: "warning", issue: "Check credentials can be added, but sandbox sync remains intentionally disabled until data preview is clean.", cta: "Configure Check sandbox credentials" };
+    }
+    if (checkStatus?.check_connected) {
+      return { label: "Connected", tone: "success", issue: "Company sync is connected for sandbox use.", cta: "Configure Check sandbox credentials" };
+    }
+    return { label: "Configured", tone: "neutral", issue: "Check credentials exist, but company sync has not been completed yet.", cta: "Configure Check sandbox credentials" };
+  }, [checkStatus]);
+
   useEffect(() => {
     let active = true;
     const loadDepartments = async () => {
@@ -738,6 +1139,20 @@ export default function PayrollProviderSync({
     }
   }, [historyEmployeeFilter, historyScopedRecruiters]);
 
+  useEffect(() => {
+    if (isCheckIntent) {
+      setCheckSection(CHECK_SECTION_OVERVIEW);
+    }
+  }, [isCheckIntent]);
+
+  useEffect(() => {
+    setCheckOnboardingPage(0);
+  }, [checkOnboardingFilter, checkOnboardingSearch, checkOnboardingPageSize]);
+
+  useEffect(() => {
+    setCheckSelectedEmployeeIds((prev) => prev.filter((employeeId) => checkOnboardingRows.some((row) => row.employee_id === employeeId)));
+  }, [checkOnboardingRows]);
+
   const providerDisplayName =
     provider === "quickbooks"
       ? "QuickBooks"
@@ -760,10 +1175,17 @@ export default function PayrollProviderSync({
     () => PROVIDER_OPTIONS.filter((option) => ["generic_csv", "quickbooks"].includes(option.value)),
     []
   );
-  const workspacePrimaryTitle = isCheckIntent ? "Embedded Payroll Workspace" : "Payroll Handoff";
+  const workspacePrimaryTitle = isCheckIntent ? "Check Payroll Workspace" : "Payroll Handoff";
   const workspacePrimarySubtitle = isCheckIntent
-    ? "Use this workspace to prepare embedded payroll readiness first. This is preparation only until sandbox credentials and sync are enabled. Fallback CSV handoff remains available if you need an export path."
+    ? "Use this workspace to prepare Check-powered payroll readiness first. This is preparation only until sandbox credentials and sync are enabled. Fallback CSV handoff remains available if you need an export path."
     : "Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values.";
+  const helpDefaultTab = shouldShowCheckWorkspace ? CHECK_HELP_TAB : HANDOFF_HELP_TAB;
+
+  useEffect(() => {
+    if (!helpOpen) {
+      setHelpTab(helpDefaultTab);
+    }
+  }, [helpDefaultTab, helpOpen]);
 
   const payItemHelperText = (key) => {
     if (provider === "quickbooks" && key === "vacation_pay") {
@@ -1061,6 +1483,50 @@ export default function PayrollProviderSync({
       showMessage(await buildRequestErrorMessage(err, "Unable to update employee onboarding."), "error");
     } finally {
       setCheckEmployeeOnboardingActionLoading((prev) => ({ ...prev, [`${mode}-${employeeId}`]: false }));
+    }
+  };
+
+  const handleToggleAllVisibleCheckEmployees = () => {
+    const visibleIds = pagedCheckOnboardingRows.map((row) => row.employee_id);
+    setCheckSelectedEmployeeIds((prev) => {
+      if (allVisibleCheckEmployeesSelected) {
+        return prev.filter((id) => !visibleIds.includes(id));
+      }
+      return Array.from(new Set([...prev, ...visibleIds]));
+    });
+  };
+
+  const handleToggleCheckEmployeeSelection = (employeeId) => {
+    setCheckSelectedEmployeeIds((prev) => (
+      prev.includes(employeeId) ? prev.filter((id) => id !== employeeId) : [...prev, employeeId]
+    ));
+  };
+
+  const handleBulkCheckOnboardingAction = async (mode) => {
+    if (!checkSelectedEmployeeIds.length) {
+      showMessage("Select at least one employee first.", "warning");
+      return;
+    }
+    setCheckBulkActionLoading(mode);
+    try {
+      let payload = null;
+      if (mode === "send") {
+        payload = await payrollSetupApi.bulkSendCheckEmployeeOnboardingInvites(checkSelectedEmployeeIds, { delivery_channel: "email" });
+      } else if (mode === "resend") {
+        payload = await payrollSetupApi.bulkResendCheckEmployeeOnboardingInvites(checkSelectedEmployeeIds, { delivery_channel: "email" });
+      } else if (mode === "refresh") {
+        payload = await payrollSetupApi.bulkRefreshCheckEmployeeOnboardingStatus(checkSelectedEmployeeIds, { delivery_channel: "email" });
+      }
+      const summary = payload?.summary || {};
+      setCheckActionNotice(
+        `${titleize(mode)} prepared for ${summary.selected || checkSelectedEmployeeIds.length} employees. `
+        + `${summary.ready || 0} ready, ${summary.blocked || 0} blocked, ${summary.disabled || 0} disabled.`
+      );
+      await loadCheckOnboardingOverview();
+    } catch (err) {
+      showMessage(await buildRequestErrorMessage(err, "Unable to prepare bulk employee onboarding."), "error");
+    } finally {
+      setCheckBulkActionLoading("");
     }
   };
 
@@ -2037,13 +2503,19 @@ export default function PayrollProviderSync({
             variant="h5"
             tooltip="Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values."
           />
-          <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
-            How this page works
-          </Button>
+          {!shouldShowCheckWorkspace ? (
+            <Button
+              variant="outlined"
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => setHelpOpen(true)}
+            >
+              Payroll guide
+            </Button>
+          ) : null}
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
           <Chip
-            label={isCheckIntent ? "Embedded payroll = primary configured path" : "Payroll Handoff = recommended payroll handoff workflow"}
+            label={isCheckIntent ? "Check payroll = primary configured path" : "Payroll Handoff = recommended payroll handoff workflow"}
             sx={isCheckIntent ? chipSx.active : chipSx.success}
           />
           {provider === "quickbooks" && <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />}
@@ -2052,12 +2524,21 @@ export default function PayrollProviderSync({
           {workspacePrimarySubtitle}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
-          <Chip label={isCheckIntent ? "Embedded payroll planning + fallback handoff" : "CSV handoff only"} sx={chipSx.neutral} />
+          <Chip label={isCheckIntent ? "Check payroll planning + fallback handoff" : "CSV handoff only"} sx={chipSx.neutral} />
           <Tooltip title="This workflow exports a CSV for your accountant or payroll provider. It does not submit payroll or pay employees directly.">
             <Chip label="How it works" sx={chipSx.neutral} />
           </Tooltip>
         </Stack>
       </Paper>
+
+      {helpOpen ? (
+        <PayrollProviderSyncHelpDrawer
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          activeTab={helpTab}
+          onChangeTab={setHelpTab}
+        />
+      ) : null}
 
       <Paper elevation={2} sx={{ p: 3 }}>
         <Stack spacing={2}>
@@ -2156,725 +2637,731 @@ export default function PayrollProviderSync({
 
       {shouldShowCheckWorkspace && (
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
-          <Box>
-            <Typography variant="h6">Check Payroll Readiness</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Check embedded payroll is not live yet. This readiness check helps prepare your company data for a future Check-powered payroll integration.
-            </Typography>
-          </Box>
-          <Button variant="outlined" onClick={loadCheckReadiness} disabled={checkReadinessLoading}>
-            {checkReadinessLoading ? <CircularProgress size={18} /> : "Refresh readiness"}
-          </Button>
-        </Stack>
+        <Stack spacing={2.5}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
+            <Box>
+              <Typography variant="h5" fontWeight={800}>Check Payroll Control Center</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 920 }}>
+                Prepare your company, employees, onboarding, and payroll package for Check-powered payroll. Nothing is sent to Check until sandbox credentials are configured and sync is explicitly enabled.
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => {
+                setCheckSection(CHECK_SECTION_OVERVIEW);
+                setHelpOpen(true);
+              }}
+              sx={{ alignSelf: { xs: "stretch", md: "flex-start" } }}
+            >
+              Payroll guide
+            </Button>
+          </Stack>
 
-        {checkReadinessError && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {checkReadinessError}
-          </Alert>
-        )}
-
-        {checkStatusError && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {checkStatusError}
-          </Alert>
-        )}
-
-        {checkReadiness && (
-          <Stack spacing={2}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
-              <Button variant="outlined" onClick={loadCheckStatus} disabled={checkStatusLoading}>
-                {checkStatusLoading ? <CircularProgress size={18} /> : "Refresh sandbox status"}
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+            {checkWorkspaceSections.map((section) => (
+              <Button
+                key={section.key}
+                size="small"
+                variant={checkSection === section.key ? "contained" : "outlined"}
+                onClick={() => setCheckSection(section.key)}
+              >
+                {section.label}
               </Button>
-              {checkReadiness?.setup_profile?.payroll_intent === "check_embedded_us" && (
-                <>
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleCheckPayloadPreview("company")}
-                    disabled={checkPayloadLoading || !checkStatus?.configured}
-                  >
-                    {checkPayloadLoading && checkPayloadPreview?.kind === "company" ? <CircularProgress size={18} /> : "Preview company payload"}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleCheckPayloadPreview("workplaces")}
-                    disabled={checkPayloadLoading || !checkStatus?.configured}
-                  >
-                    {checkPayloadLoading && checkPayloadPreview?.kind === "workplaces" ? <CircularProgress size={18} /> : "Preview workplace payloads"}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleCheckPayloadPreview("employees")}
-                    disabled={checkPayloadLoading || !checkStatus?.configured}
-                  >
-                    {checkPayloadLoading && checkPayloadPreview?.kind === "employees" ? <CircularProgress size={18} /> : "Preview employee payloads"}
-                  </Button>
-                </>
-              )}
-            </Stack>
+            ))}
+          </Stack>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2"><strong>Intent:</strong> {checkReadiness?.setup_profile?.payroll_intent || "none"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2"><strong>Ready for local Check setup:</strong> {checkReadiness.ready_for_local_check_setup ? "Yes" : "Not yet"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2"><strong>Check connection state:</strong> {checkReadiness.check_mode || "not_connected"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2"><strong>Payroll country:</strong> {checkReadiness?.setup_profile?.payroll_country || "Not set"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="body2"><strong>Ready for future Check setup:</strong> {checkReadiness.ready_for_check_setup ? "Yes" : "Not yet"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Active work locations:</strong> {checkReadiness?.counts?.active_work_locations ?? 0}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Employees reviewed:</strong> {checkReadiness?.counts?.employees_total ?? 0}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Missing primary payroll location:</strong> {checkReadiness?.counts?.employees_missing_primary_work_location ?? 0}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Multi-state employees:</strong> {checkReadiness?.counts?.multi_state_employee_count ?? 0}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Check configured:</strong> {checkReadiness?.check_configured ? "Yes" : "No"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Company mapped:</strong> {checkReadiness?.check_company_mapped ? "Yes" : "No"}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Mapped workplaces:</strong> {checkReadiness?.mapped_workplaces_count ?? 0}</Typography>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Typography variant="body2"><strong>Mapped employees:</strong> {checkReadiness?.mapped_employees_count ?? 0}</Typography>
-              </Grid>
-            </Grid>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip label="Check payroll workspace" sx={chipSx.active} />
+            <Chip label={`Intent: ${titleize(payrollIntent || "none")}`} sx={chipSx.neutral} />
+            <Chip label={`Country: ${payrollCountry || "Not set"}`} sx={chipSx.neutral} />
+            <Chip label={`Current provider: ${currentPayrollProvider || "Other"}`} sx={chipSx.neutral} />
+          </Stack>
 
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1.5}>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
-                  <Box>
-                    <Typography variant="subtitle2">Check Launch Readiness</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Use this checklist to prepare for Check sandbox testing. Nothing is sent to Check until sandbox credentials are configured and sync is explicitly enabled.
-                    </Typography>
+          {checkActionNotice ? <Alert severity="success">{checkActionNotice}</Alert> : null}
+          {checkReadinessError ? <Alert severity="warning">{checkReadinessError}</Alert> : null}
+          {checkStatusError ? <Alert severity="warning">{checkStatusError}</Alert> : null}
+          {checkLaunchReadinessError ? <Alert severity="warning">{checkLaunchReadinessError}</Alert> : null}
+          {checkOnboardingError ? <Alert severity="warning">{checkOnboardingError}</Alert> : null}
+
+          {checkSection === CHECK_SECTION_OVERVIEW && (
+            <Stack spacing={2}>
+              <Grid container spacing={2}>
+                {[
+                  {
+                    key: "company",
+                    title: "Company",
+                    summary: companySummary,
+                    onClick: () => window.location.assign("/manager/dashboard?view=company-profile"),
+                  },
+                  {
+                    key: "locations",
+                    title: "Payroll locations",
+                    summary: locationSummary,
+                    onClick: () => window.location.assign("/manager/payroll"),
+                  },
+                  {
+                    key: "employees",
+                    title: "Employees",
+                    summary: employeeSummary,
+                    onClick: () => setCheckSection(CHECK_SECTION_ONBOARDING),
+                  },
+                  {
+                    key: "connection",
+                    title: "Check connection",
+                    summary: connectionSummary,
+                    onClick: () => setCheckSection(CHECK_SECTION_SANDBOX),
+                  },
+                ].map((card) => (
+                  <Grid item xs={12} md={6} lg={3} key={card.key}>
+                    <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
+                      <Stack spacing={1.25} sx={{ height: "100%" }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Typography variant="subtitle1" fontWeight={700}>{card.title}</Typography>
+                          <Chip size="small" label={card.summary.label} sx={chipSx[card.summary.tone]} />
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+                          {card.summary.issue}
+                        </Typography>
+                        <Button variant="outlined" size="small" onClick={card.onClick}>
+                          {card.summary.cta}
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={700}>Action required</Typography>
+                  {managerIssues.length ? (
+                    <Stack spacing={1}>
+                      {managerIssues.slice(0, 8).map((item, index) => (
+                        <Alert
+                          key={`manager-issue-${index}-${item.code || item.title}`}
+                          severity={["company", "payroll", "employee"].includes(item.category) ? "error" : "warning"}
+                          action={item.actionLabel ? (
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={() => {
+                                if (item.actionLabel === "Open Company Profile") window.location.assign("/manager/dashboard?view=company-profile");
+                                if (item.actionLabel === "Edit Payroll Locations") window.location.assign("/manager/payroll");
+                                if (item.actionLabel === "Review employees") setCheckSection(CHECK_SECTION_ONBOARDING);
+                              }}
+                            >
+                              {item.actionLabel}
+                            </Button>
+                          ) : null}
+                        >
+                          <strong>{item.title}</strong>: {item.message}
+                        </Alert>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Alert severity="success">Local Check preparation is structurally clean. The remaining gate is Check sandbox credentials and sandbox sync enablement.</Alert>
+                  )}
+                </Stack>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle1" fontWeight={700}>What managers should do next</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Use this control center to fix company setup, payroll locations, employee mapping, and onboarding readiness first. Check is not live until sandbox credentials and sandbox sync are enabled.
+                  </Typography>
+                  <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                    {(checkLaunchReadiness?.next_steps || []).slice(0, 6).map((step, index) => (
+                      <li key={`check-next-step-${index}`}>
+                        <Typography variant="body2">{step}</Typography>
+                      </li>
+                    ))}
                   </Box>
+                </Stack>
+              </Paper>
+            </Stack>
+          )}
+
+          {checkSection === CHECK_SECTION_SETUP && (
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700}>Setup checklist</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Review the local readiness gates before any future Check sandbox sync or onboarding work.
+                  </Typography>
+                </Box>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button variant="outlined" onClick={loadCheckReadiness} disabled={checkReadinessLoading}>
+                    {checkReadinessLoading ? <CircularProgress size={18} /> : "Refresh readiness"}
+                  </Button>
                   <Button variant="outlined" onClick={loadCheckLaunchReadiness} disabled={checkLaunchReadinessLoading}>
                     {checkLaunchReadinessLoading ? <CircularProgress size={18} /> : "Refresh launch readiness"}
                   </Button>
                 </Stack>
-                {checkLaunchReadinessError ? <Alert severity="warning">{checkLaunchReadinessError}</Alert> : null}
-                {checkLaunchReadiness ? (
-                  <Stack spacing={1.5}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
-                        <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-                          <Stack spacing={1}>
-                            <Typography variant="subtitle2">Company setup</Typography>
-                            {checkLaunchReadiness.company_checklist?.map((item) => (
-                              <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-                                <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
-                              </Stack>
-                            ))}
-                          </Stack>
-                        </Paper>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-                          <Stack spacing={1}>
-                            <Typography variant="subtitle2">Payroll locations</Typography>
-                            {checkLaunchReadiness.workplace_checklist?.map((item) => (
-                              <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-                                <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
-                              </Stack>
-                            ))}
-                          </Stack>
-                        </Paper>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-                          <Stack spacing={1}>
-                            <Typography variant="subtitle2">Employees</Typography>
-                            {checkLaunchReadiness.employee_checklist?.map((item) => (
-                              <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-                                <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
-                              </Stack>
-                            ))}
-                          </Stack>
-                        </Paper>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-                          <Stack spacing={1}>
-                            <Typography variant="subtitle2">Onboarding and sandbox</Typography>
-                            {checkLaunchReadiness.onboarding_checklist?.map((item) => (
-                              <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-                                <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
-                              </Stack>
-                            ))}
-                            {[
-                              { key: "ready_for_payload_preview", value: checkLaunchReadiness.ready_for_sandbox_payload_preview },
-                              { key: "ready_for_sandbox_company_sync", value: checkLaunchReadiness.ready_for_sandbox_company_sync },
-                              { key: "ready_for_sandbox_workplace_sync", value: checkLaunchReadiness.ready_for_sandbox_workplace_sync },
-                              { key: "ready_for_sandbox_employee_sync", value: checkLaunchReadiness.ready_for_sandbox_employee_sync },
-                            ].map((item) => (
-                              <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-                                <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" sx={chipSx[item.value ? "success" : "warning"]} label={item.value ? "Yes" : "Not yet"} />
-                              </Stack>
-                            ))}
-                          </Stack>
-                        </Paper>
-                      </Grid>
-                    </Grid>
-                    {Array.isArray(checkLaunchReadiness.blockers) && checkLaunchReadiness.blockers.length ? (
-                      <Alert severity="error">
-                        {checkLaunchReadiness.blockers.map((item) => item.message || item.code).join(" ")}
-                      </Alert>
-                    ) : null}
-                    {Array.isArray(checkLaunchReadiness.warnings) && checkLaunchReadiness.warnings.length ? (
-                      <Alert severity="warning">
-                        {checkLaunchReadiness.warnings.join(" ")}
-                      </Alert>
-                    ) : null}
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>Next steps</Typography>
-                      <Box component="ul" sx={{ m: 0, pl: 3 }}>
-                        {(checkLaunchReadiness.next_steps || []).map((step, index) => (
-                          <li key={`launch-step-${index}`}>
-                            <Typography variant="body2">{step}</Typography>
-                          </li>
-                        ))}
-                      </Box>
-                    </Paper>
-                  </Stack>
-                ) : null}
               </Stack>
-            </Paper>
+              <Grid container spacing={2}>
+                {[
+                  { title: "Company", items: checkLaunchReadiness?.company_checklist || [] },
+                  { title: "Payroll locations", items: checkLaunchReadiness?.workplace_checklist || [] },
+                  { title: "Employees", items: checkLaunchReadiness?.employee_checklist || [] },
+                  {
+                    title: "Onboarding and sandbox",
+                    items: [
+                      ...(checkLaunchReadiness?.onboarding_checklist || []),
+                      { key: "ready_for_payload_preview", value: checkLaunchReadiness?.ready_for_sandbox_payload_preview, ok: Boolean(checkLaunchReadiness?.ready_for_sandbox_payload_preview), severity: "warning" },
+                      { key: "ready_for_sandbox_company_sync", value: checkLaunchReadiness?.ready_for_sandbox_company_sync, ok: Boolean(checkLaunchReadiness?.ready_for_sandbox_company_sync), severity: "warning" },
+                      { key: "ready_for_sandbox_workplace_sync", value: checkLaunchReadiness?.ready_for_sandbox_workplace_sync, ok: Boolean(checkLaunchReadiness?.ready_for_sandbox_workplace_sync), severity: "warning" },
+                      { key: "ready_for_sandbox_employee_sync", value: checkLaunchReadiness?.ready_for_sandbox_employee_sync, ok: Boolean(checkLaunchReadiness?.ready_for_sandbox_employee_sync), severity: "warning" },
+                    ],
+                  },
+                ].map((group) => (
+                  <Grid item xs={12} md={6} key={group.title}>
+                    <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
+                      <Stack spacing={1}>
+                        <Typography variant="subtitle2" fontWeight={700}>{group.title}</Typography>
+                        {group.items.map((item) => (
+                          <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+                            <Typography variant="body2">{checklistManagerLabel(item.key)}</Typography>
+                            <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Stack>
+          )}
 
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1.5}>
-                <Typography variant="subtitle2">Check sandbox foundation</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Check embedded payroll is not live yet. This panel only covers local status, dry-run payloads, and sandbox foundation work.
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={4}>
-                    <Typography variant="body2"><strong>Status:</strong> {checkStatus?.status || "not_configured"}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Typography variant="body2"><strong>Environment:</strong> {checkStatus?.environment || "sandbox"}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Typography variant="body2"><strong>API configured:</strong> {checkStatus?.configured ? "Yes" : "No"}</Typography>
-                  </Grid>
-                </Grid>
-                {checkReadiness?.setup_profile?.payroll_intent === "check_embedded_us" && (
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={() => handleCheckSandboxSync("company")}
-                      disabled={checkSyncLoading.company || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}
-                    >
-                      {checkSyncLoading.company ? <CircularProgress size={18} /> : "Sync company to sandbox"}
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={() => handleCheckSandboxSync("workplaces")}
-                      disabled={checkSyncLoading.workplaces || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}
-                    >
-                      {checkSyncLoading.workplaces ? <CircularProgress size={18} /> : "Sync workplaces to sandbox"}
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={() => handleCheckSandboxSync("employees")}
-                      disabled={checkSyncLoading.employees || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}
-                    >
-                      {checkSyncLoading.employees ? <CircularProgress size={18} /> : "Sync employees to sandbox"}
-                    </Button>
-                  </Stack>
-                )}
-                {!checkStatus?.configured && (
-                  <Alert severity="info">Check API is not configured in this environment yet.</Alert>
-                )}
-                {checkStatus?.configured && !checkStatus?.sandbox_sync_enabled && (
-                  <Alert severity="info">Sandbox entity creation is still disabled in this phase.</Alert>
-                )}
-                {checkActionNotice ? <Alert severity="success">{checkActionNotice}</Alert> : null}
-                {checkPayloadPreview ? (
-                  <Box>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Latest payload preview: {checkPayloadPreview.kind}
-                    </Typography>
+          {checkSection === CHECK_SECTION_SANDBOX && (
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700}>Check Connection</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Review Check sandbox status, preview data for Check, and keep sync actions gated until credentials and flags are enabled.
+                  </Typography>
+                </Box>
+                <Button variant="outlined" onClick={loadCheckStatus} disabled={checkStatusLoading}>
+                  {checkStatusLoading ? <CircularProgress size={18} /> : "Refresh connection"}
+                </Button>
+              </Stack>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}><Paper variant="outlined" sx={{ p: 2 }}><Typography variant="body2"><strong>Status:</strong> {checklistValueLabel(checkStatus?.status || "not_configured")}</Typography></Paper></Grid>
+                <Grid item xs={12} md={4}><Paper variant="outlined" sx={{ p: 2 }}><Typography variant="body2"><strong>Environment:</strong> {checkStatus?.environment || "sandbox"}</Typography></Paper></Grid>
+                <Grid item xs={12} md={4}><Paper variant="outlined" sx={{ p: 2 }}><Typography variant="body2"><strong>API configured:</strong> {checkStatus?.configured ? "Yes" : "No"}</Typography></Paper></Grid>
+              </Grid>
+              {!checkStatus?.configured ? (
+                <Alert severity="info">Check sandbox credentials are not configured yet.</Alert>
+              ) : null}
+              {checkStatus?.configured && !checkStatus?.sandbox_sync_enabled ? (
+                <Alert severity="info">Sync to Check sandbox remains disabled until your data preview is clean and you explicitly enable the sync flag.</Alert>
+              ) : null}
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                <Button variant="outlined" onClick={() => handleCheckPayloadPreview("company")} disabled={checkPayloadLoading || !checkStatus?.configured}>
+                  {checkPayloadLoading && checkPayloadPreview?.kind === "company" ? <CircularProgress size={18} /> : "Preview company data for Check"}
+                </Button>
+                <Button variant="outlined" onClick={() => handleCheckPayloadPreview("workplaces")} disabled={checkPayloadLoading || !checkStatus?.configured}>
+                  {checkPayloadLoading && checkPayloadPreview?.kind === "workplaces" ? <CircularProgress size={18} /> : "Preview payroll locations for Check"}
+                </Button>
+                <Button variant="outlined" onClick={() => handleCheckPayloadPreview("employees")} disabled={checkPayloadLoading || !checkStatus?.configured}>
+                  {checkPayloadLoading && checkPayloadPreview?.kind === "employees" ? <CircularProgress size={18} /> : "Preview employees for Check"}
+                </Button>
+              </Stack>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                <Button variant="contained" onClick={() => handleCheckSandboxSync("company")} disabled={checkSyncLoading.company || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}>
+                  {checkSyncLoading.company ? <CircularProgress size={18} /> : "Sync company to Check sandbox"}
+                </Button>
+                <Button variant="contained" onClick={() => handleCheckSandboxSync("workplaces")} disabled={checkSyncLoading.workplaces || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}>
+                  {checkSyncLoading.workplaces ? <CircularProgress size={18} /> : "Sync payroll locations to Check sandbox"}
+                </Button>
+                <Button variant="contained" onClick={() => handleCheckSandboxSync("employees")} disabled={checkSyncLoading.employees || !checkStatus?.configured || !checkStatus?.sandbox_sync_enabled}>
+                  {checkSyncLoading.employees ? <CircularProgress size={18} /> : "Sync employees to Check sandbox"}
+                </Button>
+              </Stack>
+              {checkPayloadPreview ? (
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2">Show latest data preview for Check</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
                     <Box
                       component="pre"
-                      sx={{
-                        m: 0,
-                        p: 1.5,
-                        overflow: "auto",
-                        borderRadius: 1,
-                        bgcolor: "background.default",
-                        border: 1,
-                        borderColor: "divider",
-                        fontSize: 12,
-                      }}
+                      sx={{ m: 0, p: 1.5, overflow: "auto", borderRadius: 1, bgcolor: "background.default", border: 1, borderColor: "divider", fontSize: 12 }}
                     >
                       {JSON.stringify(checkPayloadPreview.data, null, 2)}
                     </Box>
-                  </Box>
-                ) : null}
+                  </AccordionDetails>
+                </Accordion>
+              ) : null}
+            </Stack>
+          )}
+
+          {checkSection === CHECK_SECTION_ONBOARDING && (
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700}>Check Payroll Onboarding</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Managers prepare company onboarding first. Employees later complete tax and direct-deposit details through Check. Schedulaa stores only status and audit trail data.
+                  </Typography>
+                </Box>
+                <Button variant="outlined" onClick={loadCheckOnboardingOverview} disabled={checkOnboardingLoading}>
+                  {checkOnboardingLoading ? <CircularProgress size={18} /> : "Refresh onboarding"}
+                </Button>
               </Stack>
-            </Paper>
 
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1.5}>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
-                  <Box>
-                    <Typography variant="subtitle2">Check Payroll Onboarding</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Adding an employee in Schedulaa creates the local operational record. Payroll-sensitive onboarding, including SSN, tax forms, and bank details, will be completed through Check&apos;s secure onboarding flow.
-                    </Typography>
-                  </Box>
-                  <Button variant="outlined" onClick={loadCheckOnboardingOverview} disabled={checkOnboardingLoading}>
-                    {checkOnboardingLoading ? <CircularProgress size={18} /> : "Refresh onboarding"}
-                  </Button>
-                </Stack>
-
-                {checkOnboardingError ? <Alert severity="warning">{checkOnboardingError}</Alert> : null}
-
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={5}>
-                    <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-                      <Stack spacing={1.5}>
-                        <Typography variant="subtitle2">Employer onboarding</Typography>
-                        <Typography variant="body2"><strong>Status:</strong> {titleize(checkOnboardingOverview?.company_onboard_status || "not_connected")}</Typography>
-                        <Typography variant="body2"><strong>Company mapping:</strong> {titleize(checkOnboardingOverview?.company_mapping_status || "not_ready")}</Typography>
-                        <Typography variant="body2"><strong>Workplace mapping:</strong> {titleize(checkOnboardingOverview?.workplace_mapping_status || "not_mapped")}</Typography>
-                        <Button
-                          variant="contained"
-                          onClick={handleEmployerOnboardingStart}
-                          disabled={
-                            checkComponentActionLoading ||
-                            !checkStatus?.configured ||
-                            !checkReadiness?.check_company_mapped ||
-                            !checkStatus?.check_onboard_enabled
-                          }
-                        >
-                          {checkComponentActionLoading ? <CircularProgress size={18} /> : "Start employer onboarding"}
-                        </Button>
-                        {(!checkStatus?.configured || !checkReadiness?.check_company_mapped || !checkStatus?.check_onboard_enabled) && (
-                          <Alert severity="info">
-                            Check onboarding will be available after sandbox credentials and onboarding access are configured.
-                          </Alert>
-                        )}
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} md={7}>
-                    <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-                      <Stack spacing={1.5}>
-                        <Typography variant="subtitle2">Requirements and component sessions</Typography>
-                        {checkOnboardingOverview?.requirements_summary?.items?.length ? (
-                          renderJsonList(
-                            checkOnboardingOverview.requirements_summary.items.map((item) => ({
-                              code: item.requirement,
-                              message: titleize(item.status || "pending"),
-                            }))
-                          )
-                        ) : (
-                          <Alert severity="info">Requirements will appear here after Check onboarding is connected.</Alert>
-                        )}
-                        <Typography variant="body2">
-                          <strong>Component sessions:</strong> {checkOnboardingOverview?.component_sessions_summary?.total ?? 0}
-                        </Typography>
-                        {checkComponentSessions.length ? (
-                          <Box component="ul" sx={{ m: 0, pl: 3 }}>
-                            {checkComponentSessions.slice(0, 4).map((row) => (
-                              <li key={row.id}>
-                                <Typography variant="body2">
-                                  {titleize(row.entity_type)} / {titleize(row.component_type)}: {titleize(row.status)}
-                                </Typography>
-                              </li>
-                            ))}
-                          </Box>
-                        ) : null}
-                      </Stack>
-                    </Paper>
-                  </Grid>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={5}>
+                  <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
+                    <Stack spacing={1.5}>
+                      <Typography variant="subtitle2" fontWeight={700}>Employer onboarding</Typography>
+                      <Typography variant="body2"><strong>Status:</strong> {checklistValueLabel(checkOnboardingOverview?.company_onboard_status || "not_connected")}</Typography>
+                      <Typography variant="body2"><strong>Company sync:</strong> {checkOnboardingOverview?.company_mapping_status === "mapped" ? "Ready" : "Not synced to Check"}</Typography>
+                      <Typography variant="body2"><strong>Payroll locations sync:</strong> {checkOnboardingOverview?.workplace_mapping_status === "mapped" ? "Ready" : "Not synced to Check"}</Typography>
+                      <Button
+                        variant="contained"
+                        onClick={handleEmployerOnboardingStart}
+                        disabled={checkComponentActionLoading || !checkStatus?.configured || !checkReadiness?.check_company_mapped || !checkStatus?.check_onboard_enabled}
+                      >
+                        {checkComponentActionLoading ? <CircularProgress size={18} /> : "Start employer onboarding"}
+                      </Button>
+                      <Alert severity="info">
+                        Check onboarding will be available after sandbox credentials and onboarding access are configured.
+                      </Alert>
+                    </Stack>
+                  </Paper>
                 </Grid>
-
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Employee</TableCell>
-                        <TableCell>Primary payroll location</TableCell>
-                        <TableCell>Check employee mapping</TableCell>
-                        <TableCell>Onboarding status</TableCell>
-                        <TableCell>Blocking steps</TableCell>
-                        <TableCell align="right">Action</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(checkOnboardingOverview?.employee_onboard_summary?.items || []).map((row) => (
-                        <TableRow key={row.employee_id}>
-                          <TableCell>{row.employee_name}</TableCell>
-                          <TableCell>{row.primary_work_location_name || "Missing primary payroll location"}</TableCell>
-                          <TableCell>{row.check_employee_id ? "Mapped" : "Not mapped"}</TableCell>
-                          <TableCell>{titleize(row.onboard_status || "not_started")}</TableCell>
-                          <TableCell>
-                            {row.blocking_steps?.length ? (
-                              <Box component="ul" sx={{ m: 0, pl: 3 }}>
-                                {row.blocking_steps.map((step, index) => (
-                                  <li key={`${row.employee_id}-${index}`}>
-                                    <Typography variant="body2">
-                                      {typeof step === "string" ? step : step?.message || step?.code || JSON.stringify(step)}
-                                    </Typography>
-                                  </li>
-                                ))}
-                              </Box>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">None</Typography>
-                            )}
-                          </TableCell>
-                          <TableCell align="right">
-                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => handleEmployeeOnboardingAction(row.employee_id, "send")}
-                                disabled={
-                                  checkEmployeeOnboardingActionLoading[`send-${row.employee_id}`] ||
-                                  !checkStatus?.configured ||
-                                  !row.check_employee_id ||
-                                  !row.primary_work_location_id ||
-                                  !checkStatus?.check_onboard_enabled
-                                }
-                              >
-                                Send invite
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => handleEmployeeOnboardingAction(row.employee_id, "resend")}
-                                disabled={
-                                  checkEmployeeOnboardingActionLoading[`resend-${row.employee_id}`] ||
-                                  !checkStatus?.configured ||
-                                  !row.check_employee_id ||
-                                  !row.primary_work_location_id ||
-                                  !checkStatus?.check_onboard_enabled
-                                }
-                              >
-                                Resend invite
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => handleEmployeeOnboardingAction(row.employee_id, "refresh")}
-                                disabled={checkEmployeeOnboardingActionLoading[`refresh-${row.employee_id}`]}
-                              >
-                                Refresh status
-                              </Button>
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {!checkOnboardingOverview?.employee_onboard_summary?.items?.length && (
-                        <TableRow>
-                          <TableCell colSpan={6}>
-                            <Typography variant="body2" color="text.secondary">
-                              No employee onboarding data is available yet.
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
+                <Grid item xs={12} md={7}>
+                  <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
+                    <Stack spacing={1.25}>
+                      <Typography variant="subtitle2" fontWeight={700}>Requirements and onboarding sessions</Typography>
+                      {checkOnboardingOverview?.requirements_summary?.items?.length ? (
+                        <Stack spacing={1}>
+                          {checkOnboardingOverview.requirements_summary.items.map((item) => (
+                            <Alert key={item.id} severity={String(item.status || "").toLowerCase() === "blocking" ? "warning" : "info"}>
+                              {titleize(item.requirement)}: {titleize(item.status || "pending")}
+                            </Alert>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Alert severity="info">Requirements will appear here after Check onboarding is connected.</Alert>
                       )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      <Typography variant="body2"><strong>Onboarding sessions:</strong> {checkOnboardingOverview?.component_sessions_summary?.total ?? 0}</Typography>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              </Grid>
 
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>Recent onboarding activity</Typography>
-                  {checkOnboardingOverview?.recent_audit_events?.length ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                      <TextField
+                        size="small"
+                        label="Search employees"
+                        value={checkOnboardingSearch}
+                        onChange={(event) => setCheckOnboardingSearch(event.target.value)}
+                      />
+                      <FormControl size="small" sx={{ minWidth: 190 }}>
+                        <InputLabel id="check-onboarding-filter-label">Filter</InputLabel>
+                        <Select
+                          labelId="check-onboarding-filter-label"
+                          value={checkOnboardingFilter}
+                          label="Filter"
+                          onChange={(event) => setCheckOnboardingFilter(event.target.value)}
+                        >
+                          {["all", "missing_location", "not_mapped", "invite_ready", "invite_sent", "needs_attention", "completed"].map((option) => (
+                            <MenuItem key={option} value={option}>{onboardingFilterLabel(option)}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Stack>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                      <Button variant="outlined" disabled={!checkSelectedEmployeeIds.length || Boolean(checkBulkActionLoading) || !checkStatus?.check_onboard_enabled} onClick={() => handleBulkCheckOnboardingAction("send")}>
+                        {checkBulkActionLoading === "send" ? <CircularProgress size={18} /> : "Send invites"}
+                      </Button>
+                      <Button variant="outlined" disabled={!checkSelectedEmployeeIds.length || Boolean(checkBulkActionLoading) || !checkStatus?.check_onboard_enabled} onClick={() => handleBulkCheckOnboardingAction("resend")}>
+                        {checkBulkActionLoading === "resend" ? <CircularProgress size={18} /> : "Resend invites"}
+                      </Button>
+                      <Button variant="outlined" disabled={!checkSelectedEmployeeIds.length || Boolean(checkBulkActionLoading)} onClick={() => handleBulkCheckOnboardingAction("refresh")}>
+                        {checkBulkActionLoading === "refresh" ? <CircularProgress size={18} /> : "Refresh statuses"}
+                      </Button>
+                    </Stack>
+                  </Stack>
+
+                  <Alert severity="info">
+                    Bulk onboarding will be available after Check sandbox sync and onboarding access are configured.
+                  </Alert>
+
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {filteredCheckOnboardingRows.length} employee rows match the current filter. {checkSelectedEmployeeIds.length} selected.
+                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="body2" color="text.secondary">Page size</Typography>
+                      <FormControl size="small" sx={{ minWidth: 90 }}>
+                        <Select value={checkOnboardingPageSize} onChange={(event) => setCheckOnboardingPageSize(Number(event.target.value))}>
+                          {[10, 25, 50].map((size) => <MenuItem key={size} value={size}>{size}</MenuItem>)}
+                        </Select>
+                      </FormControl>
+                    </Stack>
+                  </Stack>
+
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={allVisibleCheckEmployeesSelected}
+                              indeterminate={selectedCheckEmployeesVisibleCount > 0 && !allVisibleCheckEmployeesSelected}
+                              onChange={handleToggleAllVisibleCheckEmployees}
+                              inputProps={{ "aria-label": "Select all visible employees" }}
+                            />
+                          </TableCell>
+                          <TableCell>Employee</TableCell>
+                          <TableCell>Primary payroll location</TableCell>
+                          <TableCell>Check employee sync</TableCell>
+                          <TableCell>Onboarding status</TableCell>
+                          <TableCell>Last invite / session</TableCell>
+                          <TableCell>Needs attention</TableCell>
+                          <TableCell align="right">Action</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {pagedCheckOnboardingRows.map((row) => (
+                          <TableRow key={row.employee_id} hover>
+                            <TableCell padding="checkbox">
+                              <Checkbox
+                                checked={checkSelectedEmployeeIds.includes(row.employee_id)}
+                                onChange={() => handleToggleCheckEmployeeSelection(row.employee_id)}
+                                inputProps={{ "aria-label": `Select ${row.employee_name}` }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight={600}>{row.employee_name}</Typography>
+                              <Typography variant="caption" color="text.secondary">{row.email || "No email"}</Typography>
+                            </TableCell>
+                            <TableCell>{row.primary_work_location_name || "Missing primary payroll location"}</TableCell>
+                            <TableCell>{row.check_employee_id ? "Synced to Check" : "Not synced to Check"}</TableCell>
+                            <TableCell>{titleize(row.onboard_status || "not_started")}</TableCell>
+                            <TableCell>
+                              {row.last_invite_sent_at ? (
+                                <Typography variant="body2">{formatDateTime(row.last_invite_sent_at)}</Typography>
+                              ) : row.last_component_session_status ? (
+                                <Typography variant="body2">{checklistValueLabel(row.last_component_session_status)}</Typography>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">No invite yet</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {row.blocking_steps?.length ? row.blocking_steps.length : row.action_state === "missing_primary_work_location" ? "Missing payroll location" : "None"}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                <Button size="small" variant="outlined" onClick={() => handleEmployeeOnboardingAction(row.employee_id, "send")} disabled={checkEmployeeOnboardingActionLoading[`send-${row.employee_id}`] || !checkStatus?.configured || !row.check_employee_id || !row.primary_work_location_id || !checkStatus?.check_onboard_enabled}>
+                                  Send invite
+                                </Button>
+                                <Button size="small" variant="outlined" onClick={() => handleEmployeeOnboardingAction(row.employee_id, "resend")} disabled={checkEmployeeOnboardingActionLoading[`resend-${row.employee_id}`] || !checkStatus?.configured || !row.check_employee_id || !row.primary_work_location_id || !checkStatus?.check_onboard_enabled}>
+                                  Resend invite
+                                </Button>
+                                <Button size="small" variant="outlined" onClick={() => handleEmployeeOnboardingAction(row.employee_id, "refresh")} disabled={checkEmployeeOnboardingActionLoading[`refresh-${row.employee_id}`]}>
+                                  Refresh status
+                                </Button>
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!pagedCheckOnboardingRows.length ? (
+                          <TableRow>
+                            <TableCell colSpan={8}>
+                              <Typography variant="body2" color="text.secondary">No employee onboarding rows match the current search and filter.</Typography>
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Button variant="outlined" size="small" disabled={checkOnboardingPage === 0} onClick={() => setCheckOnboardingPage((page) => Math.max(page - 1, 0))}>Previous</Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={(checkOnboardingPage + 1) * checkOnboardingPageSize >= filteredCheckOnboardingRows.length}
+                      onClick={() => setCheckOnboardingPage((page) => page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Stack>
+          )}
+
+          {checkSection === CHECK_SECTION_PACKAGE && (
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>Check Payroll Package Preview</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  This package preview shows how Schedulaa payroll inputs would be translated for Check later. It does not call Check and does not submit payroll.
+                </Typography>
+              </Box>
+              {!activeRunId ? (
+                <Alert severity="info">Create or select a provider run first. The Check payroll package preview is generated from the current batch so it stays aligned with payroll-ready source data.</Alert>
+              ) : checkPackagePreviewLoading ? (
+                <Stack direction="row" spacing={1} alignItems="center"><CircularProgress size={18} /><Typography variant="body2">Loading Check payroll package preview…</Typography></Stack>
+              ) : checkPackagePreviewError ? (
+                <Alert severity="error">{checkPackagePreviewError}</Alert>
+              ) : !checkPackagePreview ? (
+                <Alert severity="info">No Check payroll package preview is available for this run yet.</Alert>
+              ) : (
+                <Stack spacing={2}>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip label={payrollPreviewActionTitle(checkPackagePreview)} sx={Number(checkPackagePreview?.summary?.blocker_count || 0) > 0 ? chipSx.danger : chipSx.success} />
+                    <Chip label={`Employees ${checkPackagePreview?.summary?.employees_count ?? 0}`} sx={chipSx.neutral} />
+                    <Chip label={`Earnings ${checkPackagePreview?.summary?.earnings_count ?? 0}`} sx={chipSx.neutral} />
+                    <Chip label={`Reimbursements ${checkPackagePreview?.summary?.reimbursements_count ?? 0}`} sx={chipSx.neutral} />
+                    <Chip label={`Warnings ${checkPackagePreview?.summary?.warning_count ?? 0}`} sx={chipSx.warning} />
+                    <Chip label={`Blockers ${checkPackagePreview?.summary?.blocker_count ?? 0}`} sx={chipSx.danger} />
+                  </Stack>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}><Typography variant="body2"><strong>Period:</strong> {checkPackagePreview?.payroll?.period_start || "—"} to {checkPackagePreview?.payroll?.period_end || "—"}</Typography></Grid>
+                    <Grid item xs={12} md={4}><Typography variant="body2"><strong>Payday:</strong> {checkPackagePreview?.payroll?.payday || "—"}</Typography></Grid>
+                    <Grid item xs={12} md={4}><Typography variant="body2"><strong>Pay frequency:</strong> {checkPackagePreview?.payroll?.pay_frequency || "—"}</Typography></Grid>
+                  </Grid>
+
+                  <Paper variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1}>
-                      {checkOnboardingOverview.recent_audit_events.slice(0, 10).map((item) => (
-                        <Typography key={item.id} variant="body2">
-                          {formatDateTime(item.created_at)} - {titleize(item.actor_type)} - {onboardingActionLabel(item.action)} - {titleize(item.status)}
-                        </Typography>
+                      <Typography variant="subtitle2" fontWeight={700}>Action required</Typography>
+                      {aggregateCheckIssues(checkPackagePreview?.blockers, checkPackagePreview?.warnings).length ? (
+                        aggregateCheckIssues(checkPackagePreview?.blockers, checkPackagePreview?.warnings).map((item, index) => (
+                          <Alert key={`package-human-${index}-${item.code || item.title}`} severity={item.category === "payroll" ? "warning" : "error"}>
+                            <strong>{item.title}</strong>: {item.message_with_count}
+                          </Alert>
+                        ))
+                      ) : (
+                        <Alert severity="success">This package is structurally ready for a future provider payroll preview once Check sandbox sync and onboarding are enabled.</Alert>
+                      )}
+                    </Stack>
+                  </Paper>
+
+                  <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2">Show technical package details</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack spacing={1}>
+                        {aggregateCheckIssues(checkPackageBlockers).map((item, index) => (
+                          <Alert key={`check-package-blocker-${index}-${item.code || item.message}`} severity="error">
+                            <strong>{item.code || "BLOCKER"}</strong>: {item.message_with_count}
+                          </Alert>
+                        ))}
+                        {aggregateCheckIssues(checkPackageWarnings).map((item, index) => (
+                          <Alert key={`check-package-warning-${index}-${item.code || item.message}`} severity={item.severity === "info" ? "info" : "warning"}>
+                            <strong>{item.code || "WARNING"}</strong>: {item.message_with_count}
+                          </Alert>
+                        ))}
+                        {!checkPackageBlockers.length && !checkPackageWarnings.length ? <Typography variant="body2" color="text.secondary">No technical warnings or blockers.</Typography> : null}
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2">Show field mapping table</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Schedulaa field</TableCell>
+                              <TableCell>Check object</TableCell>
+                              <TableCell>Check type/code</TableCell>
+                              <TableCell>Status</TableCell>
+                              <TableCell>Notes</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {checkPackageFieldMappings.map((row) => (
+                              <TableRow key={`${row.schedulaa_field}-${row.check_object}-${row.check_type_code || "none"}`}>
+                                <TableCell>{titleize(row.schedulaa_field)}</TableCell>
+                                <TableCell>{row.check_object || "—"}</TableCell>
+                                <TableCell>{row.check_type_code || "—"}</TableCell>
+                                <TableCell><Chip size="small" label={checkPackageStatusLabel(row.status)} sx={chipSx[checkPackageStatusTone(row.status)]} /></TableCell>
+                                <TableCell>{row.notes}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2">Show employee package rows</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack spacing={2}>
+                        {checkPackageItems.map((item) => (
+                          <Paper key={`check-package-item-${item.employee_id}`} variant="outlined" sx={{ p: 2 }}>
+                            <Stack spacing={1.5}>
+                              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
+                                <Box>
+                                  <Typography variant="body1"><strong>{item.employee_name}</strong></Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Employee ID {item.employee_id} • Primary payroll location {item.primary_work_location_id || "missing"} • Check employee {item.check_employee_id || "not synced"}
+                                  </Typography>
+                                </Box>
+                                <Stack direction="row" spacing={1}>
+                                  <Chip size="small" label={`Earnings ${item.earnings?.length || 0}`} sx={chipSx.neutral} />
+                                  <Chip size="small" label={`Reimbursements ${item.reimbursements?.length || 0}`} sx={chipSx.neutral} />
+                                  <Chip size="small" label={`Not sent ${item.not_sent?.length || 0}`} sx={chipSx.warning} />
+                                </Stack>
+                              </Stack>
+                              <Grid container spacing={2}>
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="body2" sx={{ mb: 1 }}><strong>Earnings</strong></Typography>
+                                  {item.earnings?.length ? (
+                                    <Stack spacing={1}>
+                                      {item.earnings.map((earning) => (
+                                        <Box key={`earning-${earning.line_id}`} sx={{ p: 1.25, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04) }}>
+                                          <Typography variant="body2"><strong>{titleize(earning.earning_key)}</strong> • {earning.check_type_code || "type pending"} • {earning.amount}</Typography>
+                                          <Typography variant="caption" color="text.secondary">Hours {earning.hours ?? 0} • Workplace {earning.check_workplace_id || earning.work_location_id || "missing"} • {earning.notes}</Typography>
+                                        </Box>
+                                      ))}
+                                    </Stack>
+                                  ) : <Typography variant="body2" color="text.secondary">No earnings mapped.</Typography>}
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="body2" sx={{ mb: 1 }}><strong>Reimbursements / not sent</strong></Typography>
+                                  {item.reimbursements?.length ? (
+                                    <Stack spacing={1} sx={{ mb: item.not_sent?.length ? 1 : 0 }}>
+                                      {item.reimbursements.map((row) => (
+                                        <Box key={`reimbursement-${row.line_id}`} sx={{ p: 1.25, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04) }}>
+                                          <Typography variant="body2"><strong>{titleize(row.earning_key)}</strong> • {row.amount}</Typography>
+                                          <Typography variant="caption" color="text.secondary">{row.description || row.notes}</Typography>
+                                        </Box>
+                                      ))}
+                                    </Stack>
+                                  ) : null}
+                                  {item.not_sent?.length ? (
+                                    <Stack spacing={1}>
+                                      {item.not_sent.map((row, index) => (
+                                        <Alert key={`not-sent-${item.employee_id}-${index}`} severity="info"><strong>{row.code || "NOT_SENT"}</strong>: {row.message}</Alert>
+                                      ))}
+                                    </Stack>
+                                  ) : !item.reimbursements?.length ? (
+                                    <Typography variant="body2" color="text.secondary">No reimbursements or not-sent lines for this employee.</Typography>
+                                  ) : null}
+                                </Grid>
+                              </Grid>
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+                </Stack>
+              )}
+            </Stack>
+          )}
+
+          {checkSection === CHECK_SECTION_ACTIVITY && (
+            <Stack spacing={2}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>Recent onboarding activity</Typography>
+                {checkOnboardingOverview?.recent_audit_events?.length ? (
+                  <Stack spacing={1}>
+                    {checkOnboardingOverview.recent_audit_events.slice(0, 10).map((item) => (
+                      <Typography key={item.id} variant="body2">
+                        {formatDateTime(item.created_at)} - {titleize(item.actor_type)} - {onboardingActionLabel(item.action)} - {titleize(item.status)}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No onboarding activity has been recorded yet.</Typography>
+                )}
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>Upcoming manager steps</Typography>
+                <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                  {(checkOnboardingOverview?.next_steps || checkLaunchReadiness?.next_steps || []).map((step, index) => (
+                    <li key={`activity-next-step-${index}`}>
+                      <Typography variant="body2">{step}</Typography>
+                    </li>
+                  ))}
+                </Box>
+              </Paper>
+            </Stack>
+          )}
+
+          {checkSection === CHECK_SECTION_TECHNICAL && (
+            <Stack spacing={2}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>Technical details</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Raw codes and technical payload state are kept here for troubleshooting. Managers should use Overview first.
+                </Typography>
+
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2">Readiness and unsupported conditions</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={1}>
+                      {formatList(checkReadiness?.unsupported_conditions).map((item) => (
+                        <Alert key={`${item.code}-${item.message}`} severity={item.severity === "info" ? "info" : item.severity === "warning" ? "warning" : "error"}>
+                          <strong>{item.code}</strong>: {item.message}
+                        </Alert>
+                      ))}
+                      {formatList(checkReadiness?.warnings).map((item, index) => (
+                        <Alert key={`check-warning-${index}`} severity="warning">
+                          <strong>{item.code || "WARNING"}</strong>: {item.message || String(item)}
+                        </Alert>
                       ))}
                     </Stack>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No onboarding activity has been recorded yet.
-                    </Typography>
-                  )}
-                </Paper>
+                  </AccordionDetails>
+                </Accordion>
 
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography variant="subtitle2" gutterBottom>Check Payroll Package Preview</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Schedulaa Payroll Preview is where you prepare payroll inputs. Check Payroll Preview will calculate official taxes, deductions, net pay, and cash requirement after structured payroll data is sent to Check. This package preview does not call Check.
-                      </Typography>
-                    </Box>
-
-                    {!activeRunId ? (
-                      <Alert severity="info">
-                        Create or select a provider run first. The Check payroll package preview is generated from the current batch so it stays aligned with payroll-ready source data.
-                      </Alert>
-                    ) : checkPackagePreviewLoading ? (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CircularProgress size={18} />
-                        <Typography variant="body2">Loading Check payroll package preview…</Typography>
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2">Missing work location addresses</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {formatList(checkReadiness?.missing_work_location_address).length ? (
+                      <Stack spacing={0.5}>
+                        {checkReadiness.missing_work_location_address.map((item) => (
+                          <Typography key={item.id} variant="body2">{item.name}: {(item.missing_fields || []).join(", ")}</Typography>
+                        ))}
                       </Stack>
-                    ) : checkPackagePreviewError ? (
-                      <Alert severity="error">{checkPackagePreviewError}</Alert>
-                    ) : !checkPackagePreview ? (
-                      <Alert severity="info">No Check payroll package preview is available for this run yet.</Alert>
-                    ) : (
-                      <Stack spacing={2}>
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
-                          <Chip label={`Run ${checkPackagePreview?.payroll?.provider_run_id || activeRunId}`} sx={chipSx.active} />
-                          <Chip label={`Employees ${checkPackagePreview?.summary?.employees_count ?? 0}`} sx={chipSx.neutral} />
-                          <Chip label={`Earnings ${checkPackagePreview?.summary?.earnings_count ?? 0}`} sx={chipSx.neutral} />
-                          <Chip label={`Reimbursements ${checkPackagePreview?.summary?.reimbursements_count ?? 0}`} sx={chipSx.neutral} />
-                          <Chip label={`Warnings ${checkPackagePreview?.summary?.warning_count ?? 0}`} sx={chipSx.warning} />
-                          <Chip label={`Blockers ${checkPackagePreview?.summary?.blocker_count ?? 0}`} sx={chipSx.danger} />
-                          <Chip label={`Source ${shortenHash(checkPackagePreview?.payroll?.source_hash)}`} sx={chipSx.neutral} />
-                        </Stack>
+                    ) : <Typography variant="body2" color="text.secondary">None</Typography>}
+                  </AccordionDetails>
+                </Accordion>
 
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} md={4}>
-                            <Typography variant="body2"><strong>Period:</strong> {checkPackagePreview?.payroll?.period_start || "—"} to {checkPackagePreview?.payroll?.period_end || "—"}</Typography>
-                          </Grid>
-                          <Grid item xs={12} md={4}>
-                            <Typography variant="body2"><strong>Payday:</strong> {checkPackagePreview?.payroll?.payday || "—"}</Typography>
-                          </Grid>
-                          <Grid item xs={12} md={4}>
-                            <Typography variant="body2"><strong>Pay frequency:</strong> {checkPackagePreview?.payroll?.pay_frequency || "—"}</Typography>
-                          </Grid>
-                        </Grid>
-
-                        {checkPackageBlockers.length > 0 ? (
-                          <Box>
-                            <Typography variant="subtitle2" gutterBottom>Package blockers</Typography>
-                            <Stack spacing={1}>
-                              {checkPackageBlockers.map((item, index) => (
-                                <Alert key={`check-package-blocker-${index}-${item.code || item.message}`} severity="error">
-                                  <strong>{item.code || "BLOCKER"}</strong>: {item.message}
-                                </Alert>
-                              ))}
-                            </Stack>
-                          </Box>
-                        ) : null}
-
-                        {checkPackageWarnings.length > 0 ? (
-                          <Box>
-                            <Typography variant="subtitle2" gutterBottom>Package warnings</Typography>
-                            <Stack spacing={1}>
-                              {checkPackageWarnings.map((item, index) => (
-                                <Alert key={`check-package-warning-${index}-${item.code || item.message}`} severity={item.severity === "info" ? "info" : "warning"}>
-                                  <strong>{item.code || "WARNING"}</strong>: {item.message}
-                                </Alert>
-                              ))}
-                            </Stack>
-                          </Box>
-                        ) : null}
-
-                        <Box>
-                          <Typography variant="subtitle2" gutterBottom>Field mapping table</Typography>
-                          <TableContainer component={Paper} variant="outlined">
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Schedulaa field</TableCell>
-                                  <TableCell>Check object</TableCell>
-                                  <TableCell>Check type/code</TableCell>
-                                  <TableCell>Status</TableCell>
-                                  <TableCell>Notes</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {checkPackageFieldMappings.map((row) => (
-                                  <TableRow key={`${row.schedulaa_field}-${row.check_object}-${row.check_type_code || "none"}`}>
-                                    <TableCell>{titleize(row.schedulaa_field)}</TableCell>
-                                    <TableCell>{row.check_object || "—"}</TableCell>
-                                    <TableCell>{row.check_type_code || "—"}</TableCell>
-                                    <TableCell>
-                                      <Chip size="small" label={checkPackageStatusLabel(row.status)} sx={chipSx[checkPackageStatusTone(row.status)]} />
-                                    </TableCell>
-                                    <TableCell>{row.notes}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </Box>
-
-                        <Box>
-                          <Typography variant="subtitle2" gutterBottom>Employee-level package rows</Typography>
-                          <Stack spacing={2}>
-                            {checkPackageItems.map((item) => (
-                              <Paper key={`check-package-item-${item.employee_id}`} variant="outlined" sx={{ p: 2 }}>
-                                <Stack spacing={1.5}>
-                                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
-                                    <Box>
-                                      <Typography variant="body1"><strong>{item.employee_name}</strong></Typography>
-                                      <Typography variant="caption" color="text.secondary">
-                                        Employee ID {item.employee_id} • Primary payroll location {item.primary_work_location_id || "missing"} • Check employee {item.check_employee_id || "not mapped"}
-                                      </Typography>
-                                    </Box>
-                                    <Stack direction="row" spacing={1}>
-                                      <Chip size="small" label={`Earnings ${item.earnings?.length || 0}`} sx={chipSx.neutral} />
-                                      <Chip size="small" label={`Reimbursements ${item.reimbursements?.length || 0}`} sx={chipSx.neutral} />
-                                      <Chip size="small" label={`Not sent ${item.not_sent?.length || 0}`} sx={chipSx.warning} />
-                                    </Stack>
-                                  </Stack>
-
-                                  {item.blockers?.length ? (
-                                    <Alert severity="error">
-                                      {item.blockers.map((row) => row.code || row.message).join(", ")}
-                                    </Alert>
-                                  ) : null}
-                                  {item.warnings?.length ? (
-                                    <Alert severity="warning">
-                                      {item.warnings.map((row) => row.code || row.message).join(", ")}
-                                    </Alert>
-                                  ) : null}
-
-                                  <Grid container spacing={2}>
-                                    <Grid item xs={12} md={6}>
-                                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Earnings</strong></Typography>
-                                      {item.earnings?.length ? (
-                                        <Stack spacing={1}>
-                                          {item.earnings.map((earning) => (
-                                            <Box key={`earning-${earning.line_id}`} sx={{ p: 1.25, border: "1px solid #dbe5ff", borderRadius: 1.5, bgcolor: "#fbfcff" }}>
-                                              <Typography variant="body2">
-                                                <strong>{titleize(earning.earning_key)}</strong> • {earning.check_type_code || "type pending"} • {earning.amount}
-                                              </Typography>
-                                              <Typography variant="caption" color="text.secondary">
-                                                Hours {earning.hours ?? 0} • Workplace {earning.check_workplace_id || earning.work_location_id || "missing"} • {earning.notes}
-                                              </Typography>
-                                            </Box>
-                                          ))}
-                                        </Stack>
-                                      ) : (
-                                        <Typography variant="body2" color="text.secondary">No earnings mapped.</Typography>
-                                      )}
-                                    </Grid>
-                                    <Grid item xs={12} md={6}>
-                                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Reimbursements / not sent</strong></Typography>
-                                      {item.reimbursements?.length ? (
-                                        <Stack spacing={1} sx={{ mb: item.not_sent?.length ? 1 : 0 }}>
-                                          {item.reimbursements.map((row) => (
-                                            <Box key={`reimbursement-${row.line_id}`} sx={{ p: 1.25, border: "1px solid #dbe5ff", borderRadius: 1.5, bgcolor: "#fbfcff" }}>
-                                              <Typography variant="body2">
-                                                <strong>{titleize(row.earning_key)}</strong> • {row.amount}
-                                              </Typography>
-                                              <Typography variant="caption" color="text.secondary">
-                                                {row.description || row.notes}
-                                              </Typography>
-                                            </Box>
-                                          ))}
-                                        </Stack>
-                                      ) : null}
-                                      {item.not_sent?.length ? (
-                                        <Stack spacing={1}>
-                                          {item.not_sent.map((row, index) => (
-                                            <Alert key={`not-sent-${item.employee_id}-${index}`} severity="info">
-                                              <strong>{row.code || "NOT_SENT"}</strong>: {row.message}
-                                            </Alert>
-                                          ))}
-                                        </Stack>
-                                      ) : !item.reimbursements?.length ? (
-                                        <Typography variant="body2" color="text.secondary">No reimbursements or not-sent lines for this employee.</Typography>
-                                      ) : null}
-                                    </Grid>
-                                  </Grid>
-                                </Stack>
-                              </Paper>
-                            ))}
-                            {!checkPackageItems.length ? (
-                              <Typography variant="body2" color="text.secondary">
-                                No employee package rows were built for this provider run.
-                              </Typography>
-                            ) : null}
-                          </Stack>
-                        </Box>
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2">Employees missing primary payroll location</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {formatList(checkReadiness?.missing_employee_primary_work_location).length ? (
+                      <Stack spacing={0.5}>
+                        {checkReadiness.missing_employee_primary_work_location.slice(0, 20).map((item) => (
+                          <Typography key={item.employee_id} variant="body2">{item.employee_name}</Typography>
+                        ))}
                       </Stack>
-                    )}
-                  </Stack>
-                </Paper>
-              </Stack>
-            </Paper>
-
-            {Array.isArray(checkReadiness?.unsupported_conditions) && checkReadiness.unsupported_conditions.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Unsupported conditions / blockers</Typography>
-                <Stack spacing={1}>
-                  {checkReadiness.unsupported_conditions.map((item) => (
-                    <Alert key={`${item.code}-${item.message}`} severity={item.severity === "info" ? "info" : item.severity === "warning" ? "warning" : "error"}>
-                      <strong>{item.code}</strong>: {item.message}
-                    </Alert>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-
-            {Array.isArray(checkReadiness?.warnings) && checkReadiness.warnings.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>Warnings</Typography>
-                <Stack spacing={1}>
-                  {checkReadiness.warnings.map((item) => (
-                    <Alert key={`${item.code}-${item.message}`} severity="warning">
-                      <strong>{item.code}</strong>: {item.message}
-                    </Alert>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" gutterBottom>Missing work location addresses</Typography>
-                {formatList(checkReadiness?.missing_work_location_address).length ? (
-                  <Stack spacing={0.5}>
-                    {checkReadiness.missing_work_location_address.map((item) => (
-                      <Typography key={item.id} variant="body2">
-                        {item.name}: {(item.missing_fields || []).join(", ")}
-                      </Typography>
-                    ))}
-                  </Stack>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">None</Typography>
-                )}
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" gutterBottom>Employees missing primary payroll location</Typography>
-                {formatList(checkReadiness?.missing_employee_primary_work_location).length ? (
-                  <Stack spacing={0.5}>
-                    {checkReadiness.missing_employee_primary_work_location.slice(0, 8).map((item) => (
-                      <Typography key={item.employee_id} variant="body2">
-                        {item.employee_name}
-                      </Typography>
-                    ))}
-                  </Stack>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">None</Typography>
-                )}
-              </Grid>
-            </Grid>
-          </Stack>
-        )}
+                    ) : <Typography variant="body2" color="text.secondary">None</Typography>}
+                  </AccordionDetails>
+                </Accordion>
+              </Paper>
+            </Stack>
+          )}
+        </Stack>
       </Paper>
       )}
 
@@ -3919,8 +4406,6 @@ export default function PayrollProviderSync({
           </AccordionDetails>
         </Accordion>
       )}
-
-      <PayrollProviderSyncHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <Accordion elevation={0} disableGutters sx={lowerAccordionSx}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>

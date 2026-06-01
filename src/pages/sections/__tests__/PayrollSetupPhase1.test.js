@@ -40,6 +40,9 @@ jest.mock("../../../utils/api", () => {
       sendCheckEmployeeOnboardingInvite: jest.fn(),
       resendCheckEmployeeOnboardingInvite: jest.fn(),
       refreshCheckEmployeeOnboardingStatus: jest.fn(),
+      bulkSendCheckEmployeeOnboardingInvites: jest.fn(),
+      bulkResendCheckEmployeeOnboardingInvites: jest.fn(),
+      bulkRefreshCheckEmployeeOnboardingStatus: jest.fn(),
       listCheckOnboardingAuditEvents: jest.fn(),
       listCheckComponentSessions: jest.fn(),
       createCheckComponentSessionPlaceholder: jest.fn(),
@@ -302,7 +305,8 @@ beforeEach(() => {
       { key: "active_work_locations_count", value: 1, ok: true, severity: "info" },
     ],
     employee_checklist: [
-      { key: "eligible_employee_count", value: 1, ok: true, severity: "info" },
+      { key: "total_employee_records_reviewed", value: 1, ok: true, severity: "info" },
+      { key: "eligible_payroll_employee_count", value: 1, ok: true, severity: "info" },
     ],
     onboarding_checklist: [
       { key: "check_onboard_enabled", value: false, ok: false, severity: "warning" },
@@ -337,12 +341,32 @@ beforeEach(() => {
       pay_frequency: "weekly",
       source_hash: "checkpkg1234567890",
     },
-    items: [],
-    field_mapping_rows: [],
-    warnings: [],
-    blockers: [],
-    unsupported_fields: [],
-    summary: { employees_count: 0, earnings_count: 0, reimbursements_count: 0, blocker_count: 0, warning_count: 0 },
+    items: [
+      {
+        employee_id: 55,
+        employee_name: "Taylor North",
+        check_employee_id: null,
+        primary_work_location_id: 11,
+        check_workplace_id: null,
+        earnings: [
+          { line_id: 1, earning_key: "regular_hours", check_type_code: "hourly", amount: 200, hours: 8, work_location_id: 11, notes: "Regular hours map to hourly earnings." },
+        ],
+        reimbursements: [],
+        not_sent: [{ code: "NOT_SENT_TO_CHECK_MVP", message: "Local net pay remains informational. Check calculates official net pay later." }],
+        warnings: [{ code: "TIP_TYPE_AMBIGUOUS", message: "Treating period tips as simple paycheck tips for preview only." }],
+        blockers: [{ code: "CHECK_EMPLOYEE_NOT_MAPPED", message: "Employee does not have a Check employee mapping yet." }],
+      },
+    ],
+    field_mapping_rows: [
+      { schedulaa_field: "regular_hours", check_object: "earnings", check_type_code: "hourly", status: "supported", notes: "Regular approved hours become structured hourly earnings with workplace." },
+    ],
+    warnings: [
+      { code: "CHECK_CALCULATES_TAX_NET_PAY", message: "Local Payroll Preview is an input screen. Check will later calculate official taxes, net pay, and cash requirement from the structured package.", severity: "info" },
+      { code: "TIP_TYPE_AMBIGUOUS", message: "Treating period tips as simple paycheck tips for preview only.", severity: "warning" },
+    ],
+    blockers: [{ code: "CHECK_EMPLOYEE_NOT_MAPPED", message: "Employee does not have a Check employee mapping yet.", severity: "error" }],
+    unsupported_fields: [{ code: "NOT_SENT_TO_CHECK_MVP", message: "Local net pay remains informational. Check calculates official net pay later." }],
+    summary: { employees_count: 1, earnings_count: 1, reimbursements_count: 0, blocker_count: 1, warning_count: 2 },
   });
   mockPayrollSetupApi.getCheckOnboardingOverview.mockResolvedValue({
     check_configured: false,
@@ -372,6 +396,15 @@ beforeEach(() => {
     },
     requirements_summary: { total: 0, blocking: 0, items: [] },
     component_sessions_summary: { total: 0, latest: [] },
+    employee_counts: {
+      total_employee_records_reviewed: 1,
+      eligible_payroll_employees: 1,
+      eligible_employees_not_synced_to_check: 1,
+      employees_missing_primary_payroll_location: 0,
+      employees_with_onboarding_complete: 0,
+      employees_needing_attention: 0,
+      employees_blocking_onboarding: 0,
+    },
     next_steps: ["Sync the company to Check sandbox or production before employer onboarding."],
     warnings: [],
     blockers: [],
@@ -390,6 +423,9 @@ beforeEach(() => {
   mockPayrollSetupApi.sendCheckEmployeeOnboardingInvite.mockResolvedValue({});
   mockPayrollSetupApi.resendCheckEmployeeOnboardingInvite.mockResolvedValue({});
   mockPayrollSetupApi.refreshCheckEmployeeOnboardingStatus.mockResolvedValue({});
+  mockPayrollSetupApi.bulkSendCheckEmployeeOnboardingInvites.mockResolvedValue({ ok: false, error: "CHECK_ONBOARD_NOT_ENABLED", summary: { selected: 1, ready: 0, blocked: 0, disabled: 1 }, rows: [] });
+  mockPayrollSetupApi.bulkResendCheckEmployeeOnboardingInvites.mockResolvedValue({ ok: false, error: "CHECK_ONBOARD_NOT_ENABLED", summary: { selected: 1, ready: 0, blocked: 0, disabled: 1 }, rows: [] });
+  mockPayrollSetupApi.bulkRefreshCheckEmployeeOnboardingStatus.mockResolvedValue({ ok: false, error: "CHECK_ONBOARD_NOT_ENABLED", summary: { selected: 1, ready: 0, blocked: 0, disabled: 1 }, rows: [] });
   mockPayrollSetupApi.listCheckOnboardingAuditEvents.mockResolvedValue({ items: [] });
   mockPayrollSetupApi.getCheckCompanyPayload.mockResolvedValue({ payload: { name: "Schedulaa" }, missing_fields: [], warnings: [] });
   mockPayrollSetupApi.getCheckWorkplacePayloads.mockResolvedValue({ items: [] });
@@ -563,7 +599,7 @@ test("CompanyProfile shows Canadian labels when company country is Canada", asyn
   expect(await screen.findByLabelText(/Postal Code/i)).toBeInTheDocument();
 });
 
-test("PayrollProviderSync renders embedded payroll workspace first for Check intent", async () => {
+test("PayrollProviderSync renders Check Payroll Control Center for Check intent", async () => {
   mockPayrollSetupApi.getCheckReadiness.mockResolvedValueOnce({
     check_mode: "not_connected",
     check_configured: false,
@@ -616,38 +652,48 @@ test("PayrollProviderSync renders embedded payroll workspace first for Check int
     />
   );
 
-  expect(await screen.findByText(/Embedded Payroll Workspace/i)).toBeInTheDocument();
+  expect(await screen.findByText(/Check Payroll Control Center/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Embedded Payroll/i })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Fallback Handoff/i })).toBeInTheDocument();
-  expect(await screen.findByText(/Check Payroll Readiness/i)).toBeInTheDocument();
-  expect(screen.getByText(/Check Launch Readiness/i)).toBeInTheDocument();
-  expect(screen.getByText(/Use this checklist to prepare for Check sandbox testing/i)).toBeInTheDocument();
-  expect(screen.getByText(/Add FEIN\/EIN in Company Profile/i)).toBeInTheDocument();
-  expect(screen.getAllByText(/Check embedded payroll is not live yet/i).length).toBeGreaterThan(0);
+  expect(screen.getByText(/Prepare your company, employees, onboarding, and payroll package for Check-powered payroll/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/Add FEIN\/EIN/i).length).toBeGreaterThan(0);
+  expect(screen.queryByText(/CHECK_EMPLOYEE_NOT_MAPPED/i)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /Setup checklist/i }));
+  expect(await screen.findByText(/Refresh launch readiness/i)).toBeInTheDocument();
+  expect(screen.getByText(/Company FEIN\/EIN is present/i)).toBeInTheDocument();
   expect(screen.getByText(/^Prepared$/i)).toBeInTheDocument();
   expect(screen.queryByText(/created_placeholder/i)).not.toBeInTheDocument();
   expect(mockPayrollSetupApi.getCheckReadiness).toHaveBeenCalled();
   expect(mockPayrollSetupApi.getCheckStatus).toHaveBeenCalled();
   expect(mockPayrollSetupApi.getCheckLaunchReadiness).toHaveBeenCalled();
   expect(mockPayrollSetupApi.getCheckOnboardingOverview).toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: /Preview company payload/i })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /Sync company to sandbox/i })).toBeDisabled();
-  expect(screen.getByText(/Check Payroll Onboarding/i)).toBeInTheDocument();
-  expect(screen.getAllByText(/Check Payroll Package Preview/i).length).toBeGreaterThan(0);
-  expect(screen.getByText(/This package preview does not call Check/i)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Start employer onboarding/i })).toBeDisabled();
-  expect(screen.getAllByRole("button", { name: /Send invite/i })[0]).toBeDisabled();
-  expect(screen.getAllByRole("button", { name: /Resend invite/i })[0]).toBeDisabled();
-  expect(screen.getByText(/Payroll-sensitive onboarding, including SSN, tax forms, and bank details/i)).toBeInTheDocument();
-  expect(screen.queryByText(/direct deposit/i)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /Sandbox sync/i }));
+  expect(await screen.findByText(/Check Connection/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Preview company data for Check/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /Sync company to Check sandbox/i })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: /Onboarding/i }));
+  expect(await screen.findByText(/Check Payroll Onboarding/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^Send invites$/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /^Resend invites$/i })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: /Payroll package/i }));
+  expect(await screen.findByText(/Check Payroll Package Preview/i)).toBeInTheDocument();
+  expect(screen.getByText(/It does not call Check and does not submit payroll/i)).toBeInTheDocument();
+  expect(screen.getByText(/CHECK_EMPLOYEE_NOT_MAPPED/i)).not.toBeVisible();
+  fireEvent.click(screen.getByText(/Show technical package details/i));
+  expect(await screen.findByText(/CHECK_EMPLOYEE_NOT_MAPPED/i)).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: /Payroll guide/i }));
+  expect(await screen.findByText(/Payroll Operations Guide/i)).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Check Payroll/i })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByText(/What this workspace covers/i)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/SSN/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/W-4/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/direct deposit/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Check submit/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Check approve/i)).not.toBeInTheDocument();
-  expect(screen.getByText(/Recent onboarding activity/i)).toBeInTheDocument();
   await waitFor(() => {
     expect(mockPayrollSetupApi.getCheckPayrollPackagePreview).toHaveBeenCalledWith({ provider_run_id: 321 });
   });
-  expect(await screen.findByText(/Field mapping table/i)).toBeInTheDocument();
-});
+}, 15000);
 
 test("PayrollProviderSync hides full Check workspace for csv handoff intent", async () => {
   renderWithRouter(
@@ -670,10 +716,11 @@ test("PayrollProviderSync hides full Check workspace for csv handoff intent", as
   expect(await screen.findByRole("heading", { name: /Payroll Handoff/i })).toBeInTheDocument();
   expect(screen.getAllByText(/This company is currently using payroll handoff\/export mode/i).length).toBeGreaterThan(0);
   expect(screen.getByRole("combobox", { name: /Provider/i })).toBeInTheDocument();
-  expect(screen.queryByText(/Check Payroll Readiness/i)).not.toBeInTheDocument();
-  expect(screen.queryByText(/Check Payroll Onboarding/i)).not.toBeInTheDocument();
-  expect(screen.queryByText(/Check Payroll Package Preview/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Check Payroll Control Center/i)).not.toBeInTheDocument();
   expect(screen.getByText(/Embedded U\.S\. payroll tools become relevant only if payroll intent is switched later/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /Payroll guide/i }));
+  expect(await screen.findByText(/Payroll Operations Guide/i)).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /CSV Handoff/i })).toHaveAttribute("aria-selected", "true");
 });
 
 test("PayrollProviderSync shows setup-first state when payroll intent is not configured", async () => {

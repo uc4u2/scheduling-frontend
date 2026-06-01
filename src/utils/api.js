@@ -740,6 +740,12 @@ export const payrollSetupApi = {
     api.post(`/automation/payroll/check/onboarding/employees/${employeeId}/resend`, payload, config).then((r) => r.data),
   refreshCheckEmployeeOnboardingStatus: (employeeId, config = {}) =>
     api.post(`/automation/payroll/check/onboarding/employees/${employeeId}/refresh-status`, {}, config).then((r) => r.data),
+  bulkSendCheckEmployeeOnboardingInvites: (employeeIds = [], payload = {}, config = {}) =>
+    api.post("/automation/payroll/check/onboarding/employees/bulk-send", { employee_ids: employeeIds, ...payload }, config).then((r) => r.data),
+  bulkResendCheckEmployeeOnboardingInvites: (employeeIds = [], payload = {}, config = {}) =>
+    api.post("/automation/payroll/check/onboarding/employees/bulk-resend", { employee_ids: employeeIds, ...payload }, config).then((r) => r.data),
+  bulkRefreshCheckEmployeeOnboardingStatus: (employeeIds = [], payload = {}, config = {}) =>
+    api.post("/automation/payroll/check/onboarding/employees/bulk-refresh-status", { employee_ids: employeeIds, ...payload }, config).then((r) => r.data),
   listCheckOnboardingAuditEvents: (params = {}, config = {}) =>
     api.get("/automation/payroll/check/onboarding/audit-events", { ...config, params }).then((r) => r.data),
   listCheckComponentSessions: (config = {}) =>
