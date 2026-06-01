@@ -201,6 +201,11 @@ export default function TeamMemberImportDialog({
               <Typography variant="body2" color="text.secondary">
                 Use the template to match the expected columns. Password columns are not accepted.
               </Typography>
+              <Alert severity="info" variant="outlined">
+                <strong>Department</strong> must match an existing team name in this company.
+                {" "}
+                <strong>Primary payroll location</strong> must match an existing active work location used for payroll and compliance, such as Main Work Location or a branch office.
+              </Alert>
               <Typography component="pre" variant="caption" sx={{ m: 0, p: 1.5, borderRadius: 1.5, bgcolor: "grey.50", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
                 {csvStructure}
               </Typography>

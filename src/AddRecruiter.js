@@ -571,6 +571,14 @@ const AddRecruiter = () => {
           Team members set their own password through a secure setup invitation. Existing team members stay unchanged in the import flow.
         </Alert>
 
+        <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+          <strong>Department</strong> is the team this person belongs to, such as Operations, Field Team, or Sales.
+          {" "}
+          <strong>Primary payroll location</strong> is the physical work location used for payroll and compliance, such as Main Work Location, Toronto Office, or Austin Warehouse.
+          {" "}
+          Import rows must match existing department and payroll location names in this company.
+        </Alert>
+
         <form onSubmit={handleSubmit} noValidate>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
@@ -621,7 +629,7 @@ const AddRecruiter = () => {
                 helperText={
                   fieldErrors.departmentId ||
                   (departments.length
-                    ? "(Optional) Assign this member to a department."
+                    ? "(Optional) Assign this member to an existing team, such as Operations or Field Team."
                     : "No departments yet? Add them under Settings → Departments.")
                 }
               >
@@ -673,7 +681,7 @@ const AddRecruiter = () => {
                   error={Boolean(fieldErrors.primaryWorkLocationId)}
                   helperText={
                     fieldErrors.primaryWorkLocationId ||
-                    "Departments are for teams or services. Payroll Location is the physical work location used for payroll setup."
+                    "The physical work location used for payroll and compliance, such as Main Work Location or a branch office."
                   }
                 >
                   <MenuItem value="">
