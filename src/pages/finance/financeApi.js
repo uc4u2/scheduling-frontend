@@ -199,6 +199,26 @@ export const listVendors = (params = {}) => unwrap(api.get("/finance/vendors", {
 export const createVendor = (payload) => unwrap(api.post("/finance/vendors", payload));
 export const updateVendor = (id, payload) => unwrap(api.patch(`/finance/vendors/${id}`, payload));
 export const deleteVendor = (id) => unwrap(api.delete(`/finance/vendors/${id}`));
+export const downloadFinanceVendorImportTemplate = () =>
+  api.get("/finance/imports/templates/vendors", { responseType: "blob" });
+export const previewFinanceVendorImport = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return unwrap(
+    api.post("/finance/imports/vendors/preview", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+};
+export const commitFinanceVendorImport = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return unwrap(
+    api.post("/finance/imports/vendors/commit", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+};
 
 export const listPurchases = (params = {}) => unwrap(api.get("/finance/purchases", { params }));
 export const createPurchase = (payload) => unwrap(api.post("/finance/purchases", payload));
@@ -312,6 +332,28 @@ export const updateFinanceClient = (id, payload) =>
   unwrap(api.patch(`/finance/clients/${id}`, payload));
 export const archiveFinanceClient = (id) =>
   unwrap(api.delete(`/finance/clients/${id}`));
+export const downloadFinanceClientImportTemplate = () =>
+  api.get("/finance/imports/templates/clients", { responseType: "blob" });
+export const previewFinanceClientImport = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return unwrap(
+    api.post("/finance/imports/clients/preview", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+};
+export const commitFinanceClientImport = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return unwrap(
+    api.post("/finance/imports/clients/commit", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+};
+export const listFinanceImportHistory = (type) =>
+  unwrap(api.get("/finance/imports/history", { params: type ? { type } : {} }));
 
 export const listManagerClients = async (params = {}) => {
   const res = await api.get("/booking/clients", { params });

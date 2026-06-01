@@ -29,17 +29,37 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import {
   archiveFinanceClient,
+  commitFinanceClientImport,
   createFinanceClient,
+  downloadFinanceClientImportTemplate,
   getFinanceClient,
+  listFinanceImportHistory,
   listFinanceClients,
+  previewFinanceClientImport,
   updateFinanceClient,
 } from "./financeApi";
 import { buildClientCreatePayload, getClientDisplayName } from "./clientUtils";
 import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
+import FinanceImportDialog from "./FinanceImportDialog";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinancePagination from "./components/FinancePagination";
 import FinanceStatusChip from "./components/FinanceStatusChip";
+
+function downloadBlobFromResponse(response, fallbackName) {
+  const blob = response?.data;
+  if (!(blob instanceof Blob)) return;
+  const header = response?.headers?.["content-disposition"] || "";
+  const match = /filename=\"?([^\";]+)\"?/i.exec(header);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = match?.[1] || fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 const blankClient = { name: "", email: "", phone: "", notes: "" };
 
@@ -329,6 +349,7 @@ export default function FinanceClientsPage() {
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [detailRefreshNonce, setDetailRefreshNonce] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -363,6 +384,15 @@ export default function FinanceClientsPage() {
       notes: client.notes || "",
     });
     setEditorOpen(true);
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await downloadFinanceClientImportTemplate();
+      downloadBlobFromResponse(response, "schedulaa-finance-clients-template.csv");
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to download template.", { variant: "error" });
+    }
   };
 
   const handleCreate = async () => {
@@ -497,7 +527,11 @@ export default function FinanceClientsPage() {
             </FormControl>
             <Button variant="outlined" onClick={load}>Refresh</Button>
           </Stack>
-          <Button variant="contained" onClick={() => setCreateOpen(true)}>Add client</Button>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+            <Button variant="text" onClick={handleDownloadTemplate}>Download template</Button>
+            <Button variant="outlined" onClick={() => setImportOpen(true)}>Import clients</Button>
+            <Button variant="contained" onClick={() => setCreateOpen(true)}>Add client</Button>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -625,6 +659,23 @@ export default function FinanceClientsPage() {
         onArchive={setArchiveTarget}
         onRestore={setRestoreTarget}
         refreshNonce={detailRefreshNonce}
+      />
+
+      <FinanceImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import clients"
+        importType="clients"
+        templateFileName="schedulaa-finance-clients-template.csv"
+        csvStructure={`client_name,first_name,last_name,email,phone,notes,status\nAcme Cleaning,,,billing@acme.com,+14165550123,VIP commercial client,active\n,John,Doe,john@example.com,+14165550124,Residential client,active`}
+        downloadTemplate={downloadFinanceClientImportTemplate}
+        previewImport={previewFinanceClientImport}
+        commitImport={commitFinanceClientImport}
+        listHistory={listFinanceImportHistory}
+        onImported={async () => {
+          await load();
+          setImportOpen(false);
+        }}
       />
     </Stack>
   );

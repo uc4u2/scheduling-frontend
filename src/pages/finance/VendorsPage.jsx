@@ -22,10 +22,35 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
-import { createVendor, deleteVendor, listVendors, updateVendor } from "./financeApi";
+import {
+  commitFinanceVendorImport,
+  createVendor,
+  deleteVendor,
+  downloadFinanceVendorImportTemplate,
+  listFinanceImportHistory,
+  listVendors,
+  previewFinanceVendorImport,
+  updateVendor,
+} from "./financeApi";
+import FinanceImportDialog from "./FinanceImportDialog";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinancePagination from "./components/FinancePagination";
+
+function downloadBlobFromResponse(response, fallbackName) {
+  const blob = response?.data;
+  if (!(blob instanceof Blob)) return;
+  const header = response?.headers?.["content-disposition"] || "";
+  const match = /filename=\"?([^\";]+)\"?/i.exec(header);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = match?.[1] || fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 const blankVendor = {
   name: "",
@@ -90,6 +115,7 @@ export default function VendorsPage() {
   const [search, setSearch] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -111,6 +137,15 @@ export default function VendorsPage() {
     // Search stays manual via Enter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, perPage]);
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await downloadFinanceVendorImportTemplate();
+      downloadBlobFromResponse(response, "schedulaa-finance-vendors-template.csv");
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tVendors("errors.templateFailed", "Unable to download template."), { variant: "error" });
+    }
+  };
 
   const handleSave = async (payload) => {
     try {
@@ -161,7 +196,11 @@ export default function VendorsPage() {
             }}
             sx={{ minWidth: { md: 300 } }}
           />
-          <Button variant="contained" onClick={() => { setSelectedVendor(null); setEditorOpen(true); }}>{tVendors("toolbar.addVendor", "Add vendor")}</Button>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+            <Button variant="text" onClick={handleDownloadTemplate}>Download template</Button>
+            <Button variant="outlined" onClick={() => setImportOpen(true)}>Import vendors</Button>
+            <Button variant="contained" onClick={() => { setSelectedVendor(null); setEditorOpen(true); }}>{tVendors("toolbar.addVendor", "Add vendor")}</Button>
+          </Stack>
         </Stack>
       </Paper>
 
@@ -229,6 +268,23 @@ export default function VendorsPage() {
         onClose={() => { setEditorOpen(false); setSelectedVendor(null); }}
         initialValues={selectedVendor}
         onSubmit={handleSave}
+      />
+
+      <FinanceImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import vendors"
+        importType="vendors"
+        templateFileName="schedulaa-finance-vendors-template.csv"
+        csvStructure={`vendor_name,email,phone,address,notes,is_active\nABC Supplies,orders@abcsupplies.com,+14165550125,123 Main St Toronto,Cleaning supplies,true\nNorth Paint Co,hello@northpaint.ca,+14165550126,55 Queen St Toronto,Paint vendor,true`}
+        downloadTemplate={downloadFinanceVendorImportTemplate}
+        previewImport={previewFinanceVendorImport}
+        commitImport={commitFinanceVendorImport}
+        listHistory={listFinanceImportHistory}
+        onImported={async () => {
+          await load();
+          setImportOpen(false);
+        }}
       />
     </Stack>
   );
