@@ -29,6 +29,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -43,6 +44,9 @@ const PROVIDER_OPTIONS = [
   { value: "gusto_embedded_placeholder", label: "Gusto (coming later)", disabled: true },
   { value: "canada_provider_placeholder", label: "Canadian payroll provider (coming later)", disabled: true },
 ];
+
+const WORKSPACE_MODE_CHECK = "check";
+const WORKSPACE_MODE_HANDOFF = "handoff";
 
 const formatList = (items = []) => (Array.isArray(items) ? items.filter(Boolean) : []);
 
@@ -173,17 +177,38 @@ const onboardingActionLabel = (value) => {
   return labels[normalized] || titleize(normalized);
 };
 
-const checklistChipColor = (item) => {
-  if (!item) return "default";
+const checkPackageStatusLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "supported") return "Supported";
+  if (normalized === "warning") return "Needs review";
+  if (normalized === "blocked") return "Blocked";
+  if (normalized === "not_sent") return "Not sent";
+  return titleize(normalized);
+};
+
+const checkPackageStatusTone = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "supported") return "success";
+  if (normalized === "warning") return "warning";
+  if (normalized === "blocked") return "danger";
+  return "neutral";
+};
+
+const checklistChipTone = (item) => {
+  if (!item) return "neutral";
   if (item.ok) return "success";
-  if (item.severity === "error") return "error";
+  if (item.severity === "error") return "danger";
   if (item.severity === "warning") return "warning";
-  return "default";
+  return "neutral";
 };
 
 const checklistValueLabel = (value) => {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (value === null || value === undefined || value === "") return "Not set";
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "created_placeholder") return "Prepared";
+  if (normalized === "pending_config") return "Pending config";
+  if (normalized === "not_connected") return "Not connected";
   return String(value);
 };
 
@@ -499,6 +524,7 @@ const buildPayItemSuggestion = (localKey, candidates = []) => {
 };
 
 export default function PayrollProviderSync({
+  payrollSetupProfile = null,
   departmentFilter,
   selectedRecruiter,
   exportAllEmployees,
@@ -513,6 +539,7 @@ export default function PayrollProviderSync({
   setSnackbar,
 }) {
   const [provider, setProvider] = useState("generic_csv");
+  const [workspaceMode, setWorkspaceMode] = useState(WORKSPACE_MODE_HANDOFF);
   const [statusLoading, setStatusLoading] = useState(false);
   const [setupStatus, setSetupStatus] = useState(null);
   const [setupError, setSetupError] = useState("");
@@ -528,6 +555,9 @@ export default function PayrollProviderSync({
   const [checkLaunchReadinessLoading, setCheckLaunchReadinessLoading] = useState(false);
   const [checkLaunchReadiness, setCheckLaunchReadiness] = useState(null);
   const [checkLaunchReadinessError, setCheckLaunchReadinessError] = useState("");
+  const [checkPackagePreviewLoading, setCheckPackagePreviewLoading] = useState(false);
+  const [checkPackagePreview, setCheckPackagePreview] = useState(null);
+  const [checkPackagePreviewError, setCheckPackagePreviewError] = useState("");
   const [checkComponentSessions, setCheckComponentSessions] = useState([]);
   const [checkComponentLoading, setCheckComponentLoading] = useState(false);
   const [checkComponentActionLoading, setCheckComponentActionLoading] = useState(false);
@@ -656,6 +686,19 @@ export default function PayrollProviderSync({
     }
   };
 
+  const payrollSetupContext = payrollSetupProfile || setupStatus?.setup_profile || checkReadiness?.setup_profile || {};
+  const payrollIntent = payrollSetupContext?.payroll_intent || setupStatus?.payroll_intent || checkReadiness?.intent_mode || "none";
+  const payrollCountry = payrollSetupContext?.payroll_country || setupStatus?.payroll_country || checkReadiness?.setup_profile?.payroll_country || "";
+  const currentPayrollProvider = payrollSetupContext?.current_payroll_provider || setupStatus?.current_payroll_provider || "";
+  const isCheckIntent = payrollIntent === "check_embedded_us";
+  const isCsvIntent = payrollIntent === "csv_handoff";
+  const isUnsetIntent = !payrollIntent || payrollIntent === "none";
+  const isCanadianPayroll = String(payrollCountry || "").toUpperCase() === "CA";
+  const shouldShowCheckWorkspace = isCheckIntent && workspaceMode === WORKSPACE_MODE_CHECK;
+  const shouldShowHandoffWorkspace = !isCheckIntent || workspaceMode === WORKSPACE_MODE_HANDOFF;
+  const shouldShowEmbeddedPlanningCard = !isCheckIntent;
+  const providerPickerDisabled = isUnsetIntent;
+
   useEffect(() => {
     let active = true;
     const loadDepartments = async () => {
@@ -713,6 +756,14 @@ export default function PayrollProviderSync({
     provider === "quickbooks"
       ? "QuickBooks/payroll item code"
       : "Suggested payroll item";
+  const handoffProviderOptions = useMemo(
+    () => PROVIDER_OPTIONS.filter((option) => ["generic_csv", "quickbooks"].includes(option.value)),
+    []
+  );
+  const workspacePrimaryTitle = isCheckIntent ? "Embedded Payroll Workspace" : "Payroll Handoff";
+  const workspacePrimarySubtitle = isCheckIntent
+    ? "Use this workspace to prepare embedded payroll readiness first. This is preparation only until sandbox credentials and sync are enabled. Fallback CSV handoff remains available if you need an export path."
+    : "Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values.";
 
   const payItemHelperText = (key) => {
     if (provider === "quickbooks" && key === "vacation_pay") {
@@ -940,6 +991,26 @@ export default function PayrollProviderSync({
     }
   };
 
+  const loadCheckPayrollPackagePreview = async (runId) => {
+    if (!runId) {
+      setCheckPackagePreview(null);
+      setCheckPackagePreviewError("");
+      return;
+    }
+    setCheckPackagePreviewLoading(true);
+    setCheckPackagePreviewError("");
+    try {
+      const data = await payrollSetupApi.getCheckPayrollPackagePreview({ provider_run_id: runId });
+      setCheckPackagePreview(data || null);
+    } catch (err) {
+      setCheckPackagePreview(null);
+      const message = await buildRequestErrorMessage(err, "Failed to load Check payroll package preview.");
+      setCheckPackagePreviewError(message);
+    } finally {
+      setCheckPackagePreviewLoading(false);
+    }
+  };
+
   const handleCheckOnboardingPlaceholder = async (entityType, localEntityId = null) => {
     setCheckComponentActionLoading(true);
     try {
@@ -1036,6 +1107,8 @@ export default function PayrollProviderSync({
     setRunData(null);
     setValidationData(null);
     setPayloadPreview(null);
+    setCheckPackagePreview(null);
+    setCheckPackagePreviewError("");
     setSelectedRunId(null);
     loadSetupStatus();
     loadCheckReadiness();
@@ -1047,6 +1120,14 @@ export default function PayrollProviderSync({
     loadRunHistory({ offset: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);
+
+  useEffect(() => {
+    if (isCheckIntent) {
+      setWorkspaceMode(WORKSPACE_MODE_CHECK);
+      return;
+    }
+    setWorkspaceMode(WORKSPACE_MODE_HANDOFF);
+  }, [isCheckIntent]);
 
   useEffect(() => {
     setEmployeePage(0);
@@ -1426,6 +1507,10 @@ export default function PayrollProviderSync({
   );
   const activeRun = runData || selectedHistoryRun || null;
   const activeRunId = runData?.id || selectedRunId || selectedHistoryRun?.id || null;
+  useEffect(() => {
+    loadCheckPayrollPackagePreview(activeRunId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRunId]);
   const currentRunRows = activeRun?.employee_rows || [];
   const currentRunEmployeeIds = useMemo(
     () => currentRunRows.map((row) => String(row.employee_id)),
@@ -1542,37 +1627,71 @@ export default function PayrollProviderSync({
     });
     return rows;
   }, [scopedRecruiters, unmappedEmployeeIdsFromValidation, unmappedRunEmployees]);
+  const chipBaseSx = {
+    height: 24,
+    minWidth: 44,
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    lineHeight: 1,
+    letterSpacing: 0,
+    "& .MuiChip-label": {
+      px: 1,
+    },
+  };
+  const chipPalette = {
+    active: (theme) => ({
+      bgcolor: theme.palette.primary.dark,
+      color: theme.palette.primary.contrastText,
+      borderColor: theme.palette.primary.dark,
+    }),
+    neutral: (theme) => ({
+      bgcolor: alpha(theme.palette.primary.main, 0.08),
+      color: theme.palette.text.primary,
+      borderColor: alpha(theme.palette.primary.main, 0.2),
+    }),
+    success: (theme) => ({
+      bgcolor: theme.palette.success.dark,
+      color: theme.palette.success.contrastText,
+      borderColor: theme.palette.success.dark,
+    }),
+    warning: (theme) => ({
+      bgcolor: alpha(theme.palette.warning.main, 0.16),
+      color: theme.palette.warning.dark,
+      borderColor: alpha(theme.palette.warning.main, 0.48),
+    }),
+    danger: (theme) => ({
+      bgcolor: alpha(theme.palette.error.main, 0.14),
+      color: theme.palette.error.dark,
+      borderColor: alpha(theme.palette.error.main, 0.44),
+    }),
+  };
   const chipSx = {
-    active: {
-      bgcolor: "#173a7a",
-      color: "#ffffff",
-      border: "1px solid #173a7a",
-      fontWeight: 700,
-    },
-    neutral: {
-      bgcolor: "#eef3ff",
-      color: "#173a7a",
-      border: "1px solid #cad8ff",
-      fontWeight: 700,
-    },
-    success: {
-      bgcolor: "#1f6b43",
-      color: "#ffffff",
-      border: "1px solid #1f6b43",
-      fontWeight: 700,
-    },
-    warning: {
-      bgcolor: "#fff1cf",
-      color: "#6f4600",
-      border: "1px solid #f2cb6b",
-      fontWeight: 700,
-    },
-    danger: {
-      bgcolor: "#ffe1df",
-      color: "#8a1c16",
-      border: "1px solid #ef9a95",
-      fontWeight: 700,
-    },
+    active: (theme) => ({
+      ...chipBaseSx,
+      border: "1px solid",
+      ...chipPalette.active(theme),
+    }),
+    neutral: (theme) => ({
+      ...chipBaseSx,
+      border: "1px solid",
+      ...chipPalette.neutral(theme),
+    }),
+    success: (theme) => ({
+      ...chipBaseSx,
+      border: "1px solid",
+      ...chipPalette.success(theme),
+    }),
+    warning: (theme) => ({
+      ...chipBaseSx,
+      border: "1px solid",
+      ...chipPalette.warning(theme),
+    }),
+    danger: (theme) => ({
+      ...chipBaseSx,
+      border: "1px solid",
+      ...chipPalette.danger(theme),
+    }),
   };
   const lowerAccordionSx = {
     bgcolor: "#fbfcff",
@@ -1672,6 +1791,10 @@ export default function PayrollProviderSync({
       employee_id: item.employee_id,
       employee_name: employeeLabelFromContext(item.employee_id, [], scopedRecruiters),
     }));
+  const checkPackageWarnings = formatList(checkPackagePreview?.warnings);
+  const checkPackageBlockers = formatList(checkPackagePreview?.blockers);
+  const checkPackageItems = formatList(checkPackagePreview?.items);
+  const checkPackageFieldMappings = formatList(checkPackagePreview?.field_mapping_rows);
   const createRunLabel = hasFixBeforeExportIssues ? "Create run to fix mappings" : "Create provider run";
   const managerBlockingMessages = previewHasNoExportableData
     ? ["No payroll-ready time, leave, or saved adjustments were found for this selection."]
@@ -1910,7 +2033,7 @@ export default function PayrollProviderSync({
       <Paper elevation={2} sx={{ p: 3 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
           <SectionHeading
-            title="Payroll Handoff"
+            title={workspacePrimaryTitle}
             variant="h5"
             tooltip="Build a payroll-ready CSV from approved time, payroll-ready leave, finalized payroll values, and saved payroll preview values."
           />
@@ -1919,11 +2042,17 @@ export default function PayrollProviderSync({
           </Button>
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
-          <Chip label="Payroll Handoff = recommended payroll handoff workflow" sx={chipSx.success} />
+          <Chip
+            label={isCheckIntent ? "Embedded payroll = primary configured path" : "Payroll Handoff = recommended payroll handoff workflow"}
+            sx={isCheckIntent ? chipSx.active : chipSx.success}
+          />
           {provider === "quickbooks" && <Chip label="QuickBooks official import format: not verified yet" sx={chipSx.warning} />}
         </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          {workspacePrimarySubtitle}
+        </Typography>
         <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
-          <Chip label="CSV handoff only" sx={chipSx.neutral} />
+          <Chip label={isCheckIntent ? "Embedded payroll planning + fallback handoff" : "CSV handoff only"} sx={chipSx.neutral} />
           <Tooltip title="This workflow exports a CSV for your accountant or payroll provider. It does not submit payroll or pay employees directly.">
             <Chip label="How it works" sx={chipSx.neutral} />
           </Tooltip>
@@ -1931,35 +2060,101 @@ export default function PayrollProviderSync({
       </Paper>
 
       <Paper elevation={2} sx={{ p: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth>
-              <InputLabel id="provider-sync-provider-label">Provider</InputLabel>
-              <Select
-                labelId="provider-sync-provider-label"
-                label="Provider"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-              >
-                {PROVIDER_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value} disabled={Boolean(option.disabled)}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={8}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
-              <Chip label="Generic Accountant CSV" sx={provider === "generic_csv" ? chipSx.active : chipSx.neutral} />
-              <Chip label="QuickBooks direct sync later" sx={provider === "quickbooks" ? chipSx.active : chipSx.neutral} />
-              <Chip label="Check coming later" sx={chipSx.neutral} />
-              <Chip label="Gusto coming later" sx={chipSx.neutral} />
+        <Stack spacing={2}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
+            <Box>
+              <Typography variant="subtitle2">
+                {isCheckIntent ? "Workspace focus" : "Payroll path"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {isCheckIntent
+                  ? "Embedded payroll is the configured payroll path for this company. CSV handoff remains available as a fallback export workflow."
+                  : isCsvIntent
+                    ? "This company is currently using payroll handoff/export mode."
+                    : "Choose a payroll path in Company Profile before using provider-specific payroll tools."}
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip label={`Intent: ${titleize(payrollIntent || "none")}`} sx={isCheckIntent ? chipSx.active : isUnsetIntent ? chipSx.warning : chipSx.neutral} />
+              <Chip label={`Country: ${payrollCountry || "Not set"}`} sx={chipSx.neutral} />
+              {currentPayrollProvider ? <Chip label={`Current provider: ${currentPayrollProvider}`} sx={chipSx.neutral} /> : null}
             </Stack>
-          </Grid>
-        </Grid>
+          </Stack>
+
+          {isCheckIntent ? (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+              <Button
+                variant={workspaceMode === WORKSPACE_MODE_CHECK ? "contained" : "outlined"}
+                onClick={() => setWorkspaceMode(WORKSPACE_MODE_CHECK)}
+              >
+                Embedded Payroll
+              </Button>
+              <Button
+                variant={workspaceMode === WORKSPACE_MODE_HANDOFF ? "contained" : "outlined"}
+                onClick={() => setWorkspaceMode(WORKSPACE_MODE_HANDOFF)}
+              >
+                Fallback Handoff
+              </Button>
+            </Stack>
+          ) : null}
+
+          {shouldShowHandoffWorkspace ? (
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth disabled={providerPickerDisabled}>
+                  <InputLabel id="provider-sync-provider-label">Provider</InputLabel>
+                  <Select
+                    labelId="provider-sync-provider-label"
+                    label="Provider"
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                  >
+                    {handoffProviderOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value} disabled={Boolean(option.disabled)}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={8}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }} flexWrap="wrap" useFlexGap>
+                  <Chip label="Generic Accountant CSV" sx={provider === "generic_csv" ? chipSx.active : chipSx.neutral} />
+                  <Chip label="QuickBooks CSV" sx={provider === "quickbooks" ? chipSx.active : chipSx.neutral} />
+                </Stack>
+              </Grid>
+            </Grid>
+          ) : null}
+
+          {shouldShowEmbeddedPlanningCard ? (
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2">
+                  {isUnsetIntent ? "Payroll Path Setup" : "Embedded U.S. Payroll Planning"}
+                </Typography>
+                <Alert severity={isUnsetIntent ? "warning" : "info"}>
+                  {isUnsetIntent
+                    ? "Choose a payroll path in Company Profile before using provider-specific payroll tools."
+                    : isCanadianPayroll
+                      ? "Embedded U.S. payroll is not part of this Canadian payroll path."
+                      : "This company is currently using payroll handoff/export mode. Embedded U.S. payroll tools become relevant only if payroll intent is switched later."}
+                </Alert>
+                {isUnsetIntent ? (
+                  <Button
+                    variant="outlined"
+                    onClick={() => window.location.assign("/manager/dashboard?view=company-profile")}
+                    sx={{ alignSelf: "flex-start" }}
+                  >
+                    Go to Company Profile
+                  </Button>
+                ) : null}
+              </Stack>
+            </Paper>
+          ) : null}
+        </Stack>
       </Paper>
 
+      {shouldShowCheckWorkspace && (
       <Paper elevation={2} sx={{ p: 3 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
           <Box>
@@ -2084,7 +2279,7 @@ export default function PayrollProviderSync({
                             {checkLaunchReadiness.company_checklist?.map((item) => (
                               <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
                                 <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" color={checklistChipColor(item)} label={checklistValueLabel(item.value)} />
+                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
                               </Stack>
                             ))}
                           </Stack>
@@ -2097,7 +2292,7 @@ export default function PayrollProviderSync({
                             {checkLaunchReadiness.workplace_checklist?.map((item) => (
                               <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
                                 <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" color={checklistChipColor(item)} label={checklistValueLabel(item.value)} />
+                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
                               </Stack>
                             ))}
                           </Stack>
@@ -2110,7 +2305,7 @@ export default function PayrollProviderSync({
                             {checkLaunchReadiness.employee_checklist?.map((item) => (
                               <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
                                 <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" color={checklistChipColor(item)} label={checklistValueLabel(item.value)} />
+                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
                               </Stack>
                             ))}
                           </Stack>
@@ -2123,13 +2318,20 @@ export default function PayrollProviderSync({
                             {checkLaunchReadiness.onboarding_checklist?.map((item) => (
                               <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
                                 <Typography variant="body2">{titleize(item.key)}</Typography>
-                                <Chip size="small" color={checklistChipColor(item)} label={checklistValueLabel(item.value)} />
+                                <Chip size="small" sx={chipSx[checklistChipTone(item)]} label={checklistValueLabel(item.value)} />
                               </Stack>
                             ))}
-                            <Typography variant="body2"><strong>Ready for payload preview:</strong> {checkLaunchReadiness.ready_for_sandbox_payload_preview ? "Yes" : "Not yet"}</Typography>
-                            <Typography variant="body2"><strong>Ready for sandbox company sync:</strong> {checkLaunchReadiness.ready_for_sandbox_company_sync ? "Yes" : "Not yet"}</Typography>
-                            <Typography variant="body2"><strong>Ready for sandbox workplace sync:</strong> {checkLaunchReadiness.ready_for_sandbox_workplace_sync ? "Yes" : "Not yet"}</Typography>
-                            <Typography variant="body2"><strong>Ready for sandbox employee sync:</strong> {checkLaunchReadiness.ready_for_sandbox_employee_sync ? "Yes" : "Not yet"}</Typography>
+                            {[
+                              { key: "ready_for_payload_preview", value: checkLaunchReadiness.ready_for_sandbox_payload_preview },
+                              { key: "ready_for_sandbox_company_sync", value: checkLaunchReadiness.ready_for_sandbox_company_sync },
+                              { key: "ready_for_sandbox_workplace_sync", value: checkLaunchReadiness.ready_for_sandbox_workplace_sync },
+                              { key: "ready_for_sandbox_employee_sync", value: checkLaunchReadiness.ready_for_sandbox_employee_sync },
+                            ].map((item) => (
+                              <Stack key={item.key} direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+                                <Typography variant="body2">{titleize(item.key)}</Typography>
+                                <Chip size="small" sx={chipSx[item.value ? "success" : "warning"]} label={item.value ? "Yes" : "Not yet"} />
+                              </Stack>
+                            ))}
                           </Stack>
                         </Paper>
                       </Grid>
@@ -2415,6 +2617,203 @@ export default function PayrollProviderSync({
                     </Typography>
                   )}
                 </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="subtitle2" gutterBottom>Check Payroll Package Preview</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Schedulaa Payroll Preview is where you prepare payroll inputs. Check Payroll Preview will calculate official taxes, deductions, net pay, and cash requirement after structured payroll data is sent to Check. This package preview does not call Check.
+                      </Typography>
+                    </Box>
+
+                    {!activeRunId ? (
+                      <Alert severity="info">
+                        Create or select a provider run first. The Check payroll package preview is generated from the current batch so it stays aligned with payroll-ready source data.
+                      </Alert>
+                    ) : checkPackagePreviewLoading ? (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <CircularProgress size={18} />
+                        <Typography variant="body2">Loading Check payroll package preview…</Typography>
+                      </Stack>
+                    ) : checkPackagePreviewError ? (
+                      <Alert severity="error">{checkPackagePreviewError}</Alert>
+                    ) : !checkPackagePreview ? (
+                      <Alert severity="info">No Check payroll package preview is available for this run yet.</Alert>
+                    ) : (
+                      <Stack spacing={2}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                          <Chip label={`Run ${checkPackagePreview?.payroll?.provider_run_id || activeRunId}`} sx={chipSx.active} />
+                          <Chip label={`Employees ${checkPackagePreview?.summary?.employees_count ?? 0}`} sx={chipSx.neutral} />
+                          <Chip label={`Earnings ${checkPackagePreview?.summary?.earnings_count ?? 0}`} sx={chipSx.neutral} />
+                          <Chip label={`Reimbursements ${checkPackagePreview?.summary?.reimbursements_count ?? 0}`} sx={chipSx.neutral} />
+                          <Chip label={`Warnings ${checkPackagePreview?.summary?.warning_count ?? 0}`} sx={chipSx.warning} />
+                          <Chip label={`Blockers ${checkPackagePreview?.summary?.blocker_count ?? 0}`} sx={chipSx.danger} />
+                          <Chip label={`Source ${shortenHash(checkPackagePreview?.payroll?.source_hash)}`} sx={chipSx.neutral} />
+                        </Stack>
+
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} md={4}>
+                            <Typography variant="body2"><strong>Period:</strong> {checkPackagePreview?.payroll?.period_start || "—"} to {checkPackagePreview?.payroll?.period_end || "—"}</Typography>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Typography variant="body2"><strong>Payday:</strong> {checkPackagePreview?.payroll?.payday || "—"}</Typography>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Typography variant="body2"><strong>Pay frequency:</strong> {checkPackagePreview?.payroll?.pay_frequency || "—"}</Typography>
+                          </Grid>
+                        </Grid>
+
+                        {checkPackageBlockers.length > 0 ? (
+                          <Box>
+                            <Typography variant="subtitle2" gutterBottom>Package blockers</Typography>
+                            <Stack spacing={1}>
+                              {checkPackageBlockers.map((item, index) => (
+                                <Alert key={`check-package-blocker-${index}-${item.code || item.message}`} severity="error">
+                                  <strong>{item.code || "BLOCKER"}</strong>: {item.message}
+                                </Alert>
+                              ))}
+                            </Stack>
+                          </Box>
+                        ) : null}
+
+                        {checkPackageWarnings.length > 0 ? (
+                          <Box>
+                            <Typography variant="subtitle2" gutterBottom>Package warnings</Typography>
+                            <Stack spacing={1}>
+                              {checkPackageWarnings.map((item, index) => (
+                                <Alert key={`check-package-warning-${index}-${item.code || item.message}`} severity={item.severity === "info" ? "info" : "warning"}>
+                                  <strong>{item.code || "WARNING"}</strong>: {item.message}
+                                </Alert>
+                              ))}
+                            </Stack>
+                          </Box>
+                        ) : null}
+
+                        <Box>
+                          <Typography variant="subtitle2" gutterBottom>Field mapping table</Typography>
+                          <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>Schedulaa field</TableCell>
+                                  <TableCell>Check object</TableCell>
+                                  <TableCell>Check type/code</TableCell>
+                                  <TableCell>Status</TableCell>
+                                  <TableCell>Notes</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {checkPackageFieldMappings.map((row) => (
+                                  <TableRow key={`${row.schedulaa_field}-${row.check_object}-${row.check_type_code || "none"}`}>
+                                    <TableCell>{titleize(row.schedulaa_field)}</TableCell>
+                                    <TableCell>{row.check_object || "—"}</TableCell>
+                                    <TableCell>{row.check_type_code || "—"}</TableCell>
+                                    <TableCell>
+                                      <Chip size="small" label={checkPackageStatusLabel(row.status)} sx={chipSx[checkPackageStatusTone(row.status)]} />
+                                    </TableCell>
+                                    <TableCell>{row.notes}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="subtitle2" gutterBottom>Employee-level package rows</Typography>
+                          <Stack spacing={2}>
+                            {checkPackageItems.map((item) => (
+                              <Paper key={`check-package-item-${item.employee_id}`} variant="outlined" sx={{ p: 2 }}>
+                                <Stack spacing={1.5}>
+                                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
+                                    <Box>
+                                      <Typography variant="body1"><strong>{item.employee_name}</strong></Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Employee ID {item.employee_id} • Primary payroll location {item.primary_work_location_id || "missing"} • Check employee {item.check_employee_id || "not mapped"}
+                                      </Typography>
+                                    </Box>
+                                    <Stack direction="row" spacing={1}>
+                                      <Chip size="small" label={`Earnings ${item.earnings?.length || 0}`} sx={chipSx.neutral} />
+                                      <Chip size="small" label={`Reimbursements ${item.reimbursements?.length || 0}`} sx={chipSx.neutral} />
+                                      <Chip size="small" label={`Not sent ${item.not_sent?.length || 0}`} sx={chipSx.warning} />
+                                    </Stack>
+                                  </Stack>
+
+                                  {item.blockers?.length ? (
+                                    <Alert severity="error">
+                                      {item.blockers.map((row) => row.code || row.message).join(", ")}
+                                    </Alert>
+                                  ) : null}
+                                  {item.warnings?.length ? (
+                                    <Alert severity="warning">
+                                      {item.warnings.map((row) => row.code || row.message).join(", ")}
+                                    </Alert>
+                                  ) : null}
+
+                                  <Grid container spacing={2}>
+                                    <Grid item xs={12} md={6}>
+                                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Earnings</strong></Typography>
+                                      {item.earnings?.length ? (
+                                        <Stack spacing={1}>
+                                          {item.earnings.map((earning) => (
+                                            <Box key={`earning-${earning.line_id}`} sx={{ p: 1.25, border: "1px solid #dbe5ff", borderRadius: 1.5, bgcolor: "#fbfcff" }}>
+                                              <Typography variant="body2">
+                                                <strong>{titleize(earning.earning_key)}</strong> • {earning.check_type_code || "type pending"} • {earning.amount}
+                                              </Typography>
+                                              <Typography variant="caption" color="text.secondary">
+                                                Hours {earning.hours ?? 0} • Workplace {earning.check_workplace_id || earning.work_location_id || "missing"} • {earning.notes}
+                                              </Typography>
+                                            </Box>
+                                          ))}
+                                        </Stack>
+                                      ) : (
+                                        <Typography variant="body2" color="text.secondary">No earnings mapped.</Typography>
+                                      )}
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Reimbursements / not sent</strong></Typography>
+                                      {item.reimbursements?.length ? (
+                                        <Stack spacing={1} sx={{ mb: item.not_sent?.length ? 1 : 0 }}>
+                                          {item.reimbursements.map((row) => (
+                                            <Box key={`reimbursement-${row.line_id}`} sx={{ p: 1.25, border: "1px solid #dbe5ff", borderRadius: 1.5, bgcolor: "#fbfcff" }}>
+                                              <Typography variant="body2">
+                                                <strong>{titleize(row.earning_key)}</strong> • {row.amount}
+                                              </Typography>
+                                              <Typography variant="caption" color="text.secondary">
+                                                {row.description || row.notes}
+                                              </Typography>
+                                            </Box>
+                                          ))}
+                                        </Stack>
+                                      ) : null}
+                                      {item.not_sent?.length ? (
+                                        <Stack spacing={1}>
+                                          {item.not_sent.map((row, index) => (
+                                            <Alert key={`not-sent-${item.employee_id}-${index}`} severity="info">
+                                              <strong>{row.code || "NOT_SENT"}</strong>: {row.message}
+                                            </Alert>
+                                          ))}
+                                        </Stack>
+                                      ) : !item.reimbursements?.length ? (
+                                        <Typography variant="body2" color="text.secondary">No reimbursements or not-sent lines for this employee.</Typography>
+                                      ) : null}
+                                    </Grid>
+                                  </Grid>
+                                </Stack>
+                              </Paper>
+                            ))}
+                            {!checkPackageItems.length ? (
+                              <Typography variant="body2" color="text.secondary">
+                                No employee package rows were built for this provider run.
+                              </Typography>
+                            ) : null}
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Paper>
               </Stack>
             </Paper>
 
@@ -2477,7 +2876,10 @@ export default function PayrollProviderSync({
           </Stack>
         )}
       </Paper>
+      )}
 
+      {shouldShowHandoffWorkspace && (
+      <>
       {provider === "quickbooks" && (
       <Accordion elevation={2} defaultExpanded={false} disableGutters>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -3763,6 +4165,8 @@ export default function PayrollProviderSync({
         )}
         </AccordionDetails>
       </Accordion>
+      </>
+      )}
     </Stack>
   );
 }

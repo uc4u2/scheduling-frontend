@@ -52,6 +52,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { extractApiErrorMessage, parseApiErrorPayload } from "../../utils/apiError";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { PAYROLL_TUTORIAL_GROUP } from "../../tutorials/appTutorialCatalog";
+import { payrollSetupApi } from "../../utils/api";
 
 const columnsToExport = [
   "employee_name",
@@ -112,6 +113,7 @@ export default function Payroll({ token }) {
   const [recruiterProfile, setRecruiterProfile] = useState(null);
   const [companyPayDateRule, setCompanyPayDateRule] = useState("end_date");
   const [companyPayDateOffsetDays, setCompanyPayDateOffsetDays] = useState(0);
+  const [payrollSetupProfile, setPayrollSetupProfile] = useState(null);
   
 
   const [payroll, setPayroll] = useState(null);
@@ -139,6 +141,26 @@ export default function Payroll({ token }) {
 useEffect(() => {
   fetchRecruiters();
 }, [includeArchived]);
+  useEffect(() => {
+    let active = true;
+    const loadPayrollSetupProfile = async () => {
+      try {
+        const res = await payrollSetupApi.getPayrollSetupProfile();
+        if (active) {
+          setPayrollSetupProfile(res?.profile || null);
+        }
+      } catch (err) {
+        if (active) {
+          setPayrollSetupProfile(null);
+        }
+        console.error("Failed to load payroll setup profile", err?.response?.data || err.message);
+      }
+    };
+    loadPayrollSetupProfile();
+    return () => {
+      active = false;
+    };
+  }, []);
   useEffect(() => {
     // load company defaults
     const loadPrefs = async () => {
@@ -1351,6 +1373,7 @@ return (
       <PayrollPreview
         payroll={payroll}
         region={region}
+        payrollSetupProfile={payrollSetupProfile}
         companyPayDateRule={companyPayDateRule}
         companyPayDateOffsetDays={companyPayDateOffsetDays}
         autoRecalc={autoRecalc}
@@ -1373,6 +1396,7 @@ return (
     {viewMode === "provider-sync" && (
       <PayrollProviderSync
         token={token}
+        payrollSetupProfile={payrollSetupProfile}
         departmentFilter={departmentFilter}
         selectedRecruiter={selectedRecruiter}
         exportAllEmployees={exportAllEmployees}

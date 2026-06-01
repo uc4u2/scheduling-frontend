@@ -624,6 +624,13 @@ export const payrollProviderSyncApi = {
     api.post(`/automation/payroll/provider-runs/${runId}/validate`, {}, config).then((r) => r.data),
   runDetail: (runId, config = {}) =>
     api.get(`/automation/payroll/provider-runs/${runId}`, config).then((r) => r.data),
+  getCheckProviderDataPackage: (runId, params = {}, config = {}) =>
+    api
+      .get(`/automation/payroll/provider-runs/${runId}/provider-data-package`, {
+        ...config,
+        params: { provider: "check", ...params, ...(config.params || {}) },
+      })
+      .then((r) => r.data),
   quickbooksPayloadPreview: (runId, config = {}) =>
     api
       .get(`/automation/payroll/provider-runs/${runId}/provider-payload-preview`, {
@@ -721,6 +728,8 @@ export const payrollSetupApi = {
     api.get("/automation/payroll/check/config", config).then((r) => r.data),
   getCheckLaunchReadiness: (config = {}) =>
     api.get("/automation/payroll/check/launch-readiness", config).then((r) => r.data),
+  getCheckPayrollPackagePreview: (params = {}, config = {}) =>
+    api.get("/automation/payroll/check/payroll-package-preview", { ...config, params }).then((r) => r.data),
   getCheckOnboardingOverview: (config = {}) =>
     api.get("/automation/payroll/check/onboarding-overview", config).then((r) => r.data),
   startCheckEmployerOnboarding: (config = {}) =>

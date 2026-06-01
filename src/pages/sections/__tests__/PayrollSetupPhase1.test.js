@@ -15,6 +15,14 @@ jest.mock("../../../utils/api", () => {
     default: api,
     api,
     wb: { publicBySlug: jest.fn() },
+    xeroIntegration: {
+      status: jest.fn(),
+      validate: jest.fn(),
+    },
+    quickbooksIntegration: {
+      status: jest.fn(),
+      validate: jest.fn(),
+    },
     payrollSetupApi: {
       listWorkLocations: jest.fn(),
       createWorkLocation: jest.fn(),
@@ -26,6 +34,7 @@ jest.mock("../../../utils/api", () => {
       getCheckReadiness: jest.fn(),
       getCheckStatus: jest.fn(),
       getCheckLaunchReadiness: jest.fn(),
+      getCheckPayrollPackagePreview: jest.fn(),
       getCheckOnboardingOverview: jest.fn(),
       startCheckEmployerOnboarding: jest.fn(),
       sendCheckEmployeeOnboardingInvite: jest.fn(),
@@ -49,6 +58,8 @@ jest.mock("../../../utils/api", () => {
     payrollProviderSyncApi: {
       setupStatus: jest.fn(),
       listRuns: jest.fn(),
+      runDetail: jest.fn(),
+      getCheckProviderDataPackage: jest.fn(),
       listEmployeeMappings: jest.fn(),
       listPayItemMappings: jest.fn(),
       listQuickBooksEmployeeCandidates: jest.fn(),
@@ -128,8 +139,11 @@ const apiModule = require("../../../utils/api");
 const mockApi = apiModule.default;
 const mockPayrollSetupApi = apiModule.payrollSetupApi;
 const mockPayrollProviderSyncApi = apiModule.payrollProviderSyncApi;
+const mockXeroIntegration = apiModule.xeroIntegration;
+const mockQuickbooksIntegration = apiModule.quickbooksIntegration;
 const CompanyProfile = require("../CompanyProfile").default;
 const PayrollProviderSync = require("../PayrollProviderSync").default;
+const PayrollPreview = require("../PayrollPreview").default;
 const EmployeeProfileForm = require("../../Payroll/EmployeeProfileForm").default;
 const AddRecruiter = require("../../../AddRecruiter").default;
 const RecruiterHomePage = require("../../recruiter/RecruiterHomePage").default;
@@ -203,6 +217,10 @@ beforeEach(() => {
   mockApi.post.mockResolvedValue({ data: {} });
   mockApi.put.mockResolvedValue({ data: {} });
   mockApi.patch.mockResolvedValue({ data: {} });
+  mockXeroIntegration.status.mockResolvedValue({ connected: false });
+  mockXeroIntegration.validate.mockResolvedValue({ payroll: { ok: false } });
+  mockQuickbooksIntegration.status.mockResolvedValue({ connected: false });
+  mockQuickbooksIntegration.validate.mockResolvedValue({ payroll: { ok: false } });
 
   mockPayrollSetupApi.getPayrollSetupProfile.mockResolvedValue({
     profile: {
@@ -288,6 +306,7 @@ beforeEach(() => {
     ],
     onboarding_checklist: [
       { key: "check_onboard_enabled", value: false, ok: false, severity: "warning" },
+      { key: "latest_employer_session_status", value: "created_placeholder", ok: false, severity: "warning" },
     ],
     blockers: [{ code: "MISSING_COMPANY_FEIN", message: "Add FEIN/EIN", severity: "error" }],
     warnings: ["Configure Check sandbox API key before sandbox sync."],
@@ -305,6 +324,25 @@ beforeEach(() => {
     check_connected: false,
     check_mode: "not_connected",
     environment: "sandbox",
+  });
+  mockPayrollSetupApi.getCheckPayrollPackagePreview.mockResolvedValue({
+    provider: "check",
+    mode: "preview_only",
+    check_api_called: false,
+    payroll: {
+      provider_run_id: 321,
+      period_start: "2026-05-04",
+      period_end: "2026-05-10",
+      payday: "2026-05-10",
+      pay_frequency: "weekly",
+      source_hash: "checkpkg1234567890",
+    },
+    items: [],
+    field_mapping_rows: [],
+    warnings: [],
+    blockers: [],
+    unsupported_fields: [],
+    summary: { employees_count: 0, earnings_count: 0, reimbursements_count: 0, blocker_count: 0, warning_count: 0 },
   });
   mockPayrollSetupApi.getCheckOnboardingOverview.mockResolvedValue({
     check_configured: false,
@@ -392,10 +430,88 @@ beforeEach(() => {
     capabilities: {},
     employee_mapping_count: 0,
     pay_item_mapping_count: 0,
+    payroll_intent: "csv_handoff",
+    payroll_country: "US",
+    current_payroll_provider: "ADP",
+    setup_profile: {
+      payroll_intent: "csv_handoff",
+      payroll_country: "US",
+      current_payroll_provider: "ADP",
+    },
   });
   mockPayrollProviderSyncApi.listRuns.mockResolvedValue({
-    items: [],
+    items: [
+      {
+        id: 321,
+        provider: "generic_csv",
+        start_date: "2026-05-04",
+        end_date: "2026-05-10",
+        status: "draft",
+        employee_rows: [],
+      },
+    ],
     pagination: { limit: 10, offset: 0, has_more: false },
+  });
+  mockPayrollProviderSyncApi.runDetail.mockResolvedValue({
+    run: {
+      id: 321,
+      provider: "generic_csv",
+      start_date: "2026-05-04",
+      end_date: "2026-05-10",
+      employee_rows: [],
+      status: "draft",
+    },
+  });
+  mockPayrollProviderSyncApi.getCheckProviderDataPackage.mockResolvedValue({
+    provider: "check",
+    mode: "preview_only",
+    check_api_called: false,
+    payroll: {
+      provider_run_id: 321,
+      period_start: "2026-05-04",
+      period_end: "2026-05-10",
+      payday: "2026-05-10",
+      pay_frequency: "weekly",
+      source_hash: "checkpkg1234567890",
+    },
+    items: [
+      {
+        employee_id: 55,
+        employee_name: "Taylor North",
+        check_employee_id: null,
+        primary_work_location_id: 11,
+        check_workplace_id: null,
+        earnings: [
+          { line_id: 1, earning_key: "regular_hours", check_type_code: "hourly", amount: 200, hours: 8, work_location_id: 11, notes: "Regular hours map to hourly earnings." },
+          { line_id: 2, earning_key: "tips", check_type_code: "paycheck_tips", amount: 50, hours: 0, work_location_id: 11, notes: "Treating period tips as simple paycheck tips for preview only." },
+        ],
+        reimbursements: [
+          { line_id: 3, earning_key: "non_taxable_reimbursement", amount: 40, description: "Non-taxable reimbursement from Schedulaa payroll preview adjustment" },
+        ],
+        not_sent: [{ code: "NOT_SENT_TO_CHECK_MVP", message: "Local net pay remains informational. Check calculates official net pay later." }],
+        warnings: [{ code: "TIP_TYPE_AMBIGUOUS", message: "Treating period tips as simple paycheck tips for preview only." }],
+        blockers: [{ code: "CHECK_EMPLOYEE_NOT_MAPPED", message: "Employee does not have a Check employee mapping yet." }],
+      },
+    ],
+    field_mapping_rows: [
+      { schedulaa_field: "regular_hours", check_object: "earnings", check_type_code: "hourly", status: "supported", notes: "Regular approved hours become structured hourly earnings with workplace." },
+      { schedulaa_field: "tips", check_object: "earnings", check_type_code: "paycheck_tips", status: "warning", notes: "Only simple paycheck tips are in MVP. Cash tips and tip credit need dedicated future handling." },
+      { schedulaa_field: "non_taxable_reimbursement", check_object: "reimbursements", check_type_code: "non_taxable_reimbursement", status: "supported", notes: "Non-taxable reimbursements map to reimbursements, not earnings." },
+      { schedulaa_field: "local_net_pay", check_object: "net_pay", check_type_code: null, status: "not_sent", notes: "Local net pay remains informational. Check calculates official net pay later." },
+    ],
+    warnings: [
+      { code: "CHECK_CALCULATES_TAX_NET_PAY", message: "Local Payroll Preview is an input screen. Check will later calculate official taxes, net pay, and cash requirement from the structured package.", severity: "info" },
+      { code: "TIP_TYPE_AMBIGUOUS", message: "Treating period tips as simple paycheck tips for preview only.", severity: "warning" },
+    ],
+    blockers: [{ code: "CHECK_EMPLOYEE_NOT_MAPPED", message: "Employee does not have a Check employee mapping yet.", severity: "error" }],
+    unsupported_fields: [{ code: "NOT_SENT_TO_CHECK_MVP", message: "Local net pay remains informational. Check calculates official net pay later." }],
+    summary: {
+      employees_count: 1,
+      earnings_count: 2,
+      reimbursements_count: 1,
+      blocker_count: 1,
+      warning_count: 2,
+    },
   });
   mockPayrollProviderSyncApi.listEmployeeMappings.mockResolvedValue({ items: [] });
   mockPayrollProviderSyncApi.listPayItemMappings.mockResolvedValue({ items: [] });
@@ -447,7 +563,7 @@ test("CompanyProfile shows Canadian labels when company country is Canada", asyn
   expect(await screen.findByLabelText(/Postal Code/i)).toBeInTheDocument();
 });
 
-test("PayrollProviderSync renders local Check readiness panel and keeps Check in coming-soon mode", async () => {
+test("PayrollProviderSync renders embedded payroll workspace first for Check intent", async () => {
   mockPayrollSetupApi.getCheckReadiness.mockResolvedValueOnce({
     check_mode: "not_connected",
     check_configured: false,
@@ -468,6 +584,21 @@ test("PayrollProviderSync renders local Check readiness panel and keeps Check in
     missing_work_location_address: [],
     missing_employee_primary_work_location: [],
   });
+  mockPayrollProviderSyncApi.setupStatus.mockResolvedValueOnce({
+    connection_status: "not_connected",
+    readiness: "setup_required",
+    capabilities: {},
+    employee_mapping_count: 0,
+    pay_item_mapping_count: 0,
+    payroll_intent: "check_embedded_us",
+    payroll_country: "US",
+    current_payroll_provider: "ADP",
+    setup_profile: {
+      payroll_intent: "check_embedded_us",
+      payroll_country: "US",
+      current_payroll_provider: "ADP",
+    },
+  });
   renderWithRouter(
     <PayrollProviderSync
       departmentFilter=""
@@ -485,12 +616,16 @@ test("PayrollProviderSync renders local Check readiness panel and keeps Check in
     />
   );
 
+  expect(await screen.findByText(/Embedded Payroll Workspace/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Embedded Payroll/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Fallback Handoff/i })).toBeInTheDocument();
   expect(await screen.findByText(/Check Payroll Readiness/i)).toBeInTheDocument();
   expect(screen.getByText(/Check Launch Readiness/i)).toBeInTheDocument();
   expect(screen.getByText(/Use this checklist to prepare for Check sandbox testing/i)).toBeInTheDocument();
   expect(screen.getByText(/Add FEIN\/EIN in Company Profile/i)).toBeInTheDocument();
   expect(screen.getAllByText(/Check embedded payroll is not live yet/i).length).toBeGreaterThan(0);
-  expect(screen.getByText(/Check coming later/i)).toBeInTheDocument();
+  expect(screen.getByText(/^Prepared$/i)).toBeInTheDocument();
+  expect(screen.queryByText(/created_placeholder/i)).not.toBeInTheDocument();
   expect(mockPayrollSetupApi.getCheckReadiness).toHaveBeenCalled();
   expect(mockPayrollSetupApi.getCheckStatus).toHaveBeenCalled();
   expect(mockPayrollSetupApi.getCheckLaunchReadiness).toHaveBeenCalled();
@@ -498,13 +633,84 @@ test("PayrollProviderSync renders local Check readiness panel and keeps Check in
   expect(screen.getByRole("button", { name: /Preview company payload/i })).toBeDisabled();
   expect(screen.getByRole("button", { name: /Sync company to sandbox/i })).toBeDisabled();
   expect(screen.getByText(/Check Payroll Onboarding/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/Check Payroll Package Preview/i).length).toBeGreaterThan(0);
+  expect(screen.getByText(/This package preview does not call Check/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Start employer onboarding/i })).toBeDisabled();
   expect(screen.getAllByRole("button", { name: /Send invite/i })[0]).toBeDisabled();
   expect(screen.getAllByRole("button", { name: /Resend invite/i })[0]).toBeDisabled();
   expect(screen.getByText(/Payroll-sensitive onboarding, including SSN, tax forms, and bank details/i)).toBeInTheDocument();
   expect(screen.queryByText(/direct deposit/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Check submit/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Check approve/i)).not.toBeInTheDocument();
   expect(screen.getByText(/Recent onboarding activity/i)).toBeInTheDocument();
+  await waitFor(() => {
+    expect(mockPayrollSetupApi.getCheckPayrollPackagePreview).toHaveBeenCalledWith({ provider_run_id: 321 });
+  });
+  expect(await screen.findByText(/Field mapping table/i)).toBeInTheDocument();
+});
+
+test("PayrollProviderSync hides full Check workspace for csv handoff intent", async () => {
+  renderWithRouter(
+    <PayrollProviderSync
+      departmentFilter=""
+      selectedRecruiter=""
+      exportAllEmployees={false}
+      exportEmployeeIds={[]}
+      region="ca"
+      startDate="2026-05-04"
+      endDate="2026-05-10"
+      payFrequency="bi_weekly"
+      payroll={{ province: "ON" }}
+      recruiters={[]}
+      filteredRecruiters={[]}
+      setSnackbar={jest.fn()}
+    />
+  );
+
+  expect(await screen.findByRole("heading", { name: /Payroll Handoff/i })).toBeInTheDocument();
+  expect(screen.getAllByText(/This company is currently using payroll handoff\/export mode/i).length).toBeGreaterThan(0);
+  expect(screen.getByRole("combobox", { name: /Provider/i })).toBeInTheDocument();
+  expect(screen.queryByText(/Check Payroll Readiness/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Check Payroll Onboarding/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Check Payroll Package Preview/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/Embedded U\.S\. payroll tools become relevant only if payroll intent is switched later/i)).toBeInTheDocument();
+});
+
+test("PayrollProviderSync shows setup-first state when payroll intent is not configured", async () => {
+  mockPayrollProviderSyncApi.setupStatus.mockResolvedValueOnce({
+    connection_status: "not_connected",
+    readiness: "setup_required",
+    capabilities: {},
+    employee_mapping_count: 0,
+    pay_item_mapping_count: 0,
+    payroll_intent: "none",
+    payroll_country: "CA",
+    current_payroll_provider: "",
+    setup_profile: {
+      payroll_intent: "none",
+      payroll_country: "CA",
+      current_payroll_provider: "",
+    },
+  });
+  renderWithRouter(
+    <PayrollProviderSync
+      departmentFilter=""
+      selectedRecruiter=""
+      exportAllEmployees={false}
+      exportEmployeeIds={[]}
+      region="ca"
+      startDate="2026-05-04"
+      endDate="2026-05-10"
+      payFrequency="bi_weekly"
+      payroll={{ province: "ON" }}
+      recruiters={[]}
+      filteredRecruiters={[]}
+      setSnackbar={jest.fn()}
+    />
+  );
+
+  expect((await screen.findAllByText(/Choose a payroll path in Company Profile before using provider-specific payroll tools/i)).length).toBeGreaterThan(0);
+  expect(screen.queryByText(/Check Payroll Readiness/i)).not.toBeInTheDocument();
 });
 
 test("EmployeeProfileForm shows Primary Payroll Location in Payroll & compliance", async () => {
@@ -599,4 +805,89 @@ test("RecruiterHomePage shows employee payroll setup card with disabled onboardi
   expect(screen.getByText(/Sensitive payroll onboarding, including SSN, tax forms, and bank details/i)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Complete payroll setup/i })).toBeDisabled();
   expect(screen.queryByText(/direct deposit/i)).not.toBeInTheDocument();
+});
+
+test("PayrollPreview shows embedded payroll input-preview note for Check intent", async () => {
+  renderWithRouter(
+    <PayrollPreview
+      payroll={{
+        recruiter_id: 55,
+        employee_name: "Taylor North",
+        start_date: "2026-05-04",
+        end_date: "2026-05-10",
+        region: "us",
+        pay_date: "2026-05-10",
+      }}
+      region="us"
+      payrollSetupProfile={{ payroll_intent: "check_embedded_us" }}
+      companyPayDateRule="end_date"
+      companyPayDateOffsetDays={0}
+      autoRecalc
+      setAutoRecalc={jest.fn()}
+      handleFieldChange={jest.fn(() => jest.fn())}
+      setPayroll={jest.fn()}
+      ytdTotals={null}
+      selectedRecruiter={55}
+      month="2026-05"
+      setSnackbar={jest.fn()}
+    />
+  );
+
+  expect(await screen.findByText(/official provider tax, deduction, net pay, and cash requirement calculations will happen later through embedded payroll preview/i)).toBeInTheDocument();
+});
+
+test("PayrollPreview shows handoff note for csv_handoff intent", async () => {
+  renderWithRouter(
+    <PayrollPreview
+      payroll={{
+        recruiter_id: 55,
+        employee_name: "Taylor North",
+        start_date: "2026-05-04",
+        end_date: "2026-05-10",
+        region: "ca",
+      }}
+      region="ca"
+      payrollSetupProfile={{ payroll_intent: "csv_handoff" }}
+      companyPayDateRule="end_date"
+      companyPayDateOffsetDays={0}
+      autoRecalc
+      setAutoRecalc={jest.fn()}
+      handleFieldChange={jest.fn(() => jest.fn())}
+      setPayroll={jest.fn()}
+      ytdTotals={null}
+      selectedRecruiter={55}
+      month="2026-05"
+      setSnackbar={jest.fn()}
+    />
+  );
+
+  expect(await screen.findByText(/This preview supports payroll handoff and accounting exports/i)).toBeInTheDocument();
+});
+
+test("PayrollPreview shows setup note when payroll intent is not configured", async () => {
+  renderWithRouter(
+    <PayrollPreview
+      payroll={{
+        recruiter_id: 55,
+        employee_name: "Taylor North",
+        start_date: "2026-05-04",
+        end_date: "2026-05-10",
+        region: "ca",
+      }}
+      region="ca"
+      payrollSetupProfile={{ payroll_intent: "none" }}
+      companyPayDateRule="end_date"
+      companyPayDateOffsetDays={0}
+      autoRecalc
+      setAutoRecalc={jest.fn()}
+      handleFieldChange={jest.fn(() => jest.fn())}
+      setPayroll={jest.fn()}
+      ytdTotals={null}
+      selectedRecruiter={55}
+      month="2026-05"
+      setSnackbar={jest.fn()}
+    />
+  );
+
+  expect(await screen.findByText(/Payroll path is not configured yet/i)).toBeInTheDocument();
 });

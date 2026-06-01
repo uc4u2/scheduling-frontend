@@ -281,6 +281,7 @@ const paymentStatusMeta = (status) => {
 export default function PayrollPreview({
   payroll,
   region,
+  payrollSetupProfile,
   companyPayDateRule,
   companyPayDateOffsetDays,
   autoRecalc,
@@ -298,6 +299,13 @@ export default function PayrollPreview({
 }) {
   const isCanada = region === "ca";
   const token = localStorage.getItem("token");
+  const payrollIntent = payrollSetupProfile?.payroll_intent || "none";
+  const payrollPreviewIntentNotice =
+    payrollIntent === "check_embedded_us"
+      ? "This is your Schedulaa payroll input preview. Official provider tax, deduction, net pay, and cash requirement calculations will happen later through embedded payroll preview."
+      : payrollIntent === "csv_handoff"
+        ? "This preview supports payroll handoff and accounting exports. Review inputs here, then use Provider Sync to prepare the handoff."
+        : "Payroll path is not configured yet. Use Company Profile to choose payroll handoff or embedded payroll intent.";
 
   const [xeroStatus, setXeroStatus] = useState(null);
   const [xeroValidation, setXeroValidation] = useState(null);
@@ -1067,6 +1075,10 @@ const handleRecalculate = () => {
           {payDateDisplay ? ` • Pay date: ${payDateDisplay}` : ""}
         </Typography>
       )}
+
+      <Alert severity="info" sx={{ mb: 2 }}>
+        {payrollPreviewIntentNotice}
+      </Alert>
 
       <Divider sx={{ my: 2 }} />
       
