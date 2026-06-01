@@ -1400,6 +1400,8 @@ export default function InventoryPage() {
         title={tInventory("importDialog.title", "Import inventory items")}
         importType="inventory_items"
         entityLabel="inventory items"
+        entitySingular="item"
+        entityPlural="items"
         modes={[
           {
             value: "create_new_only",

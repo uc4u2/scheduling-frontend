@@ -666,6 +666,9 @@ export default function FinanceClientsPage() {
         onClose={() => setImportOpen(false)}
         title="Import clients"
         importType="clients"
+        entityLabel="clients"
+        entitySingular="client"
+        entityPlural="clients"
         templateFileName="schedulaa-finance-clients-template.csv"
         csvStructure={`client_name,first_name,last_name,email,phone,notes,status\nAcme Cleaning,,,billing@acme.com,+14165550123,VIP commercial client,active\n,John,Doe,john@example.com,+14165550124,Residential client,active`}
         downloadTemplate={downloadFinanceClientImportTemplate}

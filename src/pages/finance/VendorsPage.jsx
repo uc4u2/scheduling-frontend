@@ -275,6 +275,9 @@ export default function VendorsPage() {
         onClose={() => setImportOpen(false)}
         title="Import vendors"
         importType="vendors"
+        entityLabel="vendors"
+        entitySingular="vendor"
+        entityPlural="vendors"
         templateFileName="schedulaa-finance-vendors-template.csv"
         csvStructure={`vendor_name,email,phone,address,notes,is_active\nABC Supplies,orders@abcsupplies.com,+14165550125,123 Main St Toronto,Cleaning supplies,true\nNorth Paint Co,hello@northpaint.ca,+14165550126,55 Queen St Toronto,Paint vendor,true`}
         downloadTemplate={downloadFinanceVendorImportTemplate}

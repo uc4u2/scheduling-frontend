@@ -40,7 +40,7 @@ const statusTone = {
   skipped: "default",
 };
 
-const statusLabel = {
+const defaultStatusLabel = {
   valid_new: "New item",
   valid_update: "Will update",
   no_change: "No changes",
@@ -89,6 +89,9 @@ export default function FinanceImportDialog({
   defaultMode,
   modeHelpText,
   showChangePreview = false,
+  statusLabels,
+  entitySingular,
+  entityPlural,
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
@@ -101,6 +104,18 @@ export default function FinanceImportDialog({
   const [error, setError] = useState("");
   const [mode, setMode] = useState(defaultMode || modes?.[0]?.value || "");
   const displayLabel = entityLabel || importType;
+  const singularLabel = entitySingular || displayLabel.replace(/s$/, "") || "record";
+  const pluralLabel = entityPlural || displayLabel || "records";
+  const mergedStatusLabels = useMemo(
+    () => ({
+      ...defaultStatusLabel,
+      valid_new: `New ${singularLabel}`,
+      duplicate: `Existing ${singularLabel}`,
+      invalid: "Invalid row",
+      ...statusLabels,
+    }),
+    [singularLabel, statusLabels]
+  );
   const selectedMode = useMemo(
     () => (modes || []).find((item) => item.value === mode) || null,
     [mode, modes]
@@ -223,7 +238,9 @@ export default function FinanceImportDialog({
             <Stack spacing={1}>
               <Typography variant="subtitle1" fontWeight={800}>Accepted CSV structure</Typography>
               <Typography variant="body2" color="text.secondary">
-                Use the template to match the expected columns. Existing records stay unchanged unless you choose the update matching mode and approve the preview.
+                {modes?.length
+                  ? "Use the template to match the expected columns. Existing records stay unchanged unless you choose the update matching mode and approve the preview."
+                  : "Use the template to match the expected columns. Existing records stay unchanged in this import flow."}
               </Typography>
               <Typography component="pre" variant="caption" sx={{ m: 0, p: 1.5, borderRadius: 1.5, bgcolor: "grey.50", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
                 {csvStructure}
@@ -237,10 +254,10 @@ export default function FinanceImportDialog({
                 <Typography variant="subtitle1" fontWeight={800}>Preview summary</Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   <Chip label={`Rows ${preview.row_count || 0}`} />
-                  <Chip color="success" label={`New items ${preview.create_count ?? preview.valid_count ?? 0}`} />
+                  <Chip color="success" label={`New ${pluralLabel} ${preview.create_count ?? preview.valid_count ?? 0}`} />
                   {Number(preview.update_count || 0) > 0 ? <Chip color="info" label={`Items to update ${preview.update_count || 0}`} /> : null}
                   {Number(preview.no_change_count || 0) > 0 ? <Chip label={`No changes ${preview.no_change_count || 0}`} /> : null}
-                  <Chip color="warning" label={`Needs review ${preview.duplicate_conflict_count ?? preview.duplicate_count ?? 0}`} />
+                  <Chip color="warning" label={`${modes?.length ? "Needs review" : `Existing ${pluralLabel}`} ${preview.duplicate_conflict_count ?? preview.duplicate_count ?? 0}`} />
                   <Chip color="error" label={`Invalid ${preview.invalid_count || 0}`} />
                   <Chip label={`Skipped ${preview.skipped_count || 0}`} />
                   {Number(preview.warning_count || 0) > 0 ? <Chip color="secondary" label={`Warnings ${preview.warning_count || 0}`} /> : null}
@@ -265,7 +282,7 @@ export default function FinanceImportDialog({
                   {preview.rows.map((row) => (
                     <TableRow key={`${row.row_number}-${row.status}`}>
                       <TableCell>{row.row_number}</TableCell>
-                      <TableCell><Chip size="small" color={statusTone[row.status] || "default"} label={statusLabel[row.status] || row.status} /></TableCell>
+                      <TableCell><Chip size="small" color={statusTone[row.status] || "default"} label={mergedStatusLabels[row.status] || row.status} /></TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight={700}>
                           {row.normalized_payload?.name || `${row.normalized_payload?.first_name || ""} ${row.normalized_payload?.last_name || ""}`.trim() || "Row"}
