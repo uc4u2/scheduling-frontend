@@ -183,7 +183,7 @@ export default function FinanceImportDialog({
             <Stack spacing={1}>
               <Typography variant="subtitle1" fontWeight={800}>Accepted CSV structure</Typography>
               <Typography variant="body2" color="text.secondary">
-                Use the template to avoid column mistakes. Phase 1 supports CSV only and creates new rows only.
+                Use the template to match the expected columns. This import creates new records only and will not replace existing records.
               </Typography>
               <Typography component="pre" variant="caption" sx={{ m: 0, p: 1.5, borderRadius: 1.5, bgcolor: "grey.50", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
                 {csvStructure}

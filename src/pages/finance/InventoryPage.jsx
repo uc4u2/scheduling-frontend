@@ -1049,7 +1049,7 @@ export default function InventoryPage() {
         entityLabel="inventory items"
         templateFileName="schedulaa-finance-inventory-items-template.csv"
         csvStructure={`item_name,inventory_category,sku,description,unit,cost_per_unit,optional_sell_price,low_stock_threshold,vendor_name,taxable,is_active,initial_quantity\nAll Purpose Cleaner,Supplies,CLN-001,General cleaning solution,each,8.50,14.99,10,ABC Supplies,true,true,25\nAir Filter 20x20x1,Parts,FLT-202001,Replacement air filter,each,4.25,9.99,20,North Parts,false,true,50`}
-        description={tInventory("importDialog.description", "Import inventory item master data only. Preview the CSV first, then create only new stock items. Existing items are never overwritten in this phase.")}
+        description={tInventory("importDialog.description", "Import inventory item master data from a spreadsheet. Preview the file first, then create only new stock items. Existing items stay unchanged in this import flow.")}
         downloadTemplate={downloadFinanceInventoryItemImportTemplate}
         previewImport={previewFinanceInventoryItemImport}
         commitImport={commitFinanceInventoryItemImport}
