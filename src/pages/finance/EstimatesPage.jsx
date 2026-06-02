@@ -5,12 +5,14 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   Menu,
@@ -251,7 +253,16 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [templateEditor, setTemplateEditor] = useState(null);
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateArchiveId, setTemplateArchiveId] = useState(null);
+  const [showArchivedTemplates, setShowArchivedTemplates] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
+  const activeTemplates = useMemo(
+    () => templates.filter((row) => row?.is_active !== false),
+    [templates]
+  );
+  const managerTemplates = useMemo(
+    () => (showArchivedTemplates ? templates : activeTemplates),
+    [activeTemplates, showArchivedTemplates, templates]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -286,18 +297,18 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   }, [createNonce]);
 
   useEffect(() => {
-    if (!templates.length) {
+    if (!managerTemplates.length) {
       setSelectedTemplateId("");
       setTemplateEditor(null);
       return;
     }
-    if (!selectedTemplateId || !templates.some((row) => String(row.id) === String(selectedTemplateId))) {
-      setSelectedTemplateId(String(templates[0].id));
+    if (!selectedTemplateId || !managerTemplates.some((row) => String(row.id) === String(selectedTemplateId))) {
+      setSelectedTemplateId(String(managerTemplates[0].id));
     }
-  }, [templates, selectedTemplateId]);
+  }, [managerTemplates, selectedTemplateId]);
 
   useEffect(() => {
-    const selected = templates.find((row) => String(row.id) === String(selectedTemplateId));
+    const selected = managerTemplates.find((row) => String(row.id) === String(selectedTemplateId));
     if (!selected) return;
     setTemplateEditor({
       id: selected.id,
@@ -309,7 +320,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       is_active: Boolean(selected.is_active),
       updated_at: selected.updated_at || null,
     });
-  }, [selectedTemplateId, templates]);
+  }, [managerTemplates, selectedTemplateId]);
 
   const saveAsTemplate = async () => {
     if (!editing || !templateName) {
@@ -1200,10 +1211,10 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   {tEstimate("templateShortcut.title", "Estimate templates")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {tEstimate("templateShortcut.description", "Save the notes, terms, and line items from the estimate currently open in the editor, then reuse them for future estimates.")}
+                  {tEstimate("templateShortcut.description", "Save a reusable estimate structure for repeat jobs with the same notes, terms, and line items.")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {tEstimate("templateShortcut.whatGetsSaved", "What gets saved: notes, terms, and line items only.")}
+                  {tEstimate("templateShortcut.whatGetsSaved", "Use this when the same job structure is quoted repeatedly and only the client or dates change.")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {tEstimate("templateShortcut.whatDoesNotSave", "Not saved: client, dates, status, approval, and payment information.")}
@@ -1217,7 +1228,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
                 <TextField size="small" disabled={!editing} label={tEstimate("templateShortcut.templateName", "Template name")} value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
                 <Button variant="outlined" onClick={saveAsTemplate} disabled={!editing || !String(templateName || "").trim()} sx={{ whiteSpace: "nowrap" }}>
-                  {tEstimate("templateShortcut.saveCurrent", "Save estimate structure as template")}
+                  {tEstimate("templateShortcut.saveCurrent", "Save reusable structure")}
                 </Button>
                 <Button variant="text" onClick={openTemplateManager} sx={{ whiteSpace: "nowrap" }}>
                   {tEstimate("templateShortcut.manage", "Manage templates")}
@@ -1318,7 +1329,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         onNavigate={onNavigate}
         estimate={editing}
         clients={clients}
-        templates={templates}
+        templates={activeTemplates}
         taxContext={taxContext}
       />
       <WorkOrderEditorDialog
@@ -1448,7 +1459,22 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           ) : (
             <Stack direction={{ xs: "column", md: "row" }} spacing={2.5}>
               <Stack spacing={1} sx={{ width: { xs: "100%", md: 300 }, flexShrink: 0 }}>
-                {templates.map((template) => {
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={showArchivedTemplates}
+                      onChange={(e) => setShowArchivedTemplates(e.target.checked)}
+                    />
+                  }
+                  label={tEstimate("templateManager.showArchived", "Show archived templates")}
+                  sx={{ mx: 0 }}
+                />
+                {!managerTemplates.length ? (
+                  <Alert severity="info" variant="outlined">
+                    {tEstimate("templateManager.activeOnlyEmpty", "No active templates to show. Turn on archived templates to review older ones.")}
+                  </Alert>
+                ) : null}
+                {managerTemplates.map((template) => {
                   const selected = String(template.id) === String(selectedTemplateId);
                   return (
                     <Paper
@@ -1554,7 +1580,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               onClick={() => handleTemplateArchive(templateEditor.id)}
               disabled={templateSaving || templateArchiveId === templateEditor.id}
             >
-              {tEstimate("templateManager.archive", "Archive template")}
+              {tEstimate("templateManager.archive", "Retire template")}
             </Button>
           ) : null}
           <Button onClick={() => setTemplateManagerOpen(false)} disabled={templateSaving}>

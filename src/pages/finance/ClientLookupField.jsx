@@ -46,6 +46,14 @@ export default function ClientLookupField({
   }, [initialOptions, selected]);
 
   useEffect(() => {
+    if (!selected) {
+      setInputValue("");
+      return;
+    }
+    setInputValue(getClientDisplayName(selected, fallbackLabel));
+  }, [fallbackLabel, selected]);
+
+  useEffect(() => {
     let active = true;
     const matchId = String(value || "");
     if (!matchId || selected) {
@@ -111,6 +119,7 @@ export default function ClientLookupField({
       }}
       onChange={(_event, next) => {
         setSelectedClient(next || null);
+        setInputValue(next ? getClientDisplayName(next, fallbackLabel) : "");
         onChange?.(next?.id || "", next || null);
       }}
       getOptionLabel={(option) => getClientDisplayName(option, fallbackLabel)}
