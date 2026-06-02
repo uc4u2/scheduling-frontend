@@ -74,6 +74,14 @@ const LINE_ITEM_PRESETS = {
   },
 };
 
+const PRESET_ENTERPRISE_HINTS = {
+  service: "Best for labor or fixed service fees.",
+  flat_fee: "Best for one packaged price or project fee.",
+  hourly_work: "Best for time-based billing where quantity is hours.",
+  materials: "Best for billable materials, supplies, or resale items.",
+  custom: "Best for charges that do not fit the standard presets.",
+};
+
 const getPresetMeta = (line) =>
   LINE_ITEM_PRESETS[line?.preset_key] ||
   LINE_ITEM_PRESETS[line?.item_type === "material" ? "materials" : line?.item_type === "custom" ? "custom" : "service"];
@@ -157,6 +165,7 @@ export default function EstimateEditorDialog({
         ...presetMeta,
         label: tEstimate(`lineItems.presets.${key}`, presetMeta.key),
         description: tEstimate(`lineItems.presetMeta.${key}.description`, ""),
+        enterpriseHint: tEstimate(`lineItems.presetMeta.${key}.enterpriseHint`, PRESET_ENTERPRISE_HINTS[key] || ""),
         quantityLabel: tEstimate(
           `lineItems.presetMeta.${key}.quantityLabel`,
           key === "hourly_work" ? "Hours" : tEstimate("lineItems.fields.qty", "Qty")
@@ -595,6 +604,12 @@ export default function EstimateEditorDialog({
                 {tEstimate("lineItems.addLine", "Add line")}
               </Button>
             </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {tEstimate(
+                "lineItems.pricingGuide",
+                "Set the price on each line with quantity and unit price. Presets help structure the line, but totals come from the values you enter here."
+              )}
+            </Typography>
               {form.line_items.map((line) => (
               <Box
                 key={line.id}
@@ -606,6 +621,8 @@ export default function EstimateEditorDialog({
               >
                 {(() => {
                   const presetMeta = presetMetaFor(line);
+                  const linePreview = computePreviewLine(line, effectiveTaxContext);
+                  const lineTotalPreview = roundMoney(linePreview.base + linePreview.tax);
                   return (
                 <Grid container spacing={1.5} alignItems="flex-start">
                   <Grid item xs={12} md={3}>
@@ -615,7 +632,7 @@ export default function EstimateEditorDialog({
                       label={tEstimate("lineItems.fields.preset", "Preset")}
                       value={line.preset_key || presetMeta.key}
                       onChange={(e) => applyLinePreset(line.id, e.target.value)}
-                      helperText={presetMeta.description}
+                      helperText={presetMeta.enterpriseHint || presetMeta.description}
                     >
                       <MenuItem value="service">{tEstimate("lineItems.presets.service", "Service")}</MenuItem>
                       <MenuItem value="flat_fee">{tEstimate("lineItems.presets.flatFee", "Flat fee")}</MenuItem>
@@ -659,7 +676,16 @@ export default function EstimateEditorDialog({
                       inputProps={{ step: "0.01" }}
                       value={line.unit_price}
                       onChange={(e) => setLineField(line.id, "unit_price", e.target.value)}
-                      helperText={effectiveTaxContext?.prices_include_tax ? tEstimate("lineItems.taxIncludedPrice", "Tax-included price") : tEstimate("lineItems.preTaxPrice", "Pre-tax price")}
+                      helperText={
+                        presetMeta.key === "hourly_work"
+                          ? tEstimate(
+                              "lineItems.hourlyRateHint",
+                              "Use the hourly rate for one hour of work before quantity is applied."
+                            )
+                          : effectiveTaxContext?.prices_include_tax
+                          ? tEstimate("lineItems.taxIncludedPrice", "Tax-included price")
+                          : tEstimate("lineItems.preTaxPrice", "Pre-tax price")
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} md={8.5}>
@@ -729,6 +755,42 @@ export default function EstimateEditorDialog({
                       </Grid>
                     </Grid>
                   </Grid>
+                  <Grid item xs={12}>
+                    <Stack spacing={1}>
+                      {presetMeta.key === "hourly_work" ? (
+                        <Typography variant="caption" color="text.secondary">
+                          {tEstimate(
+                            "lineItems.hourlyWorkMeaning",
+                            "Hourly work pricing: quantity is hours and unit price is the hourly rate."
+                          )}
+                        </Typography>
+                      ) : null}
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={tEstimate("lineItems.preview.base", "Line subtotal: {{amount}}", {
+                          amount: linePreview.base.toFixed(2),
+                        })}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={line.taxable ? "info" : "default"}
+                        label={tEstimate("lineItems.preview.tax", "Line tax: {{amount}}", {
+                          amount: linePreview.tax.toFixed(2),
+                        })}
+                      />
+                      <Chip
+                        size="small"
+                        color="success"
+                        label={tEstimate("lineItems.preview.total", "Line total: {{amount}}", {
+                          amount: lineTotalPreview.toFixed(2),
+                        })}
+                      />
+                    </Stack>
+                    </Stack>
+                  </Grid>
                 </Grid>
                   );
                 })()}
@@ -746,10 +808,20 @@ export default function EstimateEditorDialog({
               </Alert>
             </Grid>
             <Grid item xs={12}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }}>
                 <Typography variant="body2">{tEstimate("totals.subtotal", "Subtotal")}: {preview.subtotal.toFixed(2)}</Typography>
                 <Typography variant="body2">{tEstimate("totals.tax", "Tax")}: {preview.taxTotal.toFixed(2)}</Typography>
-                <Typography variant="body2">{tEstimate("totals.total", "Total")}: {preview.total.toFixed(2)}</Typography>
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Typography variant="body2">{tEstimate("totals.total", "Total")}: {preview.total.toFixed(2)}</Typography>
+                  <Tooltip
+                    title={tEstimate(
+                      "totals.backendRuleTooltip",
+                      "Final subtotal, tax, and total are confirmed by backend tax rules when you save."
+                    )}
+                  >
+                    <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 16 }} />
+                  </Tooltip>
+                </Stack>
               </Stack>
             </Grid>
             {estimate?.id ? (

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Autocomplete, CircularProgress, TextField } from "@mui/material";
-import { listManagerClients } from "./financeApi";
+import { getManagerClient, listManagerClients } from "./financeApi";
 import { getClientDisplayName } from "./clientUtils";
 
 const mergeClientOptions = (...groups) => {
@@ -28,20 +28,47 @@ export default function ClientLookupField({
   const [options, setOptions] = useState(initialOptions || []);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
 
   const selected = useMemo(() => {
     const matchId = String(value || "");
     if (!matchId) return null;
     return (
+      (selectedClient && String(selectedClient?.id) === matchId ? selectedClient : null) ||
       options.find((item) => String(item?.id) === matchId) ||
       (initialOptions || []).find((item) => String(item?.id) === matchId) ||
       null
     );
-  }, [initialOptions, options, value]);
+  }, [initialOptions, options, selectedClient, value]);
 
   useEffect(() => {
     setOptions((prev) => mergeClientOptions(initialOptions || [], prev, selected ? [selected] : []));
   }, [initialOptions, selected]);
+
+  useEffect(() => {
+    let active = true;
+    const matchId = String(value || "");
+    if (!matchId || selected) {
+      if (!matchId && active) setSelectedClient(null);
+      return () => {
+        active = false;
+      };
+    }
+    setLoading(true);
+    getManagerClient(matchId)
+      .then((row) => {
+        if (!active || !row?.id) return;
+        setSelectedClient(row);
+        setOptions((prev) => mergeClientOptions([row], prev, initialOptions || []));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialOptions, selected, value]);
 
   useEffect(() => {
     let active = true;
@@ -82,7 +109,10 @@ export default function ClientLookupField({
         if (reason === "reset") return;
         setInputValue(next);
       }}
-      onChange={(_event, next) => onChange?.(next?.id || "", next || null)}
+      onChange={(_event, next) => {
+        setSelectedClient(next || null);
+        onChange?.(next?.id || "", next || null);
+      }}
       getOptionLabel={(option) => getClientDisplayName(option, fallbackLabel)}
       isOptionEqualToValue={(option, current) => String(option?.id) === String(current?.id)}
       noOptionsText={inputValue ? "No matching clients" : "Start typing to search clients"}

@@ -390,13 +390,18 @@ export const listFinanceImportHistory = (type) =>
   unwrap(api.get("/finance/imports/history", { params: type ? { type } : {} }));
 
 export const listManagerClients = async (params = {}) => {
-  const res = await api.get("/booking/clients", { params });
-  return pickArray(res.data, ["items", "data"]);
+  const payload = await listFinanceClients(params);
+  return pickArray(payload, ["items", "data"]);
 };
 
 export const createManagerClient = async (payload) => {
-  const res = await api.post("/booking/clients", payload);
-  return res.data;
+  const created = await createFinanceClient(payload);
+  return created?.client || created;
+};
+
+export const getManagerClient = async (id) => {
+  const payload = await getFinanceClient(id);
+  return payload?.client || payload;
 };
 
 export const listBillingRecipients = async (params = {}) => {
