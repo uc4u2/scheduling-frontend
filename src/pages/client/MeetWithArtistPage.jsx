@@ -813,6 +813,7 @@ const MeetWithArtistPageContent = ({
                       }}
                     >
                       <Box component="li">Pick an available time slot.</Box>
+                      <Box component="li">Book at least 30 minutes before the start time.</Box>
                       <Box component="li">Complete the required fields.</Box>
                       <Box component="li">You will receive a confirmation after booking.</Box>
                     </Box>
