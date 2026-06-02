@@ -48,6 +48,7 @@ import {
   createEstimateFromQuote,
   createManagerClient,
   createQuoteRequest,
+  getManagerClient,
   linkQuoteClient,
   listManagerClients,
   listQuoteRequests,
@@ -209,6 +210,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "" });
+  const [selectedDialogClient, setSelectedDialogClient] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -241,6 +243,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
     if (createNonce) {
       setEditing(null);
       setForm(blankForm);
+      setSelectedDialogClient(null);
       setDialogOpen(true);
     }
   }, [createNonce]);
@@ -248,6 +251,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const openCreate = () => {
     setEditing(null);
     setForm(blankForm);
+    setSelectedDialogClient(null);
     setDialogOpen(true);
   };
 
@@ -266,8 +270,62 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       visible_notes: item.visible_notes || "",
       internal_notes: item.internal_notes || "",
     });
+    setSelectedDialogClient(null);
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    let active = true;
+    const matchId = String(form.client_id || "");
+    if (!dialogOpen || editing?.client_id) {
+      return () => {
+        active = false;
+      };
+    }
+    if (!matchId) {
+      setSelectedDialogClient(null);
+      return () => {
+        active = false;
+      };
+    }
+    if (selectedDialogClient && String(selectedDialogClient.id) === matchId) {
+      return () => {
+        active = false;
+      };
+    }
+    const localMatch = clients.find((client) => String(client?.id) === matchId);
+    if (localMatch) {
+      setSelectedDialogClient(localMatch);
+      return () => {
+        active = false;
+      };
+    }
+    getManagerClient(matchId)
+      .then((client) => {
+        if (!active || !client?.id) return;
+        setSelectedDialogClient(client);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [clients, dialogOpen, editing?.client_id, form.client_id, selectedDialogClient]);
+
+  const linkedDialogClient = useMemo(() => {
+    if (editing?.client_id) {
+      return {
+        id: editing.client_id,
+        email: editing.client_email || "",
+        first_name: editing.client_name || "",
+        last_name: "",
+        name: editing.client_name || "",
+      };
+    }
+    if (selectedDialogClient && String(selectedDialogClient.id) === String(form.client_id || "")) {
+      return selectedDialogClient;
+    }
+    return clients.find((client) => String(client?.id) === String(form.client_id || "")) || null;
+  }, [clients, editing, form.client_id, selectedDialogClient]);
 
   const prefillClientFromContact = (item) => ({
     name: item?.contact_name || "",
@@ -324,6 +382,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
         contact_email: prev.contact_email || created.email || "",
         contact_phone: prev.contact_phone || created.phone || "",
       }));
+      setSelectedDialogClient(created);
       setClientDialogOpen(false);
       enqueueSnackbar(tQuote("snackbar.clientCreated", "Client created and selected."), { variant: "success" });
       await load();
@@ -818,12 +877,10 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                 {editing?.client_id || form.client_id ? (
                   <Stack spacing={1}>
                     <Typography variant="body2" fontWeight={700}>
-                      {editing?.client_id
-                        ? editing.client_name || tQuote("dialog.fields.linkedClientFallback", "Linked client")
-                        : getClientDisplayName(clients.find((client) => String(client.id) === String(form.client_id)), tQuote("dialog.fields.linkedClientFallback", "Linked client"))}
+                      {getClientDisplayName(linkedDialogClient, tQuote("dialog.fields.linkedClientFallback", "Linked client"))}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {editing?.client_email || clients.find((client) => String(client.id) === String(form.client_id))?.email || "-"}
+                      {linkedDialogClient?.email || "-"}
                     </Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       <Chip size="small" variant="outlined" color="success" label={tQuote("chips.linked", "Linked")} />
@@ -838,6 +895,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                         label={tQuote("dialog.fields.clientRecord", "Client record")}
                         value={form.client_id || ""}
                         onChange={(nextId, selected) => {
+                          setSelectedDialogClient(selected || null);
                           setForm((prev) => ({
                             ...prev,
                             client_id: nextId,
