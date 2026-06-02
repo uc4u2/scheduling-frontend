@@ -784,6 +784,15 @@ export default function EstimateEditorDialog({
                       <Chip
                         size="small"
                         color="success"
+                        variant="outlined"
+                        sx={{
+                          color: "success.dark",
+                          borderColor: "success.main",
+                          bgcolor: "success.50",
+                          "& .MuiChip-label": {
+                            fontWeight: 700,
+                          },
+                        }}
                         label={tEstimate("lineItems.preview.total", "Line total: {{amount}}", {
                           amount: lineTotalPreview.toFixed(2),
                         })}
