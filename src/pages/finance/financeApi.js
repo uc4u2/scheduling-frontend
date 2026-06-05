@@ -92,6 +92,9 @@ export const getFinanceTaxContext = () => unwrap(api.get("/finance/tax-context")
 export const getFinanceSalesTaxProfile = () => unwrap(api.get("/finance/sales-tax-profile"));
 export const updateFinanceSalesTaxProfile = (payload) =>
   unwrap(api.patch("/finance/sales-tax-profile", payload));
+export const getFinanceDocumentSettings = () => unwrap(api.get("/finance/document-settings"));
+export const updateFinanceDocumentSettings = (payload) =>
+  unwrap(api.patch("/finance/document-settings", payload));
 export const getFinanceAuditLogs = (params = {}) =>
   unwrap(api.get("/finance/audit-logs", { params }));
 export const getFinanceOwnerSnapshot = (params = {}) =>

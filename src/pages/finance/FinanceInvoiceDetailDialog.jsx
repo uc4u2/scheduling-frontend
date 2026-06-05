@@ -43,9 +43,11 @@ import {
   createSimilarFinanceInvoice,
   createFinanceInvoicePaymentLink,
   downloadFinanceInvoicePdf,
+  getFinanceDocumentSettings,
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
   listBillingRecipients,
+  updateFinanceDocumentSettings,
   updateFinanceInvoice,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
@@ -87,6 +89,7 @@ const blankForm = {
   description: "",
   notes: "",
   terms: "",
+  invoice_display_business_name: "",
   po_number: "",
   payment_terms: "",
   payment_instructions: "",
@@ -140,6 +143,7 @@ const buildFormFromInvoice = (invoice) => ({
   description: invoice?.description || "",
   notes: invoice?.notes || "",
   terms: invoice?.terms || "",
+  invoice_display_business_name: invoice?.custom_fields_json?.invoice_display_business_name || "",
   po_number: invoice?.custom_fields_json?.po_number || "",
   payment_terms: invoice?.custom_fields_json?.payment_terms || "",
   payment_instructions: invoice?.custom_fields_json?.payment_instructions || "",
@@ -181,6 +185,8 @@ export default function FinanceInvoiceDetailDialog({
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [creatingSimilar, setCreatingSimilar] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [savingDocumentDefault, setSavingDocumentDefault] = useState(false);
+  const [documentSettings, setDocumentSettings] = useState({});
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -194,6 +200,7 @@ export default function FinanceInvoiceDetailDialog({
         const nextInvoice = payload?.invoice || null;
         setInvoice(nextInvoice);
         setForm(buildFormFromInvoice(nextInvoice));
+        setDocumentSettings(nextInvoice?.finance_document_settings || {});
       })
       .catch((err) => {
         if (!active) return;
@@ -206,6 +213,21 @@ export default function FinanceInvoiceDetailDialog({
       active = false;
     };
   }, [invoiceId, open, tDetail]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    getFinanceDocumentSettings()
+      .then((payload) => {
+        if (active) setDocumentSettings(payload || {});
+      })
+      .catch(() => {
+        if (active) setDocumentSettings({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -242,6 +264,11 @@ export default function FinanceInvoiceDetailDialog({
     () => formatCurrency(invoice?.total, invoice?.currency),
     [invoice?.currency, invoice?.total]
   );
+  const currentDocumentDefaultLabel = useMemo(() => {
+    const explicitDefault = String(documentSettings?.finance_document_business_name || "").trim();
+    if (explicitDefault) return explicitDefault;
+    return String(invoice?.company?.name || "").trim() || "Business";
+  }, [documentSettings?.finance_document_business_name, invoice?.company?.name]);
 
   const refundSummary = invoice?.refund_summary || {};
   const paymentSummary = invoice?.payment_summary || {};
@@ -371,6 +398,7 @@ export default function FinanceInvoiceDetailDialog({
         notes: form.notes,
         terms: form.terms,
         billing_recipient: form.billing_recipient,
+        invoice_display_business_name: form.invoice_display_business_name,
         po_number: form.po_number,
         payment_terms: form.payment_terms,
         payment_instructions: form.payment_instructions,
@@ -379,6 +407,7 @@ export default function FinanceInvoiceDetailDialog({
       const nextInvoice = payload?.invoice || null;
       setInvoice(nextInvoice);
       setForm(buildFormFromInvoice(nextInvoice));
+      setDocumentSettings(nextInvoice?.finance_document_settings || documentSettings);
       setWarning(payload?.warning || "");
       enqueueSnackbar(tDetail("snackbar.invoiceSaved", "Invoice document details saved."), { variant: "success" });
       onSaved?.(nextInvoice);
@@ -386,6 +415,36 @@ export default function FinanceInvoiceDetailDialog({
       setError(err?.response?.data?.error || err?.message || tDetail("errors.saveFailed", "Unable to save invoice."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDocumentDefault = async () => {
+    setSavingDocumentDefault(true);
+    setError("");
+    try {
+      const payload = await updateFinanceDocumentSettings({
+        finance_document_business_name: form.invoice_display_business_name || "",
+      });
+      setDocumentSettings(payload || {});
+      const refreshed = await getFinanceInvoice(invoiceId);
+      const nextInvoice = refreshed?.invoice || null;
+      setInvoice(nextInvoice);
+      setForm(buildFormFromInvoice(nextInvoice));
+      enqueueSnackbar(
+        form.invoice_display_business_name?.trim()
+          ? tDetail("snackbar.documentDefaultSaved", "Finance document default saved for future invoices.")
+          : tDetail("snackbar.documentDefaultCleared", "Finance document default cleared. Company profile name will be used."),
+        { variant: "success" }
+      );
+      onSaved?.(nextInvoice);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.documentDefaultSave", "Unable to save the finance document default.")
+      );
+    } finally {
+      setSavingDocumentDefault(false);
     }
   };
 
@@ -1009,6 +1068,45 @@ export default function FinanceInvoiceDetailDialog({
                       value={form.due_date}
                       onChange={(event) => setField("due_date", event.target.value)}
                     />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <TextField
+                      fullWidth
+                      label={tDetail("document.fields.invoiceDisplayBusinessName", "Invoice display business name (optional)")}
+                      helperText={tDetail(
+                        "document.helpers.invoiceDisplayBusinessName",
+                        "Only affects this invoice's PDF/print. Leave blank to use your finance document default."
+                      )}
+                      value={form.invoice_display_business_name}
+                      onChange={(event) => setField("invoice_display_business_name", event.target.value)}
+                    />
+                  </Stack>
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={2}
+                    alignItems={{ xs: "flex-start", md: "center" }}
+                    justifyContent="space-between"
+                  >
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>
+                        {tDetail("document.defaultLabel", "Default for future invoices")}: {currentDocumentDefaultLabel}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {tDetail(
+                          "document.defaultHelper",
+                          "Default applies to future finance invoices only. It does not change your company profile, website, SEO, or public URL."
+                        )}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSaveDocumentDefault}
+                      disabled={savingDocumentDefault}
+                    >
+                      {savingDocumentDefault
+                        ? tDetail("common.saving", "Saving...")
+                        : tDetail("document.actions.saveDefault", "Save this as default for future invoices")}
+                    </Button>
                   </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
