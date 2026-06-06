@@ -85,6 +85,7 @@ import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const downloadBlob = (response, fallbackName) => {
   const blob =
@@ -1344,28 +1345,24 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <MenuItem value="converted_to_invoice">{t("manager.finance.shared.statuses.converted_to_invoice", { defaultValue: "Converted to Invoice" })}</MenuItem>
                 </Select>
               </FormControl>
-              <TextField
+              <ThemedDateField
                 size="small"
-                type="date"
                 label={tEstimate("toolbar.dateFrom", "From")}
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
                   setPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: { xs: "100%", md: 150 } }}
               />
-              <TextField
+              <ThemedDateField
                 size="small"
-                type="date"
                 label={tEstimate("toolbar.dateTo", "To")}
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value);
                   setPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: { xs: "100%", md: 150 } }}
               />
               <Button variant="outlined" onClick={load} sx={{ minWidth: 110 }}>

@@ -56,6 +56,7 @@ import {
 import { formatCurrency } from "../../utils/formatters";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const downloadBlob = (response, fallbackName) => {
   const blob =
@@ -744,29 +745,25 @@ export default function FinanceInvoicesPage({ onNavigate }) {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} lg={1.5}>
-              <TextField
+              <ThemedDateField
                 fullWidth
-                type="date"
                 label={tInvoice("filters.dateFrom", "From")}
                 value={dateFrom}
                 onChange={(event) => {
                   setDateFrom(event.target.value);
                   setPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12} sm={6} lg={1.5}>
-              <TextField
+              <ThemedDateField
                 fullWidth
-                type="date"
                 label={tInvoice("filters.dateTo", "To")}
                 value={dateTo}
                 onChange={(event) => {
                   setDateTo(event.target.value);
                   setPage(1);
                 }}
-                InputLabelProps={{ shrink: true }}
               />
             </Grid>
           </Grid>
