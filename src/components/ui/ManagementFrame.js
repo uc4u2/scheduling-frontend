@@ -16,6 +16,7 @@ export default function ManagementFrame({
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const isRtl = theme.direction === "rtl";
   const headerBg = `linear-gradient(135deg, ${alpha(theme.palette.primary.main, isDark ? 0.18 : 0.1)} 0%, ${alpha(
     theme.palette.secondary?.main || theme.palette.primary.main,
     isDark ? 0.14 : 0.06
@@ -39,9 +40,10 @@ export default function ManagementFrame({
               content: '""',
               position: "absolute",
               insetBlock: 16,
-              left: 0,
+              left: isRtl ? "auto" : 0,
+              right: isRtl ? 0 : "auto",
               width: 4,
-              borderRadius: "0 8px 8px 0",
+              borderRadius: isRtl ? "8px 0 0 8px" : "0 8px 8px 0",
               background: `linear-gradient(180deg, ${theme.palette.primary.main}, ${theme.palette.secondary?.main || theme.palette.primary.main})`,
             },
             "&:after": {
@@ -49,7 +51,8 @@ export default function ManagementFrame({
               position: "absolute",
               width: 160,
               height: 160,
-              right: -64,
+              right: isRtl ? "auto" : -64,
+              left: isRtl ? -64 : "auto",
               top: -90,
               borderRadius: "50%",
               background: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.08),

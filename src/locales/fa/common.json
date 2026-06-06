@@ -1620,7 +1620,8 @@
       "tabs": {
         "overview": "نمای کلی",
         "clients": "مشتری‌ها",
-        "quotes": "نقل‌قول‌ها",
+        "quote": "پیش‌فاکتور",
+        "quotes": "پیش‌فاکتورها",
         "estimates": "برآوردها",
         "workOrders": "دستور کارها",
         "materialsSupplies": "مواد و ملزومات",
