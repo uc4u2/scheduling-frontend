@@ -1646,7 +1646,6 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
 
 const NewManagementDashboard = ({ token, initialView, sectionOnly = false, supportMode = false }) => {
   const theme = useTheme();
-  const isRtl = theme.direction === "rtl";
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
@@ -3545,8 +3544,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     mx: 1,
     my: 0.35,
     px: drawerExpanded ? 1.5 : 1,
-    pl: isRtl ? 1 : drawerExpanded ? 1.5 + depth * 1.5 : 1,
-    pr: isRtl && drawerExpanded ? 1.5 + depth * 1.5 : 1,
+    pl: drawerExpanded ? 1.5 + depth * 1.5 : 1,
     minHeight: 42,
     borderRadius: "6px",
     color: active ? "primary.main" : "text.primary",
@@ -3560,12 +3558,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     "&:before": {
       content: active ? '""' : "none",
       position: "absolute",
-      left: isRtl ? "auto" : 0,
-      right: isRtl ? 0 : "auto",
+      left: 0,
       top: 9,
       bottom: 9,
       width: 3,
-      borderRadius: isRtl ? "8px 0 0 8px" : "0 8px 8px 0",
+      borderRadius: "0 8px 8px 0",
       backgroundColor: "primary.main",
     },
     "&:hover": {
@@ -3586,8 +3583,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
   const navIconSx = (active = false) => ({
     minWidth: 36,
-    mr: isRtl ? 0 : drawerExpanded ? 1.5 : 0,
-    ml: isRtl && drawerExpanded ? 1.5 : 0,
+    mr: drawerExpanded ? 1.5 : 0,
     justifyContent: "center",
     color: active ? "primary.main" : "text.secondary",
     "& .MuiSvgIcon-root": { fontSize: 20 },
@@ -3653,7 +3649,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                 <Tooltip
                   key={item.key}
                   title={item.tooltip || item.label}
-                  placement={isRtl ? "left" : "right"}
+                  placement="right"
                   arrow
                 >
                   <ListItemButton
@@ -3680,7 +3676,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             const groupActive = selectedView === item.key || isOpen || item.children.some((child) => child.key === selectedView);
             return (
               <Box key={item.key}>
-                <Tooltip title={item.tooltip || item.label} placement={isRtl ? "left" : "right"} arrow>
+                <Tooltip title={item.tooltip || item.label} placement="right" arrow>
                   <ListItemButton
                     selected={groupActive}
                     onClick={() => {
@@ -3705,17 +3701,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                       />
                     )}
                     {drawerExpanded && (
-                      <Box
-                        sx={{
-                          ml: isRtl ? 0 : "auto",
-                          mr: isRtl ? "auto" : 0,
-                          display: "flex",
-                          alignItems: "center",
-                          minWidth: 28,
-                          pl: isRtl ? 0 : 1,
-                          pr: isRtl ? 1 : 0,
-                        }}
-                      >
+                      <Box sx={{ ml: "auto", display: "flex", alignItems: "center", minWidth: 28, pl: 1 }}>
                         {isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                       </Box>
                     )}
@@ -3777,8 +3763,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           sx={{
             position: "fixed",
             top: navOffset + 8,
-            left: isRtl ? "auto" : 12,
-            right: isRtl ? 12 : "auto",
+            left: 12,
             zIndex: (theme) => theme.zIndex.drawer + 3,
             backgroundColor: (theme) => theme.palette.background.paper,
             border: (theme) => `1px solid ${theme.palette.divider}`,
@@ -3839,7 +3824,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       <Box
         component="main"
         sx={{
-          flex: "1 1 0",
+          flexGrow: 1,
           p: { xs: 2, md: 3 },
           backgroundColor: (theme) => theme.palette.background.default,
           backgroundImage: (theme) =>
@@ -3847,7 +3832,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
               ? `radial-gradient(circle at top left, ${alpha(theme.palette.primary.main, 0.12)}, transparent 34%)`
               : `radial-gradient(circle at top left, ${alpha(theme.palette.primary.main, 0.08)}, transparent 34%), linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.025)}, transparent 260px)`,
           minWidth: 0,
-          maxWidth: "100%",
+          width: "100%",
+          maxWidth: "none",
           mt: `${headerOffset}px`,
         }}
       >
