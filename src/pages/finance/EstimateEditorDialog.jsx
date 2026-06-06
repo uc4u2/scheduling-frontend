@@ -103,6 +103,9 @@ const blankForm = (taxContext = {}) => ({
   line_items: [makeLine()],
 });
 
+const getEstimateClientNotes = (estimate = {}) =>
+  String(estimate?.visible_notes || estimate?.notes || "").trim();
+
 const getDefaultEstimateCurrency = (taxContext = {}) =>
   normalizeCurrency(taxContext?.display_currency || getActiveCurrency("USD")) || "USD";
 
@@ -182,6 +185,7 @@ export default function EstimateEditorDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lineItemError, setLineItemError] = useState({ lineId: null, field: "" });
+  const [estimateNumberError, setEstimateNumberError] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
@@ -224,9 +228,9 @@ export default function EstimateEditorDialog({
           estimate.tax_context?.display_currency ||
           activeCurrency
         ) || activeCurrency,
-        notes: estimate.notes || "",
+        notes: getEstimateClientNotes(estimate),
         terms: estimate.terms || "",
-        visible_notes: estimate.visible_notes || "",
+        visible_notes: getEstimateClientNotes(estimate),
         internal_notes: estimate.internal_notes || "",
         discount_total: estimate.discount_total ?? 0,
         line_items: Array.isArray(estimate.line_items) && estimate.line_items.length
@@ -241,6 +245,7 @@ export default function EstimateEditorDialog({
     }
     setError("");
     setLineItemError({ lineId: null, field: "" });
+    setEstimateNumberError("");
   }, [activeCurrency, estimate, open, taxContext]);
 
   const preview = useMemo(() => {
@@ -261,9 +266,11 @@ export default function EstimateEditorDialog({
   const applyTemplate = (templateId) => {
     const template = templates.find((item) => String(item.id) === String(templateId));
     if (!template) return;
+    const templateNotes = String(template.default_notes || "").trim();
     setForm((prev) => ({
       ...prev,
-      notes: template.default_notes || prev.notes,
+      notes: templateNotes || prev.notes,
+      visible_notes: templateNotes || prev.visible_notes,
       terms: template.default_terms || prev.terms,
       line_items: Array.isArray(template.line_items) && template.line_items.length
         ? template.line_items.map((line, idx) => makeLine(line, idx))
@@ -271,7 +278,19 @@ export default function EstimateEditorDialog({
     }));
   };
 
-  const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const setField = (field, value) => {
+    if (field === "estimate_number") {
+      setEstimateNumberError("");
+    }
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const setClientNotes = (value) =>
+    setForm((prev) => ({
+      ...prev,
+      notes: value,
+      visible_notes: value,
+    }));
 
   const setLineField = (lineId, field, value) => {
     setForm((prev) => ({
@@ -337,6 +356,9 @@ export default function EstimateEditorDialog({
       return;
     }
     setLineItemError({ lineId: null, field: "" });
+    setEstimateNumberError("");
+
+    const clientNotes = String(form.visible_notes || form.notes || "").trim();
 
     const payload = {
       client_id: Number(form.client_id),
@@ -345,9 +367,9 @@ export default function EstimateEditorDialog({
       issue_date: form.issue_date,
       expiry_date: form.expiry_date || null,
       currency: form.currency || "USD",
-      notes: form.notes || "",
+      notes: clientNotes,
       terms: form.terms || "",
-      visible_notes: form.visible_notes || "",
+      visible_notes: clientNotes,
       internal_notes: form.internal_notes || "",
       discount_total: toNumber(form.discount_total, 0),
       line_items: validLineItems
@@ -372,7 +394,18 @@ export default function EstimateEditorDialog({
       onSaved?.(saved);
       onClose?.();
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || tEstimate("errors.saveFailed", "Unable to save estimate."));
+      const apiError = err?.response?.data?.error || err?.message || "";
+      if (apiError === "estimate_number_conflict") {
+        setEstimateNumberError(
+          tEstimate(
+            "errors.estimateNumberConflict",
+            "This estimate number is already in use. Choose another one or leave it blank to auto-generate."
+          )
+        );
+        setError("");
+      } else {
+        setError(apiError || tEstimate("errors.saveFailed", "Unable to save estimate."));
+      }
     } finally {
       setLoading(false);
     }
@@ -487,7 +520,20 @@ export default function EstimateEditorDialog({
               <TextField fullWidth label={tEstimate("fields.estimateTitle", "Estimate title")} placeholder={tEstimate("fields.estimateTitlePlaceholder", "Kitchen exhaust cleaning estimate")} value={form.title} onChange={(e) => setField("title", e.target.value)} />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField fullWidth label={tEstimate("fields.estimateNumber", "Estimate number")} value={form.estimate_number} onChange={(e) => setField("estimate_number", e.target.value)} />
+              <TextField
+                fullWidth
+                label={tEstimate("fields.estimateNumber", "Estimate number (optional)")}
+                value={form.estimate_number}
+                onChange={(e) => setField("estimate_number", e.target.value)}
+                error={Boolean(estimateNumberError)}
+                helperText={
+                  estimateNumberError ||
+                  tEstimate(
+                    "fields.estimateNumberHelp",
+                    "Leave blank to auto-generate the next estimate number."
+                  )
+                }
+              />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField
@@ -589,16 +635,37 @@ export default function EstimateEditorDialog({
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label={tEstimate("fields.visibleNotes", "Visible notes")} value={form.visible_notes} onChange={(e) => setField("visible_notes", e.target.value)} multiline minRows={2} />
+              <TextField
+                fullWidth
+                label={tEstimate("fields.clientNotes", "Client notes")}
+                value={form.visible_notes || form.notes}
+                onChange={(e) => setClientNotes(e.target.value)}
+                multiline
+                minRows={2}
+                helperText={tEstimate("fields.clientNotesHelp", "Visible to the client on the estimate page and estimate PDF.")}
+              />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth label={tEstimate("fields.internalNotes", "Internal notes")} value={form.internal_notes} onChange={(e) => setField("internal_notes", e.target.value)} multiline minRows={2} />
+              <TextField
+                fullWidth
+                label={tEstimate("fields.internalNotes", "Internal notes")}
+                value={form.internal_notes}
+                onChange={(e) => setField("internal_notes", e.target.value)}
+                multiline
+                minRows={2}
+                helperText={tEstimate("fields.internalNotesHelp", "For your team only. Not shown to the client.")}
+              />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField fullWidth label={tEstimate("fields.notes", "Notes")} value={form.notes} onChange={(e) => setField("notes", e.target.value)} multiline minRows={2} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField fullWidth label={tEstimate("fields.terms", "Terms")} value={form.terms} onChange={(e) => setField("terms", e.target.value)} multiline minRows={2} />
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label={tEstimate("fields.terms", "Terms")}
+                value={form.terms}
+                onChange={(e) => setField("terms", e.target.value)}
+                multiline
+                minRows={2}
+                helperText={tEstimate("fields.termsHelp", "Client-facing estimate terms such as expiry, deposit requirements, scheduling conditions, or exclusions.")}
+              />
             </Grid>
           </Grid>
 
