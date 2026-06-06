@@ -66,6 +66,7 @@ import {
   listEstimates,
   listManagerClients,
   reopenEstimateResponse,
+  sendFinanceInvoiceEmail,
   sendEstimate,
   sendEstimateEmail,
   updateEstimateTemplate,
@@ -246,6 +247,11 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailTarget, setEmailTarget] = useState(null);
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
+  const [invoiceEmailDialogOpen, setInvoiceEmailDialogOpen] = useState(false);
+  const [invoiceEmailSending, setInvoiceEmailSending] = useState(false);
+  const [invoiceEmailTarget, setInvoiceEmailTarget] = useState(null);
+  const [invoiceEmailTo, setInvoiceEmailTo] = useState("");
+  const [invoiceEmailMessage, setInvoiceEmailMessage] = useState("");
   const [expandedOpen, setExpandedOpen] = useState(false);
   const [postConvertInvoice, setPostConvertInvoice] = useState(null);
   const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
@@ -574,6 +580,42 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     }
   };
 
+  const openSendPaymentLinkEmailDialog = (item) => {
+    setInvoiceEmailTarget(item);
+    setInvoiceEmailTo(String(item?.client_email || "").trim());
+    setInvoiceEmailMessage("");
+    setInvoiceEmailDialogOpen(true);
+  };
+
+  const handleSendPaymentLinkEmail = async () => {
+    const invoiceId = invoiceEmailTarget?.converted_invoice_id;
+    if (!invoiceId) return;
+    if (!String(invoiceEmailTo || "").trim()) {
+      enqueueSnackbar(tEstimate("errors.emailRequired", "Enter an email address first."), { variant: "warning" });
+      return;
+    }
+    try {
+      setInvoiceEmailSending(true);
+      await sendFinanceInvoiceEmail(invoiceId, {
+        email: String(invoiceEmailTo || "").trim(),
+        message: String(invoiceEmailMessage || "").trim() || undefined,
+      });
+      enqueueSnackbar(tEstimate("snackbar.paymentLinkEmailSent", "Payment link email sent."), { variant: "success" });
+      setInvoiceEmailDialogOpen(false);
+      setInvoiceEmailTarget(null);
+      await load();
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error ||
+          err?.message ||
+          tEstimate("errors.sendPaymentLinkEmail", "Unable to send the payment link email."),
+        { variant: "error" }
+      );
+    } finally {
+      setInvoiceEmailSending(false);
+    }
+  };
+
   const handleReopenResponse = async (item) => {
     try {
       await reopenEstimateResponse(item.id);
@@ -714,6 +756,14 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 variant: "outlined",
                 disabled: rowBusy,
               },
+          {
+            key: "send-payment-link",
+            label: tEstimate("actions.sendPaymentLink", "Send Payment Link"),
+            icon: <EmailOutlinedIcon fontSize="small" />,
+            onClick: () => openSendPaymentLinkEmailDialog(item),
+            variant: "outlined",
+            disabled: rowBusy,
+          },
         ]
       : [
           {
@@ -846,6 +896,14 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         help: tEstimate("actionHelp.openPaymentLink", "Open the hosted Stripe invoice/payment page for this converted invoice."),
         icon: <LaunchIcon fontSize="small" />,
         onClick: () => handleOpenPaymentLink(item),
+        disabled: !item.converted_invoice_id || rowBusy,
+      },
+      {
+        key: "send-payment-link",
+        label: tEstimate("actions.sendPaymentLink", "Send Payment Link"),
+        help: tEstimate("actionHelp.sendPaymentLink", "Email the hosted Stripe payment link to the client for this converted invoice."),
+        icon: <EmailOutlinedIcon fontSize="small" />,
+        onClick: () => openSendPaymentLinkEmailDialog(item),
         disabled: !item.converted_invoice_id || rowBusy,
       },
       {
@@ -1610,6 +1668,32 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           <Button onClick={() => setEmailDialogOpen(false)} disabled={emailSending}>{tEstimate("common.cancel", "Cancel")}</Button>
           <Button variant="contained" onClick={handleSendEmail} disabled={emailSending}>
             {emailSending ? tEstimate("common.sending", "Sending...") : tEstimate("common.send", "Send")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={invoiceEmailDialogOpen} onClose={invoiceEmailSending ? undefined : () => setInvoiceEmailDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{tEstimate("invoiceEmailDialog.title", "Send Payment Link")}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <TextField
+              label={tEstimate("invoiceEmailDialog.recipientEmail", "Recipient email")}
+              value={invoiceEmailTo}
+              onChange={(event) => setInvoiceEmailTo(event.target.value)}
+            />
+            <TextField
+              label={tEstimate("invoiceEmailDialog.messageOptional", "Message (optional)")}
+              multiline
+              minRows={4}
+              value={invoiceEmailMessage}
+              onChange={(event) => setInvoiceEmailMessage(event.target.value)}
+              helperText={tEstimate("invoiceEmailDialog.helperText", "The payment link and invoice total will be added automatically.")}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInvoiceEmailDialogOpen(false)} disabled={invoiceEmailSending}>{tEstimate("common.cancel", "Cancel")}</Button>
+          <Button variant="contained" onClick={handleSendPaymentLinkEmail} disabled={invoiceEmailSending}>
+            {invoiceEmailSending ? tEstimate("common.sending", "Sending...") : tEstimate("common.send", "Send")}
           </Button>
         </DialogActions>
       </Dialog>

@@ -181,6 +181,7 @@ export default function EstimateEditorDialog({
   const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lineItemError, setLineItemError] = useState({ lineId: null, field: "" });
   const [auditOpen, setAuditOpen] = useState(false);
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
@@ -239,6 +240,7 @@ export default function EstimateEditorDialog({
       });
     }
     setError("");
+    setLineItemError({ lineId: null, field: "" });
   }, [activeCurrency, estimate, open, taxContext]);
 
   const preview = useMemo(() => {
@@ -318,17 +320,23 @@ export default function EstimateEditorDialog({
       ...prev,
       line_items: prev.line_items.length > 1 ? prev.line_items.filter((line) => line.id !== lineId) : prev.line_items,
     }));
+    setLineItemError((prev) => (prev.lineId === lineId ? { lineId: null, field: "" } : prev));
   };
 
   const handleSave = async () => {
     if (!form.client_id || !form.title || !form.issue_date) {
       setError(tEstimate("errors.requiredFields", "Client, title, and issue date are required."));
+      setLineItemError({ lineId: null, field: "" });
       return;
     }
-    if (!form.line_items.some((line) => String(line.description || "").trim())) {
-      setError(tEstimate("errors.lineItemRequired", "Add at least one line item."));
+    const validLineItems = form.line_items.filter((line) => String(line.description || "").trim());
+    if (!validLineItems.length) {
+      const firstLine = form.line_items[0];
+      setError(tEstimate("errors.lineItemDescriptionRequired", "Add a description to at least one line item before creating the estimate."));
+      setLineItemError({ lineId: firstLine?.id || null, field: "description" });
       return;
     }
+    setLineItemError({ lineId: null, field: "" });
 
     const payload = {
       client_id: Number(form.client_id),
@@ -342,8 +350,7 @@ export default function EstimateEditorDialog({
       visible_notes: form.visible_notes || "",
       internal_notes: form.internal_notes || "",
       discount_total: toNumber(form.discount_total, 0),
-      line_items: form.line_items
-        .filter((line) => String(line.description || "").trim())
+      line_items: validLineItems
         .map((line, idx) => ({
           item_type: line.item_type || "service",
           description: line.description,
@@ -654,7 +661,22 @@ export default function EstimateEditorDialog({
                       label={tEstimate("lineItems.fields.description", "Description")}
                       placeholder={presetMeta.descriptionPlaceholder}
                       value={line.description}
-                      onChange={(e) => setLineField(line.id, "description", e.target.value)}
+                      onChange={(e) => {
+                        setLineField(line.id, "description", e.target.value);
+                        if (lineItemError.lineId === line.id && lineItemError.field === "description") {
+                          const nextValue = String(e.target.value || "").trim();
+                          if (nextValue) {
+                            setLineItemError({ lineId: null, field: "" });
+                            setError("");
+                          }
+                        }
+                      }}
+                      error={lineItemError.lineId === line.id && lineItemError.field === "description"}
+                      helperText={
+                        lineItemError.lineId === line.id && lineItemError.field === "description"
+                          ? tEstimate("errors.lineItemDescriptionInline", "Description is required for at least one line item.")
+                          : " "
+                      }
                     />
                   </Grid>
                   <Grid item xs={6} md={1.5}>
@@ -846,13 +868,20 @@ export default function EstimateEditorDialog({
           </Grid>
         </Stack>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, gap: 1.5, flexWrap: "wrap" }}>
+        {error ? (
+          <Alert severity="error" sx={{ mb: 0, mr: "auto", flex: "1 1 360px" }}>
+            {error}
+          </Alert>
+        ) : <Box sx={{ flex: "1 1 360px" }} />}
+        <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
         <Button onClick={onClose} disabled={loading}>
           {tEstimate("common.cancel", "Cancel")}
         </Button>
         <Button variant="contained" onClick={handleSave} disabled={loading}>
           {loading ? tEstimate("common.saving", "Saving...") : estimate ? tEstimate("common.saveChanges", "Save changes") : tEstimate("common.createEstimate", "Create estimate")}
         </Button>
+        </Stack>
       </DialogActions>
       <FinanceAuditTimeline
         open={auditOpen}

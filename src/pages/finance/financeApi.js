@@ -125,6 +125,8 @@ export const downloadFinanceEstimatePdf = (id) =>
   fetchBinary(`/finance/estimates/${id}/pdf`);
 export const createFinanceInvoicePaymentLink = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-payment-link`));
+export const sendFinanceInvoiceEmail = (id, payload) =>
+  unwrap(api.post(`/finance/invoices/${id}/send-email`, payload));
 export const createSimilarFinanceInvoice = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-similar`));
 export const listFinanceInvoices = (params = {}) =>

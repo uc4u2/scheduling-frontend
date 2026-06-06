@@ -26,6 +26,7 @@ import {
   Typography,
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import LaunchIcon from "@mui/icons-material/Launch";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
@@ -47,6 +48,7 @@ import {
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
   listBillingRecipients,
+  sendFinanceInvoiceEmail,
   setFinanceClientDefaultBillingRecipient,
   updateFinanceDocumentSettings,
   updateFinanceInvoice,
@@ -175,6 +177,14 @@ const buildFormFromInvoice = (invoice) => ({
   },
 });
 
+const getPreferredInvoiceRecipientEmail = (invoice) =>
+  String(
+    invoice?.billing_recipient?.email ||
+      invoice?.billing_address_json?.email ||
+      invoice?.client?.email ||
+      ""
+  ).trim();
+
 export default function FinanceInvoiceDetailDialog({
   open,
   invoiceId,
@@ -211,6 +221,10 @@ export default function FinanceInvoiceDetailDialog({
   const [documentSettings, setDocumentSettings] = useState({});
   const [documentDefaultsForm, setDocumentDefaultsForm] = useState(blankDocumentDefaults);
   const [clientDefaultBillingRecipient, setClientDefaultBillingRecipient] = useState(null);
+  const [sendEmailOpen, setSendEmailOpen] = useState(false);
+  const [sendEmailTo, setSendEmailTo] = useState("");
+  const [sendEmailMessage, setSendEmailMessage] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -710,6 +724,46 @@ export default function FinanceInvoiceDetailDialog({
     }
   };
 
+  const openSendPaymentLinkDialog = () => {
+    setSendEmailTo(getPreferredInvoiceRecipientEmail(invoice));
+    setSendEmailMessage("");
+    setSendEmailOpen(true);
+  };
+
+  const handleSendPaymentLinkEmail = async () => {
+    if (!invoiceId) return;
+    const toEmail = String(sendEmailTo || "").trim();
+    if (!toEmail) {
+      setError(tDetail("errors.emailRequired", "Enter an email address first."));
+      return;
+    }
+    setSendingEmail(true);
+    setError("");
+    try {
+      const payload = await sendFinanceInvoiceEmail(invoiceId, {
+        email: toEmail,
+        message: String(sendEmailMessage || "").trim() || undefined,
+      });
+      const nextInvoice = payload?.invoice || null;
+      if (nextInvoice) {
+        setInvoice(nextInvoice);
+      }
+      enqueueSnackbar(tDetail("snackbar.paymentLinkEmailSent", "Payment link email sent."), {
+        variant: "success",
+      });
+      setSendEmailOpen(false);
+      onSaved?.(nextInvoice || invoice);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.sendPaymentLinkEmail", "Unable to send the payment link email.")
+      );
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleOpenPrintView = async () => {
     if (!invoice?.id || printOpening) return;
     setPrintOpening(true);
@@ -962,6 +1016,14 @@ export default function FinanceInvoiceDetailDialog({
                       disabled={loading || saving || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
                     >
                       {tDetail("actions.openPaymentPage", "Open payment page")}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<EmailOutlinedIcon />}
+                      onClick={openSendPaymentLinkDialog}
+                      disabled={loading || saving || !invoice?.id}
+                    >
+                      {tDetail("actions.sendPaymentLink", "Send payment link")}
                     </Button>
                     <Button
                       variant="outlined"
@@ -1647,6 +1709,42 @@ export default function FinanceInvoiceDetailDialog({
         onClose={() => setOfflinePaymentDialogOpen(false)}
         onSaved={handleOfflinePaymentSaved}
       />
+      <Dialog
+        open={sendEmailOpen}
+        onClose={sendingEmail ? undefined : () => setSendEmailOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>{tDetail("emailDialog.title", "Send Payment Link")}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <TextField
+              label={tDetail("emailDialog.recipientEmail", "Recipient email")}
+              value={sendEmailTo}
+              onChange={(event) => setSendEmailTo(event.target.value)}
+            />
+            <TextField
+              label={tDetail("emailDialog.messageOptional", "Message (optional)")}
+              multiline
+              minRows={4}
+              value={sendEmailMessage}
+              onChange={(event) => setSendEmailMessage(event.target.value)}
+              helperText={tDetail(
+                "emailDialog.helperText",
+                "The payment link and invoice total will be added automatically."
+              )}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSendEmailOpen(false)} disabled={sendingEmail}>
+            {tDetail("common.cancel", "Cancel")}
+          </Button>
+          <Button variant="contained" onClick={handleSendPaymentLinkEmail} disabled={sendingEmail}>
+            {sendingEmail ? tDetail("common.sending", "Sending...") : tDetail("common.send", "Send")}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <FinanceAuditTimeline
         open={auditOpen}
         onClose={() => setAuditOpen(false)}

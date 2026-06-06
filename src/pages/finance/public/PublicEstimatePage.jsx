@@ -237,6 +237,18 @@ export default function PublicEstimatePage() {
                       label={receiptLabel}
                       color={estimate?.client_accepted_at ? "success" : "default"}
                       variant={estimate?.client_accepted_at ? "filled" : "outlined"}
+                      sx={
+                        estimate?.client_accepted_at
+                          ? {
+                              bgcolor: "#1f7a3d",
+                              color: "#ffffff",
+                              fontWeight: 700,
+                              "& .MuiChip-label": {
+                                color: "#ffffff",
+                              },
+                            }
+                          : undefined
+                      }
                     />
                   </Stack>
                   {estimate?.client_response_name ? (
