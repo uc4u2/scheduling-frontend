@@ -934,7 +934,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
             <Box>
               <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.notes", "Notes")}</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}><TextField fullWidth label={tQuote("dialog.fields.visibleNotes", "Visible notes")} value={form.visible_notes} onChange={(e) => setForm((prev) => ({ ...prev, visible_notes: e.target.value }))} multiline minRows={2} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label={tQuote("dialog.fields.clientNotes", "Client notes")} value={form.visible_notes} onChange={(e) => setForm((prev) => ({ ...prev, visible_notes: e.target.value }))} multiline minRows={2} /></Grid>
                 <Grid item xs={12}><TextField fullWidth label={tQuote("dialog.fields.internalNotes", "Internal notes")} value={form.internal_notes} onChange={(e) => setForm((prev) => ({ ...prev, internal_notes: e.target.value }))} multiline minRows={2} /></Grid>
               </Grid>
             </Box>

@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Chip,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,6 +24,8 @@ import {
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { createEstimate, createManagerClient, updateEstimate } from "./financeApi";
@@ -186,6 +189,7 @@ export default function EstimateEditorDialog({
   const [error, setError] = useState("");
   const [lineItemError, setLineItemError] = useState({ lineId: null, field: "" });
   const [estimateNumberError, setEstimateNumberError] = useState("");
+  const [taxContextOpen, setTaxContextOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
@@ -454,12 +458,19 @@ export default function EstimateEditorDialog({
           {error ? <Alert severity="error">{error}</Alert> : null}
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
             {estimate?.quote_request_id ? <Chip size="small" variant="outlined" color="info" label={tEstimate("quoteRequestChip", "Created from quote request")} /> : null}
-            <Typography variant="caption" color="text.secondary">
-              {tEstimate(
+            <Tooltip
+              title={tEstimate(
                 "intro",
                 "Estimate is the proposed price. Convert it to an invoice when payment is needed, or create a work order when the job is ready to schedule."
               )}
-            </Typography>
+            >
+              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ width: "fit-content", cursor: "help" }}>
+                <Typography variant="caption" color="text.secondary">
+                  {tEstimate("introBadge", "What this estimate does")}
+                </Typography>
+                <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              </Stack>
+            </Tooltip>
           </Stack>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
@@ -467,7 +478,7 @@ export default function EstimateEditorDialog({
                 label={tEstimate("fields.client", "Client")}
                 value={form.client_id}
                 onChange={(nextId) => setField("client_id", nextId)}
-                helperText={tEstimate("fields.clientHelp", "Choose the official customer record for this estimate.")}
+                helperText=""
                 placeholder={tEstimate("fields.clientSearchPlaceholder", "Search client: ABC Property Management")}
                 initialOptions={clients}
                 fallbackLabel={tEstimate("fields.clientFallback", "Client")}
@@ -476,9 +487,9 @@ export default function EstimateEditorDialog({
                 <Button size="small" startIcon={<AddIcon fontSize="small" />} onClick={openCreateClient}>
                   {tEstimate("actions.createClient", "Create new client")}
                 </Button>
-                <Typography variant="caption" color="text.secondary">
-                  {tEstimate("fields.clientHelperNote", "Can’t find the client? Create it here and keep working on the estimate.")}
-                </Typography>
+                <Tooltip title={tEstimate("fields.clientHelperNote", "Can’t find the client? Create it here and keep working on the estimate.")}>
+                  <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                </Tooltip>
               </Stack>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -509,11 +520,6 @@ export default function EstimateEditorDialog({
                     </MenuItem>
                   ))}
                 </Select>
-                <FormHelperText>
-                  {templates.length
-                    ? tEstimate("fields.templateHelp", "Apply a saved estimate template to prefill notes, terms, and line items.")
-                    : tEstimate("fields.templateEmptyHelp", "Save an estimate as a template first, then reuse it here later.")}
-                </FormHelperText>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -526,12 +532,16 @@ export default function EstimateEditorDialog({
                 value={form.estimate_number}
                 onChange={(e) => setField("estimate_number", e.target.value)}
                 error={Boolean(estimateNumberError)}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title={tEstimate("fields.estimateNumberHelp", "Leave blank to auto-generate the next estimate number.")}>
+                      <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+                    </Tooltip>
+                  ),
+                }}
                 helperText={
                   estimateNumberError ||
-                  tEstimate(
-                    "fields.estimateNumberHelp",
-                    "Leave blank to auto-generate the next estimate number."
-                  )
+                  " "
                 }
               />
             </Grid>
@@ -542,7 +552,7 @@ export default function EstimateEditorDialog({
                 label={tEstimate("fields.currency", "Currency")}
                 value={form.currency}
                 onChange={(e) => setField("currency", e.target.value)}
-                helperText={tEstimate("fields.currencyHelp", "Starts with your company display currency from settings. You can override it for this estimate.")}
+                helperText=" "
                 InputProps={{
                   endAdornment: (
                     <Tooltip title={tEstimate("fields.currencyTooltip", "This defaults to the company display currency saved in settings. Change it here only when this estimate needs a different currency.")}>
@@ -563,58 +573,68 @@ export default function EstimateEditorDialog({
                 severity={effectiveTaxContext?.warning || currencyMismatch || jurisdictionMismatch ? "warning" : "info"}
                 variant="outlined"
               >
-                <Stack spacing={0.75}>
-                  <Typography variant="body2" fontWeight={700}>
-                    {tEstimate("taxContext.title", "Tax & currency context")}
-                  </Typography>
-                  <Typography variant="body2">
-                    {tEstimate("taxContext.displayCurrency", "Display currency")}: <strong>{effectiveTaxContext?.display_currency || form.currency || "USD"}</strong>
-                    {" • "}
-                    {tEstimate("taxContext.taxRegion", "Tax country/region")}: <strong>{effectiveTaxContext?.tax_country_code || "—"} / {effectiveTaxContext?.tax_region_code || "—"}</strong>
-                    {" • "}
-                    {tEstimate("taxContext.pricesIncludeTax", "Prices include tax")}: <strong>{effectiveTaxContext?.prices_include_tax ? tEstimate("taxContext.on", "ON") : tEstimate("taxContext.off", "OFF")}</strong>
-                    {effectiveTaxContext?.default_tax_rate != null ? (
-                      <>
+                <Stack spacing={1}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }}>
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2" fontWeight={700}>
+                        {tEstimate("taxContext.title", "Tax & currency context")}
+                      </Typography>
+                      <Typography variant="body2">
+                        {tEstimate("taxContext.displayCurrency", "Display currency")}: <strong>{effectiveTaxContext?.display_currency || form.currency || "USD"}</strong>
                         {" • "}
-                        {tEstimate("taxContext.defaultTaxRate", "Default tax rate")}: <strong>{Number(effectiveTaxContext.default_tax_rate).toFixed(2)}%</strong>
-                      </>
-                    ) : null}
-                  </Typography>
-                  <Typography variant="body2">
-                    {effectiveTaxContext?.prices_include_tax
-                      ? tEstimate("taxContext.includedMessage", "Prices include tax. Tax is backed out from taxable line prices.")
-                      : tEstimate("taxContext.addedMessage", "Tax is added on top based on your company tax settings.")}
-                  </Typography>
-                  <Typography variant="body2">
-                    {tEstimate(
-                      "taxContext.taxableLineRule",
-                      "Company default tax applies only to line items marked Taxable = Yes."
-                    )}
-                  </Typography>
-                  {currencyMismatch ? (
-                    <Typography variant="body2" color="warning.main">
-                      {tEstimate("taxContext.currencyMismatch", "This estimate uses a different currency than your current company display currency. Keep it only if that is intentional.")}
-                    </Typography>
-                  ) : null}
-                  {jurisdictionMismatch ? (
-                    <Typography variant="body2" color="warning.main">
-                      {tEstimate("taxContext.jurisdictionMismatch", "This estimate was created under different company tax settings than the current ones. Keep it only if that historical tax treatment is intentional.")}
-                    </Typography>
-                  ) : null}
-                  {effectiveTaxContext?.warning ? (
-                    <Typography variant="body2">{effectiveTaxContext.warning}</Typography>
-                  ) : null}
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {tEstimate(
-                        "taxContext.manageHelper",
-                        "Need to confirm or override the Business Finance default tax profile?"
-                      )}
-                    </Typography>
-                    <Button size="small" variant="text" onClick={() => onNavigate?.("finance-overview")}>
-                      {tEstimate("taxContext.manageAction", "Manage Business Finance tax")}
+                        {tEstimate("taxContext.taxRegion", "Tax country/region")}: <strong>{effectiveTaxContext?.tax_country_code || "—"} / {effectiveTaxContext?.tax_region_code || "—"}</strong>
+                        {" • "}
+                        {tEstimate("taxContext.pricesIncludeTax", "Prices include tax")}: <strong>{effectiveTaxContext?.prices_include_tax ? tEstimate("taxContext.on", "ON") : tEstimate("taxContext.off", "OFF")}</strong>
+                        {effectiveTaxContext?.default_tax_rate != null ? (
+                          <>
+                            {" • "}
+                            {tEstimate("taxContext.defaultTaxRate", "Default tax rate")}: <strong>{Number(effectiveTaxContext.default_tax_rate).toFixed(2)}%</strong>
+                          </>
+                        ) : null}
+                      </Typography>
+                    </Stack>
+                    <Button
+                      size="small"
+                      variant="text"
+                      endIcon={taxContextOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      onClick={() => setTaxContextOpen((prev) => !prev)}
+                    >
+                      {taxContextOpen
+                        ? tEstimate("taxContext.hideDetails", "Hide details")
+                        : tEstimate("taxContext.showDetails", "Show details")}
                     </Button>
                   </Stack>
+                  <Collapse in={taxContextOpen}>
+                    <Stack spacing={0.75}>
+                      <Typography variant="body2">
+                        {effectiveTaxContext?.prices_include_tax
+                          ? tEstimate("taxContext.includedMessage", "Prices include tax. Tax is backed out from taxable line prices.")
+                          : tEstimate("taxContext.addedMessage", "Tax is added on top based on your company tax settings.")}
+                      </Typography>
+                      <Typography variant="body2">
+                        {tEstimate(
+                          "taxContext.taxableLineRule",
+                          "Company default tax applies only to line items marked Taxable = Yes."
+                        )}
+                      </Typography>
+                      {currencyMismatch ? (
+                        <Typography variant="body2" color="warning.main">
+                          {tEstimate("taxContext.currencyMismatch", "This estimate uses a different currency than your current company display currency. Keep it only if that is intentional.")}
+                        </Typography>
+                      ) : null}
+                      {jurisdictionMismatch ? (
+                        <Typography variant="body2" color="warning.main">
+                          {tEstimate("taxContext.jurisdictionMismatch", "This estimate was created under different company tax settings than the current ones. Keep it only if that historical tax treatment is intentional.")}
+                        </Typography>
+                      ) : null}
+                      {effectiveTaxContext?.warning ? (
+                        <Typography variant="body2">{effectiveTaxContext.warning}</Typography>
+                      ) : null}
+                      <Button size="small" variant="text" onClick={() => onNavigate?.("finance-overview")} sx={{ alignSelf: "flex-start" }}>
+                        {tEstimate("taxContext.manageAction", "Manage Business Finance tax")}
+                      </Button>
+                    </Stack>
+                  </Collapse>
                 </Stack>
               </Alert>
             </Grid>
@@ -642,7 +662,13 @@ export default function EstimateEditorDialog({
                 onChange={(e) => setClientNotes(e.target.value)}
                 multiline
                 minRows={2}
-                helperText={tEstimate("fields.clientNotesHelp", "Visible to the client on the estimate page and estimate PDF.")}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title={tEstimate("fields.clientNotesHelp", "Visible to the client on the estimate page and estimate PDF.")}>
+                      <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+                    </Tooltip>
+                  ),
+                }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -653,7 +679,13 @@ export default function EstimateEditorDialog({
                 onChange={(e) => setField("internal_notes", e.target.value)}
                 multiline
                 minRows={2}
-                helperText={tEstimate("fields.internalNotesHelp", "For your team only. Not shown to the client.")}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title={tEstimate("fields.internalNotesHelp", "For your team only. Not shown to the client.")}>
+                      <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+                    </Tooltip>
+                  ),
+                }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -664,26 +696,36 @@ export default function EstimateEditorDialog({
                 onChange={(e) => setField("terms", e.target.value)}
                 multiline
                 minRows={2}
-                helperText={tEstimate("fields.termsHelp", "Client-facing estimate terms such as expiry, deposit requirements, scheduling conditions, or exclusions.")}
+                InputProps={{
+                  endAdornment: (
+                    <Tooltip title={tEstimate("fields.termsHelp", "Client-facing estimate terms such as expiry, deposit requirements, scheduling conditions, or exclusions.")}>
+                      <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+                    </Tooltip>
+                  ),
+                }}
               />
             </Grid>
           </Grid>
 
           <Stack spacing={1.5}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6" fontWeight={700}>
-                {tEstimate("lineItems.title", "Line items")}
-              </Typography>
+              <Stack direction="row" spacing={0.75} alignItems="center">
+                <Typography variant="h6" fontWeight={700}>
+                  {tEstimate("lineItems.title", "Line items")}
+                </Typography>
+                <Tooltip
+                  title={tEstimate(
+                    "lineItems.pricingGuide",
+                    "Set the price on each line with quantity and unit price. Presets help structure the line, but totals come from the values you enter here."
+                  )}
+                >
+                  <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+                </Tooltip>
+              </Stack>
               <Button startIcon={<AddIcon />} onClick={addLine}>
                 {tEstimate("lineItems.addLine", "Add line")}
               </Button>
             </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {tEstimate(
-                "lineItems.pricingGuide",
-                "Set the price on each line with quantity and unit price. Presets help structure the line, but totals come from the values you enter here."
-              )}
-            </Typography>
               {form.line_items.map((line) => (
               <Box
                 key={line.id}
@@ -901,8 +943,10 @@ export default function EstimateEditorDialog({
               <TextField fullWidth label={tEstimate("fields.discountTotal", "Discount total")} type="number" inputProps={{ step: "0.01" }} value={form.discount_total} onChange={(e) => setField("discount_total", e.target.value)} />
             </Grid>
             <Grid item xs={12} md={8}>
-              <Alert severity="info">
-                {tEstimate("previewInfo", "Preview only. The backend recalculates subtotal, tax, and total using your Business Finance tax settings when you save.")}
+              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>
+                <Typography variant="body2">
+                  {tEstimate("previewInfoShort", "Preview only. Final totals are confirmed when you save.")}
+                </Typography>
               </Alert>
             </Grid>
             <Grid item xs={12}>
