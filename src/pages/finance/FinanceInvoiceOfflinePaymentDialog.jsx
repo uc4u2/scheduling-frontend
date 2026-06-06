@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Checkbox,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -46,6 +47,7 @@ export default function FinanceInvoiceOfflinePaymentDialog({
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -55,10 +57,22 @@ export default function FinanceInvoiceOfflinePaymentDialog({
     setReferenceNote("");
     setConfirmed(false);
     setError("");
+    setShowHelp(false);
   }, [open, remainingBalance]);
 
   const amountNumber = useMemo(() => Number(amount || 0), [amount]);
   const validAmount = Number.isFinite(amountNumber) && amountNumber > 0 && amountNumber <= remainingBalance;
+  const nextRemainingBalance = useMemo(
+    () => Math.max(remainingBalance - (Number.isFinite(amountNumber) ? amountNumber : 0), 0),
+    [amountNumber, remainingBalance]
+  );
+  const paymentImpactText = useMemo(() => {
+    if (!validAmount) return "";
+    if (nextRemainingBalance <= 0) {
+      return "This will mark the invoice as paid.";
+    }
+    return "This will record a partial payment.";
+  }, [nextRemainingBalance, validAmount]);
 
   const handleSave = async () => {
     if (!invoice?.id || saving) return;
@@ -86,9 +100,29 @@ export default function FinanceInvoiceOfflinePaymentDialog({
       <DialogContent dividers>
         <Stack spacing={2}>
           {error ? <Alert severity="error">{error}</Alert> : null}
-          <Alert severity="info">
+          <Alert
+            severity="info"
+            action={
+              <Button size="small" onClick={() => setShowHelp((value) => !value)}>
+                {showHelp ? "Hide help" : "What this does"}
+              </Button>
+            }
+          >
             Record a cash, e-transfer, cheque, bank transfer, or external terminal payment without charging the customer through Stripe.
           </Alert>
+          <Collapse in={showHelp}>
+            <Stack spacing={0.75} sx={{ px: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Use this only when the client already paid outside the hosted payment link.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This records the payment on the invoice, updates the remaining balance, and keeps finance reporting accurate.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                It does not send a receipt and it does not charge the customer through Stripe.
+              </Typography>
+            </Stack>
+          </Collapse>
           <Typography variant="body2" color="text.secondary">
             Remaining balance: {formatCurrency(remainingBalance, invoice?.currency)}
           </Typography>
@@ -101,6 +135,14 @@ export default function FinanceInvoiceOfflinePaymentDialog({
             helperText="Amount cannot exceed the remaining balance."
             fullWidth
           />
+          {paymentImpactText ? (
+            <Alert severity="success" variant="outlined">
+              <Typography variant="body2">{paymentImpactText}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                After saving, remaining balance will be {formatCurrency(nextRemainingBalance, invoice?.currency)}.
+              </Typography>
+            </Alert>
+          ) : null}
           <FormControl fullWidth>
             <InputLabel>Payment method</InputLabel>
             <Select
@@ -124,10 +166,11 @@ export default function FinanceInvoiceOfflinePaymentDialog({
             fullWidth
           />
           <TextField
-            label="Reference / note"
+            label="Reference number or internal note"
             value={referenceNote}
             onChange={(event) => setReferenceNote(event.target.value)}
-            placeholder="Cheque number, e-transfer confirmation, or note"
+            placeholder="Cheque #1042, e-transfer confirmation, terminal receipt ID, or cash collected by manager"
+            helperText="Use this for a receipt number, transfer confirmation, cheque number, or internal collection note."
             fullWidth
             multiline
             minRows={2}
@@ -152,7 +195,7 @@ export default function FinanceInvoiceOfflinePaymentDialog({
           onClick={handleSave}
           disabled={saving || !confirmed || !validAmount || !paidAt}
         >
-          {saving ? "Recording..." : "Record payment"}
+          {saving ? "Recording..." : "Record offline payment"}
         </Button>
       </DialogActions>
     </Dialog>
