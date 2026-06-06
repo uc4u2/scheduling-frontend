@@ -1,6 +1,7 @@
 export const getClientDisplayName = (client, fallback = "Client") => {
+  const explicitName = String(client?.name || "").trim();
   const fullName = `${client?.first_name || ""} ${client?.last_name || ""}`.trim();
-  return fullName || client?.email || fallback;
+  return explicitName || fullName || client?.email || fallback;
 };
 
 export const buildClientCreatePayload = ({ name = "", email = "", phone = "" } = {}) => {
