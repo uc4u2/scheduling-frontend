@@ -43,9 +43,12 @@ import {
   createSimilarFinanceInvoice,
   createFinanceInvoicePaymentLink,
   downloadFinanceInvoicePdf,
+  getFinanceDocumentSettings,
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
   listBillingRecipients,
+  setFinanceClientDefaultBillingRecipient,
+  updateFinanceDocumentSettings,
   updateFinanceInvoice,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
@@ -87,6 +90,7 @@ const blankForm = {
   description: "",
   notes: "",
   terms: "",
+  invoice_display_business_name: "",
   po_number: "",
   payment_terms: "",
   payment_instructions: "",
@@ -94,7 +98,27 @@ const blankForm = {
   billing_recipient: blankBillingRecipient,
 };
 
+const blankDocumentDefaults = {
+  finance_document_business_name: "",
+  default_due_days: "",
+  default_payment_terms_summary: "",
+  default_invoice_terms: "",
+  default_payment_instructions: "",
+  default_customer_message: "",
+};
+
 const coalesceText = (value) => (value == null ? "" : String(value));
+const normalizeDocumentSettings = (settings) => ({
+  finance_document_business_name: settings?.finance_document_business_name || "",
+  default_due_days:
+    settings?.default_due_days == null || settings?.default_due_days === ""
+      ? ""
+      : String(settings.default_due_days),
+  default_payment_terms_summary: settings?.default_payment_terms_summary || "",
+  default_invoice_terms: settings?.default_invoice_terms || "",
+  default_payment_instructions: settings?.default_payment_instructions || "",
+  default_customer_message: settings?.default_customer_message || "",
+});
 const fallbackStatusLabel = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
   if (!normalized) return "Pending";
@@ -140,6 +164,7 @@ const buildFormFromInvoice = (invoice) => ({
   description: invoice?.description || "",
   notes: invoice?.notes || "",
   terms: invoice?.terms || "",
+  invoice_display_business_name: invoice?.custom_fields_json?.invoice_display_business_name || "",
   po_number: invoice?.custom_fields_json?.po_number || "",
   payment_terms: invoice?.custom_fields_json?.payment_terms || "",
   payment_instructions: invoice?.custom_fields_json?.payment_instructions || "",
@@ -175,12 +200,17 @@ export default function FinanceInvoiceDetailDialog({
   const [billingRecipientsError, setBillingRecipientsError] = useState("");
   const [selectedBillingRecipientId, setSelectedBillingRecipientId] = useState("");
   const [savingBillingRecipient, setSavingBillingRecipient] = useState(false);
+  const [savingClientDefaultBillingRecipient, setSavingClientDefaultBillingRecipient] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [offlinePaymentDialogOpen, setOfflinePaymentDialogOpen] = useState(false);
   const [printOpening, setPrintOpening] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [creatingSimilar, setCreatingSimilar] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [savingDocumentDefault, setSavingDocumentDefault] = useState(false);
+  const [documentSettings, setDocumentSettings] = useState({});
+  const [documentDefaultsForm, setDocumentDefaultsForm] = useState(blankDocumentDefaults);
+  const [clientDefaultBillingRecipient, setClientDefaultBillingRecipient] = useState(null);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -194,6 +224,10 @@ export default function FinanceInvoiceDetailDialog({
         const nextInvoice = payload?.invoice || null;
         setInvoice(nextInvoice);
         setForm(buildFormFromInvoice(nextInvoice));
+        setClientDefaultBillingRecipient(nextInvoice?.client_default_billing_recipient || null);
+        const nextSettings = normalizeDocumentSettings(nextInvoice?.finance_document_settings || {});
+        setDocumentSettings(nextSettings);
+        setDocumentDefaultsForm(nextSettings);
       })
       .catch((err) => {
         if (!active) return;
@@ -206,6 +240,27 @@ export default function FinanceInvoiceDetailDialog({
       active = false;
     };
   }, [invoiceId, open, tDetail]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    getFinanceDocumentSettings()
+      .then((payload) => {
+        if (!active) return;
+        const nextSettings = normalizeDocumentSettings(payload || {});
+        setDocumentSettings(nextSettings);
+        setDocumentDefaultsForm(nextSettings);
+      })
+      .catch(() => {
+        if (active) {
+          setDocumentSettings(blankDocumentDefaults);
+          setDocumentDefaultsForm(blankDocumentDefaults);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -242,6 +297,21 @@ export default function FinanceInvoiceDetailDialog({
     () => formatCurrency(invoice?.total, invoice?.currency),
     [invoice?.currency, invoice?.total]
   );
+  const currentDocumentDefaultLabel = useMemo(() => {
+    const explicitDefault = String(documentSettings?.finance_document_business_name || "").trim();
+    if (explicitDefault) return explicitDefault;
+    return String(invoice?.company?.name || "").trim() || "Business";
+  }, [documentSettings?.finance_document_business_name, invoice?.company?.name]);
+  const recentClientBillingSnapshot = invoice?.recent_client_billing_snapshot?.snapshot || null;
+  const clientId = invoice?.client?.id || invoice?.client_id || null;
+  const resolvedClientDefaultRecipient = useMemo(() => {
+    if (!clientDefaultBillingRecipient?.id) return null;
+    return (
+      billingRecipients.find(
+        (row) => String(row.id) === String(clientDefaultBillingRecipient.id)
+      ) || null
+    );
+  }, [billingRecipients, clientDefaultBillingRecipient]);
 
   const refundSummary = invoice?.refund_summary || {};
   const paymentSummary = invoice?.payment_summary || {};
@@ -290,6 +360,12 @@ export default function FinanceInvoiceDetailDialog({
       },
     }));
 
+  const setDocumentDefaultField = (field, value) =>
+    setDocumentDefaultsForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
   const applySavedBillingRecipient = () => {
     const recipient = billingRecipients.find((row) => String(row.id) === String(selectedBillingRecipientId));
     if (!recipient) return;
@@ -311,6 +387,20 @@ export default function FinanceInvoiceDetailDialog({
       },
     }));
     enqueueSnackbar(tDetail("snackbar.billingRecipientApplied", "Saved billing recipient copied into this invoice."), { variant: "success" });
+  };
+
+  const applyRecentClientBillingSnapshot = () => {
+    if (!recentClientBillingSnapshot) return;
+    setForm((prev) => ({
+      ...prev,
+      billing_recipient: {
+        ...blankBillingRecipient,
+        ...recentClientBillingSnapshot,
+      },
+    }));
+    enqueueSnackbar(tDetail("snackbar.recentBillingSnapshotApplied", "Last billing details used for this client copied into this invoice."), {
+      variant: "success",
+    });
   };
 
   const handleSaveBillingRecipient = async () => {
@@ -359,6 +449,128 @@ export default function FinanceInvoiceDetailDialog({
     }
   };
 
+  const applyClientDefaultBillingRecipient = () => {
+    if (!resolvedClientDefaultRecipient) {
+      enqueueSnackbar(
+        tDetail(
+          "errors.clientDefaultRecipientMissing",
+          "The client default billing profile could not be matched to a saved billing recipient."
+        ),
+        { variant: "warning" }
+      );
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      billing_recipient: {
+        ...blankBillingRecipient,
+        company_name: resolvedClientDefaultRecipient.company_name || "",
+        contact_name: resolvedClientDefaultRecipient.contact_name || "",
+        email: resolvedClientDefaultRecipient.email || "",
+        phone: resolvedClientDefaultRecipient.phone || "",
+        address_street: resolvedClientDefaultRecipient.address_street || "",
+        address_city: resolvedClientDefaultRecipient.address_city || "",
+        address_state: resolvedClientDefaultRecipient.address_state || "",
+        address_province: resolvedClientDefaultRecipient.address_province || "",
+        address_zip: resolvedClientDefaultRecipient.address_zip || "",
+        address_country: resolvedClientDefaultRecipient.address_country || "",
+        tax_id: resolvedClientDefaultRecipient.tax_id || "",
+      },
+    }));
+    enqueueSnackbar(
+      tDetail(
+        "snackbar.clientDefaultBillingApplied",
+        "Client default billing profile copied into this invoice."
+      ),
+      { variant: "success" }
+    );
+  };
+
+  const handleSetSelectedAsClientDefault = async () => {
+    if (!clientId || !selectedBillingRecipientId) return;
+    setSavingClientDefaultBillingRecipient(true);
+    setError("");
+    try {
+      const payload = await setFinanceClientDefaultBillingRecipient(
+        clientId,
+        Number(selectedBillingRecipientId)
+      );
+      const nextSummary =
+        payload?.client?.default_billing_recipient_summary ||
+        payload?.default_billing_recipient_summary ||
+        null;
+      setClientDefaultBillingRecipient(nextSummary);
+      setInvoice((prev) =>
+        prev
+          ? {
+              ...prev,
+              client_default_billing_recipient: nextSummary,
+              client: payload?.client
+                ? {
+                    ...(prev.client || {}),
+                    ...payload.client,
+                  }
+                : prev.client,
+            }
+          : prev
+      );
+      enqueueSnackbar(
+        tDetail("snackbar.clientDefaultBillingSaved", "Client default billing profile saved."),
+        { variant: "success" }
+      );
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail(
+            "errors.clientDefaultBillingSave",
+            "Unable to save the client default billing profile."
+          )
+      );
+    } finally {
+      setSavingClientDefaultBillingRecipient(false);
+    }
+  };
+
+  const handleClearClientDefaultBillingRecipient = async () => {
+    if (!clientId) return;
+    setSavingClientDefaultBillingRecipient(true);
+    setError("");
+    try {
+      const payload = await setFinanceClientDefaultBillingRecipient(clientId, null);
+      setClientDefaultBillingRecipient(null);
+      setInvoice((prev) =>
+        prev
+          ? {
+              ...prev,
+              client_default_billing_recipient: null,
+              client: payload?.client
+                ? {
+                    ...(prev.client || {}),
+                    ...payload.client,
+                  }
+                : prev.client,
+            }
+          : prev
+      );
+      enqueueSnackbar(
+        tDetail("snackbar.clientDefaultBillingCleared", "Client default billing profile cleared."),
+        { variant: "success" }
+      );
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail(
+            "errors.clientDefaultBillingClear",
+            "Unable to clear the client default billing profile."
+          )
+      );
+    } finally {
+      setSavingClientDefaultBillingRecipient(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError("");
@@ -371,6 +583,7 @@ export default function FinanceInvoiceDetailDialog({
         notes: form.notes,
         terms: form.terms,
         billing_recipient: form.billing_recipient,
+        invoice_display_business_name: form.invoice_display_business_name,
         po_number: form.po_number,
         payment_terms: form.payment_terms,
         payment_instructions: form.payment_instructions,
@@ -379,6 +592,10 @@ export default function FinanceInvoiceDetailDialog({
       const nextInvoice = payload?.invoice || null;
       setInvoice(nextInvoice);
       setForm(buildFormFromInvoice(nextInvoice));
+      setClientDefaultBillingRecipient(nextInvoice?.client_default_billing_recipient || null);
+      const nextSettings = normalizeDocumentSettings(nextInvoice?.finance_document_settings || documentSettings);
+      setDocumentSettings(nextSettings);
+      setDocumentDefaultsForm(nextSettings);
       setWarning(payload?.warning || "");
       enqueueSnackbar(tDetail("snackbar.invoiceSaved", "Invoice document details saved."), { variant: "success" });
       onSaved?.(nextInvoice);
@@ -386,6 +603,67 @@ export default function FinanceInvoiceDetailDialog({
       setError(err?.response?.data?.error || err?.message || tDetail("errors.saveFailed", "Unable to save invoice."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDocumentDefault = async () => {
+    setSavingDocumentDefault(true);
+    setError("");
+    try {
+      const payload = await updateFinanceDocumentSettings({
+        finance_document_business_name: form.invoice_display_business_name || "",
+      });
+      const nextSettings = normalizeDocumentSettings(payload || {});
+      setDocumentSettings(nextSettings);
+      setDocumentDefaultsForm(nextSettings);
+      const refreshed = await getFinanceInvoice(invoiceId);
+      const nextInvoice = refreshed?.invoice || null;
+      setInvoice(nextInvoice);
+      setForm(buildFormFromInvoice(nextInvoice));
+      enqueueSnackbar(
+        form.invoice_display_business_name?.trim()
+          ? tDetail("snackbar.documentDefaultSaved", "Finance document default saved for future invoices.")
+          : tDetail("snackbar.documentDefaultCleared", "Finance document default cleared. Company profile name will be used."),
+        { variant: "success" }
+      );
+      onSaved?.(nextInvoice);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.documentDefaultSave", "Unable to save the finance document default.")
+      );
+    } finally {
+      setSavingDocumentDefault(false);
+    }
+  };
+
+  const handleSaveInvoiceDefaults = async () => {
+    setSavingDocumentDefault(true);
+    setError("");
+    try {
+      const payload = await updateFinanceDocumentSettings({
+        finance_document_business_name: documentSettings?.finance_document_business_name || "",
+        default_due_days: documentDefaultsForm.default_due_days === "" ? null : documentDefaultsForm.default_due_days,
+        default_payment_terms_summary: documentDefaultsForm.default_payment_terms_summary || "",
+        default_invoice_terms: documentDefaultsForm.default_invoice_terms || "",
+        default_payment_instructions: documentDefaultsForm.default_payment_instructions || "",
+        default_customer_message: documentDefaultsForm.default_customer_message || "",
+      });
+      const nextSettings = normalizeDocumentSettings(payload || {});
+      setDocumentSettings(nextSettings);
+      setDocumentDefaultsForm(nextSettings);
+      enqueueSnackbar(tDetail("snackbar.invoiceDefaultsSaved", "Finance invoice defaults saved."), {
+        variant: "success",
+      });
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.invoiceDefaultsSave", "Unable to save finance invoice defaults.")
+      );
+    } finally {
+      setSavingDocumentDefault(false);
     }
   };
 
@@ -910,7 +1188,98 @@ export default function FinanceInvoiceDetailDialog({
                     >
                       {savingBillingRecipient ? tDetail("common.saving", "Saving...") : tDetail("billing.saveForNextTime", "Save for next time")}
                     </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSetSelectedAsClientDefault}
+                      disabled={!clientId || !selectedBillingRecipientId || savingClientDefaultBillingRecipient}
+                      sx={{ minWidth: { md: 220 } }}
+                    >
+                      {savingClientDefaultBillingRecipient
+                        ? tDetail("common.saving", "Saving...")
+                        : tDetail("billing.setSelectedAsDefault", "Set selected as client default")}
+                    </Button>
                   </Stack>
+                  {clientId ? (
+                    clientDefaultBillingRecipient ? (
+                      <Alert
+                        severity="info"
+                        action={
+                          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={applyClientDefaultBillingRecipient}
+                              disabled={!resolvedClientDefaultRecipient}
+                            >
+                              {tDetail("billing.applyClientDefault", "Apply client default billing profile")}
+                            </Button>
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={handleClearClientDefaultBillingRecipient}
+                              disabled={savingClientDefaultBillingRecipient}
+                            >
+                              {tDetail("billing.clearClientDefault", "Clear client default")}
+                            </Button>
+                          </Stack>
+                        }
+                      >
+                        <Typography variant="body2" fontWeight={700}>
+                          {tDetail(
+                            "billing.clientDefaultAvailable",
+                            "Client default billing profile available. You can apply it to this invoice, but existing invoice billing details are not overwritten automatically."
+                          )}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          {clientDefaultBillingRecipient.company_name ||
+                            clientDefaultBillingRecipient.contact_name ||
+                            tDetail("billing.clientDefaultFallback", "Saved billing profile")}
+                          {clientDefaultBillingRecipient.address_summary
+                            ? ` • ${clientDefaultBillingRecipient.address_summary}`
+                            : ""}
+                          {clientDefaultBillingRecipient.tax_id
+                            ? ` • ${tDetail("billing.labels.taxIdShort", "Tax ID")}: ${clientDefaultBillingRecipient.tax_id}`
+                            : ""}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                          {tDetail(
+                            "billing.clientDefaultHelper",
+                            "Applies to future finance invoices for this client. Existing invoices are not changed."
+                          )}
+                        </Typography>
+                      </Alert>
+                    ) : (
+                      <Alert severity="info">
+                        <Typography variant="body2" fontWeight={700}>
+                          {tDetail(
+                            "billing.noClientDefault",
+                            "No client default billing profile is set yet."
+                          )}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {tDetail(
+                            "billing.noClientDefaultHelper",
+                            "Applies to future finance invoices for this client. Existing invoices are not changed."
+                          )}
+                        </Typography>
+                      </Alert>
+                    )
+                  ) : null}
+                  {recentClientBillingSnapshot ? (
+                    <Alert
+                      severity="info"
+                      action={
+                        <Button color="inherit" size="small" onClick={applyRecentClientBillingSnapshot}>
+                          {tDetail("billing.applyRecentSnapshot", "Apply last billing details")}
+                        </Button>
+                      }
+                    >
+                      {tDetail(
+                        "billing.recentSnapshotHelp",
+                        "Last billing details used for this client are available if you want to reuse them."
+                      )}
+                    </Alert>
+                  ) : null}
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                       fullWidth
@@ -979,7 +1348,11 @@ export default function FinanceInvoiceDetailDialog({
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                       fullWidth
-                      label={tDetail("billing.fields.taxId", "Tax ID")}
+                      label={tDetail("billing.fields.taxId", "Billing Tax ID")}
+                      helperText={tDetail(
+                        "billing.helpers.taxId",
+                        "This is the customer or billing recipient tax ID. Your business tax ID comes from Company Profile."
+                      )}
                       value={coalesceText(form.billing_recipient.tax_id)}
                       onChange={(event) => setBillingField("tax_id", event.target.value)}
                     />
@@ -1013,13 +1386,56 @@ export default function FinanceInvoiceDetailDialog({
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                       fullWidth
+                      label={tDetail("document.fields.invoiceDisplayBusinessName", "Invoice display business name (optional)")}
+                      helperText={tDetail(
+                        "document.helpers.invoiceDisplayBusinessName",
+                        "Only affects this invoice's PDF/print. Leave blank to use your finance document default."
+                      )}
+                      value={form.invoice_display_business_name}
+                      onChange={(event) => setField("invoice_display_business_name", event.target.value)}
+                    />
+                  </Stack>
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={2}
+                    alignItems={{ xs: "flex-start", md: "center" }}
+                    justifyContent="space-between"
+                  >
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>
+                        {tDetail("document.defaultLabel", "Default for future invoices")}: {currentDocumentDefaultLabel}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {tDetail(
+                          "document.defaultHelper",
+                          "Default applies to future finance invoices only. It does not change your company profile, website, SEO, or public URL."
+                        )}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSaveDocumentDefault}
+                      disabled={savingDocumentDefault}
+                    >
+                      {savingDocumentDefault
+                        ? tDetail("common.saving", "Saving...")
+                        : tDetail("document.actions.saveDefault", "Save this as default for future invoices")}
+                    </Button>
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <TextField
+                      fullWidth
                       label={tDetail("document.fields.poNumber", "PO number")}
                       value={form.po_number}
                       onChange={(event) => setField("po_number", event.target.value)}
                     />
                     <TextField
                       fullWidth
-                      label={tDetail("document.fields.paymentTermsShort", "Payment terms")}
+                      label={tDetail("document.fields.paymentTermsShort", "Payment terms summary")}
+                      helperText={tDetail(
+                        "document.helpers.paymentTermsShort",
+                        "Short terms reference shown in invoice document details."
+                      )}
                       value={form.payment_terms}
                       onChange={(event) => setField("payment_terms", event.target.value)}
                     />
@@ -1027,7 +1443,7 @@ export default function FinanceInvoiceDetailDialog({
                   <TextField
                     fullWidth
                     label={tDetail("document.fields.customerMessage", "Customer message")}
-                    helperText={tDetail("document.helpers.customerMessage", "Use this for a short invoice summary or what the client is being billed for.")}
+                    helperText={tDetail("document.helpers.customerMessage", "Short summary of what the client is being billed for.")}
                     value={form.description}
                     onChange={(event) => setField("description", event.target.value)}
                   />
@@ -1044,8 +1460,8 @@ export default function FinanceInvoiceDetailDialog({
                     fullWidth
                     multiline
                     minRows={3}
-                    label={tDetail("document.fields.paymentTerms", "Payment terms")}
-                    helperText={tDetail("document.helpers.paymentTerms", "Visible on the invoice. Example: due on receipt, net 7, or payment due before delivery.")}
+                    label={tDetail("document.fields.paymentTerms", "Invoice terms")}
+                    helperText={tDetail("document.helpers.paymentTerms", "Full customer-facing invoice terms.")}
                     value={form.terms}
                     onChange={(event) => setField("terms", event.target.value)}
                   />
@@ -1067,6 +1483,78 @@ export default function FinanceInvoiceDetailDialog({
                     value={coalesceText(form.billing_notes_internal)}
                     onChange={(event) => setField("billing_notes_internal", event.target.value)}
                   />
+                  <Divider />
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        {tDetail("defaults.title", "Finance invoice defaults")}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {tDetail(
+                          "defaults.helper",
+                          "These defaults apply to future finance invoices when a field is blank. They do not change existing invoices, company profile, website, SEO, or public URL."
+                        )}
+                      </Typography>
+                    </Box>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label={tDetail("defaults.fields.defaultDueDays", "Default due days")}
+                        helperText={tDetail("defaults.helpers.defaultDueDays", "Used when a new finance invoice has no due date.")}
+                        value={documentDefaultsForm.default_due_days}
+                        onChange={(event) => setDocumentDefaultField("default_due_days", event.target.value)}
+                        inputProps={{ min: 0, max: 365 }}
+                      />
+                      <TextField
+                        fullWidth
+                        label={tDetail("defaults.fields.defaultPaymentTermsSummary", "Default payment terms summary")}
+                        value={documentDefaultsForm.default_payment_terms_summary}
+                        onChange={(event) => setDocumentDefaultField("default_payment_terms_summary", event.target.value)}
+                      />
+                    </Stack>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      label={tDetail("defaults.fields.defaultInvoiceTerms", "Default invoice terms")}
+                      value={documentDefaultsForm.default_invoice_terms}
+                      onChange={(event) => setDocumentDefaultField("default_invoice_terms", event.target.value)}
+                    />
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      label={tDetail("defaults.fields.defaultPaymentInstructions", "Default payment instructions")}
+                      value={documentDefaultsForm.default_payment_instructions}
+                      onChange={(event) => setDocumentDefaultField("default_payment_instructions", event.target.value)}
+                    />
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      label={tDetail("defaults.fields.defaultCustomerMessage", "Default customer message")}
+                      value={documentDefaultsForm.default_customer_message}
+                      onChange={(event) => setDocumentDefaultField("default_customer_message", event.target.value)}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {tDetail(
+                        "defaults.note",
+                        "Future invoices will use these defaults automatically when the matching invoice field is blank."
+                      )}
+                    </Typography>
+                    <Box>
+                      <Button
+                        variant="outlined"
+                        onClick={handleSaveInvoiceDefaults}
+                        disabled={savingDocumentDefault}
+                      >
+                        {savingDocumentDefault
+                          ? tDetail("common.saving", "Saving...")
+                          : tDetail("defaults.actions.save", "Save invoice defaults")}
+                      </Button>
+                    </Box>
+                  </Stack>
                 </Stack>
               </Paper>
 
