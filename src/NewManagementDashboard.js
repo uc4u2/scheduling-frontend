@@ -1646,6 +1646,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
 
 const NewManagementDashboard = ({ token, initialView, sectionOnly = false, supportMode = false }) => {
   const theme = useTheme();
+  const isRtl = theme.direction === "rtl";
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
@@ -1789,7 +1790,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   // Sidebar state
   const [selectedView, setSelectedView] = useState(getInitialSelectedView);
   const [timeTrackingViewNonce, setTimeTrackingViewNonce] = useState(0);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(() => !isRtl);
   const [overviewOpen, setOverviewOpen] = useState(false); // legacy for overview; kept for compatibility
   const [openGroups, setOpenGroups] = useState(() => {
     const parentKey = getParentGroupKeyForView(getInitialSelectedView());
