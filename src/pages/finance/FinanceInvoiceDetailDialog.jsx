@@ -185,6 +185,27 @@ const getPreferredInvoiceRecipientEmail = (invoice) =>
       ""
   ).trim();
 
+const getSendPaymentLinkDisabledReason = (invoice, remainingBalance, tDetail) => {
+  const status = String(invoice?.status || invoice?.payment_status || "").trim().toLowerCase();
+  const recipientEmail = getPreferredInvoiceRecipientEmail(invoice);
+  if (!invoice?.id) {
+    return tDetail("tooltips.sendPaymentLinkMissingInvoice", "Save this invoice before sending a payment link.");
+  }
+  if (!recipientEmail) {
+    return tDetail("tooltips.sendPaymentLinkMissingEmail", "Add a client or billing email before sending the payment link.");
+  }
+  if (status === "void") {
+    return tDetail("tooltips.sendPaymentLinkVoid", "This invoice is void. Payment link sending is unavailable.");
+  }
+  if (status === "refunded" || status === "partial_refund") {
+    return tDetail("tooltips.sendPaymentLinkRefunded", "This invoice has been refunded. Do not send a payment link.");
+  }
+  if (!(Number(remainingBalance || 0) > 0)) {
+    return tDetail("tooltips.sendPaymentLinkPaid", "This invoice is already paid. A payment link is no longer needed.");
+  }
+  return "";
+};
+
 export default function FinanceInvoiceDetailDialog({
   open,
   invoiceId,
@@ -332,6 +353,10 @@ export default function FinanceInvoiceDetailDialog({
   const refundHistory = refundSummary?.refunds || [];
   const remainingRefundable = Number(refundSummary?.remaining_refundable_amount || 0);
   const remainingBalance = Number(paymentSummary?.remaining_balance || 0);
+  const sendPaymentLinkDisabledReason = useMemo(
+    () => getSendPaymentLinkDisabledReason(invoice, remainingBalance, tDetail),
+    [invoice, remainingBalance, tDetail]
+  );
   const canIssueRefund =
     Boolean(invoice?.refund_eligible) &&
     remainingRefundable > 0 &&
@@ -1017,14 +1042,18 @@ export default function FinanceInvoiceDetailDialog({
                     >
                       {tDetail("actions.openPaymentPage", "Open payment page")}
                     </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<EmailOutlinedIcon />}
-                      onClick={openSendPaymentLinkDialog}
-                      disabled={loading || saving || !invoice?.id}
-                    >
-                      {tDetail("actions.sendPaymentLink", "Send payment link")}
-                    </Button>
+                    <Tooltip title={sendPaymentLinkDisabledReason || ""} disableHoverListener={!sendPaymentLinkDisabledReason}>
+                      <span>
+                        <Button
+                          variant="outlined"
+                          startIcon={<EmailOutlinedIcon />}
+                          onClick={openSendPaymentLinkDialog}
+                          disabled={loading || saving || Boolean(sendPaymentLinkDisabledReason)}
+                        >
+                          {tDetail("actions.sendPaymentLink", "Send payment link")}
+                        </Button>
+                      </span>
+                    </Tooltip>
                     <Button
                       variant="outlined"
                       startIcon={<LocalPrintshopOutlinedIcon />}

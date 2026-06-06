@@ -142,6 +142,28 @@ const buildSupplementalFlags = (item, tEstimate) => {
   return flags;
 };
 
+const getEstimateSendPaymentLinkDisabledReason = (item, tEstimate) => {
+  const status = String(item?.converted_invoice_payment_status || item?.converted_invoice_status || "").trim().toLowerCase();
+  const remainingBalance = Number(item?.converted_invoice_remaining_balance ?? item?.remaining_balance ?? 0);
+  const recipientEmail = String(item?.client_email || "").trim();
+  if (!item?.converted_invoice_id) {
+    return tEstimate("tooltips.sendPaymentLinkConvertFirst", "Convert this estimate to an invoice before sending a payment link.");
+  }
+  if (!recipientEmail) {
+    return tEstimate("tooltips.sendPaymentLinkMissingEmail", "Add a client email before sending the payment link.");
+  }
+  if (status === "void") {
+    return tEstimate("tooltips.sendPaymentLinkVoid", "This invoice is void. Payment link sending is unavailable.");
+  }
+  if (status === "refunded" || status === "partial_refund" || status === "partially_refunded") {
+    return tEstimate("tooltips.sendPaymentLinkRefunded", "This invoice has been refunded. Do not send a payment link.");
+  }
+  if (!(remainingBalance > 0)) {
+    return tEstimate("tooltips.sendPaymentLinkPaid", "This invoice is already paid. A payment link is no longer needed.");
+  }
+  return "";
+};
+
 function EstimateActionMenu({ actions, tEstimate }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -729,6 +751,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     const rowBusy = linkBusyId === item.id || paymentLinkBusyId === item.id || pdfBusyId === item.id;
     const hasPaymentLink = Boolean(item.converted_invoice_hosted_invoice_url);
     const hasClientResponse = Boolean(item.client_accepted_at || item.client_rejected_at);
+    const sendPaymentLinkDisabledReason = getEstimateSendPaymentLinkDisabledReason(item, tEstimate);
 
     const primaryActions = canOpenInvoice
       ? [
@@ -762,7 +785,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
             icon: <EmailOutlinedIcon fontSize="small" />,
             onClick: () => openSendPaymentLinkEmailDialog(item),
             variant: "outlined",
-            disabled: rowBusy,
+            disabled: rowBusy || Boolean(sendPaymentLinkDisabledReason),
+            tooltip: sendPaymentLinkDisabledReason,
           },
         ]
       : [
@@ -904,7 +928,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         help: tEstimate("actionHelp.sendPaymentLink", "Email the hosted Stripe payment link to the client for this converted invoice."),
         icon: <EmailOutlinedIcon fontSize="small" />,
         onClick: () => openSendPaymentLinkEmailDialog(item),
-        disabled: !item.converted_invoice_id || rowBusy,
+        disabled: !item.converted_invoice_id || rowBusy || Boolean(sendPaymentLinkDisabledReason),
       },
       {
         key: "open-invoice",
@@ -1009,17 +1033,34 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
               <Stack direction={{ xs: "row", md: "row" }} spacing={1} alignItems="center" justifyContent={{ xs: "flex-start", lg: "flex-end" }} flexWrap="wrap" useFlexGap sx={{ minWidth: { lg: 320 } }}>
                 {primaryActions.map((action) => (
-                  <Button
-                    key={action.key}
-                    size="small"
-                    variant={action.variant}
-                    startIcon={action.icon}
-                    onClick={action.onClick}
-                    disabled={action.disabled}
-                    sx={{ whiteSpace: "nowrap" }}
-                  >
-                    {action.label}
-                  </Button>
+                  action.tooltip ? (
+                    <Tooltip key={action.key} title={action.tooltip} disableHoverListener={!action.tooltip}>
+                      <span>
+                        <Button
+                          size="small"
+                          variant={action.variant}
+                          startIcon={action.icon}
+                          onClick={action.onClick}
+                          disabled={action.disabled}
+                          sx={{ whiteSpace: "nowrap" }}
+                        >
+                          {action.label}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      key={action.key}
+                      size="small"
+                      variant={action.variant}
+                      startIcon={action.icon}
+                      onClick={action.onClick}
+                      disabled={action.disabled}
+                      sx={{ whiteSpace: "nowrap" }}
+                    >
+                      {action.label}
+                    </Button>
+                  )
                 ))}
                 <EstimateActionMenu actions={menuActions} tEstimate={tEstimate} />
               </Stack>
@@ -1162,17 +1203,34 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   >
                     <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" flexWrap="wrap" useFlexGap>
                       {primaryActions.map((action) => (
-                        <Button
-                          key={action.key}
-                          size="small"
-                          variant={action.variant}
-                          startIcon={action.icon}
-                          onClick={action.onClick}
-                          disabled={action.disabled}
-                          sx={{ whiteSpace: "nowrap" }}
-                        >
-                          {action.label}
-                        </Button>
+                        action.tooltip ? (
+                          <Tooltip key={action.key} title={action.tooltip} disableHoverListener={!action.tooltip}>
+                            <span>
+                              <Button
+                                size="small"
+                                variant={action.variant}
+                                startIcon={action.icon}
+                                onClick={action.onClick}
+                                disabled={action.disabled}
+                                sx={{ whiteSpace: "nowrap" }}
+                              >
+                                {action.label}
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            key={action.key}
+                            size="small"
+                            variant={action.variant}
+                            startIcon={action.icon}
+                            onClick={action.onClick}
+                            disabled={action.disabled}
+                            sx={{ whiteSpace: "nowrap" }}
+                          >
+                            {action.label}
+                          </Button>
+                        )
                       ))}
                       <EstimateActionMenu actions={menuActions} tEstimate={tEstimate} />
                     </Stack>

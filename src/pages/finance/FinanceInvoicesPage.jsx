@@ -19,6 +19,7 @@ import {
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -79,6 +80,25 @@ const isOverdue = (invoice) => {
 
 const getPreferredInvoiceRowEmail = (row) =>
   String(row?.billing_recipient?.email || row?.client_email || row?.client?.email || "").trim();
+
+const getRowSendPaymentLinkDisabledReason = (row, tInvoice) => {
+  const status = String(row?.payment_status || row?.status || "").trim().toLowerCase();
+  const remainingBalance = Number(row?.remaining_balance || 0);
+  const recipientEmail = getPreferredInvoiceRowEmail(row);
+  if (!recipientEmail) {
+    return tInvoice("tooltips.sendPaymentLinkMissingEmail", "Add a client or billing email before sending the payment link.");
+  }
+  if (status === "void") {
+    return tInvoice("tooltips.sendPaymentLinkVoid", "This invoice is void. Payment link sending is unavailable.");
+  }
+  if (status === "refunded" || status === "partial_refund" || status === "partially_refunded") {
+    return tInvoice("tooltips.sendPaymentLinkRefunded", "This invoice has been refunded. Do not send a payment link.");
+  }
+  if (!(remainingBalance > 0)) {
+    return tInvoice("tooltips.sendPaymentLinkPaid", "This invoice is already paid. A payment link is no longer needed.");
+  }
+  return "";
+};
 
 function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice }) {
   const sections = tInvoice("help.sections", [], { returnObjects: true });
@@ -433,6 +453,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     <Grid container spacing={1.5}>
       {rows.map((row) => (
         <Grid item xs={12} key={row.id || row.invoice_id}>
+          {(() => {
+            const sendPaymentLinkDisabledReason = getRowSendPaymentLinkDisabledReason(row, tInvoice);
+            return (
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
             <Stack spacing={1.5}>
               <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ lg: "flex-start" }}>
@@ -525,13 +548,18 @@ export default function FinanceInvoicesPage({ onNavigate }) {
                 >
                   {tInvoice("actions.openPaymentPage", "Open payment page")}
                 </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<EmailOutlinedIcon />}
-                  onClick={() => openSendEmailDialog(row)}
-                >
-                  {tInvoice("actions.sendPaymentLink", "Send payment link")}
-                </Button>
+                <Tooltip title={sendPaymentLinkDisabledReason || ""} disableHoverListener={!sendPaymentLinkDisabledReason}>
+                  <span>
+                    <Button
+                      variant="outlined"
+                      startIcon={<EmailOutlinedIcon />}
+                      onClick={() => openSendEmailDialog(row)}
+                      disabled={Boolean(sendPaymentLinkDisabledReason)}
+                    >
+                      {tInvoice("actions.sendPaymentLink", "Send payment link")}
+                    </Button>
+                  </span>
+                </Tooltip>
                 <Button
                   variant="outlined"
                   startIcon={<LocalPrintshopOutlinedIcon />}
@@ -565,6 +593,8 @@ export default function FinanceInvoicesPage({ onNavigate }) {
               </Stack>
             </Stack>
           </Paper>
+            );
+          })()}
         </Grid>
       ))}
     </Grid>
