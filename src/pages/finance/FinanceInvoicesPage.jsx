@@ -26,7 +26,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
@@ -38,7 +37,6 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseIcon from "@mui/icons-material/Close";
 import AddTaskIcon from "@mui/icons-material/AddTask";
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
@@ -163,7 +161,7 @@ function InvoiceActionMenu({ actions, tInvoice }) {
   );
 }
 
-function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice }) {
+function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice, featuredTutorial }) {
   const sections = tInvoice("help.sections", [], { returnObjects: true });
 
   return (
@@ -189,6 +187,15 @@ function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice }) {
           </IconButton>
         </Stack>
         <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto" }}>
+          <TutorialHelpCard
+            tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
+            title={tInvoice("actions.quickTutorial", "Quick tutorial")}
+            body={featuredTutorial?.purpose}
+            watchLabel={tInvoice("tutorial.watch", "Watch tutorial")}
+            moreLabel={tInvoice("tutorial.more", "More walkthroughs")}
+            youtubeLabel={tInvoice("tutorial.watchYoutube", "Watch on YouTube")}
+            closeLabel={tInvoice("common.close", "Close")}
+          />
           {sections.map((section) => (
             <Paper key={section.title} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
@@ -204,49 +211,6 @@ function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice }) {
             </Paper>
           ))}
         </Stack>
-      </Stack>
-    </Drawer>
-  );
-}
-
-function InvoiceTutorialDrawer({ open, onClose, tInvoice, featuredTutorial }) {
-  return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, maxWidth: "100%" } }}
-    >
-      <Stack sx={{ height: "100%" }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}
-        >
-          <Stack spacing={0.5}>
-            <Typography variant="h6" fontWeight={800}>
-              {tInvoice("actions.quickTutorial", "Quick tutorial")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {featuredTutorial?.title}
-            </Typography>
-          </Stack>
-          <IconButton onClick={onClose} aria-label={tInvoice("tutorial.close", "Close quick tutorial")}>
-            <CloseIcon />
-          </IconButton>
-        </Stack>
-        <Box sx={{ p: 2.5 }}>
-          <TutorialHelpCard
-            tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
-            title={tInvoice("actions.quickTutorial", "Quick tutorial")}
-            body={featuredTutorial?.purpose}
-            watchLabel={tInvoice("tutorial.watch", "Watch tutorial")}
-            moreLabel={tInvoice("tutorial.more", "More walkthroughs")}
-            youtubeLabel={tInvoice("tutorial.watchYoutube", "Watch on YouTube")}
-            closeLabel={tInvoice("common.close", "Close")}
-          />
-        </Box>
       </Stack>
     </Drawer>
   );
@@ -305,7 +269,6 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [emailSending, setEmailSending] = useState(false);
-  const [tutorialDrawerOpen, setTutorialDrawerOpen] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
 
   const load = useCallback(async () => {
@@ -534,9 +497,6 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           <Button variant="outlined" onClick={() => setInvoiceAuditOpen(true)}>
             {tInvoice("filters.activityLog", "Activity log")}
           </Button>
-          <Button variant="outlined" startIcon={<SchoolOutlinedIcon />} onClick={() => setTutorialDrawerOpen(true)}>
-            {tInvoice("actions.quickTutorial", "Quick tutorial")}
-          </Button>
           <Button
             variant="outlined"
             startIcon={<OpenInFullIcon />}
@@ -550,9 +510,6 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           </Button>
           <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
             {tInvoice("actions.howItWorks", "How invoices work")}
-          </Button>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={load} disabled={loading}>
-            {tInvoice("actions.refresh", "Refresh")}
           </Button>
         </Stack>
       </Stack>
@@ -855,10 +812,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         emptyText={tInvoice("audit.pageEmpty", "No invoice audit records yet.")}
       />
 
-      <InvoiceWorkflowHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} tInvoice={tInvoice} />
-      <InvoiceTutorialDrawer
-        open={tutorialDrawerOpen}
-        onClose={() => setTutorialDrawerOpen(false)}
+      <InvoiceWorkflowHelpDrawer
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
         tInvoice={tInvoice}
         featuredTutorial={featuredTutorial}
       />

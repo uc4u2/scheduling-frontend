@@ -292,7 +292,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [templateArchiveId, setTemplateArchiveId] = useState(null);
   const [showArchivedTemplates, setShowArchivedTemplates] = useState(false);
   const [templateSectionOpen, setTemplateSectionOpen] = useState(false);
-  const [tutorialDrawerOpen, setTutorialDrawerOpen] = useState(false);
+  const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
   const activeTemplates = useMemo(
     () => templates.filter((row) => row?.is_active !== false),
@@ -1297,9 +1297,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               <Button
                 variant="outlined"
                 startIcon={<SchoolOutlinedIcon />}
-                onClick={() => setTutorialDrawerOpen(true)}
+                onClick={() => setHelpDrawerOpen(true)}
               >
-                {tEstimate("toolbar.quickTutorial", "Quick tutorial")}
+                {tEstimate("toolbar.howItWorks", "How estimates work")}
               </Button>
               <Button variant="outlined" startIcon={<OpenInFullIcon />} onClick={() => setExpandedOpen(true)} disabled={loading || items.length === 0}>
                 {tEstimate("toolbar.expandView", "Expand View")}
@@ -1365,9 +1365,6 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 }}
                 sx={{ minWidth: { xs: "100%", md: 150 } }}
               />
-              <Button variant="outlined" onClick={load} sx={{ minWidth: 110 }}>
-                {tEstimate("toolbar.refresh", "Refresh")}
-              </Button>
             </Stack>
             <Chip label={tEstimate(Number(estimateCountLabel) === 1 ? "toolbar.count_one" : "toolbar.count_other", Number(estimateCountLabel) === 1 ? "{{count}} estimate" : "{{count}} estimates", { count: estimateCountLabel })} variant="outlined" sx={{ alignSelf: { xs: "flex-start", xl: "center" }, fontWeight: 700 }} />
           </Stack>
@@ -1470,25 +1467,28 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       </Dialog>
       <Drawer
         anchor="right"
-        open={tutorialDrawerOpen}
-        onClose={() => setTutorialDrawerOpen(false)}
+        open={helpDrawerOpen}
+        onClose={() => setHelpDrawerOpen(false)}
         PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, maxWidth: "100%" } }}
       >
         <Stack sx={{ height: "100%" }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}>
             <Stack spacing={0.5}>
               <Typography variant="h6" fontWeight={800}>
-                {tEstimate("tutorial.badge", "Quick tutorial")}
+                {tEstimate("toolbar.howItWorks", "How estimates work")}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {featuredTutorial.title}
+                {tEstimate(
+                  "help.subtitle",
+                  "Create the estimate, send it to the client, then convert it to an invoice when the work is approved."
+                )}
               </Typography>
             </Stack>
-            <IconButton onClick={() => setTutorialDrawerOpen(false)}>
+            <IconButton onClick={() => setHelpDrawerOpen(false)}>
               <CloseIcon />
             </IconButton>
           </Stack>
-          <Box sx={{ p: 2.5 }}>
+          <Stack spacing={2} sx={{ p: 2.5, overflowY: "auto" }}>
             <TutorialHelpCard
               tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
               title={tEstimate("tutorial.badge", "Quick tutorial")}
@@ -1498,7 +1498,24 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               youtubeLabel={tEstimate("tutorial.watchYoutube", "Watch on YouTube")}
               closeLabel={tEstimate("common.close", "Close")}
             />
-          </Box>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                {tEstimate("help.stepsTitle", "Recommended workflow")}
+              </Typography>
+              <Stack spacing={0.75}>
+                {[
+                  tEstimate("help.steps.1", "Create the estimate with client notes, terms, and line items."),
+                  tEstimate("help.steps.2", "Send the estimate link to the client for review and approval."),
+                  tEstimate("help.steps.3", "Convert the approved estimate into an invoice."),
+                  tEstimate("help.steps.4", "Create or send the payment link from the invoice when payment is needed."),
+                ].map((step) => (
+                  <Typography key={step} variant="body2" color="text.secondary">
+                    - {step}
+                  </Typography>
+                ))}
+              </Stack>
+            </Paper>
+          </Stack>
         </Stack>
       </Drawer>
 
