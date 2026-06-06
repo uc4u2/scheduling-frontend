@@ -6,11 +6,13 @@ import {
   Chip,
   CircularProgress,
   Checkbox,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  Drawer,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -35,6 +37,9 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LaunchIcon from "@mui/icons-material/Launch";
 import LinkIcon from "@mui/icons-material/Link";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
@@ -45,6 +50,7 @@ import RequestQuoteOutlinedIcon from "@mui/icons-material/RequestQuoteOutlined";
 import AddTaskOutlinedIcon from "@mui/icons-material/AddTaskOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseIcon from "@mui/icons-material/Close";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
@@ -253,6 +259,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [workOrderDialogOpen, setWorkOrderDialogOpen] = useState(false);
@@ -282,6 +290,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateArchiveId, setTemplateArchiveId] = useState(null);
   const [showArchivedTemplates, setShowArchivedTemplates] = useState(false);
+  const [templateSectionOpen, setTemplateSectionOpen] = useState(false);
+  const [tutorialDrawerOpen, setTutorialDrawerOpen] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
   const activeTemplates = useMemo(
     () => templates.filter((row) => row?.is_active !== false),
@@ -297,7 +307,14 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     setError("");
     try {
       const [estimates, managerClients, templateList] = await Promise.all([
-        listEstimates({ status: status || undefined, q: search || undefined, page, per_page: perPage }),
+        listEstimates({
+          status: status || undefined,
+          q: search || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+          page,
+          per_page: perPage,
+        }),
         listManagerClients({ limit: 20 }),
         listEstimateTemplates(),
       ]);
@@ -311,7 +328,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, search, status, tEstimate]);
+  }, [dateFrom, dateTo, page, perPage, search, status, tEstimate]);
 
   useEffect(() => {
     load();
@@ -1258,16 +1275,30 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", lg: "row" }} spacing={2} justifyContent="space-between" alignItems={{ lg: "flex-start" }}>
             <Stack spacing={0.75} sx={{ minWidth: 0 }}>
-              <Typography variant="h5" fontWeight={800}>
-                {tEstimate("page.title", "Estimates")}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720 }}>
-                {tEstimate("page.description", "Price custom work, keep client-ready estimate links organized, and move approved jobs into invoice and work-order workflow without losing finance context.")}
-              </Typography>
+              <Tooltip
+                title={tEstimate(
+                  "page.description",
+                  "Price custom work, keep client-ready estimate links organized, and move approved jobs into invoice and work-order workflow without losing finance context."
+                )}
+              >
+                <Stack direction="row" spacing={0.75} alignItems="center" sx={{ width: "fit-content", cursor: "help" }}>
+                  <Typography variant="h5" fontWeight={800}>
+                    {tEstimate("page.title", "Estimates")}
+                  </Typography>
+                  <InfoOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                </Stack>
+              </Tooltip>
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="outlined" onClick={() => setEstimateAuditOpen(true)}>
                 {tEstimate("toolbar.activityLog", "Activity log")}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<SchoolOutlinedIcon />}
+                onClick={() => setTutorialDrawerOpen(true)}
+              >
+                {tEstimate("toolbar.quickTutorial", "Quick tutorial")}
               </Button>
               <Button variant="outlined" startIcon={<OpenInFullIcon />} onClick={() => setExpandedOpen(true)} disabled={loading || items.length === 0}>
                 {tEstimate("toolbar.expandView", "Expand View")}
@@ -1313,6 +1344,30 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                   <MenuItem value="converted_to_invoice">{t("manager.finance.shared.statuses.converted_to_invoice", { defaultValue: "Converted to Invoice" })}</MenuItem>
                 </Select>
               </FormControl>
+              <TextField
+                size="small"
+                type="date"
+                label={tEstimate("toolbar.dateFrom", "From")}
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: { xs: "100%", md: 150 } }}
+              />
+              <TextField
+                size="small"
+                type="date"
+                label={tEstimate("toolbar.dateTo", "To")}
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: { xs: "100%", md: 150 } }}
+              />
               <Button variant="outlined" onClick={load} sx={{ minWidth: 110 }}>
                 {tEstimate("toolbar.refresh", "Refresh")}
               </Button>
@@ -1321,71 +1376,53 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           </Stack>
 
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5, bgcolor: "background.default" }}>
-            <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} alignItems={{ lg: "center" }} justifyContent="space-between">
-              <Stack spacing={0.35}>
-                <Typography variant="subtitle2" fontWeight={800}>
-                  {tEstimate("templateShortcut.title", "Estimate templates")}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {tEstimate("templateShortcut.description", "Save a reusable estimate structure for repeat jobs with the same notes, terms, and line items.")}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {tEstimate("templateShortcut.whatGetsSaved", "Use this when the same job structure is quoted repeatedly and only the client or dates change.")}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {tEstimate("templateShortcut.whatDoesNotSave", "Not saved: client, dates, status, approval, and payment information.")}
-                </Typography>
-                {!editing ? (
-                  <Typography variant="caption" color="text.secondary">
-                    {tEstimate("templateShortcut.openEstimateFirst", "Open an estimate in the editor first, then save its structure as a template.")}
+            <Stack spacing={1.25}>
+              <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} alignItems={{ lg: "center" }} justifyContent="space-between">
+                <Stack spacing={0.35}>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    {tEstimate("templateShortcut.title", "Estimate templates")}
                   </Typography>
-                ) : null}
-              </Stack>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
-                <TextField size="small" disabled={!editing} label={tEstimate("templateShortcut.templateName", "Template name")} value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
-                <Button variant="outlined" onClick={saveAsTemplate} disabled={!editing || !String(templateName || "").trim()} sx={{ whiteSpace: "nowrap" }}>
-                  {tEstimate("templateShortcut.saveCurrent", "Save reusable structure")}
+                  <Typography variant="caption" color="text.secondary">
+                    {tEstimate("templateShortcut.description", "Save a reusable estimate structure for repeat jobs with the same notes, terms, and line items.")}
+                  </Typography>
+                </Stack>
+                <Button
+                  variant="text"
+                  endIcon={templateSectionOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  onClick={() => setTemplateSectionOpen((prev) => !prev)}
+                  sx={{ alignSelf: { xs: "flex-start", lg: "center" } }}
+                >
+                  {templateSectionOpen
+                    ? tEstimate("templateShortcut.hide", "Hide template tools")
+                    : tEstimate("templateShortcut.show", "Show template tools")}
                 </Button>
-                <Button variant="text" onClick={openTemplateManager} sx={{ whiteSpace: "nowrap" }}>
-                  {tEstimate("templateShortcut.manage", "Manage templates")}
-                </Button>
               </Stack>
-            </Stack>
-          </Paper>
-
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 1.5,
-              borderRadius: 2.5,
-              borderColor: (theme) => theme.palette.primary.main,
-              background: (theme) => `linear-gradient(180deg, ${theme.palette.action.hover}, ${theme.palette.background.paper})`,
-            }}
-          >
-            <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ lg: "center" }} justifyContent="space-between">
-              <Stack spacing={0.4} sx={{ minWidth: 0 }}>
-                <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 800, letterSpacing: "0.12em" }}>
-                  {tEstimate("tutorial.badge", "Quick tutorial")}
-                </Typography>
-                <Typography variant="subtitle1" fontWeight={800}>
-                  {featuredTutorial.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
-                  {featuredTutorial.purpose}
-                </Typography>
-              </Stack>
-              <Box sx={{ width: { xs: "100%", lg: "auto" }, minWidth: { lg: 300 } }}>
-                <TutorialHelpCard
-                  tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
-                  title={tEstimate("tutorial.badge", "Quick tutorial")}
-                  body={featuredTutorial.purpose}
-                  watchLabel={tEstimate("tutorial.watch", "Watch tutorial")}
-                  moreLabel={tEstimate("tutorial.more", "More walkthroughs")}
-                  youtubeLabel={tEstimate("tutorial.watchYoutube", "Watch on YouTube")}
-                  closeLabel={tEstimate("common.close", "Close")}
-                  compact
-                />
-              </Box>
+              <Collapse in={templateSectionOpen}>
+                <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} alignItems={{ lg: "center" }} justifyContent="space-between">
+                  <Stack spacing={0.35}>
+                    <Typography variant="caption" color="text.secondary">
+                      {tEstimate("templateShortcut.whatGetsSaved", "Use this when the same job structure is quoted repeatedly and only the client or dates change.")}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {tEstimate("templateShortcut.whatDoesNotSave", "Not saved: client, dates, status, approval, and payment information.")}
+                    </Typography>
+                    {!editing ? (
+                      <Typography variant="caption" color="text.secondary">
+                        {tEstimate("templateShortcut.openEstimateFirst", "Open an estimate in the editor first, then save its structure as a template.")}
+                      </Typography>
+                    ) : null}
+                  </Stack>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
+                    <TextField size="small" disabled={!editing} label={tEstimate("templateShortcut.templateName", "Template name")} value={templateName} onChange={(e) => setTemplateName(e.target.value)} sx={{ minWidth: { xs: "100%", sm: 240 } }} />
+                    <Button variant="outlined" onClick={saveAsTemplate} disabled={!editing || !String(templateName || "").trim()} sx={{ whiteSpace: "nowrap" }}>
+                      {tEstimate("templateShortcut.saveCurrent", "Save reusable structure")}
+                    </Button>
+                    <Button variant="text" onClick={openTemplateManager} sx={{ whiteSpace: "nowrap" }}>
+                      {tEstimate("templateShortcut.manage", "Manage templates")}
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Collapse>
             </Stack>
           </Paper>
         </Stack>
@@ -1434,6 +1471,39 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           {renderExpandedTable()}
         </DialogContent>
       </Dialog>
+      <Drawer
+        anchor="right"
+        open={tutorialDrawerOpen}
+        onClose={() => setTutorialDrawerOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, maxWidth: "100%" } }}
+      >
+        <Stack sx={{ height: "100%" }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2.5, borderBottom: 1, borderColor: "divider" }}>
+            <Stack spacing={0.5}>
+              <Typography variant="h6" fontWeight={800}>
+                {tEstimate("tutorial.badge", "Quick tutorial")}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {featuredTutorial.title}
+              </Typography>
+            </Stack>
+            <IconButton onClick={() => setTutorialDrawerOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          <Box sx={{ p: 2.5 }}>
+            <TutorialHelpCard
+              tutorialGroup={BUSINESS_FINANCE_TUTORIAL_GROUP}
+              title={tEstimate("tutorial.badge", "Quick tutorial")}
+              body={featuredTutorial.purpose}
+              watchLabel={tEstimate("tutorial.watch", "Watch tutorial")}
+              moreLabel={tEstimate("tutorial.more", "More walkthroughs")}
+              youtubeLabel={tEstimate("tutorial.watchYoutube", "Watch on YouTube")}
+              closeLabel={tEstimate("common.close", "Close")}
+            />
+          </Box>
+        </Stack>
+      </Drawer>
 
       <EstimateEditorDialog
         open={dialogOpen}
