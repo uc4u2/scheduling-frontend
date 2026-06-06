@@ -130,6 +130,12 @@ export const createSimilarFinanceInvoice = (id) =>
 export const listFinanceInvoices = (params = {}) =>
   unwrap(api.get("/finance/invoices", { params }));
 export const getFinanceInvoice = (id) => unwrap(api.get(`/finance/invoices/${id}`));
+export const setFinanceClientDefaultBillingRecipient = (clientId, billingRecipientId) =>
+  unwrap(
+    api.patch(`/finance/clients/${clientId}/default-billing-recipient`, {
+      billing_recipient_id: billingRecipientId,
+    })
+  );
 export const downloadFinanceInvoicePdf = (id) =>
   fetchBinary(`/finance/invoices/${id}/pdf`);
 export const getFinanceInvoicePrintHtml = async (id) => {

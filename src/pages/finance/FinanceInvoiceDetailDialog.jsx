@@ -47,6 +47,7 @@ import {
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
   listBillingRecipients,
+  setFinanceClientDefaultBillingRecipient,
   updateFinanceDocumentSettings,
   updateFinanceInvoice,
 } from "./financeApi";
@@ -199,6 +200,7 @@ export default function FinanceInvoiceDetailDialog({
   const [billingRecipientsError, setBillingRecipientsError] = useState("");
   const [selectedBillingRecipientId, setSelectedBillingRecipientId] = useState("");
   const [savingBillingRecipient, setSavingBillingRecipient] = useState(false);
+  const [savingClientDefaultBillingRecipient, setSavingClientDefaultBillingRecipient] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [offlinePaymentDialogOpen, setOfflinePaymentDialogOpen] = useState(false);
   const [printOpening, setPrintOpening] = useState(false);
@@ -208,6 +210,7 @@ export default function FinanceInvoiceDetailDialog({
   const [savingDocumentDefault, setSavingDocumentDefault] = useState(false);
   const [documentSettings, setDocumentSettings] = useState({});
   const [documentDefaultsForm, setDocumentDefaultsForm] = useState(blankDocumentDefaults);
+  const [clientDefaultBillingRecipient, setClientDefaultBillingRecipient] = useState(null);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -221,6 +224,7 @@ export default function FinanceInvoiceDetailDialog({
         const nextInvoice = payload?.invoice || null;
         setInvoice(nextInvoice);
         setForm(buildFormFromInvoice(nextInvoice));
+        setClientDefaultBillingRecipient(nextInvoice?.client_default_billing_recipient || null);
         const nextSettings = normalizeDocumentSettings(nextInvoice?.finance_document_settings || {});
         setDocumentSettings(nextSettings);
         setDocumentDefaultsForm(nextSettings);
@@ -299,6 +303,15 @@ export default function FinanceInvoiceDetailDialog({
     return String(invoice?.company?.name || "").trim() || "Business";
   }, [documentSettings?.finance_document_business_name, invoice?.company?.name]);
   const recentClientBillingSnapshot = invoice?.recent_client_billing_snapshot?.snapshot || null;
+  const clientId = invoice?.client?.id || invoice?.client_id || null;
+  const resolvedClientDefaultRecipient = useMemo(() => {
+    if (!clientDefaultBillingRecipient?.id) return null;
+    return (
+      billingRecipients.find(
+        (row) => String(row.id) === String(clientDefaultBillingRecipient.id)
+      ) || null
+    );
+  }, [billingRecipients, clientDefaultBillingRecipient]);
 
   const refundSummary = invoice?.refund_summary || {};
   const paymentSummary = invoice?.payment_summary || {};
@@ -436,6 +449,128 @@ export default function FinanceInvoiceDetailDialog({
     }
   };
 
+  const applyClientDefaultBillingRecipient = () => {
+    if (!resolvedClientDefaultRecipient) {
+      enqueueSnackbar(
+        tDetail(
+          "errors.clientDefaultRecipientMissing",
+          "The client default billing profile could not be matched to a saved billing recipient."
+        ),
+        { variant: "warning" }
+      );
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      billing_recipient: {
+        ...blankBillingRecipient,
+        company_name: resolvedClientDefaultRecipient.company_name || "",
+        contact_name: resolvedClientDefaultRecipient.contact_name || "",
+        email: resolvedClientDefaultRecipient.email || "",
+        phone: resolvedClientDefaultRecipient.phone || "",
+        address_street: resolvedClientDefaultRecipient.address_street || "",
+        address_city: resolvedClientDefaultRecipient.address_city || "",
+        address_state: resolvedClientDefaultRecipient.address_state || "",
+        address_province: resolvedClientDefaultRecipient.address_province || "",
+        address_zip: resolvedClientDefaultRecipient.address_zip || "",
+        address_country: resolvedClientDefaultRecipient.address_country || "",
+        tax_id: resolvedClientDefaultRecipient.tax_id || "",
+      },
+    }));
+    enqueueSnackbar(
+      tDetail(
+        "snackbar.clientDefaultBillingApplied",
+        "Client default billing profile copied into this invoice."
+      ),
+      { variant: "success" }
+    );
+  };
+
+  const handleSetSelectedAsClientDefault = async () => {
+    if (!clientId || !selectedBillingRecipientId) return;
+    setSavingClientDefaultBillingRecipient(true);
+    setError("");
+    try {
+      const payload = await setFinanceClientDefaultBillingRecipient(
+        clientId,
+        Number(selectedBillingRecipientId)
+      );
+      const nextSummary =
+        payload?.client?.default_billing_recipient_summary ||
+        payload?.default_billing_recipient_summary ||
+        null;
+      setClientDefaultBillingRecipient(nextSummary);
+      setInvoice((prev) =>
+        prev
+          ? {
+              ...prev,
+              client_default_billing_recipient: nextSummary,
+              client: payload?.client
+                ? {
+                    ...(prev.client || {}),
+                    ...payload.client,
+                  }
+                : prev.client,
+            }
+          : prev
+      );
+      enqueueSnackbar(
+        tDetail("snackbar.clientDefaultBillingSaved", "Client default billing profile saved."),
+        { variant: "success" }
+      );
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail(
+            "errors.clientDefaultBillingSave",
+            "Unable to save the client default billing profile."
+          )
+      );
+    } finally {
+      setSavingClientDefaultBillingRecipient(false);
+    }
+  };
+
+  const handleClearClientDefaultBillingRecipient = async () => {
+    if (!clientId) return;
+    setSavingClientDefaultBillingRecipient(true);
+    setError("");
+    try {
+      const payload = await setFinanceClientDefaultBillingRecipient(clientId, null);
+      setClientDefaultBillingRecipient(null);
+      setInvoice((prev) =>
+        prev
+          ? {
+              ...prev,
+              client_default_billing_recipient: null,
+              client: payload?.client
+                ? {
+                    ...(prev.client || {}),
+                    ...payload.client,
+                  }
+                : prev.client,
+            }
+          : prev
+      );
+      enqueueSnackbar(
+        tDetail("snackbar.clientDefaultBillingCleared", "Client default billing profile cleared."),
+        { variant: "success" }
+      );
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail(
+            "errors.clientDefaultBillingClear",
+            "Unable to clear the client default billing profile."
+          )
+      );
+    } finally {
+      setSavingClientDefaultBillingRecipient(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError("");
@@ -457,6 +592,7 @@ export default function FinanceInvoiceDetailDialog({
       const nextInvoice = payload?.invoice || null;
       setInvoice(nextInvoice);
       setForm(buildFormFromInvoice(nextInvoice));
+      setClientDefaultBillingRecipient(nextInvoice?.client_default_billing_recipient || null);
       const nextSettings = normalizeDocumentSettings(nextInvoice?.finance_document_settings || documentSettings);
       setDocumentSettings(nextSettings);
       setDocumentDefaultsForm(nextSettings);
@@ -1052,7 +1188,83 @@ export default function FinanceInvoiceDetailDialog({
                     >
                       {savingBillingRecipient ? tDetail("common.saving", "Saving...") : tDetail("billing.saveForNextTime", "Save for next time")}
                     </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSetSelectedAsClientDefault}
+                      disabled={!clientId || !selectedBillingRecipientId || savingClientDefaultBillingRecipient}
+                      sx={{ minWidth: { md: 220 } }}
+                    >
+                      {savingClientDefaultBillingRecipient
+                        ? tDetail("common.saving", "Saving...")
+                        : tDetail("billing.setSelectedAsDefault", "Set selected as client default")}
+                    </Button>
                   </Stack>
+                  {clientId ? (
+                    clientDefaultBillingRecipient ? (
+                      <Alert
+                        severity="info"
+                        action={
+                          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={applyClientDefaultBillingRecipient}
+                              disabled={!resolvedClientDefaultRecipient}
+                            >
+                              {tDetail("billing.applyClientDefault", "Apply client default billing profile")}
+                            </Button>
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={handleClearClientDefaultBillingRecipient}
+                              disabled={savingClientDefaultBillingRecipient}
+                            >
+                              {tDetail("billing.clearClientDefault", "Clear client default")}
+                            </Button>
+                          </Stack>
+                        }
+                      >
+                        <Typography variant="body2" fontWeight={700}>
+                          {tDetail(
+                            "billing.clientDefaultAvailable",
+                            "Client default billing profile available. You can apply it to this invoice, but existing invoice billing details are not overwritten automatically."
+                          )}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          {clientDefaultBillingRecipient.company_name ||
+                            clientDefaultBillingRecipient.contact_name ||
+                            tDetail("billing.clientDefaultFallback", "Saved billing profile")}
+                          {clientDefaultBillingRecipient.address_summary
+                            ? ` • ${clientDefaultBillingRecipient.address_summary}`
+                            : ""}
+                          {clientDefaultBillingRecipient.tax_id
+                            ? ` • ${tDetail("billing.labels.taxIdShort", "Tax ID")}: ${clientDefaultBillingRecipient.tax_id}`
+                            : ""}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                          {tDetail(
+                            "billing.clientDefaultHelper",
+                            "Applies to future finance invoices for this client. Existing invoices are not changed."
+                          )}
+                        </Typography>
+                      </Alert>
+                    ) : (
+                      <Alert severity="info">
+                        <Typography variant="body2" fontWeight={700}>
+                          {tDetail(
+                            "billing.noClientDefault",
+                            "No client default billing profile is set yet."
+                          )}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {tDetail(
+                            "billing.noClientDefaultHelper",
+                            "Applies to future finance invoices for this client. Existing invoices are not changed."
+                          )}
+                        </Typography>
+                      </Alert>
+                    )
+                  ) : null}
                   {recentClientBillingSnapshot ? (
                     <Alert
                       severity="info"
