@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   CircularProgress,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,6 +31,8 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LaunchIcon from "@mui/icons-material/Launch";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
@@ -206,6 +212,69 @@ const getSendPaymentLinkDisabledReason = (invoice, remainingBalance, tDetail) =>
   return "";
 };
 
+const helpIconSx = {
+  fontSize: 16,
+  color: "text.secondary",
+  verticalAlign: "middle",
+};
+
+const SectionHelp = ({ text }) =>
+  text ? (
+    <Tooltip title={text}>
+      <Box component="span" sx={{ display: "inline-flex", ml: 0.75 }}>
+        <InfoOutlinedIcon sx={helpIconSx} />
+      </Box>
+    </Tooltip>
+  ) : null;
+
+const badgeToneStyles = {
+  neutral: {
+    color: "#334155",
+    backgroundColor: "#E2E8F0",
+    borderColor: "#CBD5E1",
+  },
+  info: {
+    color: "#075985",
+    backgroundColor: "#E0F2FE",
+    borderColor: "#BAE6FD",
+  },
+  success: {
+    color: "#166534",
+    backgroundColor: "#DCFCE7",
+    borderColor: "#BBF7D0",
+  },
+  warning: {
+    color: "#9A3412",
+    backgroundColor: "#FFEDD5",
+    borderColor: "#FED7AA",
+  },
+  danger: {
+    color: "#991B1B",
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FECACA",
+  },
+};
+
+const SummaryBadge = ({ label, tone = "neutral" }) => {
+  const toneSx = badgeToneStyles[tone] || badgeToneStyles.neutral;
+  return (
+    <Chip
+      size="small"
+      label={label}
+      sx={{
+        height: 24,
+        fontWeight: 700,
+        borderWidth: 1,
+        borderStyle: "solid",
+        ...toneSx,
+        "& .MuiChip-label": {
+          px: 1,
+        },
+      }}
+    />
+  );
+};
+
 export default function FinanceInvoiceDetailDialog({
   open,
   invoiceId,
@@ -242,6 +311,12 @@ export default function FinanceInvoiceDetailDialog({
   const [documentSettings, setDocumentSettings] = useState({});
   const [documentDefaultsForm, setDocumentDefaultsForm] = useState(blankDocumentDefaults);
   const [clientDefaultBillingRecipient, setClientDefaultBillingRecipient] = useState(null);
+  const [paymentDetailsOpen, setPaymentDetailsOpen] = useState(false);
+  const [billingToolsOpen, setBillingToolsOpen] = useState(false);
+  const [advancedDocumentOpen, setAdvancedDocumentOpen] = useState(false);
+  const [internalNotesOpen, setInternalNotesOpen] = useState(false);
+  const [defaultsOpen, setDefaultsOpen] = useState(false);
+  const [inlineAuditOpen, setInlineAuditOpen] = useState(false);
   const [sendEmailOpen, setSendEmailOpen] = useState(false);
   const [sendEmailTo, setSendEmailTo] = useState("");
   const [sendEmailMessage, setSendEmailMessage] = useState("");
@@ -275,6 +350,16 @@ export default function FinanceInvoiceDetailDialog({
       active = false;
     };
   }, [invoiceId, open, tDetail]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPaymentDetailsOpen(false);
+    setBillingToolsOpen(false);
+    setAdvancedDocumentOpen(false);
+    setInternalNotesOpen(false);
+    setDefaultsOpen(false);
+    setInlineAuditOpen(false);
+  }, [open, invoiceId]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -383,6 +468,92 @@ export default function FinanceInvoiceDetailDialog({
   }, [invoice?.status, paymentSummary?.online_payment_present, remainingBalance, tDetail]);
   const hasHostedLink = Boolean(invoice?.hosted_invoice_url);
   const relatedWorkOrders = invoice?.related_work_orders || [];
+  const invoiceStatusValue = invoice?.payment_status || invoice?.status || "pending";
+  const invoiceStatusTone = useMemo(() => {
+    const normalized = String(invoiceStatusValue || "").toLowerCase();
+    if (normalized === "paid") return "success";
+    if (normalized === "partial_payment") return "info";
+    if (normalized === "refunded" || normalized === "partial_refund") return "neutral";
+    if (normalized === "void" || normalized === "payment_failed") return "danger";
+    return "warning";
+  }, [invoiceStatusValue]);
+  const paymentLinkTone = useMemo(() => {
+    if (invoice?.payment_link_exists) return "info";
+    if (invoice?.payment_link_ready) return "warning";
+    return "neutral";
+  }, [invoice?.payment_link_exists, invoice?.payment_link_ready]);
+  const balanceTone = remainingBalance > 0 ? "warning" : "success";
+  const paymentOriginTone = useMemo(() => {
+    const normalized = String(paymentSummary?.payment_origin || "").toLowerCase();
+    if (normalized === "online" || normalized === "mixed") return "info";
+    if (normalized === "offline" || normalized === "partially_paid_offline") return "success";
+    return "neutral";
+  }, [paymentSummary?.payment_origin]);
+  const summaryCards = useMemo(
+    () => [
+      {
+        label: tDetail("summary.cards.invoiceTotal", "Invoice total"),
+        value: formatCurrency(invoice?.total, invoice?.currency),
+        badgeLabel: translateStatusLabel(t, invoiceStatusValue),
+        badgeTone: invoiceStatusTone,
+        helper: null,
+      },
+      {
+        label: tDetail("summary.cards.paidSoFar", "Paid so far"),
+        value: formatCurrency(paymentSummary?.total_recorded_paid_amount, invoice?.currency),
+        badgeLabel: formatPaymentOriginLabel(t, paymentSummary?.payment_origin),
+        badgeTone: paymentOriginTone,
+        helper: tDetail("summary.cards.paidBreakdown", "Online {{online}} • Offline {{offline}}", {
+          online: formatCurrency(paymentSummary?.online_paid_amount, invoice?.currency),
+          offline: formatCurrency(paymentSummary?.offline_paid_amount, invoice?.currency),
+        }),
+      },
+      {
+        label: tDetail("summary.cards.balanceDue", "Balance due"),
+        value: formatCurrency(paymentSummary?.remaining_balance, invoice?.currency),
+        badgeLabel:
+          remainingBalance > 0
+            ? tDetail("summary.cards.actionNeeded", "Action needed")
+            : tDetail("summary.cards.nothingLeft", "Nothing left to collect"),
+        badgeTone: balanceTone,
+        helper: null,
+      },
+      {
+        label: tDetail("summary.cards.paymentLink", "Payment link"),
+        value: invoice?.payment_link_exists
+          ? tDetail("summary.cards.ready", "Ready")
+          : invoice?.payment_link_ready
+            ? tDetail("summary.cards.canCreate", "Can create")
+            : tDetail("summary.cards.unavailable", "Unavailable"),
+        badgeLabel: hasHostedLink
+          ? tDetail("header.paymentLinkReady", "Payment link ready")
+          : invoice?.payment_link_ready
+            ? tDetail("header.paymentLinkCreatable", "Payment link can be created")
+            : tDetail("header.paymentLinkUnavailable", "Payment link unavailable"),
+        badgeTone: paymentLinkTone,
+        helper: null,
+      },
+    ],
+    [
+      balanceTone,
+      hasHostedLink,
+      invoice?.currency,
+      invoice?.payment_link_exists,
+      invoice?.payment_link_ready,
+      invoice?.total,
+      invoiceStatusTone,
+      invoiceStatusValue,
+      paymentLinkTone,
+      paymentSummary?.offline_paid_amount,
+      paymentSummary?.online_paid_amount,
+      paymentSummary?.payment_origin,
+      paymentSummary?.remaining_balance,
+      paymentSummary?.total_recorded_paid_amount,
+      remainingBalance,
+      t,
+      tDetail,
+    ]
+  );
 
   const setField = (field, value) =>
     setForm((prev) => ({
@@ -918,29 +1089,34 @@ export default function FinanceInvoiceDetailDialog({
                 </Alert>
               ) : null}
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 1.75, borderRadius: 2.5 }}>
                 <Stack
                   direction={{ xs: "column", md: "row" }}
-                  spacing={1.5}
+                  spacing={1.25}
                   justifyContent="space-between"
                   alignItems={{ md: "center" }}
                 >
                   <Stack spacing={1}>
-                    <Typography variant="h6" fontWeight={700}>
+                    <Typography variant="h6" fontWeight={700} lineHeight={1.2}>
                       {invoice?.invoice_number || tDetail("header.invoiceFallback", "Invoice")}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {invoice?.client?.name || tDetail("client.noClient", "No client")}
+                      {form.due_date ? ` • ${tDetail("document.fields.dueDate", "Due date")}: ${form.due_date}` : ""}
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                       <FinanceStatusChip status={invoice?.status} />
-                      <Typography variant="body2" color="text.secondary">
-                        {invoice?.currency || tDetail("header.currencyFallback", "USD")}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {invoice?.payment_link_exists
-                          ? tDetail("header.paymentLinkReady", "Payment link ready")
-                          : invoice?.payment_link_ready
-                            ? tDetail("header.paymentLinkCreatable", "Payment link can be created")
-                            : tDetail("header.paymentLinkUnavailable", "Payment link unavailable")}
-                      </Typography>
+                      <SummaryBadge label={invoice?.currency || tDetail("header.currencyFallback", "USD")} tone="neutral" />
+                      <SummaryBadge
+                        label={
+                          invoice?.payment_link_exists
+                            ? tDetail("header.paymentLinkReady", "Payment link ready")
+                            : invoice?.payment_link_ready
+                              ? tDetail("header.paymentLinkCreatable", "Payment link can be created")
+                              : tDetail("header.paymentLinkUnavailable", "Payment link unavailable")
+                        }
+                        tone={paymentLinkTone}
+                      />
                     </Stack>
                   </Stack>
                   <Stack spacing={0.5} alignItems={{ xs: "flex-start", md: "flex-end" }}>
@@ -954,78 +1130,53 @@ export default function FinanceInvoiceDetailDialog({
                 </Stack>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Stack spacing={1}>
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    {tDetail("summary.title", "Invoice payment summary")}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {tDetail(
-                      "summary.subtitle",
-                      "See the current balance, payment link state, and the next billing actions without leaving the invoice."
-                    )}
-                  </Typography>
+              <Paper variant="outlined" sx={{ p: 1.75, borderRadius: 2.5 }}>
+                <Stack spacing={1.25}>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {tDetail("summary.title", "Invoice payment summary")}
+                    </Typography>
+                    <SectionHelp
+                      text={tDetail(
+                        "summary.subtitle",
+                        "See the current balance, payment link state, and the next billing actions without leaving the invoice."
+                      )}
+                    />
+                  </Stack>
                   <Box
                     sx={{
                       display: "grid",
                       gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
-                      gap: 1.25,
+                      gap: 1,
                     }}
                   >
-                    {[
-                      {
-                        label: tDetail("summary.cards.invoiceTotal", "Invoice total"),
-                        value: formatCurrency(invoice?.total, invoice?.currency),
-                        helper: tDetail("summary.cards.status", "Status: {{status}}", {
-                          status: translateStatusLabel(t, invoice?.payment_status || invoice?.status || "pending"),
-                        }),
-                      },
-                      {
-                        label: tDetail("summary.cards.paidSoFar", "Paid so far"),
-                        value: formatCurrency(paymentSummary?.total_recorded_paid_amount, invoice?.currency),
-                        helper: tDetail("summary.cards.paidBreakdown", "Online {{online}} • Offline {{offline}}", {
-                          online: formatCurrency(paymentSummary?.online_paid_amount, invoice?.currency),
-                          offline: formatCurrency(paymentSummary?.offline_paid_amount, invoice?.currency),
-                        }),
-                      },
-                      {
-                        label: tDetail("summary.cards.balanceDue", "Balance due"),
-                        value: formatCurrency(paymentSummary?.remaining_balance, invoice?.currency),
-                        helper:
-                          remainingBalance > 0
-                            ? tDetail("summary.cards.actionNeeded", "Action needed")
-                            : tDetail("summary.cards.nothingLeft", "Nothing left to collect"),
-                      },
-                      {
-                        label: tDetail("summary.cards.paymentLink", "Payment link"),
-                        value: invoice?.payment_link_exists
-                          ? tDetail("summary.cards.ready", "Ready")
-                          : invoice?.payment_link_ready
-                            ? tDetail("summary.cards.canCreate", "Can create")
-                            : tDetail("summary.cards.unavailable", "Unavailable"),
-                        helper: formatPaymentOriginLabel(t, paymentSummary?.payment_origin),
-                      },
-                    ].map((row) => (
+                    {summaryCards.map((row) => (
                       <Paper
                         key={row.label}
                         variant="outlined"
-                        sx={{ p: 1.5, borderRadius: 2, backgroundColor: "background.default" }}
+                        sx={{ p: 1.25, borderRadius: 2, backgroundColor: "background.default" }}
                       >
                         <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.4 }}>
                           {row.label}
                         </Typography>
-                        <Typography variant="h6" fontWeight={700} sx={{ mt: 0.5 }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ mt: 0.25, mb: 0.75 }}>
                           {row.value}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {row.helper}
-                        </Typography>
+                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <SummaryBadge label={row.badgeLabel} tone={row.badgeTone} />
+                          {row.helper ? (
+                            <Typography variant="caption" color="text.secondary">
+                              {row.helper}
+                            </Typography>
+                          ) : null}
+                        </Stack>
                       </Paper>
                     ))}
                   </Box>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                     <Button
                       variant="contained"
+                      size="small"
                       startIcon={<PaymentOutlinedIcon />}
                       onClick={handleCopyPaymentLink}
                       disabled={loading || saving || !invoice?.payment_link_ready}
@@ -1036,6 +1187,7 @@ export default function FinanceInvoiceDetailDialog({
                     </Button>
                     <Button
                       variant="outlined"
+                      size="small"
                       startIcon={<LaunchIcon />}
                       onClick={handleOpenPaymentLink}
                       disabled={loading || saving || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
@@ -1046,6 +1198,7 @@ export default function FinanceInvoiceDetailDialog({
                       <span>
                         <Button
                           variant="outlined"
+                          size="small"
                           startIcon={<EmailOutlinedIcon />}
                           onClick={openSendPaymentLinkDialog}
                           disabled={loading || saving || Boolean(sendPaymentLinkDisabledReason)}
@@ -1056,6 +1209,7 @@ export default function FinanceInvoiceDetailDialog({
                     </Tooltip>
                     <Button
                       variant="outlined"
+                      size="small"
                       startIcon={<LocalPrintshopOutlinedIcon />}
                       onClick={handleOpenPrintView}
                       disabled={!invoice?.id || printOpening}
@@ -1064,6 +1218,7 @@ export default function FinanceInvoiceDetailDialog({
                     </Button>
                     <Button
                       variant="outlined"
+                      size="small"
                       startIcon={<PictureAsPdfOutlinedIcon />}
                       onClick={handleDownloadPdf}
                       disabled={!invoice?.id || pdfDownloading}
@@ -1076,6 +1231,7 @@ export default function FinanceInvoiceDetailDialog({
                       <span>
                         <Button
                           variant="outlined"
+                          size="small"
                           startIcon={<PaymentOutlinedIcon />}
                           onClick={() => setOfflinePaymentDialogOpen(true)}
                           disabled={!canRecordOfflinePayment}
@@ -1087,6 +1243,7 @@ export default function FinanceInvoiceDetailDialog({
                     {canIssueRefund ? (
                       <Button
                         variant="outlined"
+                        size="small"
                         startIcon={<ReplayOutlinedIcon />}
                         onClick={() => setRefundDialogOpen(true)}
                       >
@@ -1094,71 +1251,88 @@ export default function FinanceInvoiceDetailDialog({
                       </Button>
                     ) : null}
                   </Stack>
-                  <Typography variant="body2" color="text.secondary">
-                    {paymentSummary?.online_payment_present
-                      ? tDetail("summary.notes.stripeCaptured", "A Stripe payment has already been captured for this invoice.")
-                      : invoice?.payment_link_ready
-                        ? tDetail("summary.notes.hostedPageAvailable", "A hosted payment page can be created for this invoice.")
-                        : tDetail("summary.notes.paymentLinkUnavailable", "A payment link is unavailable until the invoice has a client and a positive total.")}
-                  </Typography>
-                  {paymentSummary?.payment_method_summary ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {tDetail("summary.notes.offlineMethods", "Offline payment methods: {{methods}}", {
-                        methods: paymentSummary.payment_method_summary,
-                      })}
-                    </Typography>
-                  ) : null}
-                  <Typography variant="body2" color="text.secondary">
-                    {tDetail("summary.notes.refundedAmount", "Refunded amount: {{amount}}", {
-                      amount: formatCurrency(refundSummary?.refunded_amount, invoice?.currency),
-                    })}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {tDetail("summary.notes.remainingRefundable", "Remaining refundable: {{amount}}", {
-                      amount: formatCurrency(refundSummary?.remaining_refundable_amount, invoice?.currency),
-                    })}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {tDetail("summary.notes.refundEligibility", "Refund eligibility: {{status}}", {
-                      status: invoice?.refund_eligible
-                        ? tDetail("summary.notes.refundEligible", "Eligible for Stripe refund")
-                        : tDetail("summary.notes.refundUnavailable", "Stripe refund not available"),
-                    })}
-                  </Typography>
-                  {(paymentSummary?.offline_payments || []).length ? (
-                    <Stack spacing={0.5} sx={{ pt: 0.5 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {tDetail("summary.sections.offlineHistory", "Offline payment history")}
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={paymentDetailsOpen}
+                    onChange={(_, expanded) => setPaymentDetailsOpen(expanded)}
+                    sx={{ "&:before": { display: "none" }, backgroundColor: "transparent" }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="body2" fontWeight={600}>
+                        {tDetail("summary.moreDetails", "More payment details")}
                       </Typography>
-                      {(paymentSummary.offline_payments || []).map((row) => (
-                        <Typography key={row.id} variant="body2" color="text.secondary">
-                          {formatCurrency(row.amount, row.currency || invoice?.currency)} • {row.payment_method_label || translateStatusLabel(t, row.payment_method)} • {row.paid_at ? new Date(row.paid_at).toLocaleString() : tDetail("labels.noDate", "No date")}
-                          {row.reference_note ? ` • ${row.reference_note}` : ""}
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0 }}>
+                      <Stack spacing={0.75}>
+                        <Typography variant="body2" color="text.secondary">
+                          {paymentSummary?.online_payment_present
+                            ? tDetail("summary.notes.stripeCaptured", "A Stripe payment has already been captured for this invoice.")
+                            : invoice?.payment_link_ready
+                              ? tDetail("summary.notes.hostedPageAvailable", "A hosted payment page can be created for this invoice.")
+                              : tDetail("summary.notes.paymentLinkUnavailable", "A payment link is unavailable until the invoice has a client and a positive total.")}
                         </Typography>
-                      ))}
-                    </Stack>
-                  ) : null}
-                  {refundHistory.length ? (
-                    <Stack spacing={0.5} sx={{ pt: 0.5 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {tDetail("summary.sections.refundHistory", "Refund history")}
-                      </Typography>
-                      {refundHistory.map((row) => (
-                        <Typography key={row.id} variant="body2" color="text.secondary">
-                          {formatCurrency(row.amount, invoice?.currency)} • {translateStatusLabel(t, row.status || "pending")}
-                          {row.reason ? ` • ${row.reason}` : ""}
-                          {row.created_at ? ` • ${new Date(row.created_at).toLocaleString()}` : ""}
+                        {paymentSummary?.payment_method_summary ? (
+                          <Typography variant="body2" color="text.secondary">
+                            {tDetail("summary.notes.offlineMethods", "Offline payment methods: {{methods}}", {
+                              methods: paymentSummary.payment_method_summary,
+                            })}
+                          </Typography>
+                        ) : null}
+                        <Typography variant="body2" color="text.secondary">
+                          {tDetail("summary.notes.refundedAmount", "Refunded amount: {{amount}}", {
+                            amount: formatCurrency(refundSummary?.refunded_amount, invoice?.currency),
+                          })}
                         </Typography>
-                      ))}
-                    </Stack>
-                  ) : null}
+                        <Typography variant="body2" color="text.secondary">
+                          {tDetail("summary.notes.remainingRefundable", "Remaining refundable: {{amount}}", {
+                            amount: formatCurrency(refundSummary?.remaining_refundable_amount, invoice?.currency),
+                          })}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {tDetail("summary.notes.refundEligibility", "Refund eligibility: {{status}}", {
+                            status: invoice?.refund_eligible
+                              ? tDetail("summary.notes.refundEligible", "Eligible for Stripe refund")
+                              : tDetail("summary.notes.refundUnavailable", "Stripe refund not available"),
+                          })}
+                        </Typography>
+                        {(paymentSummary?.offline_payments || []).length ? (
+                          <Stack spacing={0.5} sx={{ pt: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {tDetail("summary.sections.offlineHistory", "Offline payment history")}
+                            </Typography>
+                            {(paymentSummary.offline_payments || []).map((row) => (
+                              <Typography key={row.id} variant="body2" color="text.secondary">
+                                {formatCurrency(row.amount, row.currency || invoice?.currency)} • {row.payment_method_label || translateStatusLabel(t, row.payment_method)} • {row.paid_at ? new Date(row.paid_at).toLocaleString() : tDetail("labels.noDate", "No date")}
+                                {row.reference_note ? ` • ${row.reference_note}` : ""}
+                              </Typography>
+                            ))}
+                          </Stack>
+                        ) : null}
+                        {refundHistory.length ? (
+                          <Stack spacing={0.5} sx={{ pt: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {tDetail("summary.sections.refundHistory", "Refund history")}
+                            </Typography>
+                            {refundHistory.map((row) => (
+                              <Typography key={row.id} variant="body2" color="text.secondary">
+                                {formatCurrency(row.amount, invoice?.currency)} • {translateStatusLabel(t, row.status || "pending")}
+                                {row.reason ? ` • ${row.reason}` : ""}
+                                {row.created_at ? ` • ${new Date(row.created_at).toLocaleString()}` : ""}
+                              </Typography>
+                            ))}
+                          </Stack>
+                        ) : null}
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
                 </Stack>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Stack spacing={1.25}>
+              <Paper variant="outlined" sx={{ p: 1.75, borderRadius: 2.5 }}>
+                <Stack spacing={0.9}>
                   <Typography variant="subtitle1" fontWeight={700}>
-                    {tDetail("client.title", "Client Summary")}
+                    {tDetail("client.title", "Client summary")}
                   </Typography>
                   <Typography variant="body2">
                     {invoice?.client?.name || tDetail("client.noClient", "No client")}
@@ -1191,186 +1365,204 @@ export default function FinanceInvoiceDetailDialog({
                 </Stack>
               </Paper>
 
-              <FinanceAuditTimeline
-                entityType="invoice"
-                entityId={invoice?.id}
-                title={tDetail("audit.title", "Invoice activity")}
-                emptyText={tDetail("audit.empty", "No audit records yet.")}
-              />
+              <Accordion
+                disableGutters
+                elevation={0}
+                expanded={inlineAuditOpen}
+                onChange={(_, expanded) => setInlineAuditOpen(expanded)}
+                sx={{ border: 1, borderColor: "divider", borderRadius: 2.5, overflow: "hidden", "&:before": { display: "none" } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2, py: 0.5 }}>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {tDetail("audit.title", "Invoice activity")}
+                    </Typography>
+                    <SectionHelp text={tDetail("audit.helper", "Recent invoice changes and payment-link actions are listed here.")} />
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 2, pb: 2, pt: 0 }}>
+                  <FinanceAuditTimeline
+                    entityType="invoice"
+                    entityId={invoice?.id}
+                    title={tDetail("audit.title", "Invoice activity")}
+                    emptyText={tDetail("audit.empty", "No audit records yet.")}
+                  />
+                </AccordionDetails>
+              </Accordion>
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 1.75, borderRadius: 2.5 }}>
                 <Stack spacing={2}>
-                  <Box>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
                     <Typography variant="subtitle1" fontWeight={700}>
                       {tDetail("billing.title", "Billing details")}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      {tDetail(
+                    <SectionHelp
+                      text={tDetail(
                         "billing.subtitle",
-                        "This invoice keeps its own billing snapshot. You can copy a saved billing recipient into the invoice, then save it without changing older invoices."
+                        "This invoice keeps its own billing snapshot. Updating it here does not rewrite older invoices."
                       )}
-                    </Typography>
-                  </Box>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "flex-start" }}>
-                    <FormControl fullWidth>
-                      <InputLabel shrink>{tDetail("billing.savedRecipient", "Saved billing recipient")}</InputLabel>
-                      <Select
-                        label={tDetail("billing.savedRecipient", "Saved billing recipient")}
-                        displayEmpty
-                        notched
-                        value={selectedBillingRecipientId}
-                        onChange={(event) => setSelectedBillingRecipientId(event.target.value)}
-                        renderValue={(value) => {
-                          if (!value) {
-                            if (billingRecipientsLoading) return tDetail("billing.loadingRecipients", "Loading saved billing recipients...");
-                            if (billingRecipients.length === 0) return tDetail("billing.noRecipients", "No saved billing recipients yet");
-                            return tDetail("billing.chooseRecipient", "Choose a saved billing recipient");
-                          }
-                          const recipient = billingRecipients.find(
-                            (row) => String(row.id) === String(value)
-                          );
-                          return (
-                            recipient?.company_name ||
-                            recipient?.contact_name ||
-                            recipient?.email ||
-                            `Recipient #${value}`
-                          );
-                        }}
-                      >
-                        <MenuItem value="">
-                          <em>
-                            {billingRecipientsLoading
-                              ? tDetail("billing.loadingRecipients", "Loading saved billing recipients...")
-                              : billingRecipients.length === 0
-                                ? tDetail("billing.noRecipients", "No saved billing recipients yet")
-                                : tDetail("billing.chooseRecipient", "Choose a saved billing recipient")}
-                          </em>
-                        </MenuItem>
-                        {billingRecipients.map((recipient) => (
-                          <MenuItem key={recipient.id} value={String(recipient.id)}>
-                            {recipient.company_name || recipient.contact_name || recipient.email || `Recipient #${recipient.id}`}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      <FormHelperText>
-                        {billingRecipientsError ||
-                          (billingRecipients.length
-                            ? billingRecipients.length === 1
-                              ? tDetail("billing.recipientCountOne", "1 saved recipient available")
-                              : tDetail("billing.recipientCountOther", "{{count}} saved recipients available", {
-                                  count: billingRecipients.length,
-                                })
-                            : tDetail("billing.recipientEmptyHelp", "Save the current billing details, then reuse them here later."))}
-                      </FormHelperText>
-                    </FormControl>
-                    <Button
-                      variant="outlined"
-                      onClick={applySavedBillingRecipient}
-                      disabled={!selectedBillingRecipientId}
-                      sx={{ minWidth: { md: 180 } }}
-                    >
-                      {tDetail("billing.applyRecipient", "Apply saved recipient")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleSaveBillingRecipient}
-                      disabled={savingBillingRecipient}
-                      sx={{ minWidth: { md: 180 } }}
-                    >
-                      {savingBillingRecipient ? tDetail("common.saving", "Saving...") : tDetail("billing.saveForNextTime", "Save for next time")}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleSetSelectedAsClientDefault}
-                      disabled={!clientId || !selectedBillingRecipientId || savingClientDefaultBillingRecipient}
-                      sx={{ minWidth: { md: 220 } }}
-                    >
-                      {savingClientDefaultBillingRecipient
-                        ? tDetail("common.saving", "Saving...")
-                        : tDetail("billing.setSelectedAsDefault", "Set selected as client default")}
-                    </Button>
+                    />
                   </Stack>
-                  {clientId ? (
-                    clientDefaultBillingRecipient ? (
-                      <Alert
-                        severity="info"
-                        action={
-                          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                            <Button
-                              color="inherit"
-                              size="small"
-                              onClick={applyClientDefaultBillingRecipient}
-                              disabled={!resolvedClientDefaultRecipient}
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={billingToolsOpen}
+                    onChange={(_, expanded) => setBillingToolsOpen(expanded)}
+                    sx={{ "&:before": { display: "none" }, backgroundColor: "background.default", borderRadius: 2, border: 1, borderColor: "divider" }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
+                      <Typography variant="body2" fontWeight={600}>
+                        {tDetail("billing.toolsTitle", "Billing profile tools")}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
+                      <Stack spacing={1.5}>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "flex-start" }}>
+                          <FormControl fullWidth>
+                            <InputLabel shrink>{tDetail("billing.savedRecipient", "Saved billing recipient")}</InputLabel>
+                            <Select
+                              label={tDetail("billing.savedRecipient", "Saved billing recipient")}
+                              displayEmpty
+                              notched
+                              value={selectedBillingRecipientId}
+                              onChange={(event) => setSelectedBillingRecipientId(event.target.value)}
+                              renderValue={(value) => {
+                                if (!value) {
+                                  if (billingRecipientsLoading) return tDetail("billing.loadingRecipients", "Loading saved billing recipients...");
+                                  if (billingRecipients.length === 0) return tDetail("billing.noRecipients", "No saved billing recipients yet");
+                                  return tDetail("billing.chooseRecipient", "Choose a saved billing recipient");
+                                }
+                                const recipient = billingRecipients.find(
+                                  (row) => String(row.id) === String(value)
+                                );
+                                return (
+                                  recipient?.company_name ||
+                                  recipient?.contact_name ||
+                                  recipient?.email ||
+                                  `Recipient #${value}`
+                                );
+                              }}
                             >
-                              {tDetail("billing.applyClientDefault", "Apply client default billing profile")}
+                              <MenuItem value="">
+                                <em>
+                                  {billingRecipientsLoading
+                                    ? tDetail("billing.loadingRecipients", "Loading saved billing recipients...")
+                                    : billingRecipients.length === 0
+                                      ? tDetail("billing.noRecipients", "No saved billing recipients yet")
+                                      : tDetail("billing.chooseRecipient", "Choose a saved billing recipient")}
+                                </em>
+                              </MenuItem>
+                              {billingRecipients.map((recipient) => (
+                                <MenuItem key={recipient.id} value={String(recipient.id)}>
+                                  {recipient.company_name || recipient.contact_name || recipient.email || `Recipient #${recipient.id}`}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                            <FormHelperText>
+                              {billingRecipientsError ||
+                                (billingRecipients.length
+                                  ? billingRecipients.length === 1
+                                    ? tDetail("billing.recipientCountOne", "1 saved recipient available")
+                                    : tDetail("billing.recipientCountOther", "{{count}} saved recipients available", {
+                                        count: billingRecipients.length,
+                                      })
+                                  : tDetail("billing.recipientEmptyHelp", "Save the current billing details, then reuse them here later."))}
+                            </FormHelperText>
+                          </FormControl>
+                          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                            <Button variant="outlined" size="small" onClick={applySavedBillingRecipient} disabled={!selectedBillingRecipientId}>
+                              {tDetail("billing.applyRecipient", "Apply saved recipient")}
+                            </Button>
+                            <Button variant="outlined" size="small" onClick={handleSaveBillingRecipient} disabled={savingBillingRecipient}>
+                              {savingBillingRecipient ? tDetail("common.saving", "Saving...") : tDetail("billing.saveForNextTime", "Save for next time")}
                             </Button>
                             <Button
-                              color="inherit"
+                              variant="outlined"
                               size="small"
-                              onClick={handleClearClientDefaultBillingRecipient}
-                              disabled={savingClientDefaultBillingRecipient}
+                              onClick={handleSetSelectedAsClientDefault}
+                              disabled={!clientId || !selectedBillingRecipientId || savingClientDefaultBillingRecipient}
                             >
-                              {tDetail("billing.clearClientDefault", "Clear client default")}
+                              {savingClientDefaultBillingRecipient
+                                ? tDetail("common.saving", "Saving...")
+                                : tDetail("billing.setSelectedAsDefault", "Set selected as client default")}
                             </Button>
                           </Stack>
-                        }
-                      >
-                        <Typography variant="body2" fontWeight={700}>
-                          {tDetail(
-                            "billing.clientDefaultAvailable",
-                            "Client default billing profile available. You can apply it to this invoice, but existing invoice billing details are not overwritten automatically."
-                          )}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mt: 0.5 }}>
-                          {clientDefaultBillingRecipient.company_name ||
-                            clientDefaultBillingRecipient.contact_name ||
-                            tDetail("billing.clientDefaultFallback", "Saved billing profile")}
-                          {clientDefaultBillingRecipient.address_summary
-                            ? ` • ${clientDefaultBillingRecipient.address_summary}`
-                            : ""}
-                          {clientDefaultBillingRecipient.tax_id
-                            ? ` • ${tDetail("billing.labels.taxIdShort", "Tax ID")}: ${clientDefaultBillingRecipient.tax_id}`
-                            : ""}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                          {tDetail(
-                            "billing.clientDefaultHelper",
-                            "Applies to future finance invoices for this client. Existing invoices are not changed."
-                          )}
-                        </Typography>
-                      </Alert>
-                    ) : (
-                      <Alert severity="info">
-                        <Typography variant="body2" fontWeight={700}>
-                          {tDetail(
-                            "billing.noClientDefault",
-                            "No client default billing profile is set yet."
-                          )}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {tDetail(
-                            "billing.noClientDefaultHelper",
-                            "Applies to future finance invoices for this client. Existing invoices are not changed."
-                          )}
-                        </Typography>
-                      </Alert>
-                    )
-                  ) : null}
-                  {recentClientBillingSnapshot ? (
-                    <Alert
-                      severity="info"
-                      action={
-                        <Button color="inherit" size="small" onClick={applyRecentClientBillingSnapshot}>
-                          {tDetail("billing.applyRecentSnapshot", "Apply last billing details")}
-                        </Button>
-                      }
-                    >
-                      {tDetail(
-                        "billing.recentSnapshotHelp",
-                        "Last billing details used for this client are available if you want to reuse them."
-                      )}
-                    </Alert>
-                  ) : null}
+                        </Stack>
+                        {clientId ? (
+                          clientDefaultBillingRecipient ? (
+                            <Alert
+                              severity="info"
+                              action={
+                                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                  <Button
+                                    color="inherit"
+                                    size="small"
+                                    onClick={applyClientDefaultBillingRecipient}
+                                    disabled={!resolvedClientDefaultRecipient}
+                                  >
+                                    {tDetail("billing.applyClientDefault", "Apply client default billing profile")}
+                                  </Button>
+                                  <Button
+                                    color="inherit"
+                                    size="small"
+                                    onClick={handleClearClientDefaultBillingRecipient}
+                                    disabled={savingClientDefaultBillingRecipient}
+                                  >
+                                    {tDetail("billing.clearClientDefault", "Clear client default")}
+                                  </Button>
+                                </Stack>
+                              }
+                            >
+                              <Typography variant="body2" fontWeight={700}>
+                                {tDetail(
+                                  "billing.clientDefaultAvailableShort",
+                                  "Client default billing profile available."
+                                )}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                                {clientDefaultBillingRecipient.company_name ||
+                                  clientDefaultBillingRecipient.contact_name ||
+                                  tDetail("billing.clientDefaultFallback", "Saved billing profile")}
+                                {clientDefaultBillingRecipient.address_summary
+                                  ? ` • ${clientDefaultBillingRecipient.address_summary}`
+                                  : ""}
+                                {clientDefaultBillingRecipient.tax_id
+                                  ? ` • ${tDetail("billing.labels.taxIdShort", "Tax ID")}: ${clientDefaultBillingRecipient.tax_id}`
+                                  : ""}
+                              </Typography>
+                            </Alert>
+                          ) : (
+                            <Alert severity="info">
+                              <Typography variant="body2" fontWeight={700}>
+                                {tDetail("billing.noClientDefault", "No client default billing profile is set yet.")}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {tDetail(
+                                  "billing.noClientDefaultHelper",
+                                  "Applies to future finance invoices for this client. Existing invoices are not changed."
+                                )}
+                              </Typography>
+                            </Alert>
+                          )
+                        ) : null}
+                        {recentClientBillingSnapshot ? (
+                          <Alert
+                            severity="info"
+                            action={
+                              <Button color="inherit" size="small" onClick={applyRecentClientBillingSnapshot}>
+                                {tDetail("billing.applyRecentSnapshot", "Apply last billing details")}
+                              </Button>
+                            }
+                          >
+                            {tDetail(
+                              "billing.recentSnapshotHelp",
+                              "Last billing details used for this client are available if you want to reuse them."
+                            )}
+                          </Alert>
+                        ) : null}
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                       fullWidth
@@ -1451,11 +1643,14 @@ export default function FinanceInvoiceDetailDialog({
                 </Stack>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 1.75, borderRadius: 2.5 }}>
                 <Stack spacing={2}>
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    {tDetail("document.title", "Invoice document")}
-                  </Typography>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {tDetail("document.title", "Invoice document")}
+                    </Typography>
+                    <SectionHelp text={tDetail("document.helper", "Customer-facing invoice fields and print/PDF settings live here.")} />
+                  </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <TextField
                       label={tDetail("document.fields.issueDate", "Issue date")}
@@ -1474,67 +1669,10 @@ export default function FinanceInvoiceDetailDialog({
                       onChange={(event) => setField("due_date", event.target.value)}
                     />
                   </Stack>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <TextField
-                      fullWidth
-                      label={tDetail("document.fields.invoiceDisplayBusinessName", "Invoice display business name (optional)")}
-                      helperText={tDetail(
-                        "document.helpers.invoiceDisplayBusinessName",
-                        "Only affects this invoice's PDF/print. Leave blank to use your finance document default."
-                      )}
-                      value={form.invoice_display_business_name}
-                      onChange={(event) => setField("invoice_display_business_name", event.target.value)}
-                    />
-                  </Stack>
-                  <Stack
-                    direction={{ xs: "column", md: "row" }}
-                    spacing={2}
-                    alignItems={{ xs: "flex-start", md: "center" }}
-                    justifyContent="space-between"
-                  >
-                    <Box>
-                      <Typography variant="body2" fontWeight={700}>
-                        {tDetail("document.defaultLabel", "Default for future invoices")}: {currentDocumentDefaultLabel}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {tDetail(
-                          "document.defaultHelper",
-                          "Default applies to future finance invoices only. It does not change your company profile, website, SEO, or public URL."
-                        )}
-                      </Typography>
-                    </Box>
-                    <Button
-                      variant="outlined"
-                      onClick={handleSaveDocumentDefault}
-                      disabled={savingDocumentDefault}
-                    >
-                      {savingDocumentDefault
-                        ? tDetail("common.saving", "Saving...")
-                        : tDetail("document.actions.saveDefault", "Save this as default for future invoices")}
-                    </Button>
-                  </Stack>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <TextField
-                      fullWidth
-                      label={tDetail("document.fields.poNumber", "PO number")}
-                      value={form.po_number}
-                      onChange={(event) => setField("po_number", event.target.value)}
-                    />
-                    <TextField
-                      fullWidth
-                      label={tDetail("document.fields.paymentTermsShort", "Payment terms summary")}
-                      helperText={tDetail(
-                        "document.helpers.paymentTermsShort",
-                        "Short terms reference shown in invoice document details."
-                      )}
-                      value={form.payment_terms}
-                      onChange={(event) => setField("payment_terms", event.target.value)}
-                    />
-                  </Stack>
                   <TextField
                     fullWidth
                     label={tDetail("document.fields.customerMessage", "Customer message")}
-                    helperText={tDetail("document.helpers.customerMessage", "Short summary of what the client is being billed for.")}
+                    helperText={tDetail("document.helpers.customerMessageShort", "Shown on the invoice.")}
                     value={form.description}
                     onChange={(event) => setField("description", event.target.value)}
                   />
@@ -1543,7 +1681,7 @@ export default function FinanceInvoiceDetailDialog({
                     multiline
                     minRows={3}
                     label={tDetail("document.fields.customerNotes", "Customer notes")}
-                    helperText={tDetail("document.helpers.customerNotes", "Visible on the invoice. Good for thank-you notes, job context, or what happens next.")}
+                    helperText={tDetail("document.helpers.customerNotesShort", "Shown on the invoice.")}
                     value={form.notes}
                     onChange={(event) => setField("notes", event.target.value)}
                   />
@@ -1552,7 +1690,7 @@ export default function FinanceInvoiceDetailDialog({
                     multiline
                     minRows={3}
                     label={tDetail("document.fields.paymentTerms", "Invoice terms")}
-                    helperText={tDetail("document.helpers.paymentTerms", "Full customer-facing invoice terms.")}
+                    helperText={tDetail("document.helpers.paymentTermsShort", "Shown on the invoice.")}
                     value={form.terms}
                     onChange={(event) => setField("terms", event.target.value)}
                   />
@@ -1561,104 +1699,212 @@ export default function FinanceInvoiceDetailDialog({
                     multiline
                     minRows={3}
                     label={tDetail("document.fields.paymentInstructions", "Payment instructions")}
-                    helperText={tDetail("document.helpers.paymentInstructions", "Visible on the invoice and print view. Example: e-transfer email, bank transfer details, cheque payee, or cash instructions.")}
+                    helperText={tDetail("document.helpers.paymentInstructionsShort", "Shown on the invoice and print view.")}
                     value={form.payment_instructions}
                     onChange={(event) => setField("payment_instructions", event.target.value)}
                   />
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    label={tDetail("document.fields.internalNotes", "Internal notes")}
-                    helperText={tDetail("document.helpers.internalNotes", "Internal only. Not intended for the client-facing invoice.")}
-                    value={coalesceText(form.billing_notes_internal)}
-                    onChange={(event) => setField("billing_notes_internal", event.target.value)}
-                  />
-                  <Divider />
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        {tDetail("defaults.title", "Finance invoice defaults")}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {tDetail(
-                          "defaults.helper",
-                          "These defaults apply to future finance invoices when a field is blank. They do not change existing invoices, company profile, website, SEO, or public URL."
-                        )}
-                      </Typography>
-                    </Box>
-                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={advancedDocumentOpen}
+                    onChange={(_, expanded) => setAdvancedDocumentOpen(expanded)}
+                    sx={{ "&:before": { display: "none" }, backgroundColor: "background.default", borderRadius: 2, border: 1, borderColor: "divider" }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography variant="body2" fontWeight={600}>
+                          {tDetail("document.advancedTitle", "Advanced document settings")}
+                        </Typography>
+                        <SectionHelp
+                          text={tDetail(
+                            "document.advancedHelper",
+                            "Use this for PDF/print name overrides, PO numbers, and short payment terms references."
+                          )}
+                        />
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
+                      <Stack spacing={1.5}>
+                        <TextField
+                          fullWidth
+                          label={tDetail("document.fields.invoiceDisplayBusinessName", "Invoice display business name (optional)")}
+                          helperText={tDetail("document.helpers.invoiceDisplayBusinessNameShort", "PDF/print only.")}
+                          value={form.invoice_display_business_name}
+                          onChange={(event) => setField("invoice_display_business_name", event.target.value)}
+                        />
+                        <Stack
+                          direction={{ xs: "column", md: "row" }}
+                          spacing={1.5}
+                          alignItems={{ xs: "flex-start", md: "center" }}
+                          justifyContent="space-between"
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={700}>
+                              {tDetail("document.defaultLabel", "Default for future invoices")}: {currentDocumentDefaultLabel}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {tDetail(
+                                "document.defaultHelperShort",
+                                "Future invoices only. Does not change company profile or public site settings."
+                              )}
+                            </Typography>
+                          </Box>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={handleSaveDocumentDefault}
+                            disabled={savingDocumentDefault}
+                          >
+                            {savingDocumentDefault
+                              ? tDetail("common.saving", "Saving...")
+                              : tDetail("document.actions.saveDefault", "Save this as default for future invoices")}
+                          </Button>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                          <TextField
+                            fullWidth
+                            label={tDetail("document.fields.poNumber", "PO number")}
+                            value={form.po_number}
+                            onChange={(event) => setField("po_number", event.target.value)}
+                          />
+                          <TextField
+                            fullWidth
+                            label={tDetail("document.fields.paymentTermsShort", "Payment terms summary")}
+                            helperText={tDetail("document.helpers.paymentTermsSummaryShort", "Short label shown in document details.")}
+                            value={form.payment_terms}
+                            onChange={(event) => setField("payment_terms", event.target.value)}
+                          />
+                        </Stack>
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={internalNotesOpen}
+                    onChange={(_, expanded) => setInternalNotesOpen(expanded)}
+                    sx={{ "&:before": { display: "none" }, backgroundColor: "background.default", borderRadius: 2, border: 1, borderColor: "divider" }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography variant="body2" fontWeight={600}>
+                          {tDetail("document.fields.internalNotes", "Internal notes")}
+                        </Typography>
+                        <SectionHelp text={tDetail("document.helpers.internalNotes", "Internal only. Not intended for the client-facing invoice.")} />
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
                       <TextField
                         fullWidth
-                        type="number"
-                        label={tDetail("defaults.fields.defaultDueDays", "Default due days")}
-                        helperText={tDetail("defaults.helpers.defaultDueDays", "Used when a new finance invoice has no due date.")}
-                        value={documentDefaultsForm.default_due_days}
-                        onChange={(event) => setDocumentDefaultField("default_due_days", event.target.value)}
-                        inputProps={{ min: 0, max: 365 }}
+                        multiline
+                        minRows={3}
+                        label={tDetail("document.fields.internalNotes", "Internal notes")}
+                        value={coalesceText(form.billing_notes_internal)}
+                        onChange={(event) => setField("billing_notes_internal", event.target.value)}
                       />
-                      <TextField
-                        fullWidth
-                        label={tDetail("defaults.fields.defaultPaymentTermsSummary", "Default payment terms summary")}
-                        value={documentDefaultsForm.default_payment_terms_summary}
-                        onChange={(event) => setDocumentDefaultField("default_payment_terms_summary", event.target.value)}
-                      />
-                    </Stack>
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      label={tDetail("defaults.fields.defaultInvoiceTerms", "Default invoice terms")}
-                      value={documentDefaultsForm.default_invoice_terms}
-                      onChange={(event) => setDocumentDefaultField("default_invoice_terms", event.target.value)}
-                    />
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      label={tDetail("defaults.fields.defaultPaymentInstructions", "Default payment instructions")}
-                      value={documentDefaultsForm.default_payment_instructions}
-                      onChange={(event) => setDocumentDefaultField("default_payment_instructions", event.target.value)}
-                    />
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={2}
-                      label={tDetail("defaults.fields.defaultCustomerMessage", "Default customer message")}
-                      value={documentDefaultsForm.default_customer_message}
-                      onChange={(event) => setDocumentDefaultField("default_customer_message", event.target.value)}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {tDetail(
-                        "defaults.note",
-                        "Future invoices will use these defaults automatically when the matching invoice field is blank."
-                      )}
-                    </Typography>
-                    <Box>
-                      <Button
-                        variant="outlined"
-                        onClick={handleSaveInvoiceDefaults}
-                        disabled={savingDocumentDefault}
-                      >
-                        {savingDocumentDefault
-                          ? tDetail("common.saving", "Saving...")
-                          : tDetail("defaults.actions.save", "Save invoice defaults")}
-                      </Button>
-                    </Box>
-                  </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+                  <Accordion
+                    disableGutters
+                    elevation={0}
+                    expanded={defaultsOpen}
+                    onChange={(_, expanded) => setDefaultsOpen(expanded)}
+                    sx={{ "&:before": { display: "none" }, backgroundColor: "background.default", borderRadius: 2, border: 1, borderColor: "divider" }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 1.5 }}>
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography variant="body2" fontWeight={600}>
+                          {tDetail("defaults.title", "Finance invoice defaults")}
+                        </Typography>
+                        <SectionHelp
+                          text={tDetail(
+                            "defaults.helper",
+                            "These defaults apply to future finance invoices when a field is blank. They do not change this invoice, company profile, website, SEO, or public URL."
+                          )}
+                        />
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
+                      <Stack spacing={1.5}>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                          <TextField
+                            fullWidth
+                            type="number"
+                            label={tDetail("defaults.fields.defaultDueDays", "Default due days")}
+                            helperText={tDetail("defaults.helpers.defaultDueDays", "Used when a new finance invoice has no due date.")}
+                            value={documentDefaultsForm.default_due_days}
+                            onChange={(event) => setDocumentDefaultField("default_due_days", event.target.value)}
+                            inputProps={{ min: 0, max: 365 }}
+                          />
+                          <TextField
+                            fullWidth
+                            label={tDetail("defaults.fields.defaultPaymentTermsSummary", "Default payment terms summary")}
+                            value={documentDefaultsForm.default_payment_terms_summary}
+                            onChange={(event) => setDocumentDefaultField("default_payment_terms_summary", event.target.value)}
+                          />
+                        </Stack>
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={3}
+                          label={tDetail("defaults.fields.defaultInvoiceTerms", "Default invoice terms")}
+                          value={documentDefaultsForm.default_invoice_terms}
+                          onChange={(event) => setDocumentDefaultField("default_invoice_terms", event.target.value)}
+                        />
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={3}
+                          label={tDetail("defaults.fields.defaultPaymentInstructions", "Default payment instructions")}
+                          value={documentDefaultsForm.default_payment_instructions}
+                          onChange={(event) => setDocumentDefaultField("default_payment_instructions", event.target.value)}
+                        />
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          label={tDetail("defaults.fields.defaultCustomerMessage", "Default customer message")}
+                          value={documentDefaultsForm.default_customer_message}
+                          onChange={(event) => setDocumentDefaultField("default_customer_message", event.target.value)}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {tDetail(
+                            "defaults.note",
+                            "Future invoices will use these defaults automatically when the matching invoice field is blank."
+                          )}
+                        </Typography>
+                        <Box>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={handleSaveInvoiceDefaults}
+                            disabled={savingDocumentDefault}
+                          >
+                            {savingDocumentDefault
+                              ? tDetail("common.saving", "Saving...")
+                              : tDetail("defaults.actions.save", "Save invoice defaults")}
+                          </Button>
+                        </Box>
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
                 </Stack>
               </Paper>
 
-              <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 1.75, borderRadius: 2.5 }}>
                 <Stack spacing={1.5}>
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    {tDetail("lineItems.title", "Line Items and Totals")}
-                  </Typography>
-                  {invoice?.tax_context?.prices_include_tax ? (
-                    <Alert severity="info">
-                      {tDetail("lineItems.taxInclusiveInfo", "Tax-inclusive estimates may show entered line prices separately from taxable base. Totals remain the source of truth.")}
-                    </Alert>
-                  ) : null}
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {tDetail("lineItems.title", "Line items and totals")}
+                    </Typography>
+                    <SectionHelp
+                      text={
+                        invoice?.tax_context?.prices_include_tax
+                          ? tDetail("lineItems.taxInclusiveInfo", "Tax-inclusive estimates may show entered line prices separately from taxable base. Totals remain the source of truth.")
+                          : tDetail("lineItems.helper", "Saved invoice line items and totals are shown here for reference.")
+                      }
+                    />
+                  </Stack>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -1698,11 +1944,12 @@ export default function FinanceInvoiceDetailDialog({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} disabled={saving}>
+          <Button size="small" onClick={onClose} disabled={saving}>
             {tDetail("actions.close", "Close")}
           </Button>
           <Button
             variant="outlined"
+            size="small"
             onClick={handleCreateSimilarInvoice}
             disabled={loading || saving || creatingSimilar || !invoice?.id}
           >
@@ -1710,6 +1957,7 @@ export default function FinanceInvoiceDetailDialog({
           </Button>
           <Button
             variant="outlined"
+            size="small"
             startIcon={<ContentCopyIcon />}
             onClick={async () => {
               if (!invoice?.hosted_invoice_url) return;
@@ -1720,7 +1968,7 @@ export default function FinanceInvoiceDetailDialog({
           >
             {tDetail("actions.copyExistingLink", "Copy Existing Link")}
           </Button>
-          <Button variant="contained" onClick={handleSave} disabled={loading || saving}>
+          <Button size="small" variant="contained" onClick={handleSave} disabled={loading || saving}>
             {saving ? tDetail("common.saving", "Saving...") : tDetail("common.saveChanges", "Save changes")}
           </Button>
         </DialogActions>
