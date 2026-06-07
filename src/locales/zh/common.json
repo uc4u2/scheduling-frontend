@@ -1678,8 +1678,13 @@
         "errors": {
           "loadFailed": "无法加载 Business Finance 概览。"
         },
+        "taxContext": {
+          "snapshotTitle": "财务设置快照",
+          "snapshotHelper": "这些是公司当前在 Business Finance 中用于估价单、费用、采购、报表和月末复核的默认设置。"
+        },
         "sections": {
           "attention": "今天需要关注",
+          "ownerSnapshot": "老板视图",
           "money": "财务概览",
           "operations": "运营概览"
         },
@@ -1754,6 +1759,224 @@
             "label": "已批准材料成本",
             "helper": "经理审核后正式确认的材料。"
           }
+        },
+        "ownerSnapshot": {
+          "errors": {
+            "loadFailed": "无法加载老板视图。"
+          },
+          "filters": {
+            "from": "开始",
+            "to": "结束"
+          },
+          "helper": "这是运营视图，不是税务申报。可用它为交接给会计做准备。",
+          "empty": {
+            "title": "该时间段还没有财务活动",
+            "description": "一旦该时间段内有活动，发票、费用、收据和月末信号就会显示在这里。"
+          },
+          "groups": {
+            "moneyCollected": "已收款",
+            "costsMargin": "成本与利润率",
+            "taxSnapshot": "税务快照",
+            "monthEndReadiness": "月末准备情况"
+          },
+          "netRevenue": "净收入",
+          "refunds": "退款",
+          "paidOnline": "线上已付",
+          "paidOffline": "线下已付",
+          "pendingBalance": "待收余额",
+          "expenses": "费用",
+          "margin": "预计利润率",
+          "marginHelper": "基于当前已批准材料、已关联费用和计划人工数据。",
+          "approvedMaterialCost": "已批准材料成本",
+          "plannedLaborCost": "计划人工成本",
+          "netTax": "预计净税额",
+          "netTaxCollected": "已收净税额",
+          "taxPaidOnExpenses": "费用已付税额",
+          "readiness": "准备度评分",
+          "readinessHelper": "该评分反映交接给会计前的运营准备情况，不代表正式会计准确性。",
+          "missingReceipts": "缺少收据",
+          "unlinkedReceipts": "未关联收据",
+          "draftExpenses": "草稿费用",
+          "pendingFieldReports": "待处理现场报告",
+          "lowAvailableStock": "可用库存偏低",
+          "readyState": "该时间段的月末状态看起来很干净。",
+          "readinessStatus": {
+            "ready": "就绪",
+            "almostReady": "接近就绪",
+            "needsAttention": "需要关注"
+          },
+          "actions": {
+            "reviewInvoices": "查看发票",
+            "reviewMissingReceipts": "查看缺失收据",
+            "openReceiptInbox": "打开收据收件箱",
+            "reviewDrafts": "查看草稿",
+            "reviewFieldReports": "查看现场报告",
+            "reviewInventory": "查看库存"
+          }
+        }
+      },
+      "clients": {
+        "errors": {
+          "loadFailed": "无法加载客户。",
+          "loadDetailFailed": "无法加载客户详情。",
+          "downloadTemplateFailed": "无法下载模板。",
+          "nameEmailRequired": "客户名称和邮箱为必填项。",
+          "createFailed": "无法创建客户。",
+          "updateFailed": "无法更新客户。",
+          "archiveFailed": "无法归档客户。",
+          "restoreFailed": "无法恢复客户。"
+        },
+        "actions": {
+          "cancel": "取消",
+          "close": "关闭",
+          "refresh": "刷新",
+          "downloadTemplate": "下载模板",
+          "importClients": "导入客户",
+          "addClient": "添加客户",
+          "createClient": "创建客户",
+          "saveClient": "保存客户",
+          "editClient": "编辑客户",
+          "archiveClient": "归档客户",
+          "restoreClient": "恢复客户",
+          "edit": "编辑",
+          "archive": "归档",
+          "restore": "恢复"
+        },
+        "snackbar": {
+          "created": "客户已创建。",
+          "updated": "客户已更新。",
+          "archived": "客户已归档。",
+          "restored": "客户已恢复。"
+        },
+        "metrics": {
+          "activeClients": {
+            "label": "活跃客户",
+            "helper": "当前可在报价、估价单和工单流程中使用的正式客户记录。"
+          },
+          "archivedClients": {
+            "label": "已归档客户",
+            "helper": "为财务历史和查询保留的非活跃客户记录。"
+          },
+          "clientsWithOpenInvoices": {
+            "label": "有未结发票的客户",
+            "helper": "仍需跟进发票的客户。"
+          },
+          "clientsWithOpenWorkOrders": {
+            "label": "有未结工单的客户",
+            "helper": "仍在运营流程中的客户工作。"
+          }
+        },
+        "filters": {
+          "searchLabel": "搜索客户",
+          "searchPlaceholder": "ABC Property Management",
+          "statusLabel": "状态",
+          "statusOptions": {
+            "active": "活跃客户",
+            "archived": "已归档客户",
+            "all": "全部客户"
+          }
+        },
+        "empty": {
+          "title": "还没有客户",
+          "description": "创建正式客户记录，以便在报价、估价单、发票、工单和费用关联中使用。"
+        },
+        "table": {
+          "headers": {
+            "client": "客户",
+            "contact": "联系方式",
+            "lastActivity": "最近活动",
+            "estimates": "估价单",
+            "openInvoices": "未结发票",
+            "openWorkOrders": "未结工单",
+            "status": "状态",
+            "actions": "操作"
+          },
+          "linkedCounts": "{{quotes}} 个报价请求 • {{invoices}} 张发票",
+          "noLinkedActivity": "还没有关联的财务活动",
+          "status": {
+            "active": "活跃",
+            "archived": "已归档"
+          }
+        },
+        "editor": {
+          "titleCreate": "添加客户",
+          "titleEdit": "编辑客户",
+          "fields": {
+            "name": "客户 / 公司名称",
+            "email": "邮箱",
+            "phone": "电话",
+            "notes": "内部备注"
+          },
+          "placeholders": {
+            "name": "ABC Property Management",
+            "email": "billing@abcproperty.ca",
+            "phone": "(416) 555-0132",
+            "notes": "账单偏好、特殊联系人备注或服务提醒。"
+          }
+        },
+        "archive": {
+          "title": "归档客户",
+          "fallbackName": "该客户",
+          "body": "归档 {{name}}，使其不再出现在常规活跃客户选择器中。",
+          "helper": "现有报价、估价单、发票、工单和费用记录都会保留。对财务记录来说，归档比删除更安全。"
+        },
+        "restore": {
+          "title": "恢复客户",
+          "fallbackName": "该客户",
+          "body": "将 {{name}} 恢复到活跃客户列表。",
+          "helper": "该客户会重新出现在报价、估价单、工单以及 Business Finance 活跃客户目录中。"
+        },
+        "detail": {
+          "title": "客户详情",
+          "noBillingEmail": "没有账单邮箱",
+          "cardOnFile": "已保存银行卡",
+          "noCardOnFile": "未保存银行卡",
+          "createdAt": "创建于 {{value}}",
+          "internalNotes": "内部备注",
+          "noRecentRecords": "没有最近记录。",
+          "status": {
+            "active": "活跃客户",
+            "archived": "已归档客户"
+          },
+          "metrics": {
+            "openInvoices": {
+              "label": "未结发票",
+              "helper": "仍待付款或跟进的发票。"
+            },
+            "openWorkOrders": {
+              "label": "未结工单",
+              "helper": "尚未完全关闭或取消的任务。"
+            },
+            "estimates": {
+              "label": "估价单",
+              "helper": "与该客户关联的定价记录。"
+            },
+            "quotes": {
+              "label": "报价",
+              "helper": "定价前记录的客户请求。"
+            }
+          },
+          "sections": {
+            "recentEstimates": "最近估价单",
+            "recentInvoices": "最近发票",
+            "recentWorkOrders": "最近工单",
+            "recentExpenses": "最近费用"
+          },
+          "fallbacks": {
+            "estimateNumber": "估价单 #{{id}}",
+            "invoiceNumber": "发票 #{{id}}",
+            "workOrderNumber": "WO-{{id}}"
+          }
+        },
+        "quickCreate": {
+          "title": "添加客户",
+          "description": "创建将在估价单、发票、工单和 Business Finance 报表中使用的正式客户记录。"
+        },
+        "import": {
+          "title": "导入客户",
+          "entityLabel": "客户",
+          "entitySingular": "客户",
+          "entityPlural": "客户"
         }
       },
       "quotes": {
@@ -6791,6 +7014,630 @@
       "starter": "入门版",
       "pro": "专业版",
       "business": "企业版"
+    }
+  },
+  "prediction": {
+    "shell": {
+      "title": "足球预测挑战",
+      "subtitle": "在每个比赛日完成预测、提升排名、邀请朋友，并参与每日、每周和赞助支持的大奖竞争。"
+    },
+    "tabs": {
+      "home": "首页",
+      "today": "今日",
+      "weekly": "每周挑战",
+      "fixtures": "赛程",
+      "myPredictions": "我的预测",
+      "leaderboard": "排行榜",
+      "referrals": "邀请",
+      "prizes": "奖品",
+      "rules": "规则"
+    },
+    "actions": {
+      "predictToday": "预测今日比赛",
+      "inviteFriends": "邀请朋友",
+      "viewPrizes": "查看奖品",
+      "saveAllPredictions": "保存全部预测",
+      "browseFixtures": "浏览赛程",
+      "viewMyPredictions": "查看我的预测",
+      "predict": "预测",
+      "editPrediction": "编辑预测",
+      "preparePrediction": "准备预测"
+    },
+    "filters": {
+      "week": "周次",
+      "stage": "阶段",
+      "status": "状态",
+      "search": "搜索",
+      "all": "全部"
+    },
+    "status": {
+      "pending": "待处理",
+      "locked": "已锁定",
+      "scored": "已计分",
+      "predicted": "已预测",
+      "unsaved": "有未保存的更改",
+      "notPredicted": "未预测",
+      "upcoming": "即将开始",
+      "live": "进行中",
+      "finished": "已结束"
+    },
+    "points": {
+      "short": "分"
+    },
+    "week": {
+      "current": "当前周",
+      "upcomingOpen": "下一周 · 可提前预测"
+    },
+    "prizes": {
+      "dailyStart": "每日奖品 $25 起",
+      "title": "奖品",
+      "subtitle": "每日、每周和大奖奖品都有固定截止时间。获胜者只会在奖品窗口关闭后选出。",
+      "sponsorNote": "部分奖品日可能由本地商家支持。赞助商可能会显示在挑战页面、奖品卡片和获胜者公告中。",
+      "sponsorCta": "如果你有兴趣赞助某一天的奖品，请联系 Schedulaa 了解展示合作机会。",
+      "cutoff": "奖品截止时间",
+      "cutoffClosed": "奖品窗口已关闭",
+      "status": {
+        "comingSoon": "即将推出",
+        "published": "已公布",
+        "winnerSelected": "已选出获胜者",
+        "closed": "已关闭",
+        "qualified": "已获得资格",
+        "notQualified": "尚未获得资格"
+      },
+      "daily": {
+        "title": "每日奖品",
+        "startingAt": "$25 起",
+        "description": "完成今日每日加分题或在截止前预测今日比赛，即可获得资格。部分比赛日可能会升级为更高的赞助支持奖品。",
+        "progressQualified": "该奖品窗口所需的合格活动已记录。",
+        "progressPending": "请在截止前完成今日每日加分题或预测今日比赛。",
+        "progressEmpty": "下一个每日奖品窗口公布后，会在这里显示。"
+      },
+      "weekly": {
+        "title": "每周分享奖",
+        "description": "邀请朋友并保存每周预测，即可获得每周礼品卡抽奖资格。",
+        "defaultPrize": "$25–$100 礼品卡",
+        "qualifiedHelper": "朋友只有在每周奖截止前注册并至少保存一次预测后才会被计入。",
+        "predictionsHelper": "请在奖品截止前保持你的每周预测已保存。"
+      },
+      "grand": {
+        "title": "大奖",
+        "description": "邀请符合条件的朋友并持续预测，即可获得大奖资格。最终奖品可能是无人机、礼品卡，或在抽奖前公布的同等赞助奖品。",
+        "valueFallback": "赞助支持大奖，价值约为 $500–$1,000 CAD",
+        "qualifiedHelper": "邀请朋友在大奖截止前注册并至少保存一次预测。",
+        "predictionsHelper": "在整个挑战期间持续预测，以保持大奖资格。",
+        "footer": "如果运输、库存、赞助支持或当地规则影响发放，Schedulaa 可改发等值礼品卡。"
+      },
+      "progress": {
+        "qualifiedReferrals": "符合条件的邀请",
+        "qualifiedFriends": "符合条件的朋友",
+        "predictionsSaved": "已保存的预测"
+      },
+      "sponsors": {
+        "title": "赞助支持",
+        "visit": "访问赞助商",
+        "follow": "关注赞助商",
+        "note": "关注是可选的，并非获胜条件。"
+      },
+      "schedulaa": {
+        "title": "Schedulaa 免费 6 个月",
+        "description": "部分商家用户可能赢得 6 个月的 Schedulaa 免费使用资格。",
+        "status": "等待管理员公告",
+        "progress": "该奖项的资格规则将由 Schedulaa 另行公布。"
+      },
+      "winners": {
+        "title": "已公布获奖者",
+        "status": "奖品状态",
+        "published": "已公布",
+        "empty": {
+          "title": "尚未公布获胜者",
+          "body": "奖项完成抽取并公布后，获胜者会显示在这里。"
+        },
+        "statusValues": {
+          "pendingContact": "待联系",
+          "contacted": "已联系",
+          "claimed": "已领取",
+          "forfeited": "已作废",
+          "disqualified": "已取消资格"
+        }
+      },
+      "errors": {
+        "load": "加载奖品失败。"
+      }
+    },
+    "home": {
+      "hero": {
+        "title": "2026 足球预测挑战",
+        "subtitle": "在每个比赛日完成预测、提升排名、邀请朋友，并参与每日、每周和赞助支持的大奖竞争。",
+        "points": "积分",
+        "rank": "排名",
+        "streak": "连胜"
+      },
+      "campaignWeek": "活动周",
+      "stats": {
+        "totalPoints": "总积分",
+        "totalPointsHelper": "已记录 {{count}} 次精准比分。",
+        "overallRank": "总排名",
+        "overallRankHelper": "目前有 {{count}} 次赛果判断正确。",
+        "currentWeek": "当前周",
+        "currentWeekHelper": "已保存 {{saved}} / {{total}} 场预测。本周排名：{{rank}}。",
+        "currentStreak": "当前连击"
+      },
+      "todayPrize": {
+        "title": "今日奖品",
+        "qualified": "你当前已符合今日奖池资格。",
+        "body": "在截止前完成今日加分题或预测今日比赛即可参与。赛事期间某些比赛日可能会出现更高的赞助支持奖品。",
+        "cutoff": "奖品截止 UTC",
+        "closed": "奖品已关闭"
+      },
+      "dailyBonus": {
+        "title": "每日加分题",
+        "body": "回答 UTC 挑战日的加分题，或确认比赛预测以保持活跃。",
+        "available": "今日加分题已开放。",
+        "unavailable": "当前没有开放的加分题。"
+      },
+      "finishActions": {
+        "title": "完成每日与每周任务",
+        "body": "保持节奏：完成今日任务、完成本周预测，并检查已保存的选择。"
+      },
+      "inviteFriends": {
+        "title": "邀请朋友",
+        "body": "邀请朋友。当他们在截止前注册并提交至少一次预测后，你的邀请将计入每周奖品和大奖进度。"
+      },
+      "grandPrize": {
+        "title": "大奖进度",
+        "name": "赞助支持大奖",
+        "valueAnnounced": "已公布价值：{{value}}。",
+        "valueFallback": "预计价值约为 500–1000 加元。",
+        "body": "在大奖截止前完成邀请和预测目标，即可进入最终奖池。",
+        "qualifiedReferrals": "合格邀请",
+        "qualifiedReferralsHelper": "邀请注册并在截止前至少保存一次预测的朋友。",
+        "predictionsSaved": "已保存预测",
+        "predictionsSavedHelper": "在整个活动期间保持预测活跃。",
+        "action": "查看大奖"
+      },
+      "latestResult": {
+        "title": "最新结果",
+        "empty": "比赛结果公布并完成计分后，你的最新得分亮点会显示在这里。{{weekLabel}}：{{week}}。"
+      }
+    },
+    "today": {
+      "header": {
+        "title": "今日挑战",
+        "subtitle": "完成今日加分题或预测今日比赛，即可争取今日奖品。",
+        "challengeDay": "挑战日：{{day}} UTC"
+      },
+      "cards": {
+        "summary": "今日摘要",
+        "summaryComplete": "你已完成今天的必要活动。",
+        "summaryAnswered": "每日加分题已回答，比赛预测仍可提升完成度。",
+        "summaryPending": "你今天还有任务未完成。",
+        "openWeekly": "打开每周挑战"
+      },
+      "prize": {
+        "title": "今日奖品",
+        "qualified": "你当前已符合今日奖池资格。",
+        "body": "在截止前完成今日加分题或预测今日比赛即可参与。赛事期间某些比赛日可能会出现更高的赞助支持奖品。",
+        "cutoff": "奖品截止 UTC",
+        "closed": "奖品已关闭",
+        "note": "每日奖品资格以上方显示的 UTC 挑战日为准。"
+      },
+      "matches": {
+        "title": "今日比赛"
+      },
+      "empty": {
+        "title": "今天没有比赛",
+        "beforeStart": "赛事尚未开始。你可以先浏览即将到来的赛程并准备预测。",
+        "noMatches": "赛事尚未开始，或这个 UTC 挑战日没有比赛。",
+        "prepareUpcoming": "为即将到来的比赛做准备"
+      },
+      "upcoming": {
+        "title": "下一批即将到来的比赛",
+        "helper": "除非这些比赛属于上方所示的 UTC 挑战日，否则它们不会计入今日完成度或今日奖品资格。"
+      },
+      "recent": {
+        "title": "最新结果",
+        "actual": "实际比分",
+        "yourPick": "你的预测",
+        "empty": {
+          "title": "还没有结果",
+          "body": "在比赛结果发布后，你最近获得积分的预测会显示在这里。"
+        }
+      },
+      "activity": {
+        "title": "活动动态",
+        "empty": {
+          "title": "还没有活动",
+          "body": "随着比赛临近开赛、计分、奖品窗口和获胜者公布，活动更新会显示在这里。"
+        }
+      }
+    },
+    "weekly": {
+      "title": "每周挑战",
+      "subtitle": "在比赛锁定前预测比分。你可以单场保存，也可以一次保存整周。",
+      "progressTitle": "你本周已预测 {{count}} / {{total}} 场比赛",
+      "unsaved": "你有未保存的预测更改。",
+      "saved": "当前可见更改已全部保存。",
+      "completionLabel": "每周完成度",
+      "completionHelper": "请在比赛锁定前完成本周预测。",
+      "rejected": "被拒绝",
+      "enterBoth": "请输入双方比分后再保存预测。",
+      "score": {
+        "home": "主队",
+        "away": "客队"
+      },
+      "errors": {
+        "load": "加载本周比赛失败。",
+        "completeBoth": "请先为每场已编辑比赛填写双方比分。",
+        "save": "保存预测失败。"
+      },
+      "info": {
+        "noChanges": "本周没有可保存的完整更改。"
+      },
+      "success": {
+        "savedOnly": "已保存 {{saved}} 条预测。",
+        "savedWithRejected": "已保存 {{saved}} 条预测，{{rejected}} 条被拒绝。"
+      },
+      "empty": {
+        "title": "本周暂时没有比赛",
+        "body": "活动赛程发布后，这里会显示比赛。"
+      }
+    },
+    "fixtures": {
+      "title": "赛程",
+      "subtitle": "浏览即将到来的比赛，查看你的预测状态，并跳转到对应的每周挑战。",
+      "searchPlaceholder": "球队、场馆、比赛编号",
+      "errors": {
+        "load": "加载赛程失败。"
+      },
+      "empty": {
+        "title": "未找到比赛",
+        "body": "请尝试清除筛选条件或选择其他周次。",
+        "action": "清除筛选"
+      }
+    },
+    "match": {
+      "actualScore": "实际比分",
+      "yourPrediction": "你的预测",
+      "savedPrediction": "已保存的预测"
+    },
+    "profile": {
+      "title": "你在排行榜上的显示方式",
+      "subtitle": "为排行榜和获奖卡片选择显示名称、表情和喜欢的球队。",
+      "fields": {
+        "displayName": "显示名称",
+        "emoji": "选择你的表情",
+        "noEmoji": "无表情",
+        "favoriteTeam": "喜欢的球队",
+        "favoriteTeamPlaceholder": "选择一支球队"
+      },
+      "preview": {
+        "title": "排行榜预览",
+        "noTeam": "尚未选择喜欢的球队。"
+      },
+      "actions": {
+        "save": "保存资料"
+      },
+      "success": {
+        "saved": "排行榜资料已保存。"
+      },
+      "errors": {
+        "load": "加载排行榜资料失败。",
+        "save": "保存排行榜资料失败。"
+      }
+    },
+    "myPredictions": {
+      "title": "我的预测",
+      "subtitle": "查看已保存的预测、锁定状态，以及已录入的比赛结果。",
+      "predictedScore": "预测比分",
+      "pointsAwarded": "已获积分",
+      "errors": {
+        "load": "加载已保存预测失败。"
+      },
+      "empty": {
+        "title": "还没有预测记录",
+        "body": "请先在每周挑战中保存预测，内容才会显示在这里。"
+      }
+    },
+    "leaderboard": {
+      "title": "排行榜",
+      "subtitle": "在比赛结果录入并完成计分后，总榜会更新。",
+      "tabs": {
+        "overall": "总榜",
+        "weekly": "本周"
+      },
+      "top": "前 10 名",
+      "myRank": "我的排名",
+      "aroundMe": "我附近的排名",
+      "exact": "精准比分",
+      "outcomes": "正确赛果",
+      "scoredPicks": "{{count}} 条已计分预测",
+      "errors": {
+        "load": "加载排行榜失败。"
+      },
+      "empty": {
+        "topTitle": "排行榜尚未生成",
+        "topBody": "在结果发布并完成计分后，这里会显示排行榜。",
+        "rankTitle": "尚无排名",
+        "rankBody": "当你至少有一条已计分预测后，才会显示你的排名。",
+        "aroundTitle": "尚无附近排名",
+        "aroundBody": "当你拥有已计分预测后，这里会显示你附近的排名位置。"
+      }
+    },
+    "referrals": {
+      "hero": {
+        "title": "邀请朋友",
+        "subtitle": "当朋友通过你的链接注册，并在截止前完成至少一次预测后，该邀请会计入每周奖和大奖进度。",
+        "stats": {
+          "qualified": "已达标",
+          "pending": "待完成",
+          "grandProgress": "大奖进度"
+        }
+      },
+      "cards": {
+        "qualified": "已达标邀请",
+        "qualifiedHelper": "这些朋友已注册，并在截止前至少保存过一次预测。",
+        "pending": "待完成邀请",
+        "pendingHelper": "这些朋友仍需完成他们的第一次预测，才会被计入。",
+        "weekly": "每周奖进度",
+        "weeklyHelper": "下一次每周分享奖所需的达标朋友数量。",
+        "grand": "大奖进度",
+        "grandHelper": "赞助大奖所需的达标朋友数量。"
+      },
+      "share": {
+        "title": "分享你的邀请链接",
+        "body": "把你的专属链接分享给朋友。一旦他们注册并在截止前完成一次预测，就会计入你的奖品进度。",
+        "linkLabel": "邀请链接",
+        "message": "加入 Schedulaa 足球预测挑战，开始你的比赛预测。"
+      },
+      "actions": {
+        "copyLink": "复制链接",
+        "whatsapp": "WhatsApp",
+        "sms": "短信",
+        "linkedin": "LinkedIn",
+        "facebook": "Facebook"
+      },
+      "weekly": {
+        "title": "每周分享奖进度",
+        "qualified": "已达标邀请",
+        "qualifiedHelper": "邀请朋友在每周奖截止前注册并保存一次预测。",
+        "predictionsHelper": "请在奖品截止前保持你的每周预测已保存。"
+      },
+      "grand": {
+        "title": "大奖进度",
+        "qualifiedFriends": "符合条件的朋友",
+        "qualifiedHelper": "请在大奖截止前达到所需的好友人数。",
+        "predictionsHelper": "在整个挑战期间持续预测，以保持资格。"
+      },
+      "progress": {
+        "predictionsSaved": "已保存的预测"
+      },
+      "activity": {
+        "title": "邀请动态",
+        "friendReferral": "好友邀请",
+        "status": "邀请状态",
+        "qualifiedOn": "达标时间",
+        "registered": "注册时间"
+      },
+      "status": {
+        "pending": "待完成",
+        "qualified": "已达标",
+        "rejected": "已拒绝",
+        "disqualified": "已取消资格"
+      },
+      "cutoff": "奖品截止 UTC",
+      "cutoffPending": "将在该奖品窗口开放前公布。",
+      "empty": {
+        "title": "还没有邀请记录",
+        "body": "把你的链接分享给朋友。等他们注册并完成一次预测后，就会计入你的奖品进度。"
+      },
+      "success": {
+        "copied": "邀请链接已复制。"
+      },
+      "errors": {
+        "load": "加载邀请数据失败。",
+        "clipboard": "当前浏览器无法访问剪贴板。"
+      }
+    },
+    "rules": {
+      "title": "规则",
+      "errors": {
+        "load": "加载规则失败。"
+      },
+      "chips": {
+        "startHere": "从这里开始",
+        "scoringSummary": "计分摘要",
+        "quickReference": "快速参考",
+        "examples": "示例",
+        "prizeQualification": "奖品资格",
+        "commonQuestions": "常见问题"
+      },
+      "howToPlay": {
+        "title": "玩法说明",
+        "step1": "选择今日比赛或每周挑战。",
+        "step2": "在开赛前输入并保存你的预测比分。",
+        "step3": "在录入结果后回来查看你的积分和排名。"
+      },
+      "points": {
+        "title": "单场积分",
+        "body": "比赛录入最终结果并完成计分后，才会按单场发放积分。"
+      },
+      "scoring": {
+        "title": "计分表",
+        "body": "请使用此表快速了解积分如何计算。",
+        "columns": {
+          "result": "计分结果",
+          "points": "积分",
+          "notes": "说明"
+        },
+        "rows": {
+          "1": {
+            "result": "精准比分",
+            "points": "5",
+            "notes": "单场比赛的最佳结果。"
+          },
+          "2": {
+            "result": "正确赛果",
+            "points": "2",
+            "notes": "主胜、客胜或平局。"
+          },
+          "3": {
+            "result": "主队进球数正确",
+            "points": "1",
+            "notes": "即使没有猜中完整比分，也会给予该分数。"
+          },
+          "4": {
+            "result": "客队进球数正确",
+            "points": "1",
+            "notes": "即使没有猜中完整比分，也会给予该分数。"
+          },
+          "5": {
+            "result": "单场最高分",
+            "points": "5",
+            "notes": "单场得分不会超过 5 分。"
+          }
+        },
+        "examples": {
+          "1": "预测 2-1，实际 2-1 -> 5 分",
+          "2": "预测 1-0，实际 2-1 -> 因赛果正确得到 2 分",
+          "3": "预测 2-0，实际 2-1 -> 3 分：赛果正确 + 主队进球数正确",
+          "4": "预测 2-2，实际 2-1 -> 仅因主队进球数正确得到 1 分"
+        }
+      },
+      "examples": {
+        "title": "计分示例"
+      },
+      "weekly": {
+        "title": "每周分享奖示例"
+      },
+      "weeklyExamples": {
+        "1": "示例 1：你邀请 1 位朋友，他通过你的链接注册，并在截止前至少保存 1 次预测。你自己也在截止前保存了 3 次预测。这样你就获得了该每周分享奖窗口的资格。",
+        "2": "示例 2：你保存了 3 次预测，但你邀请的朋友一直没有提交任何预测。该邀请尚未达标，因此你不能获得该每周分享奖窗口资格。",
+        "3": "示例 3：你的朋友在截止后才提交预测。该行为不会计入之前的每周分享奖窗口。"
+      },
+      "faq": {
+        "title": "快速问答",
+        "1": {
+          "q": "比赛开始后还能修改预测吗？",
+          "a": "不能。预测会在开赛时锁定，服务器 UTC 是最终依据。"
+        },
+        "2": {
+          "q": "每日加分题的积分会影响主排行榜吗？",
+          "a": "不会。每日加分题与主比赛预测排行榜是分开的。"
+        },
+        "3": {
+          "q": "我只能预测当前周吗？",
+          "a": "不是。只要赛程开放，部分未来周也可能提前开放预测。"
+        },
+        "4": {
+          "q": "我必须关注赞助商才能获胜或获得资格吗？",
+          "a": "不需要。关注赞助商是可选的，不是参与或获胜条件。"
+        }
+      },
+      "sections": {
+        "how_to_play": {
+          "title": "How to play",
+          "body": "Choose your matches, save your predictions before kickoff, and come back after results are entered to see your score and rank."
+        },
+        "how_points_work": {
+          "title": "How points work",
+          "body": "Exact score predictions earn the most points. You can also score points for the correct outcome or matching one team’s goal total, up to a maximum of 5 points per match."
+        },
+        "prediction_locking": {
+          "title": "Prediction locking",
+          "body": "Predictions lock at kickoff. Backend UTC is the source of truth, even if a countdown on your device looks slightly different."
+        },
+        "daily_bonus": {
+          "title": "Daily bonus",
+          "body": "Daily bonus questions are optional. They help with daily engagement and may count toward prize activity, but they do not affect the main prediction leaderboard."
+        },
+        "streaks": {
+          "title": "比赛日连续活跃",
+          "body": "连续活跃按有比赛的活跃日计算。休赛日不会打断连续活跃。只要你回答每日加分问题或完成当天预测，该比赛日就会计入。"
+        },
+        "referrals": {
+          "title": "邀请好友",
+          "body": "只有当你的朋友通过你的链接注册，并在相关奖品截止前至少保存一次预测后，该邀请才会计入。"
+        },
+        "prizes": {
+          "title": "奖品",
+          "body": "每个奖品窗口都有固定截止时间。获胜者只会在窗口关闭后选出，已公布的获胜者会显示在奖品页面。"
+        },
+        "following_sponsors": {
+          "title": "Following sponsors",
+          "body": "Following Schedulaa or sponsors is optional and not required to enter or win unless a specific promotion clearly states otherwise."
+        },
+        "free-entry": {
+          "title": "免费参加",
+          "body": "无需购买即可参加。这是球迷预测挑战，不属于博彩或赌博。"
+        },
+        "how-to-play": {
+          "title": "如何参与",
+          "body": "选择每周挑战或今日比赛，在开赛前输入并保存你的比分预测。录入结果后，符合条件的预测会自动计分，你的排行榜位置也会自动更新。"
+        },
+        "locking": {
+          "title": "预测何时锁定",
+          "body": "预测在开赛前都保持开放。一旦比赛到达开赛时间，或状态变为 locked、live、finished 或 scored，该预测就不能再修改。锁定以服务器 UTC 时间为准。"
+        },
+        "scoring": {
+          "title": "积分如何计算",
+          "body": "预测完全比分可得 5 分。如果没猜中完全比分，仍可获得：正确赛果 2 分、主队进球数正确 1 分、客队进球数正确 1 分。单场最高 5 分。"
+        },
+        "draws": {
+          "title": "奖品获胜者如何选出",
+          "body": "每日、每周和大奖抽奖都会在各自截止时间冻结一份资格快照。获胜者只会从截止时已冻结的合格条目中选出，而不会从截止后的实时活动中选出。"
+        },
+        "grand-prize": {
+          "title": "大奖",
+          "body": "大奖价值将在抽奖前公布，预计约为 500–1,000 加元。奖品可能是无人机、礼品卡，或由赞助支持的同等价值奖品。如果运输、库存、赞助支持或当地规则影响发放，Schedulaa 可改发等值礼品卡。"
+        },
+        "daily-bonus": {
+          "title": "每日加分问题",
+          "body": "每日加分问题是可选的，不影响主预测排行榜。它们可用于提升活跃度、连续参与天数，或未来奖品资格。如果每日加分问题出现并列，则所有并列正确答案都算正确。"
+        },
+        "sponsors": {
+          "title": "赞助说明",
+          "body": "部分奖品日可能由本地商家支持。赞助支持不会改变本挑战“无需购买即可参加”的性质。除非另有说明，否则挑战管理和获胜者选择由 Schedulaa 负责。"
+        },
+        "following-sponsors": {
+          "title": "关注赞助商",
+          "body": "我们可能会鼓励参与者关注 Schedulaa 或合作赞助商，以获取更新和获奖公告；但除非某个特定活动明确说明，否则关注并不是参与或获胜的条件。"
+        }
+      },
+      "extra": {
+        "prizeCategories": {
+          "title": "奖品类别",
+          "body": "每日奖品：每日奖品从 $25 起，部分比赛日可能会有更高价值的赞助支持奖品。每周分享奖：在截止前邀请朋友并完成每周预测。大奖：在大奖总截止前满足邀请人数和预测数量要求。"
+        },
+        "grandPrize": {
+          "title": "大奖",
+          "body": "大奖价值将在抽奖前公布，预计约为 $500–$1,000 CAD。奖品可能是无人机、礼品卡，或由赞助支持的同等价值奖品。如果运输、库存、赞助支持或当地规则影响发放，Schedulaa 可改发等值礼品卡。"
+        },
+        "compliance": {
+          "title": "奖品与合规说明",
+          "body": "每日奖品从 $25 起。部分比赛日可能会有更高价值的赞助支持奖品。某些奖品日可能由本地商家支持。赞助支持不会改变本挑战“无需购买即可参加”的性质。除非另有说明，否则挑战管理和获胜者选择由 Schedulaa 负责。"
+        },
+        "following": {
+          "title": "关注赞助商",
+          "body": "我们可能会鼓励参与者关注 Schedulaa 或合作赞助商，以获取更新和获奖公告；但除非某个特定活动明确说明，否则关注并不是参与或获胜的条件。"
+        }
+      }
+    },
+    "dailyBonus": {
+      "title": "每日加分题",
+      "empty": "当前这个 UTC 挑战日还没有开放的每日加分题。",
+      "locked": "这个挑战日的每日加分题已锁定。",
+      "correctSingle": "正确答案：{{labels}}。你获得了 {{points}} 点每日加分。",
+      "correctPlural": "正确答案：{{labels}}。你获得了 {{points}} 点每日加分。",
+      "actions": {
+        "submit": "提交答案",
+        "update": "更新答案"
+      },
+      "success": {
+        "saved": "每日加分答案已保存。"
+      },
+      "errors": {
+        "save": "保存每日加分答案失败。"
+      }
     }
   }
 }

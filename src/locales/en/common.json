@@ -1704,8 +1704,13 @@
         "errors": {
           "loadFailed": "Unable to load Business Finance overview."
         },
+        "taxContext": {
+          "snapshotTitle": "Finance settings snapshot",
+          "snapshotHelper": "These are the current company defaults for Business Finance estimates, expenses, purchases, reports, and month-end review."
+        },
         "sections": {
           "attention": "Today needs your attention",
+          "ownerSnapshot": "Owner snapshot",
           "money": "Money snapshot",
           "operations": "Operations snapshot"
         },
@@ -1780,6 +1785,224 @@
             "label": "Approved material cost",
             "helper": "Materials made official through manager review."
           }
+        },
+        "ownerSnapshot": {
+          "errors": {
+            "loadFailed": "Unable to load owner snapshot."
+          },
+          "filters": {
+            "from": "From",
+            "to": "To"
+          },
+          "helper": "Operational view, not a tax filing. Use this to prepare for accountant handoff.",
+          "empty": {
+            "title": "No finance activity yet for this period",
+            "description": "Invoices, expenses, receipts, and month-end signals will appear here once this period has activity."
+          },
+          "groups": {
+            "moneyCollected": "Money collected",
+            "costsMargin": "Costs and margin",
+            "taxSnapshot": "Tax snapshot",
+            "monthEndReadiness": "Month-end readiness"
+          },
+          "netRevenue": "Net revenue",
+          "refunds": "Refunds",
+          "paidOnline": "Paid online",
+          "paidOffline": "Paid offline",
+          "pendingBalance": "Pending balance",
+          "expenses": "Expenses",
+          "margin": "Estimated margin",
+          "marginHelper": "Based on current approved materials, linked expenses, and planned labor data.",
+          "approvedMaterialCost": "Approved material cost",
+          "plannedLaborCost": "Planned labor cost",
+          "netTax": "Estimated net tax",
+          "netTaxCollected": "Net tax collected",
+          "taxPaidOnExpenses": "Tax paid on expenses",
+          "readiness": "Readiness score",
+          "readinessHelper": "This score tracks operational readiness for accountant handoff, not formal accounting accuracy.",
+          "missingReceipts": "Missing receipts",
+          "unlinkedReceipts": "Unlinked receipts",
+          "draftExpenses": "Draft expenses",
+          "pendingFieldReports": "Pending field reports",
+          "lowAvailableStock": "Low available stock",
+          "readyState": "Month-end looks clean for this period.",
+          "readinessStatus": {
+            "ready": "Ready",
+            "almostReady": "Almost ready",
+            "needsAttention": "Needs attention"
+          },
+          "actions": {
+            "reviewInvoices": "Review invoices",
+            "reviewMissingReceipts": "Review missing receipts",
+            "openReceiptInbox": "Open Receipt Inbox",
+            "reviewDrafts": "Review drafts",
+            "reviewFieldReports": "Review field reports",
+            "reviewInventory": "Review inventory"
+          }
+        }
+      },
+      "clients": {
+        "errors": {
+          "loadFailed": "Unable to load clients.",
+          "loadDetailFailed": "Unable to load client details.",
+          "downloadTemplateFailed": "Unable to download template.",
+          "nameEmailRequired": "Client name and email are required.",
+          "createFailed": "Unable to create client.",
+          "updateFailed": "Unable to update client.",
+          "archiveFailed": "Unable to archive client.",
+          "restoreFailed": "Unable to restore client."
+        },
+        "actions": {
+          "cancel": "Cancel",
+          "close": "Close",
+          "refresh": "Refresh",
+          "downloadTemplate": "Download template",
+          "importClients": "Import clients",
+          "addClient": "Add client",
+          "createClient": "Create client",
+          "saveClient": "Save client",
+          "editClient": "Edit client",
+          "archiveClient": "Archive client",
+          "restoreClient": "Restore client",
+          "edit": "Edit",
+          "archive": "Archive",
+          "restore": "Restore"
+        },
+        "snackbar": {
+          "created": "Client created.",
+          "updated": "Client updated.",
+          "archived": "Client archived.",
+          "restored": "Client restored."
+        },
+        "metrics": {
+          "activeClients": {
+            "label": "Active clients",
+            "helper": "Official client records currently available in quote, estimate, and work order flows."
+          },
+          "archivedClients": {
+            "label": "Archived clients",
+            "helper": "Inactive client records kept for finance history and lookup."
+          },
+          "clientsWithOpenInvoices": {
+            "label": "Clients with open invoices",
+            "helper": "Customers who still have invoice follow-up pending."
+          },
+          "clientsWithOpenWorkOrders": {
+            "label": "Clients with open work orders",
+            "helper": "Customers with jobs still active in the operational workflow."
+          }
+        },
+        "filters": {
+          "searchLabel": "Search clients",
+          "searchPlaceholder": "ABC Property Management",
+          "statusLabel": "Status",
+          "statusOptions": {
+            "active": "Active clients",
+            "archived": "Archived clients",
+            "all": "All clients"
+          }
+        },
+        "empty": {
+          "title": "No clients yet",
+          "description": "Create the official customer records used across quotes, estimates, invoices, work orders, and expense links."
+        },
+        "table": {
+          "headers": {
+            "client": "Client",
+            "contact": "Contact",
+            "lastActivity": "Last activity",
+            "estimates": "Estimates",
+            "openInvoices": "Open invoices",
+            "openWorkOrders": "Open work orders",
+            "status": "Status",
+            "actions": "Actions"
+          },
+          "linkedCounts": "{{quotes}} quote requests • {{invoices}} invoices",
+          "noLinkedActivity": "No linked finance activity yet",
+          "status": {
+            "active": "Active",
+            "archived": "Archived"
+          }
+        },
+        "editor": {
+          "titleCreate": "Add client",
+          "titleEdit": "Edit client",
+          "fields": {
+            "name": "Client / business name",
+            "email": "Email",
+            "phone": "Phone",
+            "notes": "Internal notes"
+          },
+          "placeholders": {
+            "name": "ABC Property Management",
+            "email": "billing@abcproperty.ca",
+            "phone": "(416) 555-0132",
+            "notes": "Billing preferences, special contact notes, or service reminders."
+          }
+        },
+        "archive": {
+          "title": "Archive client",
+          "fallbackName": "this client",
+          "body": "Archive {{name}} so it no longer appears in the normal active client pickers.",
+          "helper": "Existing quotes, estimates, invoices, work orders, and expenses stay intact. Archive is safer than delete for finance records."
+        },
+        "restore": {
+          "title": "Restore client",
+          "fallbackName": "this client",
+          "body": "Restore {{name}} to the active client list.",
+          "helper": "The client will appear again in Quotes, Estimates, Work Orders, and the active Business Finance client directory."
+        },
+        "detail": {
+          "title": "Client details",
+          "noBillingEmail": "No billing email",
+          "cardOnFile": "Card on file",
+          "noCardOnFile": "No card on file",
+          "createdAt": "Created {{value}}",
+          "internalNotes": "Internal notes",
+          "noRecentRecords": "No recent records.",
+          "status": {
+            "active": "Active client",
+            "archived": "Archived client"
+          },
+          "metrics": {
+            "openInvoices": {
+              "label": "Open invoices",
+              "helper": "Invoices still waiting for payment or follow-up."
+            },
+            "openWorkOrders": {
+              "label": "Open work orders",
+              "helper": "Jobs not yet fully closed or cancelled."
+            },
+            "estimates": {
+              "label": "Estimates",
+              "helper": "Pricing records linked to this client."
+            },
+            "quotes": {
+              "label": "Quotes",
+              "helper": "Intake requests captured before pricing."
+            }
+          },
+          "sections": {
+            "recentEstimates": "Recent estimates",
+            "recentInvoices": "Recent invoices",
+            "recentWorkOrders": "Recent work orders",
+            "recentExpenses": "Recent expenses"
+          },
+          "fallbacks": {
+            "estimateNumber": "Estimate #{{id}}",
+            "invoiceNumber": "Invoice #{{id}}",
+            "workOrderNumber": "WO-{{id}}"
+          }
+        },
+        "quickCreate": {
+          "title": "Add client",
+          "description": "Create the official customer record used for estimates, invoices, work orders, and Business Finance reporting."
+        },
+        "import": {
+          "title": "Import clients",
+          "entityLabel": "clients",
+          "entitySingular": "client",
+          "entityPlural": "clients"
         }
       },
       "quotes": {
@@ -8878,6 +9101,594 @@
       "starter": "Starter",
       "pro": "Pro",
       "business": "Business"
+    }
+  },
+  "prediction": {
+    "shell": {
+      "title": "Football Prediction Challenge",
+      "subtitle": "Predict every matchday, climb the leaderboard, invite friends, and compete for daily, weekly, and sponsor-supported grand prizes."
+    },
+    "tabs": {
+      "home": "Home",
+      "today": "Today",
+      "weekly": "Weekly Challenge",
+      "fixtures": "Fixtures",
+      "myPredictions": "My Predictions",
+      "leaderboard": "Leaderboard",
+      "referrals": "Referrals",
+      "prizes": "Prizes",
+      "rules": "Rules"
+    },
+    "actions": {
+      "predictToday": "Predict Today",
+      "inviteFriends": "Invite Friends",
+      "viewPrizes": "View Prizes",
+      "saveAllPredictions": "Save All Predictions",
+      "browseFixtures": "Browse Fixtures",
+      "viewMyPredictions": "View My Predictions",
+      "predict": "Predict",
+      "editPrediction": "Edit Prediction",
+      "preparePrediction": "Prepare Prediction"
+    },
+    "filters": {
+      "week": "Week",
+      "stage": "Stage",
+      "status": "Status",
+      "search": "Search",
+      "all": "All"
+    },
+    "status": {
+      "pending": "Pending",
+      "locked": "Locked",
+      "scored": "Scored",
+      "predicted": "Predicted",
+      "unsaved": "Unsaved changes",
+      "notPredicted": "Not predicted",
+      "upcoming": "Upcoming",
+      "live": "Live",
+      "finished": "Finished"
+    },
+    "points": {
+      "short": "pts"
+    },
+    "week": {
+      "current": "Current Week",
+      "upcomingOpen": "Upcoming Week · Open for early predictions"
+    },
+    "prizes": {
+      "dailyStart": "Daily prizes start at $25",
+      "title": "Prizes",
+      "subtitle": "Daily, weekly, and grand prizes use fixed cutoff times. Winners are selected only after the prize window closes.",
+      "sponsorNote": "Selected prize days may be supported by local businesses. Sponsors may be featured on the challenge page, prize cards, and winner announcements.",
+      "sponsorCta": "Interested in sponsoring a prize day? Contact Schedulaa to learn about featured sponsorship opportunities.",
+      "cutoff": "Prize cutoff",
+      "cutoffClosed": "Prize window closed",
+      "status": {
+        "comingSoon": "Coming soon",
+        "published": "Published",
+        "winnerSelected": "Winner selected",
+        "closed": "Closed",
+        "qualified": "Qualified",
+        "notQualified": "Not qualified yet"
+      },
+      "daily": {
+        "title": "Daily Prize",
+        "startingAt": "Starting at $25",
+        "description": "Complete today’s Daily Bonus or predict today’s matches before cutoff to qualify. Some matchdays may feature larger sponsor-supported prizes.",
+        "progressQualified": "Qualified activity recorded for this prize window.",
+        "progressPending": "Complete today’s Daily Bonus or predict today’s matches before the cutoff.",
+        "progressEmpty": "The daily prize schedule will appear here when the next prize window is announced."
+      },
+      "weekly": {
+        "title": "Weekly Share Prize",
+        "description": "Invite friends and make weekly predictions to qualify for the weekly gift card draw.",
+        "defaultPrize": "$25-$100 Gift Card",
+        "qualifiedHelper": "Friends count after they register and save at least one prediction before the weekly prize cutoff.",
+        "predictionsHelper": "Keep your weekly picks active before the prize cutoff."
+      },
+      "grand": {
+        "title": "Grand Prize",
+        "description": "Invite qualified friends and keep predicting to qualify for the grand prize. The final prize may be a drone, gift card, or equivalent sponsor-supported prize announced before the draw.",
+        "valueFallback": "Sponsor-supported prize valued at approx. $500-$1,000 CAD",
+        "qualifiedHelper": "Invite friends who register and save at least one prediction before the grand prize cutoff.",
+        "predictionsHelper": "Keep predicting across the campaign to stay in the grand prize window.",
+        "footer": "Schedulaa may substitute an equivalent gift card if shipping, availability, sponsor contribution, or local rules prevent delivery of the original prize."
+      },
+      "progress": {
+        "qualifiedReferrals": "Qualified referrals",
+        "qualifiedFriends": "Qualified friends",
+        "predictionsSaved": "Predictions saved"
+      },
+      "sponsors": {
+        "title": "Sponsored by",
+        "visit": "Visit Sponsor",
+        "follow": "Follow Sponsor",
+        "note": "Following is optional and not required to win."
+      },
+      "schedulaa": {
+        "title": "Schedulaa 6 Months Free",
+        "description": "Selected business users may win 6 months of Schedulaa free.",
+        "status": "Admin announcement pending",
+        "progress": "Qualification rules for this category will be announced by Schedulaa."
+      },
+      "winners": {
+        "title": "Published Winners",
+        "status": "Prize status",
+        "published": "Published",
+        "empty": {
+          "title": "No winners published yet",
+          "body": "Published winners will appear here after a prize draw is completed and winners are announced."
+        },
+        "statusValues": {
+          "pendingContact": "Pending contact",
+          "contacted": "Contacted",
+          "claimed": "Claimed",
+          "forfeited": "Forfeited",
+          "disqualified": "Disqualified"
+        }
+      },
+      "errors": {
+        "load": "Failed to load prediction prizes."
+      }
+    },
+    "home": {
+      "hero": {
+        "title": "Football Prediction Challenge 2026",
+        "subtitle": "Predict every matchday, climb the leaderboard, invite friends, and compete for daily, weekly, and sponsor-supported grand prizes.",
+        "points": "Points",
+        "rank": "Rank",
+        "streak": "Streak"
+      },
+      "campaignWeek": "Campaign Week",
+      "stats": {
+        "totalPoints": "Total points",
+        "totalPointsHelper": "{{count}} exact scores recorded.",
+        "overallRank": "Overall rank",
+        "overallRankHelper": "{{count}} correct outcomes so far.",
+        "currentWeek": "Current week",
+        "currentWeekHelper": "{{saved}} of {{total}} predictions saved. Weekly rank: {{rank}}.",
+        "currentStreak": "Current streak"
+      },
+      "todayPrize": {
+        "title": "Today's Prize",
+        "qualified": "You are currently qualified for today’s prize window.",
+        "body": "Complete today’s bonus or predict today’s matches before cutoff to qualify. Sponsor-supported prize upgrades may be announced during the tournament.",
+        "cutoff": "Prize cutoff UTC",
+        "closed": "Prize closed"
+      },
+      "dailyBonus": {
+        "title": "Daily Bonus",
+        "body": "Answer the bonus question for the Challenge day UTC or confirm your match picks to stay active.",
+        "available": "Today’s daily bonus is available.",
+        "unavailable": "No daily bonus question is open right now."
+      },
+      "finishActions": {
+        "title": "Finish your daily and weekly actions",
+        "body": "Keep the habit going: complete today’s activity, finish the week, and review your saved picks."
+      },
+      "inviteFriends": {
+        "title": "Invite Friends",
+        "body": "Invite friends. When they register and submit at least one prediction before the cutoff, your referral counts toward weekly prizes and the grand prize draw."
+      },
+      "grandPrize": {
+        "title": "Grand Prize Progress",
+        "name": "Sponsor-supported grand prize",
+        "valueAnnounced": "{{value}} value announced.",
+        "valueFallback": "Approx. $500-$1,000 CAD value.",
+        "body": "Reach the referral and prediction targets before the grand cutoff to enter the final prize window.",
+        "qualifiedReferrals": "Qualified referrals",
+        "qualifiedReferralsHelper": "Invite friends who register and save at least one prediction before the cutoff.",
+        "predictionsSaved": "Predictions saved",
+        "predictionsSavedHelper": "Keep your match picks active across the campaign to stay on track.",
+        "action": "View Grand Prize"
+      },
+      "latestResult": {
+        "title": "Latest Result",
+        "empty": "Your scored prediction highlights will appear here after match results are posted. {{weekLabel}}: {{week}}."
+      }
+    },
+    "today": {
+      "header": {
+        "title": "Today's Challenge",
+        "subtitle": "Complete today's bonus or predict today's matches to qualify for today's prize.",
+        "challengeDay": "Challenge day: {{day}} UTC"
+      },
+      "cards": {
+        "summary": "Today summary",
+        "summaryComplete": "You have completed today’s required activity.",
+        "summaryAnswered": "Daily bonus answered. Match picks can still improve your coverage.",
+        "summaryPending": "You still have daily activity to finish.",
+        "openWeekly": "Open Weekly Challenge"
+      },
+      "prize": {
+        "title": "Today's Prize",
+        "qualified": "You are currently qualified for today’s prize window.",
+        "body": "Complete today’s bonus or predict today’s matches before cutoff to qualify. Sponsor-supported prize upgrades may be announced during the tournament.",
+        "cutoff": "Prize cutoff UTC",
+        "closed": "Prize closed",
+        "note": "Daily prize eligibility is based on the Challenge day UTC shown above."
+      },
+      "matches": {
+        "title": "Today's Matches"
+      },
+      "empty": {
+        "title": "No matches today",
+        "beforeStart": "The tournament has not started yet. You can browse upcoming fixtures and prepare your predictions.",
+        "noMatches": "The tournament has not started yet, or there are no fixtures on this Challenge day UTC.",
+        "prepareUpcoming": "Prepare for Upcoming Matches"
+      },
+      "upcoming": {
+        "title": "Next Upcoming Matches",
+        "helper": "These matches are not counted toward today’s completion or today’s daily prize unless they belong to the Challenge day UTC shown above."
+      },
+      "recent": {
+        "title": "Latest Results",
+        "actual": "Actual",
+        "yourPick": "Your pick",
+        "empty": {
+          "title": "No results yet",
+          "body": "Your recently scored predictions will appear here after match results are posted."
+        }
+      },
+      "activity": {
+        "title": "Activity Feed",
+        "empty": {
+          "title": "No activity yet",
+          "body": "Activity updates will appear here as the challenge moves closer to kickoff, scoring, prize windows, and published winners."
+        }
+      }
+    },
+    "weekly": {
+      "title": "Weekly Challenge",
+      "subtitle": "Predict match scores before they lock. You can save one match or save the full week at once.",
+      "progressTitle": "You predicted {{count}} of {{total}} matches this week",
+      "unsaved": "You have unsaved prediction changes.",
+      "saved": "All visible changes are saved.",
+      "completionLabel": "Weekly completion",
+      "completionHelper": "Complete this week’s predictions before matches lock.",
+      "rejected": "Rejected",
+      "enterBoth": "Enter both scores to save this prediction.",
+      "score": {
+        "home": "Home",
+        "away": "Away"
+      },
+      "errors": {
+        "load": "Failed to load weekly matches.",
+        "completeBoth": "Complete both scores for any edited match before saving.",
+        "save": "Failed to save predictions."
+      },
+      "info": {
+        "noChanges": "No completed changes to save for this week."
+      },
+      "success": {
+        "savedOnly": "{{saved}} pick(s) saved.",
+        "savedWithRejected": "{{saved}} pick(s) saved. {{rejected}} pick(s) were rejected."
+      },
+      "empty": {
+        "title": "No matches in this week yet",
+        "body": "Fixtures will appear here once the campaign schedule is available."
+      }
+    },
+    "fixtures": {
+      "title": "Fixtures",
+      "subtitle": "Browse upcoming matches, check your prediction status, and jump into the right weekly challenge.",
+      "searchPlaceholder": "Team, venue, match #",
+      "errors": {
+        "load": "Failed to load fixtures."
+      },
+      "empty": {
+        "title": "No fixtures found",
+        "body": "Try clearing filters or choosing another week.",
+        "action": "Clear Filters"
+      }
+    },
+    "match": {
+      "actualScore": "Actual score",
+      "yourPrediction": "Your prediction",
+      "savedPrediction": "Saved prediction"
+    },
+    "profile": {
+      "title": "How you appear on the leaderboard",
+      "subtitle": "Choose your display name, emoji, and favorite team for leaderboard and winner cards.",
+      "fields": {
+        "displayName": "Display name",
+        "emoji": "Choose your emoji",
+        "noEmoji": "No emoji",
+        "favoriteTeam": "Favorite team",
+        "favoriteTeamPlaceholder": "Select a team"
+      },
+      "preview": {
+        "title": "Leaderboard preview",
+        "noTeam": "No favorite team selected yet."
+      },
+      "actions": {
+        "save": "Save Profile"
+      },
+      "success": {
+        "saved": "Leaderboard profile saved."
+      },
+      "errors": {
+        "load": "Failed to load leaderboard profile.",
+        "save": "Failed to save leaderboard profile."
+      }
+    },
+    "myPredictions": {
+      "title": "My Predictions",
+      "subtitle": "Review saved picks, lock state, and entered results as they become available.",
+      "predictedScore": "Predicted score",
+      "pointsAwarded": "Points awarded",
+      "errors": {
+        "load": "Failed to load saved predictions."
+      },
+      "empty": {
+        "title": "No predictions found",
+        "body": "Save predictions from Weekly Challenge to populate this view."
+      }
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "subtitle": "Overall standings update after scored match results are posted.",
+      "tabs": {
+        "overall": "Overall",
+        "weekly": "This Week"
+      },
+      "top": "Top 10",
+      "myRank": "My Rank",
+      "aroundMe": "Around Me",
+      "exact": "exact",
+      "outcomes": "outcomes",
+      "scoredPicks": "{{count}} scored picks",
+      "errors": {
+        "load": "Failed to load leaderboard."
+      },
+      "empty": {
+        "topTitle": "No leaderboard yet",
+        "topBody": "Standings will appear here after scored results are posted for this view.",
+        "rankTitle": "No rank yet",
+        "rankBody": "Your rank appears after at least one of your saved predictions is scored.",
+        "aroundTitle": "No nearby standings yet",
+        "aroundBody": "Nearby ranking positions will appear after you have a scored prediction."
+      }
+    },
+    "referrals": {
+      "hero": {
+        "title": "Invite Friends",
+        "subtitle": "When a friend registers through your link and makes at least one prediction before the cutoff, your referral counts toward weekly and grand prize progress.",
+        "stats": {
+          "qualified": "Qualified",
+          "pending": "Pending",
+          "grandProgress": "Grand progress"
+        }
+      },
+      "cards": {
+        "qualified": "Qualified referrals",
+        "qualifiedHelper": "These friends registered and saved at least one prediction before the cutoff.",
+        "pending": "Pending referrals",
+        "pendingHelper": "These friends still need to complete their first prediction before they count.",
+        "weekly": "Weekly prize progress",
+        "weeklyHelper": "Qualified friends needed for the next weekly share prize.",
+        "grand": "Grand prize progress",
+        "grandHelper": "Qualified friends toward the sponsor-supported grand prize."
+      },
+      "share": {
+        "title": "Share your referral link",
+        "body": "Share your personal link with friends. Once they register and make one prediction before the cutoff, they count toward your prize progress.",
+        "linkLabel": "Referral link",
+        "message": "Join the Schedulaa Football Prediction Challenge and make your picks."
+      },
+      "actions": {
+        "copyLink": "Copy Link",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "linkedin": "LinkedIn",
+        "facebook": "Facebook"
+      },
+      "weekly": {
+        "title": "Weekly Share Prize Progress",
+        "qualified": "Qualified referrals",
+        "qualifiedHelper": "Invite friends who register and save one prediction before the weekly prize cutoff.",
+        "predictionsHelper": "Keep your weekly picks active before the prize cutoff."
+      },
+      "grand": {
+        "title": "Grand Prize Progress",
+        "qualifiedFriends": "Qualified friends",
+        "qualifiedHelper": "Reach the friend target before the grand prize cutoff.",
+        "predictionsHelper": "Keep predicting across the campaign to stay eligible."
+      },
+      "progress": {
+        "predictionsSaved": "Predictions saved"
+      },
+      "activity": {
+        "title": "Referral Activity",
+        "friendReferral": "Friend referral",
+        "status": "Referral status",
+        "qualifiedOn": "Qualified on",
+        "registered": "Registered"
+      },
+      "status": {
+        "pending": "Pending",
+        "qualified": "Qualified",
+        "rejected": "Rejected",
+        "disqualified": "Disqualified"
+      },
+      "cutoff": "Prize cutoff UTC",
+      "cutoffPending": "Announced before this prize window opens.",
+      "empty": {
+        "title": "No referrals yet",
+        "body": "Share your link with friends. Once they register and make one prediction, they count toward your prize progress."
+      },
+      "success": {
+        "copied": "Referral link copied."
+      },
+      "errors": {
+        "load": "Failed to load referrals.",
+        "clipboard": "Clipboard access is not available in this browser."
+      }
+    },
+    "rules": {
+      "title": "Rules",
+      "errors": {
+        "load": "Failed to load rules."
+      },
+      "chips": {
+        "startHere": "Start here",
+        "scoringSummary": "Scoring summary",
+        "quickReference": "Quick reference",
+        "examples": "Examples",
+        "prizeQualification": "Prize qualification",
+        "commonQuestions": "Common questions"
+      },
+      "howToPlay": {
+        "title": "How to play",
+        "step1": "Choose today’s matches or a weekly challenge.",
+        "step2": "Enter score predictions before kickoff and save them.",
+        "step3": "Come back after results are entered to see your points and rank."
+      },
+      "points": {
+        "title": "Points per match",
+        "body": "Points are awarded per match after the final result is entered and scoring runs."
+      },
+      "scoring": {
+        "title": "Scoring table",
+        "body": "Use this table as the quick reference for how points are awarded.",
+        "columns": {
+          "result": "Scoring result",
+          "points": "Points",
+          "notes": "Notes"
+        },
+        "rows": {
+          "1": {
+            "result": "Exact score",
+            "points": "5",
+            "notes": "Best possible result for one match."
+          },
+          "2": {
+            "result": "Correct outcome",
+            "points": "2",
+            "notes": "Home win, away win, or draw."
+          },
+          "3": {
+            "result": "Correct home-team goals",
+            "points": "1",
+            "notes": "Awarded even if the full score is not exact."
+          },
+          "4": {
+            "result": "Correct away-team goals",
+            "points": "1",
+            "notes": "Awarded even if the full score is not exact."
+          },
+          "5": {
+            "result": "Maximum per match",
+            "points": "5",
+            "notes": "Points never exceed 5 for one match."
+          }
+        },
+        "examples": {
+          "1": "Predict 2-1, actual 2-1 -> 5 points",
+          "2": "Predict 1-0, actual 2-1 -> 2 points for the correct outcome",
+          "3": "Predict 2-0, actual 2-1 -> 3 points: correct outcome + correct home goals",
+          "4": "Predict 2-2, actual 2-1 -> 1 point for the correct home goals only"
+        }
+      },
+      "examples": {
+        "title": "Scoring examples"
+      },
+      "weekly": {
+        "title": "Weekly Share Prize examples"
+      },
+      "weeklyExamples": {
+        "1": "Example 1: You invite 1 friend, they register through your link, and they save at least 1 prediction before cutoff. You also save 3 predictions before cutoff. You qualify for that Weekly Share Prize window.",
+        "2": "Example 2: You save 3 predictions but your referred friend never submits a prediction. Your referral does not qualify yet, so you do not qualify for that Weekly Share Prize window.",
+        "3": "Example 3: Your friend submits after the prize cutoff. That activity does not count for the earlier Weekly Share Prize window."
+      },
+      "faq": {
+        "title": "Quick FAQ",
+        "1": {
+          "q": "Can I edit a prediction after kickoff?",
+          "a": "No. Predictions lock at kickoff, and backend UTC is the source of truth."
+        },
+        "2": {
+          "q": "Do daily bonus points affect the main leaderboard?",
+          "a": "No. Daily bonus questions are separate from the main match prediction leaderboard."
+        },
+        "3": {
+          "q": "Do I have to predict only the current week?",
+          "a": "No. Some future weeks may be open for early predictions when fixtures are available."
+        },
+        "4": {
+          "q": "Do I need to follow sponsors to qualify or win?",
+          "a": "No. Following sponsors is optional and not required to enter or win."
+        }
+      },
+      "sections": {
+        "how_to_play": {
+          "title": "How to play",
+          "body": "Choose your matches, save your predictions before kickoff, and come back after results are entered to see your score and rank."
+        },
+        "how_points_work": {
+          "title": "How points work",
+          "body": "Exact score predictions earn the most points. You can also score points for the correct outcome or matching one team’s goal total, up to a maximum of 5 points per match."
+        },
+        "prediction_locking": {
+          "title": "Prediction locking",
+          "body": "Predictions lock at kickoff. Backend UTC is the source of truth, even if a countdown on your device looks slightly different."
+        },
+        "daily_bonus": {
+          "title": "Daily bonus",
+          "body": "Daily bonus questions are optional. They help with daily engagement and may count toward prize activity, but they do not affect the main prediction leaderboard."
+        },
+        "streaks": {
+          "title": "Streaks",
+          "body": "A streak is based on active matchdays. Rest days do not break it. A matchday counts when you answer the daily bonus or complete predictions for that day."
+        },
+        "referrals": {
+          "title": "Referrals",
+          "body": "A referral counts only after your friend registers through your link and saves at least one prediction before the relevant prize cutoff."
+        },
+        "prizes": {
+          "title": "Prizes",
+          "body": "Prize windows use fixed cutoff times. Winners are selected only after the prize window closes, and published winners appear on the Prizes page."
+        },
+        "following_sponsors": {
+          "title": "Following sponsors",
+          "body": "Following Schedulaa or sponsors is optional and not required to enter or win unless a specific promotion clearly states otherwise."
+        }
+      },
+      "extra": {
+        "prizeCategories": {
+          "title": "Prize categories",
+          "body": "Daily Prize: daily prizes start at $25, and some matchdays may feature larger sponsor-supported prizes. Weekly Share Prize: invite friends and make weekly predictions before cutoff. Grand Prize: meet the referral and prediction requirements before the grand cutoff."
+        },
+        "grandPrize": {
+          "title": "Grand Prize",
+          "body": "Grand Prize value will be announced before the draw and is expected to be approximately $500-$1,000 CAD. The prize may be a drone, gift card, or equivalent sponsor-supported prize. Schedulaa may substitute an equivalent gift card if shipping, availability, sponsor contribution, or local rules prevent delivery of the original prize."
+        },
+        "compliance": {
+          "title": "Prize and compliance notes",
+          "body": "Daily prizes start at $25. Some matchdays may feature larger sponsor-supported prizes. Selected prize days may be supported by local businesses. Sponsor support does not change the no-purchase-necessary nature of the challenge. Schedulaa administers the challenge and winner selection unless otherwise stated."
+        },
+        "following": {
+          "title": "Following sponsors",
+          "body": "Participants may be encouraged to follow Schedulaa or participating sponsors for updates and winner announcements, but following is not required to enter or win unless a specific sponsor promotion clearly states otherwise."
+        }
+      }
+    },
+    "dailyBonus": {
+      "title": "Daily Bonus",
+      "empty": "No daily bonus question is open for this Challenge day UTC yet.",
+      "locked": "Daily bonus is locked for this Challenge day.",
+      "correctSingle": "Correct answer: {{labels}}. You earned {{points}} daily bonus point(s).",
+      "correctPlural": "Correct answers: {{labels}}. You earned {{points}} daily bonus point(s).",
+      "actions": {
+        "submit": "Submit Answer",
+        "update": "Update Answer"
+      },
+      "success": {
+        "saved": "Daily bonus answer saved."
+      },
+      "errors": {
+        "save": "Failed to save daily bonus answer."
+      }
     }
   }
 }

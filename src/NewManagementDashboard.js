@@ -62,6 +62,7 @@ import {
   CalendarToday,
   People,
   EventNote,
+  EmojiEvents,
   Assignment,
   AssignmentTurnedIn,
   Article,
@@ -147,6 +148,8 @@ import EmployeeManagementHelpDrawer from "./pages/sections/management/components
 import EmployeeProfileAuditTimeline from "./pages/Payroll/EmployeeProfileAuditTimeline";
 import MobileManagerHome from "./components/manager/MobileManagerHome";
 import BusinessFinanceShell from "./pages/finance/BusinessFinanceShell";
+import PredictionShell from "./pages/prediction/PredictionShell";
+import PredictionPromoBanner from "./pages/prediction/PredictionPromoBanner";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -180,6 +183,14 @@ const overviewChildrenConfig = [
 
 
 const menuConfig = [
+  {
+    label: "Football Prediction Challenge",
+    navLabel: "Football Predictions",
+    key: "prediction",
+    icon: <EmojiEvents />,
+    tooltip: "Prediction challenge: weekly football picks, leaderboard, and campaign rules.",
+  },
+
   // Employee group (first)
   {
     labelKey: "manager.menu.employeeManagement",
@@ -1715,6 +1726,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         const mappedItem = {
           ...item,
           label: item.labelKey ? t(item.labelKey) : item.label || "",
+          navLabel: item.labelKey ? t(item.labelKey) : item.navLabel || item.label || "",
           tooltip: item.tooltipKey ? t(item.tooltipKey) : item.tooltip || "",
         };
 
@@ -3510,6 +3522,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "finance-month-end":
         return <BusinessFinanceShell viewKey={effectiveView} onNavigate={handleNavSelect} />;
 
+      case "prediction":
+        return <PredictionShell token={token} currentUserInfo={currentUserInfo} />;
+
       case "zapier":
         return <ZapierIntegrationPage />;
 
@@ -3663,7 +3678,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                     </ListItemIcon>
                     {drawerExpanded && (
                       <ListItemText
-                        primary={item.label}
+                        primary={item.navLabel || item.label}
                         primaryTypographyProps={{ sx: { whiteSpace: "nowrap", overflow: "visible" } }}
                         sx={{ pr: 1 }}
                       />
@@ -3696,7 +3711,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                     </ListItemIcon>
                     {drawerExpanded && (
                       <ListItemText
-                        primary={item.label}
+                        primary={item.navLabel || item.label}
                         primaryTypographyProps={{ noWrap: true }}
                         sx={{ overflow: "hidden", pr: 1 }}
                       />
@@ -3844,6 +3859,17 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           </Alert>
         )}
         {selectedView !== "team" && <GlobalBillingBanner />}
+        {selectedView !== "prediction" && (
+          <PredictionPromoBanner
+            onEnterPredictions={() => handleNavSelect("prediction")}
+            onViewRules={() => {
+              if (typeof window !== "undefined") {
+                window.localStorage.setItem("prediction_initial_tab", "rules");
+              }
+              handleNavSelect("prediction");
+            }}
+          />
+        )}
         {renderView()}
       </Box>
     </Box>

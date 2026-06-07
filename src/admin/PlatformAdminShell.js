@@ -19,6 +19,7 @@ const drawerWidth = 240;
 
 const navItems = [
   { label: "Search", to: "/admin/search" },
+  { label: "Prediction Challenge", to: "/admin/prediction" },
   { label: "Tickets", to: "/admin/tickets" },
   { label: "Sales CRM", to: "/admin/sales/crm" },
   { label: "Sales Reps", to: "/admin/sales/reps" },

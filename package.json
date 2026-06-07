@@ -46,6 +46,7 @@
     "dayjs": "^1.11.18",
     "dompurify": "^3.2.7",
     "file-saver": "^2.0.5",
+    "flag-icons": "^7.5.0",
     "framer-motion": "^12.23.22",
     "html2canvas": "^1.4.1",
     "i18next": "^25.5.3",

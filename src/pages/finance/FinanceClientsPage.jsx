@@ -64,6 +64,9 @@ function downloadBlobFromResponse(response, fallbackName) {
 const blankClient = { name: "", email: "", phone: "", notes: "" };
 
 function ClientEditorDialog({ open, onClose, initialValues, onSubmit, saving = false }) {
+  const { t } = useTranslation();
+  const tClients = (key, fallback, options = {}) =>
+    t(`manager.finance.clients.${key}`, { defaultValue: fallback, ...options });
   const [form, setForm] = useState(blankClient);
 
   useEffect(() => {
@@ -73,13 +76,13 @@ function ClientEditorDialog({ open, onClose, initialValues, onSubmit, saving = f
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{initialValues?.id ? "Edit client" : "Add client"}</DialogTitle>
+      <DialogTitle>{initialValues?.id ? tClients("editor.titleEdit", "Edit client") : tClients("editor.titleCreate", "Add client")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 0.25 }}>
           <TextField
             fullWidth
-            label="Client / business name"
-            placeholder="ABC Property Management"
+            label={tClients("editor.fields.name", "Client / business name")}
+            placeholder={tClients("editor.placeholders.name", "ABC Property Management")}
             value={form.name}
             onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
           />
@@ -87,8 +90,8 @@ function ClientEditorDialog({ open, onClose, initialValues, onSubmit, saving = f
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Email"
-                placeholder="billing@abcproperty.ca"
+                label={tClients("editor.fields.email", "Email")}
+                placeholder={tClients("editor.placeholders.email", "billing@abcproperty.ca")}
                 value={form.email}
                 onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
               />
@@ -96,8 +99,8 @@ function ClientEditorDialog({ open, onClose, initialValues, onSubmit, saving = f
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Phone"
-                placeholder="(416) 555-0132"
+                label={tClients("editor.fields.phone", "Phone")}
+                placeholder={tClients("editor.placeholders.phone", "(416) 555-0132")}
                 value={form.phone}
                 onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))}
               />
@@ -107,17 +110,20 @@ function ClientEditorDialog({ open, onClose, initialValues, onSubmit, saving = f
             fullWidth
             multiline
             minRows={3}
-            label="Internal notes"
-            placeholder="Billing preferences, special contact notes, or service reminders."
+            label={tClients("editor.fields.notes", "Internal notes")}
+            placeholder={tClients(
+              "editor.placeholders.notes",
+              "Billing preferences, special contact notes, or service reminders."
+            )}
             value={form.notes}
             onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
           />
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={onClose} disabled={saving}>{tClients("actions.cancel", "Cancel")}</Button>
         <Button variant="contained" onClick={() => onSubmit(form)} disabled={saving}>
-          {initialValues?.id ? "Save client" : "Create client"}
+          {initialValues?.id ? tClients("actions.saveClient", "Save client") : tClients("actions.createClient", "Create client")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -125,23 +131,36 @@ function ClientEditorDialog({ open, onClose, initialValues, onSubmit, saving = f
 }
 
 function ClientArchiveDialog({ open, client, onClose, onConfirm, saving = false }) {
+  const { t } = useTranslation();
+  const tClients = (key, fallback, options = {}) =>
+    t(`manager.finance.clients.${key}`, { defaultValue: fallback, ...options });
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Archive client</DialogTitle>
+      <DialogTitle>{tClients("archive.title", "Archive client")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={1.5}>
           <Typography variant="body2">
-            Archive <strong>{client?.name || "this client"}</strong> so it no longer appears in the normal active client pickers.
+            {tClients("archive.body", "Archive {{name}} so it no longer appears in the normal active client pickers.", {
+              name: client?.name || tClients("archive.fallbackName", "this client"),
+            }).split(String(client?.name || tClients("archive.fallbackName", "this client"))).map((part, index, arr) => (
+              <React.Fragment key={`${part}-${index}`}>
+                {part}
+                {index < arr.length - 1 ? <strong>{client?.name || tClients("archive.fallbackName", "this client")}</strong> : null}
+              </React.Fragment>
+            ))}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Existing quotes, estimates, invoices, work orders, and expenses stay intact. Archive is safer than delete for finance records.
+            {tClients(
+              "archive.helper",
+              "Existing quotes, estimates, invoices, work orders, and expenses stay intact. Archive is safer than delete for finance records."
+            )}
           </Typography>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={onClose} disabled={saving}>{tClients("actions.cancel", "Cancel")}</Button>
         <Button color="warning" variant="contained" onClick={onConfirm} disabled={saving}>
-          Archive client
+          {tClients("actions.archiveClient", "Archive client")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -149,23 +168,36 @@ function ClientArchiveDialog({ open, client, onClose, onConfirm, saving = false 
 }
 
 function ClientRestoreDialog({ open, client, onClose, onConfirm, saving = false }) {
+  const { t } = useTranslation();
+  const tClients = (key, fallback, options = {}) =>
+    t(`manager.finance.clients.${key}`, { defaultValue: fallback, ...options });
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Restore client</DialogTitle>
+      <DialogTitle>{tClients("restore.title", "Restore client")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={1.5}>
           <Typography variant="body2">
-            Restore <strong>{client?.name || "this client"}</strong> to the active client list.
+            {tClients("restore.body", "Restore {{name}} to the active client list.", {
+              name: client?.name || tClients("restore.fallbackName", "this client"),
+            }).split(String(client?.name || tClients("restore.fallbackName", "this client"))).map((part, index, arr) => (
+              <React.Fragment key={`${part}-${index}`}>
+                {part}
+                {index < arr.length - 1 ? <strong>{client?.name || tClients("restore.fallbackName", "this client")}</strong> : null}
+              </React.Fragment>
+            ))}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            The client will appear again in Quotes, Estimates, Work Orders, and the active Business Finance client directory.
+            {tClients(
+              "restore.helper",
+              "The client will appear again in Quotes, Estimates, Work Orders, and the active Business Finance client directory."
+            )}
           </Typography>
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button onClick={onClose} disabled={saving}>{tClients("actions.cancel", "Cancel")}</Button>
         <Button color="success" variant="contained" onClick={onConfirm} disabled={saving}>
-          Restore client
+          {tClients("actions.restoreClient", "Restore client")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -173,6 +205,9 @@ function ClientRestoreDialog({ open, client, onClose, onConfirm, saving = false 
 }
 
 function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRestore, refreshNonce = 0 }) {
+  const { t } = useTranslation();
+  const tClients = (key, fallback, options = {}) =>
+    t(`manager.finance.clients.${key}`, { defaultValue: fallback, ...options });
   const { enqueueSnackbar } = useSnackbar();
   const timezone = useMemo(() => getUserTimezone(), []);
   const [loading, setLoading] = useState(false);
@@ -187,7 +222,7 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
       const res = await getFinanceClient(clientId);
       setPayload(res);
     } catch (err) {
-      const message = err?.response?.data?.error || err?.message || "Unable to load client details.";
+      const message = err?.response?.data?.error || err?.message || tClients("errors.loadDetailFailed", "Unable to load client details.");
       setError(message);
       enqueueSnackbar(message, { variant: "error" });
     } finally {
@@ -217,14 +252,14 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
           ))}
         </Stack>
       ) : (
-        <Typography variant="body2" color="text.secondary">No recent records.</Typography>
+        <Typography variant="body2" color="text.secondary">{tClients("detail.noRecentRecords", "No recent records.")}</Typography>
       )}
     </Paper>
   );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{client?.name || "Client details"}</DialogTitle>
+      <DialogTitle>{client?.name || tClients("detail.title", "Client details")}</DialogTitle>
       <DialogContent dividers>
         {loading ? (
           <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
@@ -235,52 +270,86 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
               <Stack spacing={0.75}>
                 <Typography variant="body2" color="text.secondary">
-                  {client.email || "No billing email"}{client.phone ? ` • ${client.phone}` : ""}
+                  {client.email || tClients("detail.noBillingEmail", "No billing email")}{client.phone ? ` • ${client.phone}` : ""}
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Chip size="small" label={client.status === "archived" ? "Archived client" : "Active client"} color={client.status === "archived" ? "default" : "success"} />
-                  <Chip size="small" label={client.has_card_on_file ? "Card on file" : "No card on file"} variant="outlined" />
-                  <Chip size="small" label={`Created ${client.created_at ? formatDateTimeInTz(client.created_at, timezone) : "-"}`} variant="outlined" />
+                  <Chip
+                    size="small"
+                    label={client.status === "archived" ? tClients("detail.status.archived", "Archived client") : tClients("detail.status.active", "Active client")}
+                    color={client.status === "archived" ? "default" : "success"}
+                  />
+                  <Chip
+                    size="small"
+                    label={client.has_card_on_file ? tClients("detail.cardOnFile", "Card on file") : tClients("detail.noCardOnFile", "No card on file")}
+                    variant="outlined"
+                  />
+                  <Chip
+                    size="small"
+                    label={tClients("detail.createdAt", "Created {{value}}", {
+                      value: client.created_at ? formatDateTimeInTz(client.created_at, timezone) : "-",
+                    })}
+                    variant="outlined"
+                  />
                 </Stack>
               </Stack>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-                <Button variant="outlined" onClick={() => onEdit(client)}>Edit client</Button>
+                <Button variant="outlined" onClick={() => onEdit(client)}>{tClients("actions.editClient", "Edit client")}</Button>
                 {client.status !== "archived" ? (
-                  <Button color="warning" variant="contained" onClick={() => onArchive(client)}>Archive client</Button>
+                  <Button color="warning" variant="contained" onClick={() => onArchive(client)}>{tClients("actions.archiveClient", "Archive client")}</Button>
                 ) : (
-                  <Button color="success" variant="contained" onClick={() => onRestore(client)}>Restore client</Button>
+                  <Button color="success" variant="contained" onClick={() => onRestore(client)}>{tClients("actions.restoreClient", "Restore client")}</Button>
                 )}
               </Stack>
             </Stack>
 
             {client.notes ? (
               <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-                <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.75 }}>Internal notes</Typography>
+                <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.75 }}>{tClients("detail.internalNotes", "Internal notes")}</Typography>
                 <Typography variant="body2" color="text.secondary">{client.notes}</Typography>
               </Paper>
             ) : null}
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
-                <FinanceMetricCard label="Open invoices" value={String(counts.open_invoices ?? 0)} helper="Invoices still waiting for payment or follow-up." accent="warning" />
+                <FinanceMetricCard
+                  label={tClients("detail.metrics.openInvoices.label", "Open invoices")}
+                  value={String(counts.open_invoices ?? 0)}
+                  helper={tClients("detail.metrics.openInvoices.helper", "Invoices still waiting for payment or follow-up.")}
+                  accent="warning"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <FinanceMetricCard label="Open work orders" value={String(counts.open_work_orders ?? 0)} helper="Jobs not yet fully closed or cancelled." accent="primary" />
+                <FinanceMetricCard
+                  label={tClients("detail.metrics.openWorkOrders.label", "Open work orders")}
+                  value={String(counts.open_work_orders ?? 0)}
+                  helper={tClients("detail.metrics.openWorkOrders.helper", "Jobs not yet fully closed or cancelled.")}
+                  accent="primary"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <FinanceMetricCard label="Estimates" value={String(counts.estimates ?? 0)} helper="Pricing records linked to this client." accent="success" />
+                <FinanceMetricCard
+                  label={tClients("detail.metrics.estimates.label", "Estimates")}
+                  value={String(counts.estimates ?? 0)}
+                  helper={tClients("detail.metrics.estimates.helper", "Pricing records linked to this client.")}
+                  accent="success"
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <FinanceMetricCard label="Quotes" value={String(counts.quote_requests ?? 0)} helper="Intake requests captured before pricing." accent="info" />
+                <FinanceMetricCard
+                  label={tClients("detail.metrics.quotes.label", "Quotes")}
+                  value={String(counts.quote_requests ?? 0)}
+                  helper={tClients("detail.metrics.quotes.helper", "Intake requests captured before pricing.")}
+                  accent="info"
+                />
               </Grid>
             </Grid>
 
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
-                {renderRecentRows("Recent estimates", recent.estimates, (row) => (
+                {renderRecentRows(tClients("detail.sections.recentEstimates", "Recent estimates"), recent.estimates, (row) => (
                   <>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2" fontWeight={700}>{row.estimate_number || `Estimate #${row.id}`}</Typography>
+                      <Typography variant="body2" fontWeight={700}>{row.estimate_number || tClients("detail.fallbacks.estimateNumber", "Estimate #{{id}}", { id: row.id })}</Typography>
                       <FinanceStatusChip status={row.status} />
                     </Stack>
                     <Typography variant="body2" color="text.secondary">{row.title}</Typography>
@@ -288,10 +357,10 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
                 ))}
               </Grid>
               <Grid item xs={12} md={6}>
-                {renderRecentRows("Recent invoices", recent.invoices, (row) => (
+                {renderRecentRows(tClients("detail.sections.recentInvoices", "Recent invoices"), recent.invoices, (row) => (
                   <>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2" fontWeight={700}>{row.invoice_number || `Invoice #${row.id}`}</Typography>
+                      <Typography variant="body2" fontWeight={700}>{row.invoice_number || tClients("detail.fallbacks.invoiceNumber", "Invoice #{{id}}", { id: row.id })}</Typography>
                       <FinanceStatusChip status={row.status} />
                     </Stack>
                     <Typography variant="body2" color="text.secondary">{row.total} {row.currency}</Typography>
@@ -299,10 +368,10 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
                 ))}
               </Grid>
               <Grid item xs={12} md={6}>
-                {renderRecentRows("Recent work orders", recent.work_orders, (row) => (
+                {renderRecentRows(tClients("detail.sections.recentWorkOrders", "Recent work orders"), recent.work_orders, (row) => (
                   <>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2" fontWeight={700}>{row.work_order_number || `WO-${row.id}`}</Typography>
+                      <Typography variant="body2" fontWeight={700}>{row.work_order_number || tClients("detail.fallbacks.workOrderNumber", "WO-{{id}}", { id: row.id })}</Typography>
                       <FinanceStatusChip status={row.status} />
                     </Stack>
                     <Typography variant="body2" color="text.secondary">{row.title}</Typography>
@@ -310,7 +379,7 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
                 ))}
               </Grid>
               <Grid item xs={12} md={6}>
-                {renderRecentRows("Recent expenses", recent.expenses, (row) => (
+                {renderRecentRows(tClients("detail.sections.recentExpenses", "Recent expenses"), recent.expenses, (row) => (
                   <>
                     <Typography variant="body2" fontWeight={700}>{row.title}</Typography>
                     <Typography variant="body2" color="text.secondary">{row.amount} {row.currency}</Typography>
@@ -322,7 +391,7 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
         ) : null}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onClose}>{tClients("actions.close", "Close")}</Button>
       </DialogActions>
     </Dialog>
   );
@@ -330,6 +399,8 @@ function ClientDetailDialog({ open, clientId, onClose, onEdit, onArchive, onRest
 
 export default function FinanceClientsPage() {
   const { t } = useTranslation();
+  const tClients = (key, fallback, options = {}) =>
+    t(`manager.finance.clients.${key}`, { defaultValue: fallback, ...options });
   const { enqueueSnackbar } = useSnackbar();
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState({});
@@ -365,7 +436,7 @@ export default function FinanceClientsPage() {
       setSummary(res?.summary || {});
       setPagination(res?.pagination || null);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Unable to load clients.");
+      setError(err?.response?.data?.error || err?.message || tClients("errors.loadFailed", "Unable to load clients."));
     } finally {
       setLoading(false);
     }
@@ -391,25 +462,25 @@ export default function FinanceClientsPage() {
       const response = await downloadFinanceClientImportTemplate();
       downloadBlobFromResponse(response, "schedulaa-finance-clients-template.csv");
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to download template.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.downloadTemplateFailed", "Unable to download template."), { variant: "error" });
     }
   };
 
   const handleCreate = async () => {
     const payload = buildClientCreatePayload(createForm);
     if (!payload.first_name || !payload.email) {
-      enqueueSnackbar("Client name and email are required.", { variant: "error" });
+      enqueueSnackbar(tClients("errors.nameEmailRequired", "Client name and email are required."), { variant: "error" });
       return;
     }
     setSaving(true);
     try {
       await createFinanceClient(payload);
-      enqueueSnackbar("Client created.", { variant: "success" });
+      enqueueSnackbar(tClients("snackbar.created", "Client created."), { variant: "success" });
       setCreateOpen(false);
       setCreateForm({ name: "", email: "", phone: "" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create client.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.createFailed", "Unable to create client."), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -422,19 +493,19 @@ export default function FinanceClientsPage() {
       notes: form.notes || "",
     };
     if (!payload.first_name || !payload.email) {
-      enqueueSnackbar("Client name and email are required.", { variant: "error" });
+      enqueueSnackbar(tClients("errors.nameEmailRequired", "Client name and email are required."), { variant: "error" });
       return;
     }
     setSaving(true);
     try {
       await updateFinanceClient(selectedClient.id, payload);
-      enqueueSnackbar("Client updated.", { variant: "success" });
+      enqueueSnackbar(tClients("snackbar.updated", "Client updated."), { variant: "success" });
       setEditorOpen(false);
       setSelectedClient(null);
       setDetailRefreshNonce((current) => current + 1);
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to update client.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.updateFailed", "Unable to update client."), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -445,14 +516,14 @@ export default function FinanceClientsPage() {
     setSaving(true);
     try {
       await archiveFinanceClient(archiveTarget.id);
-      enqueueSnackbar("Client archived.", { variant: "success" });
+      enqueueSnackbar(tClients("snackbar.archived", "Client archived."), { variant: "success" });
       if (detailId === archiveTarget.id) {
         setDetailRefreshNonce((current) => current + 1);
       }
       setArchiveTarget(null);
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to archive client.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.archiveFailed", "Unable to archive client."), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -463,14 +534,14 @@ export default function FinanceClientsPage() {
     setSaving(true);
     try {
       await updateFinanceClient(restoreTarget.id, { status: "active" });
-      enqueueSnackbar("Client restored.", { variant: "success" });
+      enqueueSnackbar(tClients("snackbar.restored", "Client restored."), { variant: "success" });
       if (detailId === restoreTarget.id) {
         setDetailRefreshNonce((current) => current + 1);
       }
       setRestoreTarget(null);
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to restore client.", { variant: "error" });
+      enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.restoreFailed", "Unable to restore client."), { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -480,16 +551,36 @@ export default function FinanceClientsPage() {
     <Stack spacing={2.5}>
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} md={3}>
-          <FinanceMetricCard label="Active clients" value={String(summary.active_clients ?? 0)} helper="Official client records currently available in quote, estimate, and work order flows." accent="primary" />
+          <FinanceMetricCard
+            label={tClients("metrics.activeClients.label", "Active clients")}
+            value={String(summary.active_clients ?? 0)}
+            helper={tClients("metrics.activeClients.helper", "Official client records currently available in quote, estimate, and work order flows.")}
+            accent="primary"
+          />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <FinanceMetricCard label="Archived clients" value={String(summary.archived_clients ?? 0)} helper="Inactive client records kept for finance history and lookup." accent="warning" />
+          <FinanceMetricCard
+            label={tClients("metrics.archivedClients.label", "Archived clients")}
+            value={String(summary.archived_clients ?? 0)}
+            helper={tClients("metrics.archivedClients.helper", "Inactive client records kept for finance history and lookup.")}
+            accent="warning"
+          />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <FinanceMetricCard label="Clients with open invoices" value={String(summary.clients_with_open_invoices ?? 0)} helper="Customers who still have invoice follow-up pending." accent="error" />
+          <FinanceMetricCard
+            label={tClients("metrics.clientsWithOpenInvoices.label", "Clients with open invoices")}
+            value={String(summary.clients_with_open_invoices ?? 0)}
+            helper={tClients("metrics.clientsWithOpenInvoices.helper", "Customers who still have invoice follow-up pending.")}
+            accent="error"
+          />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <FinanceMetricCard label="Clients with open work orders" value={String(summary.clients_with_open_work_orders ?? 0)} helper="Customers with jobs still active in the operational workflow." accent="success" />
+          <FinanceMetricCard
+            label={tClients("metrics.clientsWithOpenWorkOrders.label", "Clients with open work orders")}
+            value={String(summary.clients_with_open_work_orders ?? 0)}
+            helper={tClients("metrics.clientsWithOpenWorkOrders.helper", "Customers with jobs still active in the operational workflow.")}
+            accent="success"
+          />
         </Grid>
       </Grid>
 
@@ -498,8 +589,8 @@ export default function FinanceClientsPage() {
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
             <TextField
               size="small"
-              label="Search clients"
-              placeholder="ABC Property Management"
+              label={tClients("filters.searchLabel", "Search clients")}
+              placeholder={tClients("filters.searchPlaceholder", "ABC Property Management")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -511,26 +602,26 @@ export default function FinanceClientsPage() {
               sx={{ minWidth: { md: 300 } }}
             />
             <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>Status</InputLabel>
+              <InputLabel>{tClients("filters.statusLabel", "Status")}</InputLabel>
               <Select
                 value={status}
-                label="Status"
+                label={tClients("filters.statusLabel", "Status")}
                 onChange={(e) => {
                   setStatus(e.target.value);
                   setPage(1);
                 }}
               >
-                <MenuItem value="active">Active clients</MenuItem>
-                <MenuItem value="archived">Archived clients</MenuItem>
-                <MenuItem value="all">All clients</MenuItem>
+                <MenuItem value="active">{tClients("filters.statusOptions.active", "Active clients")}</MenuItem>
+                <MenuItem value="archived">{tClients("filters.statusOptions.archived", "Archived clients")}</MenuItem>
+                <MenuItem value="all">{tClients("filters.statusOptions.all", "All clients")}</MenuItem>
               </Select>
             </FormControl>
-            <Button variant="outlined" onClick={load}>Refresh</Button>
+            <Button variant="outlined" onClick={load}>{tClients("actions.refresh", "Refresh")}</Button>
           </Stack>
           <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-            <Button variant="text" onClick={handleDownloadTemplate}>Download template</Button>
-            <Button variant="outlined" onClick={() => setImportOpen(true)}>Import clients</Button>
-            <Button variant="contained" onClick={() => setCreateOpen(true)}>Add client</Button>
+            <Button variant="text" onClick={handleDownloadTemplate}>{tClients("actions.downloadTemplate", "Download template")}</Button>
+            <Button variant="outlined" onClick={() => setImportOpen(true)}>{tClients("actions.importClients", "Import clients")}</Button>
+            <Button variant="contained" onClick={() => setCreateOpen(true)}>{tClients("actions.addClient", "Add client")}</Button>
           </Stack>
         </Stack>
       </Paper>
@@ -541,9 +632,9 @@ export default function FinanceClientsPage() {
         <Alert severity="error">{error}</Alert>
       ) : items.length === 0 ? (
         <FinanceEmptyState
-          title="No clients yet"
-          description="Create the official customer records used across quotes, estimates, invoices, work orders, and expense links."
-          actionLabel="Add client"
+          title={tClients("empty.title", "No clients yet")}
+          description={tClients("empty.description", "Create the official customer records used across quotes, estimates, invoices, work orders, and expense links.")}
+          actionLabel={tClients("actions.addClient", "Add client")}
           onAction={() => setCreateOpen(true)}
         />
       ) : (
@@ -551,14 +642,14 @@ export default function FinanceClientsPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Client</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Last activity</TableCell>
-                <TableCell>Estimates</TableCell>
-                <TableCell>Open invoices</TableCell>
-                <TableCell>Open work orders</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>{tClients("table.headers.client", "Client")}</TableCell>
+                <TableCell>{tClients("table.headers.contact", "Contact")}</TableCell>
+                <TableCell>{tClients("table.headers.lastActivity", "Last activity")}</TableCell>
+                <TableCell>{tClients("table.headers.estimates", "Estimates")}</TableCell>
+                <TableCell>{tClients("table.headers.openInvoices", "Open invoices")}</TableCell>
+                <TableCell>{tClients("table.headers.openWorkOrders", "Open work orders")}</TableCell>
+                <TableCell>{tClients("table.headers.status", "Status")}</TableCell>
+                <TableCell align="right">{tClients("table.headers.actions", "Actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -567,7 +658,10 @@ export default function FinanceClientsPage() {
                   <TableCell>
                     <Typography variant="body2" fontWeight={700}>{client.name}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {client.linked_counts?.quote_requests ?? 0} quote requests • {client.linked_counts?.invoices ?? 0} invoices
+                      {tClients("table.linkedCounts", "{{quotes}} quote requests • {{invoices}} invoices", {
+                        quotes: client.linked_counts?.quote_requests ?? 0,
+                        invoices: client.linked_counts?.invoices ?? 0,
+                      })}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -575,22 +669,24 @@ export default function FinanceClientsPage() {
                     <Typography variant="body2" color="text.secondary">{client.phone || ""}</Typography>
                   </TableCell>
                   <TableCell>
-                    {client.linked_counts?.last_activity_at ? formatDateTimeInTz(client.linked_counts.last_activity_at, getUserTimezone()) : "No linked finance activity yet"}
+                    {client.linked_counts?.last_activity_at
+                      ? formatDateTimeInTz(client.linked_counts.last_activity_at, getUserTimezone())
+                      : tClients("table.noLinkedActivity", "No linked finance activity yet")}
                   </TableCell>
                   <TableCell>{client.linked_counts?.estimates ?? 0}</TableCell>
                   <TableCell>{client.linked_counts?.open_invoices ?? 0}</TableCell>
                   <TableCell>{client.linked_counts?.open_work_orders ?? 0}</TableCell>
-                  <TableCell>{client.status === "archived" ? "Archived" : "Active"}</TableCell>
+                  <TableCell>{client.status === "archived" ? tClients("table.status.archived", "Archived") : tClients("table.status.active", "Active")}</TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button size="small" onClick={(e) => { e.stopPropagation(); openEdit(client); }}>Edit</Button>
+                      <Button size="small" onClick={(e) => { e.stopPropagation(); openEdit(client); }}>{tClients("actions.edit", "Edit")}</Button>
                       {client.status !== "archived" ? (
                         <Button size="small" color="warning" onClick={(e) => { e.stopPropagation(); setArchiveTarget(client); }}>
-                          Archive
+                          {tClients("actions.archive", "Archive")}
                         </Button>
                       ) : (
                         <Button size="small" color="success" onClick={(e) => { e.stopPropagation(); setRestoreTarget(client); }}>
-                          Restore
+                          {tClients("actions.restore", "Restore")}
                         </Button>
                       )}
                     </Stack>
@@ -620,8 +716,16 @@ export default function FinanceClientsPage() {
         form={createForm}
         setForm={setCreateForm}
         loading={saving}
-        title="Add client"
-        description="Create the official customer record used for estimates, invoices, work orders, and Business Finance reporting."
+        title={tClients("quickCreate.title", "Add client")}
+        description={tClients("quickCreate.description", "Create the official customer record used for estimates, invoices, work orders, and Business Finance reporting.")}
+        nameLabel={tClients("editor.fields.name", "Client / business name")}
+        namePlaceholder={tClients("editor.placeholders.name", "ABC Property Management")}
+        emailLabel={tClients("editor.fields.email", "Email")}
+        emailPlaceholder={tClients("editor.placeholders.email", "billing@abcproperty.ca")}
+        phoneLabel={tClients("editor.fields.phone", "Phone")}
+        phonePlaceholder={tClients("editor.placeholders.phone", "(416) 555-0132")}
+        cancelLabel={tClients("actions.cancel", "Cancel")}
+        submitLabel={tClients("actions.createClient", "Create client")}
       />
 
       <ClientEditorDialog
@@ -664,11 +768,11 @@ export default function FinanceClientsPage() {
       <FinanceImportDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        title="Import clients"
+        title={tClients("import.title", "Import clients")}
         importType="clients"
-        entityLabel="clients"
-        entitySingular="client"
-        entityPlural="clients"
+        entityLabel={tClients("import.entityLabel", "clients")}
+        entitySingular={tClients("import.entitySingular", "client")}
+        entityPlural={tClients("import.entityPlural", "clients")}
         templateFileName="schedulaa-finance-clients-template.csv"
         csvStructure={`client_name,first_name,last_name,email,phone,notes,status\nAcme Cleaning,,,billing@acme.com,+14165550123,VIP commercial client,active\n,John,Doe,john@example.com,+14165550124,Residential client,active`}
         downloadTemplate={downloadFinanceClientImportTemplate}

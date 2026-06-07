@@ -80,6 +80,7 @@ import AdminTeamPage from "./admin/pages/AdminTeamPage";
 import AdminTicketsPage from "./admin/pages/AdminTicketsPage";
 import AdminTicketDetailPage from "./admin/pages/AdminTicketDetailPage";
 import SalesCRMPage from "./admin/pages/SalesCRMPage";
+import PredictionAdminPage from "./admin/pages/PredictionAdminPage";
 import SalesLogin from "./sales/SalesLogin";
 import SalesForgotPassword from "./sales/SalesForgotPassword";
 import SalesResetPassword from "./sales/SalesResetPassword";
@@ -214,6 +215,7 @@ import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 import { buildMarketingUrl } from "./config/origins";
 import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
+import { capturePredictionReferralFromSearch } from "./utils/predictionReferral";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -573,6 +575,9 @@ const AppContent = ({ token, setToken }) => {
 
   const [chatbotSuppressedByOverlay, setChatbotSuppressedByOverlay] = useState(false);
   useEffect(() => {
+    capturePredictionReferralFromSearch(location.search);
+  }, [location.search]);
+  useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const activeSources = new Set();
     const handleSuppression = (event) => {
@@ -640,6 +645,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/admin/reset-password" element={<PlatformAdminResetPassword />} />
           <Route path="/admin" element={<PlatformAdminShell />}>
             <Route path="search" element={<SearchPage />} />
+            <Route path="prediction" element={<PredictionAdminPage />} />
             <Route path="tenants/:companyId" element={<Tenant360Page />} />
             <Route path="sales/crm" element={<SalesCRMPage />} />
             <Route path="sales/reps" element={<SalesRepsPage />} />
