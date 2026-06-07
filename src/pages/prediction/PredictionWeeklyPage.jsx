@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { alpha, useTheme } from "@mui/material/styles";
 import {
   Alert,
+  Box,
   Button,
   MenuItem,
   Paper,
@@ -18,6 +20,7 @@ import {
 import PredictionProgressBar from "./components/PredictionProgressBar";
 import PredictionEmptyState from "./components/PredictionEmptyState";
 import PredictionMatchPredictionCard from "./components/PredictionMatchPredictionCard";
+import weeklyCover from "../../assets/prediction/weekly-cover.png";
 
 const normalizeDrafts = (matches) =>
   Object.fromEntries(
@@ -39,6 +42,7 @@ const draftDiffersFromSaved = (draft, match) => {
 };
 
 const PredictionWeeklyPage = ({ selectedWeekKey, onSelectedWeekKeyChange }) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const [weekKey, setWeekKey] = useState(selectedWeekKey || "");
   const [state, setState] = useState({ loading: true, error: "", data: null });
@@ -182,14 +186,52 @@ const PredictionWeeklyPage = ({ selectedWeekKey, onSelectedWeekKeyChange }) => {
 
   return (
     <Stack spacing={2}>
-      <Stack spacing={0.5}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          {t("prediction.weekly.title", "Weekly Challenge")}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {t("prediction.weekly.subtitle", "Predict match scores before they lock. You can save one match or save the full week at once.")}
-        </Typography>
-      </Stack>
+      <Paper
+        elevation={0}
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          p: { xs: 2.5, md: 3 },
+          borderRadius: 3,
+          border: "1px solid",
+          borderColor: alpha(theme.palette.primary.main, 0.14),
+          minHeight: { xs: 220, md: 250 },
+          display: "flex",
+          alignItems: "center",
+          backgroundImage: `
+            linear-gradient(90deg, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.94 : 0.9)} 0%, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.84 : 0.74)} 26%, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.28 : 0.12)} 54%, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.16 : 0.05)} 100%),
+            linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.info.main, 0.08)} 44%, ${alpha(theme.palette.warning.main, 0.08)} 100%),
+            url(${weeklyCover})
+          `,
+          backgroundSize: "cover, cover, cover",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: {
+            xs: "center center, center center, center center",
+            md: "center center, center center, 62% 18%",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            width: "100%",
+            maxWidth: { xs: "100%", md: 560 },
+          }}
+        >
+          <Stack spacing={0.85}>
+            <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
+              {t("prediction.weekly.title", "Weekly Challenge")}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {t("prediction.weekly.subtitle", "Predict match scores before they lock. You can save one match or save the full week at once.")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t("prediction.weekly.headerHelper", "Predict early, save your full week, and return after results to track your points.")}
+            </Typography>
+          </Stack>
+        </Box>
+      </Paper>
 
       {flash.message ? (
         <Alert severity={flash.type || "info"}>

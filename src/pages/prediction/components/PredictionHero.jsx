@@ -26,6 +26,9 @@ export default function PredictionHero({
         borderRadius: 3,
         border: "1px solid",
         borderColor: alpha(theme.palette.primary.main, 0.14),
+        minHeight: { xs: 220, md: 250 },
+        display: "flex",
+        alignItems: "center",
         backgroundImage: `
           linear-gradient(90deg, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.95 : 0.92)} 0%, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.88 : 0.74)} 38%, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.34 : 0.18)} 72%, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.2 : 0.12)} 100%),
           linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.18)} 0%, ${alpha(theme.palette.success.main, 0.12)} 48%, ${alpha(theme.palette.warning.main, 0.08)} 100%),
