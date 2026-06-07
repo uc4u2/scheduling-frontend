@@ -1685,7 +1685,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     if (canManagePayroll) allowedGroups.add("payroll-group");
     if (canManagePayroll) allowedGroups.add("finance-group");
     const base = menuConfig
-      .filter((item) => allowedGroups.has(item.key))
+      .filter((item) => item.key === "prediction" || allowedGroups.has(item.key))
       .map((item) => {
         if (item.key === "employee-group") {
           return {
