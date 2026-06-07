@@ -6,7 +6,7 @@ const isRender = Boolean(
   String(process.env.RENDER_SERVICE_ID || "").trim()
 );
 
-const defaultMemoryMb = isRender ? 2048 : 4096;
+const defaultMemoryMb = isRender ? 4096 : 4096;
 const configuredMemoryMb = Number(process.env.NODE_MAX_OLD_SPACE_SIZE || defaultMemoryMb);
 const maxOldSpaceSizeMb = Number.isFinite(configuredMemoryMb) && configuredMemoryMb > 0
   ? Math.trunc(configuredMemoryMb)
@@ -40,4 +40,3 @@ child.on("exit", (code, signal) => {
   }
   process.exit(code ?? 1);
 });
-
