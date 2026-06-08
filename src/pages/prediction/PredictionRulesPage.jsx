@@ -191,7 +191,7 @@ const PredictionRulesPage = () => {
           <Chip size="small" label={t("prediction.rules.multipick.chip", "Separate mode")} color="info" variant="outlined" />
         </Stack>
         <Stack spacing={1}>
-          {[1, 2, 3, 4, 5].map((index) => (
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((index) => (
             <Typography key={`multipick-rule-${index}`} variant="body2" color="text.secondary">
               • {t(`prediction.rules.multipick.points.${index}`, `Multi-Pick rule ${index}`)}
             </Typography>

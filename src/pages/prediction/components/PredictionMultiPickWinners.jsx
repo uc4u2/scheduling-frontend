@@ -39,6 +39,14 @@ export default function PredictionMultiPickWinners({ items = [] }) {
                           })
                         : t("prediction.multipick.winners.latest", "Latest published winners")}
                     </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {item.participant_count > 0
+                        ? t("prediction.multipick.winners.participants", {
+                            count: item.participant_count,
+                            defaultValue: "Top players from this block · {{count}} players scored",
+                          })
+                        : t("prediction.multipick.winners.participantsFallback", "Top players from this block")}
+                    </Typography>
                   </Stack>
                   <Stack spacing={0.8}>
                     {(item.top || []).slice(0, 5).map((row) => (
@@ -49,7 +57,8 @@ export default function PredictionMultiPickWinners({ items = [] }) {
                           name: row.display_name,
                           cardNumber: row.card_number,
                           correctCount: row.correct_count,
-                          defaultValue: "#{{rank}} {{emoji}}{{name}} · Best card {{cardNumber}} · {{correctCount}} correct",
+                          totalMatches: item.challenge?.match_count || 0,
+                          defaultValue: "#{{rank}} {{emoji}}{{name}} · Best card {{cardNumber}} · {{correctCount}}/{{totalMatches}} correct",
                         })}
                       </Typography>
                     ))}

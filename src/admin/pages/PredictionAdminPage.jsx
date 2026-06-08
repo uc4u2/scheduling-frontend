@@ -1583,7 +1583,11 @@ function MultiPickTab() {
         ...prev,
         error: "",
         leaderboardRows: data?.rows || [],
-        leaderboardChallenge: data?.challenge || challenge,
+        leaderboardChallenge: {
+          ...(challenge || {}),
+          ...(data?.challenge || {}),
+          participant_count: Number(data?.participant_count || data?.challenge?.participant_count || challenge?.participant_count || 0),
+        },
       }));
     } catch (error) {
       setState((prev) => ({
@@ -1875,9 +1879,14 @@ function MultiPickTab() {
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       Top players
                     </Typography>
+                    {challenge.participant_count > 0 ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Ranking is based on each player's best card. {challenge.participant_count} players scored.
+                      </Typography>
+                    ) : null}
                     {(challenge.top_preview || []).slice(0, 5).map((row) => (
                       <Typography key={`preview-${challenge.id}-${row.recruiter_id}`} variant="body2" color="text.secondary">
-                        #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name} · Best card {row.card_number} · {row.correct_count} correct
+                        #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name} · Best card {row.card_number} · {row.correct_count}/{challenge.match_count || 0} correct
                       </Typography>
                     ))}
                   </Stack>
@@ -1898,9 +1907,17 @@ function MultiPickTab() {
         <Stack spacing={1.5}>
           <Typography variant="h6">Leaderboard review</Typography>
           {state.leaderboardChallenge ? (
-            <Typography variant="body2" color="text.secondary">
-              {state.leaderboardChallenge.title} · {formatMultiPickRange(state.leaderboardChallenge)}
-            </Typography>
+            <Stack spacing={0.35}>
+              <Typography variant="body2" color="text.secondary">
+                {state.leaderboardChallenge.title} · {formatMultiPickRange(state.leaderboardChallenge)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Ranking is based on each player's best card.
+                {Number(state.leaderboardChallenge.participant_count || 0) > 0
+                  ? ` ${state.leaderboardChallenge.participant_count} players scored.`
+                  : ""}
+              </Typography>
+            </Stack>
           ) : (
             <Typography variant="body2" color="text.secondary">
               Choose View Leaderboard on a block to review top players.
@@ -1921,7 +1938,7 @@ function MultiPickTab() {
                       #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Best card {row.card_number} · {row.correct_count} correct
+                      Best card {row.card_number} · {row.correct_count}/{state.leaderboardChallenge?.match_count || 0} correct
                     </Typography>
                     {row.favorite_team_name ? (
                       <Typography variant="body2" color="text.secondary">

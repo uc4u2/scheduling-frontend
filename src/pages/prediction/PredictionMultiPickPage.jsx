@@ -31,7 +31,7 @@ const buildHeroStats = (challenge, summary, t) => {
   return [
     {
       label: t("prediction.multipick.hero.status", "Status"),
-      value: challenge.status || "open",
+      value: multipickStatusLabel(challenge.status || "open", t),
     },
     {
       label: t("prediction.multipick.hero.cards", "Cards"),
@@ -126,10 +126,16 @@ export default function PredictionMultiPickPage() {
   const matches = state.challengeData?.matches || [];
   const cards = state.challengeData?.cards || [];
   const mySummary = state.challengeData?.my_summary || {};
+  const participantCount = state.leaderboard?.participant_count || state.challengeData?.participant_count || 0;
   const serverNowUtc = state.challengeData?.server_now_utc || state.leaderboard?.server_now_utc;
   const isLocked = !!challenge?.is_locked || ["locked", "scored", "published"].includes(challenge?.status);
   const canCreateCard = !!challenge && !isLocked && cards.length < Number(challenge.max_cards_per_user || 5);
   const nextCardNumber = cards.length + 1;
+  const bestCardId = state.leaderboard?.me?.best_card_id || state.challengeData?.me?.best_card_id || mySummary?.best_card?.best_card_id || null;
+  const lockMessageKey =
+    challenge?.status === "scored" || challenge?.status === "published"
+      ? "prediction.multipick.lockScoredMessage"
+      : "prediction.multipick.lockMessage";
 
   const heroStats = useMemo(() => buildHeroStats(challenge, mySummary, t), [challenge, mySummary, t]);
 
@@ -213,7 +219,20 @@ export default function PredictionMultiPickPage() {
               <Typography variant="caption" color="text.secondary">
                 {t("prediction.multipick.mvpNote", "Top players are featured after scoring. No prize draw is attached to Multi-Pick in this MVP.")}
               </Typography>
-              {isLocked ? <Alert severity="info">{t("prediction.multipick.lockMessage", "This block is locked.")}</Alert> : null}
+              {isLocked ? <Alert severity="info">{t(lockMessageKey, "This block is locked.")}</Alert> : null}
+            </Stack>
+          </Paper>
+
+          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2.5, border: "1px solid", borderColor: "divider" }}>
+            <Stack spacing={1}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {t("prediction.multipick.howItWorks.title", "How Multi-Pick works")}
+              </Typography>
+              {[1, 2, 3, 4, 5, 6].map((index) => (
+                <Typography key={`multipick-how-${index}`} variant="body2" color="text.secondary">
+                  • {t(`prediction.multipick.howItWorks.points.${index}`, `Multi-Pick rule ${index}`)}
+                </Typography>
+              ))}
             </Stack>
           </Paper>
 
@@ -309,6 +328,7 @@ export default function PredictionMultiPickPage() {
                     cardNumber={card.card_number}
                     matches={matches}
                     readOnly={isLocked}
+                    isBestCard={!!bestCardId && card.id === bestCardId}
                     onSave={(payload) => handleUpdateCard(card.id, payload)}
                   />
                 ))}
@@ -360,6 +380,7 @@ export default function PredictionMultiPickPage() {
             top={state.leaderboard?.top || state.challengeData?.top || []}
             me={state.leaderboard?.me || state.challengeData?.me || mySummary?.best_card || null}
             available={isLeaderboardStatus(challenge.status)}
+            participantCount={participantCount}
           />
 
           <PredictionMultiPickWinners items={state.winners} />

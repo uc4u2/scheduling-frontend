@@ -9,8 +9,10 @@ export default function PredictionMultiPickLeaderboard({
   top = [],
   me = null,
   available = false,
+  participantCount = 0,
 }) {
   const { t } = useTranslation();
+  const totalMatches = challenge?.match_count || 0;
 
   const renderRow = (row, highlight = false) => (
     <Paper
@@ -33,7 +35,8 @@ export default function PredictionMultiPickLeaderboard({
             {t("prediction.multipick.leaderboard.row.bestCard", {
               cardNumber: row.card_number,
               correctCount: row.correct_count,
-              defaultValue: "Best card {{cardNumber}} · {{correctCount}} correct",
+              totalMatches,
+              defaultValue: "Best card {{cardNumber}} · {{correctCount}}/{{totalMatches}} correct",
             })}
           </Typography>
           {row.favorite_team_name ? (
@@ -73,6 +76,17 @@ export default function PredictionMultiPickLeaderboard({
               {challenge.title}
             </Typography>
           ) : null}
+          <Typography variant="body2" color="text.secondary">
+            {t("prediction.multipick.leaderboard.explainer", "Ranking is based on each player's best card.")}
+          </Typography>
+          {participantCount > 0 ? (
+            <Typography variant="caption" color="text.secondary">
+              {t("prediction.multipick.leaderboard.participants", {
+                count: participantCount,
+                defaultValue: "{{count}} players scored",
+              })}
+            </Typography>
+          ) : null}
           <Stack spacing={1.25}>
             {top.length ? (
               top.map((row) => renderRow(row, me?.recruiter_id === row.recruiter_id))
@@ -91,7 +105,27 @@ export default function PredictionMultiPickLeaderboard({
           {t("prediction.multipick.leaderboard.me", "My Best Card")}
         </Typography>
         {me ? (
-          renderRow(me, true)
+          <Stack spacing={1.25}>
+            <Typography variant="body2" color="text.secondary">
+              {participantCount > 0
+                ? t("prediction.multipick.leaderboard.meSummary", {
+                    rank: me.rank,
+                    count: participantCount,
+                    cardNumber: me.card_number,
+                    correctCount: me.correct_count,
+                    totalMatches,
+                    defaultValue: "Rank #{{rank}} out of {{count}} players · Best Card: Card {{cardNumber}} · Correct Picks: {{correctCount}}/{{totalMatches}}",
+                  })
+                : t("prediction.multipick.leaderboard.meSummaryNoCount", {
+                    rank: me.rank,
+                    cardNumber: me.card_number,
+                    correctCount: me.correct_count,
+                    totalMatches,
+                    defaultValue: "Rank #{{rank}} · Best Card: Card {{cardNumber}} · Correct Picks: {{correctCount}}/{{totalMatches}}",
+                  })}
+            </Typography>
+            {renderRow(me, true)}
+          </Stack>
         ) : (
           <PredictionEmptyState
             title={t("prediction.multipick.leaderboard.meEmpty.title", "No best card yet")}

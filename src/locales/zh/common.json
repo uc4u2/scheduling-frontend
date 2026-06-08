@@ -7626,11 +7626,16 @@
         "title": "多选挑战",
         "chip": "独立模式",
         "points": {
-          "1": "多选挑战与每周挑战分开，不会改变主预测排行榜。",
-          "2": "为区块中的每场比赛选择主胜、平局或客胜。本 MVP 不使用精确比分。",
-          "3": "每个区块最多可提交 5 张卡。每张卡都必须覆盖区块中的所有比赛。",
-          "4": "每个正确赛果记 1 分。系统会为你保存的每张卡计分，并只计算最佳那张卡。",
-          "5": "本 MVP 中，多选挑战只用于互动和展示。计分后会展示顶尖玩家，不附带奖品抽奖。"
+          "1": "多选挑战与每周挑战分开。",
+          "2": "在这个模式中你不预测精确比分。",
+          "3": "你只选择主胜、平局或客胜。",
+          "4": "每个区块最多可提交 5 张卡。",
+          "5": "每张卡都会单独计分。",
+          "6": "排行榜只计算你表现最好的那张卡。",
+          "7": "正确赛果 = 1 分。",
+          "8": "错误赛果 = 0 分。",
+          "9": "如果玩家同分，最佳卡提交时间更早者排名更高。",
+          "10": "本 MVP 的多选挑战不附带奖品抽奖。"
         }
       }
     },
@@ -7659,7 +7664,7 @@
       "mvpNote": "计分后会展示表现最好的玩家。本 MVP 版本的多选挑战不绑定任何奖品抽奖。",
       "lockPrefix": "锁定倒计时",
       "locked": "该区块已锁定。",
-      "lockMessage": "该区块已锁定。",
+      "lockMessage": "该区块已锁定。已提交的卡片正在等待结果和计分。",
       "hero": {
         "status": "状态",
         "cards": "卡片",
@@ -7702,8 +7707,9 @@
         "helper": "选择主胜、平局或客胜。系统只计算你最好的那张卡。",
         "complete": "保存前，请为每场比赛选择主胜、平局或客胜。",
         "saveError": "无法保存这张卡片。",
-        "scored": "{{count}} 场正确 · {{points}} 分",
-        "locked": "该区块已锁定。"
+        "scored": "{{count}}/{{total}} 场正确 · {{points}} 分",
+        "locked": "该区块已锁定。已提交的卡片正在等待结果和计分。",
+        "bestBadge": "你的最佳卡片"
       },
       "outcomes": {
         "home": "主胜",
@@ -7729,7 +7735,7 @@
         "top": "前 5 名玩家",
         "me": "我的最佳卡片",
         "row": {
-          "bestCard": "最佳卡片 {{cardNumber}} · {{correctCount}} 场正确",
+          "bestCard": "最佳卡片 {{cardNumber}} · {{correctCount}}/{{totalMatches}} 场正确",
           "favoriteTeam": "喜爱球队：{{team}}"
         },
         "empty": {
@@ -7743,7 +7749,11 @@
         "meEmpty": {
           "title": "还没有最佳卡片",
           "body": "至少有一张已提交卡片完成计分后，这里会显示你的最佳多选卡。"
-        }
+        },
+        "explainer": "排行榜基于每位玩家的最佳卡片。",
+        "participants": "{{count}} 名玩家已计分",
+        "meSummary": "排名 #{{rank}} / {{count}} 名玩家 · 最佳卡片：第 {{cardNumber}} 张卡 · 正确选择：{{correctCount}}/{{totalMatches}}",
+        "meSummaryNoCount": "排名 #{{rank}} · 最佳卡片：第 {{cardNumber}} 张卡 · 正确选择：{{correctCount}}/{{totalMatches}}"
       },
       "winners": {
         "title": "最近获胜者",
@@ -7751,12 +7761,26 @@
         "challengeFallback": "已发布区块",
         "publishedAt": "最近区块结束时间：{{value}}",
         "latest": "最近发布的获胜者",
-        "row": "#{{rank}} {{emoji}}{{name}} · 最佳卡片 {{cardNumber}} · {{correctCount}} 场正确",
+        "row": "#{{rank}} {{emoji}}{{name}} · 最佳卡片 {{cardNumber}} · {{correctCount}}/{{totalMatches}} 场正确",
         "empty": {
           "title": "还没有多选挑战获胜者",
           "body": "区块计分并发布后，已发布的获胜者会显示在这里。"
+        },
+        "participants": "本区块顶尖玩家 · {{count}} 名玩家已计分",
+        "participantsFallback": "本区块顶尖玩家"
+      },
+      "howItWorks": {
+        "title": "Multi-Pick 如何运作",
+        "points": {
+          "1": "最多提交 5 张卡。",
+          "2": "每张卡都会单独计分。",
+          "3": "系统只计算你表现最好的那张卡。",
+          "4": "排行榜基于每位玩家的最佳卡片。",
+          "5": "如果玩家同分，最佳卡提交时间更早的排名更高。",
+          "6": "本 MVP 版本的 Multi-Pick 不绑定奖品抽奖。"
         }
-      }
+      },
+      "lockScoredMessage": "该区块已完成计分。排行榜会使用你的最佳卡片。"
     }
   }
 }

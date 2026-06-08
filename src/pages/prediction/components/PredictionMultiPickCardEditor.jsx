@@ -39,6 +39,7 @@ export default function PredictionMultiPickCardEditor({
   onCancel,
   readOnly = false,
   isNew = false,
+  isBestCard = false,
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -86,6 +87,8 @@ export default function PredictionMultiPickCardEditor({
     }
   };
 
+  const totalMatches = matches.length || (card?.picks || []).length || 0;
+
   return (
     <Paper elevation={0} sx={{ p: 2, borderRadius: 2.5, border: "1px solid", borderColor: "divider" }}>
       <Stack spacing={1.5}>
@@ -99,6 +102,9 @@ export default function PredictionMultiPickCardEditor({
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {isBestCard ? (
+              <Chip size="small" color="primary" variant="filled" label={t("prediction.multipick.card.bestBadge", "Your best card")} />
+            ) : null}
             {card?.status ? <Chip size="small" variant="outlined" label={cardStatusLabel(card.status, t)} /> : null}
             {card?.status === "scored" ? (
               <Chip
@@ -107,12 +113,13 @@ export default function PredictionMultiPickCardEditor({
                 variant="outlined"
                 label={t("prediction.multipick.card.scored", {
                   count: card.correct_count || 0,
+                  total: totalMatches,
                   points: card.score_points || 0,
-                  defaultValue: "{{count}} correct · {{points}} pts",
+                  defaultValue: "{{count}}/{{total}} correct · {{points}} pts",
                 })}
               />
             ) : null}
-            {readOnly ? <Chip size="small" color="warning" variant="outlined" label={t("prediction.multipick.card.locked", "This block is locked.")} /> : null}
+            {readOnly ? <Chip size="small" color="warning" variant="outlined" label={t("prediction.multipick.card.locked", "This block is locked. Submitted cards are waiting for results and scoring.")} /> : null}
           </Stack>
         </Stack>
 
