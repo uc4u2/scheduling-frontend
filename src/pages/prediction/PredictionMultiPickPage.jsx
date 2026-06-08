@@ -21,6 +21,11 @@ import {
 
 const isLeaderboardStatus = (status) => ["scored", "published"].includes(status);
 
+const multipickStatusLabel = (status, t) => {
+  if (!status) return "";
+  return t(`prediction.multipick.statusValues.${status}`, status);
+};
+
 const buildHeroStats = (challenge, summary, t) => {
   if (!challenge) return [];
   return [
@@ -188,7 +193,7 @@ export default function PredictionMultiPickPage() {
                   </Typography>
                 </Stack>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
-                  <Chip variant="outlined" label={challenge.status} />
+                  <Chip variant="outlined" label={multipickStatusLabel(challenge.status, t)} />
                   {challenge.locks_at_utc ? (
                     <PredictionCountdownChip
                       targetUtc={challenge.locks_at_utc}
@@ -321,6 +326,32 @@ export default function PredictionMultiPickPage() {
                   />
                 ) : null}
               </Stack>
+
+              {canCreateCard && !creatingNewCard ? (
+                <Box
+                  sx={{
+                    position: "sticky",
+                    bottom: 12,
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    pt: 0.5,
+                    mt: 0.5,
+                    zIndex: 2,
+                  }}
+                >
+                  <Button
+                    variant="contained"
+                    onClick={() => setCreatingNewCard(true)}
+                    sx={{
+                      boxShadow: theme.shadows[8],
+                      borderRadius: 999,
+                      px: 2.25,
+                    }}
+                  >
+                    {t("prediction.multipick.actions.createCard", { number: nextCardNumber, defaultValue: "Create Card {{number}}" })}
+                  </Button>
+                </Box>
+              ) : null}
             </Stack>
           </Paper>
 

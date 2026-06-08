@@ -26,6 +26,11 @@ const outcomeStatusLabel = (correct, t) => {
   return "";
 };
 
+const cardStatusLabel = (status, t) => {
+  if (!status) return "";
+  return t(`prediction.multipick.statusValues.${status}`, status);
+};
+
 export default function PredictionMultiPickCardEditor({
   card,
   cardNumber,
@@ -94,7 +99,7 @@ export default function PredictionMultiPickCardEditor({
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {card?.status ? <Chip size="small" variant="outlined" label={card.status} /> : null}
+            {card?.status ? <Chip size="small" variant="outlined" label={cardStatusLabel(card.status, t)} /> : null}
             {card?.status === "scored" ? (
               <Chip
                 size="small"

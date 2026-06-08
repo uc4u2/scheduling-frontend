@@ -183,6 +183,22 @@ const PredictionRulesPage = () => {
         </Stack>
       </Paper>
 
+      <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2.5, border: "1px solid", borderColor: "divider" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ mb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            {t("prediction.rules.multipick.title", "Multi-Pick Challenge")}
+          </Typography>
+          <Chip size="small" label={t("prediction.rules.multipick.chip", "Separate mode")} color="info" variant="outlined" />
+        </Stack>
+        <Stack spacing={1}>
+          {[1, 2, 3, 4, 5].map((index) => (
+            <Typography key={`multipick-rule-${index}`} variant="body2" color="text.secondary">
+              • {t(`prediction.rules.multipick.points.${index}`, `Multi-Pick rule ${index}`)}
+            </Typography>
+          ))}
+        </Stack>
+      </Paper>
+
       {(state.data?.sections || []).map((section) => (
         <Paper key={section.key} elevation={0} sx={{ p: 2.5, borderRadius: 2.5, border: "1px solid", borderColor: "divider" }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75 }}>

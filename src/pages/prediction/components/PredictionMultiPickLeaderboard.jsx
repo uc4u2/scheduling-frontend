@@ -4,38 +4,6 @@ import { useTranslation } from "react-i18next";
 import PredictionEmptyState from "./PredictionEmptyState";
 import { formatViewerDateTimeLabel } from "../predictionViewUtils";
 
-const MultiPickLeaderboardRow = ({ row, highlight = false }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      p: 1.5,
-      borderRadius: 2,
-      border: "1px solid",
-      borderColor: highlight ? "primary.main" : "divider",
-      bgcolor: highlight ? "action.hover" : "background.paper",
-    }}
-  >
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
-      <Stack spacing={0.35}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-          #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Best card {row.card_number} · {row.correct_count} correct
-        </Typography>
-        {row.favorite_team_name ? (
-          <Typography variant="caption" color="text.secondary">
-            Favorite team: {row.favorite_team_name}
-          </Typography>
-        ) : null}
-      </Stack>
-      <Typography variant="body2" color="text.secondary">
-        {formatViewerDateTimeLabel(row.submitted_at_utc)}
-      </Typography>
-    </Stack>
-  </Paper>
-);
-
 export default function PredictionMultiPickLeaderboard({
   challenge,
   top = [],
@@ -43,6 +11,46 @@ export default function PredictionMultiPickLeaderboard({
   available = false,
 }) {
   const { t } = useTranslation();
+
+  const renderRow = (row, highlight = false) => (
+    <Paper
+      key={`multipick-row-${row.recruiter_id}-${row.best_card_id || row.card_number || row.rank}`}
+      elevation={0}
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: highlight ? "primary.main" : "divider",
+        bgcolor: highlight ? "action.hover" : "background.paper",
+      }}
+    >
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+        <Stack spacing={0.35}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t("prediction.multipick.leaderboard.row.bestCard", {
+              cardNumber: row.card_number,
+              correctCount: row.correct_count,
+              defaultValue: "Best card {{cardNumber}} · {{correctCount}} correct",
+            })}
+          </Typography>
+          {row.favorite_team_name ? (
+            <Typography variant="caption" color="text.secondary">
+              {t("prediction.multipick.leaderboard.row.favoriteTeam", {
+                team: row.favorite_team_name,
+                defaultValue: "Favorite team: {{team}}",
+              })}
+            </Typography>
+          ) : null}
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          {formatViewerDateTimeLabel(row.submitted_at_utc)}
+        </Typography>
+      </Stack>
+    </Paper>
+  );
 
   if (!available) {
     return (
@@ -67,13 +75,7 @@ export default function PredictionMultiPickLeaderboard({
           ) : null}
           <Stack spacing={1.25}>
             {top.length ? (
-              top.map((row) => (
-                <MultiPickLeaderboardRow
-                  key={`multipick-top-${row.recruiter_id}-${row.best_card_id}`}
-                  row={row}
-                  highlight={me?.recruiter_id === row.recruiter_id}
-                />
-              ))
+              top.map((row) => renderRow(row, me?.recruiter_id === row.recruiter_id))
             ) : (
               <PredictionEmptyState
                 title={t("prediction.multipick.leaderboard.none.title", "No scored cards yet")}
@@ -89,7 +91,7 @@ export default function PredictionMultiPickLeaderboard({
           {t("prediction.multipick.leaderboard.me", "My Best Card")}
         </Typography>
         {me ? (
-          <MultiPickLeaderboardRow row={me} highlight />
+          renderRow(me, true)
         ) : (
           <PredictionEmptyState
             title={t("prediction.multipick.leaderboard.meEmpty.title", "No best card yet")}

@@ -43,7 +43,14 @@ export default function PredictionMultiPickWinners({ items = [] }) {
                   <Stack spacing={0.8}>
                     {(item.top || []).slice(0, 5).map((row) => (
                       <Typography key={`multipick-winner-${item.challenge?.id}-${row.recruiter_id}`} variant="body2" color="text.secondary">
-                        #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name} · Best card {row.card_number} · {row.correct_count} correct
+                        {t("prediction.multipick.winners.row", {
+                          rank: row.rank,
+                          emoji: row.emoji_avatar ? `${row.emoji_avatar} ` : "",
+                          name: row.display_name,
+                          cardNumber: row.card_number,
+                          correctCount: row.correct_count,
+                          defaultValue: "#{{rank}} {{emoji}}{{name}} · Best card {{cardNumber}} · {{correctCount}} correct",
+                        })}
                       </Typography>
                     ))}
                   </Stack>

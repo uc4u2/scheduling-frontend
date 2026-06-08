@@ -9117,7 +9117,8 @@
       "leaderboard": "Leaderboard",
       "referrals": "Referrals",
       "prizes": "Prizes",
-      "rules": "Rules"
+      "rules": "Rules",
+      "multipick": "Multi-Pick"
     },
     "actions": {
       "predictToday": "Predict Today",
@@ -9602,7 +9603,6 @@
         "3": "Example 3: Your friend submits after the prize cutoff. That activity does not count for the earlier Weekly Share Prize window."
       },
       "faq": {
-        "title": "Quick FAQ",
         "1": {
           "q": "Can I edit a prediction after kickoff?",
           "a": "No. Predictions lock at kickoff, and backend UTC is the source of truth."
@@ -9618,7 +9618,8 @@
         "4": {
           "q": "Do I need to follow sponsors to qualify or win?",
           "a": "No. Following sponsors is optional and not required to enter or win."
-        }
+        },
+        "title": "Quick FAQ"
       },
       "sections": {
         "how_to_play": {
@@ -9671,6 +9672,17 @@
           "title": "Following sponsors",
           "body": "Participants may be encouraged to follow Schedulaa or participating sponsors for updates and winner announcements, but following is not required to enter or win unless a specific sponsor promotion clearly states otherwise."
         }
+      },
+      "multipick": {
+        "title": "Multi-Pick Challenge",
+        "chip": "Separate mode",
+        "points": {
+          "1": "Multi-Pick is separate from Weekly Challenge and does not change the main prediction leaderboard.",
+          "2": "Pick Home, Draw, or Away for every match in the block. Exact scores are not used in this MVP.",
+          "3": "You can submit up to 5 cards for one block. Each card must include a pick for every listed match.",
+          "4": "Every correct outcome is worth 1 point. Every saved card is scored, and your best card counts.",
+          "5": "Multi-Pick is recognition-only in this MVP. Top players are featured after scoring, with no prize draw attached."
+        }
       }
     },
     "dailyBonus": {
@@ -9688,6 +9700,113 @@
       },
       "errors": {
         "save": "Failed to save daily bonus answer."
+      }
+    },
+    "multipick": {
+      "title": "Multi-Pick Challenge",
+      "subtitle": "Submit up to 5 prediction cards for each match block. Pick Home, Draw, or Away. Your best card counts.",
+      "summary": "{{matchCount}} matches · {{cardCount}}/{{maxCards}} cards submitted",
+      "helper": "This mode is separate from Weekly Challenge. It does not affect prize draws.",
+      "mvpNote": "Top players are featured after scoring. No prize draw is attached to Multi-Pick in this MVP.",
+      "lockPrefix": "Locks in",
+      "locked": "This block is locked.",
+      "lockMessage": "This block is locked.",
+      "hero": {
+        "status": "Status",
+        "cards": "Cards",
+        "matches": "Matches"
+      },
+      "empty": {
+        "currentTitle": "No Multi-Pick block open yet",
+        "currentBody": "Platform Admin will open Multi-Pick blocks before the tournament starts."
+      },
+      "stats": {
+        "matches": "Matches in block",
+        "matchesHelper": "Each card must include a pick for every match in this block.",
+        "cards": "Cards submitted",
+        "cardsHelper": "Submit up to 5 cards. Your best card counts.",
+        "best": "Best card",
+        "bestHelper": "Current best: Card {{cardNumber}}",
+        "bestEmpty": "Your best card appears after scoring."
+      },
+      "matches": {
+        "title": "Match block",
+        "subtitle": "Pick Home, Draw, or Away for every match in this block."
+      },
+      "cards": {
+        "title": "Your cards",
+        "subtitle": "Submit up to 5 cards. Your best card counts.",
+        "empty": {
+          "title": "No cards saved yet",
+          "body": "Create your first Multi-Pick card to start tracking this block."
+        }
+      },
+      "actions": {
+        "createCard": "Create Card {{number}}",
+        "createFirst": "Create Card 1",
+        "saveCard": "Save Card",
+        "updateCard": "Update Card",
+        "cancel": "Cancel"
+      },
+      "card": {
+        "title": "Card {{number}}",
+        "helper": "Pick Home, Draw, or Away. Your best card counts.",
+        "complete": "Choose Home, Draw, or Away for every match before saving.",
+        "saveError": "Unable to save this card.",
+        "scored": "{{count}} correct · {{points}} pts",
+        "locked": "This block is locked."
+      },
+      "outcomes": {
+        "home": "Home",
+        "draw": "Draw",
+        "away": "Away"
+      },
+      "status": {
+        "correct": "Correct",
+        "wrong": "Wrong"
+      },
+      "statusValues": {
+        "draft": "Draft",
+        "open": "Open",
+        "locked": "Locked",
+        "scored": "Scored",
+        "published": "Published",
+        "submitted": "Submitted"
+      },
+      "match": {
+        "kickoff": "Kickoff: {{value}}"
+      },
+      "leaderboard": {
+        "top": "Top 5 players",
+        "me": "My Best Card",
+        "row": {
+          "bestCard": "Best card {{cardNumber}} · {{correctCount}} correct",
+          "favoriteTeam": "Favorite team: {{team}}"
+        },
+        "empty": {
+          "title": "Leaderboard appears after scoring",
+          "body": "Top players will appear after match results are entered and the Multi-Pick block is scored."
+        },
+        "none": {
+          "title": "No scored cards yet",
+          "body": "The leaderboard will update after submitted cards are scored."
+        },
+        "meEmpty": {
+          "title": "No best card yet",
+          "body": "Your best Multi-Pick card will appear here after at least one submitted card is scored."
+        }
+      },
+      "winners": {
+        "title": "Recent winners",
+        "subtitle": "Top players are featured after scoring. No prize draw is attached to Multi-Pick in this MVP.",
+        "challengeFallback": "Published block",
+        "publishedAt": "Latest block end: {{value}}",
+        "latest": "Latest published winners",
+        "row": "#{{rank}} {{emoji}}{{name}} · Best card {{cardNumber}} · {{correctCount}} correct",
+        "empty": {
+          "title": "No Multi-Pick winners yet",
+          "body": "Published winners will appear here after a block is scored and published."
+        }
       }
     }
   }

@@ -7030,7 +7030,8 @@
       "leaderboard": "排行榜",
       "referrals": "邀请",
       "prizes": "奖品",
-      "rules": "规则"
+      "rules": "规则",
+      "multipick": "多选挑战"
     },
     "actions": {
       "predictToday": "预测今日比赛",
@@ -7515,7 +7516,6 @@
         "3": "示例 3：你的朋友在截止后才提交预测。该行为不会计入之前的每周分享奖窗口。"
       },
       "faq": {
-        "title": "快速问答",
         "1": {
           "q": "比赛开始后还能修改预测吗？",
           "a": "不能。预测会在开赛时锁定，服务器 UTC 是最终依据。"
@@ -7531,7 +7531,8 @@
         "4": {
           "q": "我必须关注赞助商才能获胜或获得资格吗？",
           "a": "不需要。关注赞助商是可选的，不是参与或获胜条件。"
-        }
+        },
+        "title": "快速问答"
       },
       "sections": {
         "how_to_play": {
@@ -7620,6 +7621,17 @@
           "title": "关注赞助商",
           "body": "我们可能会鼓励参与者关注 Schedulaa 或合作赞助商，以获取更新和获奖公告；但除非某个特定活动明确说明，否则关注并不是参与或获胜的条件。"
         }
+      },
+      "multipick": {
+        "title": "多选挑战",
+        "chip": "独立模式",
+        "points": {
+          "1": "多选挑战与每周挑战分开，不会改变主预测排行榜。",
+          "2": "为区块中的每场比赛选择主胜、平局或客胜。本 MVP 不使用精确比分。",
+          "3": "每个区块最多可提交 5 张卡。每张卡都必须覆盖区块中的所有比赛。",
+          "4": "每个正确赛果记 1 分。系统会为你保存的每张卡计分，并只计算最佳那张卡。",
+          "5": "本 MVP 中，多选挑战只用于互动和展示。计分后会展示顶尖玩家，不附带奖品抽奖。"
+        }
       }
     },
     "dailyBonus": {
@@ -7637,6 +7649,113 @@
       },
       "errors": {
         "save": "保存每日加分答案失败。"
+      }
+    },
+    "multipick": {
+      "title": "多选挑战",
+      "subtitle": "每个比赛区块最多提交 5 张预测卡。为每场比赛选择主胜、平局或客胜。系统只计算你表现最好的那张卡。",
+      "summary": "{{matchCount}} 场比赛 · 已提交 {{cardCount}}/{{maxCards}} 张卡",
+      "helper": "该模式与每周挑战分开，不影响任何奖品抽奖。",
+      "mvpNote": "计分后会展示表现最好的玩家。本 MVP 版本的多选挑战不绑定任何奖品抽奖。",
+      "lockPrefix": "锁定倒计时",
+      "locked": "该区块已锁定。",
+      "lockMessage": "该区块已锁定。",
+      "hero": {
+        "status": "状态",
+        "cards": "卡片",
+        "matches": "比赛"
+      },
+      "empty": {
+        "currentTitle": "当前还没有开放的多选区块",
+        "currentBody": "平台管理员会在赛事开始前开放多选挑战区块。"
+      },
+      "stats": {
+        "matches": "区块内比赛",
+        "matchesHelper": "每张卡都必须为该区块中的每场比赛提供一个选择。",
+        "cards": "已提交卡片",
+        "cardsHelper": "最多提交 5 张卡。系统只计算你最好的那张卡。",
+        "best": "最佳卡片",
+        "bestHelper": "当前最佳：第 {{cardNumber}} 张卡",
+        "bestEmpty": "计分后会显示你的最佳卡片。"
+      },
+      "matches": {
+        "title": "比赛区块",
+        "subtitle": "为该区块中的每场比赛选择主胜、平局或客胜。"
+      },
+      "cards": {
+        "title": "你的卡片",
+        "subtitle": "最多提交 5 张卡。系统只计算你最好的那张卡。",
+        "empty": {
+          "title": "还没有保存任何卡片",
+          "body": "先创建你的第一张多选卡，开始参与这个区块。"
+        }
+      },
+      "actions": {
+        "createCard": "创建第 {{number}} 张卡",
+        "createFirst": "创建第 1 张卡",
+        "saveCard": "保存卡片",
+        "updateCard": "更新卡片",
+        "cancel": "取消"
+      },
+      "card": {
+        "title": "第 {{number}} 张卡",
+        "helper": "选择主胜、平局或客胜。系统只计算你最好的那张卡。",
+        "complete": "保存前，请为每场比赛选择主胜、平局或客胜。",
+        "saveError": "无法保存这张卡片。",
+        "scored": "{{count}} 场正确 · {{points}} 分",
+        "locked": "该区块已锁定。"
+      },
+      "outcomes": {
+        "home": "主胜",
+        "draw": "平局",
+        "away": "客胜"
+      },
+      "status": {
+        "correct": "正确",
+        "wrong": "错误"
+      },
+      "statusValues": {
+        "draft": "草稿",
+        "open": "开放",
+        "locked": "已锁定",
+        "scored": "已计分",
+        "published": "已发布",
+        "submitted": "已提交"
+      },
+      "match": {
+        "kickoff": "开赛时间：{{value}}"
+      },
+      "leaderboard": {
+        "top": "前 5 名玩家",
+        "me": "我的最佳卡片",
+        "row": {
+          "bestCard": "最佳卡片 {{cardNumber}} · {{correctCount}} 场正确",
+          "favoriteTeam": "喜爱球队：{{team}}"
+        },
+        "empty": {
+          "title": "计分后才会显示排行榜",
+          "body": "比赛结果录入并完成多选区块计分后，这里会显示表现最好的玩家。"
+        },
+        "none": {
+          "title": "还没有已计分的卡片",
+          "body": "提交的卡片完成计分后，排行榜会更新。"
+        },
+        "meEmpty": {
+          "title": "还没有最佳卡片",
+          "body": "至少有一张已提交卡片完成计分后，这里会显示你的最佳多选卡。"
+        }
+      },
+      "winners": {
+        "title": "最近获胜者",
+        "subtitle": "计分后会展示表现最好的玩家。本 MVP 版本的多选挑战不绑定奖品抽奖。",
+        "challengeFallback": "已发布区块",
+        "publishedAt": "最近区块结束时间：{{value}}",
+        "latest": "最近发布的获胜者",
+        "row": "#{{rank}} {{emoji}}{{name}} · 最佳卡片 {{cardNumber}} · {{correctCount}} 场正确",
+        "empty": {
+          "title": "还没有多选挑战获胜者",
+          "body": "区块计分并发布后，已发布的获胜者会显示在这里。"
+        }
       }
     }
   }
