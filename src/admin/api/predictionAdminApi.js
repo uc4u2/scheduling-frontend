@@ -199,3 +199,51 @@ export const seedDailyBonusFromFixtures = async ({ campaign } = {}) => {
   });
   return data;
 };
+
+export const getPredictionAdminMultiPickChallenges = async ({ campaign } = {}) => {
+  const { data } = await platformAdminApi.get("/prediction/multipick/challenges", {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};
+
+export const seedPredictionAdminMultiPickFromFixtures = async ({
+  campaign,
+  stageKey = "group_stage",
+  replace = false,
+} = {}) => {
+  const { data } = await platformAdminApi.post("/prediction/multipick/seed-from-fixtures", {
+    campaign: campaign || PREDICTION_DEFAULT_CAMPAIGN_KEY,
+    stage_key: stageKey,
+    replace,
+  });
+  return data;
+};
+
+export const createPredictionAdminMultiPickChallenge = async (payload) => {
+  const { data } = await platformAdminApi.post("/prediction/multipick/challenges", {
+    campaign: PREDICTION_DEFAULT_CAMPAIGN_KEY,
+    ...payload,
+  });
+  return data;
+};
+
+export const updatePredictionAdminMultiPickChallenge = async (challengeId, payload) => {
+  const { data } = await platformAdminApi.patch(`/prediction/multipick/challenges/${challengeId}`, payload);
+  return data;
+};
+
+export const scorePredictionAdminMultiPickChallenge = async (challengeId) => {
+  const { data } = await platformAdminApi.post(`/prediction/multipick/challenges/${challengeId}/score`);
+  return data;
+};
+
+export const publishPredictionAdminMultiPickChallenge = async (challengeId) => {
+  const { data } = await platformAdminApi.post(`/prediction/multipick/challenges/${challengeId}/publish`);
+  return data;
+};
+
+export const getPredictionAdminMultiPickLeaderboard = async (challengeId) => {
+  const { data } = await platformAdminApi.get(`/prediction/multipick/challenges/${challengeId}/leaderboard`);
+  return data;
+};

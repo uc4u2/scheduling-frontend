@@ -170,3 +170,82 @@ export const resolvePredictionReferral = async ({
   const { data } = await api.post("/prediction/referrals/resolve", { campaign, ref });
   return data;
 };
+
+export const getPredictionMultiPickChallenges = async ({
+  campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY,
+} = {}) => {
+  const { data } = await api.get("/prediction/multipick/challenges", {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};
+
+export const getCurrentPredictionMultiPickChallenge = async ({
+  campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY,
+} = {}) => {
+  const { data } = await api.get("/prediction/multipick/challenges/current", {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};
+
+export const getPredictionMultiPickChallenge = async (
+  challengeId,
+  { campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY } = {}
+) => {
+  const { data } = await api.get(`/prediction/multipick/challenges/${challengeId}`, {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};
+
+export const getPredictionMultiPickCards = async (
+  challengeId,
+  { campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY } = {}
+) => {
+  const { data } = await api.get(`/prediction/multipick/challenges/${challengeId}/cards`, {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};
+
+export const createPredictionMultiPickCard = async (
+  challengeId,
+  { campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY, ...payload }
+) => {
+  const { data } = await api.post(`/prediction/multipick/challenges/${challengeId}/cards`, {
+    campaign,
+    ...payload,
+  });
+  return data;
+};
+
+export const updatePredictionMultiPickCard = async (
+  cardId,
+  { campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY, ...payload }
+) => {
+  const { data } = await api.patch(`/prediction/multipick/cards/${cardId}`, {
+    campaign,
+    ...payload,
+  });
+  return data;
+};
+
+export const getPredictionMultiPickLeaderboard = async (
+  challengeId,
+  { campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY } = {}
+) => {
+  const { data } = await api.get(`/prediction/multipick/challenges/${challengeId}/leaderboard`, {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};
+
+export const getPredictionMultiPickWinners = async ({
+  campaign = PREDICTION_DEFAULT_CAMPAIGN_KEY,
+} = {}) => {
+  const { data } = await api.get("/prediction/multipick/winners", {
+    params: withCampaign({}, campaign),
+  });
+  return data;
+};

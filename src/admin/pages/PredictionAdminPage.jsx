@@ -3,7 +3,9 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Collapse,
+  FormControlLabel,
   Grid,
   MenuItem,
   Paper,
@@ -30,6 +32,8 @@ import {
   generatePredictionAdminDrawEntries,
   getPredictionAdminDailyBonus,
   getPredictionAdminMatches,
+  getPredictionAdminMultiPickChallenges,
+  getPredictionAdminMultiPickLeaderboard,
   getPredictionAdminReferrals,
   getPredictionAdminDraws,
   getPredictionAuditLogs,
@@ -42,15 +46,20 @@ import {
   recalculatePredictionAdmin,
   runPredictionAdminDraw,
   scorePredictionAdminDailyBonus,
+  scorePredictionAdminMultiPickChallenge,
   scoreReadyPredictionAdminDailyBonus,
   seedDailyBonusFromFixtures,
+  seedPredictionAdminMultiPickFromFixtures,
   seedPredictionAdminDailyActiveDraws,
   seedPredictionAdminDefaultDraws,
   setPredictionAdminMatchResult,
+  publishPredictionAdminMultiPickChallenge,
   updatePredictionAdminAwardStatus,
   updatePredictionAdminDailyBonus,
   updatePredictionAdminDraw,
   updatePredictionAdminMatch,
+  createPredictionAdminMultiPickChallenge,
+  updatePredictionAdminMultiPickChallenge,
 } from "../api/predictionAdminApi";
 
 const emptyMatchForm = {
@@ -71,6 +80,57 @@ const emptyResultForm = {
   home_score_actual: "",
   away_score_actual: "",
   status: "finished",
+};
+
+const multipickStatuses = ["draft", "open", "locked", "scored", "published"];
+
+const emptyMultiPickForm = {
+  title: "",
+  mode: "outcome",
+  stage_key: "group_stage",
+  starts_at_utc: "",
+  locks_at_utc: "",
+  ends_at_utc: "",
+  status: "draft",
+  max_cards_per_user: 5,
+  match_ids_text: "",
+};
+
+const formatUtcShortDate = (value) => {
+  if (!value) return "TBD";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+};
+
+const formatMultiPickRange = (item) => {
+  if (!item?.starts_at_utc && !item?.ends_at_utc) return "Date range TBD";
+  const start = formatUtcShortDate(item?.starts_at_utc);
+  const end = formatUtcShortDate(item?.ends_at_utc || item?.starts_at_utc);
+  return start === end ? `${start} UTC` : `${start} - ${end} UTC`;
+};
+
+const parseMultiPickMatchIds = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item) && item > 0);
+    }
+  } catch (_error) {
+    // Fall back to comma-separated values.
+  }
+  return raw
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item > 0);
 };
 
 const TimeDisplay = ({ label, value }) => {
@@ -1365,6 +1425,523 @@ function DailyBonusTab() {
   );
 }
 
+function MultiPickTab() {
+  const [state, setState] = useState({
+    loading: true,
+    error: "",
+    info: "",
+    items: [],
+    leaderboardRows: [],
+    leaderboardChallenge: null,
+    seedSummary: null,
+  });
+  const [showHelp, setShowHelp] = useState(false);
+  const [replaceDraftBlocks, setReplaceDraftBlocks] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyMultiPickForm);
+
+  const load = async () => {
+    setState((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
+      const data = await getPredictionAdminMultiPickChallenges({});
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        items: data?.items || [],
+      }));
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: error?.response?.data?.error || error?.message || "Failed to load Multi-Pick challenges.",
+      }));
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(emptyMultiPickForm);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const payload = {
+        title: form.title,
+        mode: "outcome",
+        stage_key: form.stage_key || "group_stage",
+        starts_at_utc: form.starts_at_utc || null,
+        locks_at_utc: form.locks_at_utc || null,
+        ends_at_utc: form.ends_at_utc || null,
+        status: form.status || "draft",
+        max_cards_per_user: Number(form.max_cards_per_user || 5),
+        match_ids_json: parseMultiPickMatchIds(form.match_ids_text),
+      };
+      if (editingId) {
+        await updatePredictionAdminMultiPickChallenge(editingId, payload);
+        setState((prev) => ({ ...prev, error: "", info: "Multi-Pick block updated." }));
+      } else {
+        await createPredictionAdminMultiPickChallenge(payload);
+        setState((prev) => ({ ...prev, error: "", info: "Multi-Pick block created." }));
+      }
+      resetForm();
+      await load();
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        error: error?.response?.data?.message || error?.response?.data?.error || error?.message || "Failed to save Multi-Pick block.",
+      }));
+    }
+  };
+
+  const handleSeed = async () => {
+    try {
+      const data = await seedPredictionAdminMultiPickFromFixtures({
+        stageKey: "group_stage",
+        replace: replaceDraftBlocks,
+      });
+      setState((prev) => ({
+        ...prev,
+        error: "",
+        info: `Seed completed. Created ${data?.created_count || 0}, skipped ${data?.skipped_count || 0}.`,
+        seedSummary: data,
+      }));
+      await load();
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        error: error?.response?.data?.error || error?.message || "Failed to seed Multi-Pick blocks from fixtures.",
+      }));
+    }
+  };
+
+  const handleQuickStatus = async (challengeId, status, successMessage) => {
+    try {
+      await updatePredictionAdminMultiPickChallenge(challengeId, { status });
+      setState((prev) => ({ ...prev, error: "", info: successMessage }));
+      await load();
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        error: error?.response?.data?.error || error?.message || "Failed to update Multi-Pick status.",
+      }));
+    }
+  };
+
+  const handleScore = async (challengeId) => {
+    try {
+      const data = await scorePredictionAdminMultiPickChallenge(challengeId);
+      const topCount = (data?.top || []).length;
+      setState((prev) => ({
+        ...prev,
+        error: "",
+        info: `Block scored. ${data?.summary?.scored_card_count || 0} cards scored. Top preview: ${topCount}.`,
+      }));
+      await load();
+    } catch (error) {
+      const payload = error?.response?.data || {};
+      if (payload?.status === "not_ready" && payload?.reason === "results_missing") {
+        const missingCount = (payload?.missing_match_ids || []).length;
+        setState((prev) => ({
+          ...prev,
+          error: `This block cannot be scored yet. Missing results for ${missingCount} matches.`,
+        }));
+        return;
+      }
+      setState((prev) => ({
+        ...prev,
+        error: payload?.error || error?.message || "Failed to score Multi-Pick block.",
+      }));
+    }
+  };
+
+  const handlePublish = async (challengeId) => {
+    try {
+      const data = await publishPredictionAdminMultiPickChallenge(challengeId);
+      setState((prev) => ({
+        ...prev,
+        error: "",
+        info: `Published winners. Top players shown: ${(data?.top || []).length}.`,
+      }));
+      await load();
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        error: error?.response?.data?.error || error?.message || "Failed to publish Multi-Pick winners.",
+      }));
+    }
+  };
+
+  const handleViewLeaderboard = async (challenge) => {
+    try {
+      const data = await getPredictionAdminMultiPickLeaderboard(challenge.id);
+      setState((prev) => ({
+        ...prev,
+        error: "",
+        leaderboardRows: data?.rows || [],
+        leaderboardChallenge: data?.challenge || challenge,
+      }));
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        error: error?.response?.data?.error || error?.message || "Failed to load Multi-Pick leaderboard.",
+      }));
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      <AdminTimezoneNotice />
+      {state.error ? <Alert severity="error">{state.error}</Alert> : null}
+      {state.info ? <Alert severity="success">{state.info}</Alert> : null}
+
+      <Paper sx={{ p: 2 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="h6">Multi-Pick Challenge</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Create 3-day outcome-pick blocks from fixtures. Users submit up to 5 cards. Their best card counts.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ sm: "center" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              How Multi-Pick Works
+            </Typography>
+            <Button
+              variant="text"
+              endIcon={<ExpandMoreRoundedIcon sx={{ transform: showHelp ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 160ms ease" }} />}
+              onClick={() => setShowHelp((prev) => !prev)}
+            >
+              {showHelp ? "Hide help" : "Show help"}
+            </Button>
+          </Stack>
+          <Collapse in={showHelp}>
+            <Stack spacing={1.2}>
+              <Typography variant="body2" color="text.secondary">
+                Multi-Pick is separate from Weekly Challenge.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Users pick Home / Draw / Away, not exact scores.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Users can submit up to 5 cards per block. The best card counts.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This MVP has no cash prize or draw integration.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Admin enters match results in the existing Results tab. After all results are entered, admin scores the Multi-Pick block. Publishing shows the top players to users.
+              </Typography>
+              <Stack spacing={0.4}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Workflow</Typography>
+                <Typography variant="body2" color="text.secondary">1. Seed blocks from fixtures</Typography>
+                <Typography variant="body2" color="text.secondary">2. Review block matches and lock time</Typography>
+                <Typography variant="body2" color="text.secondary">3. Open the block</Typography>
+                <Typography variant="body2" color="text.secondary">4. Users submit cards</Typography>
+                <Typography variant="body2" color="text.secondary">5. Enter results in existing Results tab</Typography>
+                <Typography variant="body2" color="text.secondary">6. Score the block</Typography>
+                <Typography variant="body2" color="text.secondary">7. Publish top players</Typography>
+              </Stack>
+              <Alert severity="warning">
+                Do not confuse Multi-Pick with prize draws. Multi-Pick winners are recognition-only in MVP.
+              </Alert>
+            </Stack>
+          </Collapse>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2 }}>
+        <Stack spacing={1.5}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ sm: "center" }}>
+            <Typography variant="h6">Seed blocks from fixtures</Typography>
+            <Button variant="outlined" onClick={handleSeed}>
+              Seed Group-Stage Multi-Pick Blocks
+            </Button>
+          </Stack>
+          <FormControlLabel
+            control={<Checkbox checked={replaceDraftBlocks} onChange={(e) => setReplaceDraftBlocks(e.target.checked)} />}
+            label="Replace draft blocks only"
+          />
+          <Typography variant="body2" color="text.secondary">
+            Only draft blocks are replaced. Open, scored, or published blocks are skipped.
+          </Typography>
+          {state.seedSummary ? (
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Seed result
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Created: {state.seedSummary.created_count || 0} · Skipped: {state.seedSummary.skipped_count || 0}
+                </Typography>
+                {(state.seedSummary.blocks_created || []).length ? (
+                  <Stack spacing={0.35}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Blocks created</Typography>
+                    {(state.seedSummary.blocks_created || []).map((row) => (
+                      <Typography key={`created-${row.id || row.title}`} variant="body2" color="text.secondary">
+                        {row.title} · {row.match_count} matches
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+                {(state.seedSummary.blocks_skipped || []).length ? (
+                  <Stack spacing={0.35}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Blocks skipped</Typography>
+                    {(state.seedSummary.blocks_skipped || []).map((row) => (
+                      <Typography key={`skipped-${row.id || row.title}`} variant="body2" color="text.secondary">
+                        {row.title} · {row.status} · {row.match_count} matches
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </Paper>
+          ) : null}
+        </Stack>
+      </Paper>
+
+      <Paper component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <Typography variant="h6">{editingId ? "Edit Multi-Pick block" : "Create Multi-Pick block"}</Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={8}>
+              <TextField
+                fullWidth
+                label="Title"
+                value={form.title}
+                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField fullWidth label="Mode" value="Outcome" InputProps={{ readOnly: true }} helperText="Outcome mode only for MVP." />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Stage"
+                value={form.stage_key}
+                onChange={(e) => setForm((prev) => ({ ...prev, stage_key: e.target.value }))}
+                helperText="Group-stage blocks are the intended MVP flow."
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Starts UTC"
+                value={form.starts_at_utc}
+                onChange={(e) => setForm((prev) => ({ ...prev, starts_at_utc: e.target.value }))}
+                placeholder="2026-06-11T19:00:00Z"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Locks UTC"
+                value={form.locks_at_utc}
+                onChange={(e) => setForm((prev) => ({ ...prev, locks_at_utc: e.target.value }))}
+                placeholder="2026-06-11T19:00:00Z"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Ends UTC"
+                value={form.ends_at_utc}
+                onChange={(e) => setForm((prev) => ({ ...prev, ends_at_utc: e.target.value }))}
+                placeholder="2026-06-13T23:00:00Z"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                select
+                fullWidth
+                label="Status"
+                value={form.status}
+                onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
+              >
+                {multipickStatuses.map((status) => (
+                  <MenuItem key={status} value={status}>
+                    {status}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Max cards per user"
+                value={form.max_cards_per_user}
+                onChange={(e) => setForm((prev) => ({ ...prev, max_cards_per_user: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                label="Match IDs"
+                value={form.match_ids_text}
+                onChange={(e) => setForm((prev) => ({ ...prev, match_ids_text: e.target.value }))}
+                helperText="Only edit match IDs if you know what you are doing. Seeded blocks already include the correct group-stage matches."
+              />
+            </Grid>
+          </Grid>
+          <Stack direction="row" spacing={1}>
+            <Button type="submit" variant="contained">
+              {editingId ? "Update block" : "Create block"}
+            </Button>
+            {editingId ? (
+              <Button variant="outlined" onClick={resetForm}>
+                Cancel edit
+              </Button>
+            ) : null}
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Stack spacing={1.5}>
+        {(state.items || []).map((challenge) => {
+          const canScore = ["open", "locked"].includes(challenge.status);
+          const canPublish = challenge.status === "scored";
+          const canOpen = challenge.status === "draft";
+          return (
+            <Paper key={challenge.id} variant="outlined" sx={{ p: 1.5 }}>
+              <Stack spacing={1}>
+                <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      {challenge.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Outcome mode · {challenge.status} · {formatMultiPickRange(challenge)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {challenge.match_count || 0} matches · Cards submitted {challenge.card_count || 0} · Max {challenge.max_cards_per_user || 5} cards per user
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Stage: {formatStageLabel(challenge.stage_key || "group_stage")}
+                    </Typography>
+                    <TimeDisplay label="Lock" value={challenge.locks_at_utc} />
+                  </Box>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Button
+                      variant="text"
+                      onClick={() => {
+                        setEditingId(challenge.id);
+                        setForm({
+                          title: challenge.title || "",
+                          mode: challenge.mode || "outcome",
+                          stage_key: challenge.stage_key || "group_stage",
+                          starts_at_utc: challenge.starts_at_utc || "",
+                          locks_at_utc: challenge.locks_at_utc || "",
+                          ends_at_utc: challenge.ends_at_utc || "",
+                          status: challenge.status || "draft",
+                          max_cards_per_user: challenge.max_cards_per_user || 5,
+                          match_ids_text: JSON.stringify(challenge.match_ids_json || [], null, 2),
+                        });
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    {canOpen ? (
+                      <Button
+                        variant="outlined"
+                        onClick={() => handleQuickStatus(challenge.id, "open", "Multi-Pick block opened.")}
+                      >
+                        Open
+                      </Button>
+                    ) : null}
+                    {canScore ? (
+                      <Button variant="outlined" onClick={() => handleScore(challenge.id)}>
+                        Score Challenge
+                      </Button>
+                    ) : null}
+                    {canPublish ? (
+                      <Button variant="outlined" onClick={() => handlePublish(challenge.id)}>
+                        Publish
+                      </Button>
+                    ) : null}
+                    <Button variant="outlined" onClick={() => handleViewLeaderboard(challenge)}>
+                      View Leaderboard
+                    </Button>
+                  </Stack>
+                </Stack>
+                {(challenge.top_preview || []).length ? (
+                  <Stack spacing={0.35}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      Top players
+                    </Typography>
+                    {(challenge.top_preview || []).slice(0, 5).map((row) => (
+                      <Typography key={`preview-${challenge.id}-${row.recruiter_id}`} variant="body2" color="text.secondary">
+                        #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name} · Best card {row.card_number} · {row.correct_count} correct
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </Paper>
+          );
+        })}
+        {!state.loading && !(state.items || []).length ? (
+          <PredictionEmptyState
+            title="No Multi-Pick blocks yet"
+            body="Seed group-stage blocks from fixtures or create a block manually."
+          />
+        ) : null}
+      </Stack>
+
+      <Paper sx={{ p: 2 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="h6">Leaderboard review</Typography>
+          {state.leaderboardChallenge ? (
+            <Typography variant="body2" color="text.secondary">
+              {state.leaderboardChallenge.title} · {formatMultiPickRange(state.leaderboardChallenge)}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Choose View Leaderboard on a block to review top players.
+            </Typography>
+          )}
+          {state.leaderboardChallenge && !state.leaderboardRows.length ? (
+            <PredictionEmptyState
+              title="No cards submitted yet."
+              body="Leaderboard rows will appear here after users submit Multi-Pick cards."
+            />
+          ) : null}
+          <Stack spacing={1}>
+            {(state.leaderboardRows || []).map((row) => (
+              <Paper key={`leaderboard-${row.recruiter_id}-${row.best_card_id}`} variant="outlined" sx={{ p: 1.25 }}>
+                <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                  <Stack spacing={0.3}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      #{row.rank} {row.emoji_avatar ? `${row.emoji_avatar} ` : ""}{row.display_name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Best card {row.card_number} · {row.correct_count} correct
+                    </Typography>
+                    {row.favorite_team_name ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Favorite team: {row.favorite_team_name}
+                      </Typography>
+                    ) : null}
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    Submitted: {formatViewerDateTimeLabel(row.submitted_at_utc)}
+                  </Typography>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        </Stack>
+      </Paper>
+    </Stack>
+  );
+}
+
 export default function PredictionAdminPage() {
   const [tab, setTab] = useState("matches");
   const tabs = useMemo(
@@ -1374,6 +1951,7 @@ export default function PredictionAdminPage() {
       { key: "matches", label: "Matches" },
       { key: "results", label: "Results" },
       { key: "leaderboard", label: "Leaderboard" },
+      { key: "multipick", label: "Multi-Pick" },
       { key: "daily-bonus", label: "Daily Bonus" },
       { key: "draws", label: "Draws" },
       { key: "referrals", label: "Referrals" },
@@ -1395,6 +1973,8 @@ export default function PredictionAdminPage() {
         return <ResultsTab />;
       case "leaderboard":
         return <LeaderboardTab />;
+      case "multipick":
+        return <MultiPickTab />;
       case "daily-bonus":
         return <DailyBonusTab />;
       case "draws":

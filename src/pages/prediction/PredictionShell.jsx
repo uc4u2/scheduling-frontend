@@ -6,6 +6,7 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import PredictionHomePage from "./PredictionHomePage";
 import PredictionTodayPage from "./PredictionTodayPage";
 import PredictionWeeklyPage from "./PredictionWeeklyPage";
+import PredictionMultiPickPage from "./PredictionMultiPickPage";
 import PredictionFixturesPage from "./PredictionFixturesPage";
 import PredictionMyPredictionsPage from "./PredictionMyPredictionsPage";
 import PredictionLeaderboardPage from "./PredictionLeaderboardPage";
@@ -36,6 +37,7 @@ const PredictionShell = () => {
       { key: "home", label: t("prediction.tabs.home", "Home") },
       { key: "today", label: t("prediction.tabs.today", "Today") },
       { key: "weekly", label: t("prediction.tabs.weekly", "Weekly Challenge") },
+      { key: "multipick", label: t("prediction.tabs.multipick", "Multi-Pick") },
       { key: "fixtures", label: t("prediction.tabs.fixtures", "Fixtures") },
       { key: "my-predictions", label: t("prediction.tabs.myPredictions", "My Predictions") },
       { key: "leaderboard", label: t("prediction.tabs.leaderboard", "Leaderboard") },
@@ -84,6 +86,8 @@ const PredictionShell = () => {
         return <PredictionTodayPage onOpenWeekly={openWeekly} />;
       case "weekly":
         return <PredictionWeeklyPage selectedWeekKey={selectedWeekKey} onSelectedWeekKeyChange={setSelectedWeekKey} />;
+      case "multipick":
+        return <PredictionMultiPickPage />;
       case "fixtures":
         return <PredictionFixturesPage onOpenWeekly={openWeekly} />;
       case "my-predictions":
