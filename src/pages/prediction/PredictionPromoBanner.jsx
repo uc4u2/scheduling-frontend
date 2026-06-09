@@ -8,7 +8,7 @@ const PredictionPromoBanner = ({ onEnterPredictions, onViewRules }) => {
       elevation={0}
       sx={{
         mb: 2,
-        p: { xs: 2, md: 2.5 },
+        p: { xs: 1.5, md: 2.5 },
         borderRadius: 3,
         border: "1px solid",
         borderColor: "warning.light",
@@ -19,7 +19,7 @@ const PredictionPromoBanner = ({ onEnterPredictions, onViewRules }) => {
         <Box>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
             <EmojiEventsIcon color="warning" />
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: "1.2rem", md: "1.25rem" } }}>
               World Cup 2026 Prediction Challenge
             </Typography>
           </Stack>
@@ -27,11 +27,11 @@ const PredictionPromoBanner = ({ onEnterPredictions, onViewRules }) => {
             Predict every matchday, climb the leaderboard, invite friends, and compete for daily, weekly, and sponsor-supported grand prizes.
           </Typography>
         </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ width: { xs: "100%", md: "auto" } }}>
-          <Button variant="contained" onClick={onEnterPredictions}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
+          <Button size="small" sx={{ minHeight: 36 }} variant="contained" fullWidth onClick={onEnterPredictions}>
             Enter Predictions
           </Button>
-          <Button variant="outlined" onClick={onViewRules}>
+          <Button size="small" sx={{ minHeight: 36 }} variant="outlined" fullWidth onClick={onViewRules}>
             View Rules
           </Button>
         </Stack>

@@ -82,6 +82,8 @@ export default function AuthCardShell({
   heroSubtitle = "Built for teams that need premium scheduling without losing operational control.",
   heroCards = defaultHeroCards,
 }) {
+  const hasMobileHeroCopy = Boolean(heroTitle || heroSubtitle);
+
   return (
     <Box
       sx={{
@@ -159,7 +161,7 @@ export default function AuthCardShell({
                 sx={{
                   display: { xs: "block", lg: "none" },
                   position: "relative",
-                  minHeight: 180,
+                  minHeight: hasMobileHeroCopy ? 180 : 110,
                   borderRadius: 4,
                   overflow: "hidden",
                   backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.2), rgba(15,23,42,0.46)), url(${heroImage})`,
@@ -190,14 +192,20 @@ export default function AuthCardShell({
                       fontWeight: 700,
                     }}
                   />
-                  <Box>
-                    <Typography variant="h6" fontWeight={800}>
-                      {heroTitle}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5, color: "rgba(255,250,240,0.84)" }}>
-                      {heroSubtitle}
-                    </Typography>
-                  </Box>
+                  {hasMobileHeroCopy ? (
+                    <Box>
+                      {heroTitle ? (
+                        <Typography variant="h6" fontWeight={800}>
+                          {heroTitle}
+                        </Typography>
+                      ) : null}
+                      {heroSubtitle ? (
+                        <Typography variant="body2" sx={{ mt: 0.5, color: "rgba(255,250,240,0.84)" }}>
+                          {heroSubtitle}
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  ) : null}
                 </Box>
               </Box>
 

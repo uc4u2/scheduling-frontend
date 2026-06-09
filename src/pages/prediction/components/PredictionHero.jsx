@@ -5,7 +5,7 @@ import heroCover from "../../../assets/prediction/hero-cover.png";
 
 export default function PredictionHero({
   title = "Football Prediction Challenge 2026",
-  subtitle = "Predict every matchday, climb the leaderboard, invite friends, and compete for daily, weekly, and sponsor-supported grand prizes.",
+  subtitle = "",
   primaryActionLabel = "Predict Today",
   onPrimaryAction,
   secondaryActionLabel = "Invite Friends",
@@ -86,34 +86,36 @@ export default function PredictionHero({
 
       <Stack spacing={2} sx={{ position: "relative", zIndex: 1 }}>
         <Stack spacing={1}>
-          <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 720 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 720, fontSize: { xs: "2rem", sm: "2.5rem" } }}>
             {title}
           </Typography>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{
-              maxWidth: 760,
-              textShadow: theme.palette.mode === "dark" ? "none" : `0 1px 10px ${alpha(theme.palette.background.paper, 0.5)}`,
-            }}
-          >
-            {subtitle}
-          </Typography>
+          {subtitle ? (
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{
+                maxWidth: 760,
+                textShadow: theme.palette.mode === "dark" ? "none" : `0 1px 10px ${alpha(theme.palette.background.paper, 0.5)}`,
+              }}
+            >
+              {subtitle}
+            </Typography>
+          ) : null}
         </Stack>
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
           {primaryActionLabel && onPrimaryAction ? (
-            <Button variant="contained" onClick={onPrimaryAction}>
+            <Button size="small" sx={{ minHeight: 36 }} variant="contained" onClick={onPrimaryAction}>
               {primaryActionLabel}
             </Button>
           ) : null}
           {secondaryActionLabel && onSecondaryAction ? (
-            <Button variant="outlined" onClick={onSecondaryAction}>
+            <Button size="small" sx={{ minHeight: 36 }} variant="outlined" onClick={onSecondaryAction}>
               {secondaryActionLabel}
             </Button>
           ) : null}
           {tertiaryActionLabel && onTertiaryAction ? (
-            <Button variant="text" onClick={onTertiaryAction}>
+            <Button size="small" sx={{ minHeight: 36 }} variant="text" onClick={onTertiaryAction}>
               {tertiaryActionLabel}
             </Button>
           ) : null}
@@ -127,6 +129,7 @@ export default function PredictionHero({
                 variant="outlined"
                 label={`${item.label}: ${item.value}`}
                 sx={{
+                  minHeight: 28,
                   bgcolor: alpha(theme.palette.background.paper, 0.62),
                   backdropFilter: "blur(6px)",
                 }}

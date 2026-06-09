@@ -1,6 +1,6 @@
 import React from "react";
 import { alpha, useTheme } from "@mui/material/styles";
-import { Chip, Stack, Typography } from "@mui/material";
+import { Box, Chip, Stack, Typography } from "@mui/material";
 import {
   formatStageLabel,
   formatViewerDateTimeLabel,
@@ -46,21 +46,23 @@ export default function PredictionMatchHeader({
         ) : null}
       </Stack>
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={compact ? 1 : 1.5}
-        alignItems="center"
-        justifyContent="space-between"
+      <Box
         sx={{
           py: compact ? 0 : 0.5,
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+          gap: compact ? 1 : 1.5,
+          alignItems: "center",
         }}
       >
-        <PredictionTeamBadge
-          teamName={match?.home_team_name}
-          shortName={match?.home_team_code}
-          compact={compact}
-          align="left"
-        />
+        <Box sx={{ minWidth: 0 }}>
+          <PredictionTeamBadge
+            teamName={match?.home_team_name}
+            shortName={match?.home_team_code}
+            compact={compact}
+            align="left"
+          />
+        </Box>
         <Stack spacing={0.75} alignItems="center" sx={{ minWidth: compact ? 64 : 88 }}>
           <Typography
             variant={compact ? "body2" : "subtitle2"}
@@ -88,13 +90,15 @@ export default function PredictionMatchHeader({
             />
           ) : null}
         </Stack>
-        <PredictionTeamBadge
-          teamName={match?.away_team_name}
-          shortName={match?.away_team_code}
-          compact={compact}
-          align="right"
-        />
-      </Stack>
+        <Box sx={{ minWidth: 0 }}>
+          <PredictionTeamBadge
+            teamName={match?.away_team_name}
+            shortName={match?.away_team_code}
+            compact={compact}
+            align="right"
+          />
+        </Box>
+      </Box>
 
       <Stack spacing={0.35}>
         <Typography variant="body2" color="text.secondary">

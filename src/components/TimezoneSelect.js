@@ -10,6 +10,7 @@ const TimezoneSelect = ({
   value,
   onChange,
   helperText,
+  showQuickAction = true,
   required,
   disabled,
   fullWidth = true,
@@ -54,22 +55,28 @@ const TimezoneSelect = ({
             required={required}
             disabled={disabled}
             sx={textFieldSx}
-            helperText={helperText || "Detected automatically when possible. You can still search any IANA timezone if needed."}
+            helperText={
+              helperText !== undefined
+                ? helperText
+                : "Detected automatically when possible. You can still search any IANA timezone if needed."
+            }
             fullWidth={fullWidth}
           />
         )}
         getOptionLabel={(option) => formatTimezoneLabel(option) || ""}
       />
-      <Stack direction="row" spacing={1}>
-        <Button
-          size="small"
-          startIcon={<RoomIcon fontSize="small" />}
-          onClick={() => onChange && onChange(detected || "")}
-          disabled={!detected || disabled}
-        >
-          Use my timezone
-        </Button>
-      </Stack>
+      {showQuickAction ? (
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            startIcon={<RoomIcon fontSize="small" />}
+            onClick={() => onChange && onChange(detected || "")}
+            disabled={!detected || disabled}
+          >
+            Use my timezone
+          </Button>
+        </Stack>
+      ) : null}
     </Stack>
   );
 };

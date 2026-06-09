@@ -3557,11 +3557,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   const navItemSx = (active = false, depth = 0) => ({
     position: "relative",
     justifyContent: drawerExpanded ? "flex-start" : "center",
-    mx: 1,
-    my: 0.35,
-    px: drawerExpanded ? 1.5 : 1,
-    pl: drawerExpanded ? 1.5 + depth * 1.5 : 1,
-    minHeight: 42,
+    mx: isMobileViewport ? 0.75 : 1,
+    my: isMobileViewport ? 0.2 : 0.35,
+    px: drawerExpanded ? (isMobileViewport ? 1.25 : 1.5) : 1,
+    pl: drawerExpanded ? (isMobileViewport ? 1.25 : 1.5) + depth * 1.5 : 1,
+    minHeight: isMobileViewport ? 38 : 42,
     borderRadius: "6px",
     color: active ? "primary.main" : "text.primary",
     border: "1px solid",
@@ -3598,11 +3598,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   });
 
   const navIconSx = (active = false) => ({
-    minWidth: 36,
-    mr: drawerExpanded ? 1.5 : 0,
+    minWidth: isMobileViewport ? 32 : 36,
+    mr: drawerExpanded ? (isMobileViewport ? 1.25 : 1.5) : 0,
     justifyContent: "center",
     color: active ? "primary.main" : "text.secondary",
-    "& .MuiSvgIcon-root": { fontSize: 20 },
+    "& .MuiSvgIcon-root": { fontSize: isMobileViewport ? 18 : 20 },
   });
 
   const drawerPaperSx = {
@@ -3626,8 +3626,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           alignItems: "center",
           justifyContent: drawerExpanded ? "flex-end" : "center",
           px: 1,
-          py: 1,
-          minHeight: 56,
+          py: isMobileViewport ? 0.5 : 1,
+          minHeight: isMobileViewport ? 48 : 56,
         }}
       >
         {!isMobileViewport && (
@@ -3775,15 +3775,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         <IconButton
           color="inherit"
           onClick={toggleDrawer}
-          size="large"
+          size="medium"
           sx={{
             position: "fixed",
-            top: navOffset + 8,
-            left: 12,
+            top: navOffset + 6,
+            left: 8,
             zIndex: (theme) => theme.zIndex.drawer + 3,
             backgroundColor: (theme) => theme.palette.background.paper,
             border: (theme) => `1px solid ${theme.palette.divider}`,
             boxShadow: 1,
+            p: 1,
           }}
         >
           <MenuIcon />
@@ -3841,7 +3842,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, md: 3 },
+          p: { xs: 1.5, md: 3 },
           backgroundColor: (theme) => theme.palette.background.default,
           backgroundImage: (theme) =>
             theme.palette.mode === "dark"
@@ -3859,7 +3860,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           </Alert>
         )}
         {selectedView !== "team" && <GlobalBillingBanner />}
-        {selectedView !== "prediction" && (
+        {selectedView !== "prediction" && selectedView !== "team" && (
           <PredictionPromoBanner
             onEnterPredictions={() => handleNavSelect("prediction")}
             onViewRules={() => {

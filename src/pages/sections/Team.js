@@ -3966,60 +3966,152 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         </Box>
         )}
         {shiftManagementTab === "schedule" && (
-	        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Button variant="outlined" onClick={() => setScheduleGuideOpen(true)}>
-            Schedule guide
-          </Button>
-          <Button variant="outlined" onClick={() => setScheduleAuditOpen(true)}>
-            Activity log
-          </Button>
-	          <Button
-	            variant={showSmartShift ? "contained" : "outlined"}
-	            onClick={() => setShowSmartShift((v) => !v)}
-          >
-            {showSmartShift ? "Hide Smart Shift" : "Smart Shift"}
-          </Button>
-          <Button variant="outlined" onClick={openTemplateModal}>
-            Edit Templates
-          </Button>
-          <Button variant="outlined" onClick={handleExportToExcel}>
-            Export
-          </Button>
-          <FormControlLabel
-            sx={{
-              m: 0,
-              px: 1,
-              py: 0.25,
-              border: "1px solid",
-              borderColor: showTimeOffOnCalendar ? "primary.main" : "divider",
-              borderRadius: 1,
-              bgcolor: showTimeOffOnCalendar ? alpha(theme.palette.primary.main, 0.06) : "background.paper",
-            }}
-            control={
-              <Switch
-                size="small"
-                checked={showTimeOffOnCalendar}
-                onChange={(event) => setShowTimeOffOnCalendar(event.target.checked)}
-              />
-            }
-            label={<Typography variant="caption" fontWeight={800}>Show time off on calendar</Typography>}
-          />
-          <Button variant="outlined" onClick={fetchShifts}>
-            Refresh
-          </Button>
-          <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
-            <span>
-              <Button
-                variant="contained"
-                onClick={handleOpenAssignShift}
-                disabled={selectedRecruiters.length === 0}
+          isSmDown ? (
+            <Stack spacing={1.25} sx={{ width: "100%" }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                Quick actions
+              </Typography>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 1,
+                  width: "100%",
+                }}
               >
-                Assign Shift
-              </Button>
-	            </span>
-	          </Tooltip>
-	        </Stack>
-	        )}
+                <Button size="small" sx={{ minHeight: 40 }} variant="outlined" onClick={() => setScheduleGuideOpen(true)}>
+                  Schedule guide
+                </Button>
+                <Button size="small" sx={{ minHeight: 40 }} variant="outlined" onClick={() => setScheduleAuditOpen(true)}>
+                  Activity log
+                </Button>
+                <Button
+                  size="small"
+                  sx={{ minHeight: 40 }}
+                  variant={showSmartShift ? "contained" : "outlined"}
+                  onClick={() => setShowSmartShift((v) => !v)}
+                >
+                  {showSmartShift ? "Hide Smart Shift" : "Smart Shift"}
+                </Button>
+                <Button size="small" sx={{ minHeight: 40 }} variant="outlined" onClick={openTemplateModal}>
+                  Edit Templates
+                </Button>
+                <Button size="small" sx={{ minHeight: 40 }} variant="outlined" onClick={handleExportToExcel}>
+                  Export
+                </Button>
+                <Button size="small" sx={{ minHeight: 40 }} variant="outlined" onClick={fetchShifts}>
+                  Refresh
+                </Button>
+                <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
+                  <span style={{ display: "contents" }}>
+                    <Button
+                      size="small"
+                      sx={{ minHeight: 40 }}
+                      variant="contained"
+                      onClick={handleOpenAssignShift}
+                      disabled={selectedRecruiters.length === 0}
+                    >
+                      Assign Shift
+                    </Button>
+                  </span>
+                </Tooltip>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    px: 1,
+                    py: 0.75,
+                    borderRadius: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                  }}
+                >
+                  <Typography variant="caption" fontWeight={800}>
+                    Show time off
+                  </Typography>
+                  <Switch
+                    size="small"
+                    checked={showTimeOffOnCalendar}
+                    onChange={(event) => setShowTimeOffOnCalendar(event.target.checked)}
+                  />
+                </Paper>
+              </Box>
+            </Stack>
+          ) : (
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            useFlexGap
+            sx={{
+              flexWrap: { xs: "nowrap", md: "wrap" },
+              overflowX: { xs: "auto", md: "visible" },
+              width: { xs: "100%", md: "auto" },
+              pb: { xs: 0.5, md: 0 },
+              "& > *": { flexShrink: 0 },
+              "&::-webkit-scrollbar": { display: "none" },
+              scrollbarWidth: "none",
+            }}
+          >
+            <Button size={isSmDown ? "small" : "medium"} sx={{ minHeight: isSmDown ? 36 : undefined }} variant="outlined" onClick={() => setScheduleGuideOpen(true)}>
+              Schedule guide
+            </Button>
+            <Button size={isSmDown ? "small" : "medium"} sx={{ minHeight: isSmDown ? 36 : undefined }} variant="outlined" onClick={() => setScheduleAuditOpen(true)}>
+              Activity log
+            </Button>
+            <Button
+              size={isSmDown ? "small" : "medium"}
+              sx={{ minHeight: isSmDown ? 36 : undefined }}
+              variant={showSmartShift ? "contained" : "outlined"}
+              onClick={() => setShowSmartShift((v) => !v)}
+            >
+              {showSmartShift ? "Hide Smart Shift" : "Smart Shift"}
+            </Button>
+            <Button size={isSmDown ? "small" : "medium"} sx={{ minHeight: isSmDown ? 36 : undefined }} variant="outlined" onClick={openTemplateModal}>
+              Edit Templates
+            </Button>
+            <Button size={isSmDown ? "small" : "medium"} sx={{ minHeight: isSmDown ? 36 : undefined }} variant="outlined" onClick={handleExportToExcel}>
+              Export
+            </Button>
+            <FormControlLabel
+              sx={{
+                m: 0,
+                px: 1,
+                py: 0.25,
+                border: "1px solid",
+                borderColor: showTimeOffOnCalendar ? "primary.main" : "divider",
+                borderRadius: 1,
+                bgcolor: showTimeOffOnCalendar ? alpha(theme.palette.primary.main, 0.06) : "background.paper",
+              }}
+              control={
+                <Switch
+                  size="small"
+                  checked={showTimeOffOnCalendar}
+                  onChange={(event) => setShowTimeOffOnCalendar(event.target.checked)}
+                />
+              }
+              label={<Typography variant="caption" fontWeight={800}>Show time off on calendar</Typography>}
+            />
+            <Button size={isSmDown ? "small" : "medium"} sx={{ minHeight: isSmDown ? 36 : undefined }} variant="outlined" onClick={fetchShifts}>
+              Refresh
+            </Button>
+            <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
+              <span>
+                <Button
+                  size={isSmDown ? "small" : "medium"}
+                  sx={{ minHeight: isSmDown ? 36 : undefined }}
+                  variant="contained"
+                  onClick={handleOpenAssignShift}
+                  disabled={selectedRecruiters.length === 0}
+                >
+                  Assign Shift
+                </Button>
+              </span>
+            </Tooltip>
+          </Stack>
+          )
+        )}
 	      </Stack>
 
 	      <Paper
@@ -4032,20 +4124,63 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 	          bgcolor: "background.paper",
 	        }}
 	      >
-	        <Tabs
-	          value={shiftManagementTab}
-	          onChange={(_, value) => setShiftManagementTab(value)}
-	          variant={isSmDown ? "fullWidth" : "standard"}
-	          sx={{
-	            px: { xs: 0, sm: 1 },
-	            "& .MuiTab-root": { fontWeight: 900, textTransform: "none" },
-	          }}
-	        >
-	          <Tab value="schedule" label="Schedule" />
-	          <Tab value="insights" label="Shift Insights" />
-	          <Tab value="workforce-cost" label="Workforce Cost" />
-	          <Tab value="workforce-cost-insights" label="Cost Insights" />
-	        </Tabs>
+          {isSmDown ? (
+            <Box
+              sx={{
+                p: 1,
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 1,
+              }}
+            >
+              {[
+                ["schedule", "Schedule"],
+                ["insights", "Shift Insights"],
+                ["workforce-cost", "Workforce Cost"],
+                ["workforce-cost-insights", "Cost Insights"],
+              ].map(([value, label]) => (
+                <Button
+                  key={value}
+                  variant={shiftManagementTab === value ? "contained" : "outlined"}
+                  color={shiftManagementTab === value ? "primary" : "inherit"}
+                  onClick={() => setShiftManagementTab(value)}
+                  sx={{
+                    minHeight: 44,
+                    borderRadius: 1.5,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </Box>
+          ) : (
+            <Tabs
+              value={shiftManagementTab}
+              onChange={(_, value) => setShiftManagementTab(value)}
+              variant="standard"
+              sx={{
+                px: { xs: 0, sm: 1 },
+                "& .MuiTab-root": {
+                  fontWeight: 900,
+                  textTransform: "none",
+                  minHeight: { xs: 44, sm: 48 },
+                  minWidth: { xs: "auto", sm: 90 },
+                  px: { xs: 1.5, sm: 2 },
+                  borderRadius: { xs: 2, sm: 0 },
+                  mr: { xs: 0.25, sm: 0 },
+                  fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                },
+              }}
+            >
+              <Tab value="schedule" label="Schedule" />
+              <Tab value="insights" label="Shift Insights" />
+              <Tab value="workforce-cost" label="Workforce Cost" />
+              <Tab value="workforce-cost-insights" label="Cost Insights" />
+            </Tabs>
+          )}
 	      </Paper>
 	
 	      {shiftManagementTab === "schedule" ? (

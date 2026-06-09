@@ -11,6 +11,8 @@ import {
   Checkbox,
   CircularProgress,
   Link as MuiLink,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
@@ -81,6 +83,8 @@ const getAuthErrorMessage = (err, fallback) => {
 const Login = ({ setToken, slugOverride = "" }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [authChecking, setAuthChecking] = useState(true);
 
   const [email, setEmail] = useState("");
@@ -442,17 +446,23 @@ const Login = ({ setToken, slugOverride = "" }) => {
       title={step === 1 ? "Welcome back" : "Verify your sign in"}
       subtitle={
         step === 1
-          ? "Sign in to manage bookings, staffing, payroll, and operations from one workspace."
+          ? isMobile
+            ? ""
+            : "Sign in to manage bookings, staffing, payroll, and operations from one workspace."
           : "Enter the one-time passcode we emailed you to complete secure access."
       }
       heroTitle={
         step === 1
-          ? "Scheduling that feels premium. Operations that stay disciplined."
+          ? isMobile
+            ? ""
+            : "Scheduling that feels premium. Operations that stay disciplined."
           : "Protected access for bookings, staffing, payroll, and operations."
       }
       heroSubtitle={
         step === 1
-          ? "Schedulaa keeps client access, bookings, and business workflows connected inside one secure workspace."
+          ? isMobile
+            ? ""
+            : "Schedulaa keeps client access, bookings, and business workflows connected inside one secure workspace."
           : "One-time verification keeps your workspace protected without adding friction to the sign-in flow."
       }
     >
@@ -470,8 +480,15 @@ const Login = ({ setToken, slugOverride = "" }) => {
 
           {step === 1 ? (
             <Box component="form" onSubmit={handleLoginSubmit} noValidate>
-              <Stack spacing={2.5}>
-                <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+              <Stack spacing={isMobile ? 1.75 : 2.5}>
+                <Typography
+                  variant="overline"
+                  sx={{
+                    color: "text.secondary",
+                    letterSpacing: 1.2,
+                    fontSize: isMobile ? "0.68rem" : undefined,
+                  }}
+                >
                   Account access
                 </Typography>
                 <TextField
@@ -507,20 +524,27 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   direction={{ xs: "column", sm: "row" }}
                   justifyContent="space-between"
                   alignItems={{ xs: "flex-start", sm: "center" }}
-                  spacing={1}
+                  spacing={isMobile ? 0.35 : 1}
                 >
                   <FormControlLabel
                     control={
                       <Checkbox
                         checked={rememberDevice}
                         onChange={(e) => setRememberDevice(e.target.checked)}
+                        size={isMobile ? "small" : "medium"}
                       />
                     }
-                    label="Remember this device for 30 days"
+                    label={
+                      <Typography variant="body2" sx={{ fontSize: isMobile ? "0.94rem" : undefined }}>
+                        Remember this device for 30 days
+                      </Typography>
+                    }
+                    sx={{ ml: -0.25 }}
                   />
                   <Button
                     size="small"
                     variant="text"
+                    sx={{ px: 0.5, minHeight: 28 }}
                     onClick={() =>
                       navigate(
                         siteForRedirect()
@@ -539,16 +563,26 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   onChange={setSelectedRole}
                   options={ROLE_OPTIONS}
                   textFieldSx={authInputSx}
-                  helperText="Select your account type to ensure the right dashboard experience."
+                  helperText={
+                    isMobile
+                      ? ""
+                      : "Select your account type to ensure the right dashboard experience."
+                  }
                 />
 
                 {selectedRole === "customer" ? (
-                  <Stack spacing={1}>
-                    <Alert severity="info">
-                      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
-                    </Alert>
+                  <Stack spacing={isMobile ? 0.75 : 1}>
+                    {!isMobile ? (
+                      <Alert severity="info">
+                        Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+                      </Alert>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary" sx={{ px: 0.25 }}>
+                        Timezone: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+                      </Typography>
+                    )}
                     <Box>
-                      <Button size="small" onClick={() => setShowTimezoneSelect((prev) => !prev)}>
+                      <Button size="small" sx={{ px: 0.5, minHeight: 28 }} onClick={() => setShowTimezoneSelect((prev) => !prev)}>
                         {showTimezoneSelect ? "Hide timezone change" : "Change timezone"}
                       </Button>
                     </Box>
@@ -558,6 +592,8 @@ const Login = ({ setToken, slugOverride = "" }) => {
                         value={timezone}
                         onChange={setTimezone}
                         textFieldSx={authInputSx}
+                        helperText={isMobile ? "" : undefined}
+                        showQuickAction={!isMobile}
                       />
                     ) : null}
                   </Stack>
@@ -567,7 +603,12 @@ const Login = ({ setToken, slugOverride = "" }) => {
                     value={timezone}
                     onChange={setTimezone}
                     textFieldSx={authInputSx}
-                    helperText="Detected automatically when possible. You can still search any IANA timezone if needed."
+                    helperText={
+                      isMobile
+                        ? ""
+                        : "Detected automatically when possible. You can still search any IANA timezone if needed."
+                    }
+                    showQuickAction={!isMobile}
                   />
                 )}
 
@@ -581,15 +622,18 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   justifyContent="center"
                   alignItems="center"
                   sx={{
-                    pt: 1,
+                    pt: isMobile ? 0.75 : 1,
                     borderTop: "1px solid rgba(226,232,240,0.9)",
                   }}
                 >
-                  <Typography variant="body2" color="text.secondary">
-                    New to Schedulaa?
-                  </Typography>
+                  {!isMobile ? (
+                    <Typography variant="body2" color="text.secondary">
+                      New to Schedulaa?
+                    </Typography>
+                  ) : null}
                   <Button
                     size="small"
+                    sx={{ minHeight: 30, px: 1 }}
                     onClick={() => {
                       const registerQs = new URLSearchParams();
                       if (planParam) registerQs.set("plan", planParam);
@@ -603,58 +647,57 @@ const Login = ({ setToken, slugOverride = "" }) => {
                     Create an account
                   </Button>
                 </Stack>
-
               </Stack>
             </Box>
           ) : (
             <Box component="form" onSubmit={handleOTPSubmit} noValidate>
-              <Stack spacing={2.5}>
-                <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+              <Stack spacing={isMobile ? 1.9 : 2.5}>
+                <Typography
+                  variant="overline"
+                  sx={{
+                    color: "text.secondary",
+                    letterSpacing: 1.2,
+                    fontSize: isMobile ? "0.68rem" : undefined,
+                  }}
+                >
                   Secure verification
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Enter the one-time code we emailed you to continue.
-                </Typography>
+                {!isMobile ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Enter the one-time code we emailed you to continue.
+                  </Typography>
+                ) : null}
                 <TextField
                   label="One-time Passcode"
                   sx={authInputSx}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  InputLabelProps={{
-                    shrink: true,
-                    sx: {
-                      transform: "translate(14px, -12px) scale(0.75)",
-                    },
-                  }}
                   fullWidth
                   required
-                  autoFocus
+                  autoComplete="one-time-code"
                   inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 />
                 <Button type="submit" variant="contained" fullWidth sx={authButtonSx}>
-                  Verify OTP
+                  Verify and continue
                 </Button>
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1}
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    pt: 1,
-                    borderTop: "1px solid rgba(226,232,240,0.9)",
-                  }}
-                >
-                  <Typography variant="caption" color="text.secondary">
-                    Didn't get a code?
-                  </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
                   <Button
-                    size="small"
+                    variant="text"
+                    onClick={() => {
+                      setStep(1);
+                      setOtp("");
+                      setMessage("");
+                      setError("");
+                    }}
+                  >
+                    Back to sign in
+                  </Button>
+                  <Button
+                    variant="text"
                     onClick={handleResendOtp}
                     disabled={resendCooldown > 0}
                   >
-                    {resendCooldown > 0
-                      ? `Resend available in ${resendCooldown}s`
-                      : "Resend code"}
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
                   </Button>
                 </Stack>
               </Stack>

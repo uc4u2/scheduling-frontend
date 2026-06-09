@@ -12,6 +12,8 @@ import {
   Checkbox,
   Link as MuiLink,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -62,6 +64,8 @@ const Register = ({ slugOverride = "" }) => {
   const [selectedPlan, setSelectedPlan] = useState("");
 
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams] = useSearchParams();
   const siteParam = (searchParams.get("site") || "").trim();
   const intervalParam = (searchParams.get("interval") || "").toLowerCase();
@@ -205,18 +209,28 @@ const Register = ({ slugOverride = "" }) => {
     <AuthCardShell
       eyebrow="Tenant-aware registration"
       title="Create your account"
-      subtitle="Set up your Schedulaa workspace and launch scheduling, payroll, and booking from one panel."
-      heroTitle="Build a business workspace clients actually trust."
-      heroSubtitle="From premium booking flows to operational control, Schedulaa keeps the customer experience and the back office connected."
+      subtitle={
+        isMobile
+          ? ""
+          : "Set up your Schedulaa workspace and launch scheduling, payroll, and booking from one panel."
+      }
+      heroTitle={isMobile ? "" : "Build a business workspace clients actually trust."}
+      heroSubtitle={
+        isMobile
+          ? ""
+          : "From premium booking flows to operational control, Schedulaa keeps the customer experience and the back office connected."
+      }
     >
-      <Tooltip
-        title="Enterprise-grade scheduling & payroll, made simple. Whether you're a business owner, team member, or customer, choose your role below and get started."
-        placement="right"
-      >
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, cursor: "help" }}>
-          Start with business owner for full billing and operations access.
-        </Typography>
-      </Tooltip>
+      {!isMobile ? (
+        <Tooltip
+          title="Enterprise-grade scheduling & payroll, made simple. Whether you're a business owner, team member, or customer, choose your role below and get started."
+          placement="right"
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, cursor: "help" }}>
+            Start with business owner for full billing and operations access.
+          </Typography>
+        </Tooltip>
+      ) : null}
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -235,11 +249,18 @@ const Register = ({ slugOverride = "" }) => {
           )}
 
           <Box component="form" onSubmit={handleRegister} noValidate>
-            <Stack spacing={2.5}>
-              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+            <Stack spacing={isMobile ? 1.8 : 2.5}>
+              <Typography
+                variant="overline"
+                sx={{
+                  color: "text.secondary",
+                  letterSpacing: 1.2,
+                  fontSize: isMobile ? "0.68rem" : undefined,
+                }}
+              >
                 Workspace details
               </Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={isMobile ? 1.8 : 2.5}>
                 <TextField
                   label="First Name"
                   fullWidth
@@ -297,16 +318,20 @@ const Register = ({ slugOverride = "" }) => {
                 }}
                 autoComplete="new-password"
                 helperText={
-                  <Box display="inline-flex" alignItems="center" gap={0.5}>
-                    Use 12+ characters with numbers, letters, and symbols.
-                    <Tooltip
-                      title="At least 12 characters · One uppercase letter · One lowercase letter · One number · One symbol"
-                    >
-                      <IconButton size="small" sx={{ p: 0 }}>
-                        <InfoOutlinedIcon fontSize="inherit" />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
+                  isMobile ? (
+                    ""
+                  ) : (
+                    <Box display="inline-flex" alignItems="center" gap={0.5}>
+                      Use 12+ characters with numbers, letters, and symbols.
+                      <Tooltip
+                        title="At least 12 characters · One uppercase letter · One lowercase letter · One number · One symbol"
+                      >
+                        <IconButton size="small" sx={{ p: 0 }}>
+                          <InfoOutlinedIcon fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  )
                 }
                 required
               />
@@ -331,17 +356,30 @@ const Register = ({ slugOverride = "" }) => {
                 required
               />
 
-              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  color: "text.secondary",
+                  letterSpacing: 1.2,
+                  fontSize: isMobile ? "0.68rem" : undefined,
+                }}
+              >
                 Preferences
               </Typography>
 
               {role === "customer" ? (
-                <Stack spacing={1}>
-                  <Alert severity="info">
-                    Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
-                  </Alert>
+                <Stack spacing={isMobile ? 0.75 : 1}>
+                  {!isMobile ? (
+                    <Alert severity="info">
+                      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+                    </Alert>
+                  ) : (
+                    <Typography variant="caption" color="text.secondary" sx={{ px: 0.25 }}>
+                      Timezone: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+                    </Typography>
+                  )}
                   <Box>
-                    <Button size="small" onClick={() => setShowTimezoneSelect((prev) => !prev)}>
+                    <Button size="small" sx={{ px: 0.5, minHeight: 28 }} onClick={() => setShowTimezoneSelect((prev) => !prev)}>
                       {showTimezoneSelect ? "Hide timezone change" : "Change timezone"}
                     </Button>
                   </Box>
@@ -351,6 +389,8 @@ const Register = ({ slugOverride = "" }) => {
                       value={timezone}
                       onChange={setTimezone}
                       textFieldSx={authInputSx}
+                      helperText={isMobile ? "" : undefined}
+                      showQuickAction={!isMobile}
                       required
                     />
                   ) : null}
@@ -361,6 +401,12 @@ const Register = ({ slugOverride = "" }) => {
                   value={timezone}
                   onChange={setTimezone}
                   textFieldSx={authInputSx}
+                  helperText={
+                    isMobile
+                      ? ""
+                      : undefined
+                  }
+                  showQuickAction={!isMobile}
                   required
                 />
               )}
@@ -372,13 +418,28 @@ const Register = ({ slugOverride = "" }) => {
                 options={ROLE_OPTIONS}
                 textFieldSx={authInputSx}
                 required
-                helperText="Select your account type to ensure the right dashboard experience."
+                helperText={
+                  isMobile
+                    ? ""
+                    : "Select your account type to ensure the right dashboard experience."
+                }
               />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: isMobile ? -0.5 : -1, fontSize: isMobile ? "0.74rem" : undefined }}
+              >
                 Employees are invited by their manager.
               </Typography>
 
-              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  color: "text.secondary",
+                  letterSpacing: 1.2,
+                  fontSize: isMobile ? "0.68rem" : undefined,
+                }}
+              >
                 Compliance
               </Typography>
               <FormControlLabel
@@ -387,10 +448,15 @@ const Register = ({ slugOverride = "" }) => {
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
                     color="primary"
+                    size={isMobile ? "small" : "medium"}
                   />
                 }
                 label={
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: isMobile ? "0.94rem" : undefined, lineHeight: isMobile ? 1.55 : undefined }}
+                  >
                     I agree to the{" "}
                     <MuiLink component={RouterLink} to="/user-agreement" target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
                       User Agreement
@@ -410,6 +476,7 @@ const Register = ({ slugOverride = "" }) => {
                     .
                   </Typography>
                 }
+                sx={{ alignItems: "flex-start", ml: -0.25 }}
               />
 
               <Button
@@ -426,7 +493,7 @@ const Register = ({ slugOverride = "" }) => {
                 color="text.secondary"
                 textAlign="center"
                 sx={{
-                  pt: 1,
+                  pt: isMobile ? 0.75 : 1,
                   borderTop: "1px solid rgba(226,232,240,0.9)",
                 }}
               >

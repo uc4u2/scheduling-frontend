@@ -69,10 +69,6 @@ const PredictionHomePage = ({ onOpenWeekly, onOpenFixtures, onOpenMyPredictions,
     <Stack spacing={2}>
       <PredictionHero
         title={t("prediction.home.hero.title", "Football Prediction Challenge 2026")}
-        subtitle={t(
-          "prediction.home.hero.subtitle",
-          "Predict every matchday, climb the leaderboard, invite friends, and compete for daily, weekly, and sponsor-supported grand prizes."
-        )}
         primaryActionLabel={t("prediction.actions.predictToday", "Predict Today")}
         secondaryActionLabel={t("prediction.actions.inviteFriends", "Invite Friends")}
         tertiaryActionLabel={t("prediction.actions.viewPrizes", "View Prizes")}

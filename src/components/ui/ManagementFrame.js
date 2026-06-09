@@ -29,9 +29,9 @@ export default function ManagementFrame({
           sx={{
             position: "relative",
             overflow: "hidden",
-            p: { xs: 2.25, sm: 2.75 },
+            p: { xs: 1.5, sm: 2.75 },
             borderRadius: "6px",
-            mb: 3,
+            mb: { xs: 2, sm: 3 },
             borderColor: alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12),
             background: headerBg,
             boxShadow: `0 14px 38px ${alpha(theme.palette.common.black, isDark ? 0.24 : 0.06)}`,
@@ -57,15 +57,38 @@ export default function ManagementFrame({
             },
           }}
         >
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ position: "relative", zIndex: 1 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 1, sm: 2 }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
+            sx={{ position: "relative", zIndex: 1 }}
+          >
             <Box sx={{ minWidth: 0, overflow: "hidden" }}>
               {title && (
-                <Typography component="h1" variant="h5" fontWeight={900} gutterBottom noWrap sx={{ letterSpacing: "-0.02em" }}>
+                <Typography
+                  component="h1"
+                  variant="h5"
+                  fontWeight={900}
+                  gutterBottom
+                  sx={{
+                    letterSpacing: "-0.02em",
+                    fontSize: { xs: "1.2rem", sm: undefined },
+                    whiteSpace: { xs: "normal", sm: "nowrap" },
+                  }}
+                >
                   {title}
                 </Typography>
               )}
               {subtitle && (
-                <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 860 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    maxWidth: 860,
+                    whiteSpace: { xs: "normal", sm: "nowrap" },
+                  }}
+                >
                   {subtitle}
                 </Typography>
               )}

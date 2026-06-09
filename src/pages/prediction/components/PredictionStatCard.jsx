@@ -34,8 +34,8 @@ export default function PredictionStatCard({
     <Paper
       elevation={0}
       sx={{
-        p: 2,
-        borderRadius: 2.5,
+        p: { xs: 1.5, sm: 2 },
+        borderRadius: { xs: 2, sm: 2.5 },
         border: "1px solid",
         borderColor: "divider",
         background: `linear-gradient(180deg, ${styles.bg} 0%, ${alpha(theme.palette.background.paper, 0.98)} 100%)`,
@@ -44,16 +44,16 @@ export default function PredictionStatCard({
     >
       <Stack spacing={1.25} sx={{ height: "100%" }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="text.secondary" sx={{ fontSize: { xs: "0.68rem", sm: "0.75rem" }, lineHeight: 1.2 }}>
             {label}
           </Typography>
           {icon ? <Stack sx={{ color: styles.color }}>{icon}</Stack> : null}
         </Stack>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: styles.color }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, color: styles.color, fontSize: { xs: "2rem", sm: "2.125rem" } }}>
           {value}
         </Typography>
         {helper ? (
-          <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, fontSize: { xs: "0.95rem", sm: "0.875rem" } }}>
             {helper}
           </Typography>
         ) : <span />}

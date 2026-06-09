@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Checkbox,
@@ -21,7 +24,9 @@ import {
   Chip,
   CircularProgress,
   Tooltip,
+  useMediaQuery,
   Alert,
+  Autocomplete,
   List,
   ListItem,
   ListItemText,
@@ -38,6 +43,7 @@ import {
   DeleteOutline,
   InfoOutlined,
   History,
+  ExpandMore,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
@@ -58,6 +64,8 @@ const emptyForm = {
   low_stock_threshold: "",
   track_stock: true,
   is_digital: false,
+  link_inventory_enabled: false,
+  linked_inventory_item_id: null,
   delivery_methods_override_enabled: false,
   delivery_allow_pickup: false,
   delivery_allow_shipping: false,
@@ -76,6 +84,29 @@ const fieldLabelWithTooltip = (label, tooltip) => (
   </Stack>
 );
 
+const productStockSourceLabel = (row) =>
+  String(row?.stock_source || "").toLowerCase() === "finance_inventory" ? "Linked inventory" : "Product stock";
+
+const productMovementReasonLabel = (row) => {
+  const reason = String(row?.reason || "").toLowerCase();
+  if (reason === "linked_inventory_sale") return "Linked inventory sale";
+  if (reason === "sale") return "Product sale";
+  if (reason === "manual_adjustment") return "Manual adjustment";
+  return row?.reason || "movement";
+};
+
+const financeInventoryMovementTypeLabel = (row) => {
+  const txType = String(row?.transaction_type || "").toLowerCase();
+  if (txType === "adjustment" && String(row?.source_type || "").toLowerCase() === "product_order") {
+    return "Linked inventory sale";
+  }
+  if (txType === "stock_in") return "Stock received";
+  if (txType === "approved_usage") return "Approved job usage";
+  if (txType === "adjustment") return "Adjustment";
+  if (txType === "reversal") return "Reversal";
+  return row?.transaction_type || "movement";
+};
+
 const ProductManagement = ({ token }) => {
   const { t, i18n } = useTranslation();
 
@@ -93,11 +124,14 @@ const ProductManagement = ({ token }) => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [stockSourceFilter, setStockSourceFilter] = useState("all");
   const [lowStockSummary, setLowStockSummary] = useState({ count: 0, out_of_stock_count: 0, low_stock_count: 0 });
   const [lowStockItems, setLowStockItems] = useState([]);
   const [movementOpen, setMovementOpen] = useState(false);
   const [movementLoading, setMovementLoading] = useState(false);
   const [movementRows, setMovementRows] = useState([]);
+  const [linkedInventoryHistoryRows, setLinkedInventoryHistoryRows] = useState([]);
+  const [linkedInventoryHistoryLoading, setLinkedInventoryHistoryLoading] = useState(false);
   const [movementTarget, setMovementTarget] = useState(null);
   const [globalMovementOpen, setGlobalMovementOpen] = useState(false);
   const [deliverySetupOpen, setDeliverySetupOpen] = useState(false);
@@ -109,6 +143,8 @@ const ProductManagement = ({ token }) => {
   const [globalMovementLoading, setGlobalMovementLoading] = useState(false);
   const [globalMovementRows, setGlobalMovementRows] = useState([]);
   const [globalMovementPagination, setGlobalMovementPagination] = useState({ page: 1, per_page: 50, total: 0 });
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [inventoryItemsLoading, setInventoryItemsLoading] = useState(false);
   const [globalMovementFilters, setGlobalMovementFilters] = useState({
     product_id: "",
     reason: "",
@@ -117,6 +153,7 @@ const ProductManagement = ({ token }) => {
   });
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
+  const compactLinkedInventorySnapshot = useMediaQuery((theme) => theme.breakpoints.down("sm"));
 
   const notify = useCallback((message) => {
     setSnk({ open: true, message });
@@ -182,6 +219,30 @@ const ProductManagement = ({ token }) => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!open || form.is_digital || !form.track_stock) return;
+    let alive = true;
+    setInventoryItemsLoading(true);
+    api
+      .get("/finance/inventory/items?active=true", auth)
+      .then(({ data }) => {
+        if (!alive) return;
+        const rows = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+        setInventoryItems(rows);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setInventoryItems([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setInventoryItemsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [auth, form.is_digital, form.track_stock, open]);
+
   const handleOpen = useCallback((row = null) => {
     setEditing(row);
     if (row) {
@@ -199,6 +260,8 @@ const ProductManagement = ({ token }) => {
         low_stock_threshold: row.low_stock_threshold ?? "",
         track_stock: !!row.track_stock,
         is_digital: !!row.is_digital,
+        link_inventory_enabled: !!row.linked_inventory_item_id,
+        linked_inventory_item_id: row.linked_inventory_item_id ?? null,
         delivery_methods_override_enabled: !!row.delivery_methods_override_enabled,
         delivery_allow_pickup: !!row.delivery_allow_pickup,
         delivery_allow_shipping: !!row.delivery_allow_shipping,
@@ -232,6 +295,22 @@ const ProductManagement = ({ token }) => {
           ? event.target.checked
           : event.target.value;
       setForm((prev) => {
+        if (field === "is_digital" && value) {
+          return {
+            ...prev,
+            [field]: value,
+            link_inventory_enabled: false,
+            linked_inventory_item_id: null,
+          };
+        }
+        if (field === "track_stock" && !value) {
+          return {
+            ...prev,
+            [field]: value,
+            link_inventory_enabled: false,
+            linked_inventory_item_id: null,
+          };
+        }
         if (field === "delivery_methods_override_enabled" && value) {
           const hasAnyMethod =
             Boolean(prev.delivery_allow_pickup) ||
@@ -269,6 +348,8 @@ const ProductManagement = ({ token }) => {
       qty_on_hand: Number(form.qty_on_hand || 0),
       low_stock_threshold: form.low_stock_threshold === "" ? null : Number(form.low_stock_threshold),
       digital_asset_id: form.digital_asset_id === "" ? null : Number(form.digital_asset_id),
+      linked_inventory_item_id:
+        form.is_digital || !form.track_stock || !form.link_inventory_enabled ? null : (form.linked_inventory_item_id || null),
     };
     if (editing && Number(form.qty_on_hand || 0) !== Number(editing.qty_on_hand || 0)) {
       payload.adjustment_note = String(form.adjustment_note || "").trim() || null;
@@ -421,15 +502,25 @@ const ProductManagement = ({ token }) => {
       {
         field: "qty_on_hand",
         headerName: t("manager.product.columns.stock"),
-        width: 120,
-        valueGetter: (params) => params.row.qty_on_hand ?? 0,
+        width: 170,
+        valueGetter: (params) => params.row.effective_stock_quantity ?? params.row.qty_on_hand ?? 0,
         renderCell: (params) => (
           (() => {
             const qty = Number(params.value ?? 0);
             const threshold = Number(params.row?.low_stock_threshold ?? 0);
             const isLow = Number.isFinite(threshold) && threshold > 0 && qty <= threshold;
             const color = qty <= 0 ? "default" : isLow ? "warning" : "success";
-            return <Chip label={qty} color={color} size="small" />;
+            return (
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <Chip label={qty} color={color} size="small" />
+                <Chip
+                  label={params.row?.stock_source === "finance_inventory" ? "Linked inventory" : "Product stock"}
+                  variant={params.row?.stock_source === "finance_inventory" ? "outlined" : "filled"}
+                  size="small"
+                  color={params.row?.stock_source === "finance_inventory" ? "default" : "default"}
+                />
+              </Stack>
+            );
           })()
         ),
       },
@@ -503,6 +594,35 @@ const ProductManagement = ({ token }) => {
   }, [movementOpen, movementTarget, auth]);
 
   useEffect(() => {
+    if (!movementOpen || !movementTarget?.linked_inventory_item_id) {
+      setLinkedInventoryHistoryRows([]);
+      return undefined;
+    }
+    let alive = true;
+    setLinkedInventoryHistoryLoading(true);
+    api
+      .get("/finance/inventory/transactions", {
+        ...auth,
+        params: { item_id: movementTarget.linked_inventory_item_id, page: 1, page_size: 10 },
+      })
+      .then(({ data }) => {
+        if (!alive) return;
+        setLinkedInventoryHistoryRows(Array.isArray(data?.items) ? data.items : []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setLinkedInventoryHistoryRows([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLinkedInventoryHistoryLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [movementOpen, movementTarget, auth]);
+
+  useEffect(() => {
     if (!globalMovementOpen) return;
     let alive = true;
     setGlobalMovementLoading(true);
@@ -546,6 +666,83 @@ const ProductManagement = ({ token }) => {
     }),
     [i18n.language, t]
   );
+
+  const filteredProducts = useMemo(() => {
+    if (stockSourceFilter === "linked_inventory") {
+      return products.filter((row) => String(row?.stock_source || "").toLowerCase() === "finance_inventory");
+    }
+    if (stockSourceFilter === "product") {
+      return products.filter((row) => String(row?.stock_source || "").toLowerCase() !== "finance_inventory");
+    }
+    return products;
+  }, [products, stockSourceFilter]);
+
+  const selectedInventoryItem = useMemo(() => {
+    if (!form.linked_inventory_item_id) return null;
+    return (
+      inventoryItems.find((item) => Number(item.id) === Number(form.linked_inventory_item_id)) ||
+      editing?.linked_inventory_item ||
+      null
+    );
+  }, [editing, form.linked_inventory_item_id, inventoryItems]);
+
+  const applyInventoryDetails = useCallback(() => {
+    if (!selectedInventoryItem) return;
+    setForm((prev) => ({
+      ...prev,
+      sku: selectedInventoryItem.sku || prev.sku,
+      name: selectedInventoryItem.name || prev.name,
+      description: selectedInventoryItem.description || prev.description,
+      cost:
+        selectedInventoryItem.cost_per_unit != null
+          ? String(selectedInventoryItem.cost_per_unit)
+          : prev.cost,
+      qty_on_hand:
+        selectedInventoryItem.current_quantity ?? selectedInventoryItem.on_hand_quantity ?? prev.qty_on_hand,
+      low_stock_threshold:
+        selectedInventoryItem.low_stock_threshold != null
+          ? selectedInventoryItem.low_stock_threshold
+          : prev.low_stock_threshold,
+    }));
+  }, [selectedInventoryItem]);
+
+  const linkedInventorySnapshotContent = selectedInventoryItem ? (
+    <Stack spacing={1.25}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+        <Chip label={`SKU: ${selectedInventoryItem.sku || "-"}`} size="small" variant="outlined" />
+        <Chip
+          label={`Status: ${selectedInventoryItem.stock_status || (selectedInventoryItem.low_available_stock ? "low_available" : "available")}`}
+          size="small"
+          color={selectedInventoryItem.low_available_stock ? "warning" : "default"}
+        />
+      </Stack>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+          gap: 1,
+        }}
+      >
+        {[
+          ["Stock unit", selectedInventoryItem.unit || "-"],
+          ["Vendor", selectedInventoryItem.vendor_name || "-"],
+          ["On hand", selectedInventoryItem.on_hand_quantity ?? selectedInventoryItem.current_quantity ?? 0],
+          ["Available", selectedInventoryItem.available_quantity ?? selectedInventoryItem.current_quantity ?? 0],
+          ["Low stock threshold", selectedInventoryItem.low_stock_threshold ?? "-"],
+          ["Category", selectedInventoryItem.category_name || "Uncategorized"],
+        ].map(([label, value]) => (
+          <Paper key={label} variant="outlined" sx={{ p: 1, backgroundColor: "background.paper" }}>
+            <Typography variant="caption" color="text.secondary">
+              {label}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {value}
+            </Typography>
+          </Paper>
+        ))}
+      </Box>
+    </Stack>
+  ) : null;
 
   return (
     <Box p={3}>
@@ -598,6 +795,18 @@ const ProductManagement = ({ token }) => {
         <TextField
           select
           size="small"
+          label="Stock source"
+          value={stockSourceFilter}
+          onChange={(event) => setStockSourceFilter(event.target.value)}
+          sx={{ minWidth: { xs: "100%", md: 180 } }}
+        >
+          <MenuItem value="all">All products</MenuItem>
+          <MenuItem value="product">Product stock</MenuItem>
+          <MenuItem value="linked_inventory">Linked inventory</MenuItem>
+        </TextField>
+        <TextField
+          select
+          size="small"
           label="Category"
           value={categoryFilter}
           onChange={(event) => setCategoryFilter(event.target.value)}
@@ -625,7 +834,7 @@ const ProductManagement = ({ token }) => {
               <ListItem key={item.id} disableGutters>
                 <ListItemText
                   primary={`${item.name} (${item.sku})`}
-                  secondary={`Stock ${item.qty_on_hand} / threshold ${item.low_stock_threshold ?? "-"}`}
+                  secondary={`Stock ${item.effective_stock_quantity ?? item.qty_on_hand} / threshold ${item.low_stock_threshold ?? "-"}`}
                 />
               </ListItem>
             ))}
@@ -635,7 +844,7 @@ const ProductManagement = ({ token }) => {
 
       <Paper>
         <DataGrid
-          rows={products}
+          rows={filteredProducts}
           getRowId={(row) => row.id}
           loading={loading}
           autoHeight
@@ -759,12 +968,15 @@ const ProductManagement = ({ token }) => {
               <TextField
                 label={fieldLabelWithTooltip(
                   t("manager.product.labels.qty"),
-                  "Current on-hand inventory quantity."
+                  Boolean(form.link_inventory_enabled) && Boolean(form.linked_inventory_item_id) && form.track_stock && !form.is_digital
+                    ? "Read-only here. Linked physical products use Materials & Supplies as the stock source."
+                    : "Current on-hand inventory quantity."
                 )}
                 type="number"
                 value={form.qty_on_hand}
                 onChange={handleChange("qty_on_hand")}
                 fullWidth
+                disabled={Boolean(form.link_inventory_enabled) && Boolean(form.linked_inventory_item_id) && form.track_stock && !form.is_digital}
               />
               <TextField
                 label={fieldLabelWithTooltip(
@@ -777,6 +989,138 @@ const ProductManagement = ({ token }) => {
                 fullWidth
               />
             </Stack>
+            {form.track_stock && !form.is_digital && (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.75}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} justifyContent="space-between">
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Inventory source
+                    </Typography>
+                    <Chip
+                      size="small"
+                      variant={form.link_inventory_enabled ? "filled" : "outlined"}
+                      color={form.link_inventory_enabled ? "primary" : "default"}
+                      label={form.link_inventory_enabled ? "Linked to Materials & Supplies" : "Using product stock"}
+                    />
+                  </Stack>
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.link_inventory_enabled)}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setForm((prev) => ({
+                            ...prev,
+                            link_inventory_enabled: checked,
+                            linked_inventory_item_id: checked ? prev.linked_inventory_item_id : null,
+                          }));
+                        }}
+                      />
+                    )}
+                    label={fieldLabelWithTooltip(
+                      "Link to Materials & Supplies inventory",
+                      "Optional. Use a Materials & Supplies item as the stock source for this physical product."
+                    )}
+                  />
+                  {Boolean(form.link_inventory_enabled) && selectedInventoryItem ? (
+                    <>
+                      <Autocomplete
+                        options={inventoryItems}
+                        loading={inventoryItemsLoading}
+                        value={selectedInventoryItem}
+                        onChange={(_, value) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            linked_inventory_item_id: value?.id ?? null,
+                          }));
+                        }}
+                        getOptionLabel={(option) =>
+                          [option?.name, option?.sku ? `(${option.sku})` : "", option?.category_name ? `- ${option.category_name}` : ""]
+                            .filter(Boolean)
+                            .join(" ")
+                        }
+                        isOptionEqualToValue={(option, value) => Number(option?.id) === Number(value?.id)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={fieldLabelWithTooltip(
+                              "Linked inventory item",
+                              "Search Materials & Supplies by item name, SKU, or category."
+                            )}
+                          />
+                        )}
+                      />
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }}>
+                        <Button
+                          variant="outlined"
+                          onClick={applyInventoryDetails}
+                          sx={{ alignSelf: { xs: "stretch", sm: "flex-start" }, minWidth: { sm: 180 } }}
+                        >
+                          Use inventory details
+                        </Button>
+                        <Alert severity="info" sx={{ py: 0.5, flex: 1 }}>
+                          Stock for this linked physical product will be reduced from Materials & Supplies when sold.
+                        </Alert>
+                      </Stack>
+                      {compactLinkedInventorySnapshot ? (
+                        <Accordion disableGutters elevation={0} sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1.5, "&:before": { display: "none" } }}>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
+                            <Stack spacing={0.25}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                Linked inventory item
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Tap to review stock details from Materials & Supplies.
+                              </Typography>
+                            </Stack>
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ pt: 0 }}>
+                            {linkedInventorySnapshotContent}
+                          </AccordionDetails>
+                        </Accordion>
+                      ) : (
+                        <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "background.default" }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                            Linked inventory item
+                          </Typography>
+                          {linkedInventorySnapshotContent}
+                        </Paper>
+                      )}
+                      <Alert severity="info">
+                        This product uses Materials & Supplies inventory as its stock source. Stock will reduce there after product sales.
+                      </Alert>
+                    </>
+                  ) : Boolean(form.link_inventory_enabled) ? (
+                    <Autocomplete
+                      options={inventoryItems}
+                      loading={inventoryItemsLoading}
+                      value={selectedInventoryItem}
+                      onChange={(_, value) => {
+                        setForm((prev) => ({
+                          ...prev,
+                          linked_inventory_item_id: value?.id ?? null,
+                        }));
+                      }}
+                      getOptionLabel={(option) =>
+                        [option?.name, option?.sku ? `(${option.sku})` : "", option?.category_name ? `- ${option.category_name}` : ""]
+                          .filter(Boolean)
+                          .join(" ")
+                      }
+                      isOptionEqualToValue={(option, value) => Number(option?.id) === Number(value?.id)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={fieldLabelWithTooltip(
+                              "Linked inventory item",
+                              "Search Materials & Supplies by item name, SKU, or category."
+                            )}
+                          />
+                        )}
+                      />
+                  ) : null}
+                </Stack>
+              </Paper>
+            )}
             {editing && Number(form.qty_on_hand || 0) !== Number(editing.qty_on_hand || 0) && (
               <Alert severity="info">
                 Stock will be adjusted from {Number(editing.qty_on_hand || 0)} to {Number(form.qty_on_hand || 0)}.
@@ -1271,6 +1615,30 @@ const ProductManagement = ({ token }) => {
           Stock history {movementTarget?.name ? `- ${movementTarget.name}` : ""}
         </DialogTitle>
         <DialogContent dividers>
+          {movementTarget ? (
+            <Stack spacing={1.25} sx={{ mb: 2 }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} justifyContent="space-between">
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Stock source
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Review sale history here. Manage stock directly in Materials & Supplies.
+                  </Typography>
+                </Box>
+                <Chip
+                  label={productStockSourceLabel(movementTarget)}
+                  size="small"
+                  variant={movementTarget?.stock_source === "finance_inventory" ? "outlined" : "filled"}
+                />
+              </Stack>
+              {movementTarget?.stock_source === "finance_inventory" && (
+                <Alert severity="info" sx={{ py: 0.5 }}>
+                  This product uses Materials & Supplies inventory as its stock source for sales.
+                </Alert>
+              )}
+            </Stack>
+          ) : null}
           {movementLoading ? (
             <Box py={4} textAlign="center"><CircularProgress /></Box>
           ) : movementRows.length === 0 ? (
@@ -1278,24 +1646,88 @@ const ProductManagement = ({ token }) => {
           ) : (
             <Stack spacing={1}>
               {movementRows.map((row) => (
-                <Paper key={row.id} variant="outlined" sx={{ p: 1.25 }}>
-                  <Stack direction="row" justifyContent="space-between" spacing={2}>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {row.qty_change > 0 ? `+${row.qty_change}` : row.qty_change}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
-                    </Typography>
+                <Paper key={row.id} variant="outlined" sx={{ p: 1.5, borderRadius: 1.5 }}>
+                  <Stack spacing={0.75}>
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {productMovementReasonLabel(row)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={row.qty_change > 0 ? `+${row.qty_change}` : row.qty_change}
+                        size="small"
+                        color={Number(row.qty_change || 0) < 0 ? "warning" : "success"}
+                      />
+                    </Stack>
+                    {String(row.reason || "").toLowerCase() === "linked_inventory_sale" && (
+                      <Typography variant="caption" color="text.secondary">
+                        This movement was deducted from the linked Materials & Supplies inventory item.
+                      </Typography>
+                    )}
+                    {row.note && (
+                      <Typography variant="caption" color="text.secondary">
+                        {row.note}
+                      </Typography>
+                    )}
                   </Stack>
-                  <Typography variant="body2">{row.reason || "movement"}</Typography>
-                  {row.note && (
-                    <Typography variant="caption" color="text.secondary">
-                      {row.note}
-                    </Typography>
-                  )}
                 </Paper>
               ))}
             </Stack>
+          )}
+          {movementTarget?.stock_source === "finance_inventory" && (
+            <Paper variant="outlined" sx={{ mt: 2, p: 1.5, borderRadius: 1.5 }}>
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Linked inventory history
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Recent stock movements from Materials & Supplies for this product.
+                </Typography>
+                {linkedInventoryHistoryLoading ? (
+                  <Box py={2} textAlign="center"><CircularProgress size={22} /></Box>
+                ) : linkedInventoryHistoryRows.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No linked inventory movements yet.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {linkedInventoryHistoryRows.map((row) => (
+                      <Paper key={`linked-${row.id}`} variant="outlined" sx={{ p: 1.25, borderRadius: 1.5 }}>
+                        <Stack spacing={0.5}>
+                          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {financeInventoryMovementTypeLabel(row)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
+                              </Typography>
+                            </Box>
+                            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                              <Chip
+                                size="small"
+                                color={Number(row.quantity_delta || 0) < 0 ? "warning" : "success"}
+                                label={Number(row.quantity_delta || 0) > 0 ? `+${row.quantity_delta}` : row.quantity_delta}
+                              />
+                              <Chip size="small" variant="outlined" label={row.source_type || "manual"} />
+                            </Stack>
+                          </Stack>
+                        {row.note && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {row.note}
+                          </Typography>
+                        )}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+            </Paper>
           )}
         </DialogContent>
         <DialogActions>

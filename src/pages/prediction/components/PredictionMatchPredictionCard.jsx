@@ -68,8 +68,8 @@ export default function PredictionMatchPredictionCard({
               <Stack
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto minmax(0, 1fr)" },
-                  gap: { xs: 1.5, md: 3 },
+                  gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                  gap: { xs: 1.25, md: 3 },
                   alignItems: "center",
                 }}
               >
@@ -99,7 +99,7 @@ export default function PredictionMatchPredictionCard({
                     onChange={(event) => onDraftChange?.(match.id, "home", event.target.value)}
                     disabled={!canEditScores}
                     inputProps={{ inputMode: "numeric", min: 0, max: 30 }}
-                    sx={{ width: { xs: 104, sm: 96 } }}
+                    sx={{ width: { xs: 88, sm: 96 } }}
                   />
                   <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 700, minWidth: 12, textAlign: "center" }}>
                     -
@@ -111,7 +111,7 @@ export default function PredictionMatchPredictionCard({
                     onChange={(event) => onDraftChange?.(match.id, "away", event.target.value)}
                     disabled={!canEditScores}
                     inputProps={{ inputMode: "numeric", min: 0, max: 30 }}
-                    sx={{ width: { xs: 104, sm: 96 } }}
+                    sx={{ width: { xs: 88, sm: 96 } }}
                   />
                 </Stack>
                 <Stack minWidth={0} sx={{ pl: { md: 2.5 }, justifySelf: { md: "end" } }}>
