@@ -121,16 +121,18 @@ const utcIsoToDateTimeLocalInput = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return [
-    date.getUTCFullYear(),
-    padDateTimePart(date.getUTCMonth() + 1),
-    padDateTimePart(date.getUTCDate()),
-  ].join("-") + `T${padDateTimePart(date.getUTCHours())}:${padDateTimePart(date.getUTCMinutes())}`;
+    date.getFullYear(),
+    padDateTimePart(date.getMonth() + 1),
+    padDateTimePart(date.getDate()),
+  ].join("-") + `T${padDateTimePart(date.getHours())}:${padDateTimePart(date.getMinutes())}`;
 };
 
 const dateTimeLocalInputToUtcIso = (value) => {
   const text = String(value || "").trim();
   if (!text) return "";
-  return `${text}:00+00:00`;
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().replace(".000Z", "+00:00");
 };
 
 const parseMultiPickMatchIds = (value) => {
@@ -182,7 +184,7 @@ const AdminUtcDateTimeField = ({ label, value, onChange }) => {
       value={utcValue}
       onChange={(event) => onChange(dateTimeLocalInputToUtcIso(event.target.value))}
       InputLabelProps={{ shrink: true }}
-      helperText={value ? `${label} your time: ${formatViewerDateTimeLabel(value)} - UTC: ${formatUtcLabel(value)}` : "Pick date and time in UTC."}
+      helperText={value ? `Your time: ${formatViewerDateTimeLabel(value)} · Stored UTC: ${formatUtcLabel(value)}` : "Pick date and time in your local timezone. It will be stored in UTC automatically."}
     />
   );
 };
@@ -1377,6 +1379,9 @@ function DailyBonusTab() {
       <Paper component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
         <Stack spacing={2}>
           <Typography variant="h6">{editingId ? "Edit Daily Bonus" : "Create Daily Bonus"}</Typography>
+          <Alert severity="info">
+            Daily bonus open and lock fields use your local timezone: <strong>{formatViewerTimezoneLabel()}</strong>. They are converted to UTC automatically when saved.
+          </Alert>
           <Grid container spacing={2}>
             <Grid item xs={12} md={3}><TextField fullWidth label="Daily key" value={form.daily_key} onChange={(e) => setForm((prev) => ({ ...prev, daily_key: e.target.value }))} placeholder="2026-06-11" required /></Grid>
             <Grid item xs={12} md={3}><TextField select fullWidth label="Question type" value={form.question_type} onChange={(e) => setForm((prev) => ({ ...prev, question_type: e.target.value }))}>{dailyBonusQuestionTypes.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField></Grid>
@@ -1385,14 +1390,14 @@ function DailyBonusTab() {
             <Grid item xs={12} md={4}><TextField fullWidth label="Points value" type="number" value={form.points_value} onChange={(e) => setForm((prev) => ({ ...prev, points_value: e.target.value }))} /></Grid>
             <Grid item xs={12} md={4}>
               <AdminUtcDateTimeField
-                label="Opens UTC"
+                label="Opens (your time)"
                 value={form.opens_at_utc}
                 onChange={(nextValue) => setForm((prev) => ({ ...prev, opens_at_utc: nextValue }))}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <AdminUtcDateTimeField
-                label="Lock UTC"
+                label="Locks (your time)"
                 value={form.lock_at_utc}
                 onChange={(nextValue) => setForm((prev) => ({ ...prev, lock_at_utc: nextValue }))}
               />
