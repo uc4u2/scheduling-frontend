@@ -167,6 +167,8 @@ export default function PredictionTodayPage({ onOpenWeekly }) {
         </Grid>
       </Grid>
 
+      <PredictionDailyBonusCard data={data.daily_bonus} onSaved={load} />
+
       {todayMatches.length ? (
         <PredictionTodayMatchesCard
           title={t("prediction.today.matches.title", "Today's Matches")}
@@ -198,7 +200,6 @@ export default function PredictionTodayPage({ onOpenWeekly }) {
         />
       ) : null}
 
-      <PredictionDailyBonusCard data={data.daily_bonus} onSaved={load} />
       <PredictionRecentResultsCard items={data.recent_results || []} />
       <PredictionActivityFeed items={data.activity_feed || []} />
     </Stack>
