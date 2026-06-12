@@ -114,6 +114,25 @@ const formatMultiPickRange = (item) => {
   return start === end ? `${start} UTC` : `${start} - ${end} UTC`;
 };
 
+const padDateTimePart = (value) => String(value).padStart(2, "0");
+
+const utcIsoToDateTimeLocalInput = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    date.getUTCFullYear(),
+    padDateTimePart(date.getUTCMonth() + 1),
+    padDateTimePart(date.getUTCDate()),
+  ].join("-") + `T${padDateTimePart(date.getUTCHours())}:${padDateTimePart(date.getUTCMinutes())}`;
+};
+
+const dateTimeLocalInputToUtcIso = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `${text}:00+00:00`;
+};
+
 const parseMultiPickMatchIds = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return [];
@@ -152,6 +171,21 @@ const AdminTimezoneNotice = () => (
     Times are shown in your timezone: <strong>{formatViewerTimezoneLabel()}</strong>. Admin inputs remain in UTC.
   </Alert>
 );
+
+const AdminUtcDateTimeField = ({ label, value, onChange }) => {
+  const utcValue = utcIsoToDateTimeLocalInput(value);
+  return (
+    <TextField
+      fullWidth
+      type="datetime-local"
+      label={label}
+      value={utcValue}
+      onChange={(event) => onChange(dateTimeLocalInputToUtcIso(event.target.value))}
+      InputLabelProps={{ shrink: true }}
+      helperText={value ? `${label} your time: ${formatViewerDateTimeLabel(value)} - UTC: ${formatUtcLabel(value)}` : "Pick date and time in UTC."}
+    />
+  );
+};
 
 const LeaderboardRow = ({ row }) => (
   <Paper key={row.recruiter_id} variant="outlined" sx={{ p: 1.5 }}>
@@ -1349,8 +1383,20 @@ function DailyBonusTab() {
             <Grid item xs={12} md={6}><TextField fullWidth label="Title" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} required /></Grid>
             <Grid item xs={12}><TextField fullWidth label="Description" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} /></Grid>
             <Grid item xs={12} md={4}><TextField fullWidth label="Points value" type="number" value={form.points_value} onChange={(e) => setForm((prev) => ({ ...prev, points_value: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Opens UTC" value={form.opens_at_utc} onChange={(e) => setForm((prev) => ({ ...prev, opens_at_utc: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField fullWidth label="Lock UTC" value={form.lock_at_utc} onChange={(e) => setForm((prev) => ({ ...prev, lock_at_utc: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}>
+              <AdminUtcDateTimeField
+                label="Opens UTC"
+                value={form.opens_at_utc}
+                onChange={(nextValue) => setForm((prev) => ({ ...prev, opens_at_utc: nextValue }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <AdminUtcDateTimeField
+                label="Lock UTC"
+                value={form.lock_at_utc}
+                onChange={(nextValue) => setForm((prev) => ({ ...prev, lock_at_utc: nextValue }))}
+              />
+            </Grid>
             <Grid item xs={12} md={4}><TextField select fullWidth label="Status" value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}><MenuItem value="draft">draft</MenuItem><MenuItem value="open">open</MenuItem><MenuItem value="locked">locked</MenuItem><MenuItem value="cancelled">cancelled</MenuItem></TextField></Grid>
             <Grid item xs={12} md={8}><TextField fullWidth multiline minRows={3} label="Options JSON" value={form.options_json} onChange={(e) => setForm((prev) => ({ ...prev, options_json: e.target.value }))} /></Grid>
             <Grid item xs={12}><TextField fullWidth multiline minRows={2} label="Source Payload JSON" value={form.source_payload_json} onChange={(e) => setForm((prev) => ({ ...prev, source_payload_json: e.target.value }))} /></Grid>
