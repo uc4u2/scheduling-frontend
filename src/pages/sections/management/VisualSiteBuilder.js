@@ -354,20 +354,30 @@ const defaultPageStyleBlock = () => ({
 /* ---------- Navigation settings helpers ---------- */
 const deriveNavDraft = (styleSource) => {
   if (!styleSource) return null;
-  const style = normalizeNavStyle(styleSource);
-  return { nav_style: style };
+  const source = styleSource || {};
+  const style = normalizeNavStyle(
+    source?.nav_style || source?.settings?.nav_style || source
+  );
+  const overrides =
+    source?.nav_overrides ||
+    source?.settings?.nav_overrides ||
+    {};
+  return { nav_style: style, nav_overrides: { ...(overrides || {}) } };
 };
 
 const mergeNavIntoSettings = (current, draft) => {
-  if (!draft?.nav_style) return current;
-  const style = normalizeNavStyle(draft.nav_style);
+  if (!draft?.nav_style && !draft?.nav_overrides) return current;
+  const style = draft?.nav_style ? normalizeNavStyle(draft.nav_style) : null;
+  const overrides = draft?.nav_overrides ? { ...(draft.nav_overrides || {}) } : null;
   const base = current ? { ...current } : {};
   return {
     ...base,
-    nav_style: style,
+    ...(style ? { nav_style: style } : {}),
+    ...(overrides ? { nav_overrides: overrides } : {}),
     settings: {
       ...(base.settings || {}),
-      nav_style: style,
+      ...(style ? { nav_style: style } : {}),
+      ...(overrides ? { nav_overrides: overrides } : {}),
     },
   };
 };
@@ -2659,13 +2669,16 @@ const handleNavDraftChange = useCallback(
   (draft) => {
     if (!draft) return;
     const normalized = normalizeNavStyle(draft?.nav_style || {});
-    setNavDraft({ nav_style: normalized });
+    const overrides = draft?.nav_overrides || navOverridesWithDefault || {};
+    setNavDraft({ nav_style: normalized, nav_overrides: overrides });
     setNavMsg("");
     setNavErr("");
     setNavStyleState(normalized);
-    setSiteSettings((prev) => mergeNavIntoSettings(prev, { nav_style: normalized }));
+    setSiteSettings((prev) =>
+      mergeNavIntoSettings(prev, { nav_style: normalized, nav_overrides: overrides })
+    );
   },
-  [setSiteSettings]
+  [setSiteSettings, navOverridesWithDefault]
 );
 
 const openBlockPreview = useCallback((type, label) => {
@@ -3214,11 +3227,25 @@ const saveNavSettings = useCallback(
     setNavErr("");
     try {
       const full = normalizeNavStyle(draft?.nav_style || navStyleState || {});
-      const saved = await navSettings.updateStyle(companyId, full);
+      const overrides = draft?.nav_overrides || navOverridesWithDefault || {};
+      const [saved, savedOverrides] = await Promise.all([
+        navSettings.updateStyle(companyId, full),
+        navSettings.updateOverrides(companyId, overrides),
+      ]);
       const normalizedSaved = normalizeNavStyle(saved || full);
       setNavStyleState(normalizedSaved);
-      setNavDraft(deriveNavDraft(normalizedSaved));
-      setSiteSettings((prev) => mergeNavIntoSettings(prev, { nav_style: normalizedSaved }));
+      setNavDraft(
+        deriveNavDraft({
+          nav_style: normalizedSaved,
+          nav_overrides: savedOverrides || overrides,
+        })
+      );
+      setSiteSettings((prev) =>
+        mergeNavIntoSettings(prev, {
+          nav_style: normalizedSaved,
+          nav_overrides: savedOverrides || overrides,
+        })
+      );
       setNavMsg(t("manager.visualBuilder.messages.navSaved"));
       setMsg(t("manager.visualBuilder.messages.navSaved"));
     } catch (e) {
@@ -3232,7 +3259,7 @@ const saveNavSettings = useCallback(
       setNavSaving(false);
     }
   },
-  [companyId, setSiteSettings, navStyleState, t]
+  [companyId, setSiteSettings, navStyleState, navOverridesWithDefault, t]
 );
 
   const saveBrandingSettings = useCallback(
@@ -5726,6 +5753,11 @@ const autoProvisionIfEmpty = useCallback(
       >
         <WebsiteNavSettingsCard
           companyId={companyId}
+          companySlug={
+            siteSettings?.company?.slug ||
+            siteSettings?.company?.name ||
+            previewSlug
+          }
           value={navDraft || { nav_style: navStyleState }}
           onChange={handleNavDraftChange}
           onSave={saveNavSettings}

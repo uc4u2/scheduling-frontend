@@ -199,7 +199,6 @@ import ProductList from "./pages/client/ProductList";
 import ProductDetails from "./pages/client/ProductDetails";
 import MyBasket from "./pages/client/MyBasket";
 import PublicReview from "./pages/client/PublicReview";
-import PublicReviewList from "./pages/client/PublicReviewList";
 import PublicAppointmentPayPage from "./pages/client/PublicAppointmentPayPage";
 import PublicTip from "./pages/client/PublicTip";
 import { useEmbedConfig } from "./embed";
@@ -440,6 +439,17 @@ const CustomDomainSlugRedirect = () => {
   const remainder = String(splat || "").replace(/^\/+/, "");
   const targetPath = remainder ? `/${remainder}` : "/";
   return <Navigate to={`${targetPath}${location.search || ""}`} replace />;
+};
+
+const LegacyReviewsRedirect = ({ slugOverride = "" }) => {
+  const { slug: routeSlug } = useParams();
+  const location = useLocation();
+  const resolvedSlug = String(slugOverride || routeSlug || "").trim();
+  const params = new URLSearchParams(location.search || "");
+  params.set("page", "reviews");
+  const nextSearch = params.toString();
+  const basePath = resolvedSlug ? `/${resolvedSlug}` : "/";
+  return <Navigate to={`${basePath}?${nextSearch}`} replace />;
 };
 
 const AppContent = ({ token, setToken }) => {
@@ -723,7 +733,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/pay/:appointmentId" element={<PublicAppointmentPayPage slugOverride={tenantSlug} />} />
               <Route path="/estimate/:token" element={<PublicEstimatePage />} />
               <Route path="/meet/:artistId" element={<MeetWithArtistPage slugOverride={tenantSlug} />} />
-              <Route path="/reviews" element={<PublicReviewList slugOverride={tenantSlug} />} />
+              <Route path="/reviews" element={<LegacyReviewsRedirect />} />
               <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
               <Route path="/tip/:appointmentId" element={<PublicTip slugOverride={tenantSlug} />} />
               <Route path="/:slug/*" element={<CustomDomainSlugRedirect />} />
@@ -998,8 +1008,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/kiosk/pay/:token" element={<KioskPayPage />} />
           <Route path="/kiosk/success" element={<KioskSuccessPage />} />
 
-          {/* Public reviews page (/:slug/reviews) */}
-          <Route path="/:slug/reviews" element={<PublicReviewList />} />
+          {/* Legacy public reviews page (/:slug/reviews) redirects to canonical */}
+          <Route path="/:slug/reviews" element={<LegacyReviewsRedirect />} />
 
           {/* Website manager/editor (manager) */}
           <Route path="/manager/website" element={<WebsiteManager />} />

@@ -363,6 +363,20 @@ function ShellInner({
     [mappedMenu, extraTabs]
   );
 
+  const hasLoginNavItem = useMemo(
+    () => allNavItems.some((item) => String(item?.to || "").startsWith("/login")),
+    [allNavItems]
+  );
+
+  const hasMyBookingsNavItem = useMemo(
+    () =>
+      allNavItems.some((item) => {
+        const to = String(item?.to || "").toLowerCase();
+        return to.includes("?page=my-bookings");
+      }),
+    [allNavItems]
+  );
+
   const navButtonSx = useMemo(
     () => createNavButtonStyles(navTokens),
     [navTokens]
@@ -698,9 +712,16 @@ function ShellInner({
             </Stack>
 
             {!authed ? (
-              <Button className="nav-btn" variant="contained" component={RouterLink} to={`/login?site=${encodeURIComponent(slug)}`}>
-                Login
-              </Button>
+              navCfg?.show_login_tab !== false && !hasLoginNavItem ? (
+                <Button
+                  className="nav-btn"
+                  variant="contained"
+                  component={RouterLink}
+                  to={`/login?site=${encodeURIComponent(slug)}`}
+                >
+                  {navCfg?.login_tab_label || "Login"}
+                </Button>
+              ) : null
             ) : (
               <Stack direction="row" spacing={1}>
                 {isManager && (
@@ -712,9 +733,11 @@ function ShellInner({
                     Manage Site
                   </Button>
                 )}
-                <Button className="nav-btn" component={RouterLink} to={`${rootPath}?page=my-bookings`}>
-                  Dashboard
-                </Button>
+                {navCfg?.show_my_bookings_tab !== false && !hasMyBookingsNavItem ? (
+                  <Button className="nav-btn" component={RouterLink} to={`${rootPath}?page=my-bookings`}>
+                    {navCfg?.my_bookings_tab_label || "My Bookings"}
+                  </Button>
+                ) : null}
                 <Button className="nav-btn" variant="outlined" onClick={handleLogout}>Logout</Button>
               </Stack>
             )}

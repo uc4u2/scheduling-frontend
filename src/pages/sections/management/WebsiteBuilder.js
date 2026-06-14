@@ -736,18 +736,25 @@ const t = Array.isArray(rawThemes)
     </Typography>
     <WebsiteNavSettingsCard
       companyId={companyId}
+      companySlug={settings?.company?.slug || ""}
       value={settings}
       onSave={async (draft) => {
         try {
           const full = normalizeNavStyle(draft?.nav_style || draft?.settings?.nav_style || {});
-          const saved = await navSettings.updateStyle(companyId, full);
+          const overrides = draft?.nav_overrides || draft?.settings?.nav_overrides || settings?.nav_overrides || {};
+          const [saved, savedOverrides] = await Promise.all([
+            navSettings.updateStyle(companyId, full),
+            navSettings.updateOverrides(companyId, overrides),
+          ]);
           const normalizedSaved = normalizeNavStyle(saved || full);
           setSettings((prev) => ({
             ...(prev || {}),
             nav_style: normalizedSaved,
+            nav_overrides: savedOverrides || overrides,
             settings: {
               ...(prev?.settings || {}),
               nav_style: normalizedSaved,
+              nav_overrides: savedOverrides || overrides,
             },
           }));
           setMsg("Navigation settings saved");

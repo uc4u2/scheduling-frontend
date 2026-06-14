@@ -4,6 +4,7 @@ import { Button, Alert, Typography, TextField, Stack, Link as MuiLink } from "@m
 import { Link as RouterLink, useLocation, useParams } from "react-router-dom";
 import { api } from "./utils/api";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
+import Meta from "./components/Meta";
 
 const ForgotPassword = ({ slugOverride = "" }) => {
   const [email, setEmail] = useState("");
@@ -52,6 +53,7 @@ const ForgotPassword = ({ slugOverride = "" }) => {
       heroTitle="Recover access without losing momentum."
       heroSubtitle="Schedulaa keeps account recovery simple so your bookings, team access, and business operations stay moving."
     >
+      <Meta title="Reset password | Schedulaa" robots="noindex, nofollow" />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
       <Stack component="form" spacing={2.5} onSubmit={handleSubmit} noValidate>

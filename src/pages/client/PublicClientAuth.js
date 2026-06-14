@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Link, Checkbox, FormControlLabel
 } from "@mui/material";
@@ -6,6 +6,7 @@ import { api } from "../../utils/api";
 import { getTenantHostMode } from "../../utils/tenant";
 import TimezoneSelect from "../../components/TimezoneSelect";
 import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
+import Meta from "../../components/Meta";
 
 const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
   <Stack spacing={1} sx={{ mt: 1 }}>
@@ -31,6 +32,11 @@ export default function PublicClientAuth({ slug }) {
   const [forgotBusy, setForgotBusy] = useState(false);
   const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [timezone, setTimezone] = useState(() => getUserTimezone());
+  const seoTitle = useMemo(() => {
+    const action = tab === "register" ? "Sign Up" : "Login";
+    const siteLabel = slug ? `${slug} client account` : "Client account";
+    return `${action} | ${siteLabel}`;
+  }, [slug, tab]);
 
   // login form
   const [email, setEmail] = useState("");
@@ -133,6 +139,7 @@ export default function PublicClientAuth({ slug }) {
 
   return (
     <Box sx={{ maxWidth: 420, mx: "auto", mt: 6 }}>
+      <Meta title={seoTitle} robots="noindex, nofollow" />
       <Paper elevation={3} sx={{ p: 3 }}>
         <Typography variant="h5" sx={{ mb: 1 }}>Client Account</Typography>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>

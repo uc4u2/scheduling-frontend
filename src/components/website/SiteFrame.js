@@ -114,7 +114,7 @@ export default function SiteFrame({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const headerConfig = useMemo(() => {
     const topLevelHeader = site?.header && typeof site.header === "object" ? site.header : {};
     const settingsHeader =
@@ -290,9 +290,14 @@ export default function SiteFrame({
         .map((p) => ({
           id: p.id,
           label: p.menu_title || p.title || p.slug,
-          href: `?page=${encodeURIComponent(p.slug)}`,
+          href:
+            p.slug === "login"
+              ? loginHref()
+              : p.slug === "my-bookings"
+              ? myBookingsHref()
+              : `?page=${encodeURIComponent(p.slug)}`,
         })),
-    [pages, slug, clientLoggedIn]
+    [pages, clientLoggedIn]
   );
 
   const navLinks = useMemo(() => {
@@ -314,6 +319,34 @@ export default function SiteFrame({
       }),
     [navLinks]
   );
+
+  const hasLoginLink = useMemo(
+    () =>
+      navLinks.some((item) => {
+        const href = String(item?.href || "").toLowerCase();
+        return href === "/login" || href.includes("?page=login");
+      }) ||
+      pages.some((p) => p?.show_in_menu && p.slug === "login" && !clientLoggedIn),
+    [navLinks, pages, clientLoggedIn]
+  );
+
+  const hasMyBookingsLink = useMemo(
+    () =>
+      navLinks.some((item) => {
+        const href = String(item?.href || "").toLowerCase();
+        return href === "/dashboard" || href.includes("?page=my-bookings");
+      }) ||
+      pages.some((p) => p?.show_in_menu && p.slug === "my-bookings" && clientLoggedIn),
+    [navLinks, pages, clientLoggedIn]
+  );
+
+  const isReviewsActive = useMemo(() => {
+    try {
+      return pathname.includes("/reviews") || new URLSearchParams(search || "").get("page") === "reviews";
+    } catch {
+      return pathname.includes("/reviews");
+    }
+  }, [pathname, search]);
 
   const deslug = (value) =>
     (value || "")
@@ -562,29 +595,33 @@ export default function SiteFrame({
   const renderSessionButtons = (onItemClick) =>
     clientLoggedIn ? (
       <>
-        <Button
-          component={RouterLink}
-          to={myBookingsHref()}
-          color="inherit"
-          onClick={onItemClick}
-          sx={navButtonStyling(pathname.startsWith("/dashboard"))}
-        >
-          {nav.mybookings_tab_label || "My Bookings"}
-        </Button>
+        {nav.show_my_bookings_tab !== false && !hasMyBookingsLink ? (
+          <Button
+            component={RouterLink}
+            to={myBookingsHref()}
+            color="inherit"
+            onClick={onItemClick}
+            sx={navButtonStyling(pathname.startsWith("/dashboard"))}
+          >
+            {nav.my_bookings_tab_label || "My Bookings"}
+          </Button>
+        ) : null}
         <Button onClick={doLogout} color="inherit" sx={navButtonStyling(false)}>
           {nav.logout_tab_label || "Log out"}
         </Button>
       </>
     ) : (
-      <Button
-        component={RouterLink}
-        to={loginHref()}
-        color="inherit"
-        onClick={onItemClick}
-        sx={navButtonStyling(pathname === "/login")}
-      >
-        {nav.login_tab_label || "Login"}
-      </Button>
+      nav.show_login_tab !== false && !hasLoginLink ? (
+        <Button
+          component={RouterLink}
+          to={loginHref()}
+          color="inherit"
+          onClick={onItemClick}
+          sx={navButtonStyling(pathname === "/login")}
+        >
+          {nav.login_tab_label || "Login"}
+        </Button>
+      ) : null
     );
 
   const defaultHeader = (
@@ -644,7 +681,7 @@ export default function SiteFrame({
 
           {/* fixed “extra” tabs that every site has */}
           {!hasReviewsLink && nav.show_reviews_tab !== false && (
-            <Button component={RouterLink} to={reviewsHref()} color={pathname.includes("/reviews") ? "primary" : "inherit"}>
+            <Button component={RouterLink} to={reviewsHref()} color={isReviewsActive ? "primary" : "inherit"}>
               {nav.reviews_tab_label || "Reviews"}
             </Button>
           )}
@@ -785,9 +822,9 @@ export default function SiteFrame({
         <Button
           component={RouterLink}
           to={reviewsHref()}
-          color={pathname.includes("/reviews") ? "primary" : "inherit"}
+          color={isReviewsActive ? "primary" : "inherit"}
           size="small"
-          sx={navButtonStyling(pathname.includes("/reviews"))}
+          sx={navButtonStyling(isReviewsActive)}
         >
           {nav.reviews_tab_label || "Reviews"}
         </Button>
@@ -818,9 +855,9 @@ export default function SiteFrame({
         <Button
           component={RouterLink}
           to={reviewsHref()}
-          color={pathname.includes("/reviews") ? "primary" : "inherit"}
+          color={isReviewsActive ? "primary" : "inherit"}
           fullWidth
-          sx={{ ...navButtonStyling(pathname.includes("/reviews")), justifyContent: "flex-start" }}
+          sx={{ ...navButtonStyling(isReviewsActive), justifyContent: "flex-start" }}
           onClick={handleMobileClose}
         >
           {nav.reviews_tab_label || "Reviews"}

@@ -1299,17 +1299,7 @@ export default function CompanyPublic({ slugOverride }) {
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     [pages]
   );
-  const hasReviewsPage = useMemo(
-    () => (menuPages || []).some((p) => String(p.slug || '').toLowerCase() === 'reviews'),
-    [menuPages]
-  );
-
-  const reviewsHref = useCallback(() => {
-    if (hasReviewsPage) {
-      return `${rootPath}?page=reviews`;
-    }
-    return `${basePath}/reviews`;
-  }, [hasReviewsPage, rootPath, basePath]);
+  const reviewsHref = useCallback(() => `${rootPath}?page=reviews`, [rootPath]);
 
   const runtimeOverrides = settings?.theme_overrides
     || sitePayload?.theme_overrides

@@ -9,10 +9,12 @@ import {
   CardHeader,
   Chip,
   Divider,
+  FormControlLabel,
   Grid,
   MenuItem,
   Slider,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography,
@@ -160,6 +162,15 @@ const BRAND_FONT_OPTIONS = [
 const stylesEqual = (a, b) =>
   NAV_KEYS.every((key) => (a[key] ?? null) === (b[key] ?? null));
 
+const normalizeNavOverrides = (raw = {}) => ({
+  show_reviews_tab: raw?.show_reviews_tab !== false,
+  reviews_tab_label: String(raw?.reviews_tab_label || "Reviews").trim() || "Reviews",
+  show_login_tab: raw?.show_login_tab !== false,
+  login_tab_label: String(raw?.login_tab_label || "Login").trim() || "Login",
+  show_my_bookings_tab: raw?.show_my_bookings_tab !== false,
+  my_bookings_tab_label: String(raw?.my_bookings_tab_label || "My Bookings").trim() || "My Bookings",
+});
+
 const NavPreview = ({ tokens, highlightActive = true }) => {
   const theme = useTheme();
   const buttonStyles = useMemo(
@@ -276,6 +287,7 @@ const ColorField = ({ label, value, onChange, placeholder }) => {
 
 export default function WebsiteNavSettingsCard({
   companyId,
+  companySlug = "",
   value,
   onChange,
   onSave,
@@ -291,13 +303,20 @@ export default function WebsiteNavSettingsCard({
       value?.nav_style ?? value?.settings?.nav_style ?? NAV_STYLE_DEFAULT
     )
   );
+  const [navOverrides, setNavOverrides] = useState(() =>
+    normalizeNavOverrides(
+      value?.nav_overrides ?? value?.settings?.nav_overrides ?? {}
+    )
+  );
 
   const lastStyleHashRef = useRef("");
+  const lastOverridesHashRef = useRef("");
 
-  const emitChange = (nextStyle) => {
+  const emitChange = (nextStyle, nextOverrides = navOverrides) => {
     if (!onChange) return;
     onChange({
       nav_style: normalizeNavStyle(nextStyle || NAV_STYLE_DEFAULT),
+      nav_overrides: normalizeNavOverrides(nextOverrides || {}),
     });
   };
 
@@ -310,6 +329,14 @@ export default function WebsiteNavSettingsCard({
       setNavStyle(incomingStyle);
       lastStyleHashRef.current = hash;
     }
+    const incomingOverrides = normalizeNavOverrides(
+      value?.nav_overrides ?? value?.settings?.nav_overrides ?? {}
+    );
+    const overridesHash = JSON.stringify(incomingOverrides);
+    if (overridesHash !== lastOverridesHashRef.current) {
+      setNavOverrides(incomingOverrides);
+      lastOverridesHashRef.current = overridesHash;
+    }
   }, [value]);
 
   const updateNavStyleField = (key, input) => {
@@ -319,7 +346,15 @@ export default function WebsiteNavSettingsCard({
         : input;
     setNavStyle((prev) => {
       const merged = normalizeNavStyle({ ...(prev || {}), [key]: next });
-      emitChange(merged);
+      emitChange(merged, navOverrides);
+      return merged;
+    });
+  };
+
+  const updateNavOverrideField = (key, nextValue) => {
+    setNavOverrides((prev) => {
+      const merged = normalizeNavOverrides({ ...(prev || {}), [key]: nextValue });
+      emitChange(navStyle, merged);
       return merged;
     });
   };
@@ -327,20 +362,20 @@ export default function WebsiteNavSettingsCard({
   const applyPreset = (preset) => {
     const style = normalizeNavStyle(getPresetStyle(preset));
     setNavStyle(style);
-    emitChange(style);
+    emitChange(style, navOverrides);
   };
 
   const applyIndustryNavPreset = (preset) => {
     if (!preset) return;
     const style = normalizeNavStyle(preset.style || NAV_STYLE_DEFAULT);
     setNavStyle(style);
-    emitChange(style);
+    emitChange(style, navOverrides);
   };
 
   const applyColorPreset = (preset) => {
     const style = normalizeNavStyle({ ...navStyle, ...(preset?.colors || {}) });
     setNavStyle(style);
-    emitChange(style);
+    emitChange(style, navOverrides);
   };
 
   const applyShadowPreset = (preset) => {
@@ -351,16 +386,41 @@ export default function WebsiteNavSettingsCard({
   const resetNavStyle = () => {
     const reset = normalizeNavStyle(NAV_STYLE_DEFAULT);
     setNavStyle(reset);
-    emitChange(reset);
+    emitChange(reset, navOverrides);
   };
 
 const handleSave = () => {
   if (!onSave) return;
   const full = normalizeNavStyle(navStyle);
-  onSave({ settings: { nav_style: full } });
+  onSave({
+    settings: {
+      nav_style: full,
+      nav_overrides: normalizeNavOverrides(navOverrides),
+    },
+    nav_style: full,
+    nav_overrides: normalizeNavOverrides(navOverrides),
+  });
 };
 
   const previewStyle = useMemo(() => normalizeNavStyle(navStyle), [navStyle]);
+  const slugPreview = (companySlug || ":slug").replace(/^\/+/, "") || ":slug";
+  const systemRoutes = useMemo(
+    () => ({
+      reviews: {
+        slug: `/${slugPreview}?page=reviews`,
+        custom: "/?page=reviews",
+      },
+      login: {
+        slug: `/login?site=${slugPreview}`,
+        custom: "/login",
+      },
+      myBookings: {
+        slug: `/${slugPreview}?page=my-bookings`,
+        custom: "/?page=my-bookings",
+      },
+    }),
+    [slugPreview]
+  );
   const navCssVars = useMemo(
     () => ({
       "--sched-primary": theme.palette.primary.main,
@@ -536,6 +596,104 @@ const handleSave = () => {
                   </Card>
                 </Grid>
               ))}
+            </Grid>
+          </Stack>
+
+          <Divider />
+
+          <Stack spacing={2}>
+            <Typography variant="subtitle2">System pages</Typography>
+            <Alert severity="info" variant="outlined">
+              These links are system pages powered by Schedulaa. You can show, hide, or rename them in your menu, but they are not editable content pages.
+            </Alert>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(navOverrides.show_reviews_tab)}
+                            onChange={(e) => updateNavOverrideField("show_reviews_tab", e.target.checked)}
+                          />
+                        }
+                        label="Show Reviews in menu"
+                      />
+                      <TextField
+                        size="small"
+                        label="Reviews label"
+                        value={navOverrides.reviews_tab_label}
+                        onChange={(e) => updateNavOverrideField("reviews_tab_label", e.target.value)}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Slug site: {systemRoutes.reviews.slug}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Custom domain: {systemRoutes.reviews.custom}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(navOverrides.show_login_tab)}
+                            onChange={(e) => updateNavOverrideField("show_login_tab", e.target.checked)}
+                          />
+                        }
+                        label="Show Login in menu"
+                      />
+                      <TextField
+                        size="small"
+                        label="Login label"
+                        value={navOverrides.login_tab_label}
+                        onChange={(e) => updateNavOverrideField("login_tab_label", e.target.value)}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Slug site: {systemRoutes.login.slug}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Custom domain: {systemRoutes.login.custom}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(navOverrides.show_my_bookings_tab)}
+                            onChange={(e) => updateNavOverrideField("show_my_bookings_tab", e.target.checked)}
+                          />
+                        }
+                        label="Show My Bookings in menu"
+                      />
+                      <TextField
+                        size="small"
+                        label="My Bookings label"
+                        value={navOverrides.my_bookings_tab_label}
+                        onChange={(e) => updateNavOverrideField("my_bookings_tab_label", e.target.value)}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Slug site: {systemRoutes.myBookings.slug}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Custom domain: {systemRoutes.myBookings.custom}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
           </Stack>
 
