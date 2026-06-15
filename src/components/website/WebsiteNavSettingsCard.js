@@ -163,6 +163,8 @@ const stylesEqual = (a, b) =>
   NAV_KEYS.every((key) => (a[key] ?? null) === (b[key] ?? null));
 
 const normalizeNavOverrides = (raw = {}) => ({
+  ...(raw || {}),
+  menu_source: raw?.menu_source === "manual" ? "manual" : "pages",
   show_reviews_tab: raw?.show_reviews_tab !== false,
   reviews_tab_label: String(raw?.reviews_tab_label || "Reviews").trim() || "Reviews",
   show_login_tab: raw?.show_login_tab !== false,
@@ -346,6 +348,7 @@ export default function WebsiteNavSettingsCard({
         : input;
     setNavStyle((prev) => {
       const merged = normalizeNavStyle({ ...(prev || {}), [key]: next });
+      lastStyleHashRef.current = JSON.stringify(merged);
       emitChange(merged, navOverrides);
       return merged;
     });
@@ -354,6 +357,7 @@ export default function WebsiteNavSettingsCard({
   const updateNavOverrideField = (key, nextValue) => {
     setNavOverrides((prev) => {
       const merged = normalizeNavOverrides({ ...(prev || {}), [key]: nextValue });
+      lastOverridesHashRef.current = JSON.stringify(merged);
       emitChange(navStyle, merged);
       return merged;
     });
@@ -362,6 +366,7 @@ export default function WebsiteNavSettingsCard({
   const applyPreset = (preset) => {
     const style = normalizeNavStyle(getPresetStyle(preset));
     setNavStyle(style);
+    lastStyleHashRef.current = JSON.stringify(style);
     emitChange(style, navOverrides);
   };
 
@@ -369,12 +374,14 @@ export default function WebsiteNavSettingsCard({
     if (!preset) return;
     const style = normalizeNavStyle(preset.style || NAV_STYLE_DEFAULT);
     setNavStyle(style);
+    lastStyleHashRef.current = JSON.stringify(style);
     emitChange(style, navOverrides);
   };
 
   const applyColorPreset = (preset) => {
     const style = normalizeNavStyle({ ...navStyle, ...(preset?.colors || {}) });
     setNavStyle(style);
+    lastStyleHashRef.current = JSON.stringify(style);
     emitChange(style, navOverrides);
   };
 
@@ -386,6 +393,7 @@ export default function WebsiteNavSettingsCard({
   const resetNavStyle = () => {
     const reset = normalizeNavStyle(NAV_STYLE_DEFAULT);
     setNavStyle(reset);
+    lastStyleHashRef.current = JSON.stringify(reset);
     emitChange(reset, navOverrides);
   };
 
@@ -602,10 +610,19 @@ const handleSave = () => {
           <Divider />
 
           <Stack spacing={2}>
-            <Typography variant="subtitle2">System pages</Typography>
+            <Typography variant="subtitle2">System links in public menu</Typography>
             <Alert severity="info" variant="outlined">
-              These links are system pages powered by Schedulaa. You can show, hide, or rename them in your menu, but they are not editable content pages.
+              These are built-in Schedulaa links, not editable content pages. You can choose whether they appear in your public website menu and rename their labels.
             </Alert>
+            {navOverrides.menu_source === "manual" ? (
+              <Alert severity="warning" variant="outlined">
+                Manual navigation is active. Stored manual links may override what appears in the preview. Switch to Page-driven navigation or clear the manual list to use these system link controls.
+              </Alert>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                These settings apply to the page-driven website menu.
+              </Typography>
+            )}
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
@@ -618,7 +635,7 @@ const handleSave = () => {
                             onChange={(e) => updateNavOverrideField("show_reviews_tab", e.target.checked)}
                           />
                         }
-                        label="Show Reviews in menu"
+                        label="Show Reviews"
                       />
                       <TextField
                         size="small"
@@ -626,12 +643,17 @@ const handleSave = () => {
                         value={navOverrides.reviews_tab_label}
                         onChange={(e) => updateNavOverrideField("reviews_tab_label", e.target.value)}
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        Slug site: {systemRoutes.reviews.slug}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Custom domain: {systemRoutes.reviews.custom}
-                      </Typography>
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" color="text.secondary">
+                          Public URL preview:
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Slug site: {systemRoutes.reviews.slug}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Custom domain: {systemRoutes.reviews.custom}
+                        </Typography>
+                      </Stack>
                     </Stack>
                   </CardContent>
                 </Card>
@@ -647,7 +669,7 @@ const handleSave = () => {
                             onChange={(e) => updateNavOverrideField("show_login_tab", e.target.checked)}
                           />
                         }
-                        label="Show Login in menu"
+                        label="Show Client Login"
                       />
                       <TextField
                         size="small"
@@ -655,12 +677,17 @@ const handleSave = () => {
                         value={navOverrides.login_tab_label}
                         onChange={(e) => updateNavOverrideField("login_tab_label", e.target.value)}
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        Slug site: {systemRoutes.login.slug}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Custom domain: {systemRoutes.login.custom}
-                      </Typography>
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" color="text.secondary">
+                          Public URL preview:
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Slug site: {systemRoutes.login.slug}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Custom domain: {systemRoutes.login.custom}
+                        </Typography>
+                      </Stack>
                     </Stack>
                   </CardContent>
                 </Card>
@@ -676,7 +703,7 @@ const handleSave = () => {
                             onChange={(e) => updateNavOverrideField("show_my_bookings_tab", e.target.checked)}
                           />
                         }
-                        label="Show My Bookings in menu"
+                        label="Show My Bookings"
                       />
                       <TextField
                         size="small"
@@ -684,12 +711,17 @@ const handleSave = () => {
                         value={navOverrides.my_bookings_tab_label}
                         onChange={(e) => updateNavOverrideField("my_bookings_tab_label", e.target.value)}
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        Slug site: {systemRoutes.myBookings.slug}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Custom domain: {systemRoutes.myBookings.custom}
-                      </Typography>
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" color="text.secondary">
+                          Public URL preview:
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Slug site: {systemRoutes.myBookings.slug}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Custom domain: {systemRoutes.myBookings.custom}
+                        </Typography>
+                      </Stack>
                     </Stack>
                   </CardContent>
                 </Card>

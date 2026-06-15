@@ -788,6 +788,11 @@ const t = Array.isArray(rawThemes)
               </Button>
             </Stack>
 
+            <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+              Looking for Reviews, Login, or My Bookings? These are system links.
+              Manage them in Navigation &amp; Menu → System links in public menu.
+            </Alert>
+
             <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap" }}>
               {pages.map((p) => (
                 <Button

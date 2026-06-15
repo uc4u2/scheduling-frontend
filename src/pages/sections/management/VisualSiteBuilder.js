@@ -3668,7 +3668,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     };
     return {
       slug: previewSlug,
-      nav_overrides: navOverridesWithDefault,
+      nav_overrides: navDraft?.nav_overrides || navOverridesWithDefault,
       nav_style: navStyle,
       theme_overrides: themeOverrides,
       header: headerDraft,
@@ -5248,6 +5248,10 @@ const autoProvisionIfEmpty = useCallback(
           setPageSettingsOpen(next);
         }}
       >
+        <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+          Looking for Reviews, Login, or My Bookings? These are system links.
+          Manage them in Navigation &amp; Menu → System links in public menu.
+        </Alert>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {selectedPageIds.length
