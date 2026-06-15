@@ -49,6 +49,11 @@ import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../
 import { getLuminance, pickTextColorForBg } from "../../utils/color";
 import { navSettings } from "../../utils/api";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
+import {
+  resolveTenantAssetUrl,
+  resolveTenantFavicon,
+  setTenantFavicon,
+} from "../../components/website/tenantHead";
 import { ServiceListEmbedded } from "./ServiceList";
 import { ProductListEmbedded } from "./ProductList";
 import { MyBasketEmbedded } from "./MyBasket";
@@ -1796,7 +1801,7 @@ const siteTitle = useMemo(() => {
   const resolveMediaUrl = useCallback(
     (asset, fallback) => {
       if (asset && typeof asset === "object") {
-        const candidate = asset.url || asset.url_public;
+        const candidate = resolveTenantAssetUrl(asset, "");
         if (typeof candidate === "string" && candidate.trim()) {
           if (/^https?:\/\//i.test(candidate)) return candidate;
           if (candidate.startsWith("/")) {
@@ -1844,18 +1849,8 @@ const siteTitle = useMemo(() => {
   }, [headerConfig, company, resolveMediaUrl]);
 
   useEffect(() => {
-    const favicon =
-      sitePayload?.favicon_url ||
-      sitePayload?.website_setting?.favicon_url ||
-      sitePayload?.settings?.favicon_url ||
-      "";
-    const fallbackLogo =
-      headerLogoUrl ||
-      sitePayload?.header?.logo_url ||
-      sitePayload?.header?.logo_asset_url ||
-      sitePayload?.company?.logo_url ||
-      "";
-    setTenantFavicon(favicon || fallbackLogo);
+    const favicon = resolveTenantFavicon(sitePayload || {});
+    setTenantFavicon(favicon || headerLogoUrl || "");
   }, [sitePayload, headerLogoUrl]);
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
@@ -3183,20 +3178,4 @@ const siteTitle = useMemo(() => {
       </>
     </ThemeRuntimeProvider>
   );
-}
-
-function setTenantFavicon(href) {
-  if (typeof document === "undefined") return;
-  const next = (href || "").trim();
-  const value = next || "/favicon.ico";
-  const rels = ["icon", "shortcut icon"];
-  rels.forEach((rel) => {
-    let link = document.querySelector(`link[rel='${rel}']`);
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = rel;
-      document.head.appendChild(link);
-    }
-    link.href = value;
-  });
 }

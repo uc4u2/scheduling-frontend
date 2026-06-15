@@ -12,6 +12,7 @@ import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../
 import { getTenantHostMode } from "../../utils/tenant";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../utils/websiteRadius";
+import { resolveTenantFavicon, setTenantFavicon } from "../../components/website/tenantHead";
 
 const PublicSiteContext = createContext(null);
 
@@ -887,6 +888,13 @@ export default function PublicPageShell({
       if (link.parentNode) link.parentNode.removeChild(link);
     };
   }, [site?.preview?.hero?.image]);
+
+  useEffect(() => {
+    if (!site) return;
+    const favicon = resolveTenantFavicon(site);
+    if (!favicon) return;
+    setTenantFavicon(favicon);
+  }, [site]);
 
   // Prepare content; avoid early returns to keep hooks order stable
   let innerContent = null;
