@@ -12,6 +12,8 @@ import {
   FormControlLabel,
   Grid,
   MenuItem,
+  Paper,
+  Portal,
   Slider,
   Stack,
   Switch,
@@ -296,6 +298,8 @@ export default function WebsiteNavSettingsCard({
   saving = false,
   message = "",
   error = "",
+  floatingSaveVisible = false,
+  floatingSavePlacement = "top-left",
 }) {
   const theme = useTheme();
   const normalizedCompanyId = Number(companyId || 0);
@@ -311,8 +315,8 @@ export default function WebsiteNavSettingsCard({
     )
   );
 
-  const lastStyleHashRef = useRef("");
-  const lastOverridesHashRef = useRef("");
+  const lastIncomingStyleHashRef = useRef("");
+  const lastIncomingOverridesHashRef = useRef("");
 
   const emitChange = (nextStyle, nextOverrides = navOverrides) => {
     if (!onChange) return;
@@ -327,17 +331,17 @@ export default function WebsiteNavSettingsCard({
       value?.nav_style ?? value?.settings?.nav_style ?? NAV_STYLE_DEFAULT
     );
     const hash = JSON.stringify(incomingStyle);
-    if (hash !== lastStyleHashRef.current) {
+    if (hash !== lastIncomingStyleHashRef.current) {
       setNavStyle(incomingStyle);
-      lastStyleHashRef.current = hash;
+      lastIncomingStyleHashRef.current = hash;
     }
     const incomingOverrides = normalizeNavOverrides(
       value?.nav_overrides ?? value?.settings?.nav_overrides ?? {}
     );
     const overridesHash = JSON.stringify(incomingOverrides);
-    if (overridesHash !== lastOverridesHashRef.current) {
+    if (overridesHash !== lastIncomingOverridesHashRef.current) {
       setNavOverrides(incomingOverrides);
-      lastOverridesHashRef.current = overridesHash;
+      lastIncomingOverridesHashRef.current = overridesHash;
     }
   }, [value]);
 
@@ -348,7 +352,6 @@ export default function WebsiteNavSettingsCard({
         : input;
     setNavStyle((prev) => {
       const merged = normalizeNavStyle({ ...(prev || {}), [key]: next });
-      lastStyleHashRef.current = JSON.stringify(merged);
       emitChange(merged, navOverrides);
       return merged;
     });
@@ -357,7 +360,6 @@ export default function WebsiteNavSettingsCard({
   const updateNavOverrideField = (key, nextValue) => {
     setNavOverrides((prev) => {
       const merged = normalizeNavOverrides({ ...(prev || {}), [key]: nextValue });
-      lastOverridesHashRef.current = JSON.stringify(merged);
       emitChange(navStyle, merged);
       return merged;
     });
@@ -366,7 +368,6 @@ export default function WebsiteNavSettingsCard({
   const applyPreset = (preset) => {
     const style = normalizeNavStyle(getPresetStyle(preset));
     setNavStyle(style);
-    lastStyleHashRef.current = JSON.stringify(style);
     emitChange(style, navOverrides);
   };
 
@@ -374,14 +375,12 @@ export default function WebsiteNavSettingsCard({
     if (!preset) return;
     const style = normalizeNavStyle(preset.style || NAV_STYLE_DEFAULT);
     setNavStyle(style);
-    lastStyleHashRef.current = JSON.stringify(style);
     emitChange(style, navOverrides);
   };
 
   const applyColorPreset = (preset) => {
     const style = normalizeNavStyle({ ...navStyle, ...(preset?.colors || {}) });
     setNavStyle(style);
-    lastStyleHashRef.current = JSON.stringify(style);
     emitChange(style, navOverrides);
   };
 
@@ -393,7 +392,6 @@ export default function WebsiteNavSettingsCard({
   const resetNavStyle = () => {
     const reset = normalizeNavStyle(NAV_STYLE_DEFAULT);
     setNavStyle(reset);
-    lastStyleHashRef.current = JSON.stringify(reset);
     emitChange(reset, navOverrides);
   };
 
@@ -941,6 +939,65 @@ const handleSave = () => {
 
         </Stack>
       </CardContent>
+      {floatingSaveVisible && (
+        <Portal>
+          <Box
+            sx={{
+              position: "fixed",
+              zIndex: (theme) => theme.zIndex.tooltip + 1,
+              pointerEvents: "none",
+              ...(floatingSavePlacement === "top-left"
+                ? {
+                    top: { xs: 96, md: 104 },
+                    left: { xs: 16, md: 32 },
+                  }
+                : floatingSavePlacement === "top-right"
+                ? {
+                    top: { xs: 96, md: 104 },
+                    right: { xs: 16, md: 32 },
+                  }
+                : floatingSavePlacement === "bottom-left"
+                ? {
+                    bottom: { xs: 88, md: 48 },
+                    left: { xs: 16, md: 32 },
+                  }
+                : {
+                    bottom: { xs: 88, md: 48 },
+                    right: { xs: 16, md: 40 },
+                  }),
+            }}
+          >
+            <Paper
+              elevation={6}
+              sx={{
+                px: 2,
+                py: 1,
+                borderRadius: 999,
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                pointerEvents: "auto",
+                boxShadow: "0 10px 25px rgba(15,23,42,0.2)",
+                backdropFilter: "blur(12px)",
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? theme.palette.background.paper
+                    : theme.palette.background.default,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ display: { xs: "none", md: "block" }, fontWeight: 600 }}
+              >
+                {saving ? "Saving…" : "Save navigation draft"}
+              </Typography>
+              <Button variant="contained" disabled={saving} onClick={handleSave}>
+                {saving ? "Saving…" : "Save now"}
+              </Button>
+            </Paper>
+          </Box>
+        </Portal>
+      )}
     </Card>
   );
 }

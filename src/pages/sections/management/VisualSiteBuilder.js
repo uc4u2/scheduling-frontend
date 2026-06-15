@@ -2511,13 +2511,20 @@ const [brandingErr, setBrandingErr] = useState("");
 useEffect(() => {
     if (!navStyleState) return;
     setNavDraft((prev) => {
-      const next = deriveNavDraft(navStyleState);
+      const next = deriveNavDraft({
+        nav_style: navStyleState,
+        nav_overrides:
+          prev?.nav_overrides ||
+          siteSettings?.nav_overrides ||
+          siteSettings?.settings?.nav_overrides ||
+          {},
+      });
       const prevHash = prev ? JSON.stringify(prev) : null;
       const nextHash = JSON.stringify(next);
       if (prevHash === nextHash) return prev;
       return next;
     });
-  }, [navStyleState]);
+  }, [navStyleState, siteSettings]);
 
   const justImported = Boolean(location.state?.postImportReload);
   const [suppressEmptyState, setSuppressEmptyState] = useState(justImported);
@@ -2534,6 +2541,7 @@ const [pageStyleOpen, setPageStyleOpen] = useState(false);
 const canvasScrollRef = useRef(null);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
   const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
+  const [navPanelOpen, setNavPanelOpen] = useState(false);
 
 useEffect(() => {
   if (!justImported) return;
@@ -5752,6 +5760,7 @@ const autoProvisionIfEmpty = useCallback(
           </Tooltip>
         }
         onChange={(open) => {
+          setNavPanelOpen(open);
           if (open) scrollCanvasToTop();
         }}
       >
@@ -5762,12 +5771,19 @@ const autoProvisionIfEmpty = useCallback(
             siteSettings?.company?.name ||
             previewSlug
           }
-          value={navDraft || { nav_style: navStyleState }}
+          value={
+            navDraft || {
+              nav_style: navStyleState,
+              nav_overrides: navOverridesWithDefault,
+            }
+          }
           onChange={handleNavDraftChange}
           onSave={saveNavSettings}
           saving={navSaving}
           message={navMsg}
           error={navErr}
+          floatingSaveVisible={navPanelOpen}
+          floatingSavePlacement="top-left"
         />
       </CollapsibleSection>
 
