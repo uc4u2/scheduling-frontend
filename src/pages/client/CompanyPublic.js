@@ -878,7 +878,11 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
   );
 }
 
-export default function CompanyPublic({ slugOverride }) {
+export default function CompanyPublic({
+  slugOverride,
+  forcedPageSlug = "",
+  externalRenderOverride = null,
+}) {
   const theme = useTheme();
   const { slug: routeSlug } = useParams();
   const slug = slugOverride || routeSlug;
@@ -945,7 +949,7 @@ export default function CompanyPublic({ slugOverride }) {
   const [pages, setPages] = useState([]);
   const [reviewSettings, setReviewSettings] = useState(null);
 
-  const pageFromQuery = (searchParams.get("page") || "").trim();
+  const pageFromQuery = (forcedPageSlug || searchParams.get("page") || "").trim();
   const jobFromQuery = (searchParams.get("job") || "").trim();
   const blogPostSlug = (searchParams.get("post") || "").trim();
 
@@ -1500,6 +1504,17 @@ export default function CompanyPublic({ slugOverride }) {
     if (["services", "services-classic", "products", "basket", "jobs"].includes(slugLower)) {
       const styleProps = resolveStyleProps();
       const overrideType = slugLower === "services" ? "services-classic" : slugLower;
+      if (externalRenderOverride?.type && externalRenderOverride?.node) {
+        return {
+          sections: [],
+          styleProps,
+          renderOverride: {
+            type: externalRenderOverride.type,
+            styleProps,
+            node: externalRenderOverride.node,
+          },
+        };
+      }
       return { sections: [], styleProps, renderOverride: { type: overrideType, styleProps } };
     }
 
@@ -1670,7 +1685,19 @@ export default function CompanyPublic({ slugOverride }) {
       styleProps: extractPageStyleProps(currentPage),
       renderOverride: null,
     };
-  }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref, blogPostSlug, slugForHref, basePath, rootPath]);
+  }, [
+    currentPage,
+    slug,
+    pages,
+    nav,
+    siteDefaultPageStyle,
+    servicesHref,
+    blogPostSlug,
+    slugForHref,
+    basePath,
+    rootPath,
+    externalRenderOverride,
+  ]);
 
   const pageLayout = useMemo(() => {
     if (
@@ -1678,7 +1705,8 @@ export default function CompanyPublic({ slugOverride }) {
       renderOverride?.type === "products" ||
       renderOverride?.type === "basket" ||
       renderOverride?.type === "jobs" ||
-      renderOverride?.type === "blog-post"
+      renderOverride?.type === "blog-post" ||
+      renderOverride?.type === "products-detail"
     ) {
       return "full";
     }
@@ -2469,6 +2497,8 @@ const siteTitle = useMemo(() => {
             subheading={productsSubheading}
           />
         );
+      case "products-detail":
+        return renderOverride.node || null;
       case "basket":
         return <MyBasketEmbedded slug={slug} pageStyle={styleProps} />;
       case "my-bookings-auth":

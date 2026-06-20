@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { api, publicSite } from "../../utils/api";
+import { api } from "../../utils/api";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -18,10 +18,9 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
-import SiteFrame from "../../components/website/SiteFrame";
 import { addProductToCart, CartErrorCodes } from "../../utils/cart";
-import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { getTenantHostMode } from "../../utils/tenant";
+import CompanyPublic from "./CompanyPublic";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -53,18 +52,34 @@ const ProductDetails = ({ slugOverride }) => {
   const { slug: routeSlug, productId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const pathname =
+    typeof window !== "undefined" ? window.location.pathname || "" : "";
+  const pathParts = useMemo(
+    () => pathname.split("/").filter(Boolean),
+    [pathname]
+  );
 
   const slug = useMemo(() => {
     const qs = searchParams.get("site");
     if (qs) return qs;
     if (slugOverride) return slugOverride;
     if (routeSlug) return routeSlug;
+    if (pathParts.length >= 3 && pathParts[1] === "products") {
+      return pathParts[0] || "";
+    }
     try {
       return localStorage.getItem("site") || "";
     } catch (err) {
       return routeSlug || "";
     }
-  }, [routeSlug, searchParams, slugOverride]);
+  }, [routeSlug, searchParams, slugOverride, pathParts]);
+  const effectiveProductId = useMemo(() => {
+    if (productId) return productId;
+    if (pathParts.length >= 3 && pathParts[1] === "products") {
+      return pathParts[2] || "";
+    }
+    return "";
+  }, [productId, pathParts]);
   const isCustomDomain = getTenantHostMode() === "custom";
   const basePath = isCustomDomain ? "" : `/${slug}`;
 
@@ -102,20 +117,18 @@ const ProductDetails = ({ slugOverride }) => {
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [siteLoading, setSiteLoading] = useState(false);
-  const [sitePayload, setSitePayload] = useState(null);
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [snack, setSnack] = useState({ open: false, msg: "" });
 
   useEffect(() => {
-    if (!slug || !productId) return;
+    if (!slug || !effectiveProductId) return;
     let alive = true;
     setLoading(true);
     setError("");
     api
-      .get(`/public/${slug}/products/${productId}`, { noCompanyHeader: true })
+      .get(`/public/${slug}/products/${effectiveProductId}`, { noCompanyHeader: true })
       .then(({ data }) => {
         if (!alive) return;
         setProduct(data);
@@ -131,53 +144,7 @@ const ProductDetails = ({ slugOverride }) => {
     return () => {
       alive = false;
     };
-  }, [slug, productId]);
-
-  useEffect(() => {
-    if (!slug) return;
-    let mounted = true;
-    setSiteLoading(true);
-    publicSite
-      .getWebsiteShell(slug)
-      .then((data) => {
-        if (!mounted) return;
-        setSitePayload(data);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setSitePayload(null);
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setSiteLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [slug]);
-
-  const productsPage = useMemo(() => {
-    const pages = Array.isArray(sitePayload?.pages)
-      ? sitePayload.pages
-      : Array.isArray(sitePayload?.pages_meta)
-      ? sitePayload.pages_meta
-      : [];
-    return (
-      pages.find((p) => String(p?.slug || "").toLowerCase() === "products") ||
-      pages.find((p) => String(p?.slug || "").toLowerCase() === "products-classic") ||
-      null
-    );
-  }, [sitePayload]);
-
-  const pageStyle = useMemo(() => extractPageStyleProps(productsPage), [productsPage]);
-  const cssVarStyle = useMemo(() => {
-    const vars = pageStyleToCssVars(pageStyle);
-    return Object.keys(vars || {}).length ? vars : undefined;
-  }, [pageStyle]);
-  const backgroundSx = useMemo(
-    () => pageStyleToBackgroundSx(pageStyle),
-    [pageStyle]
-  );
+  }, [slug, effectiveProductId]);
 
   const handleAdd = () => {
     if (!product || soldOut) return;
@@ -414,43 +381,31 @@ const ProductDetails = ({ slugOverride }) => {
   }
 
   const content = (
-    <Box sx={{ ...backgroundSx, minHeight: "70vh" }} style={cssVarStyle}>
-      <Container sx={{ py: { xs: 4, md: 6 } }}>
-        {body}
+    <Box sx={{ minHeight: "70vh" }}>
+      <Box sx={{ py: { xs: 4, md: 6 } }}>
+        <Container sx={{ py: 0 }}>
+          {body}
+        </Container>
         <Snackbar
           open={snack.open}
           autoHideDuration={3000}
           onClose={() => setSnack({ open: false, msg: "" })}
           message={snack.msg}
         />
-      </Container>
+      </Box>
     </Box>
   );
 
-  const renderShell = (node) => {
-    if (!slug) return node;
-    return (
-      <SiteFrame
-        slug={slug}
-        activeKey="products"
-        initialSite={sitePayload || undefined}
-        disableFetch={Boolean(sitePayload)}
-        wrapChildrenInContainer={false}
-      >
-        {node}
-      </SiteFrame>
-    );
-  };
-
-  if (siteLoading && !sitePayload) {
-    return renderShell(
-      <Box sx={{ py: 8, textAlign: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  return renderShell(content);
+  return (
+    <CompanyPublic
+      slugOverride={slug || undefined}
+      forcedPageSlug="products"
+      externalRenderOverride={{
+        type: "products-detail",
+        node: content,
+      }}
+    />
+  );
 };
 
 export default ProductDetails;
