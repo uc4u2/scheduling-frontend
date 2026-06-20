@@ -2115,10 +2115,6 @@ const siteTitle = useMemo(() => {
   const headerLogoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
-  const compactHeaderLogoWidth = clampNumber(Math.round(headerLogoWidth * 0.44), 32, 96, 56);
-  const compactHeaderLogoHeight = headerLogoHeight
-    ? clampNumber(Math.round(headerLogoHeight * 0.44), 18, 56, null)
-    : null;
   const headerLayoutKey = (headerConfig?.layout || "simple").toLowerCase();
   const headerIsCenterLayout = headerLayoutKey === "center";
   const headerIsSplitLayout = headerLayoutKey === "split";
@@ -2179,9 +2175,7 @@ const siteTitle = useMemo(() => {
       )
     : null;
   const headerApproxHeight = clampNumber((headerPadding * 2) + 76, 72, 240, 104);
-  const activeHeaderPadding = compactScrolledHeader
-    ? clampNumber(Math.round(headerPadding * 0.22), 4, 6, 5)
-    : overlayHero
+  const activeHeaderPadding = overlayHero
       ? Math.max(10, Math.round(headerPadding * 0.62))
       : headerPadding;
   const adjustedHeaderApproxHeight = clampNumber((activeHeaderPadding * 2) + 76, 72, 240, 104);
@@ -2208,15 +2202,11 @@ const siteTitle = useMemo(() => {
               src={headerLogoUrl}
               alt={navBrandName}
               sx={{
-                width: `${compactScrolledHeader ? compactHeaderLogoWidth : headerLogoWidth}px`,
+                width: `${headerLogoWidth}px`,
                 height:
-                  compactScrolledHeader
-                    ? compactHeaderLogoHeight
-                      ? `${compactHeaderLogoHeight}px`
-                      : "auto"
-                    : headerLogoHeight
-                      ? `${headerLogoHeight}px`
-                      : "auto",
+                  headerLogoHeight
+                    ? `${headerLogoHeight}px`
+                    : "auto",
                 maxWidth: "100%",
                 objectFit: "contain",
               }}
@@ -2736,7 +2726,7 @@ const siteTitle = useMemo(() => {
               width: "100%",
               maxWidth:
                 compactScrolledHeader
-                  ? { md: compactHeaderLogoWidth + 24 }
+                  ? { md: headerLogoWidth + 24 }
                   : headerConfig.layout === "split" && !headerFullWidth
                   ? { md: 420 }
                   : "100%",

@@ -382,10 +382,6 @@ export default function SiteFrame({
   const logoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
-  const compactLogoWidth = clampNumber(Math.round(logoWidth * 0.44), 32, 96, 56);
-  const compactLogoHeight = logoHeight
-    ? clampNumber(Math.round(logoHeight * 0.44), 18, 56, null)
-    : null;
   const logoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
   const layoutKey = (headerConfig?.layout || "simple").toLowerCase();
   const isCenterLayout = layoutKey === "center";
@@ -420,9 +416,7 @@ export default function SiteFrame({
       scrollY > scrollCtaAfter
   );
   const compactScrolledHeader = showScrollCta && scrolledPastHeader;
-  const activeHeaderPadding = compactScrolledHeader
-    ? clampNumber(Math.round(headerPadding * 0.22), 4, 6, 5)
-    : overlayHero
+  const activeHeaderPadding = overlayHero
       ? Math.max(10, Math.round(headerPadding * 0.62))
       : headerPadding;
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
@@ -500,15 +494,11 @@ export default function SiteFrame({
             src={headerLogo}
             alt={brandName}
             sx={{
-              width: `${compactScrolledHeader ? compactLogoWidth : logoWidth}px`,
+              width: `${logoWidth}px`,
               height:
-                compactScrolledHeader
-                  ? compactLogoHeight
-                    ? `${compactLogoHeight}px`
-                    : "auto"
-                  : logoHeight
-                    ? `${logoHeight}px`
-                    : "auto",
+                logoHeight
+                  ? `${logoHeight}px`
+                  : "auto",
               objectFit: "contain",
             }}
           />
@@ -916,7 +906,7 @@ export default function SiteFrame({
               width: "100%",
               maxWidth:
                 compactScrolledHeader
-                  ? { md: compactLogoWidth + 24 }
+                  ? { md: logoWidth + 24 }
                   : headerConfig.layout === "split" && !headerFullWidth
                   ? { md: 420 }
                   : "100%",

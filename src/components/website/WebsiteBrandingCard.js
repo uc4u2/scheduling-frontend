@@ -1,6 +1,9 @@
 // src/components/website/WebsiteBrandingCard.js
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -21,15 +24,18 @@ import {
   Slider,
   Switch,
   TextField,
+  Tooltip,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import UploadIcon from "@mui/icons-material/Upload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { website } from "../../utils/api";
 import {
   SOCIAL_ICON_OPTIONS,
@@ -1141,6 +1147,47 @@ function FooterPreview({ footer, theme, companySlug }) {
   );
 }
 
+function BuilderSectionAccordion({ title, tooltip, children }) {
+  return (
+    <Accordion
+      disableGutters
+      elevation={0}
+      sx={{
+        border: (theme) => `1px solid ${theme.palette.divider}`,
+        borderRadius: 2,
+        overflow: "hidden",
+        "&:before": { display: "none" },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        sx={{
+          px: 2,
+          minHeight: 56,
+          bgcolor: "background.default",
+          "& .MuiAccordionSummary-content": {
+            alignItems: "center",
+            gap: 1,
+            my: 1,
+          },
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          {title}
+        </Typography>
+        {tooltip ? (
+          <Tooltip title={tooltip}>
+            <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+          </Tooltip>
+        ) : null}
+      </AccordionSummary>
+      <AccordionDetails sx={{ p: 2.25 }}>
+        <Stack spacing={2}>{children}</Stack>
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 function validateConfig(header, footer, { menuSource = "pages" } = {}) {
   const errors = [];
   if ((header.text || "").length > 140) {
@@ -1446,247 +1493,157 @@ export default function WebsiteBrandingCard({
             </FormControl>
           }
         />
-        <CardContent sx={{ display: "grid", gap: 3 }}>
-          <LayoutPresetSelector
-            value={header.layout}
-            onChange={(val) => updateHeader({ layout: val })}
-          />
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Logo size</Typography>
-            <Slider
-              size="small"
-              min={LOGO_WIDTH_MIN}
-              max={LOGO_WIDTH_MAX}
-              value={header.logo_width ?? 140}
-              valueLabelDisplay="auto"
-              onChange={(_, val) =>
-                typeof val === "number" &&
-                updateHeader({
-                  logo_width: clampValue(val, LOGO_WIDTH_MIN, LOGO_WIDTH_MAX),
-                })
-              }
+        <CardContent sx={{ display: "grid", gap: 2 }}>
+          <BuilderSectionAccordion
+            title="Layout & Size"
+            tooltip="Choose the header layout and set the logo width and vertical header spacing."
+          >
+            <LayoutPresetSelector
+              value={header.layout}
+              onChange={(val) => updateHeader({ layout: val })}
             />
-            <TextField
-              size="small"
-              type="number"
-              label="Logo width (px)"
-              value={Math.round(header.logo_width ?? 140)}
-              onChange={(e) =>
-                updateHeader({
-                  logo_width: clampValue(
-                    e.target.value,
-                    LOGO_WIDTH_MIN,
-                    LOGO_WIDTH_MAX
-                  ),
-                })
-              }
-            />
-          </Stack>
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Header height</Typography>
-            <Slider
-              size="small"
-              min={HEADER_PADDING_MIN}
-              max={HEADER_PADDING_MAX}
-              value={header.padding_y ?? 20}
-              valueLabelDisplay="auto"
-              onChange={(_, val) =>
-                typeof val === "number" &&
-                updateHeader({
-                  padding_y: clampValue(
-                    val,
-                    HEADER_PADDING_MIN,
-                    HEADER_PADDING_MAX
-                  ),
-                })
-              }
-            />
-          </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(header.sticky)}
-                onChange={(_, v) => updateHeader({ sticky: v })}
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Logo size</Typography>
+              <Slider
+                size="small"
+                min={LOGO_WIDTH_MIN}
+                max={LOGO_WIDTH_MAX}
+                value={header.logo_width ?? 140}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" &&
+                  updateHeader({
+                    logo_width: clampValue(val, LOGO_WIDTH_MIN, LOGO_WIDTH_MAX),
+                  })
+                }
               />
-            }
-            label="Sticky header"
-          />
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Header mode presets</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Apply a ready-made header behavior, then fine-tune colors or spacing if needed.
-            </Typography>
-            <Grid container spacing={1}>
-              {HEADER_MODE_PRESETS.map((preset) => (
-                <Grid item xs={12} sm={6} key={preset.key}>
-                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
-                    <Stack spacing={1}>
-                      <HeaderModePreview preset={preset} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {preset.label}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {preset.description}
-                      </Typography>
-                      <Button size="small" variant="outlined" onClick={() => applyHeaderModePreset(preset)}>
-                        Apply header mode
-                      </Button>
-                    </Stack>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </Stack>
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Footer style presets</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Apply a ready-made footer palette that matches the current theme direction.
-            </Typography>
-            <Grid container spacing={1}>
-              {FOOTER_STYLE_PRESETS.map((preset) => (
-                <Grid item xs={12} sm={6} key={preset.key}>
-                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
-                    <Stack spacing={1}>
-                      <FooterStylePreview preset={preset} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {preset.label}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {preset.description}
-                      </Typography>
-                      <Button size="small" variant="outlined" onClick={() => applyFooterStylePreset(preset)}>
-                        Apply footer style
-                      </Button>
-                    </Stack>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </Stack>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(header.overlay_hero)}
-                onChange={(_, v) => updateHeader({ overlay_hero: v })}
+              <TextField
+                size="small"
+                type="number"
+                label="Logo width (px)"
+                value={Math.round(header.logo_width ?? 140)}
+                onChange={(e) =>
+                  updateHeader({
+                    logo_width: clampValue(
+                      e.target.value,
+                      LOGO_WIDTH_MIN,
+                      LOGO_WIDTH_MAX
+                    ),
+                  })
+                }
               />
-            }
-            label="Overlay header on hero"
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(header.transparent_on_top)}
-                onChange={(_, v) => updateHeader({ transparent_on_top: v })}
-                disabled={!header.overlay_hero}
+            </Stack>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Header height</Typography>
+              <Slider
+                size="small"
+                min={HEADER_PADDING_MIN}
+                max={HEADER_PADDING_MAX}
+                value={header.padding_y ?? 20}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" &&
+                  updateHeader({
+                    padding_y: clampValue(
+                      val,
+                      HEADER_PADDING_MIN,
+                      HEADER_PADDING_MAX
+                    ),
+                  })
+                }
               />
-            }
-            label="Transparent header at top"
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(header.scrolled_shadow)}
-                onChange={(_, v) => updateHeader({ scrolled_shadow: v })}
+            </Stack>
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Behavior on Scroll"
+            tooltip="Control sticky behavior, hero overlay mode, transparency, and when the scrolled style kicks in."
+          >
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} flexWrap="wrap">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(header.sticky)}
+                    onChange={(_, v) => updateHeader({ sticky: v })}
+                  />
+                }
+                label="Sticky header"
               />
-            }
-            label="Show shadow after scroll"
-          />
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Header scroll threshold</Typography>
-            <Slider
-              size="small"
-              min={0}
-              max={240}
-              value={header.scroll_threshold ?? 64}
-              valueLabelDisplay="auto"
-              onChange={(_, val) =>
-                typeof val === "number" &&
-                updateHeader({ scroll_threshold: clampValue(val, 0, 240) })
-              }
-            />
-          </Stack>
-          <LogoPicker
-            label="Header logo"
-            asset={header.logo_asset}
-            onUpload={(file) => uploadLogo(file, "header")}
-            onClear={() =>
-              updateHeader({ logo_asset_id: null, logo_asset: null })
-            }
-            uploading={uploading}
-            disabled={!companyId}
-          />
-          <ColorTokenInput
-            label="Header background"
-            value={header.bg || themeOverrides.header?.background}
-            onChange={(val) => updateHeader({ bg: val })}
-          />
-          <ColorTokenInput
-            label="Header text color"
-            value={header.text_color || themeOverrides.header?.text}
-            onChange={(val) => updateHeader({ text_color: val })}
-          />
-          <ColorOpacityInput
-            label="Transparent top background"
-            value={header.transparent_bg || "rgba(255,255,255,0.18)"}
-            onChange={(val) => updateHeader({ transparent_bg: val })}
-            helperText="Pick a normal color, then use the transparency slider. Used only when transparent top mode is enabled."
-            defaultOpacity={0.18}
-          />
-          <ColorOpacityInput
-            label="Scrolled header background"
-            value={header.scrolled_bg || ""}
-            onChange={(val) => updateHeader({ scrolled_bg: val })}
-            helperText="Pick the scrolled header color and use the transparency slider. Reset to reuse the main header background."
-            defaultOpacity={0.72}
-            emptyActionLabel="Use main header"
-            onEmptyAction={() => updateHeader({ scrolled_bg: "" })}
-          />
-          <ColorTokenInput
-            label="Scrolled header text color"
-            value={header.scrolled_text_color || ""}
-            onChange={(val) => updateHeader({ scrolled_text_color: val })}
-            helperText="Leave empty to reuse the main header text color."
-          />
-          <TextField
-            label="Header text"
-            size="small"
-            value={header.text || ""}
-            onChange={(e) => updateHeader({ text: e.target.value })}
-            helperText="Used for brand headline."
-          />
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={header.show_brand_text !== false}
-                  onChange={(_, checked) =>
-                    updateHeader({ show_brand_text: checked })
-                  }
-                />
-              }
-              label="Show brand text"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={Boolean(header.full_width)}
-                  onChange={(_, checked) =>
-                    updateHeader({ full_width: checked })
-                  }
-                />
-              }
-              label="Edge-to-edge header"
-            />
-            <Button
-              size="small"
-              onClick={() => updateHeader({ text: "" })}
-              disabled={!header.text}
-            >
-              Clear text
-            </Button>
-          </Stack>
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Scroll CTA</Typography>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(header.overlay_hero)}
+                    onChange={(_, v) => updateHeader({ overlay_hero: v })}
+                  />
+                }
+                label="Overlay header on hero"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(header.transparent_on_top)}
+                    onChange={(_, v) => updateHeader({ transparent_on_top: v })}
+                    disabled={!header.overlay_hero}
+                  />
+                }
+                label="Transparent header at top"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(header.scrolled_shadow)}
+                    onChange={(_, v) => updateHeader({ scrolled_shadow: v })}
+                  />
+                }
+                label="Show shadow after scroll"
+              />
+            </Stack>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Header scroll threshold</Typography>
+              <Slider
+                size="small"
+                min={0}
+                max={240}
+                value={header.scroll_threshold ?? 64}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" &&
+                  updateHeader({ scroll_threshold: clampValue(val, 0, 240) })
+                }
+              />
+            </Stack>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Header mode presets</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Apply a ready-made header behavior, then fine-tune colors or spacing if needed.
+              </Typography>
+              <Grid container spacing={1}>
+                {HEADER_MODE_PRESETS.map((preset) => (
+                  <Grid item xs={12} sm={6} key={preset.key}>
+                    <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                      <Stack spacing={1}>
+                        <HeaderModePreview preset={preset} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {preset.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {preset.description}
+                        </Typography>
+                        <Button size="small" variant="outlined" onClick={() => applyHeaderModePreset(preset)}>
+                          Apply header mode
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Stack>
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Sticky CTA"
+            tooltip="Show a compact call-to-action button after the visitor scrolls down."
+          >
             <FormControlLabel
               control={
                 <Switch
@@ -1730,83 +1687,187 @@ export default function WebsiteBrandingCard({
                 }
               />
             </Stack>
-          </Stack>
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">Navigation source</Typography>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              color="primary"
-              value={menuSource}
-              onChange={(_, val) => val && updateNavOverrides({ menu_source: val })}
-            >
-              <ToggleButton value="pages">Page-driven</ToggleButton>
-              <ToggleButton value="manual">Manual list</ToggleButton>
-            </ToggleButtonGroup>
-            <Typography variant="body2" color="text.secondary">
-              {menuSource === "pages"
-                ? "Menu follows Pages (show in menu + order)."
-                : "Use a custom list when you need external or special links."}
-            </Typography>
-          </Stack>
-          {menuSource === "pages" ? (
-            <PageDrivenMenuPreview
-              items={derivedPageNav}
-              onEditPages={onRequestPagesJump}
-              manualCount={manualNavCount}
-              onClearManual={manualNavCount ? handleClearManualNav : undefined}
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Branding & Colors"
+            tooltip="Manage the header logo, brand text, width mode, and color states for top and scrolled views."
+          >
+            <LogoPicker
+              label="Header logo"
+              asset={header.logo_asset}
+              onUpload={(file) => uploadLogo(file, "header")}
+              onClear={() =>
+                updateHeader({ logo_asset_id: null, logo_asset: null })
+              }
+              uploading={uploading}
+              disabled={!companyId}
             />
-          ) : (
-            <LinkListEditor
-              title="Navigation links"
-              items={header.nav_items}
-              onChange={(items) => updateHeader({ nav_items: items })}
-              addLabel="Add nav item"
-              max={MAX_NAV_ITEMS}
-              helperText="Supports up to 10 items."
-            />
-          )}
-          <AlignmentSelector
-            label="Logo alignment"
-            value={header.logo_alignment}
-            onChange={(val) => updateHeader({ logo_alignment: val })}
-          />
-          <AlignmentSelector
-            label="Navigation alignment"
-            value={header.nav_alignment}
-            onChange={(val) => updateHeader({ nav_alignment: val })}
-          />
-          <SocialLinksEditor
-            title="Header social links"
-            items={header.social_links}
-            onChange={(items) => updateHeader({ social_links: items })}
-          />
-          <AlignmentSelector
-            label="Social icon alignment"
-            value={header.social_alignment}
-            onChange={(val) => updateHeader({ social_alignment: val })}
-          />
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle2">Social icon position</Typography>
-            <ToggleButtonGroup
+            <TextField
+              label="Header text"
               size="small"
-              exclusive
-              value={header.social_position || "inline"}
-              onChange={(_, val) => val && updateHeader({ social_position: val })}
-            >
-              {SOCIAL_POSITION_OPTIONS.map((opt) => (
-                <ToggleButton key={opt.value} value={opt.value}>
-                  {opt.label}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-          </Stack>
-          <HeaderPreview
-            header={header}
-            theme={themeOverrides}
-            onLogoDragStart={startLogoDrag}
-            companySlug={previewBrandSlug}
-          />
+              value={header.text || ""}
+              onChange={(e) => updateHeader({ text: e.target.value })}
+              helperText="Used for brand headline."
+            />
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={header.show_brand_text !== false}
+                    onChange={(_, checked) =>
+                      updateHeader({ show_brand_text: checked })
+                    }
+                  />
+                }
+                label="Show brand text"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(header.full_width)}
+                    onChange={(_, checked) =>
+                      updateHeader({ full_width: checked })
+                    }
+                  />
+                }
+                label="Edge-to-edge header"
+              />
+              <Button
+                size="small"
+                onClick={() => updateHeader({ text: "" })}
+                disabled={!header.text}
+              >
+                Clear text
+              </Button>
+            </Stack>
+            <ColorTokenInput
+              label="Header background"
+              value={header.bg || themeOverrides.header?.background}
+              onChange={(val) => updateHeader({ bg: val })}
+            />
+            <ColorTokenInput
+              label="Header text color"
+              value={header.text_color || themeOverrides.header?.text}
+              onChange={(val) => updateHeader({ text_color: val })}
+            />
+            <ColorOpacityInput
+              label="Transparent top background"
+              value={header.transparent_bg || "rgba(255,255,255,0.18)"}
+              onChange={(val) => updateHeader({ transparent_bg: val })}
+              helperText="Pick a normal color, then use the transparency slider. Used only when transparent top mode is enabled."
+              defaultOpacity={0.18}
+            />
+            <ColorOpacityInput
+              label="Scrolled header background"
+              value={header.scrolled_bg || ""}
+              onChange={(val) => updateHeader({ scrolled_bg: val })}
+              helperText="Pick the scrolled header color and use the transparency slider. Reset to reuse the main header background."
+              defaultOpacity={0.72}
+              emptyActionLabel="Use main header"
+              onEmptyAction={() => updateHeader({ scrolled_bg: "" })}
+            />
+            <ColorTokenInput
+              label="Scrolled header text color"
+              value={header.scrolled_text_color || ""}
+              onChange={(val) => updateHeader({ scrolled_text_color: val })}
+              helperText="Leave empty to reuse the main header text color."
+            />
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Navigation"
+            tooltip="Choose whether the menu follows Pages or uses a manual list, then set logo and menu alignment."
+          >
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Navigation source</Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                color="primary"
+                value={menuSource}
+                onChange={(_, val) => val && updateNavOverrides({ menu_source: val })}
+              >
+                <ToggleButton value="pages">Page-driven</ToggleButton>
+                <ToggleButton value="manual">Manual list</ToggleButton>
+              </ToggleButtonGroup>
+              <Typography variant="body2" color="text.secondary">
+                {menuSource === "pages"
+                  ? "Menu follows Pages (show in menu + order)."
+                  : "Use a custom list when you need external or special links."}
+              </Typography>
+            </Stack>
+            {menuSource === "pages" ? (
+              <PageDrivenMenuPreview
+                items={derivedPageNav}
+                onEditPages={onRequestPagesJump}
+                manualCount={manualNavCount}
+                onClearManual={manualNavCount ? handleClearManualNav : undefined}
+              />
+            ) : (
+              <LinkListEditor
+                title="Navigation links"
+                items={header.nav_items}
+                onChange={(items) => updateHeader({ nav_items: items })}
+                addLabel="Add nav item"
+                max={MAX_NAV_ITEMS}
+                helperText="Supports up to 10 items."
+              />
+            )}
+            <AlignmentSelector
+              label="Logo alignment"
+              value={header.logo_alignment}
+              onChange={(val) => updateHeader({ logo_alignment: val })}
+            />
+            <AlignmentSelector
+              label="Navigation alignment"
+              value={header.nav_alignment}
+              onChange={(val) => updateHeader({ nav_alignment: val })}
+            />
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Social Links"
+            tooltip="Manage header social icons, where they appear, and how they align with the menu."
+          >
+            <SocialLinksEditor
+              title="Header social links"
+              items={header.social_links}
+              onChange={(items) => updateHeader({ social_links: items })}
+            />
+            <AlignmentSelector
+              label="Social icon alignment"
+              value={header.social_alignment}
+              onChange={(val) => updateHeader({ social_alignment: val })}
+            />
+            <Stack spacing={0.5}>
+              <Typography variant="subtitle2">Social icon position</Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={header.social_position || "inline"}
+                onChange={(_, val) => val && updateHeader({ social_position: val })}
+              >
+                {SOCIAL_POSITION_OPTIONS.map((opt) => (
+                  <ToggleButton key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Stack>
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Preview"
+            tooltip="See how the current header configuration will look before publishing."
+          >
+            <HeaderPreview
+              header={header}
+              theme={themeOverrides}
+              onLogoDragStart={startLogoDrag}
+              companySlug={previewBrandSlug}
+            />
+          </BuilderSectionAccordion>
         </CardContent>
       </Card>
 
@@ -1899,101 +1960,162 @@ export default function WebsiteBrandingCard({
           title="Footer"
           subheader="Columns, legal links, and social profiles."
         />
-        <CardContent sx={{ display: "grid", gap: 3 }}>
-          <LogoPicker
-            label="Footer logo"
-            asset={footer.logo_asset}
-            onUpload={(file) => uploadLogo(file, "footer")}
-            onClear={() =>
-              updateFooter({ logo_asset_id: null, logo_asset: null })
-            }
-            uploading={uploading}
-            disabled={!companyId}
-          />
-          <ColorTokenInput
-            label="Footer background"
-            value={footer.bg || themeOverrides.footer?.background}
-            onChange={(val) => updateFooter({ bg: val })}
-          />
-          <ColorTokenInput
-            label="Footer text colour"
-            value={footer.text_color || ""}
-            onChange={(val) => updateFooter({ text_color: val })}
-          />
-          <ColorTokenInput
-            label="Footer link colour"
-            value={footer.link_color || ""}
-            onChange={(val) => updateFooter({ link_color: val })}
-          />
-          <TextField
-            size="small"
-            multiline
-            minRows={2}
-            fullWidth
-            label="Footer summary"
-            value={footer.text || ""}
-            onChange={(e) => updateFooter({ text: e.target.value })}
-          />
-          <ColumnsEditor
-            columns={footer.columns}
-            onChange={(cols) => updateFooter({ columns: cols })}
-          />
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              size="small"
-              onClick={() => updateFooter({ columns: cloneFooterColumns() })}
-            >
-              Insert default columns
-            </Button>
-            <Button
-              size="small"
-              onClick={() => updateFooter({ legal_links: cloneLegalLinks() })}
-            >
-              Insert legal links
-            </Button>
-          </Stack>
-          <LinkListEditor
-            title="Legal links"
-            items={footer.legal_links}
-            onChange={(links) => updateFooter({ legal_links: links })}
-            addLabel="Add legal link"
-            max={MAX_LEGAL_LINKS}
-          />
-          <Stack spacing={1}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={footer.show_copyright !== false}
-                  onChange={(_, val) => updateFooter({ show_copyright: val })}
-                />
+        <CardContent sx={{ display: "grid", gap: 2 }}>
+          <BuilderSectionAccordion
+            title="Footer Style"
+            tooltip="Apply a ready-made footer palette that matches your site direction."
+          >
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Footer style presets</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Apply a ready-made footer palette that matches the current theme direction.
+              </Typography>
+              <Grid container spacing={1}>
+                {FOOTER_STYLE_PRESETS.map((preset) => (
+                  <Grid item xs={12} sm={6} key={preset.key}>
+                    <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                      <Stack spacing={1}>
+                        <FooterStylePreview preset={preset} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {preset.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {preset.description}
+                        </Typography>
+                        <Button size="small" variant="outlined" onClick={() => applyFooterStylePreset(preset)}>
+                          Apply footer style
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Stack>
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Footer Branding & Colors"
+            tooltip="Manage the footer logo, summary text, and color palette."
+          >
+            <LogoPicker
+              label="Footer logo"
+              asset={footer.logo_asset}
+              onUpload={(file) => uploadLogo(file, "footer")}
+              onClear={() =>
+                updateFooter({ logo_asset_id: null, logo_asset: null })
               }
-              label="Show copyright line"
+              uploading={uploading}
+              disabled={!companyId}
             />
-            {footer.show_copyright !== false && (
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems="center">
-                <TextField
-                  size="small"
-                  fullWidth
-                  label="Copyright text"
-                  helperText="Use {{year}} and {{company}} tokens"
-                  value={footer.copyright_text || ""}
-                  onChange={(e) => updateFooter({ copyright_text: e.target.value })}
-                />
-                <Button
-                  size="small"
-                  onClick={() => updateFooter({ copyright_text: DEFAULT_COPYRIGHT_TEXT })}
-                >
-                  Reset
-                </Button>
-              </Stack>
-            )}
-          </Stack>
-          <SocialLinksEditor
-            title="Footer social links"
-            items={footer.social_links}
-            onChange={(items) => updateFooter({ social_links: items })}
-          />
-          <FooterPreview footer={footer} theme={themeOverrides} companySlug={companySlug} />
+            <ColorTokenInput
+              label="Footer background"
+              value={footer.bg || themeOverrides.footer?.background}
+              onChange={(val) => updateFooter({ bg: val })}
+            />
+            <ColorTokenInput
+              label="Footer text colour"
+              value={footer.text_color || ""}
+              onChange={(val) => updateFooter({ text_color: val })}
+            />
+            <ColorTokenInput
+              label="Footer link colour"
+              value={footer.link_color || ""}
+              onChange={(val) => updateFooter({ link_color: val })}
+            />
+            <TextField
+              size="small"
+              multiline
+              minRows={2}
+              fullWidth
+              label="Footer summary"
+              value={footer.text || ""}
+              onChange={(e) => updateFooter({ text: e.target.value })}
+            />
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Footer Links"
+            tooltip="Edit footer columns and legal links shown at the bottom of the site."
+          >
+            <ColumnsEditor
+              columns={footer.columns}
+              onChange={(cols) => updateFooter({ columns: cols })}
+            />
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                size="small"
+                onClick={() => updateFooter({ columns: cloneFooterColumns() })}
+              >
+                Insert default columns
+              </Button>
+              <Button
+                size="small"
+                onClick={() => updateFooter({ legal_links: cloneLegalLinks() })}
+              >
+                Insert legal links
+              </Button>
+            </Stack>
+            <LinkListEditor
+              title="Legal links"
+              items={footer.legal_links}
+              onChange={(links) => updateFooter({ legal_links: links })}
+              addLabel="Add legal link"
+              max={MAX_LEGAL_LINKS}
+            />
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Footer Social"
+            tooltip="Manage the footer social links displayed near the bottom of the website."
+          >
+            <SocialLinksEditor
+              title="Footer social links"
+              items={footer.social_links}
+              onChange={(items) => updateFooter({ social_links: items })}
+            />
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Footer Copyright"
+            tooltip="Control the copyright line and its text tokens."
+          >
+            <Stack spacing={1}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={footer.show_copyright !== false}
+                    onChange={(_, val) => updateFooter({ show_copyright: val })}
+                  />
+                }
+                label="Show copyright line"
+              />
+              {footer.show_copyright !== false && (
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems="center">
+                  <TextField
+                    size="small"
+                    fullWidth
+                    label="Copyright text"
+                    helperText="Use {{year}} and {{company}} tokens"
+                    value={footer.copyright_text || ""}
+                    onChange={(e) => updateFooter({ copyright_text: e.target.value })}
+                  />
+                  <Button
+                    size="small"
+                    onClick={() => updateFooter({ copyright_text: DEFAULT_COPYRIGHT_TEXT })}
+                  >
+                    Reset
+                  </Button>
+                </Stack>
+              )}
+            </Stack>
+          </BuilderSectionAccordion>
+
+          <BuilderSectionAccordion
+            title="Preview"
+            tooltip="See how the footer will look before publishing."
+          >
+            <FooterPreview footer={footer} theme={themeOverrides} companySlug={companySlug} />
+          </BuilderSectionAccordion>
         </CardContent>
       </Card>
 
