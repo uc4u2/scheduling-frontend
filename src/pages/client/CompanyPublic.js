@@ -1865,7 +1865,9 @@ const siteTitle = useMemo(() => {
       headerConfig?.scroll_cta_href &&
       scrolledPastHeader
   );
-  const compactScrolledHeader = showScrollCta && scrolledPastHeader;
+  // Keep sticky CTA inside the normal header layout so scroll CTA does not
+  // introduce a second compact header mode with different sizing.
+  const compactScrolledHeader = false;
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
     ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")

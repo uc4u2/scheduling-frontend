@@ -415,7 +415,9 @@ export default function SiteFrame({
       headerConfig?.scroll_cta_href &&
       scrollY > scrollCtaAfter
   );
-  const compactScrolledHeader = showScrollCta && scrolledPastHeader;
+  // Keep sticky CTA inside the normal header layout so scroll CTA does not
+  // introduce a second compact header mode with different sizing.
+  const compactScrolledHeader = false;
   const activeHeaderPadding = overlayHero
       ? Math.max(10, Math.round(headerPadding * 0.62))
       : headerPadding;
