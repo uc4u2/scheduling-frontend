@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
   Accordion,
@@ -16,6 +16,8 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
+  FormGroup,
   FormLabel,
   Grid,
   InputAdornment,
@@ -225,28 +227,15 @@ const SESSION_NOTE_TEMPLATES = [
   },
 ];
 
-const FOLLOW_UP_EMAIL_TEMPLATES = [
-  {
-    key: "rebook",
-    label: "Rebook reminder",
-    subject: (name) => `${name} rebooking follow-up`,
-    body: (name) =>
-      `Hi ${name},\n\nThank you for your recent visit. If you would like to book your next appointment, we can help you find the next available time that works for you.\n\nReply to this email if you would like us to help you rebook.\n\nBest,\nSchedulaa team`,
-  },
-  {
-    key: "payment",
-    label: "Payment reminder",
-    subject: (name) => `${name} payment follow-up`,
-    body: (name) =>
-      `Hi ${name},\n\nThis is a quick follow-up about your outstanding balance. If you need us to resend your payment link or invoice details, reply to this email and we will help.\n\nBest,\nSchedulaa team`,
-  },
-  {
-    key: "session",
-    label: "Session follow-up",
-    subject: (name) => `${name} session follow-up`,
-    body: (name) =>
-      `Hi ${name},\n\nThank you for coming in. This is a quick check-in after your session. If you have any questions or would like to plan your next visit, reply to this email and we’ll help.\n\nBest,\nSchedulaa team`,
-  },
+const CLIENT_EMAIL_TEMPLATE_DEFS = [
+  { key: "payment_reminder", label: "Payment reminder" },
+  { key: "document_reminder", label: "Document reminder" },
+  { key: "appointment_follow_up", label: "Appointment follow-up" },
+  { key: "post_service_instructions", label: "Post-service instructions" },
+  { key: "estimate_follow_up", label: "Estimate follow-up" },
+  { key: "invoice_follow_up", label: "Invoice follow-up" },
+  { key: "rebooking_reminder", label: "Rebooking reminder" },
+  { key: "general_follow_up", label: "General follow-up" },
 ];
 
 const formatMoney = (value, currency = CURRENCY) =>
@@ -352,6 +341,11 @@ const inferFinanceRecordType = (row = {}) => {
 };
 
 const isClientEmailAuditNote = (value) => normalizeTextValue(value).toLowerCase().startsWith("client email sent:");
+
+const formatShortDate = (value, timezone) => {
+  const formatted = formatDateTime(value, timezone);
+  return formatted === "—" ? "your next visit" : formatted;
+};
 
 const timelineCategory = (item = {}) => {
   if (isClientEmailAuditNote(item.note) || String(item.title || "").toLowerCase().includes("email")) return "emails";
@@ -739,8 +733,19 @@ function QuickSessionDialog({ open, client, bookings = [], saving, onClose, onSu
   );
 }
 
-function QuickEmailDialog({ open, client, saving, initialForm = null, documents = [], onClose, onSubmit }) {
-  const [form, setForm] = useState({ subject: "", body: "", client_document_ids: [] });
+function QuickEmailDialog({
+  open,
+  client,
+  saving,
+  initialForm = null,
+  documents = [],
+  uploadingAttachment = false,
+  onUploadAttachment,
+  onGoToDocuments,
+  onClose,
+  onSubmit,
+}) {
+  const [form, setForm] = useState({ subject: "", body: "", client_document_ids: [], template_key: "" });
   const attachableDocuments = useMemo(
     () => documents.filter((row) => row?.is_email_attachable),
     [documents]
@@ -753,8 +758,24 @@ function QuickEmailDialog({ open, client, saving, initialForm = null, documents 
       subject: initialForm?.subject || `${displayName} follow-up`,
       body: initialForm?.body || "",
       client_document_ids: Array.isArray(initialForm?.client_document_ids) ? initialForm.client_document_ids : [],
+      template_key: initialForm?.template_key || "",
     });
   }, [open, client, client?.id, client?.display_name, client?.client, initialForm]);
+
+  const applyTemplate = (templateKey) => {
+    if (!templateKey) {
+      setForm((prev) => ({ ...prev, template_key: "" }));
+      return;
+    }
+    const template = initialForm?.templateOptions?.find?.((row) => row.key === templateKey);
+    if (!template) return;
+    setForm((prev) => ({
+      ...prev,
+      template_key: template.key,
+      subject: template.subject,
+      body: template.body,
+    }));
+  };
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth>
@@ -765,6 +786,37 @@ function QuickEmailDialog({ open, client, saving, initialForm = null, documents 
             {client?.display_name || getClientDisplayName(client?.client || client)}
             {client?.client?.email || client?.email ? ` • ${client?.client?.email || client?.email}` : ""}
           </Typography>
+          <FormControl fullWidth>
+            <InputLabel>Use template</InputLabel>
+            <Select
+              label="Use template"
+              value={form.template_key}
+              onChange={(event) => applyTemplate(event.target.value)}
+            >
+              <MenuItem value="">
+                <em>Start from blank / current draft</em>
+              </MenuItem>
+              {(initialForm?.templateOptions || []).map((template) => (
+                <MenuItem key={template.key} value={template.key}>
+                  {template.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {(initialForm?.templateOptions || []).length ? (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {(initialForm.templateOptions || []).slice(0, 4).map((template) => (
+                <Chip
+                  key={template.key}
+                  size="small"
+                  label={template.label}
+                  variant={form.template_key === template.key ? "filled" : "outlined"}
+                  color={form.template_key === template.key ? "primary" : "default"}
+                  onClick={() => applyTemplate(template.key)}
+                />
+              ))}
+            </Stack>
+          ) : null}
           <TextField
             fullWidth
             label="Subject"
@@ -779,38 +831,77 @@ function QuickEmailDialog({ open, client, saving, initialForm = null, documents 
             value={form.body}
             onChange={(event) => setForm((prev) => ({ ...prev, body: event.target.value }))}
           />
-          <FormControl fullWidth>
-            <InputLabel>Attach vault documents</InputLabel>
-            <Select
-              multiple
-              label="Attach vault documents"
-              value={form.client_document_ids}
-              onChange={(event) => setForm((prev) => ({ ...prev, client_document_ids: event.target.value }))}
-              renderValue={(selected) => {
-                const labels = attachableDocuments
-                  .filter((row) => selected.includes(String(row.id)))
-                  .map((row) => row.original_filename || `Document #${row.id}`);
-                return labels.length ? labels.join(", ") : "No attachments";
-              }}
-            >
-              {attachableDocuments.map((row) => (
-                <MenuItem key={row.id} value={String(row.id)}>
-                  <Checkbox checked={form.client_document_ids.includes(String(row.id))} />
-                  <Stack spacing={0.25}>
-                    <Typography variant="body2">{row.original_filename || `Document #${row.id}`}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {getClientDocumentCategoryLabel(row.category)} • {formatDateTime(row.created_at, getUserTimezone())}
-                    </Typography>
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {!attachableDocuments.length ? (
-            <Alert severity="info">
-              Vault documents become attachable when they are stored and scan-ready.
-            </Alert>
-          ) : null}
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, backgroundColor: "rgba(15,23,42,0.02)" }}>
+            <Stack spacing={1}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                <Typography fontWeight={700}>Attachments</Typography>
+                <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                  <Chip
+                    size="small"
+                    label={form.client_document_ids.length ? `${form.client_document_ids.length} selected` : "No attachments"}
+                    variant="outlined"
+                    sx={readableChipSx(form.client_document_ids.length ? "info" : "default")}
+                  />
+                  <Button component="label" size="small" variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />} disabled={uploadingAttachment}>
+                    {uploadingAttachment ? "Uploading..." : "Upload from device"}
+                    <input
+                      hidden
+                      type="file"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        event.target.value = "";
+                        if (file && onUploadAttachment) onUploadAttachment(file);
+                      }}
+                    />
+                  </Button>
+                </Stack>
+              </Stack>
+              {attachableDocuments.length ? (
+                <FormGroup>
+                  {attachableDocuments.slice(0, 6).map((row) => {
+                    const value = String(row.id);
+                    const checked = form.client_document_ids.includes(value);
+                    return (
+                      <FormControlLabel
+                        key={row.id}
+                        control={
+                          <Checkbox
+                            checked={checked}
+                            onChange={(event) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                client_document_ids: event.target.checked
+                                  ? [...prev.client_document_ids, value]
+                                  : prev.client_document_ids.filter((item) => item !== value),
+                              }))
+                            }
+                          />
+                        }
+                        label={(
+                          <Stack spacing={0.2}>
+                            <Typography variant="body2">{row.original_filename || `Document #${row.id}`}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {getClientDocumentCategoryLabel(row.category)} • {formatDateTime(row.created_at, getUserTimezone())}
+                            </Typography>
+                          </Stack>
+                        )}
+                        sx={{ alignItems: "flex-start", m: 0 }}
+                      />
+                    );
+                  })}
+                </FormGroup>
+              ) : (
+                <Alert
+                  severity="info"
+                  action={onGoToDocuments ? <Button color="inherit" size="small" onClick={onGoToDocuments}>Go to Documents</Button> : null}
+                >
+                  {documents.length
+                    ? "Some vault documents exist but cannot be attached because they are legacy URL-only files or not scan-ready."
+                    : "No vault documents are attachable yet. Upload a new vault document, then reopen this email to attach it."}
+                </Alert>
+              )}
+            </Stack>
+          </Paper>
           <Alert severity="info">
             This email is logged to the client history with sender and timestamp. SMS will be added later.
           </Alert>
@@ -829,6 +920,10 @@ function QuickEmailDialog({ open, client, saving, initialForm = null, documents 
       </DialogActions>
     </Dialog>
   );
+}
+
+function getDocumentAttachabilityTone(row) {
+  return row?.is_email_attachable ? "success" : "default";
 }
 
 function RequestDocumentDialog({ open, saving, initialValues = null, onClose, onSubmit }) {
@@ -1877,6 +1972,7 @@ export default function ManagerClientsWorkspace() {
   const [detailQuickEmailOpen, setDetailQuickEmailOpen] = useState(false);
   const [detailEmailDraft, setDetailEmailDraft] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [createClientForm, setCreateClientForm] = useState({ name: "", email: "", phone: "" });
   const [createClientSaving, setCreateClientSaving] = useState(false);
@@ -1896,6 +1992,7 @@ export default function ManagerClientsWorkspace() {
   const [requestDocumentSaving, setRequestDocumentSaving] = useState(false);
   const [cancellingRequestId, setCancellingRequestId] = useState(null);
   const [requestTemplateLabels, setRequestTemplateLabels] = useState({});
+  const documentsSectionRef = useRef(null);
 
   const loadList = useCallback(async () => {
     setListLoading(true);
@@ -2276,6 +2373,53 @@ export default function ManagerClientsWorkspace() {
     }
   };
 
+  const uploadClientVaultDocument = useCallback(async (file, { category = "other", note = "" } = {}) => {
+    if (!clientId || !file) {
+      throw new Error("Choose a file to upload first.");
+    }
+    const form = new FormData();
+    form.append("file", file);
+    form.append("context", "client_document");
+    if (profile?.company_id) form.append("company_id", String(profile.company_id));
+
+    const uploadRes = await api.post("/api/website/media/upload", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    const uploadedItem =
+      uploadRes.data?.item ||
+      uploadRes.data?.items?.[0] ||
+      null;
+    const rawUrl =
+      uploadedItem?.url_public ||
+      uploadedItem?.file_url ||
+      uploadedItem?.url ||
+      uploadRes.data?.url ||
+      uploadRes.data?.url_public;
+    if (!rawUrl) {
+      throw new Error("Upload did not return a file URL.");
+    }
+    const apiOrigin = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+    const finalUrl = /^https?:\/\//i.test(rawUrl)
+      ? rawUrl
+      : apiOrigin
+        ? `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`
+        : rawUrl;
+
+    const created = await createManagerClient360Document(clientId, {
+      original_filename: file.name,
+      file_url: finalUrl,
+      storage_provider: uploadedItem?.storage_provider || uploadedItem?.provider || "manual_upload",
+      content_type: file.type || uploadedItem?.file_type || "application/octet-stream",
+      file_size: file.size || undefined,
+      category: category || "other",
+      note: note?.trim() || "",
+      scan_status: "clean",
+      object_key: uploadedItem?.key || uploadedItem?.object_key || uploadedItem?.stored_name || undefined,
+      bucket: uploadedItem?.bucket || undefined,
+    });
+    return created?.document || created;
+  }, [clientId, profile?.company_id]);
+
   const handleUploadDocument = async () => {
     if (!clientId || !documentFile) {
       enqueueSnackbar("Choose a file to upload first.", { variant: "warning" });
@@ -2284,45 +2428,9 @@ export default function ManagerClientsWorkspace() {
     setDocumentUploading(true);
     setDocumentsError("");
     try {
-      const form = new FormData();
-      form.append("file", documentFile);
-      form.append("context", "client_document");
-      if (profile?.company_id) form.append("company_id", String(profile.company_id));
-
-      const uploadRes = await api.post("/api/website/media/upload", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      const uploadedItem =
-        uploadRes.data?.item ||
-        uploadRes.data?.items?.[0] ||
-        null;
-      const rawUrl =
-        uploadedItem?.url_public ||
-        uploadedItem?.file_url ||
-        uploadedItem?.url ||
-        uploadRes.data?.url ||
-        uploadRes.data?.url_public;
-      if (!rawUrl) {
-        throw new Error("Upload did not return a file URL.");
-      }
-      const apiOrigin = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-      const finalUrl = /^https?:\/\//i.test(rawUrl)
-        ? rawUrl
-        : apiOrigin
-        ? `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`
-        : rawUrl;
-
-      await createManagerClient360Document(clientId, {
-        original_filename: documentFile.name,
-        file_url: finalUrl,
-        storage_provider: uploadedItem?.provider || uploadedItem?.storage_provider || "manual_upload",
-        content_type: documentFile.type || "application/octet-stream",
-        file_size: documentFile.size || undefined,
+      await uploadClientVaultDocument(documentFile, {
         category: documentCategory || "other",
         note: documentNote?.trim() || "",
-        scan_status: "clean",
-        object_key: uploadedItem?.key || uploadedItem?.object_key || undefined,
-        bucket: uploadedItem?.bucket || undefined,
       });
       setDocumentFile(null);
       setDocumentCategory("other");
@@ -2337,6 +2445,35 @@ export default function ManagerClientsWorkspace() {
       setDocumentUploading(false);
     }
   };
+
+  const handleUploadEmailAttachment = async (file) => {
+    if (!file) return;
+    setEmailAttachmentUploading(true);
+    try {
+      const created = await uploadClientVaultDocument(file, { category: "other", note: "Uploaded from client email modal." });
+      const rows = await loadDocuments();
+      const resolvedId = String(created?.id || rows?.[0]?.id || "");
+      setDetailEmailDraft((prev) => ({
+        ...(prev || {}),
+        client_document_ids: resolvedId
+          ? [...new Set([...(prev?.client_document_ids || []), resolvedId])]
+          : (prev?.client_document_ids || []),
+      }));
+      enqueueSnackbar("Document uploaded and ready to attach.", { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to upload attachment from device.", { variant: "error" });
+    } finally {
+      setEmailAttachmentUploading(false);
+    }
+  };
+
+  const handleGoToDocumentsFromEmail = useCallback(() => {
+    setDetailSections((prev) => ({ ...prev, documents: true }));
+    setDetailQuickEmailOpen(false);
+    setTimeout(() => {
+      documentsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, []);
 
   const handleDeleteDocument = async (documentId) => {
     if (!clientId || !documentId) return;
@@ -2523,7 +2660,11 @@ export default function ManagerClientsWorkspace() {
 
   const openNotesComposer = (mode = "note", draft = null) => {
     if (mode === "email") {
-      setDetailEmailDraft(draft || null);
+      const baseDraft = draft || {};
+      setDetailEmailDraft({
+        ...baseDraft,
+        templateOptions: emailTemplateOptions,
+      });
       setDetailQuickEmailOpen(true);
       return;
     }
@@ -2534,15 +2675,98 @@ export default function ManagerClientsWorkspace() {
     setDetailQuickNoteOpen(true);
   };
 
-  const buildFollowUpEmail = (templateKey) => {
-    const name = getClientDisplayName(profile) || "there";
-    const template = FOLLOW_UP_EMAIL_TEMPLATES.find((row) => row.key === templateKey);
+  const emailTemplateOptions = useMemo(() => {
+    const clientName = getClientDisplayName(profile) || "there";
+    const companyName = profile?.company_name || detail?.company_name || "Schedulaa team";
+    const nextBookingLabel = formatShortDate(summary.next_appointment, timezone);
+    const pendingRequestTitles = pendingDocumentRequests
+      .map((row) => row?.title || getClientDocumentCategoryLabel(row?.requested_category))
+      .filter(Boolean);
+    const pendingRequestText = pendingRequestTitles.length
+      ? pendingRequestTitles.slice(0, 3).join(", ")
+      : "the requested document";
+    const openInvoiceCount = Number(summary.open_invoice_count || 0);
+    const unpaidBalance = formatMoney(summary.unpaid_balance || 0);
+    const estimateCount = Number(detail?.finance?.estimates?.length || 0);
+    const estimateTitle = detail?.finance?.estimates?.[0]?.title || detail?.finance?.estimates?.[0]?.estimate_number || "the estimate";
+
+    const byKey = {
+      payment_reminder: {
+        subject: `${clientName} payment reminder`,
+        body:
+          `Hi ${clientName},\n\nThis is a friendly reminder about your outstanding balance of ${unpaidBalance}. ` +
+          `If you need us to resend your payment details or help you complete payment, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      },
+      document_reminder: {
+        subject: `${clientName} document reminder`,
+        body:
+          `Hi ${clientName},\n\nThis is a reminder to upload ${pendingRequestText}. ` +
+          `If you need a fresh secure upload link or have any questions, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      },
+      appointment_follow_up: {
+        subject: `${clientName} appointment follow-up`,
+        body:
+          `Hi ${clientName},\n\nThank you for your recent appointment. We wanted to check in and see how you are doing after your visit. ` +
+          `If you have any questions before ${nextBookingLabel}, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      },
+      post_service_instructions: {
+        subject: `${clientName} post-service instructions`,
+        body:
+          `Hi ${clientName},\n\nHere are your post-service follow-up instructions. ` +
+          `Please review the attached document if one was included, and reply if you have any questions.\n\nBest,\n${companyName}`,
+      },
+      estimate_follow_up: {
+        subject: `${clientName} estimate follow-up`,
+        body:
+          `Hi ${clientName},\n\nWe are following up on ${estimateTitle}. ` +
+          `${estimateCount > 1 ? "You still have estimate details available for review. " : ""}` +
+          `If you would like us to walk through the estimate or next steps, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      },
+      invoice_follow_up: {
+        subject: `${clientName} invoice follow-up`,
+        body:
+          `Hi ${clientName},\n\nWe are following up on your invoice${openInvoiceCount > 1 ? "s" : ""}. ` +
+          `Current outstanding balance: ${unpaidBalance}. If you need us to resend the invoice or payment link, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      },
+      rebooking_reminder: {
+        subject: `${clientName} rebooking follow-up`,
+        body:
+          `Hi ${clientName},\n\nThank you for your recent visit. If you would like to schedule your next appointment, we can help you find a time that works for you. ` +
+          `Reply to this email if you would like help rebooking.\n\nBest,\n${companyName}`,
+      },
+      general_follow_up: {
+        subject: `${clientName} follow-up`,
+        body:
+          `Hi ${clientName},\n\nThis is a quick follow-up from ${companyName}. ` +
+          `If you need anything related to your booking, documents, or billing, reply to this email and we will help.\n\nBest,\n${companyName}`,
+      },
+    };
+
+    return CLIENT_EMAIL_TEMPLATE_DEFS.map((template) => ({
+      key: template.key,
+      label: template.label,
+      subject: byKey[template.key]?.subject || `${clientName} follow-up`,
+      body: byKey[template.key]?.body || `Hi ${clientName},\n\nBest,\n${companyName}`,
+    }));
+  }, [
+    detail?.company_name,
+    detail?.finance?.estimates,
+    pendingDocumentRequests,
+    profile,
+    summary,
+    timezone,
+  ]);
+
+  const buildEmailTemplate = useCallback((templateKey) => {
+    const template = emailTemplateOptions.find((row) => row.key === templateKey);
     if (!template) return null;
     return {
-      subject: template.subject(name),
-      body: template.body(name),
+      template_key: template.key,
+      templateOptions: emailTemplateOptions,
+      subject: template.subject,
+      body: template.body,
     };
-  };
+  }, [emailTemplateOptions]);
 
   const explainActionState = useCallback((entry, fallback = "Action not ready yet.") => {
     const reason = entry?.reason || fallback;
@@ -2633,12 +2857,12 @@ export default function ManagerClientsWorkspace() {
       return;
     }
     const templateKey = Number(summary.unpaid_balance || 0) > 0
-      ? "payment"
+      ? "payment_reminder"
       : summary.next_appointment
-        ? "session"
-        : "rebook";
-    openNotesComposer("email", buildFollowUpEmail(templateKey));
-  }, [actionReadiness.send_follow_up, buildFollowUpEmail, explainActionState, summary.unpaid_balance, summary.next_appointment]);
+        ? "appointment_follow_up"
+        : "rebooking_reminder";
+    openNotesComposer("email", buildEmailTemplate(templateKey));
+  }, [actionReadiness.send_follow_up, buildEmailTemplate, explainActionState, summary.unpaid_balance, summary.next_appointment]);
 
   if (clientId) {
     return (
@@ -2934,14 +3158,19 @@ export default function ManagerClientsWorkspace() {
                       sx={{ borderRadius: 1.25, background: "linear-gradient(180deg, rgba(37,99,235,0.04) 0%, rgba(255,255,255,0.98) 100%)" }}
                     >
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildFollowUpEmail("rebook"))}>
-                          Rebook reminder
+                        <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildEmailTemplate("rebooking_reminder"))}>
+                          Send follow-up
                         </Button>
-                        <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildFollowUpEmail("payment"))}>
-                          Payment reminder
+                        <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildEmailTemplate("payment_reminder"))}>
+                          Send payment reminder
                         </Button>
-                        <Button size="small" variant="outlined" onClick={() => openFollowUpAction()}>
-                          Session follow-up
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => openNotesComposer("email", buildEmailTemplate("document_reminder"))}
+                          disabled={!pendingDocumentRequests.length}
+                        >
+                          Send document reminder
                         </Button>
                       </Stack>
                     </SectionCard>
@@ -3481,7 +3710,11 @@ export default function ManagerClientsWorkspace() {
                     </Grid>
                   </Grid>
 
-                  <SectionCard title="Stored documents" description="Open, download, or remove client files.">
+                  <Box ref={documentsSectionRef}>
+                  <SectionCard
+                    title="Stored documents"
+                    description="Open, download, remove, or attach client files to email."
+                  >
                     {documentsLoading ? (
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
                         <CircularProgress size={18} />
@@ -3505,6 +3738,12 @@ export default function ManagerClientsWorkspace() {
                                       variant="outlined"
                                       sx={readableChipSx("info")}
                                     />
+                                    <Chip
+                                      size="small"
+                                      label={row.is_email_attachable ? "Attachable" : "Not attachable"}
+                                      variant="outlined"
+                                      sx={readableChipSx(getDocumentAttachabilityTone(row))}
+                                    />
                                     {row.scan_status ? (
                                       <Chip
                                         size="small"
@@ -3519,6 +3758,11 @@ export default function ManagerClientsWorkspace() {
                                   {formatDateTime(row.created_at, timezone)}
                                 </Typography>
                               </Stack>
+                              {row.email_attachability_reason ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  {row.email_attachability_reason}
+                                </Typography>
+                              ) : null}
                               {row.note ? <ExpandableText text={row.note} limit={180} /> : null}
                               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                 <Button
@@ -3565,6 +3809,7 @@ export default function ManagerClientsWorkspace() {
                       />
                     ) : null}
                   </SectionCard>
+                  </Box>
 
                   <SectionCard title="Requested documents" description="See pending, uploaded, expired, or cancelled requests.">
                     {documentRequestsLoading ? (
@@ -3854,6 +4099,9 @@ export default function ManagerClientsWorkspace() {
           saving={sendingEmail}
           initialForm={detailEmailDraft}
           documents={sortedDocuments}
+          uploadingAttachment={emailAttachmentUploading}
+          onUploadAttachment={handleUploadEmailAttachment}
+          onGoToDocuments={handleGoToDocumentsFromEmail}
           onClose={() => {
             setDetailQuickEmailOpen(false);
             setDetailEmailDraft(null);
