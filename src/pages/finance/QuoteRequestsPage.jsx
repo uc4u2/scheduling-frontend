@@ -384,10 +384,27 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       }));
       setSelectedDialogClient(created);
       setClientDialogOpen(false);
-      enqueueSnackbar(tQuote("snackbar.clientCreated", "Client created and selected."), { variant: "success" });
+      enqueueSnackbar(
+        created?.reused
+          ? "Existing client reused and selected."
+          : tQuote("snackbar.clientCreated", "Client created and selected."),
+        { variant: created?.reused ? "info" : "success" }
+      );
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || tQuote("errors.clientCreateFailed", "Unable to create client."), { variant: "error" });
+      const conflict = err?.response?.data;
+      if (conflict?.error === "client_phone_conflict" && conflict?.suggested_client?.id) {
+        const useExisting = window.confirm(
+          `Possible existing client found: ${conflict.suggested_client.name || conflict.suggested_client.email || `#${conflict.suggested_client.id}`}. Use that client instead?`
+        );
+        if (useExisting) {
+          setForm((prev) => ({ ...prev, client_id: conflict.suggested_client.id }));
+          setClientDialogOpen(false);
+          enqueueSnackbar("Existing client selected.", { variant: "info" });
+        }
+      } else {
+        enqueueSnackbar(err?.response?.data?.error || err?.message || tQuote("errors.clientCreateFailed", "Unable to create client."), { variant: "error" });
+      }
     } finally {
       setClientSaving(false);
     }

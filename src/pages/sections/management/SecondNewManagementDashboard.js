@@ -1,6 +1,6 @@
 // src/pages/sections/management/SecondNewManagementDashboard.js
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -41,7 +41,7 @@ import {
 
 import { useTheme } from "@mui/material/styles";
 
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 
 
 
@@ -145,6 +145,7 @@ import { stripeConnect } from "../../../utils/api";
 const SecondNewManagementDashboard = ({ token }) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const location = useLocation();
 
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const isCompactTabs = useMediaQuery(theme.breakpoints.down("md"));
@@ -577,6 +578,7 @@ const panels = useMemo(
     },
 
     {
+      key: "client-bookings",
 
       label: t("manager.advanced.panels.clientBookings"),
 
@@ -590,6 +592,7 @@ const panels = useMemo(
     },
 
     {
+      key: "manager-bookings",
 
       label: t("manager.advanced.panels.managerBookings"),
 
@@ -709,6 +712,17 @@ const panels = useMemo(
     setMounted((m) => ({ ...m, [idx]: true }));
 
   };
+
+  useEffect(() => {
+    const search = new URLSearchParams(location.search);
+    const requestedPanel = search.get("panel") || "";
+    if (!requestedPanel) return;
+    const idx = panels.findIndex((panel) => panel.key === requestedPanel);
+    if (idx < 0) return;
+    setTabIndex(idx);
+    setOpenIndex(idx);
+    setMounted((m) => ({ ...m, [idx]: true }));
+  }, [location.search, panels]);
 
 
 

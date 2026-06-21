@@ -474,13 +474,26 @@ export default function FinanceClientsPage() {
     }
     setSaving(true);
     try {
-      await createFinanceClient(payload);
-      enqueueSnackbar(tClients("snackbar.created", "Client created."), { variant: "success" });
+      const response = await createFinanceClient(payload);
+      if (response?.reused) {
+        enqueueSnackbar("Existing client reused.", { variant: "info" });
+      } else {
+        enqueueSnackbar(tClients("snackbar.created", "Client created."), { variant: "success" });
+      }
       setCreateOpen(false);
       setCreateForm({ name: "", email: "", phone: "" });
       await load();
     } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.createFailed", "Unable to create client."), { variant: "error" });
+      const conflict = err?.response?.data;
+      if (conflict?.error === "client_phone_conflict" && conflict?.suggested_client?.id) {
+        enqueueSnackbar(
+          `Possible existing client found: ${conflict.suggested_client.name || conflict.suggested_client.email || `#${conflict.suggested_client.id}`}. Open the existing client instead.`,
+          { variant: "warning" }
+        );
+        setDetailId(conflict.suggested_client.id);
+      } else {
+        enqueueSnackbar(err?.response?.data?.error || err?.message || tClients("errors.createFailed", "Unable to create client."), { variant: "error" });
+      }
     } finally {
       setSaving(false);
     }

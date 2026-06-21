@@ -832,6 +832,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/billing/cancel" element={<BillingCancelPage />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
+          <Route path="/client-document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/candidate/login/:token" element={<CandidateLoginCallbackPage />} />
           <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
           {!isCustomDomain && (
@@ -1003,6 +1004,14 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manager/employee-shift-view" element={<EmployeeShiftView />} />
           <Route path="/manager/payments" element={<ManagerPaymentsView token={token} />} />
           <Route path="/manager/analytics" element={<EnterpriseAnalytics />} />
+          <Route
+            path="/manager/clients/:clientId"
+            element={
+              <RequireAuthRoute>
+                <ManagerDashboard token={token} />
+              </RequireAuthRoute>
+            }
+          />
 
           {/* Kiosk checkout */}
           <Route path="/kiosk/pay/:token" element={<KioskPayPage />} />

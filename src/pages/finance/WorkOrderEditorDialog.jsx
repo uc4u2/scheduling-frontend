@@ -163,7 +163,21 @@ export default function WorkOrderEditorDialog({
       setForm((current) => ({ ...current, client_id: created.id }));
       setClientDialogOpen(false);
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.clientCreateFailed", "Unable to create client."));
+      const conflict = err?.response?.data;
+      if (conflict?.error === "client_phone_conflict" && conflict?.suggested_client?.id) {
+        const useExisting = window.confirm(
+          `Possible existing client found: ${conflict.suggested_client.name || conflict.suggested_client.email || `#${conflict.suggested_client.id}`}. Use that client instead?`
+        );
+        if (useExisting) {
+          setForm((current) => ({ ...current, client_id: conflict.suggested_client.id }));
+          setClientDialogOpen(false);
+          setError("");
+        } else {
+          setError("Possible existing client found. Open the existing client or cancel.");
+        }
+      } else {
+        setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.clientCreateFailed", "Unable to create client."));
+      }
     } finally {
       setClientSaving(false);
     }

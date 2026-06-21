@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Alert,
   Button,
@@ -38,6 +39,7 @@ import FinancePagination from "./components/FinancePagination";
 export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const location = useLocation();
   const tWorkOrders = useMemo(
     () => (key, fallback, options = {}) => t(`manager.finance.workOrders.${key}`, { defaultValue: fallback, ...options }),
     [t]
@@ -58,6 +60,9 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
   const [editorOpen, setEditorOpen] = useState(false);
   const [prefillEstimate, setPrefillEstimate] = useState(null);
   const [detailId, setDetailId] = useState(null);
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedClientId = searchParams.get("clientId") || "";
+  const requestedAction = searchParams.get("action") || "";
 
   const load = async () => {
     setLoading(true);
@@ -67,13 +72,14 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
         listWorkOrders({
           status: status || undefined,
           q: search || undefined,
+          client_id: requestedClientId || undefined,
           start_date: startDate || undefined,
           end_date: endDate || undefined,
           page,
           per_page: perPage,
         }),
         getWorkOrdersSummary(),
-        listManagerClients({ limit: 20 }),
+        listManagerClients({ limit: 100 }),
         listEstimates({ limit: 100 }),
       ]);
       setItems(Array.isArray(workOrdersRes?.items) ? workOrdersRes.items : Array.isArray(workOrdersRes) ? workOrdersRes : []);
@@ -92,7 +98,7 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
     load();
     // Search and date filters stay manual via Enter/Refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, page, perPage]);
+  }, [status, page, perPage, requestedClientId]);
 
   useEffect(() => {
     if (createNonce) {
@@ -100,6 +106,12 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
       setEditorOpen(true);
     }
   }, [createNonce, createSeed]);
+
+  useEffect(() => {
+    if (requestedAction !== "create" || !requestedClientId) return;
+    setPrefillEstimate({ client_id: requestedClientId });
+    setEditorOpen(true);
+  }, [requestedAction, requestedClientId]);
 
   const countByStatus = summary?.count_by_status || {};
 
@@ -157,6 +169,12 @@ export default function WorkOrdersPage({ createNonce, createSeed, onNavigate }) 
       </Paper>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+
+      {requestedClientId ? (
+        <Alert severity="info">
+          Client context active. This view is filtered for one client and new work orders can start with that client selected.
+        </Alert>
+      ) : null}
 
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>

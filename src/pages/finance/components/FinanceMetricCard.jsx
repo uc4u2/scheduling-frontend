@@ -12,6 +12,8 @@ export default function FinanceMetricCard({ label, value, helper, accent = "prim
       sx={{
         p: 2,
         borderRadius: 1,
+        height: "100%",
+        display: "flex",
         borderColor: alpha(tone.main, 0.22),
         background: `linear-gradient(180deg, ${alpha(tone.main, 0.08)} 0%, ${alpha(
           theme.palette.background.paper,
@@ -19,7 +21,7 @@ export default function FinanceMetricCard({ label, value, helper, accent = "prim
         )} 100%)`,
       }}
     >
-      <Stack spacing={1}>
+      <Stack spacing={1} sx={{ width: "100%", minHeight: 0 }}>
         <Typography variant="body2" color="text.secondary">
           {label}
         </Typography>
@@ -27,7 +29,7 @@ export default function FinanceMetricCard({ label, value, helper, accent = "prim
           {value}
         </Typography>
         {helper ? (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: "auto" }}>
             {helper}
           </Typography>
         ) : null}

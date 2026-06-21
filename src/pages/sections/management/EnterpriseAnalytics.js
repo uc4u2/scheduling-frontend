@@ -428,6 +428,19 @@ const ClientsTab = (
           ("#" + selectedClientEA.id)
         }`}
       />
+      {selectedClientEA?.id ? (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            try {
+              window.location.assign(`/manager/clients/${selectedClientEA.id}`);
+            } catch {}
+          }}
+        >
+          Open client workspace
+        </Button>
+      ) : null}
       <Button size="small" onClick={() => setSelectedClientEA(null)}>
         Clear selection
       </Button>

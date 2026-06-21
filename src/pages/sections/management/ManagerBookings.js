@@ -32,7 +32,7 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 import { api } from "../../../utils/api";
 import { DateTime } from "luxon";
@@ -180,6 +180,7 @@ const paymentStatusChipSx = (status) => {
 
 const ManagerBookings = ({ slug, connect }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
 
 
@@ -231,6 +232,9 @@ const ManagerBookings = ({ slug, connect }) => {
   const [editLocalEnd, setEditLocalEnd] = useState("");
 
   const companySlug = slug || "";
+  const bookingQuery = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedClientId = bookingQuery.get("clientId") || "";
+  const requestedAppointmentId = bookingQuery.get("appointmentId") || "";
 
   const connectStatus = connect?.status || {};
   const connectLoading = Boolean(connect?.loading);
@@ -379,9 +383,20 @@ const ManagerBookings = ({ slug, connect }) => {
       if (selectedDepartment && deptId !== String(selectedDepartment)) return false;
       const recId = String(b?.recruiter?.id ?? b?.recruiter_id ?? "");
       if (selectedRecruiter && recId !== String(selectedRecruiter)) return false;
+      if (requestedClientId && String(b?.client?.id ?? b?.client_id ?? "") !== String(requestedClientId)) return false;
       return true;
     });
-  }, [bookings, selectedDepartment, selectedRecruiter]);
+  }, [bookings, selectedDepartment, selectedRecruiter, requestedClientId]);
+
+  useEffect(() => {
+    if (!requestedClientId && !requestedAppointmentId) return;
+    if (!visibleRows.length) return;
+    const target =
+      (requestedAppointmentId && visibleRows.find((row) => String(row.id) === String(requestedAppointmentId))) ||
+      (!requestedAppointmentId ? visibleRows[0] : null);
+    if (!target) return;
+    setSelectedBooking(target);
+  }, [requestedAppointmentId, visibleRows]);
 
   /* -- Pagination (persist page size; default 10) --------- */
   const PAGE_SIZES = [10, 20, 50, 100];
@@ -1142,6 +1157,13 @@ const RowActions = ({ row }) => {
             )
           ) : null}
 
+          {requestedClientId ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Client filter active. This manager booking view is scoped to one client.
+              {requestedAppointmentId ? " The requested appointment is selected when available." : ""}
+            </Alert>
+          ) : null}
+
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
               {t("manager.bookings.filters.heading")}
@@ -1626,9 +1648,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
-
 
 
 

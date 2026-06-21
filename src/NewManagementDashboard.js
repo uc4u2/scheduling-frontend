@@ -132,6 +132,7 @@ import Tax from "./pages/sections/Tax";
 import SavedPayrollsPortal from "./pages/sections/SavedPayrollsPortal";
 import AddRecruiter from "./AddRecruiter";
 import WebsiteSuite from "./pages/sections/management/WebsiteSuite";
+import ManagerClientsWorkspace from "./pages/sections/management/ManagerClientsWorkspace";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import ManagerInvoicesPage from "./pages/sections/ManagerInvoicesPage";
 import { getUserTimezone } from "./utils/timezone";
@@ -266,6 +267,13 @@ const menuConfig = [
       { labelKey: "manager.finance.tabs.taxSummary", key: "finance-tax-summary", icon: <Calculate /> },
       { labelKey: "manager.finance.tabs.monthEnd", key: "finance-month-end", icon: <EventNote /> },
     ],
+  },
+
+  {
+    label: "Clients",
+    key: "clients",
+    icon: <People />,
+    tooltip: "Client profiles: bookings, billing, notes, work orders, and activity.",
   },
 
   // Overview cluster near bottom
@@ -903,6 +911,11 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     return map;
   }, [recruiters]);
 
+  const bookingQuery = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedClientId = bookingQuery.get("clientId") || "";
+  const requestedAppointmentId = bookingQuery.get("appointmentId") || "";
+  const autoOpenedClientBookingRef = useRef("");
+
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
       const recruiterId = String(b?.recruiter?.id || b?.recruiter_id || "");
@@ -912,9 +925,10 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         const deptId = recruiterDeptById.get(recruiterId) || "";
         if (deptId !== String(selectedDepartment)) return false;
       }
+      if (requestedClientId && String(b?.client?.id || b?.client_id || "") !== String(requestedClientId)) return false;
       return true;
     });
-  }, [bookings, selectedRecruiter, selectedDepartment, recruiterDeptById]);
+  }, [bookings, selectedRecruiter, selectedDepartment, recruiterDeptById, requestedClientId, isSelfOnly, currentUserInfo]);
 
   const events = filteredBookings
     .map((b) => {
@@ -1005,6 +1019,64 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     setBaseLocked(Boolean(hasBase && baseValue > 0));
     setDetailsOpen(true);
   };
+
+  useEffect(() => {
+    if (!requestedAppointmentId || !filteredBookings.length) return;
+    const booking = filteredBookings.find((row) => String(row.id) === String(requestedAppointmentId));
+    if (!booking) return;
+    setSelected(booking);
+    const baseCandidate =
+      booking?.service?.base_price ??
+      booking?.base_price ??
+      booking?.amount ??
+      booking?.total ??
+      0;
+    const baseValue = Number.isFinite(Number(baseCandidate)) ? Number(baseCandidate) : 0;
+    const hasBase =
+      booking?.service?.base_price != null ||
+      booking?.base_price != null ||
+      booking?.amount != null ||
+      booking?.total != null;
+    setBaseAmount(baseValue ? String(baseValue) : "");
+    setExtraAmount("");
+    setTipMode("0");
+    setCustomTip("");
+    setInvoiceUrl("");
+    setBaseLocked(Boolean(hasBase && baseValue > 0));
+    setDetailsOpen(true);
+  }, [requestedAppointmentId, filteredBookings]);
+
+  useEffect(() => {
+    if (!requestedClientId || requestedAppointmentId || !filteredBookings.length) return;
+    if (autoOpenedClientBookingRef.current === String(requestedClientId)) return;
+    const booking = [...filteredBookings].sort((a, b) => {
+      const aStart = String(a?.start_iso_local || `${a?.local_date || ""}T${a?.local_start_time || ""}`);
+      const bStart = String(b?.start_iso_local || `${b?.local_date || ""}T${b?.local_start_time || ""}`);
+      return aStart.localeCompare(bStart);
+    })[0];
+    if (!booking) return;
+    autoOpenedClientBookingRef.current = String(requestedClientId);
+    setSelected(booking);
+    const baseCandidate =
+      booking?.service?.base_price ??
+      booking?.base_price ??
+      booking?.amount ??
+      booking?.total ??
+      0;
+    const baseValue = Number.isFinite(Number(baseCandidate)) ? Number(baseCandidate) : 0;
+    const hasBase =
+      booking?.service?.base_price != null ||
+      booking?.base_price != null ||
+      booking?.amount != null ||
+      booking?.total != null;
+    setBaseAmount(baseValue ? String(baseValue) : "");
+    setExtraAmount("");
+    setTipMode("0");
+    setCustomTip("");
+    setInvoiceUrl("");
+    setBaseLocked(Boolean(hasBase && baseValue > 0));
+    setDetailsOpen(true);
+  }, [requestedClientId, requestedAppointmentId, filteredBookings]);
 
   const handleMarkCompleted = async () => {
     if (!selected) return;
@@ -1242,6 +1314,12 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         </Stack>
 
         {error && <Alert severity="error">{error}</Alert>}
+        {requestedClientId ? (
+          <Alert severity="info">
+            Client filter active. This checkout calendar is showing bookings for one client only.
+            {requestedAppointmentId ? " The requested appointment is auto-opened when available." : " The earliest booking for this client is opened automatically when available."}
+          </Alert>
+        ) : null}
 
         <Paper
           sx={{
@@ -3521,6 +3599,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "finance-reports":
       case "finance-month-end":
         return <BusinessFinanceShell viewKey={effectiveView} onNavigate={handleNavSelect} />;
+
+      case "clients":
+        return <ManagerClientsWorkspace />;
 
       case "prediction":
         return <PredictionShell token={token} currentUserInfo={currentUserInfo} />;

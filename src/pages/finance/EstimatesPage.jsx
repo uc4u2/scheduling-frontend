@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -244,6 +245,7 @@ function EstimateActionMenu({ actions, tEstimate }) {
 export default function EstimatesPage({ createNonce, onNavigate }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const location = useLocation();
   const timezone = useMemo(() => getUserTimezone(), []);
   const tEstimate = useCallback(
     (key, fallback, options = {}) => t(`manager.finance.estimates.${key}`, { defaultValue: fallback, ...options }),
@@ -293,7 +295,11 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [showArchivedTemplates, setShowArchivedTemplates] = useState(false);
   const [templateSectionOpen, setTemplateSectionOpen] = useState(false);
   const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
+  const [draftSeed, setDraftSeed] = useState(null);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedClientId = searchParams.get("clientId") || "";
+  const requestedAction = searchParams.get("action") || "";
   const activeTemplates = useMemo(
     () => templates.filter((row) => row?.is_active !== false),
     [templates]
@@ -311,12 +317,13 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         listEstimates({
           status: status || undefined,
           q: search || undefined,
+          client_id: requestedClientId || undefined,
           date_from: dateFrom || undefined,
           date_to: dateTo || undefined,
           page,
           per_page: perPage,
         }),
-        listManagerClients({ limit: 20 }),
+        listManagerClients({ limit: 100 }),
         listEstimateTemplates(),
       ]);
       setItems(Array.isArray(estimates?.items) ? estimates.items : Array.isArray(estimates) ? estimates : []);
@@ -329,7 +336,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, page, perPage, search, status, tEstimate]);
+  }, [dateFrom, dateTo, page, perPage, requestedClientId, search, status, tEstimate]);
 
   useEffect(() => {
     load();
@@ -338,9 +345,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   useEffect(() => {
     if (createNonce) {
       setEditing(null);
+      setDraftSeed(null);
       setDialogOpen(true);
     }
   }, [createNonce]);
+
+  useEffect(() => {
+    if (requestedAction !== "create" || !requestedClientId) return;
+    setEditing(null);
+    setDraftSeed({ client_id: requestedClientId });
+    setDialogOpen(true);
+  }, [requestedAction, requestedClientId]);
 
   useEffect(() => {
     if (!managerTemplates.length) {
@@ -1424,6 +1439,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
       {error ? <Alert severity="error">{error}</Alert> : null}
 
+      {requestedClientId ? (
+        <Alert severity="info">
+          Client context active. This view is filtered for one client and new estimates can be prefilled from that client.
+        </Alert>
+      ) : null}
+
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
       ) : items.length === 0 ? (
@@ -1521,13 +1542,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
       <EstimateEditorDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false);
+          setDraftSeed(null);
+        }}
         onSaved={async () => {
           enqueueSnackbar(editing ? tEstimate("snackbar.updated", "Estimate updated.") : tEstimate("snackbar.created", "Estimate created."), { variant: "success" });
           await load();
         }}
         onNavigate={onNavigate}
         estimate={editing}
+        initialDraft={draftSeed}
         clients={clients}
         templates={activeTemplates}
         taxContext={taxContext}

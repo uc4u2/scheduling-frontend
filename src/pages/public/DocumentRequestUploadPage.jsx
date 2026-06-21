@@ -14,12 +14,15 @@ import {
   Link,
   CircularProgress,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import SiteFrame from "../../components/website/SiteFrame";
 import { api, publicSite } from "../../utils/api";
 
 export default function DocumentRequestUploadPage() {
   const { token } = useParams();
+  const location = useLocation();
+  const isClientRequest = location.pathname.startsWith("/client-document-request/");
+  const requestBasePath = isClientRequest ? "/api/client-document-requests" : "/api/document-requests";
   const [loading, setLoading] = useState(true);
   const [requestInfo, setRequestInfo] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -41,7 +44,7 @@ export default function DocumentRequestUploadPage() {
       setLoading(true);
       setError("");
       try {
-        const res = await api.get(`/api/document-requests/${token}`, {
+        const res = await api.get(`${requestBasePath}/${token}`, {
           noAuth: true,
           noCompanyHeader: true,
         });
@@ -60,7 +63,7 @@ export default function DocumentRequestUploadPage() {
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, [token, requestBasePath]);
 
   const handleUpload = async () => {
     if (!token || fileList.length === 0) {
@@ -74,7 +77,7 @@ export default function DocumentRequestUploadPage() {
     try {
       const formData = new FormData();
       fileList.forEach((file) => formData.append("documents", file));
-      const res = await api.post(`/api/document-requests/${token}/upload`, formData, {
+      const res = await api.post(`${requestBasePath}/${token}/upload`, formData, {
         noAuth: true,
         noCompanyHeader: true,
         headers: { "Content-Type": "multipart/form-data" },
@@ -85,7 +88,7 @@ export default function DocumentRequestUploadPage() {
       }
       setSuccess("Upload received. Your document will be reviewed shortly.");
       setFiles([]);
-      const refreshed = await api.get(`/api/document-requests/${token}`, {
+      const refreshed = await api.get(`${requestBasePath}/${token}`, {
         noAuth: true,
         noCompanyHeader: true,
       });
@@ -244,7 +247,7 @@ export default function DocumentRequestUploadPage() {
 
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Upload your signed document
+                  Upload your requested document
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Accepted: {allowedTypesLabel}. Max {maxSizeMb}MB per file. Files are scanned before they become available.

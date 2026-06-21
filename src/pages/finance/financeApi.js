@@ -407,13 +407,50 @@ export const listManagerClients = async (params = {}) => {
 
 export const createManagerClient = async (payload) => {
   const created = await createFinanceClient(payload);
-  return created?.client || created;
+  return {
+    ...(created?.client || created),
+    reused: Boolean(created?.reused),
+    raw: created,
+  };
 };
 
 export const getManagerClient = async (id) => {
   const payload = await getFinanceClient(id);
   return payload?.client || payload;
 };
+
+export const listManagerClient360 = (params = {}) =>
+  unwrap(api.get("/api/manager/client-360", { params }));
+
+export const getManagerClient360 = (clientId) =>
+  unwrap(api.get(`/api/manager/client-360/${clientId}`));
+
+export const createManagerClient360Note = (clientId, payload) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/notes`, payload));
+
+export const createManagerClient360SessionNote = (clientId, payload) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/session-notes`, payload));
+
+export const sendManagerClient360Email = (clientId, payload) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/email`, payload));
+
+export const listManagerClient360Documents = (clientId) =>
+  unwrap(api.get(`/api/manager/client-360/${clientId}/documents`));
+
+export const createManagerClient360Document = (clientId, payload) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/documents`, payload));
+
+export const deleteManagerClient360Document = (clientId, documentId) =>
+  unwrap(api.delete(`/api/manager/client-360/${clientId}/documents/${documentId}`));
+
+export const listManagerClient360DocumentRequests = (clientId) =>
+  unwrap(api.get(`/api/manager/client-360/${clientId}/document-requests`));
+
+export const createManagerClient360DocumentRequest = (clientId, payload) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/document-requests`, payload));
+
+export const cancelManagerClient360DocumentRequest = (clientId, requestId) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/document-requests/${requestId}/cancel`));
 
 export const listBillingRecipients = async (params = {}) => {
   const res = await api.get("/manager/billing-recipients", { params });

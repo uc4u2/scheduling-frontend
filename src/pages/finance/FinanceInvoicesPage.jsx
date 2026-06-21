@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -27,12 +28,7 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
-import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
-import LibraryAddOutlinedIcon from "@mui/icons-material/LibraryAddOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseIcon from "@mui/icons-material/Close";
@@ -219,6 +215,7 @@ function InvoiceWorkflowHelpDrawer({ open, onClose, tInvoice, featuredTutorial }
 export default function FinanceInvoicesPage({ onNavigate }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const location = useLocation();
   const tInvoice = useCallback(
     (key, fallback, options = {}) => t(`manager.finance.invoices.${key}`, { defaultValue: fallback, ...options }),
     [t]
@@ -270,6 +267,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailMessage, setEmailMessage] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedClientId = searchParams.get("clientId") || "";
+  const requestedAction = searchParams.get("action") || "";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,6 +279,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         page,
         per_page: perPage,
         finance_only: true,
+        client_id: requestedClientId || undefined,
       };
       if (search.trim()) params.q = search.trim();
       if (dateFrom) params.date_from = dateFrom;
@@ -295,7 +296,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, page, perPage, search, statusFilter, tInvoice]);
+  }, [dateFrom, dateTo, page, perPage, requestedClientId, search, statusFilter, tInvoice]);
 
   useEffect(() => {
     load();
@@ -728,6 +729,14 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       </Paper>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+
+      {requestedClientId ? (
+        <Alert severity={requestedAction === "payment-link" ? "warning" : "info"}>
+          {requestedAction === "payment-link"
+            ? "Client context active. Open an invoice row below to create or copy a payment link for this client."
+            : "Client context active. This view is filtered for one client."}
+        </Alert>
+      ) : null}
 
       {loading ? (
         <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>

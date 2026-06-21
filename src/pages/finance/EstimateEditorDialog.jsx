@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  FormHelperText,
   Grid,
   IconButton,
   InputLabel,
@@ -153,6 +152,7 @@ export default function EstimateEditorDialog({
   onSaved,
   onNavigate,
   estimate,
+  initialDraft = null,
   clients = [],
   templates = [],
   taxContext,
@@ -245,12 +245,17 @@ export default function EstimateEditorDialog({
       setForm({
         ...blankForm(taxContext || {}),
         currency: normalizeCurrency((taxContext || {}).display_currency || activeCurrency) || activeCurrency,
+        client_id: initialDraft?.client_id || "",
+        title: initialDraft?.title || "",
+        notes: initialDraft?.notes || "",
+        visible_notes: initialDraft?.visible_notes || initialDraft?.notes || "",
+        internal_notes: initialDraft?.internal_notes || "",
       });
     }
     setError("");
     setLineItemError({ lineId: null, field: "" });
     setEstimateNumberError("");
-  }, [activeCurrency, estimate, open, taxContext]);
+  }, [activeCurrency, estimate, initialDraft, open, taxContext]);
 
   const preview = useMemo(() => {
     const subtotal = roundMoney(
@@ -432,8 +437,25 @@ export default function EstimateEditorDialog({
       const created = await createManagerClient(payload);
       setForm((prev) => ({ ...prev, client_id: created.id }));
       setClientDialogOpen(false);
+      if (created?.reused) {
+        setError("");
+      }
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || tEstimate("errors.clientCreateFailed", "Unable to create client."));
+      const conflict = err?.response?.data;
+      if (conflict?.error === "client_phone_conflict" && conflict?.suggested_client?.id) {
+        const useExisting = window.confirm(
+          `Possible existing client found: ${conflict.suggested_client.name || conflict.suggested_client.email || `#${conflict.suggested_client.id}`}. Use that client instead?`
+        );
+        if (useExisting) {
+          setForm((prev) => ({ ...prev, client_id: conflict.suggested_client.id }));
+          setClientDialogOpen(false);
+          setError("");
+        } else {
+          setError("Possible existing client found. Open the existing client or cancel.");
+        }
+      } else {
+        setError(err?.response?.data?.error || err?.message || tEstimate("errors.clientCreateFailed", "Unable to create client."));
+      }
     } finally {
       setClientSaving(false);
     }
