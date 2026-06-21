@@ -203,6 +203,12 @@ const humanizeCheckIssue = (issue) => {
       actionLabel: "Open Company Profile",
       category: "company",
     },
+    MISSING_COMPANY_PHONE: {
+      title: "Add company phone number",
+      message: "Add a company phone number in Company Profile before the first real Check company sync.",
+      actionLabel: "Open Company Profile",
+      category: "company",
+    },
     MISSING_WORK_LOCATION_ADDRESS: {
       title: "Complete payroll location address",
       message: "Each active payroll location needs a full address before it can be synced to Check.",
@@ -269,9 +275,27 @@ const humanizeCheckIssue = (issue) => {
       actionLabel: "Edit Payroll Locations",
       category: "location",
     },
+    INVALID_US_WORK_LOCATION_STATE_ZIP: {
+      title: "Fix payroll location ZIP and state",
+      message: "Fix payroll location ZIP codes so they match the selected U.S. state before syncing workplaces to Check.",
+      actionLabel: "Edit Payroll Locations",
+      category: "location",
+    },
+    INVALID_WORK_LOCATION_TIMEZONE: {
+      title: "Fix payroll location timezone",
+      message: "Some payroll locations still have invalid or mismatched timezones for payroll setup.",
+      actionLabel: "Edit Payroll Locations",
+      category: "location",
+    },
     EMPLOYEE_FIELDS_INCOMPLETE: {
       title: "Review employee payroll fields",
       message: "Some employees are missing payroll-ready location or identity fields used by local readiness checks.",
+      actionLabel: "Review employees",
+      category: "employee",
+    },
+    NO_ELIGIBLE_PAYROLL_EMPLOYEE: {
+      title: "Add an eligible payroll employee",
+      message: "Add a non-manager employee or correct the worker record that should be included in payroll before employee sync begins.",
       actionLabel: "Review employees",
       category: "employee",
     },
@@ -1034,13 +1058,44 @@ export default function PayrollProviderSync({
     () => summarizeManagerIssues(
       checkLaunchReadiness?.blockers,
       (checkLaunchReadiness?.warnings || []).map((message) => ({ message })),
+      (() => {
+        const derived = [];
+        const workplaceChecklist = Array.isArray(checkLaunchReadiness?.workplace_checklist)
+          ? checkLaunchReadiness.workplace_checklist
+          : [];
+        const employeeChecklist = Array.isArray(checkLaunchReadiness?.employee_checklist)
+          ? checkLaunchReadiness.employee_checklist
+          : [];
+        const eligibleEmployees =
+          Number(checkLaunchReadiness?.counts?.eligible_employee_count ?? 0)
+          || Number(checkOnboardingOverview?.employee_counts?.eligible_payroll_employees ?? 0);
+        if (eligibleEmployees === 0) {
+          derived.push({ code: "NO_ELIGIBLE_PAYROLL_EMPLOYEE" });
+        }
+        if (workplaceChecklist.some((item) => item?.key === "all_active_locations_have_valid_us_state_zip_if_us" && item?.ok === false)) {
+          derived.push({ code: "INVALID_US_WORK_LOCATION_STATE_ZIP" });
+        }
+        if (workplaceChecklist.some((item) => item?.key === "all_active_locations_have_valid_timezone" && item?.ok === false)) {
+          derived.push({ code: "INVALID_WORK_LOCATION_TIMEZONE" });
+        }
+        if (
+          checkPayloadPreview?.kind === "company"
+          && !String(checkPayloadPreview?.data?.payload?.phone || "").trim()
+        ) {
+          derived.push({ code: "MISSING_COMPANY_PHONE" });
+        }
+        if (employeeChecklist.some((item) => item?.key === "eligible_payroll_employee_count" && item?.ok === false)) {
+          derived.push({ code: "NO_ELIGIBLE_PAYROLL_EMPLOYEE" });
+        }
+        return derived;
+      })(),
       checkReadiness?.unsupported_conditions,
       checkReadiness?.warnings,
       checkOnboardingOverview?.blockers,
       checkPackagePreview?.blockers,
       checkPackagePreview?.warnings
     ),
-    [checkLaunchReadiness, checkReadiness, checkOnboardingOverview, checkPackagePreview]
+    [checkLaunchReadiness, checkReadiness, checkOnboardingOverview, checkPackagePreview, checkPayloadPreview]
   );
 
   const companySummary = useMemo(() => {

@@ -44,6 +44,7 @@ import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import EmployeeProfileAuditTimeline from "./EmployeeProfileAuditTimeline";
+import TimezoneSelect from "../../components/TimezoneSelect";
 
 const CANADA_PROVINCES = [
   "AB",
@@ -1143,6 +1144,15 @@ const FRONTEND_ORIGIN = (() => {
                 fullWidth
                 helperText={postalHelper}
                 title={postalTitle}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TimezoneSelect
+                value={employee.timezone || ""}
+                onChange={(value) =>
+                  setEmployee((prev) => (prev ? { ...prev, timezone: value } : prev))
+                }
+                helperText="Used for payroll scheduling, work-location defaults, and future Check preparation."
               />
             </Grid>
           </Grid>

@@ -1132,6 +1132,13 @@ export default function CompanyProfile({ token }) {
                   helperText={getPostalHelper(form.country_code)}
                 />
               </Grid>
+              <Grid item xs={12} md={6}>
+                <TimezoneSelect
+                  value={form.timezone || "UTC"}
+                  onChange={(value) => handleChange("timezone")({ target: { value } })}
+                  helperText="Used as the default company timezone for payroll setup and employee defaults."
+                />
+              </Grid>
               {getAddressWarnings({ country: form.country_code, region: form.province_code, postalCode: form.address_zip }).length > 0 && (
                 <Grid item xs={12}>
                   <Alert severity="warning" variant="outlined">
@@ -1171,6 +1178,40 @@ export default function CompanyProfile({ token }) {
                               value={form.federal_employer_id || ""}
                               onChange={handleChange("federal_employer_id")}
                               helperText="Used for W-2 and payroll exports."
+                            />
+                          </Grid>
+                        </>
+                      )}
+                      {(isUS || isCA) && (
+                        <>
+                          <Grid item xs={12}>
+                            <Divider textAlign="left">Payroll contact</Divider>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={isCA ? t("manager.companyProfile.form.fields.craContactPerson") : "Payroll contact name"}
+                              value={form.contact_person || ""}
+                              onChange={handleChange("contact_person")}
+                              helperText={isCA ? "CRA payroll contact." : "Used for payroll readiness handoff and later Check preparation."}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={isCA ? t("manager.companyProfile.form.fields.craContactPhone") : "Payroll contact phone"}
+                              value={form.contact_phone || ""}
+                              onChange={handleChange("contact_phone")}
+                              helperText="Use a direct payroll contact number without sensitive banking information."
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={isCA ? t("manager.companyProfile.form.fields.craContactEmail") : "Payroll contact email"}
+                              value={form.contact_email || ""}
+                              onChange={handleChange("contact_email")}
+                              helperText="Used for payroll-related follow-up and onboarding coordination."
                             />
                           </Grid>
                         </>
@@ -1296,31 +1337,6 @@ export default function CompanyProfile({ token }) {
                               }}
                               inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
                               helperText={t("manager.companyProfile.form.hints.employerNumberDigits")}
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label={t("manager.companyProfile.form.fields.craContactPerson")}
-                              value={form.contact_person || ""}
-                              onChange={handleChange("contact_person")}
-                              helperText="CRA payroll contact."
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label={t("manager.companyProfile.form.fields.craContactPhone")}
-                              value={form.contact_phone || ""}
-                              onChange={handleChange("contact_phone")}
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              fullWidth
-                              label={t("manager.companyProfile.form.fields.craContactEmail")}
-                              value={form.contact_email || ""}
-                              onChange={handleChange("contact_email")}
                             />
                           </Grid>
                         </>
