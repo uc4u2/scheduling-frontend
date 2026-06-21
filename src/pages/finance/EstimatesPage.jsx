@@ -71,6 +71,7 @@ import {
   getFinanceInvoicePrintHtml,
   listEstimateTemplates,
   listEstimates,
+  listManagerClient360Documents,
   listManagerClients,
   reopenEstimateResponse,
   sendFinanceInvoiceEmail,
@@ -78,11 +79,13 @@ import {
   sendEstimateEmail,
   updateEstimateTemplate,
   updateEstimate,
+  uploadManagerClient360DocumentFromDevice,
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
+import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
@@ -280,11 +283,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailTarget, setEmailTarget] = useState(null);
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
+  const [emailDocumentIds, setEmailDocumentIds] = useState([]);
   const [invoiceEmailDialogOpen, setInvoiceEmailDialogOpen] = useState(false);
   const [invoiceEmailSending, setInvoiceEmailSending] = useState(false);
   const [invoiceEmailTarget, setInvoiceEmailTarget] = useState(null);
   const [invoiceEmailTo, setInvoiceEmailTo] = useState("");
   const [invoiceEmailMessage, setInvoiceEmailMessage] = useState("");
+  const [invoiceEmailDocumentIds, setInvoiceEmailDocumentIds] = useState([]);
+  const [emailDocuments, setEmailDocuments] = useState([]);
+  const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
+  const [emailDocumentsError, setEmailDocumentsError] = useState("");
+  const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
   const [postConvertInvoice, setPostConvertInvoice] = useState(null);
   const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
@@ -537,7 +546,84 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     setEmailTarget(item);
     setEmailTo(item?.client_email || "");
     setEmailMessage("");
+    setEmailDocumentIds([]);
     setEmailDialogOpen(true);
+  };
+
+  const activeEmailClientId = emailDialogOpen
+    ? (emailTarget?.client_id || emailTarget?.client?.id || null)
+    : invoiceEmailDialogOpen
+      ? (invoiceEmailTarget?.client_id || invoiceEmailTarget?.client?.id || null)
+      : null;
+
+  const loadEmailDocuments = useCallback(async (clientId) => {
+    if (!clientId) {
+      setEmailDocuments([]);
+      setEmailDocumentsError("");
+      return [];
+    }
+    setEmailDocumentsLoading(true);
+    setEmailDocumentsError("");
+    try {
+      const payload = await listManagerClient360Documents(clientId);
+      const rows = Array.isArray(payload?.documents) ? payload.documents : [];
+      setEmailDocuments(rows);
+      return rows;
+    } catch (err) {
+      const message =
+        err?.response?.data?.error ||
+        err?.message ||
+        tEstimate("errors.loadClientDocuments", "Unable to load client documents.");
+      setEmailDocuments([]);
+      setEmailDocumentsError(message);
+      return [];
+    } finally {
+      setEmailDocumentsLoading(false);
+    }
+  }, [tEstimate]);
+
+  useEffect(() => {
+    if (!emailDialogOpen && !invoiceEmailDialogOpen) return;
+    if (!activeEmailClientId) {
+      setEmailDocuments([]);
+      setEmailDocumentsError("");
+      return;
+    }
+    loadEmailDocuments(activeEmailClientId);
+  }, [activeEmailClientId, emailDialogOpen, invoiceEmailDialogOpen, loadEmailDocuments]);
+
+  const handleUploadEmailAttachment = async (file) => {
+    if (!activeEmailClientId || !file) return;
+    setEmailAttachmentUploading(true);
+    try {
+      const created = await uploadManagerClient360DocumentFromDevice(activeEmailClientId, file, {
+        category: emailDialogOpen ? "other" : "invoice_support",
+        note: emailDialogOpen
+          ? "Uploaded from estimate email dialog."
+          : "Uploaded from payment-link email dialog.",
+      });
+      const rows = await loadEmailDocuments(activeEmailClientId);
+      const resolvedId = String(created?.id || rows?.[0]?.id || "");
+      if (resolvedId) {
+        if (emailDialogOpen) {
+          setEmailDocumentIds((prev) => [...new Set([...prev, resolvedId])]);
+        } else {
+          setInvoiceEmailDocumentIds((prev) => [...new Set([...prev, resolvedId])]);
+        }
+      }
+      enqueueSnackbar(tEstimate("snackbar.attachmentUploaded", "Document uploaded and ready to attach."), {
+        variant: "success",
+      });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error ||
+          err?.message ||
+          tEstimate("errors.uploadAttachment", "Unable to upload the document attachment."),
+        { variant: "error" }
+      );
+    } finally {
+      setEmailAttachmentUploading(false);
+    }
   };
 
   const handleSendEmail = async () => {
@@ -548,10 +634,15 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     }
     try {
       setEmailSending(true);
-      await sendEstimateEmail(emailTarget.id, { email: emailTo.trim(), message: emailMessage.trim() || undefined });
+      await sendEstimateEmail(emailTarget.id, {
+        email: emailTo.trim(),
+        message: emailMessage.trim() || undefined,
+        client_document_ids: emailDocumentIds,
+      });
       enqueueSnackbar(tEstimate("snackbar.emailSent", "Estimate email sent."), { variant: "success" });
       setEmailDialogOpen(false);
       setEmailTarget(null);
+      setEmailDocumentIds([]);
       await load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tEstimate("errors.sendEmailFailed", "Unable to send estimate email."), { variant: "error" });
@@ -639,6 +730,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     setInvoiceEmailTarget(item);
     setInvoiceEmailTo(String(item?.client_email || "").trim());
     setInvoiceEmailMessage("");
+    setInvoiceEmailDocumentIds([]);
     setInvoiceEmailDialogOpen(true);
   };
 
@@ -654,10 +746,12 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       await sendFinanceInvoiceEmail(invoiceId, {
         email: String(invoiceEmailTo || "").trim(),
         message: String(invoiceEmailMessage || "").trim() || undefined,
+        client_document_ids: invoiceEmailDocumentIds,
       });
       enqueueSnackbar(tEstimate("snackbar.paymentLinkEmailSent", "Payment link email sent."), { variant: "success" });
       setInvoiceEmailDialogOpen(false);
       setInvoiceEmailTarget(null);
+      setInvoiceEmailDocumentIds([]);
       await load();
     } catch (err) {
       enqueueSnackbar(
@@ -1829,6 +1923,24 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               onChange={(event) => setEmailMessage(event.target.value)}
               helperText={tEstimate("emailDialog.helperText", "The estimate link and totals will be added automatically.")}
             />
+            {emailDocumentsError ? <Alert severity="warning">{emailDocumentsError}</Alert> : null}
+            {emailDocumentsLoading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  {tEstimate("emailDialog.loadingDocuments", "Loading client documents...")}
+                </Typography>
+              </Stack>
+            ) : (
+              <ClientDocumentAttachmentPanel
+                clientId={emailTarget?.client_id || emailTarget?.client?.id || null}
+                documents={emailDocuments}
+                selectedIds={emailDocumentIds}
+                onSelectedIdsChange={setEmailDocumentIds}
+                uploading={emailAttachmentUploading}
+                onUpload={handleUploadEmailAttachment}
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -1855,6 +1967,24 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
               onChange={(event) => setInvoiceEmailMessage(event.target.value)}
               helperText={tEstimate("invoiceEmailDialog.helperText", "The payment link and invoice total will be added automatically.")}
             />
+            {emailDocumentsError ? <Alert severity="warning">{emailDocumentsError}</Alert> : null}
+            {emailDocumentsLoading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  {tEstimate("invoiceEmailDialog.loadingDocuments", "Loading client documents...")}
+                </Typography>
+              </Stack>
+            ) : (
+              <ClientDocumentAttachmentPanel
+                clientId={invoiceEmailTarget?.client_id || invoiceEmailTarget?.client?.id || null}
+                documents={emailDocuments}
+                selectedIds={invoiceEmailDocumentIds}
+                onSelectedIdsChange={setInvoiceEmailDocumentIds}
+                uploading={emailAttachmentUploading}
+                onUpload={handleUploadEmailAttachment}
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

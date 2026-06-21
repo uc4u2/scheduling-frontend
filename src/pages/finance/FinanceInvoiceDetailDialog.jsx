@@ -42,6 +42,7 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
+import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
@@ -53,11 +54,13 @@ import {
   getFinanceDocumentSettings,
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
+  listManagerClient360Documents,
   listBillingRecipients,
   sendFinanceInvoiceEmail,
   setFinanceClientDefaultBillingRecipient,
   updateFinanceDocumentSettings,
   updateFinanceInvoice,
+  uploadManagerClient360DocumentFromDevice,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
 
@@ -321,6 +324,11 @@ export default function FinanceInvoiceDetailDialog({
   const [sendEmailTo, setSendEmailTo] = useState("");
   const [sendEmailMessage, setSendEmailMessage] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailDocuments, setEmailDocuments] = useState([]);
+  const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
+  const [emailDocumentsError, setEmailDocumentsError] = useState("");
+  const [emailDocumentIds, setEmailDocumentIds] = useState([]);
+  const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -923,7 +931,71 @@ export default function FinanceInvoiceDetailDialog({
   const openSendPaymentLinkDialog = () => {
     setSendEmailTo(getPreferredInvoiceRecipientEmail(invoice));
     setSendEmailMessage("");
+    setEmailDocumentIds([]);
     setSendEmailOpen(true);
+  };
+
+  const loadEmailDocuments = useCallback(async (targetClientId) => {
+    if (!targetClientId) {
+      setEmailDocuments([]);
+      setEmailDocumentsError("");
+      return [];
+    }
+    setEmailDocumentsLoading(true);
+    setEmailDocumentsError("");
+    try {
+      const payload = await listManagerClient360Documents(targetClientId);
+      const rows = Array.isArray(payload?.documents) ? payload.documents : [];
+      setEmailDocuments(rows);
+      return rows;
+    } catch (err) {
+      const message =
+        err?.response?.data?.error ||
+        err?.message ||
+        tDetail("errors.loadClientDocuments", "Unable to load client documents.");
+      setEmailDocuments([]);
+      setEmailDocumentsError(message);
+      return [];
+    } finally {
+      setEmailDocumentsLoading(false);
+    }
+  }, [tDetail]);
+
+  useEffect(() => {
+    if (!sendEmailOpen) return;
+    if (!clientId) {
+      setEmailDocuments([]);
+      setEmailDocumentsError("");
+      return;
+    }
+    loadEmailDocuments(clientId);
+  }, [clientId, loadEmailDocuments, sendEmailOpen]);
+
+  const handleUploadEmailAttachment = async (file) => {
+    if (!clientId || !file) return;
+    setEmailAttachmentUploading(true);
+    try {
+      const created = await uploadManagerClient360DocumentFromDevice(clientId, file, {
+        category: "invoice_support",
+        note: "Uploaded from invoice detail email dialog.",
+      });
+      const rows = await loadEmailDocuments(clientId);
+      const resolvedId = String(created?.id || rows?.[0]?.id || "");
+      if (resolvedId) {
+        setEmailDocumentIds((prev) => [...new Set([...prev, resolvedId])]);
+      }
+      enqueueSnackbar(tDetail("snackbar.attachmentUploaded", "Document uploaded and ready to attach."), {
+        variant: "success",
+      });
+    } catch (err) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.uploadAttachment", "Unable to upload the document attachment.")
+      );
+    } finally {
+      setEmailAttachmentUploading(false);
+    }
   };
 
   const handleSendPaymentLinkEmail = async () => {
@@ -939,6 +1011,7 @@ export default function FinanceInvoiceDetailDialog({
       const payload = await sendFinanceInvoiceEmail(invoiceId, {
         email: toEmail,
         message: String(sendEmailMessage || "").trim() || undefined,
+        client_document_ids: emailDocumentIds,
       });
       const nextInvoice = payload?.invoice || null;
       if (nextInvoice) {
@@ -948,6 +1021,7 @@ export default function FinanceInvoiceDetailDialog({
         variant: "success",
       });
       setSendEmailOpen(false);
+      setEmailDocumentIds([]);
       onSaved?.(nextInvoice || invoice);
     } catch (err) {
       setError(
@@ -2011,6 +2085,24 @@ export default function FinanceInvoiceDetailDialog({
                 "The payment link and invoice total will be added automatically."
               )}
             />
+            {emailDocumentsError ? <Alert severity="warning">{emailDocumentsError}</Alert> : null}
+            {emailDocumentsLoading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  {tDetail("emailDialog.loadingDocuments", "Loading client documents...")}
+                </Typography>
+              </Stack>
+            ) : (
+              <ClientDocumentAttachmentPanel
+                clientId={clientId}
+                documents={emailDocuments}
+                selectedIds={emailDocumentIds}
+                onSelectedIdsChange={setEmailDocumentIds}
+                uploading={emailAttachmentUploading}
+                onUpload={handleUploadEmailAttachment}
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

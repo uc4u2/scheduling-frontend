@@ -37,6 +37,7 @@ import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
+import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import FinanceInvoiceDetailDialog from "./FinanceInvoiceDetailDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 import {
@@ -44,8 +45,10 @@ import {
   createSimilarFinanceInvoice,
   downloadFinanceInvoicePdf,
   getFinanceInvoicePrintHtml,
+  listManagerClient360Documents,
   listFinanceInvoices,
   sendFinanceInvoiceEmail,
+  uploadManagerClient360DocumentFromDevice,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
@@ -266,6 +269,11 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailTo, setEmailTo] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [emailDocuments, setEmailDocuments] = useState([]);
+  const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
+  const [emailDocumentsError, setEmailDocumentsError] = useState("");
+  const [emailDocumentIds, setEmailDocumentIds] = useState([]);
+  const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const requestedClientId = searchParams.get("clientId") || "";
@@ -374,7 +382,74 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     setEmailTarget(row);
     setEmailTo(getPreferredInvoiceRowEmail(row));
     setEmailMessage("");
+    setEmailDocumentIds([]);
     setEmailDialogOpen(true);
+  };
+
+  const emailClientId = emailTarget?.client?.id || emailTarget?.client_id || null;
+
+  const loadEmailDocuments = useCallback(async (clientId) => {
+    if (!clientId) {
+      setEmailDocuments([]);
+      setEmailDocumentsError("");
+      return [];
+    }
+    setEmailDocumentsLoading(true);
+    setEmailDocumentsError("");
+    try {
+      const payload = await listManagerClient360Documents(clientId);
+      const rows = Array.isArray(payload?.documents) ? payload.documents : [];
+      setEmailDocuments(rows);
+      return rows;
+    } catch (err) {
+      const message =
+        err?.response?.data?.error ||
+        err?.message ||
+        tInvoice("errors.loadClientDocuments", "Unable to load client documents.");
+      setEmailDocuments([]);
+      setEmailDocumentsError(message);
+      return [];
+    } finally {
+      setEmailDocumentsLoading(false);
+    }
+  }, [tInvoice]);
+
+  useEffect(() => {
+    if (!emailDialogOpen) return;
+    if (!emailClientId) {
+      setEmailDocuments([]);
+      setEmailDocumentsError("");
+      return;
+    }
+    loadEmailDocuments(emailClientId);
+  }, [emailClientId, emailDialogOpen, loadEmailDocuments]);
+
+  const handleUploadEmailAttachment = async (file) => {
+    if (!emailClientId || !file) return;
+    setEmailAttachmentUploading(true);
+    try {
+      const created = await uploadManagerClient360DocumentFromDevice(emailClientId, file, {
+        category: "invoice_support",
+        note: "Uploaded from invoice email dialog.",
+      });
+      const rows = await loadEmailDocuments(emailClientId);
+      const resolvedId = String(created?.id || rows?.[0]?.id || "");
+      if (resolvedId) {
+        setEmailDocumentIds((prev) => [...new Set([...prev, resolvedId])]);
+      }
+      enqueueSnackbar(tInvoice("snackbar.attachmentUploaded", "Document uploaded and ready to attach."), {
+        variant: "success",
+      });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error ||
+          err?.message ||
+          tInvoice("errors.uploadAttachment", "Unable to upload the document attachment."),
+        { variant: "error" }
+      );
+    } finally {
+      setEmailAttachmentUploading(false);
+    }
   };
 
   const handleSendEmail = async () => {
@@ -391,12 +466,14 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       await sendFinanceInvoiceEmail(invoiceId, {
         email: String(emailTo || "").trim(),
         message: String(emailMessage || "").trim() || undefined,
+        client_document_ids: emailDocumentIds,
       });
       enqueueSnackbar(tInvoice("snackbar.paymentLinkEmailSent", "Payment link email sent."), {
         variant: "success",
       });
       setEmailDialogOpen(false);
       setEmailTarget(null);
+      setEmailDocumentIds([]);
       await load();
     } catch (err) {
       setError(
@@ -802,6 +879,24 @@ export default function FinanceInvoicesPage({ onNavigate }) {
               onChange={(event) => setEmailMessage(event.target.value)}
               helperText={tInvoice("emailDialog.helperText", "The payment link and invoice total will be added automatically.")}
             />
+            {emailDocumentsError ? <Alert severity="warning">{emailDocumentsError}</Alert> : null}
+            {emailDocumentsLoading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  {tInvoice("emailDialog.loadingDocuments", "Loading client documents...")}
+                </Typography>
+              </Stack>
+            ) : (
+              <ClientDocumentAttachmentPanel
+                clientId={emailClientId}
+                documents={emailDocuments}
+                selectedIds={emailDocumentIds}
+                onSelectedIdsChange={setEmailDocumentIds}
+                uploading={emailAttachmentUploading}
+                onUpload={handleUploadEmailAttachment}
+              />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
