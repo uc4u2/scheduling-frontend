@@ -7,6 +7,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -738,8 +739,12 @@ function QuickSessionDialog({ open, client, bookings = [], saving, onClose, onSu
   );
 }
 
-function QuickEmailDialog({ open, client, saving, initialForm = null, onClose, onSubmit }) {
-  const [form, setForm] = useState({ subject: "", body: "" });
+function QuickEmailDialog({ open, client, saving, initialForm = null, documents = [], onClose, onSubmit }) {
+  const [form, setForm] = useState({ subject: "", body: "", client_document_ids: [] });
+  const attachableDocuments = useMemo(
+    () => documents.filter((row) => row?.is_email_attachable),
+    [documents]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -747,6 +752,7 @@ function QuickEmailDialog({ open, client, saving, initialForm = null, onClose, o
     setForm({
       subject: initialForm?.subject || `${displayName} follow-up`,
       body: initialForm?.body || "",
+      client_document_ids: Array.isArray(initialForm?.client_document_ids) ? initialForm.client_document_ids : [],
     });
   }, [open, client, client?.id, client?.display_name, client?.client, initialForm]);
 
@@ -773,6 +779,38 @@ function QuickEmailDialog({ open, client, saving, initialForm = null, onClose, o
             value={form.body}
             onChange={(event) => setForm((prev) => ({ ...prev, body: event.target.value }))}
           />
+          <FormControl fullWidth>
+            <InputLabel>Attach vault documents</InputLabel>
+            <Select
+              multiple
+              label="Attach vault documents"
+              value={form.client_document_ids}
+              onChange={(event) => setForm((prev) => ({ ...prev, client_document_ids: event.target.value }))}
+              renderValue={(selected) => {
+                const labels = attachableDocuments
+                  .filter((row) => selected.includes(String(row.id)))
+                  .map((row) => row.original_filename || `Document #${row.id}`);
+                return labels.length ? labels.join(", ") : "No attachments";
+              }}
+            >
+              {attachableDocuments.map((row) => (
+                <MenuItem key={row.id} value={String(row.id)}>
+                  <Checkbox checked={form.client_document_ids.includes(String(row.id))} />
+                  <Stack spacing={0.25}>
+                    <Typography variant="body2">{row.original_filename || `Document #${row.id}`}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {getClientDocumentCategoryLabel(row.category)} • {formatDateTime(row.created_at, getUserTimezone())}
+                    </Typography>
+                  </Stack>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {!attachableDocuments.length ? (
+            <Alert severity="info">
+              Vault documents become attachable when they are stored and scan-ready.
+            </Alert>
+          ) : null}
           <Alert severity="info">
             This email is logged to the client history with sender and timestamp. SMS will be added later.
           </Alert>
@@ -2212,6 +2250,9 @@ export default function ManagerClientsWorkspace() {
     const payload = {
       subject: String(source.subject || "").trim(),
       body: String(source.body || "").trim(),
+      client_document_ids: Array.isArray(source.client_document_ids)
+        ? source.client_document_ids.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+        : [],
     };
     if (!payload.subject) {
       enqueueSnackbar("Email subject is required.", { variant: "warning" });
@@ -2251,10 +2292,14 @@ export default function ManagerClientsWorkspace() {
       const uploadRes = await api.post("/api/website/media/upload", form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      const uploadedItem =
+        uploadRes.data?.item ||
+        uploadRes.data?.items?.[0] ||
+        null;
       const rawUrl =
-        uploadRes.data?.items?.[0]?.url_public ||
-        uploadRes.data?.items?.[0]?.file_url ||
-        uploadRes.data?.items?.[0]?.url ||
+        uploadedItem?.url_public ||
+        uploadedItem?.file_url ||
+        uploadedItem?.url ||
         uploadRes.data?.url ||
         uploadRes.data?.url_public;
       if (!rawUrl) {
@@ -2270,12 +2315,14 @@ export default function ManagerClientsWorkspace() {
       await createManagerClient360Document(clientId, {
         original_filename: documentFile.name,
         file_url: finalUrl,
-        storage_provider: "manual_upload",
+        storage_provider: uploadedItem?.provider || uploadedItem?.storage_provider || "manual_upload",
         content_type: documentFile.type || "application/octet-stream",
         file_size: documentFile.size || undefined,
         category: documentCategory || "other",
         note: documentNote?.trim() || "",
         scan_status: "clean",
+        object_key: uploadedItem?.key || uploadedItem?.object_key || undefined,
+        bucket: uploadedItem?.bucket || undefined,
       });
       setDocumentFile(null);
       setDocumentCategory("other");
@@ -3806,6 +3853,7 @@ export default function ManagerClientsWorkspace() {
           client={{ display_name: getClientDisplayName(profile), client: profile }}
           saving={sendingEmail}
           initialForm={detailEmailDraft}
+          documents={sortedDocuments}
           onClose={() => {
             setDetailQuickEmailOpen(false);
             setDetailEmailDraft(null);
