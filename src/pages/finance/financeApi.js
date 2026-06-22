@@ -434,6 +434,21 @@ export const createManagerClient360SessionNote = (clientId, payload) =>
 export const sendManagerClient360Email = (clientId, payload) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/email`, payload));
 
+export const listManagerClient360EmailTemplates = () =>
+  unwrap(api.get("/api/manager/client-360/email-templates"));
+
+export const createManagerClient360EmailTemplate = (payload) =>
+  unwrap(api.post("/api/manager/client-360/email-templates", payload));
+
+export const updateManagerClient360EmailTemplate = (templateId, payload) =>
+  unwrap(api.patch(`/api/manager/client-360/email-templates/${templateId}`, payload));
+
+export const deleteManagerClient360EmailTemplate = (templateId) =>
+  unwrap(api.delete(`/api/manager/client-360/email-templates/${templateId}`));
+
+export const setManagerClient360EmailTemplateDefault = (templateId) =>
+  unwrap(api.post(`/api/manager/client-360/email-templates/${templateId}/default`));
+
 export const listManagerClient360Documents = (clientId) =>
   unwrap(api.get(`/api/manager/client-360/${clientId}/documents`));
 

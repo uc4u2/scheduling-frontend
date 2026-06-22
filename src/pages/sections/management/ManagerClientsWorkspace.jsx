@@ -83,17 +83,22 @@ import { getUserTimezone } from "../../../utils/timezone";
 import {
   archiveFinanceClient,
   cancelManagerClient360DocumentRequest,
+  createManagerClient360EmailTemplate,
   createManagerClient360Document,
   createManagerClient360DocumentRequest,
   createManagerClient360Note,
   createManagerClient360SessionNote,
+  deleteManagerClient360EmailTemplate,
   deleteManagerClient360Document,
   getManagerClient360,
+  listManagerClient360EmailTemplates,
   listManagerClient360Documents,
   listManagerClient360DocumentRequests,
   listManagerClient360,
   sendManagerClient360Email,
+  setManagerClient360EmailTemplateDefault,
   updateFinanceClient,
+  updateManagerClient360EmailTemplate,
 } from "../../finance/financeApi";
 import { getClientDisplayName } from "../../finance/clientUtils";
 import FinanceMetricCard from "../../finance/components/FinanceMetricCard";
@@ -236,6 +241,11 @@ const CLIENT_EMAIL_TEMPLATE_DEFS = [
   { key: "invoice_follow_up", label: "Invoice follow-up" },
   { key: "rebooking_reminder", label: "Rebooking reminder" },
   { key: "general_follow_up", label: "General follow-up" },
+];
+
+const CLIENT_EMAIL_TEMPLATE_CATEGORIES = [
+  ...CLIENT_EMAIL_TEMPLATE_DEFS.map((row) => [row.key, row.label]),
+  ["custom", "Custom"],
 ];
 
 const formatMoney = (value, currency = CURRENCY) =>
@@ -739,6 +749,12 @@ function QuickEmailDialog({
   saving,
   initialForm = null,
   documents = [],
+  templateOptions = [],
+  selectedTemplate = null,
+  customTemplateCount = 0,
+  templateLoading = false,
+  templateError = "",
+  onOpenTemplateManager,
   uploadingAttachment = false,
   onUploadAttachment,
   onGoToDocuments,
@@ -767,7 +783,7 @@ function QuickEmailDialog({
       setForm((prev) => ({ ...prev, template_key: "" }));
       return;
     }
-    const template = initialForm?.templateOptions?.find?.((row) => row.key === templateKey);
+    const template = templateOptions.find((row) => row.key === templateKey);
     if (!template) return;
     setForm((prev) => ({
       ...prev,
@@ -796,16 +812,18 @@ function QuickEmailDialog({
               <MenuItem value="">
                 <em>Start from blank / current draft</em>
               </MenuItem>
-              {(initialForm?.templateOptions || []).map((template) => (
+              {templateOptions.map((template) => (
                 <MenuItem key={template.key} value={template.key}>
                   {template.label}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          {(initialForm?.templateOptions || []).length ? (
+          {templateLoading ? <Alert severity="info">Loading custom templates…</Alert> : null}
+          {templateError ? <Alert severity="warning">{templateError}</Alert> : null}
+          {templateOptions.length ? (
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {(initialForm.templateOptions || []).slice(0, 4).map((template) => (
+              {templateOptions.slice(0, 4).map((template) => (
                 <Chip
                   key={template.key}
                   size="small"
@@ -817,6 +835,70 @@ function QuickEmailDialog({
               ))}
             </Stack>
           ) : null}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {selectedTemplate ? (
+                <Chip
+                  size="small"
+                  label={selectedTemplate.is_custom ? `Custom: ${selectedTemplate.name || selectedTemplate.label}` : `Built-in: ${selectedTemplate.label}`}
+                  variant="outlined"
+                  sx={readableChipSx(selectedTemplate.is_custom ? "info" : "default")}
+                />
+              ) : (
+                <Chip size="small" label="No template selected" variant="outlined" sx={readableChipSx("default")} />
+              )}
+              {selectedTemplate?.is_default ? (
+                <Chip size="small" label="Default template" variant="outlined" sx={readableChipSx("success")} />
+              ) : null}
+              {customTemplateCount ? (
+                <Chip size="small" label={`${customTemplateCount} custom`} variant="outlined" sx={readableChipSx("primary")} />
+              ) : null}
+            </Stack>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onOpenTemplateManager?.("create", {
+                  name: form.subject || `${client?.display_name || getClientDisplayName(client?.client || client)} template`,
+                  subject: form.subject,
+                  body: form.body,
+                  category: selectedTemplate?.category || "custom",
+                  is_default: false,
+                })}
+              >
+                Save as template
+              </Button>
+              {selectedTemplate?.is_custom ? (
+                <>
+                  <Button
+                    size="small"
+                    onClick={() => onOpenTemplateManager?.("edit", {
+                      ...selectedTemplate,
+                      subject: form.subject,
+                      body: form.body,
+                    })}
+                  >
+                    Edit selected
+                  </Button>
+                  <Button
+                    size="small"
+                    color="warning"
+                    onClick={() => onOpenTemplateManager?.("default", selectedTemplate)}
+                    disabled={selectedTemplate.is_default}
+                  >
+                    {selectedTemplate.is_default ? "Default" : "Set default"}
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => onOpenTemplateManager?.("delete", selectedTemplate)}
+                  >
+                    Delete
+                  </Button>
+                </>
+              ) : null}
+            </Stack>
+          </Stack>
           <TextField
             fullWidth
             label="Subject"
@@ -924,6 +1006,97 @@ function QuickEmailDialog({
 
 function getDocumentAttachabilityTone(row) {
   return row?.is_email_attachable ? "success" : "default";
+}
+
+function EmailTemplateManagerDialog({
+  open,
+  mode = "create",
+  saving = false,
+  initialValues = null,
+  onClose,
+  onSubmit,
+}) {
+  const [form, setForm] = useState({
+    name: "",
+    subject: "",
+    body: "",
+    category: "custom",
+    is_default: false,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      name: initialValues?.name || "",
+      subject: initialValues?.subject || "",
+      body: initialValues?.body || "",
+      category: initialValues?.category || "custom",
+      is_default: Boolean(initialValues?.is_default),
+    });
+  }, [open, initialValues]);
+
+  const title = mode === "edit" ? "Edit email template" : "Save email template";
+
+  return (
+    <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+          <TextField
+            fullWidth
+            label="Template name"
+            value={form.name}
+            onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select
+              label="Category"
+              value={form.category}
+              onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+            >
+              {CLIENT_EMAIL_TEMPLATE_CATEGORIES.map(([value, label]) => (
+                <MenuItem key={value} value={value}>{label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            fullWidth
+            label="Subject"
+            value={form.subject}
+            onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
+          />
+          <TextField
+            fullWidth
+            multiline
+            minRows={6}
+            label="Body"
+            value={form.body}
+            onChange={(event) => setForm((prev) => ({ ...prev, body: event.target.value }))}
+          />
+          <FormControlLabel
+            control={(
+              <Checkbox
+                checked={form.is_default}
+                onChange={(event) => setForm((prev) => ({ ...prev, is_default: event.target.checked }))}
+              />
+            )}
+            label="Set as the default Send email template"
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button
+          variant="contained"
+          onClick={() => onSubmit(form)}
+          disabled={saving || !form.name.trim() || !form.subject.trim() || !form.body.trim()}
+        >
+          {saving ? "Saving..." : mode === "edit" ? "Save changes" : "Save template"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 }
 
 function RequestDocumentDialog({ open, saving, initialValues = null, onClose, onSubmit }) {
@@ -1973,6 +2146,13 @@ export default function ManagerClientsWorkspace() {
   const [detailEmailDraft, setDetailEmailDraft] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
+  const [emailTemplates, setEmailTemplates] = useState([]);
+  const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
+  const [emailTemplatesError, setEmailTemplatesError] = useState("");
+  const [emailTemplateDialogOpen, setEmailTemplateDialogOpen] = useState(false);
+  const [emailTemplateDialogMode, setEmailTemplateDialogMode] = useState("create");
+  const [emailTemplateDraft, setEmailTemplateDraft] = useState(null);
+  const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [createClientForm, setCreateClientForm] = useState({ name: "", email: "", phone: "" });
   const [createClientSaving, setCreateClientSaving] = useState(false);
@@ -2051,6 +2231,23 @@ export default function ManagerClientsWorkspace() {
     }
   }, [clientId]);
 
+  const loadEmailTemplates = useCallback(async () => {
+    setEmailTemplatesLoading(true);
+    setEmailTemplatesError("");
+    try {
+      const payload = await listManagerClient360EmailTemplates();
+      const rows = Array.isArray(payload?.templates) ? payload.templates : [];
+      setEmailTemplates(rows);
+      return rows;
+    } catch (err) {
+      setEmailTemplates([]);
+      setEmailTemplatesError(err?.response?.data?.error || err?.message || "Unable to load email templates.");
+      return [];
+    } finally {
+      setEmailTemplatesLoading(false);
+    }
+  }, []);
+
   const loadDocumentRequests = useCallback(async () => {
     if (!clientId) return [];
     setDocumentRequestsLoading(true);
@@ -2083,11 +2280,14 @@ export default function ManagerClientsWorkspace() {
       setDocumentsError("");
       setDocumentRequests([]);
       setDocumentRequestsError("");
+      setEmailTemplates([]);
+      setEmailTemplatesError("");
       return;
     }
     loadDocuments();
     loadDocumentRequests();
-  }, [clientId, loadDocuments, loadDocumentRequests]);
+    loadEmailTemplates();
+  }, [clientId, loadDocuments, loadDocumentRequests, loadEmailTemplates]);
 
   useEffect(() => {
     setDetailSections(DEFAULT_DETAIL_SECTIONS);
@@ -2370,6 +2570,96 @@ export default function ManagerClientsWorkspace() {
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to send client email.", { variant: "error" });
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleOpenEmailTemplateManager = useCallback((mode = "create", template = null) => {
+    if (mode === "delete" && template?.template_id) {
+      if (typeof window !== "undefined" && !window.confirm(`Archive template "${template.name || template.label || "this template"}"?`)) {
+        return;
+      }
+      setEmailTemplateSaving(true);
+      deleteManagerClient360EmailTemplate(template.template_id)
+        .then(async () => {
+          enqueueSnackbar("Email template archived.", { variant: "success" });
+          await loadEmailTemplates();
+          setDetailEmailDraft((prev) => (
+            prev?.template_key === `custom:${template.template_id}`
+              ? { ...prev, template_key: "" }
+              : prev
+          ));
+        })
+        .catch((err) => {
+          enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to delete email template.", { variant: "error" });
+        })
+        .finally(() => setEmailTemplateSaving(false));
+      return;
+    }
+    if (mode === "default" && template?.template_id) {
+      setEmailTemplateSaving(true);
+      setManagerClient360EmailTemplateDefault(template.template_id)
+        .then(async (payload) => {
+          const saved = payload?.template;
+          enqueueSnackbar("Default email template updated.", { variant: "success" });
+          await loadEmailTemplates();
+          if (saved?.id) {
+            setDetailEmailDraft((prev) => (
+              prev?.template_key === `custom:${saved.id}`
+                ? { ...prev, template_key: `custom:${saved.id}` }
+                : prev
+            ));
+          }
+        })
+        .catch((err) => {
+          enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to set default template.", { variant: "error" });
+        })
+        .finally(() => setEmailTemplateSaving(false));
+      return;
+    }
+    setEmailTemplateDialogMode(mode);
+    setEmailTemplateDraft(template || null);
+    setEmailTemplateDialogOpen(true);
+  }, [enqueueSnackbar, loadEmailTemplates]);
+
+  const handleSaveEmailTemplate = async (overrideForm = null) => {
+    const source = overrideForm || emailTemplateDraft || {};
+    const payload = {
+      name: String(source.name || "").trim(),
+      subject: String(source.subject || "").trim(),
+      body: String(source.body || "").trim(),
+      category: String(source.category || "custom").trim() || "custom",
+      is_default: Boolean(source.is_default),
+      is_active: true,
+    };
+    if (!payload.name || !payload.subject || !payload.body) {
+      enqueueSnackbar("Template name, subject, and body are required.", { variant: "warning" });
+      return;
+    }
+    setEmailTemplateSaving(true);
+    try {
+      const res = emailTemplateDialogMode === "edit" && emailTemplateDraft?.template_id
+        ? await updateManagerClient360EmailTemplate(emailTemplateDraft.template_id, payload)
+        : await createManagerClient360EmailTemplate(payload);
+      const saved = res?.template || null;
+      enqueueSnackbar(
+        emailTemplateDialogMode === "edit" ? "Email template updated." : "Email template saved.",
+        { variant: "success" }
+      );
+      setEmailTemplateDialogOpen(false);
+      setEmailTemplateDraft(null);
+      await loadEmailTemplates();
+      if (saved?.id) {
+        setDetailEmailDraft((prev) => ({
+          ...(prev || {}),
+          template_key: `custom:${saved.id}`,
+          subject: payload.subject,
+          body: payload.body,
+        }));
+      }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to save email template.", { variant: "error" });
+    } finally {
+      setEmailTemplateSaving(false);
     }
   };
 
@@ -2660,11 +2950,15 @@ export default function ManagerClientsWorkspace() {
 
   const openNotesComposer = (mode = "note", draft = null) => {
     if (mode === "email") {
-      const baseDraft = draft || {};
-      setDetailEmailDraft({
-        ...baseDraft,
-        templateOptions: emailTemplateOptions,
-      });
+      const defaultCustomTemplate = emailTemplates.find((row) => row?.is_active && row?.is_default) || null;
+      const baseDraft = draft || (defaultCustomTemplate
+        ? {
+            template_key: `custom:${defaultCustomTemplate.id}`,
+            subject: defaultCustomTemplate.subject || "",
+            body: defaultCustomTemplate.body || "",
+          }
+        : {});
+      setDetailEmailDraft(baseDraft);
       setDetailQuickEmailOpen(true);
       return;
     }
@@ -2675,7 +2969,7 @@ export default function ManagerClientsWorkspace() {
     setDetailQuickNoteOpen(true);
   };
 
-  const emailTemplateOptions = useMemo(() => {
+  const builtInEmailTemplateOptions = useMemo(() => {
     const clientName = getClientDisplayName(profile) || "there";
     const companyName = profile?.company_name || detail?.company_name || "Schedulaa team";
     const nextBookingLabel = formatShortDate(summary.next_appointment, timezone);
@@ -2745,8 +3039,12 @@ export default function ManagerClientsWorkspace() {
     return CLIENT_EMAIL_TEMPLATE_DEFS.map((template) => ({
       key: template.key,
       label: template.label,
+      name: template.label,
       subject: byKey[template.key]?.subject || `${clientName} follow-up`,
       body: byKey[template.key]?.body || `Hi ${clientName},\n\nBest,\n${companyName}`,
+      category: template.key,
+      is_custom: false,
+      is_default: false,
     }));
   }, [
     detail?.company_name,
@@ -2757,16 +3055,43 @@ export default function ManagerClientsWorkspace() {
     timezone,
   ]);
 
+  const customEmailTemplateOptions = useMemo(
+    () =>
+      emailTemplates
+        .filter((row) => row?.is_active)
+        .map((row) => ({
+          key: `custom:${row.id}`,
+          label: `${row.name}${row.is_default ? " (Default)" : ""}`,
+          name: row.name,
+          subject: row.subject || "",
+          body: row.body || "",
+          category: row.category || "custom",
+          is_custom: true,
+          is_default: Boolean(row.is_default),
+          template_id: row.id,
+        })),
+    [emailTemplates]
+  );
+
+  const emailTemplateOptions = useMemo(
+    () => [...builtInEmailTemplateOptions, ...customEmailTemplateOptions],
+    [builtInEmailTemplateOptions, customEmailTemplateOptions]
+  );
+
   const buildEmailTemplate = useCallback((templateKey) => {
     const template = emailTemplateOptions.find((row) => row.key === templateKey);
     if (!template) return null;
     return {
       template_key: template.key,
-      templateOptions: emailTemplateOptions,
       subject: template.subject,
       body: template.body,
     };
   }, [emailTemplateOptions]);
+
+  const selectedEmailTemplate = useMemo(
+    () => emailTemplateOptions.find((row) => row.key === detailEmailDraft?.template_key) || null,
+    [detailEmailDraft?.template_key, emailTemplateOptions]
+  );
 
   const explainActionState = useCallback((entry, fallback = "Action not ready yet.") => {
     const reason = entry?.reason || fallback;
@@ -4099,6 +4424,12 @@ export default function ManagerClientsWorkspace() {
           saving={sendingEmail}
           initialForm={detailEmailDraft}
           documents={sortedDocuments}
+          templateOptions={emailTemplateOptions}
+          selectedTemplate={selectedEmailTemplate}
+          customTemplateCount={customEmailTemplateOptions.length}
+          templateLoading={emailTemplatesLoading}
+          templateError={emailTemplatesError}
+          onOpenTemplateManager={handleOpenEmailTemplateManager}
           uploadingAttachment={emailAttachmentUploading}
           onUploadAttachment={handleUploadEmailAttachment}
           onGoToDocuments={handleGoToDocumentsFromEmail}
@@ -4117,6 +4448,17 @@ export default function ManagerClientsWorkspace() {
             setRequestDocumentDraft(null);
           }}
           onSubmit={handleCreateDocumentRequest}
+        />
+        <EmailTemplateManagerDialog
+          open={emailTemplateDialogOpen}
+          mode={emailTemplateDialogMode}
+          saving={emailTemplateSaving}
+          initialValues={emailTemplateDraft}
+          onClose={() => {
+            setEmailTemplateDialogOpen(false);
+            setEmailTemplateDraft(null);
+          }}
+          onSubmit={handleSaveEmailTemplate}
         />
       </ManagementFrame>
     );
