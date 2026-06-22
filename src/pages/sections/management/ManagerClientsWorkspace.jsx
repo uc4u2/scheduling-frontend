@@ -248,6 +248,13 @@ const CLIENT_EMAIL_TEMPLATE_CATEGORIES = [
   ["custom", "Custom"],
 ];
 
+const CLIENT_DIRECTORY_SORT_OPTIONS = [
+  ["next_appointment", "Next appointment"],
+  ["recent_activity", "Recent activity"],
+  ["name", "Name"],
+  ["open_balance", "Open balance"],
+];
+
 const formatMoney = (value, currency = CURRENCY) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -2022,7 +2029,13 @@ function TrendCharts({ detail }) {
   );
 }
 
-function Client360ListTable({ rows, onOpen, onQuickNote }) {
+function Client360ListTable({ rows, sort, onOpen, onQuickNote }) {
+  const sortDescriptions = {
+    next_appointment: "Default order: upcoming appointments first, then recent activity.",
+    recent_activity: "Default order: most recently active clients first.",
+    name: "Default order: alphabetical by client name.",
+    open_balance: "Default order: highest unpaid balance first.",
+  };
   return (
     <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: 2 }}>
       <Box
@@ -2035,7 +2048,7 @@ function Client360ListTable({ rows, onOpen, onQuickNote }) {
         }}
       >
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          Default order: upcoming appointments first, then recent activity.
+          {sortDescriptions[sort] || sortDescriptions.next_appointment}
         </Typography>
       </Box>
       <Box sx={{ overflowX: "auto" }}>
@@ -2173,6 +2186,7 @@ export default function ManagerClientsWorkspace() {
   const timezone = useMemo(() => getUserTimezone(), []);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("active");
+  const [sort, setSort] = useState("next_appointment");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [listPayload, setListPayload] = useState({ items: [], pagination: null });
@@ -2237,6 +2251,7 @@ export default function ManagerClientsWorkspace() {
       const payload = await listManagerClient360({
         q: query || undefined,
         status,
+        sort,
         page,
         per_page: perPage,
       });
@@ -2250,7 +2265,7 @@ export default function ManagerClientsWorkspace() {
     } finally {
       setListLoading(false);
     }
-  }, [page, perPage, query, status]);
+  }, [page, perPage, query, sort, status]);
 
   const loadDetail = useCallback(async () => {
     if (!clientId) return;
@@ -4579,12 +4594,31 @@ export default function ManagerClientsWorkspace() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={6} sm={4} lg={1.5}>
+              <Grid item xs={12} sm={4} lg={2}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>Sort by</InputLabel>
+                  <Select
+                    value={sort}
+                    label="Sort by"
+                    onChange={(event) => {
+                      setSort(event.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    {CLIENT_DIRECTORY_SORT_OPTIONS.map(([value, label]) => (
+                      <MenuItem key={value} value={value}>
+                        {label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6} sm={6} lg={1.5}>
                 <Button fullWidth variant="contained" onClick={() => setCreateClientOpen(true)} sx={{ height: "100%" }}>
                   Add client
                 </Button>
               </Grid>
-              <Grid item xs={6} sm={4} lg={1.5}>
+              <Grid item xs={6} sm={6} lg={1.5}>
                 <Button fullWidth variant="outlined" onClick={loadList} sx={{ height: "100%" }}>
                   Refresh
                 </Button>
@@ -4596,7 +4630,7 @@ export default function ManagerClientsWorkspace() {
             {!listLoading && !listError && !listItems.length ? (
               <Typography color="text.secondary">No clients matched the current search and status filters.</Typography>
             ) : null}
-            {!!listItems.length ? <Client360ListTable rows={listItems} onOpen={handleOpenClient} onQuickNote={setListQuickNoteTarget} /> : null}
+            {!!listItems.length ? <Client360ListTable rows={listItems} sort={sort} onOpen={handleOpenClient} onQuickNote={setListQuickNoteTarget} /> : null}
             <FinancePagination
               pagination={pagination}
               page={page}
