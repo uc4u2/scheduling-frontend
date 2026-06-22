@@ -43,6 +43,7 @@ import { useSnackbar } from "notistack";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
+import FinanceEmailTemplatePicker from "./components/FinanceEmailTemplatePicker";
 import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
@@ -54,6 +55,7 @@ import {
   getFinanceDocumentSettings,
   getFinanceInvoice,
   getFinanceInvoicePrintHtml,
+  listManagerClient360EmailTemplates,
   listManagerClient360Documents,
   listBillingRecipients,
   sendFinanceInvoiceEmail,
@@ -230,6 +232,43 @@ const SectionHelp = ({ text }) =>
     </Tooltip>
   ) : null;
 
+const buildInvoiceDetailEmailTemplateOptions = ({ invoice, tDetail, customTemplates = [] }) => {
+  const clientName = String(invoice?.client?.display_name || invoice?.client?.name || invoice?.client?.first_name || "").trim() || "there";
+  const companyName = String(invoice?.finance_document_settings?.finance_document_business_name || invoice?.company_name || "Schedulaa").trim() || "Schedulaa";
+  const invoiceNumber = invoice?.invoice_number || "your invoice";
+  const remainingBalance = formatCurrency(Number(invoice?.remaining_balance ?? invoice?.total ?? 0), invoice?.currency || "USD");
+  const builtIns = [
+    {
+      key: "payment_reminder",
+      label: "Payment reminder",
+      subject: `${clientName} payment reminder`,
+      body: `Hi ${clientName},\n\nThis is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingBalance}. If you need us to resend your payment details or help you complete payment, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+    },
+    {
+      key: "invoice_follow_up",
+      label: "Invoice follow-up",
+      subject: `${clientName} invoice follow-up`,
+      body: `Hi ${clientName},\n\nWe are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+    },
+    {
+      key: "general_follow_up",
+      label: "General follow-up",
+      subject: `${clientName} follow-up`,
+      body: `Hi ${clientName},\n\nThis is a quick follow-up from ${companyName}. If you need anything related to your invoice or payment details, reply to this email and we will help.\n\nBest,\n${companyName}`,
+    },
+  ].map((template) => ({ ...template, is_custom: false }));
+  const customs = (customTemplates || [])
+    .filter((row) => row?.is_active)
+    .map((row) => ({
+      key: `custom:${row.id}`,
+      label: `${row.name}${row.is_default ? " (Default)" : ""}`,
+      subject: row.subject || "",
+      body: row.body || "",
+      is_custom: true,
+    }));
+  return [...builtIns, ...customs];
+};
+
 const badgeToneStyles = {
   neutral: {
     color: "#334155",
@@ -322,13 +361,18 @@ export default function FinanceInvoiceDetailDialog({
   const [inlineAuditOpen, setInlineAuditOpen] = useState(false);
   const [sendEmailOpen, setSendEmailOpen] = useState(false);
   const [sendEmailTo, setSendEmailTo] = useState("");
+  const [sendEmailSubject, setSendEmailSubject] = useState("");
   const [sendEmailMessage, setSendEmailMessage] = useState("");
+  const [sendEmailTemplateKey, setSendEmailTemplateKey] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailDocuments, setEmailDocuments] = useState([]);
   const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
   const [emailDocumentsError, setEmailDocumentsError] = useState("");
   const [emailDocumentIds, setEmailDocumentIds] = useState([]);
   const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
+  const [emailTemplates, setEmailTemplates] = useState([]);
+  const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
+  const [emailTemplatesError, setEmailTemplatesError] = useState("");
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -930,10 +974,34 @@ export default function FinanceInvoiceDetailDialog({
 
   const openSendPaymentLinkDialog = () => {
     setSendEmailTo(getPreferredInvoiceRecipientEmail(invoice));
-    setSendEmailMessage("");
+    const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
+    if (defaultCustom) {
+      setSendEmailTemplateKey(`custom:${defaultCustom.id}`);
+      setSendEmailSubject(defaultCustom.subject || "");
+      setSendEmailMessage(defaultCustom.body || "");
+    } else {
+      const builtIn = buildInvoiceDetailEmailTemplateOptions({ invoice, tDetail, customTemplates: [] }).find((entry) => entry.key === "payment_reminder");
+      setSendEmailTemplateKey("payment_reminder");
+      setSendEmailSubject(builtIn?.subject || `Invoice ${invoice?.invoice_number || invoiceId}`.trim());
+      setSendEmailMessage(builtIn?.body || "");
+    }
     setEmailDocumentIds([]);
     setSendEmailOpen(true);
   };
+
+  const emailTemplateOptions = useMemo(
+    () => buildInvoiceDetailEmailTemplateOptions({ invoice, tDetail, customTemplates: emailTemplates }),
+    [emailTemplates, invoice, tDetail]
+  );
+
+  const applyEmailTemplate = useCallback((templateKey) => {
+    setSendEmailTemplateKey(templateKey);
+    if (!templateKey) return;
+    const template = emailTemplateOptions.find((row) => row.key === templateKey);
+    if (!template) return;
+    setSendEmailSubject(template.subject || "");
+    setSendEmailMessage(template.body || "");
+  }, [emailTemplateOptions]);
 
   const loadEmailDocuments = useCallback(async (targetClientId) => {
     if (!targetClientId) {
@@ -961,15 +1029,32 @@ export default function FinanceInvoiceDetailDialog({
     }
   }, [tDetail]);
 
+  const loadEmailTemplates = useCallback(async () => {
+    setEmailTemplatesLoading(true);
+    setEmailTemplatesError("");
+    try {
+      const payload = await listManagerClient360EmailTemplates();
+      setEmailTemplates(Array.isArray(payload?.templates) ? payload.templates : []);
+    } catch (err) {
+      setEmailTemplates([]);
+      setEmailTemplatesError(err?.response?.data?.error || err?.message || "Unable to load email templates.");
+    } finally {
+      setEmailTemplatesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!sendEmailOpen) return;
     if (!clientId) {
       setEmailDocuments([]);
       setEmailDocumentsError("");
+      setEmailTemplates([]);
+      setEmailTemplatesError("");
       return;
     }
     loadEmailDocuments(clientId);
-  }, [clientId, loadEmailDocuments, sendEmailOpen]);
+    loadEmailTemplates();
+  }, [clientId, loadEmailDocuments, loadEmailTemplates, sendEmailOpen]);
 
   const handleUploadEmailAttachment = async (file) => {
     if (!clientId || !file) return;
@@ -1010,6 +1095,7 @@ export default function FinanceInvoiceDetailDialog({
     try {
       const payload = await sendFinanceInvoiceEmail(invoiceId, {
         email: toEmail,
+        subject: String(sendEmailSubject || "").trim() || undefined,
         message: String(sendEmailMessage || "").trim() || undefined,
         client_document_ids: emailDocumentIds,
       });
@@ -2073,6 +2159,20 @@ export default function FinanceInvoiceDetailDialog({
               label={tDetail("emailDialog.recipientEmail", "Recipient email")}
               value={sendEmailTo}
               onChange={(event) => setSendEmailTo(event.target.value)}
+            />
+            {clientId ? (
+              <FinanceEmailTemplatePicker
+                value={sendEmailTemplateKey}
+                options={emailTemplateOptions}
+                loading={emailTemplatesLoading}
+                error={emailTemplatesError}
+                onChange={applyEmailTemplate}
+              />
+            ) : null}
+            <TextField
+              label={tDetail("emailDialog.subject", "Subject")}
+              value={sendEmailSubject}
+              onChange={(event) => setSendEmailSubject(event.target.value)}
             />
             <TextField
               label={tDetail("emailDialog.messageOptional", "Message (optional)")}
