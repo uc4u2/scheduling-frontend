@@ -2024,9 +2024,22 @@ function TrendCharts({ detail }) {
 
 function Client360ListTable({ rows, onOpen, onQuickNote }) {
   return (
-    <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: 1 }}>
+    <Paper variant="outlined" sx={{ overflow: "hidden", borderRadius: 2 }}>
+      <Box
+        sx={{
+          px: 2,
+          py: 1.25,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          bgcolor: "rgba(37,99,235,0.03)",
+        }}
+      >
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Default order: upcoming appointments first, then recent activity.
+        </Typography>
+      </Box>
       <Box sx={{ overflowX: "auto" }}>
-        <Table sx={{ minWidth: 1200 }}>
+        <Table sx={{ minWidth: 1240 }}>
           <TableHead>
             <TableRow>
               <TableCell>Client</TableCell>
@@ -2041,9 +2054,17 @@ function Client360ListTable({ rows, onOpen, onQuickNote }) {
           </TableHead>
           <TableBody>
             {rows.map((row) => (
-              <TableRow hover key={row.client?.id} onClick={() => onOpen(row.client?.id)} sx={{ cursor: "pointer", "& td": { py: 1.5 } }}>
-                <TableCell>
-                  <Stack spacing={0.5}>
+              <TableRow
+                hover
+                key={row.client?.id}
+                onClick={() => onOpen(row.client?.id)}
+                sx={{
+                  cursor: "pointer",
+                  "& td": { py: 1.75, verticalAlign: "top" },
+                }}
+              >
+                <TableCell sx={{ minWidth: 210 }}>
+                  <Stack spacing={0.75}>
                     <Typography fontWeight={700}>{row.display_name || getClientDisplayName(row.client)}</Typography>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                       <Chip size="small" label={row.status === "archived" ? "Archived" : "Active"} variant="outlined" />
@@ -2051,34 +2072,66 @@ function Client360ListTable({ rows, onOpen, onQuickNote }) {
                     </Stack>
                   </Stack>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2">{row.email || "No email"}</Typography>
-                  <Typography variant="body2" color="text.secondary">{row.phone || "No phone"}</Typography>
+                <TableCell sx={{ minWidth: 250 }}>
+                  <Stack spacing={0.5}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        Email
+                      </Typography>
+                      <Typography variant="body2">{row.email || "No email"}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        Phone
+                      </Typography>
+                      <Typography variant="body2" color={row.phone ? "text.primary" : "text.secondary"}>
+                        {row.phone || "No phone"}
+                      </Typography>
+                    </Box>
+                  </Stack>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2" fontWeight={700}>{row.linked_counts?.appointments ?? 0} total</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {row.linked_counts?.upcoming_appointments ?? 0} upcoming • {row.linked_counts?.past_appointments ?? 0} past
-                  </Typography>
+                <TableCell sx={{ minWidth: 150 }}>
+                  <Stack spacing={0.5}>
+                    <Typography variant="body2" fontWeight={700}>{row.linked_counts?.appointments ?? 0} total</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {row.linked_counts?.upcoming_appointments ?? 0} upcoming
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {row.linked_counts?.past_appointments ?? 0} past
+                    </Typography>
+                  </Stack>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2" fontWeight={700}>
-                    {row.linked_counts?.open_invoices ?? 0} open invoices • {formatMoney(row.unpaid_balance || 0)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {row.linked_counts?.estimates ?? 0} estimates • {row.linked_counts?.open_work_orders ?? 0} open work orders
-                  </Typography>
+                <TableCell sx={{ minWidth: 190 }}>
+                  <Stack spacing={0.5}>
+                    <Typography variant="body2" fontWeight={700}>
+                      {formatMoney(row.unpaid_balance || 0)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {row.linked_counts?.open_invoices ?? 0} open invoices
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {row.linked_counts?.estimates ?? 0} estimates • {row.linked_counts?.open_work_orders ?? 0} open work orders
+                    </Typography>
+                  </Stack>
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ minWidth: 140 }}>
                   <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                     <Chip size="small" label={row.has_login ? "Portal linked" : "No login"} color={row.has_login ? "success" : "default"} variant="outlined" />
                     <Chip size="small" label={row.login_status || "none"} variant="outlined" />
                   </Stack>
                 </TableCell>
-                <TableCell>{row.last_activity_at ? formatDateTime(row.last_activity_at, getUserTimezone()) : "—"}</TableCell>
-                <TableCell>{row.next_appointment_at ? formatDateTime(row.next_appointment_at, getUserTimezone()) : "—"}</TableCell>
-                <TableCell align="right">
-                  <Stack direction="row" justifyContent="flex-end" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <TableCell sx={{ minWidth: 170 }}>
+                  <Typography variant="body2">
+                    {row.last_activity_at ? formatDateTime(row.last_activity_at, getUserTimezone()) : "—"}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ minWidth: 170 }}>
+                  <Typography variant="body2">
+                    {row.next_appointment_at ? formatDateTime(row.next_appointment_at, getUserTimezone()) : "—"}
+                  </Typography>
+                </TableCell>
+                <TableCell align="right" sx={{ minWidth: 156 }}>
+                  <Stack spacing={1} alignItems="stretch" sx={{ minWidth: 128, ml: "auto" }}>
                     <Button
                       size="small"
                       variant="contained"
@@ -2089,16 +2142,19 @@ function Client360ListTable({ rows, onOpen, onQuickNote }) {
                     >
                       Open
                     </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      component={RouterLink}
-                      to={`/manager/booking-checkout?clientId=${row.client?.id}`}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      Checkout
-                    </Button>
-                    <RowActionMenu row={row} onQuickNote={onQuickNote} />
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        component={RouterLink}
+                        to={`/manager/booking-checkout?clientId=${row.client?.id}`}
+                        onClick={(event) => event.stopPropagation()}
+                        sx={{ flex: 1 }}
+                      >
+                        Checkout
+                      </Button>
+                      <RowActionMenu row={row} onQuickNote={onQuickNote} />
+                    </Stack>
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -4489,39 +4545,51 @@ export default function ManagerClientsWorkspace() {
 
         <SectionCard title="Client directory" description="Search by name, email, or phone. Open a client profile to manage bookings, billing, notes, and work orders.">
           <Stack spacing={2}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Search clients"
-                placeholder="Name, email, or phone"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") loadList();
-                }}
-              />
-              <FormControl size="small" sx={{ minWidth: 180 }}>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={status}
-                  label="Status"
+            <Grid container spacing={1.5} alignItems="stretch">
+              <Grid item xs={12} lg={7}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Search clients"
+                  placeholder="Name, email, or phone"
+                  value={query}
                   onChange={(event) => {
-                    setStatus(event.target.value);
+                    setQuery(event.target.value);
                     setPage(1);
                   }}
-                >
-                  <MenuItem value="active">Active</MenuItem>
-                  <MenuItem value="archived">Archived</MenuItem>
-                  <MenuItem value="all">All</MenuItem>
-                </Select>
-              </FormControl>
-              <Button variant="contained" onClick={() => setCreateClientOpen(true)}>Add client</Button>
-              <Button variant="outlined" onClick={loadList}>Refresh</Button>
-            </Stack>
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") loadList();
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4} lg={2}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={status}
+                    label="Status"
+                    onChange={(event) => {
+                      setStatus(event.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="archived">Archived</MenuItem>
+                    <MenuItem value="all">All</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6} sm={4} lg={1.5}>
+                <Button fullWidth variant="contained" onClick={() => setCreateClientOpen(true)} sx={{ height: "100%" }}>
+                  Add client
+                </Button>
+              </Grid>
+              <Grid item xs={6} sm={4} lg={1.5}>
+                <Button fullWidth variant="outlined" onClick={loadList} sx={{ height: "100%" }}>
+                  Refresh
+                </Button>
+              </Grid>
+            </Grid>
 
             {listLoading ? <CircularProgress size={28} /> : null}
             {listError ? <Alert severity="error">{listError}</Alert> : null}
