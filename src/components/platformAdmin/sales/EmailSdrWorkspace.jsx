@@ -16,16 +16,29 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  activateEmailAgent,
+  activateEmailProviderConnection,
+  applyEmailSegmentToCampaign,
   approveEmailCampaign,
   assignEmailHotLeadToYousef,
   classifyEmailInboundEvent,
   classifyEmailReply,
+  createEmailAgent,
   createEmailCampaign,
+  createEmailProviderConnection,
+  createEmailSegment,
+  createEmailTemplate,
   createEmailSuppression,
   createSalesDealFromEmailHotLead,
+  getEmailCampaignAnalytics,
+  getEmailSdrAnalytics,
   generateEmailCampaignDrafts,
   generateEmailCampaignFollowUps,
   getEmailSdrOverview,
+  listEmailAgents,
+  listEmailProviderConnections,
+  listEmailSegments,
+  listEmailTemplates,
   listEmailAgentLimitsToday,
   listEmailCampaigns,
   listEmailHotLeads,
@@ -33,12 +46,25 @@ import {
   listEmailMessages,
   listEmailSuppression,
   markEmailHotLeadContacted,
+  pauseEmailAgent,
   pauseEmailCampaign,
+  pauseEmailProviderConnection,
+  prepareEmailCampaignForSending,
+  previewEmailTemplate,
+  previewEmailSegment,
   previewEmailCampaignLeads,
+  quickStartEmailCampaign,
   runEmailSdrDueSend,
   sendEmailCampaign,
+  testEmailProviderConnection,
+  updateEmailAgent,
   updateEmailAgentLimitToday,
+  updateEmailCampaignAutomationSettings,
   updateEmailMessage,
+  updateEmailProviderConnection,
+  updateEmailSegment,
+  updateEmailTemplate,
+  archiveEmailTemplate,
 } from "../../../api/platformAdminSales";
 
 const emptyCampaignForm = {
@@ -50,6 +76,57 @@ const emptyCampaignForm = {
   send_window_end: "17:00",
   timezone: "America/Toronto",
   follow_up_mode: "manual",
+  provider_connection_id: "",
+};
+
+const emptyProviderForm = {
+  provider: "smtp",
+  name: "",
+  from_email: "",
+  from_name: "",
+  reply_to_email: "",
+  daily_limit: 10,
+  warmup_stage: "",
+};
+
+const emptySegmentForm = {
+  name: "",
+  business_type: "",
+  city: "",
+  source_type: "",
+  email_consent_basis: "",
+  email_publicly_listed: "",
+  exclude_do_not_contact: true,
+  exclude_suppressed: true,
+  only_uncontacted: true,
+  only_not_replied: true,
+};
+
+const emptyAgentForm = {
+  sales_rep_id: "",
+  display_name: "",
+  from_name: "",
+  from_email: "",
+  reply_to_email: "",
+  role_type: "general",
+  status: "draft",
+  daily_limit: 10,
+  warmup_stage: "new",
+  provider_connection_id: "",
+  signature: "",
+  timezone: "America/Toronto",
+  send_window_start: "09:00",
+  send_window_end: "17:00",
+};
+
+const emptyTemplateForm = {
+  name: "",
+  category: "cold_initial",
+  business_type: "",
+  tone: "professional",
+  subject: "",
+  body: "",
+  is_default: false,
 };
 
 const classificationOptions = [
@@ -71,20 +148,47 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [overview, setOverview] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [emailAgents, setEmailAgents] = useState([]);
+  const [providerConnections, setProviderConnections] = useState([]);
+  const [segments, setSegments] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [hotLeads, setHotLeads] = useState([]);
   const [suppression, setSuppression] = useState([]);
   const [agentLimits, setAgentLimits] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [campaignAnalytics, setCampaignAnalytics] = useState({});
   const [newReplyEvents, setNewReplyEvents] = useState([]);
   const [unmatchedEvents, setUnmatchedEvents] = useState([]);
   const [bounceEvents, setBounceEvents] = useState([]);
   const [campaignPreviews, setCampaignPreviews] = useState({});
+  const [segmentPreviews, setSegmentPreviews] = useState({});
+  const [templatePreviews, setTemplatePreviews] = useState({});
+  const [campaignSegmentSelections, setCampaignSegmentSelections] = useState({});
   const [campaignForm, setCampaignForm] = useState(emptyCampaignForm);
+  const [quickStartForm, setQuickStartForm] = useState({
+    name: "",
+    business_type: "",
+    city: "",
+    provider_connection_id: "",
+    initial_template_id: "",
+    follow_up_1_template_id: "",
+    follow_up_2_template_id: "",
+    segment_id: "",
+  });
+  const [providerForm, setProviderForm] = useState(emptyProviderForm);
+  const [segmentForm, setSegmentForm] = useState(emptySegmentForm);
+  const [agentForm, setAgentForm] = useState(emptyAgentForm);
+  const [templateForm, setTemplateForm] = useState(emptyTemplateForm);
   const [messageReplyText, setMessageReplyText] = useState({});
   const [messageReplyClass, setMessageReplyClass] = useState({});
   const [inboundReplyText, setInboundReplyText] = useState({});
   const [inboundReplyClass, setInboundReplyClass] = useState({});
   const [messageDraftState, setMessageDraftState] = useState({});
   const [agentLimitDrafts, setAgentLimitDrafts] = useState({});
+  const [agentDrafts, setAgentDrafts] = useState({});
+  const [providerDrafts, setProviderDrafts] = useState({});
+  const [segmentDrafts, setSegmentDrafts] = useState({});
+  const [templateDrafts, setTemplateDrafts] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -98,7 +202,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     try {
       const [
         overviewResp,
+        analyticsResp,
         campaignRows,
+        emailAgentResp,
+        providerRows,
+        segmentRows,
+        templateRows,
         messageRows,
         hotRows,
         suppressionRows,
@@ -108,7 +217,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         bounceRows,
       ] = await Promise.all([
         getEmailSdrOverview(),
+        getEmailSdrAnalytics(),
         listEmailCampaigns(),
+        listEmailAgents(),
+        listEmailProviderConnections(),
+        listEmailSegments(),
+        listEmailTemplates(),
         listEmailMessages(),
         listEmailHotLeads(),
         listEmailSuppression(),
@@ -118,7 +232,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         listEmailInboundEvents({ queue: "bounces", limit: 50 }),
       ]);
       setOverview(overviewResp || {});
+      setAnalytics(analyticsResp || null);
       setCampaigns(campaignRows || []);
+      setEmailAgents(emailAgentResp?.agents || []);
+      setProviderConnections(providerRows || []);
+      setSegments(segmentRows || []);
+      setTemplates(templateRows || []);
       setMessages(messageRows || []);
       setHotLeads(hotRows || []);
       setSuppression(suppressionRows || []);
@@ -126,6 +245,76 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       setNewReplyEvents(inboundReplyRows || []);
       setUnmatchedEvents(unmatchedRows || []);
       setBounceEvents(bounceRows || []);
+      setProviderDrafts((prev) => {
+        const next = { ...prev };
+        (providerRows || []).forEach((row) => {
+          next[row.id] = next[row.id] || {
+            provider: row.provider,
+            name: row.name,
+            from_email: row.from_email,
+            from_name: row.from_name || "",
+            reply_to_email: row.reply_to_email || "",
+            daily_limit: row.daily_limit,
+            warmup_stage: row.warmup_stage || "",
+          };
+        });
+        return next;
+      });
+      setAgentDrafts((prev) => {
+        const next = { ...prev };
+        (emailAgentResp?.agents || []).forEach((row) => {
+          next[row.id] = next[row.id] || {
+            display_name: row.display_name || "",
+            from_name: row.from_name || "",
+            from_email: row.from_email || "",
+            reply_to_email: row.reply_to_email || "",
+            role_type: row.role_type || "general",
+            status: row.status || "draft",
+            daily_limit: row.daily_limit || 10,
+            warmup_stage: row.warmup_stage || "new",
+            provider_connection_id: row.provider_connection_id || "",
+            signature: row.signature || "",
+            timezone: row.timezone || "America/Toronto",
+            send_window_start: row.send_window_start || "",
+            send_window_end: row.send_window_end || "",
+          };
+        });
+        return next;
+      });
+      setSegmentDrafts((prev) => {
+        const next = { ...prev };
+        (segmentRows || []).forEach((row) => {
+          next[row.id] = next[row.id] || {
+            name: row.name,
+            business_type: row.business_type || "",
+            city: row.city || "",
+            source_type: row.source_type || "",
+            email_consent_basis: row.email_consent_basis || "",
+            email_publicly_listed: row.email_publicly_listed === null || row.email_publicly_listed === undefined ? "" : String(Boolean(row.email_publicly_listed)),
+            exclude_do_not_contact: Boolean(row.exclude_do_not_contact),
+            exclude_suppressed: Boolean(row.exclude_suppressed),
+            only_uncontacted: Boolean(row.only_uncontacted),
+            only_not_replied: Boolean(row.only_not_replied),
+          };
+        });
+        return next;
+      });
+      setTemplateDrafts((prev) => {
+        const next = { ...prev };
+        (templateRows || []).forEach((row) => {
+          next[row.id] = next[row.id] || {
+            name: row.name || "",
+            category: row.category || "cold_initial",
+            business_type: row.business_type || "",
+            tone: row.tone || "professional",
+            subject: row.subject || "",
+            body: row.body || "",
+            is_default: Boolean(row.is_default),
+            status: row.status || "draft",
+          };
+        });
+        return next;
+      });
       setAgentLimitDrafts((prev) => {
         const next = { ...prev };
         (agentLimitRows || []).forEach((row) => {
@@ -154,12 +343,309 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       const campaign = await createEmailCampaign({
         ...campaignForm,
         daily_limit_per_agent: Number(campaignForm.daily_limit_per_agent || 10),
+        provider_connection_id: campaignForm.provider_connection_id ? Number(campaignForm.provider_connection_id) : null,
       });
       setCampaignForm(emptyCampaignForm);
       showBanner("success", `Campaign "${campaign?.name || "created"}" created.`);
       await loadWorkspace();
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to create email campaign.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateProviderConnection = async () => {
+    setSubmitting(true);
+    try {
+      await createEmailProviderConnection({
+        ...providerForm,
+        daily_limit: Number(providerForm.daily_limit || 10),
+      });
+      setProviderForm(emptyProviderForm);
+      showBanner("success", "Provider connection created.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to create provider connection.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateEmailAgent = async () => {
+    setSubmitting(true);
+    try {
+      await createEmailAgent({
+        ...agentForm,
+        sales_rep_id: Number(agentForm.sales_rep_id),
+        daily_limit: Number(agentForm.daily_limit || 10),
+        provider_connection_id: agentForm.provider_connection_id ? Number(agentForm.provider_connection_id) : null,
+      });
+      setAgentForm(emptyAgentForm);
+      showBanner("success", "Email agent created.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to create email agent.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveEmailAgent = async (agentId) => {
+    const draft = agentDrafts[agentId];
+    if (!draft) return;
+    setSubmitting(true);
+    try {
+      await updateEmailAgent(agentId, {
+        ...draft,
+        daily_limit: Number(draft.daily_limit || 10),
+        provider_connection_id: draft.provider_connection_id ? Number(draft.provider_connection_id) : null,
+      });
+      showBanner("success", "Email agent updated.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update email agent.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEmailAgentAction = async (agentId, action) => {
+    setSubmitting(true);
+    try {
+      if (action === "pause") {
+        await pauseEmailAgent(agentId);
+        showBanner("success", "Email agent paused.");
+      } else {
+        await activateEmailAgent(agentId);
+        showBanner("success", "Email agent activated.");
+      }
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Email agent action failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveProviderConnection = async (connectionId) => {
+    const draft = providerDrafts[connectionId];
+    if (!draft) return;
+    setSubmitting(true);
+    try {
+      await updateEmailProviderConnection(connectionId, {
+        ...draft,
+        daily_limit: Number(draft.daily_limit || 10),
+      });
+      showBanner("success", "Provider connection updated.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update provider connection.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleProviderAction = async (connectionId, action) => {
+    setSubmitting(true);
+    try {
+      if (action === "test") {
+        await testEmailProviderConnection(connectionId, {});
+        showBanner("success", "Provider test email sent.");
+      } else if (action === "pause") {
+        await pauseEmailProviderConnection(connectionId);
+        showBanner("success", "Provider connection paused.");
+      } else if (action === "activate") {
+        await activateEmailProviderConnection(connectionId);
+        showBanner("success", "Provider connection activated.");
+      }
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Provider action failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateSegment = async () => {
+    setSubmitting(true);
+    try {
+      await createEmailSegment({
+        ...segmentForm,
+        email_publicly_listed:
+          segmentForm.email_publicly_listed === ""
+            ? null
+            : segmentForm.email_publicly_listed === "true",
+      });
+      setSegmentForm(emptySegmentForm);
+      showBanner("success", "Segment created.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to create segment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateTemplate = async () => {
+    setSubmitting(true);
+    try {
+      await createEmailTemplate(templateForm);
+      setTemplateForm(emptyTemplateForm);
+      showBanner("success", "Email template created.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to create email template.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveTemplate = async (templateId) => {
+    const draft = templateDrafts[templateId];
+    if (!draft) return;
+    setSubmitting(true);
+    try {
+      await updateEmailTemplate(templateId, draft);
+      showBanner("success", "Email template updated.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update email template.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleArchiveTemplate = async (templateId) => {
+    setSubmitting(true);
+    try {
+      await archiveEmailTemplate(templateId);
+      showBanner("success", "Email template archived.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to archive email template.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePreviewTemplate = async (templateId) => {
+    setSubmitting(true);
+    try {
+      const result = await previewEmailTemplate(templateId, {});
+      setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
+      showBanner("info", "Template preview loaded.");
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to preview email template.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveSegment = async (segmentId) => {
+    const draft = segmentDrafts[segmentId];
+    if (!draft) return;
+    setSubmitting(true);
+    try {
+      await updateEmailSegment(segmentId, {
+        ...draft,
+        email_publicly_listed:
+          draft.email_publicly_listed === ""
+            ? null
+            : draft.email_publicly_listed === "true",
+      });
+      showBanner("success", "Segment updated.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update segment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePreviewSegment = async (segmentId) => {
+    setSubmitting(true);
+    try {
+      const result = await previewEmailSegment(segmentId);
+      setSegmentPreviews((prev) => ({ ...prev, [segmentId]: result.preview }));
+      showBanner("info", `Segment preview loaded: ${result?.preview?.eligible_count || 0} eligible.`);
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to preview segment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApplySegmentToCampaign = async (campaignId, segmentId) => {
+    setSubmitting(true);
+    try {
+      const result = await applyEmailSegmentToCampaign(campaignId, { segment_id: segmentId });
+      setCampaignPreviews((prev) => ({ ...prev, [campaignId]: result.preview }));
+      showBanner("success", `Applied segment "${result?.segment?.name || segmentId}" to campaign.`);
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to apply segment.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLoadCampaignAnalytics = async (campaignId) => {
+    setSubmitting(true);
+    try {
+      const result = await getEmailCampaignAnalytics(campaignId);
+      setCampaignAnalytics((prev) => ({ ...prev, [campaignId]: result }));
+      showBanner("info", "Campaign analytics loaded.");
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to load campaign analytics.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveCampaignAutomation = async (campaignId, payload = {}) => {
+    setSubmitting(true);
+    try {
+      await updateEmailCampaignAutomationSettings(campaignId, payload);
+      showBanner("success", "Campaign automation updated.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update campaign automation.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePrepareCampaign = async (campaignId) => {
+    setSubmitting(true);
+    try {
+      const result = await prepareEmailCampaignForSending(campaignId);
+      setCampaignPreviews((prev) => ({ ...prev, [campaignId]: result.preview }));
+      showBanner("success", `Prepared campaign. Ready messages: ${result.ready_count || 0}.`);
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to prepare campaign.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleQuickStartCampaign = async () => {
+    setSubmitting(true);
+    try {
+      const result = await quickStartEmailCampaign({
+        ...quickStartForm,
+        provider_connection_id: quickStartForm.provider_connection_id ? Number(quickStartForm.provider_connection_id) : null,
+        initial_template_id: quickStartForm.initial_template_id ? Number(quickStartForm.initial_template_id) : null,
+        follow_up_1_template_id: quickStartForm.follow_up_1_template_id ? Number(quickStartForm.follow_up_1_template_id) : null,
+        follow_up_2_template_id: quickStartForm.follow_up_2_template_id ? Number(quickStartForm.follow_up_2_template_id) : null,
+        segment_id: quickStartForm.segment_id ? Number(quickStartForm.segment_id) : null,
+      });
+      setCampaignPreviews((prev) => ({ ...prev, [result.campaign.id]: result.preview }));
+      showBanner("success", `Quick-start created campaign "${result.campaign.name}".`);
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to quick-start campaign.");
     } finally {
       setSubmitting(false);
     }
@@ -360,6 +846,457 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       </Paper>
 
       <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Saved Segments</Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField fullWidth label="Segment name" value={segmentForm.name} onChange={(e) => setSegmentForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <TextField fullWidth label="Business type" value={segmentForm.business_type} onChange={(e) => setSegmentForm((prev) => ({ ...prev, business_type: e.target.value }))} />
+            <TextField fullWidth label="City" value={segmentForm.city} onChange={(e) => setSegmentForm((prev) => ({ ...prev, city: e.target.value }))} />
+            <TextField fullWidth label="Source type" value={segmentForm.source_type} onChange={(e) => setSegmentForm((prev) => ({ ...prev, source_type: e.target.value }))} />
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField fullWidth label="Consent basis" value={segmentForm.email_consent_basis} onChange={(e) => setSegmentForm((prev) => ({ ...prev, email_consent_basis: e.target.value }))} />
+            <TextField
+              select
+              label="Public email listed"
+              value={segmentForm.email_publicly_listed}
+              onChange={(e) => setSegmentForm((prev) => ({ ...prev, email_publicly_listed: e.target.value }))}
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="">Any</MenuItem>
+              <MenuItem value="true">Yes</MenuItem>
+              <MenuItem value="false">No</MenuItem>
+            </TextField>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Exclude DNC</Typography>
+              <Switch checked={segmentForm.exclude_do_not_contact} onChange={(e) => setSegmentForm((prev) => ({ ...prev, exclude_do_not_contact: e.target.checked }))} />
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Exclude suppressed</Typography>
+              <Switch checked={segmentForm.exclude_suppressed} onChange={(e) => setSegmentForm((prev) => ({ ...prev, exclude_suppressed: e.target.checked }))} />
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Only uncontacted</Typography>
+              <Switch checked={segmentForm.only_uncontacted} onChange={(e) => setSegmentForm((prev) => ({ ...prev, only_uncontacted: e.target.checked }))} />
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Only not replied</Typography>
+              <Switch checked={segmentForm.only_not_replied} onChange={(e) => setSegmentForm((prev) => ({ ...prev, only_not_replied: e.target.checked }))} />
+            </Stack>
+            <Button variant="contained" onClick={handleCreateSegment} disabled={submitting || !segmentForm.name}>Save segment</Button>
+          </Stack>
+          {!segments.length ? (
+            <Alert severity="info" variant="outlined">No saved segments yet.</Alert>
+          ) : (
+            <List disablePadding>
+              {segments.map((segment) => {
+                const draft = segmentDrafts[segment.id] || {};
+                const preview = segmentPreviews[segment.id];
+                return (
+                  <React.Fragment key={segment.id}>
+                    <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                      <Stack spacing={1} sx={{ width: "100%" }}>
+                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{segment.name}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {segment.business_type || "Any type"}{segment.city ? ` • ${segment.city}` : ""}{segment.source_type ? ` • ${segment.source_type}` : ""}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            <Button size="small" variant="outlined" onClick={() => handlePreviewSegment(segment.id)} disabled={submitting}>Preview</Button>
+                            <Button size="small" variant="outlined" onClick={() => handleSaveSegment(segment.id)} disabled={submitting}>Save</Button>
+                          </Stack>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                          <TextField size="small" label="Name" value={draft.name || ""} onChange={(e) => setSegmentDrafts((prev) => ({ ...prev, [segment.id]: { ...draft, name: e.target.value } }))} />
+                          <TextField size="small" label="Business type" value={draft.business_type || ""} onChange={(e) => setSegmentDrafts((prev) => ({ ...prev, [segment.id]: { ...draft, business_type: e.target.value } }))} />
+                          <TextField size="small" label="City" value={draft.city || ""} onChange={(e) => setSegmentDrafts((prev) => ({ ...prev, [segment.id]: { ...draft, city: e.target.value } }))} />
+                          <TextField size="small" label="Source type" value={draft.source_type || ""} onChange={(e) => setSegmentDrafts((prev) => ({ ...prev, [segment.id]: { ...draft, source_type: e.target.value } }))} />
+                        </Stack>
+                        {preview ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Eligible: {preview.eligible_count || 0} • Blocked: {preview.blocked_count || 0}
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                );
+              })}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email Templates</Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField fullWidth label="Template name" value={templateForm.name} onChange={(e) => setTemplateForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <TextField select label="Category" value={templateForm.category} onChange={(e) => setTemplateForm((prev) => ({ ...prev, category: e.target.value }))} sx={{ minWidth: 180 }}>
+              {["cold_initial", "follow_up_1", "follow_up_2", "demo_offer", "price_reply", "question_reply", "not_now_reply", "chatbot_followup"].map((category) => (
+                <MenuItem key={category} value={category}>{category}</MenuItem>
+              ))}
+            </TextField>
+            <TextField fullWidth label="Business type" value={templateForm.business_type} onChange={(e) => setTemplateForm((prev) => ({ ...prev, business_type: e.target.value }))} />
+            <TextField select label="Tone" value={templateForm.tone} onChange={(e) => setTemplateForm((prev) => ({ ...prev, tone: e.target.value }))} sx={{ minWidth: 160 }}>
+              {["professional", "friendly", "direct", "premium"].map((tone) => (
+                <MenuItem key={tone} value={tone}>{tone}</MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+          <TextField fullWidth label="Subject" value={templateForm.subject} onChange={(e) => setTemplateForm((prev) => ({ ...prev, subject: e.target.value }))} />
+          <TextField fullWidth multiline minRows={4} label="Body" value={templateForm.body} onChange={(e) => setTemplateForm((prev) => ({ ...prev, body: e.target.value }))} />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="caption">Default</Typography>
+            <Switch checked={templateForm.is_default} onChange={(e) => setTemplateForm((prev) => ({ ...prev, is_default: e.target.checked }))} />
+            <Button variant="contained" onClick={handleCreateTemplate} disabled={submitting || !templateForm.name || !templateForm.subject || !templateForm.body}>
+              Add template
+            </Button>
+          </Stack>
+          {!templates.length ? (
+            <Alert severity="info" variant="outlined">No templates available.</Alert>
+          ) : (
+            <List disablePadding>
+              {templates.map((row) => {
+                const draft = templateDrafts[row.id] || {};
+                const preview = templatePreviews[row.id];
+                return (
+                  <React.Fragment key={row.id}>
+                    <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                      <Stack spacing={1} sx={{ width: "100%" }}>
+                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {row.category} {row.business_type ? `• ${row.business_type}` : ""} • {row.status} {row.is_default ? "• default" : ""}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={1}>
+                            <Button size="small" variant="outlined" onClick={() => handlePreviewTemplate(row.id)} disabled={submitting}>Preview</Button>
+                            <Button size="small" variant="outlined" onClick={() => handleSaveTemplate(row.id)} disabled={submitting}>Save</Button>
+                            <Button size="small" variant="outlined" onClick={() => handleArchiveTemplate(row.id)} disabled={submitting || row.status === "archived"}>Archive</Button>
+                          </Stack>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                          <TextField size="small" label="Name" value={draft.name || ""} onChange={(e) => setTemplateDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} />
+                          <TextField size="small" label="Subject" value={draft.subject || ""} onChange={(e) => setTemplateDrafts((prev) => ({ ...prev, [row.id]: { ...draft, subject: e.target.value } }))} sx={{ flex: 1 }} />
+                        </Stack>
+                        {preview ? (
+                          <Paper variant="outlined" sx={{ p: 1.25 }}>
+                            <Typography variant="caption" color="text.secondary">{preview.subject}</Typography>
+                            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>{preview.body}</Typography>
+                          </Paper>
+                        ) : null}
+                      </Stack>
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                );
+              })}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email SDR Analytics</Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip size="small" variant="outlined" label={`Sent: ${analytics?.totals?.sent || 0}`} />
+            <Chip size="small" variant="outlined" label={`Replies: ${analytics?.totals?.replied || 0}`} />
+            <Chip size="small" color="success" variant="outlined" label={`Positive: ${analytics?.totals?.positive_replies || 0}`} />
+            <Chip size="small" color="warning" variant="outlined" label={`Unsubs: ${analytics?.totals?.unsubscribed || 0}`} />
+            <Chip size="small" color="error" variant="outlined" label={`Bounces: ${analytics?.totals?.bounced || 0}`} />
+            <Chip size="small" variant="outlined" label={`Reply rate: ${analytics?.totals?.reply_rate || 0}%`} />
+            <Chip size="small" variant="outlined" label={`Positive reply rate: ${analytics?.totals?.positive_reply_rate || 0}%`} />
+          </Stack>
+          {(analytics?.warnings || []).length ? (
+            <Stack spacing={1}>
+              {(analytics.warnings || []).map((warning) => (
+                <Alert key={warning.code} severity={warning.level === "warning" ? "warning" : "info"} variant="outlined">
+                  {warning.message}
+                </Alert>
+              ))}
+            </Stack>
+          ) : (
+            <Alert severity="success" variant="outlined">No global Email SDR warning thresholds are currently triggered.</Alert>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            Last 7 days: {analytics?.last_7_days?.sent || 0} sent / {analytics?.last_7_days?.replied || 0} replies. Last 30 days: {analytics?.last_30_days?.sent || 0} sent / {analytics?.last_30_days?.replied || 0} replies.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Safety Warnings</Typography>
+          {(analytics?.warnings || []).length ? (
+            <Stack spacing={1}>
+              {(analytics.warnings || []).map((warning) => (
+                <Alert key={`global-warning-${warning.code}`} severity="warning" variant="outlined">
+                  {warning.message}
+                </Alert>
+              ))}
+            </Stack>
+          ) : (
+            <Alert severity="success" variant="outlined">No global Email SDR warning thresholds are currently triggered.</Alert>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign Quick Start</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Create a campaign, attach segment/provider/templates, and generate the first ready state without sending.
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField fullWidth label="Campaign name" value={quickStartForm.name} onChange={(e) => setQuickStartForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <TextField fullWidth label="Business type" value={quickStartForm.business_type} onChange={(e) => setQuickStartForm((prev) => ({ ...prev, business_type: e.target.value }))} />
+            <TextField fullWidth label="City" value={quickStartForm.city} onChange={(e) => setQuickStartForm((prev) => ({ ...prev, city: e.target.value }))} />
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              select
+              label="Provider"
+              value={quickStartForm.provider_connection_id}
+              onChange={(e) => setQuickStartForm((prev) => ({ ...prev, provider_connection_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">Fallback mail helper</MenuItem>
+              {providerConnections.map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Initial template"
+              value={quickStartForm.initial_template_id}
+              onChange={(e) => setQuickStartForm((prev) => ({ ...prev, initial_template_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">Default</MenuItem>
+              {templates.filter((row) => row.category === "cold_initial").map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Follow-up 1"
+              value={quickStartForm.follow_up_1_template_id}
+              onChange={(e) => setQuickStartForm((prev) => ({ ...prev, follow_up_1_template_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">Default</MenuItem>
+              {templates.filter((row) => row.category === "follow_up_1").map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Final follow-up"
+              value={quickStartForm.follow_up_2_template_id}
+              onChange={(e) => setQuickStartForm((prev) => ({ ...prev, follow_up_2_template_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">Default</MenuItem>
+              {templates.filter((row) => row.category === "follow_up_2").map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Segment"
+              value={quickStartForm.segment_id}
+              onChange={(e) => setQuickStartForm((prev) => ({ ...prev, segment_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">None</MenuItem>
+              {segments.map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <Button variant="contained" onClick={handleQuickStartCampaign} disabled={submitting || !quickStartForm.name}>
+              Quick start
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Provider Connections</Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              select
+              label="Provider"
+              value={providerForm.provider}
+              onChange={(e) => setProviderForm((prev) => ({ ...prev, provider: e.target.value }))}
+              sx={{ minWidth: 180 }}
+            >
+              {["smtp", "sendgrid", "mailgun", "postmark", "resend", "gmail_manual", "custom"].map((provider) => (
+                <MenuItem key={provider} value={provider}>{provider}</MenuItem>
+              ))}
+            </TextField>
+            <TextField fullWidth label="Connection name" value={providerForm.name} onChange={(e) => setProviderForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <TextField fullWidth label="From email" value={providerForm.from_email} onChange={(e) => setProviderForm((prev) => ({ ...prev, from_email: e.target.value }))} />
+            <TextField fullWidth label="From name" value={providerForm.from_name} onChange={(e) => setProviderForm((prev) => ({ ...prev, from_name: e.target.value }))} />
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField fullWidth label="Reply-To email" value={providerForm.reply_to_email} onChange={(e) => setProviderForm((prev) => ({ ...prev, reply_to_email: e.target.value }))} />
+            <TextField label="Daily limit" type="number" value={providerForm.daily_limit} onChange={(e) => setProviderForm((prev) => ({ ...prev, daily_limit: e.target.value }))} sx={{ minWidth: 140 }} />
+            <TextField label="Warmup stage" value={providerForm.warmup_stage} onChange={(e) => setProviderForm((prev) => ({ ...prev, warmup_stage: e.target.value }))} sx={{ minWidth: 180 }} />
+            <Button variant="contained" onClick={handleCreateProviderConnection} disabled={submitting || !providerForm.name || !providerForm.from_email}>
+              Add provider
+            </Button>
+          </Stack>
+          {!providerConnections.length ? (
+            <Alert severity="info" variant="outlined">No provider connections yet. Campaigns will use the fallback mail helper until a provider is selected.</Alert>
+          ) : (
+            <List disablePadding>
+              {providerConnections.map((row) => {
+                const draft = providerDrafts[row.id] || {};
+                return (
+                  <React.Fragment key={row.id}>
+                    <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                      <Stack spacing={1} sx={{ width: "100%" }}>
+                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {row.provider} • {row.from_email} • Status: {row.status}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            <Chip size="small" variant="outlined" label={`Daily limit: ${row.daily_limit}`} />
+                            <Chip size="small" color={row.webhook_setup?.webhook_secret_configured ? "success" : "warning"} variant="outlined" label={row.webhook_setup?.webhook_secret_configured ? "Webhook secret ready" : "Webhook secret missing"} />
+                          </Stack>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                          <TextField size="small" label="Name" value={draft.name || ""} onChange={(e) => setProviderDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} />
+                          <TextField size="small" label="From email" value={draft.from_email || ""} onChange={(e) => setProviderDrafts((prev) => ({ ...prev, [row.id]: { ...draft, from_email: e.target.value } }))} />
+                          <TextField size="small" label="Reply-To" value={draft.reply_to_email || ""} onChange={(e) => setProviderDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reply_to_email: e.target.value } }))} />
+                          <TextField size="small" label="Daily limit" type="number" value={draft.daily_limit || ""} onChange={(e) => setProviderDrafts((prev) => ({ ...prev, [row.id]: { ...draft, daily_limit: e.target.value } }))} sx={{ width: 120 }} />
+                          <Button size="small" variant="outlined" onClick={() => handleSaveProviderConnection(row.id)} disabled={submitting}>Save</Button>
+                          <Button size="small" variant="outlined" onClick={() => handleProviderAction(row.id, "test")} disabled={submitting}>Test send</Button>
+                          <Button size="small" variant="outlined" onClick={() => handleProviderAction(row.id, row.status === "active" ? "pause" : "activate")} disabled={submitting}>
+                            {row.status === "active" ? "Pause" : "Activate"}
+                          </Button>
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          Webhook: {row.webhook_setup?.webhook_url} • Header: {row.webhook_setup?.required_header_name}
+                        </Typography>
+                      </Stack>
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                );
+              })}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email Agents</Typography>
+          <Typography variant="body2" color="text.secondary">
+            AI Email Agents are separate from AI calling reps. They control mailbox identity, warmup, and send windows.
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              select
+              label="Sales rep"
+              value={agentForm.sales_rep_id}
+              onChange={(e) => setAgentForm((prev) => ({ ...prev, sales_rep_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">Select rep</MenuItem>
+              {reps.filter((rep) => rep.is_ai_agent && rep.is_active).map((rep) => (
+                <MenuItem key={rep.id} value={rep.id}>{rep.full_name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField fullWidth label="Display name" value={agentForm.display_name} onChange={(e) => setAgentForm((prev) => ({ ...prev, display_name: e.target.value }))} />
+            <TextField fullWidth label="From email" value={agentForm.from_email} onChange={(e) => setAgentForm((prev) => ({ ...prev, from_email: e.target.value }))} />
+            <TextField fullWidth label="Reply-To email" value={agentForm.reply_to_email} onChange={(e) => setAgentForm((prev) => ({ ...prev, reply_to_email: e.target.value }))} />
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              select
+              label="Role"
+              value={agentForm.role_type}
+              onChange={(e) => setAgentForm((prev) => ({ ...prev, role_type: e.target.value }))}
+              sx={{ minWidth: 180 }}
+            >
+              {["hvac", "cleaning", "plumbing", "roofing", "general", "custom"].map((role) => (
+                <MenuItem key={role} value={role}>{role}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Provider"
+              value={agentForm.provider_connection_id}
+              onChange={(e) => setAgentForm((prev) => ({ ...prev, provider_connection_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">None</MenuItem>
+              {providerConnections.map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField label="Daily limit" type="number" value={agentForm.daily_limit} onChange={(e) => setAgentForm((prev) => ({ ...prev, daily_limit: e.target.value }))} sx={{ minWidth: 120 }} />
+            <TextField label="Timezone" value={agentForm.timezone} onChange={(e) => setAgentForm((prev) => ({ ...prev, timezone: e.target.value }))} sx={{ minWidth: 180 }} />
+            <TextField label="Window start" type="time" value={agentForm.send_window_start} onChange={(e) => setAgentForm((prev) => ({ ...prev, send_window_start: e.target.value }))} InputLabelProps={{ shrink: true }} sx={{ minWidth: 150 }} />
+            <TextField label="Window end" type="time" value={agentForm.send_window_end} onChange={(e) => setAgentForm((prev) => ({ ...prev, send_window_end: e.target.value }))} InputLabelProps={{ shrink: true }} sx={{ minWidth: 150 }} />
+            <Button variant="contained" onClick={handleCreateEmailAgent} disabled={submitting || !agentForm.sales_rep_id || !agentForm.from_email}>
+              Add agent
+            </Button>
+          </Stack>
+          {!emailAgents.length ? (
+            <Alert severity="info" variant="outlined">No Email Agents configured yet.</Alert>
+          ) : (
+            <List disablePadding>
+              {emailAgents.map((row) => {
+                const draft = agentDrafts[row.id] || {};
+                return (
+                  <React.Fragment key={row.id}>
+                    <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                      <Stack spacing={1} sx={{ width: "100%" }}>
+                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.display_name}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {row.sales_rep_name} • {row.role_type} • {row.from_email} • Status: {row.status}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={1}>
+                            <Button size="small" variant="outlined" onClick={() => handleSaveEmailAgent(row.id)} disabled={submitting}>Save</Button>
+                            <Button size="small" variant="outlined" onClick={() => handleEmailAgentAction(row.id, row.status === "active" ? "pause" : "activate")} disabled={submitting}>
+                              {row.status === "active" ? "Pause" : "Activate"}
+                            </Button>
+                          </Stack>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                          <TextField size="small" label="Display" value={draft.display_name || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, display_name: e.target.value } }))} />
+                          <TextField size="small" label="From email" value={draft.from_email || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, from_email: e.target.value } }))} />
+                          <TextField size="small" label="Reply-To" value={draft.reply_to_email || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reply_to_email: e.target.value } }))} />
+                          <TextField size="small" label="Daily limit" type="number" value={draft.daily_limit || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, daily_limit: e.target.value } }))} sx={{ width: 120 }} />
+                        </Stack>
+                      </Stack>
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                );
+              })}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Operations Checklist</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -437,6 +1374,18 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               onChange={(e) => setCampaignForm((prev) => ({ ...prev, daily_limit_per_agent: e.target.value }))}
               sx={{ minWidth: 180 }}
             />
+            <TextField
+              select
+              label="Provider connection"
+              value={campaignForm.provider_connection_id}
+              onChange={(e) => setCampaignForm((prev) => ({ ...prev, provider_connection_id: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="">Fallback mail helper</MenuItem>
+              {providerConnections.map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name} ({row.provider})</MenuItem>
+              ))}
+            </TextField>
             <Button variant="contained" onClick={handleCreateCampaign} disabled={submitting || !campaignForm.name}>
               Create
             </Button>
@@ -490,6 +1439,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
             <List disablePadding>
               {campaigns.map((campaign) => {
                 const preview = campaignPreviews[campaign.id];
+                const analyticsRow = campaignAnalytics[campaign.id];
                 return (
                   <React.Fragment key={campaign.id}>
                     <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
@@ -501,20 +1451,28 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                               {campaign.business_type || "Any business type"}{campaign.city ? ` • ${campaign.city}` : ""} • Status: {campaign.status}
                               {campaign.send_window_start && campaign.send_window_end ? ` • Window: ${campaign.send_window_start}-${campaign.send_window_end}` : ""}
                               {campaign.timezone ? ` • ${campaign.timezone}` : ""}
+                              {campaign.provider_connection_name ? ` • Provider: ${campaign.provider_connection_name}` : " • Provider: fallback"}
                             </Typography>
                           </Box>
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" variant="outlined" label={`Drafts: ${campaign.message_counts?.draft || 0}`} />
                             <Chip size="small" variant="outlined" label={`Approved: ${campaign.message_counts?.approved || 0}`} />
                             <Chip size="small" variant="outlined" label={`Sent: ${campaign.message_counts?.sent || 0}`} />
+                            <Chip size="small" variant="outlined" label={`Agents: ${(campaign.email_agent_ids || []).length || "auto"}`} />
                           </Stack>
                         </Stack>
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "preview")}>
                             Preview targets
                           </Button>
+                          <Button variant="outlined" size="small" disabled={submitting} onClick={() => handlePrepareCampaign(campaign.id)}>
+                            Prepare
+                          </Button>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "drafts")}>
                             Generate drafts
+                          </Button>
+                          <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleLoadCampaignAnalytics(campaign.id)}>
+                            Analytics
                           </Button>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "followups")}>
                             Generate due follow-ups
@@ -527,6 +1485,44 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           </Button>
                           <Button variant="text" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "pause")}>
                             Pause
+                          </Button>
+                          <Button
+                            variant="text"
+                            size="small"
+                            disabled={submitting}
+                            onClick={() =>
+                              handleSaveCampaignAutomation(campaign.id, {
+                                auto_approve_drafts: !campaign.auto_approve_drafts,
+                                auto_send_approved: campaign.auto_send_approved,
+                                follow_up_mode: campaign.follow_up_mode,
+                                max_sequence_steps: campaign.max_sequence_steps,
+                              })
+                            }
+                          >
+                            {campaign.auto_approve_drafts ? "Auto-approve on" : "Auto-approve off"}
+                          </Button>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+                          <TextField
+                            select
+                            size="small"
+                            label="Apply segment"
+                            value={campaignSegmentSelections[campaign.id] || campaign.segment_id || ""}
+                            onChange={(e) => setCampaignSegmentSelections((prev) => ({ ...prev, [campaign.id]: e.target.value }))}
+                            sx={{ minWidth: 220 }}
+                          >
+                            <MenuItem value="">None</MenuItem>
+                            {segments.map((segment) => (
+                              <MenuItem key={segment.id} value={segment.id}>{segment.name}</MenuItem>
+                            ))}
+                          </TextField>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            disabled={submitting || !Number(campaignSegmentSelections[campaign.id] || campaign.segment_id || 0)}
+                            onClick={() => handleApplySegmentToCampaign(campaign.id, Number(campaignSegmentSelections[campaign.id] || campaign.segment_id))}
+                          >
+                            Apply segment
                           </Button>
                         </Stack>
                         {preview ? (
@@ -545,6 +1541,31 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                               <Typography variant="caption" color="text.secondary">
                                 Sample blocked leads: {(preview.blocked_sample || []).slice(0, 3).map((row) => `${row.company_name} (${row.reason})`).join(", ") || "none"}
                               </Typography>
+                            </Stack>
+                          </Paper>
+                        ) : null}
+                        {analyticsRow ? (
+                          <Paper variant="outlined" sx={{ p: 1.5 }}>
+                            <Stack spacing={1}>
+                              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                                <Chip size="small" variant="outlined" label={`Sent: ${analyticsRow.sent || 0}`} />
+                                <Chip size="small" variant="outlined" label={`Replies: ${analyticsRow.replied || 0}`} />
+                                <Chip size="small" color="success" variant="outlined" label={`Positive: ${analyticsRow.positive_replies || 0}`} />
+                                <Chip size="small" color="warning" variant="outlined" label={`Unsubs: ${analyticsRow.unsubscribed || 0}`} />
+                                <Chip size="small" color="error" variant="outlined" label={`Bounces: ${analyticsRow.bounced || 0}`} />
+                                <Chip size="small" variant="outlined" label={`Reply rate: ${analyticsRow.reply_rate || 0}%`} />
+                              </Stack>
+                              {(analyticsRow.warnings || []).length ? (
+                                (analyticsRow.warnings || []).map((warning) => (
+                                  <Alert key={`${campaign.id}-${warning.code}`} severity="warning" variant="outlined">
+                                    {warning.message}
+                                  </Alert>
+                                ))
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">
+                                  No campaign warning thresholds are currently triggered.
+                                </Typography>
+                              )}
                             </Stack>
                           </Paper>
                         ) : null}

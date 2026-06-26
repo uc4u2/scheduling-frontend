@@ -284,6 +284,26 @@ export const createEmailCampaign = async (payload = {}) => {
   return data?.campaign || null;
 };
 
+export const quickStartEmailCampaign = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-campaigns/quick-start", payload);
+  return data || { campaign: null, preview: null, draft_result: null, approve_result: null, send_result: null };
+};
+
+export const prepareEmailCampaignForSending = async (campaignId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/prepare`);
+  return data || { campaign: null, preview: null, draft_result: null, approve_result: null, send_result: null };
+};
+
+export const updateEmailCampaignAutomationSettings = async (campaignId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-campaigns/${campaignId}/automation-settings`, payload);
+  return data || { campaign: null, changed_fields: [] };
+};
+
+export const getEmailCampaignAnalytics = async (campaignId) => {
+  const { data } = await platformAdminApi.get(`/sales/email-campaigns/${campaignId}/analytics`);
+  return data?.analytics || null;
+};
+
 export const generateEmailCampaignDrafts = async (campaignId, payload = {}) => {
   const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/generate-drafts`, payload);
   return data || { created_count: 0, blocked: [], campaign: null };
@@ -317,6 +337,11 @@ export const sendEmailCampaign = async (campaignId) => {
 export const runEmailSdrDueSend = async () => {
   const { data } = await platformAdminApi.post("/sales/email-send-due");
   return data || { sent_count: 0, blocked: [] };
+};
+
+export const applyEmailSegmentToCampaign = async (campaignId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/apply-segment`, payload);
+  return data || { campaign: null, segment: null, preview: null };
 };
 
 export const listEmailMessages = async (params = {}) => {
@@ -382,4 +407,109 @@ export const markEmailHotLeadContacted = async (leadId, payload = {}) => {
 export const createSalesDealFromEmailHotLead = async (leadId) => {
   const { data } = await platformAdminApi.post(`/sales/email-hot-leads/${leadId}/create-deal`);
   return data || { deal: null, lead: null };
+};
+
+export const listEmailProviderConnections = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-provider-connections");
+  return data?.connections || [];
+};
+
+export const createEmailProviderConnection = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-provider-connections", payload);
+  return data?.connection || null;
+};
+
+export const updateEmailProviderConnection = async (connectionId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-provider-connections/${connectionId}`, payload);
+  return data || { connection: null, changed_fields: [] };
+};
+
+export const testEmailProviderConnection = async (connectionId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-provider-connections/${connectionId}/test-send`, payload);
+  return data || { connection: null, result: null };
+};
+
+export const pauseEmailProviderConnection = async (connectionId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-provider-connections/${connectionId}/pause`);
+  return data?.connection || null;
+};
+
+export const activateEmailProviderConnection = async (connectionId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-provider-connections/${connectionId}/activate`);
+  return data?.connection || null;
+};
+
+export const listEmailAgents = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-agents");
+  return data || { agents: [], role_types: [] };
+};
+
+export const createEmailAgent = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-agents", payload);
+  return data?.agent || null;
+};
+
+export const updateEmailAgent = async (agentId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-agents/${agentId}`, payload);
+  return data || { agent: null, changed_fields: [] };
+};
+
+export const pauseEmailAgent = async (agentId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-agents/${agentId}/pause`);
+  return data?.agent || null;
+};
+
+export const activateEmailAgent = async (agentId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-agents/${agentId}/activate`);
+  return data?.agent || null;
+};
+
+export const getEmailSdrAnalytics = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-analytics");
+  return data?.analytics || null;
+};
+
+export const listEmailSegments = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-segments");
+  return data?.segments || [];
+};
+
+export const createEmailSegment = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-segments", payload);
+  return data?.segment || null;
+};
+
+export const updateEmailSegment = async (segmentId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-segments/${segmentId}`, payload);
+  return data || { segment: null, changed_fields: [] };
+};
+
+export const previewEmailSegment = async (segmentId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-segments/${segmentId}/preview`);
+  return data || { segment: null, preview: null };
+};
+
+export const listEmailTemplates = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-templates");
+  return data?.templates || [];
+};
+
+export const createEmailTemplate = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-templates", payload);
+  return data?.template || null;
+};
+
+export const updateEmailTemplate = async (templateId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-templates/${templateId}`, payload);
+  return data || { template: null, changed_fields: [] };
+};
+
+export const archiveEmailTemplate = async (templateId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-templates/${templateId}/archive`);
+  return data?.template || null;
+};
+
+export const previewEmailTemplate = async (templateId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-templates/${templateId}/preview`, payload);
+  return data || { template: null, preview: null };
 };
