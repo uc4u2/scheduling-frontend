@@ -28,6 +28,7 @@ import LeadAssignDialog from "../../components/platformAdmin/sales/LeadAssignDia
 import LeadBulkAssignBar from "../../components/platformAdmin/sales/LeadBulkAssignBar";
 import LeadImportCard from "../../components/platformAdmin/sales/LeadImportCard";
 import AdminInboundWorkspace from "../../components/platformAdmin/sales/AdminInboundWorkspace";
+import EmailSdrWorkspace from "../../components/platformAdmin/sales/EmailSdrWorkspace";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import {
@@ -720,12 +721,22 @@ export default function SalesCRMPage() {
       <Paper sx={{ p: 1, mb: 3 }}>
         <Tabs value={workspaceTab} onChange={(_, value) => setWorkspaceTab(value)} variant="scrollable" scrollButtons="auto">
           <Tab value="outbound" label="Outbound" />
+          <Tab value="email_sdr" label="Email SDR" />
           <Tab value="inbound" label="Inbound" />
         </Tabs>
       </Paper>
 
       {workspaceTab === "inbound" ? (
         <AdminInboundWorkspace
+          reps={reps}
+          onOpenLead={(leadId) => {
+            setWorkspaceTab("outbound");
+            openLeadWorkspace(leadId, { tab: "overview", editMode: false });
+          }}
+          showBanner={showBanner}
+        />
+      ) : workspaceTab === "email_sdr" ? (
+        <EmailSdrWorkspace
           reps={reps}
           onOpenLead={(leadId) => {
             setWorkspaceTab("outbound");

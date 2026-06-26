@@ -268,3 +268,103 @@ export const listLeadImportBatches = async () => {
   const { data } = await platformAdminApi.get("/sales/leads/import-batches");
   return data?.batches || [];
 };
+
+export const getEmailSdrOverview = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-overview");
+  return data?.overview || {};
+};
+
+export const listEmailCampaigns = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-campaigns");
+  return data?.campaigns || [];
+};
+
+export const createEmailCampaign = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-campaigns", payload);
+  return data?.campaign || null;
+};
+
+export const generateEmailCampaignDrafts = async (campaignId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/generate-drafts`, payload);
+  return data || { created_count: 0, blocked: [], campaign: null };
+};
+
+export const previewEmailCampaignLeads = async (campaignId, params = {}) => {
+  const { data } = await platformAdminApi.get(`/sales/email-campaigns/${campaignId}/preview`, { params });
+  return data || { eligible_count: 0, blocked_count: 0, blocked_reason_counts: {}, eligible_sample: [], blocked_sample: [], campaign: null };
+};
+
+export const generateEmailCampaignFollowUps = async (campaignId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/generate-follow-ups`);
+  return data || { created_count: 0, blocked: [], campaign: null };
+};
+
+export const approveEmailCampaign = async (campaignId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/approve`, payload);
+  return data || { approved_count: 0, campaign: null };
+};
+
+export const pauseEmailCampaign = async (campaignId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/pause`);
+  return data?.campaign || null;
+};
+
+export const sendEmailCampaign = async (campaignId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/send`);
+  return data || { sent_count: 0, blocked: [], campaign: null };
+};
+
+export const listEmailMessages = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/email-messages", { params });
+  return data?.messages || [];
+};
+
+export const updateEmailMessage = async (messageId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-messages/${messageId}`, payload);
+  return data || { message: null, changed_fields: [] };
+};
+
+export const classifyEmailReply = async (messageId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-messages/${messageId}/classify-reply`, payload);
+  return data || { message: null, classification: null, lead: null };
+};
+
+export const listEmailSuppression = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-suppression");
+  return data?.entries || [];
+};
+
+export const createEmailSuppression = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-suppression", payload);
+  return data?.entry || null;
+};
+
+export const listEmailAgentLimitsToday = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-agent-limits/today");
+  return data?.rows || [];
+};
+
+export const updateEmailAgentLimitToday = async (repId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-agent-limits/${repId}/today`, payload);
+  return data?.row || null;
+};
+
+export const listEmailHotLeads = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/email-hot-leads", { params });
+  return data?.hot_leads || [];
+};
+
+export const assignEmailHotLeadToYousef = async (leadId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-hot-leads/${leadId}/assign-yousef`);
+  return data || { lead: null };
+};
+
+export const markEmailHotLeadContacted = async (leadId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-hot-leads/${leadId}/mark-contacted`, payload);
+  return data || { lead: null };
+};
+
+export const createSalesDealFromEmailHotLead = async (leadId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-hot-leads/${leadId}/create-deal`);
+  return data || { deal: null, lead: null };
+};

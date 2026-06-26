@@ -97,6 +97,10 @@ Brow Artisto,Sarah Lee,+14165550124,hello@browartisto.com,https://browartisto.co
             <strong>industry</strong>, <strong>city</strong>, <strong>country</strong>, <strong>source</strong>, <strong>priority</strong>.
             Rows without <strong>company_name</strong> are skipped.
           </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Email SDR fields also supported: <strong>source_type</strong>, <strong>source_url</strong>, <strong>source_proof_url</strong>,
+            <strong> email_publicly_listed</strong>, <strong>do_not_contact_found</strong>, <strong>email_consent_basis</strong>.
+          </Typography>
         </Stack>
 
         {batches?.length ? (
