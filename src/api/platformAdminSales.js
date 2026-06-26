@@ -314,6 +314,11 @@ export const sendEmailCampaign = async (campaignId) => {
   return data || { sent_count: 0, blocked: [], campaign: null };
 };
 
+export const runEmailSdrDueSend = async () => {
+  const { data } = await platformAdminApi.post("/sales/email-send-due");
+  return data || { sent_count: 0, blocked: [] };
+};
+
 export const listEmailMessages = async (params = {}) => {
   const { data } = await platformAdminApi.get("/sales/email-messages", { params });
   return data?.messages || [];
@@ -327,6 +332,16 @@ export const updateEmailMessage = async (messageId, payload = {}) => {
 export const classifyEmailReply = async (messageId, payload = {}) => {
   const { data } = await platformAdminApi.post(`/sales/email-messages/${messageId}/classify-reply`, payload);
   return data || { message: null, classification: null, lead: null };
+};
+
+export const listEmailInboundEvents = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/email-inbound-events", { params });
+  return data?.events || [];
+};
+
+export const classifyEmailInboundEvent = async (eventId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-inbound-events/${eventId}/classify`, payload);
+  return data || { event: null, classification: null };
 };
 
 export const listEmailSuppression = async () => {

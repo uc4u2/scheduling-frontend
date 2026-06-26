@@ -18,6 +18,7 @@ import {
 import {
   approveEmailCampaign,
   assignEmailHotLeadToYousef,
+  classifyEmailInboundEvent,
   classifyEmailReply,
   createEmailCampaign,
   createEmailSuppression,
@@ -28,11 +29,13 @@ import {
   listEmailAgentLimitsToday,
   listEmailCampaigns,
   listEmailHotLeads,
+  listEmailInboundEvents,
   listEmailMessages,
   listEmailSuppression,
   markEmailHotLeadContacted,
   pauseEmailCampaign,
   previewEmailCampaignLeads,
+  runEmailSdrDueSend,
   sendEmailCampaign,
   updateEmailAgentLimitToday,
   updateEmailMessage,
@@ -43,6 +46,10 @@ const emptyCampaignForm = {
   business_type: "",
   city: "",
   daily_limit_per_agent: 10,
+  send_window_start: "09:00",
+  send_window_end: "17:00",
+  timezone: "America/Toronto",
+  follow_up_mode: "manual",
 };
 
 const classificationOptions = [
@@ -58,7 +65,7 @@ const classificationOptions = [
   "bounce",
 ];
 
-const editableStatuses = new Set(["draft", "approved"]);
+const editableStatuses = new Set(["draft", "approved", "scheduled"]);
 
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner }) {
   const [overview, setOverview] = useState({});
@@ -67,10 +74,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [hotLeads, setHotLeads] = useState([]);
   const [suppression, setSuppression] = useState([]);
   const [agentLimits, setAgentLimits] = useState([]);
+  const [newReplyEvents, setNewReplyEvents] = useState([]);
+  const [unmatchedEvents, setUnmatchedEvents] = useState([]);
+  const [bounceEvents, setBounceEvents] = useState([]);
   const [campaignPreviews, setCampaignPreviews] = useState({});
   const [campaignForm, setCampaignForm] = useState(emptyCampaignForm);
   const [messageReplyText, setMessageReplyText] = useState({});
   const [messageReplyClass, setMessageReplyClass] = useState({});
+  const [inboundReplyText, setInboundReplyText] = useState({});
+  const [inboundReplyClass, setInboundReplyClass] = useState({});
   const [messageDraftState, setMessageDraftState] = useState({});
   const [agentLimitDrafts, setAgentLimitDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -84,13 +96,26 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
     try {
-      const [overviewResp, campaignRows, messageRows, hotRows, suppressionRows, agentLimitRows] = await Promise.all([
+      const [
+        overviewResp,
+        campaignRows,
+        messageRows,
+        hotRows,
+        suppressionRows,
+        agentLimitRows,
+        inboundReplyRows,
+        unmatchedRows,
+        bounceRows,
+      ] = await Promise.all([
         getEmailSdrOverview(),
         listEmailCampaigns(),
         listEmailMessages(),
         listEmailHotLeads(),
         listEmailSuppression(),
         listEmailAgentLimitsToday(),
+        listEmailInboundEvents({ queue: "new_replies", limit: 50 }),
+        listEmailInboundEvents({ queue: "unmatched", limit: 50 }),
+        listEmailInboundEvents({ queue: "bounces", limit: 50 }),
       ]);
       setOverview(overviewResp || {});
       setCampaigns(campaignRows || []);
@@ -98,6 +123,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       setHotLeads(hotRows || []);
       setSuppression(suppressionRows || []);
       setAgentLimits(agentLimitRows || []);
+      setNewReplyEvents(inboundReplyRows || []);
+      setUnmatchedEvents(unmatchedRows || []);
+      setBounceEvents(bounceRows || []);
       setAgentLimitDrafts((prev) => {
         const next = { ...prev };
         (agentLimitRows || []).forEach((row) => {
@@ -172,6 +200,23 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
+  const handleRunDueSendNow = async () => {
+    setSubmitting(true);
+    try {
+      const result = await runEmailSdrDueSend();
+      if (result?.blocked?.length) {
+        showBanner("warning", `Sent ${result?.sent_count || 0} due email(s). ${result.blocked.length} blocked.`);
+      } else {
+        showBanner("success", `Sent ${result?.sent_count || 0} due email(s).`);
+      }
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to run due send.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSaveDraftMessage = async (messageId) => {
     const draft = messageDraftState[messageId];
     if (!draft) return;
@@ -201,6 +246,24 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       await loadWorkspace();
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to classify reply.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleClassifyInboundReply = async (eventId) => {
+    const classification = inboundReplyClass[eventId];
+    if (!classification) return;
+    setSubmitting(true);
+    try {
+      const result = await classifyEmailInboundEvent(eventId, {
+        classification,
+        reply_text: inboundReplyText[eventId] || "",
+      });
+      showBanner("success", `Inbound reply classified as ${result?.classification?.classification || classification}.`);
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to classify inbound reply.");
     } finally {
       setSubmitting(false);
     }
@@ -279,9 +342,66 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
             <Chip size="small" variant="outlined" label={`Campaigns: ${overview.campaigns_total || 0}`} />
             <Chip size="small" variant="outlined" label={`Drafts: ${overview.draft_messages || 0}`} />
             <Chip size="small" variant="outlined" label={`Approved: ${overview.approved_messages || 0}`} />
+            <Chip size="small" variant="outlined" label={`Scheduled: ${overview.scheduled_messages || 0}`} />
+            <Chip size="small" color="error" variant="outlined" label={`Cancelled: ${overview.cancelled_messages || 0}`} />
             <Chip size="small" variant="outlined" label={`Sent today: ${overview.sent_today || 0}`} />
             <Chip size="small" color="warning" variant="outlined" label={`Suppressed: ${overview.suppressed_total || 0}`} />
             <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
+            <Chip size="small" color="info" variant="outlined" label={`New replies: ${overview.new_reply_events || 0}`} />
+            <Chip size="small" color="warning" variant="outlined" label={`Unmatched: ${overview.unmatched_events || 0}`} />
+            <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${overview.bounce_events || 0}`} />
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+            <Button variant="contained" onClick={handleRunDueSendNow} disabled={submitting}>
+              Run due send now
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Operations Checklist</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Production readiness for Email SDR Phase 2/3 before enabling scheduled sends and provider webhooks.
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip
+              size="small"
+              color="warning"
+              variant="outlined"
+              label="Run DB migration: flask db upgrade heads"
+            />
+            <Chip
+              size="small"
+              color={overview.webhook_secret_configured ? "success" : "warning"}
+              variant="outlined"
+              label={overview.webhook_secret_configured ? "Webhook secret configured" : "Webhook secret missing"}
+            />
+            <Chip
+              size="small"
+              color={overview.campaigns_with_send_window ? "success" : "warning"}
+              variant="outlined"
+              label={overview.campaigns_with_send_window ? "Send window configured" : "Set campaign send window"}
+            />
+            <Chip
+              size="small"
+              color={agentLimits.length ? "success" : "warning"}
+              variant="outlined"
+              label={agentLimits.length ? "Daily limits configured" : "Configure daily limits"}
+            />
+            <Chip
+              size="small"
+              color={overview.unsubscribe_enabled_messages ? "success" : "warning"}
+              variant="outlined"
+              label={overview.unsubscribe_enabled_messages ? "Unsubscribe links active" : "Send a test message to verify unsubscribe"}
+            />
+            <Chip
+              size="small"
+              color="info"
+              variant="outlined"
+              label="Webhook endpoints ready /integrations/email-sdr/*"
+            />
           </Stack>
         </Stack>
       </Paper>
@@ -321,6 +441,40 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               Create
             </Button>
           </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              label="Send window start"
+              type="time"
+              value={campaignForm.send_window_start}
+              onChange={(e) => setCampaignForm((prev) => ({ ...prev, send_window_start: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 180 }}
+            />
+            <TextField
+              label="Send window end"
+              type="time"
+              value={campaignForm.send_window_end}
+              onChange={(e) => setCampaignForm((prev) => ({ ...prev, send_window_end: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 180 }}
+            />
+            <TextField
+              fullWidth
+              label="Timezone"
+              value={campaignForm.timezone}
+              onChange={(e) => setCampaignForm((prev) => ({ ...prev, timezone: e.target.value }))}
+              placeholder="America/Toronto"
+            />
+            <TextField
+              select
+              label="Follow-up mode"
+              value={campaignForm.follow_up_mode}
+              onChange={(e) => setCampaignForm((prev) => ({ ...prev, follow_up_mode: e.target.value }))}
+              sx={{ minWidth: 220 }}
+            >
+              <MenuItem value="manual">Manual approval only</MenuItem>
+            </TextField>
+          </Stack>
           <Typography variant="caption" color="text.secondary">
             Active AI email agents available: {aiEmailAgents.length ? aiEmailAgents.map((row) => row.full_name).join(", ") : "none"}
           </Typography>
@@ -345,6 +499,8 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{campaign.name}</Typography>
                             <Typography variant="body2" color="text.secondary">
                               {campaign.business_type || "Any business type"}{campaign.city ? ` • ${campaign.city}` : ""} • Status: {campaign.status}
+                              {campaign.send_window_start && campaign.send_window_end ? ` • Window: ${campaign.send_window_start}-${campaign.send_window_end}` : ""}
+                              {campaign.timezone ? ` • ${campaign.timezone}` : ""}
                             </Typography>
                           </Box>
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -361,13 +517,13 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                             Generate drafts
                           </Button>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "followups")}>
-                            Generate follow-ups
+                            Generate due follow-ups
                           </Button>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "approve")}>
                             Approve drafts
                           </Button>
                           <Button variant="contained" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "send")}>
-                            Send approved
+                            Run due send now
                           </Button>
                           <Button variant="text" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "pause")}>
                             Pause
@@ -492,6 +648,20 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           <Typography variant="body2" color="text.secondary">
                             {message.email_agent_name || "No agent"} • step {message.sequence_step} • {message.status}
                           </Typography>
+                          <Stack direction="row" spacing={1} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
+                            <Chip
+                              size="small"
+                              color={message.unsubscribe_enabled ? "success" : "default"}
+                              variant="outlined"
+                              label={message.unsubscribe_enabled ? "Unsubscribe enabled" : "Unsubscribe pending"}
+                            />
+                            {message.error_code ? (
+                              <Chip size="small" color="warning" variant="outlined" label={`Reason: ${message.error_code}`} />
+                            ) : null}
+                            {message.unsubscribe_used_at ? (
+                              <Chip size="small" color="error" variant="outlined" label="Lead unsubscribed" />
+                            ) : null}
+                          </Stack>
                         </Box>
                         <TextField
                           size="small"
@@ -532,6 +702,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           >
                             <MenuItem value="draft">draft</MenuItem>
                             <MenuItem value="approved">approved</MenuItem>
+                            <MenuItem value="scheduled">scheduled</MenuItem>
                           </TextField>
                           <Button variant="outlined" size="small" disabled={submitting || !editable} onClick={() => handleSaveDraftMessage(message.id)}>
                             Save draft
@@ -573,6 +744,112 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                   </React.Fragment>
                 );
               })}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>New Replies Review Queue</Typography>
+          {!newReplyEvents.length ? (
+            <Alert severity="info" variant="outlined">No new reply events waiting for review.</Alert>
+          ) : (
+            <List disablePadding>
+              {newReplyEvents.map((event) => (
+                <React.Fragment key={event.id}>
+                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                    <Stack spacing={1.25} sx={{ width: "100%" }}>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {event.matched_lead?.company_name || event.from_email || "Inbound reply"}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {event.from_email || "Unknown sender"} • {event.subject || "No subject"} • match: {event.raw_payload?.match_reason || "unknown"}
+                        </Typography>
+                      </Box>
+                      <TextField size="small" fullWidth multiline minRows={3} label="Inbound reply" value={event.body_text || ""} disabled />
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                        <TextField
+                          select
+                          size="small"
+                          label="Classification"
+                          value={inboundReplyClass[event.id] || ""}
+                          onChange={(e) => setInboundReplyClass((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                          sx={{ minWidth: 220 }}
+                        >
+                          <MenuItem value="">Select</MenuItem>
+                          {classificationOptions.map((option) => (
+                            <MenuItem key={option} value={option}>{option}</MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          label="Admin note / override reply text"
+                          value={inboundReplyText[event.id] || ""}
+                          onChange={(e) => setInboundReplyText((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          disabled={submitting || !event.matched_message_id || !inboundReplyClass[event.id]}
+                          onClick={() => handleClassifyInboundReply(event.id)}
+                        >
+                          Classify inbound reply
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Unmatched Inbound Events</Typography>
+          {!unmatchedEvents.length ? (
+            <Alert severity="info" variant="outlined">No unmatched inbound events.</Alert>
+          ) : (
+            <List disablePadding>
+              {unmatchedEvents.map((event) => (
+                <React.Fragment key={event.id}>
+                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                    <ListItemText
+                      primary={`${event.event_type} • ${event.from_email || "Unknown sender"} • ${event.subject || "No subject"}`}
+                      secondary={`${event.raw_payload?.match_reason || "unmatched"}${event.body_text ? ` • ${event.body_text.slice(0, 180)}` : ""}`}
+                    />
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Bounces & Unsubscribes</Typography>
+          {!bounceEvents.length ? (
+            <Alert severity="info" variant="outlined">No bounce or unsubscribe events recorded.</Alert>
+          ) : (
+            <List disablePadding>
+              {bounceEvents.map((event) => (
+                <React.Fragment key={event.id}>
+                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                    <ListItemText
+                      primary={`${event.event_type} • ${event.matched_lead?.company_name || event.from_email || "Unknown sender"}`}
+                      secondary={`${event.from_email || "Unknown sender"}${event.matched_message ? ` • message ${event.matched_message.id}` : ""}${event.processed_at ? ` • processed ${event.processed_at}` : ""}`}
+                    />
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              ))}
             </List>
           )}
         </Stack>
