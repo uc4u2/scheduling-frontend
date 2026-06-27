@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -12,9 +15,12 @@ import {
   Paper,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   activateEmailAgent,
   activateEmailProviderConnection,
@@ -196,6 +202,32 @@ const wizardSampleLead = {
   city: "Toronto",
   email: "john@abchvac.ca",
 };
+const workspaceViews = [
+  {
+    key: "setup",
+    label: "Preparation",
+    title: "Preparation & Setup",
+    description: "Create providers, agents, templates, routing, and campaign setup before any sending starts.",
+  },
+  {
+    key: "control",
+    label: "Control Room",
+    title: "Control Room",
+    description: "Monitor today’s health, review active campaign flow, and confirm the system is ready to run.",
+  },
+  {
+    key: "action",
+    label: "Action Queue",
+    title: "Action Queue",
+    description: "Handle replies, hot leads, approvals, and unresolved work that needs human attention.",
+  },
+  {
+    key: "results",
+    label: "Results",
+    title: "Results & Quality",
+    description: "Review analytics, delivery outcomes, unmatched events, and suppression quality.",
+  },
+];
 
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner }) {
   const [overview, setOverview] = useState({});
@@ -276,6 +308,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [wizardResult, setWizardResult] = useState(null);
   const [marketingConsentOnly, setMarketingConsentOnly] = useState(true);
   const [myHotLeadsOnly, setMyHotLeadsOnly] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState("setup");
+  const [templateBusinessFilter, setTemplateBusinessFilter] = useState("default");
+  const [templateShowAll, setTemplateShowAll] = useState(false);
   const providerSectionRef = useRef(null);
   const agentSectionRef = useRef(null);
   const templateSectionRef = useRef(null);
@@ -297,6 +332,59 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     () => marketingWidgetLeads.filter((row) => (marketingConsentOnly ? row.consent_to_contact : true)),
     [marketingWidgetLeads, marketingConsentOnly]
   );
+  const availableTemplateBusinessTypes = useMemo(
+    () => Array.from(new Set(templates.map((row) => row.business_type).filter(Boolean))).sort(),
+    [templates]
+  );
+  const filteredTemplates = useMemo(() => {
+    let rows = templates;
+    if (templateBusinessFilter === "default") {
+      rows = rows.filter((row) => row.is_default || row.default_for_category);
+    } else if (templateBusinessFilter) {
+      rows = rows.filter((row) => (row.business_type || "") === templateBusinessFilter);
+    }
+    if (!templateShowAll) {
+      rows = rows.filter((row) => row.status !== "archived").slice(0, 12);
+    }
+    return rows;
+  }, [templateBusinessFilter, templateShowAll, templates]);
+  const activeWorkspaceView = useMemo(
+    () => workspaceViews.find((row) => row.key === workspaceView) || workspaceViews[0],
+    [workspaceView]
+  );
+  const setupIncomplete = !providerConnections.length || !emailAgents.length || !campaigns.length;
+  const templateGroups = useMemo(() => {
+    const grouped = new Map();
+    filteredTemplates.forEach((row) => {
+      const businessType = row.business_type || "General";
+      if (!grouped.has(businessType)) {
+        grouped.set(businessType, {
+          businessType,
+          templates: [],
+          defaultCount: 0,
+          categories: new Map(),
+        });
+      }
+      const group = grouped.get(businessType);
+      group.templates.push(row);
+      if (row.is_default || row.default_for_category) {
+        group.defaultCount += 1;
+      }
+      const category = row.category || "uncategorized";
+      if (!group.categories.has(category)) {
+        group.categories.set(category, []);
+      }
+      group.categories.get(category).push(row);
+    });
+    return Array.from(grouped.values())
+      .sort((a, b) => a.businessType.localeCompare(b.businessType))
+      .map((group) => ({
+        ...group,
+        categories: Array.from(group.categories.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([category, rows]) => ({ category, rows })),
+      }));
+  }, [filteredTemplates]);
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
@@ -1186,7 +1274,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
 
   return (
     <Stack spacing={3}>
-      <Paper sx={{ p: 2.5 }} ref={templateSectionRef}>
+      <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
             <Box>
@@ -1205,26 +1293,77 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
             </Stack>
           </Stack>
 
-          <EmailSdrDashboardCards opsSummary={opsSummary} overview={overview} />
-          <EmailSdrNeedsAttentionCard warnings={opsSummary?.needs_attention || []} />
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderRadius: 3,
+              background:
+                "linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(15,23,42,0.03) 100%)",
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                {activeWorkspaceView.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {activeWorkspaceView.description}
+              </Typography>
+              <Tabs
+                value={workspaceView}
+                onChange={(_, value) => setWorkspaceView(value)}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  "& .MuiTab-root": {
+                    minHeight: 42,
+                    textTransform: "none",
+                    fontWeight: 700,
+                    color: "#334155",
+                  },
+                  "& .Mui-selected": {
+                    color: "#1d4ed8 !important",
+                  },
+                }}
+              >
+                {workspaceViews.map((view) => (
+                  <Tab key={view.key} value={view.key} label={view.label} />
+                ))}
+              </Tabs>
+            </Stack>
+          </Paper>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-            <Chip size="small" variant="outlined" label={`Campaigns: ${overview.campaigns_total || 0}`} />
-            <Chip size="small" variant="outlined" label={`Drafts: ${overview.draft_messages || 0}`} />
-            <Chip size="small" variant="outlined" label={`Approved: ${overview.approved_messages || 0}`} />
-            <Chip size="small" variant="outlined" label={`Scheduled: ${overview.scheduled_messages || 0}`} />
-            <Chip size="small" color="error" variant="outlined" label={`Cancelled: ${overview.cancelled_messages || 0}`} />
-            <Chip size="small" variant="outlined" label={`Sent today: ${overview.sent_today || 0}`} />
-            <Chip size="small" color="warning" variant="outlined" label={`Suppressed: ${overview.suppressed_total || 0}`} />
-            <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
-            <Chip size="small" color="info" variant="outlined" label={`New replies: ${overview.new_reply_events || 0}`} />
-            <Chip size="small" color="warning" variant="outlined" label={`Unmatched: ${overview.unmatched_events || 0}`} />
-            <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${overview.bounce_events || 0}`} />
-          </Stack>
+          {workspaceView === "control" ? (
+            <>
+              <EmailSdrDashboardCards opsSummary={opsSummary} overview={overview} />
+              <EmailSdrNeedsAttentionCard warnings={opsSummary?.needs_attention || []} />
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                  <Chip size="small" color="info" variant="outlined" label={`Worker: ${opsSummary?.worker_status || "ready"}`} />
+                  <Chip size="small" variant="outlined" label={`Next due send: ${opsSummary?.next_due_send_estimate || "n/a"}`} />
+                  <Chip size="small" variant="outlined" label={`Next follow-up: ${opsSummary?.next_follow_up_estimate || "n/a"}`} />
+                  <Chip size="small" variant="outlined" label={`Active campaigns: ${opsSummary?.active_campaign_count || campaigns.length || 0}`} />
+                </Stack>
+              </Paper>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                <Chip size="small" variant="outlined" label={`Campaigns: ${overview.campaigns_total || 0}`} />
+                <Chip size="small" variant="outlined" label={`Drafts: ${overview.draft_messages || 0}`} />
+                <Chip size="small" variant="outlined" label={`Approved: ${overview.approved_messages || 0}`} />
+                <Chip size="small" variant="outlined" label={`Scheduled: ${overview.scheduled_messages || 0}`} />
+                <Chip size="small" color="error" variant="outlined" label={`Cancelled: ${overview.cancelled_messages || 0}`} />
+                <Chip size="small" variant="outlined" label={`Sent today: ${overview.sent_today || 0}`} />
+                <Chip size="small" color="warning" variant="outlined" label={`Suppressed: ${overview.suppressed_total || 0}`} />
+                <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
+                <Chip size="small" color="info" variant="outlined" label={`New replies: ${overview.new_reply_events || 0}`} />
+                <Chip size="small" color="warning" variant="outlined" label={`Unmatched: ${overview.unmatched_events || 0}`} />
+                <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${overview.bounce_events || 0}`} />
+              </Stack>
+            </>
+          ) : null}
         </Stack>
       </Paper>
 
-      {(!providerConnections.length || !emailAgents.length || !campaigns.length) && (
+      {workspaceView === "setup" && setupIncomplete && (
         <EmailSdrStartChecklist
           onAddProvider={() => scrollToSection(providerSectionRef)}
           onAddAgent={() => scrollToSection(agentSectionRef)}
@@ -1234,8 +1373,48 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         />
       )}
 
-      <Paper sx={{ p: 2.5 }} ref={providerSectionRef}>
+      {workspaceView === "setup" ? (
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2.5,
+            borderRadius: 3,
+            background: "linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(15,23,42,0.03) 100%)",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Typography variant="overline" sx={{ color: "#2563eb", fontWeight: 800, letterSpacing: 0.8 }}>
+              Required before sending
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Launch and configure your campaign
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Build the sending setup first, then use the guided launch flow to preview leads, generate drafts, and move into review safely.
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+              <Button variant="contained" size="large" onClick={openWizard} disabled={submitting}>
+                Launch Email Campaign
+              </Button>
+              <Chip
+                size="small"
+                color={overview.webhook_secret_configured ? "success" : "warning"}
+                variant="outlined"
+                label={overview.webhook_secret_configured ? "Webhook secret ready in backend env" : "Set EMAIL_SDR_WEBHOOK_SECRET in backend env"}
+              />
+              <Chip size="small" variant="outlined" label={`${providerConnections.length} provider connection(s)`} />
+              <Chip size="small" variant="outlined" label={`${emailAgents.length} email agent(s)`} />
+            </Stack>
+          </Stack>
+        </Paper>
+      ) : null}
+
+      {workspaceView === "setup" ? (
+      <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Targeting setup
+          </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Saved Segments</Typography>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField fullWidth label="Segment name" value={segmentForm.name} onChange={(e) => setSegmentForm((prev) => ({ ...prev, name: e.target.value }))} />
@@ -1318,10 +1497,46 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
-      <Paper sx={{ p: 2.5 }} ref={agentSectionRef}>
+      {workspaceView === "setup" ? (
+      <Paper sx={{ p: 2.5 }} ref={templateSectionRef}>
         <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email Templates</Typography>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email Templates</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Keep the template library focused. Start with defaults, then expand only when a manager needs deeper control.
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <TextField
+                select
+                size="small"
+                label="Show"
+                value={templateBusinessFilter}
+                onChange={(e) => setTemplateBusinessFilter(e.target.value)}
+                sx={{ minWidth: 220 }}
+              >
+                <MenuItem value="default">Default templates only</MenuItem>
+                <MenuItem value="">All business types</MenuItem>
+                {availableTemplateBusinessTypes.map((businessType) => (
+                  <MenuItem key={businessType} value={businessType}>
+                    {businessType}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Button
+                variant={templateShowAll ? "contained" : "outlined"}
+                onClick={() => setTemplateShowAll((prev) => !prev)}
+              >
+                {templateShowAll ? "Compact list" : "Show more"}
+              </Button>
+            </Stack>
+          </Stack>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Message setup
+          </Typography>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField fullWidth label="Template name" value={templateForm.name} onChange={(e) => setTemplateForm((prev) => ({ ...prev, name: e.target.value }))} />
             <TextField select label="Category" value={templateForm.category} onChange={(e) => setTemplateForm((prev) => ({ ...prev, category: e.target.value }))} sx={{ minWidth: 180 }}>
@@ -1345,70 +1560,121 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               Add template
             </Button>
           </Stack>
-          {!templates.length ? (
+          {!templateGroups.length ? (
             <Alert severity="info" variant="outlined">No templates available.</Alert>
           ) : (
-            <List disablePadding>
-              {templates.map((row) => {
-                const draft = templateDrafts[row.id] || {};
-                const preview = templatePreviews[row.id];
-                return (
-                  <React.Fragment key={row.id}>
-                    <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
-                      <Stack spacing={1} sx={{ width: "100%" }}>
-                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-                          <Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {row.category} {row.business_type ? `• ${row.business_type}` : ""} • {row.status} {row.is_default ? "• default" : ""}{row.default_for_category ? " • category default" : ""}
-                            </Typography>
-                          </Box>
-                          <Stack direction="row" spacing={1}>
-                            <Button size="small" variant="outlined" onClick={() => handlePreviewTemplate(row.id, row.business_type || "General")} disabled={submitting}>Preview</Button>
-                            <Button size="small" variant="outlined" onClick={() => handleSaveTemplate(row.id)} disabled={submitting}>Save</Button>
-                            <Button size="small" variant="outlined" onClick={() => handleCloneTemplate(row.id)} disabled={submitting}>Clone</Button>
-                            <Button size="small" variant="outlined" onClick={() => handleSetDefaultTemplate(row.id)} disabled={submitting}>Set default</Button>
-                            <Button size="small" variant="outlined" onClick={() => handleArchiveTemplate(row.id)} disabled={submitting || row.status === "archived"}>Archive</Button>
-                          </Stack>
-                        </Stack>
-                        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-                          <TextField size="small" label="Name" value={draft.name || ""} onChange={(e) => setTemplateDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} />
-                          <TextField size="small" label="Subject" value={draft.subject || ""} onChange={(e) => setTemplateDrafts((prev) => ({ ...prev, [row.id]: { ...draft, subject: e.target.value } }))} sx={{ flex: 1 }} />
-                        </Stack>
-                        {preview ? (
-                          <Paper variant="outlined" sx={{ p: 1.25 }}>
-                            <Typography variant="caption" color="text.secondary">{preview.subject}</Typography>
-                            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>{preview.body}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                              Variables: {(preview.variables_used || []).join(", ") || "none"}
-                            </Typography>
-                            {!!(preview.missing_variables || []).length && (
-                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                                {(preview.missing_variables || []).map((variable) => (
-                                  <Chip key={`${row.id}-${variable}`} size="small" color="warning" variant="outlined" label={`Missing ${variable}`} />
-                                ))}
-                              </Stack>
-                            )}
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                              Character count: {preview.character_count || 0}
-                            </Typography>
-                          </Paper>
-                        ) : null}
+            <Stack spacing={1.5}>
+              {templateGroups.map((group, index) => (
+                <Accordion
+                  key={`template-group-${group.businessType}`}
+                  defaultExpanded={index === 0 && !templateShowAll}
+                  disableGutters
+                  sx={{ border: "1px solid #e2e8f0", borderRadius: "14px !important", overflow: "hidden" }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Stack
+                      direction={{ xs: "column", md: "row" }}
+                      justifyContent="space-between"
+                      alignItems={{ xs: "flex-start", md: "center" }}
+                      spacing={1}
+                      sx={{ width: "100%" }}
+                    >
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{group.businessType}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {group.templates.length} template{group.templates.length === 1 ? "" : "s"} • {group.defaultCount} default
+                        </Typography>
+                      </Box>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {group.categories.map((categoryRow) => (
+                          <Chip key={`${group.businessType}-${categoryRow.category}`} size="small" variant="outlined" label={`${categoryRow.category}: ${categoryRow.rows.length}`} />
+                        ))}
                       </Stack>
-                    </ListItem>
-                    <Divider />
-                  </React.Fragment>
-                );
-              })}
-            </List>
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      {group.categories.map((categoryRow) => (
+                        <Paper key={`${group.businessType}-${categoryRow.category}`} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                          <Stack spacing={1.25}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: "capitalize" }}>
+                              {String(categoryRow.category).replaceAll("_", " ")}
+                            </Typography>
+                            {categoryRow.rows.map((row) => {
+                              const draft = templateDrafts[row.id] || {};
+                              const preview = templatePreviews[row.id];
+                              return (
+                                <Box key={row.id} sx={{ py: 1, borderTop: "1px solid #e2e8f0" }}>
+                                  <Stack spacing={1}>
+                                    <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                                      <Box>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                                          <Chip size="small" variant="outlined" label={row.category} />
+                                          <Chip size="small" variant="outlined" label={row.tone || "professional"} />
+                                          {(row.is_default || row.default_for_category) ? (
+                                            <Chip size="small" color="success" variant="outlined" label="Default" />
+                                          ) : null}
+                                        </Stack>
+                                      </Box>
+                                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                        <Button size="small" variant="outlined" sx={{ color: "#2563eb", fontWeight: 700 }} onClick={() => handlePreviewTemplate(row.id, row.business_type || "General")} disabled={submitting}>Preview</Button>
+                                        <Button size="small" variant="outlined" sx={{ color: "#2563eb", fontWeight: 700 }} onClick={() => handleSaveTemplate(row.id)} disabled={submitting}>Save</Button>
+                                        <Button size="small" variant="outlined" sx={{ color: "#2563eb", fontWeight: 700 }} onClick={() => handleCloneTemplate(row.id)} disabled={submitting}>Clone</Button>
+                                        <Button size="small" variant="outlined" sx={{ color: "#2563eb", fontWeight: 700 }} onClick={() => handleSetDefaultTemplate(row.id)} disabled={submitting}>Set default</Button>
+                                        <Button size="small" variant="outlined" sx={{ color: "#2563eb", fontWeight: 700 }} onClick={() => handleArchiveTemplate(row.id)} disabled={submitting || row.status === "archived"}>Archive</Button>
+                                      </Stack>
+                                    </Stack>
+                                    <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                                      <TextField size="small" label="Name" value={draft.name || ""} onChange={(e) => setTemplateDrafts((prev) => ({ ...prev, [row.id]: { ...draft, name: e.target.value } }))} />
+                                      <TextField size="small" label="Subject" value={draft.subject || ""} onChange={(e) => setTemplateDrafts((prev) => ({ ...prev, [row.id]: { ...draft, subject: e.target.value } }))} sx={{ flex: 1 }} />
+                                    </Stack>
+                                    {preview ? (
+                                      <Paper variant="outlined" sx={{ p: 1.25 }}>
+                                        <Typography variant="caption" color="text.secondary">{preview.subject}</Typography>
+                                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>{preview.body}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                                          Variables: {(preview.variables_used || []).join(", ") || "none"}
+                                        </Typography>
+                                        {!!(preview.missing_variables || []).length && (
+                                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                            {(preview.missing_variables || []).map((variable) => (
+                                              <Chip key={`${row.id}-${variable}`} size="small" color="warning" variant="outlined" label={`Missing ${variable}`} />
+                                            ))}
+                                          </Stack>
+                                        )}
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                                          Character count: {preview.character_count || 0}
+                                        </Typography>
+                                      </Paper>
+                                    ) : null}
+                                  </Stack>
+                                </Box>
+                              );
+                            })}
+                          </Stack>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </Stack>
           )}
         </Stack>
       </Paper>
+      ) : null}
 
-      <EmailSdrAnalyticsSection analytics={analytics} comparison={analyticsComparison} />
+      {workspaceView === "results" ? (
+        <EmailSdrAnalyticsSection analytics={analytics} comparison={analyticsComparison} />
+      ) : null}
 
-      <Paper sx={{ p: 2.5 }}>
+      {workspaceView === "setup" ? (
+      <Paper sx={{ p: 2.5 }} ref={providerSectionRef}>
         <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Required before sending
+          </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign Quick Start</Typography>
           <Typography variant="body2" color="text.secondary">
             Create a campaign, attach segment/provider/templates, and generate the first ready state without sending.
@@ -1485,10 +1751,18 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           </Stack>
         </Stack>
       </Paper>
+      ) : null}
 
-      <Paper sx={{ p: 2.5 }}>
+      {workspaceView === "setup" ? (
+      <Paper sx={{ p: 2.5 }} ref={agentSectionRef}>
         <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Required before sending
+          </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Provider Connections</Typography>
+          <Alert severity={overview.webhook_secret_configured ? "success" : "warning"} variant="outlined">
+            Webhook protection stays env-driven. Email SDR uses <strong>EMAIL_SDR_WEBHOOK_SECRET</strong> from backend environment configuration, not from the admin UI.
+          </Alert>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField
               select
@@ -1566,9 +1840,14 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "setup" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Required before sending
+          </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email Agents</Typography>
           <Typography variant="body2" color="text.secondary">
             AI Email Agents are separate from AI calling reps. They control mailbox identity, warmup, and send windows.
@@ -1668,7 +1947,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "setup" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Operations Checklist</Typography>
@@ -1715,9 +1996,33 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           </Stack>
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "setup" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Lead sources
+          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Marketing Chatbot Leads Shortcut</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Marketing website leads land in Sales CRM and can be routed into Email SDR after consent and targeting review.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+            <Chip size="small" variant="outlined" label={`${visibleMarketingWidgetLeads.length} marketing widget lead(s)`} />
+            <Chip size="small" color={marketingConsentOnly ? "success" : "default"} variant="outlined" label={marketingConsentOnly ? "Consent filter on" : "Showing all leads"} />
+            <Button variant="outlined" onClick={() => setWorkspaceView("action")}>Open Action Queue</Button>
+          </Stack>
+        </Stack>
+      </Paper>
+      ) : null}
+
+      {workspaceView === "setup" ? (
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Required before sending
+          </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Create Email Campaign</Typography>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField
@@ -1802,7 +2107,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           </Typography>
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "control" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign Queue</Typography>
@@ -1952,7 +2259,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "control" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>AI Email Agent Limits</Typography>
@@ -2015,7 +2324,39 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "action" ? (
+      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, backgroundColor: "rgba(248,250,252,0.8)" }}>
+        <Stack spacing={1}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Work to do now
+          </Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Action Queue priorities</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Work this queue from replies first, then hot leads, then campaign approvals, then marketing leads that need a next step.
+          </Typography>
+        </Stack>
+      </Paper>
+      ) : null}
+
+      {workspaceView === "action" ? (
+      <EmailSdrHotLeadsSection
+        hotLeads={hotLeads}
+        reps={reps}
+        myHotLeadsOnly={myHotLeadsOnly}
+        setMyHotLeadsOnly={setMyHotLeadsOnly}
+        onOpenLead={onOpenLead}
+        onAssign={handleAssignHotLead}
+        onNextAction={handleSetHotLeadNextAction}
+        onSnooze={handleSnoozeHotLead}
+        onContacted={handleMarkHotLeadContacted}
+        onCreateDeal={handleCreateHotLeadDeal}
+        onClose={handleCloseHotLead}
+      />
+      ) : null}
+
+      {workspaceView === "action" ? (
       <EmailSdrCampaignReviewSection
         rows={campaignReviewRows}
         onOpenLead={() => {}}
@@ -2025,7 +2366,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           if (next) handleCampaignAction(next.campaign.id, "approve");
         }}
       />
+      ) : null}
 
+      {workspaceView === "action" ? (
       <EmailSdrReplyReviewSection
         rows={replyReviewRows}
         classificationOptions={classificationOptions}
@@ -2042,7 +2385,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           }
         }}
       />
+      ) : null}
 
+      {workspaceView === "action" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Recent Email Messages</Typography>
@@ -2169,7 +2514,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "action" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>New Replies Review Queue</Typography>
@@ -2229,30 +2576,31 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Unmatched Inbound Events</Typography>
-          {!unmatchedEvents.length ? (
-            <Alert severity="info" variant="outlined">No unmatched inbound events.</Alert>
-          ) : (
-            <List disablePadding>
-              {unmatchedEvents.map((event) => (
-                <React.Fragment key={event.id}>
-                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
-                    <ListItemText
-                      primary={`${event.event_type} • ${event.from_email || "Unknown sender"} • ${event.subject || "No subject"}`}
-                      secondary={`${event.raw_payload?.match_reason || "unmatched"}${event.body_text ? ` • ${event.body_text.slice(0, 180)}` : ""}`}
-                    />
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
-          )}
-        </Stack>
-      </Paper>
+      {workspaceView === "results" ? (
+        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
+          <Stack spacing={1}>
+            <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+              Performance and safety
+            </Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Warnings & quality signals</Typography>
+            {(opsSummary?.needs_attention || []).length ? (
+              <Stack spacing={1}>
+                {(opsSummary?.needs_attention || []).map((warning) => (
+                  <Alert key={`quality-${warning.code || warning.message}`} severity="warning" variant="outlined">
+                    {warning.message || warning.code}
+                  </Alert>
+                ))}
+              </Stack>
+            ) : (
+              <Alert severity="success" variant="outlined">No active quality warnings right now.</Alert>
+            )}
+          </Stack>
+        </Paper>
+      ) : null}
 
+      {workspaceView === "results" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Bounces & Unsubscribes</Typography>
@@ -2275,16 +2623,23 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
+      {workspaceView === "action" ? (
       <EmailSdrMarketingLeadsSection
         leads={visibleMarketingWidgetLeads}
         consentOnly={marketingConsentOnly}
         setConsentOnly={setMarketingConsentOnly}
         onOpenLead={onOpenLead}
       />
+      ) : null}
 
+      {workspaceView === "setup" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
+          <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
+            Targeting setup
+          </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Routing Rules</Typography>
           <Typography variant="body2" color="text.secondary">
             Suggest the next Email SDR step for new marketing widget leads. Rules do not auto-send or auto-enroll.
@@ -2349,21 +2704,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
 
-      <EmailSdrHotLeadsSection
-        hotLeads={hotLeads}
-        reps={reps}
-        myHotLeadsOnly={myHotLeadsOnly}
-        setMyHotLeadsOnly={setMyHotLeadsOnly}
-        onOpenLead={onOpenLead}
-        onAssign={handleAssignHotLead}
-        onNextAction={handleSetHotLeadNextAction}
-        onSnooze={handleSnoozeHotLead}
-        onContacted={handleMarkHotLeadContacted}
-        onCreateDeal={handleCreateHotLeadDeal}
-        onClose={handleCloseHotLead}
-      />
-
+      {workspaceView === "results" ? (
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Suppression List</Typography>
@@ -2383,6 +2726,32 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+      ) : null}
+
+      {workspaceView === "results" ? (
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Unmatched Inbound Events</Typography>
+          {!unmatchedEvents.length ? (
+            <Alert severity="info" variant="outlined">No unmatched inbound events.</Alert>
+          ) : (
+            <List disablePadding>
+              {unmatchedEvents.map((event) => (
+                <React.Fragment key={event.id}>
+                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                    <ListItemText
+                      primary={`${event.event_type} • ${event.from_email || "Unknown sender"} • ${event.subject || "No subject"}`}
+                      secondary={`${event.raw_payload?.match_reason || "unmatched"}${event.body_text ? ` • ${event.body_text.slice(0, 180)}` : ""}`}
+                    />
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+      ) : null}
 
       <EmailSdrLaunchWizard
         open={wizardOpen}

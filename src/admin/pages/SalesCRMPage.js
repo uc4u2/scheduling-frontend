@@ -1447,40 +1447,64 @@ export default function SalesCRMPage() {
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>What Email SDR is</Typography>
                   <Stack spacing={1}>
                     <Typography variant="body2">Email SDR is the admin-controlled outbound email workflow inside the Sales CRM.</Typography>
-                    <Typography variant="body2">It is built for low-volume, reviewed outreach with clear suppression, unsubscribe, reply review, and Hot Lead handoff.</Typography>
+                    <Typography variant="body2">It is built for low-volume, reviewed outreach with clear suppression, unsubscribe, reply review, Hot Lead handoff, and marketing lead capture from the website.</Typography>
                     <Typography variant="body2">It is not a mass-mail tool and it does not auto-close or auto-reply to positive leads.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 1: Prepare the sending foundation</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>How the Email SDR workspace is organized</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Create at least one <strong>Provider Connection</strong> with the mailbox identity you want to send from.</Typography>
-                    <Typography variant="body2">2. Create at least one <strong>Email Agent</strong> and connect it to an active Sales Rep.</Typography>
+                    <Typography variant="body2"><strong>Preparation</strong> is where you configure providers, Email Agents, templates, segments, routing rules, and campaign setup.</Typography>
+                    <Typography variant="body2"><strong>Control Room</strong> shows today’s metrics, warnings, campaign status, worker timing, and agent limits.</Typography>
+                    <Typography variant="body2"><strong>Action Queue</strong> is where you handle replies, hot leads, review work, and marketing leads that need action.</Typography>
+                    <Typography variant="body2"><strong>Results &amp; Quality</strong> is where you review analytics, suppression, unmatched inbound events, bounces, and quality warnings.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 1: Start in Preparation</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">1. Open <strong>Preparation</strong>.</Typography>
+                    <Typography variant="body2">2. Use the <strong>Start Here</strong> checklist if this is your first setup.</Typography>
+                    <Typography variant="body2">3. Confirm your backend email environment is already ready:
+                      <Box component="span" sx={{ ml: 0.5 }}>
+                        Provider credentials and <strong>EMAIL_SDR_WEBHOOK_SECRET</strong> stay in backend environment config, not in the admin form.
+                      </Box>
+                    </Typography>
+                    <Typography variant="body2">4. Use <strong>Launch Email Campaign</strong> when you want the guided campaign wizard.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 2: Build the sending foundation</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">1. Create at least one <strong>Provider Connection</strong> with the sending mailbox identity you want to use.</Typography>
+                    <Typography variant="body2">2. Create at least one <strong>Email Agent</strong> and attach it to an active Sales Rep.</Typography>
                     <Typography variant="body2">3. Set the agent <strong>daily limit</strong>, <strong>timezone</strong>, and <strong>send window</strong>.</Typography>
                     <Typography variant="body2">4. Confirm the Provider Connection is <strong>Active</strong> and not paused.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 2: Prepare copy and targeting</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 3: Prepare copy and targeting</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Review the default <strong>Email Templates</strong> or create a custom one.</Typography>
-                    <Typography variant="body2">2. Use <strong>Preview template</strong> before sending so placeholders render correctly.</Typography>
-                    <Typography variant="body2">3. Create a <strong>Segment</strong> for one business type, city, or consent/source pattern.</Typography>
-                    <Typography variant="body2">4. Use <strong>Segment preview</strong> to confirm how many leads are eligible vs blocked before creating a campaign.</Typography>
+                    <Typography variant="body2">1. Use the <strong>Template</strong> area to stay with default templates first.</Typography>
+                    <Typography variant="body2">2. Filter by business type and use the compact default view so you only see recommended templates first.</Typography>
+                    <Typography variant="body2">3. Use <strong>Preview</strong> before sending so placeholders render correctly.</Typography>
+                    <Typography variant="body2">4. Create a <strong>Segment</strong> for one business type, city, or consent/source pattern.</Typography>
+                    <Typography variant="body2">5. Use <strong>Segment preview</strong> to confirm how many leads are eligible vs blocked before creating a campaign.</Typography>
+                    <Typography variant="body2">6. Use <strong>Routing Rules</strong> only when you want new marketing widget leads to suggest a segment, campaign, or template automatically.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 3: Create the campaign</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 4: Launch or create the campaign</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Create a campaign manually or use <strong>Quick Start</strong>.</Typography>
-                    <Typography variant="body2">2. Set the <strong>business type</strong>, <strong>city</strong>, <strong>timezone</strong>, and campaign <strong>send window</strong>.</Typography>
-                    <Typography variant="body2">3. Choose the <strong>Provider Connection</strong>.</Typography>
-                    <Typography variant="body2">4. Pick the initial and follow-up templates if you want template-driven draft generation.</Typography>
-                    <Typography variant="body2">5. Attach a saved segment when you want reusable targeting.</Typography>
+                    <Typography variant="body2">1. Use <strong>Launch Email Campaign</strong> for the guided setup flow.</Typography>
+                    <Typography variant="body2">2. Or use <strong>Campaign Quick Start</strong> when you already know the provider, templates, and segment.</Typography>
+                    <Typography variant="body2">3. You can still create a campaign manually when needed.</Typography>
+                    <Typography variant="body2">4. Set the <strong>business type</strong>, <strong>city</strong>, <strong>timezone</strong>, and campaign <strong>send window</strong>.</Typography>
+                    <Typography variant="body2">5. Pick the Provider Connection and templates you want the campaign to use.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 4: Preview before drafting</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 5: Preview before drafting</Typography>
                   <Stack spacing={1}>
                     <Typography variant="body2">1. Open the campaign row and click <strong>Preview targets</strong>.</Typography>
                     <Typography variant="body2">2. Check <strong>eligible</strong> vs <strong>blocked</strong> counts.</Typography>
@@ -1493,7 +1517,7 @@ export default function SalesCRMPage() {
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 5: Generate and review drafts</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 6: Generate and review drafts</Typography>
                   <Stack spacing={1}>
                     <Typography variant="body2">1. Click <strong>Prepare</strong> or <strong>Generate drafts</strong>.</Typography>
                     <Typography variant="body2">2. Open the message list and review each draft subject and body.</Typography>
@@ -1502,49 +1526,52 @@ export default function SalesCRMPage() {
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 6: Approve and send safely</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 7: Use Control Room to monitor sending</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Approve reviewed drafts only.</Typography>
-                    <Typography variant="body2">2. Use <strong>Send approved now</strong> for manual execution or let the worker run due sends.</Typography>
-                    <Typography variant="body2">3. The system still checks:
+                    <Typography variant="body2">1. Open <strong>Control Room</strong> to see today’s sent, replies, positive, bounces, unsubscribes, Hot Leads, and worker timing.</Typography>
+                    <Typography variant="body2">2. Review <strong>Needs Attention</strong> before sending more volume.</Typography>
+                    <Typography variant="body2">3. Approve reviewed drafts only, then use <strong>Run due send now</strong> for manual execution or let the worker run due sends.</Typography>
+                    <Typography variant="body2">4. The system still checks:
                       <Box component="span" sx={{ ml: 0.5 }}>
                         suppression, unsubscribe, bounce state, paused agents/providers, daily limits, and send windows.
                       </Box>
                     </Typography>
-                    <Typography variant="body2">4. Every Email SDR send includes an unsubscribe link and activity logging.</Typography>
+                    <Typography variant="body2">5. Every Email SDR send includes an unsubscribe link and activity logging.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 7: Handle replies and hot leads</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 8: Work the Action Queue</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Review <strong>New Replies</strong> for matched inbound responses.</Typography>
+                    <Typography variant="body2">1. Review replies needing classification first.</Typography>
                     <Typography variant="body2">2. Classify the reply instead of replying automatically.</Typography>
-                    <Typography variant="body2">3. Positive outcomes move into <strong>Hot Leads</strong>.</Typography>
-                    <Typography variant="body2">4. Use <strong>Assign to Yousef</strong>, <strong>Mark contacted</strong>, or <strong>Create deal</strong> from the Hot Leads queue.</Typography>
-                    <Typography variant="body2">5. Positive replies remain manual. This is intentional.</Typography>
+                    <Typography variant="body2">3. Work <strong>Hot Leads</strong> next for owner assignment, contact status, next action, and deal creation.</Typography>
+                    <Typography variant="body2">4. Review campaigns needing approval or review after that.</Typography>
+                    <Typography variant="body2">5. Review marketing chatbot leads that need action or campaign follow-up.</Typography>
+                    <Typography variant="body2">6. Positive replies remain manual. This is intentional.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 8: Watch safety warnings</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 9: Use Results &amp; Quality before scaling volume</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">Check the warning cards before increasing volume.</Typography>
-                    <Typography variant="body2">Current warnings include bounce rate, unsubscribe rate, complaint events, no active agents, paused provider, and weak positive-reply performance.</Typography>
-                    <Typography variant="body2">If warnings appear, fix the campaign setup before sending more email.</Typography>
+                    <Typography variant="body2">1. Open <strong>Results &amp; Quality</strong> to review analytics first.</Typography>
+                    <Typography variant="body2">2. Watch warnings, suppression, bounces/unsubscribes, and unmatched inbound events.</Typography>
+                    <Typography variant="body2">3. Current warnings include bounce rate, unsubscribe rate, complaint events, no active agents, paused provider, and weak positive-reply performance.</Typography>
+                    <Typography variant="body2">4. If warnings appear, fix the setup before sending more email.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Best first-time admin workflow</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Add one provider.</Typography>
-                    <Typography variant="body2">2. Add one Email Agent.</Typography>
-                    <Typography variant="body2">3. Use one default template.</Typography>
-                    <Typography variant="body2">4. Create one small segment, such as HVAC in one city.</Typography>
-                    <Typography variant="body2">5. Quick-start one campaign.</Typography>
-                    <Typography variant="body2">6. Preview targets.</Typography>
-                    <Typography variant="body2">7. Generate drafts.</Typography>
-                    <Typography variant="body2">8. Edit and approve.</Typography>
-                    <Typography variant="body2">9. Send a small batch.</Typography>
-                    <Typography variant="body2">10. Review replies and Hot Leads before scaling.</Typography>
+                    <Typography variant="body2">1. Open Preparation.</Typography>
+                    <Typography variant="body2">2. Add one provider.</Typography>
+                    <Typography variant="body2">3. Add one Email Agent.</Typography>
+                    <Typography variant="body2">4. Stay with one default template pack.</Typography>
+                    <Typography variant="body2">5. Create one small segment, such as HVAC in one city.</Typography>
+                    <Typography variant="body2">6. Launch one guided campaign.</Typography>
+                    <Typography variant="body2">7. Preview targets.</Typography>
+                    <Typography variant="body2">8. Generate drafts.</Typography>
+                    <Typography variant="body2">9. Edit and approve.</Typography>
+                    <Typography variant="body2">10. Send a small batch, then move to Control Room and Action Queue before scaling.</Typography>
                   </Stack>
                 </Paper>
               </>

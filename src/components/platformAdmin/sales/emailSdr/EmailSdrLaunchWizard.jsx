@@ -55,7 +55,31 @@ export default function EmailSdrLaunchWizard(props) {
           <LinearProgress variant="determinate" value={((wizardStep + 1) / launchWizardSteps.length) * 100} />
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
             {launchWizardSteps.map((label, index) => (
-              <Chip key={label} size="small" color={index < wizardStep ? "success" : index === wizardStep ? "primary" : "default"} variant={index <= wizardStep ? "filled" : "outlined"} label={label} />
+              <Chip
+                key={label}
+                size="small"
+                color={index < wizardStep ? "success" : index === wizardStep ? "primary" : "default"}
+                variant={index <= wizardStep ? "filled" : "outlined"}
+                label={label}
+                sx={{
+                  fontWeight: 700,
+                  "& .MuiChip-label": {
+                    color: index <= wizardStep ? "#fff" : "#1e293b",
+                  },
+                  ...(index === wizardStep
+                    ? {
+                        bgcolor: "#2563eb",
+                        borderColor: "#2563eb",
+                      }
+                    : {}),
+                  ...(index < wizardStep
+                    ? {
+                        bgcolor: "#15803d",
+                        borderColor: "#15803d",
+                      }
+                    : {}),
+                }}
+              />
             ))}
           </Stack>
 
@@ -84,7 +108,33 @@ export default function EmailSdrLaunchWizard(props) {
               </Stack>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
                 {templatePacks.map((pack) => (
-                  <Button key={`pack-${pack.business_type}`} variant={wizardState.business_type === pack.business_type ? "contained" : "outlined"} onClick={() => handleWizardBusinessTypeChange(pack.business_type)}>
+                  <Button
+                    key={`pack-${pack.business_type}`}
+                    variant={wizardState.business_type === pack.business_type ? "contained" : "outlined"}
+                    onClick={() => handleWizardBusinessTypeChange(pack.business_type)}
+                    sx={
+                      wizardState.business_type === pack.business_type
+                        ? {
+                            bgcolor: "#2563eb",
+                            color: "#fff",
+                            borderColor: "#2563eb",
+                            fontWeight: 700,
+                            "&:hover": {
+                              bgcolor: "#1d4ed8",
+                              borderColor: "#1d4ed8",
+                            },
+                          }
+                        : {
+                            color: "#2563eb",
+                            borderColor: "#93c5fd",
+                            fontWeight: 700,
+                            "&:hover": {
+                              borderColor: "#2563eb",
+                              bgcolor: "#eff6ff",
+                            },
+                          }
+                    }
+                  >
                     Use {pack.business_type.replace(" service business", "")} defaults
                   </Button>
                 ))}
@@ -191,14 +241,14 @@ export default function EmailSdrLaunchWizard(props) {
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
         {wizardStep > 0 && wizardStep < 5 && <Button onClick={() => setWizardStep((prev) => Math.max(0, prev - 1))}>Back</Button>}
-        {wizardStep < 3 && <Button variant="contained" onClick={() => setWizardStep((prev) => prev + 1)}>Continue</Button>}
-        {wizardStep === 3 && <Button variant="contained" onClick={handleWizardPreview} disabled={submitting}>Preview</Button>}
-        {wizardStep === 4 && <Button variant="contained" onClick={handleWizardGenerate} disabled={submitting}>Generate drafts</Button>}
-        {wizardStep === 5 && <Button variant="contained" onClick={handleWizardApprove} disabled={submitting}>Approve</Button>}
+        {wizardStep < 3 && <Button variant="contained" onClick={() => setWizardStep((prev) => prev + 1)} sx={{ bgcolor: "#2563eb", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: "#1d4ed8" } }}>Continue</Button>}
+        {wizardStep === 3 && <Button variant="contained" onClick={handleWizardPreview} disabled={submitting} sx={{ bgcolor: "#2563eb", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: "#1d4ed8" } }}>Preview</Button>}
+        {wizardStep === 4 && <Button variant="contained" onClick={handleWizardGenerate} disabled={submitting} sx={{ bgcolor: "#2563eb", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: "#1d4ed8" } }}>Generate drafts</Button>}
+        {wizardStep === 5 && <Button variant="contained" onClick={handleWizardApprove} disabled={submitting} sx={{ bgcolor: "#2563eb", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: "#1d4ed8" } }}>Approve</Button>}
         {wizardStep === 6 && (
           <Stack direction="row" spacing={1}>
             <Button variant="outlined" onClick={() => handleWizardSend("schedule")} disabled={submitting}>Leave for worker send</Button>
-            <Button variant="contained" onClick={() => handleWizardSend("send")} disabled={submitting}>Send now</Button>
+            <Button variant="contained" onClick={() => handleWizardSend("send")} disabled={submitting} sx={{ bgcolor: "#2563eb", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: "#1d4ed8" } }}>Send now</Button>
           </Stack>
         )}
       </DialogActions>
