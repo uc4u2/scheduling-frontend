@@ -68,6 +68,10 @@ export default function EmailSdrLaunchWizard(props) {
     wizardTemplateOptions,
     wizardState,
     setWizardState,
+    previewValues,
+    setPreviewValues,
+    resolvedPreviewAgentName,
+    selectedWizardAgent,
     wizardPreview,
     wizardResult,
     handleWizardBusinessTypeChange,
@@ -188,14 +192,62 @@ export default function EmailSdrLaunchWizard(props) {
                   {wizardTemplateOptions.filter((row) => row.category === "follow_up_2").map((row) => <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>)}
                 </TextField>
               </Stack>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Preview values</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Use these only to test how the template reads. Real sends still use the selected Email Agent and lead data.
+                  </Typography>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <TextField
+                      label="Preview sender name"
+                      value={previewValues.agent_name}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, agent_name: e.target.value }))}
+                      helperText={
+                        selectedWizardAgent
+                          ? `Leave blank to use the selected Email Agent: ${selectedWizardAgent.display_name}.`
+                          : "Leave blank to use the selected Email Agent display name."
+                      }
+                      fullWidth
+                    />
+                    <TextField
+                      label="Preview contact name"
+                      value={previewValues.contact_name}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, contact_name: e.target.value }))}
+                      fullWidth
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <TextField
+                      label="Preview business name"
+                      value={previewValues.business_name}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, business_name: e.target.value }))}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Preview city"
+                      value={previewValues.city}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, city: e.target.value }))}
+                      fullWidth
+                    />
+                  </Stack>
+                  <Alert severity="info" variant="outlined">
+                    <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700 }}>{`{{agent_name}}`}</Box>
+                    {" "}comes from the Email Agent display name in real sends. This box only changes preview text.
+                  </Alert>
+                </Stack>
+              </Paper>
               {wizardState.initial_template_id && (
                 <Paper variant="outlined" sx={{ p: 1.5 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Sample preview</Typography>
-                  <Button size="small" sx={{ mt: 1 }} onClick={() => handlePreviewTemplate(Number(wizardState.initial_template_id))} disabled={submitting}>
-                    Render sample with John / ABC HVAC / Toronto
+                  <Button size="small" sx={{ mt: 1 }} onClick={() => handlePreviewTemplate(Number(wizardState.initial_template_id), wizardState.business_type || "General")} disabled={submitting}>
+                    Render sample with {previewValues.contact_name || "John"} / {previewValues.business_name || "ABC HVAC"} / {previewValues.city || "Toronto"}
                   </Button>
                   {templatePreviews[wizardState.initial_template_id] && (
                     <Box sx={{ mt: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                        Rendered with sender identity: {templatePreviews[wizardState.initial_template_id].variables?.agent_name || resolvedPreviewAgentName}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary">{templatePreviews[wizardState.initial_template_id].subject}</Typography>
                       <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>{templatePreviews[wizardState.initial_template_id].body}</Typography>
                       {!!(templatePreviews[wizardState.initial_template_id].missing_variable_warnings || []).length && (

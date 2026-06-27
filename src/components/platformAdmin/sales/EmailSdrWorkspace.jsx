@@ -202,6 +202,38 @@ const wizardSampleLead = {
   city: "Toronto",
   email: "john@abchvac.ca",
 };
+const templateVariableGuide = [
+  {
+    key: "agent_name",
+    label: "{{agent_name}}",
+    description: "Sender name shown inside the email body and signature.",
+    source: "Email Agent display name. You can override it for preview only below.",
+  },
+  {
+    key: "first_name",
+    label: "{{first_name}}",
+    description: "Lead contact first name used in the greeting.",
+    source: "Comes from the lead contact name or the preview contact name.",
+  },
+  {
+    key: "business_name",
+    label: "{{business_name}}",
+    description: "Business or company name used in the email copy.",
+    source: "Comes from the lead company name or the preview business name.",
+  },
+  {
+    key: "city",
+    label: "{{city}}",
+    description: "City used when the template mentions location.",
+    source: "Comes from the lead city or the preview city.",
+  },
+  {
+    key: "unsubscribe_link",
+    label: "{{unsubscribe_link}}",
+    description: "Required unsubscribe URL appended by the system.",
+    source: "System-generated. No manual editing needed.",
+  },
+];
 const workspaceViews = [
   {
     key: "setup",
@@ -306,6 +338,13 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   });
   const [wizardPreview, setWizardPreview] = useState(null);
   const [wizardResult, setWizardResult] = useState(null);
+  const [previewValues, setPreviewValues] = useState({
+    contact_name: wizardSampleLead.name,
+    business_name: wizardSampleLead.business_name,
+    business_type: "General",
+    city: wizardSampleLead.city,
+    agent_name: "",
+  });
   const [marketingConsentOnly, setMarketingConsentOnly] = useState(true);
   const [myHotLeadsOnly, setMyHotLeadsOnly] = useState(false);
   const [workspaceView, setWorkspaceView] = useState("setup");
@@ -352,6 +391,45 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     () => workspaceViews.find((row) => row.key === workspaceView) || workspaceViews[0],
     [workspaceView]
   );
+  const selectedWizardAgent = useMemo(
+    () => emailAgents.find(
+      (row) =>
+        String(row.sales_rep_id || "") === String(wizardState.email_agent_id || "") ||
+        String(row.id || "") === String(wizardState.email_agent_id || "")
+    ) || null,
+    [emailAgents, wizardState.email_agent_id]
+  );
+  const resolvedPreviewAgentName = useMemo(
+    () => previewValues.agent_name || selectedWizardAgent?.display_name || selectedWizardAgent?.from_name || "Yousef",
+    [previewValues.agent_name, selectedWizardAgent]
+  );
+  const buildPreviewSampleLead = useCallback((overrides = {}) => ({
+    name: overrides.contact_name || overrides.name || previewValues.contact_name || wizardSampleLead.name,
+    contact_name: overrides.contact_name || overrides.name || previewValues.contact_name || wizardSampleLead.name,
+    business_name: overrides.business_name || previewValues.business_name || wizardSampleLead.business_name,
+    company_name: overrides.business_name || previewValues.business_name || wizardSampleLead.business_name,
+    business_type:
+      overrides.business_type ||
+      previewValues.business_type ||
+      wizardState.business_type ||
+      wizardSampleLead.business_type,
+    city: overrides.city || previewValues.city || wizardState.city || wizardSampleLead.city,
+    email: wizardSampleLead.email,
+  }), [previewValues, wizardState.business_type, wizardState.city]);
+  const applyPreviewAgentOverride = useCallback((preview, overrideAgentName) => {
+    if (!preview) return preview;
+    const baseAgentName = preview.variables?.agent_name || "Yousef";
+    if (!overrideAgentName || overrideAgentName === baseAgentName) return preview;
+    return {
+      ...preview,
+      subject: String(preview.subject || "").replaceAll(baseAgentName, overrideAgentName),
+      body: String(preview.body || "").replaceAll(baseAgentName, overrideAgentName),
+      variables: {
+        ...(preview.variables || {}),
+        agent_name: overrideAgentName,
+      },
+    };
+  }, []);
   const setupIncomplete = !providerConnections.length || !emailAgents.length || !campaigns.length;
   const templateGroups = useMemo(() => {
     const grouped = new Map();
@@ -806,8 +884,14 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const handlePreviewTemplate = async (templateId, samplePreset = "HVAC") => {
     setSubmitting(true);
     try {
-      const result = await previewEmailTemplate(templateId, { sample_preset: samplePreset, sample_lead: wizardSampleLead });
-      setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
+      const result = await previewEmailTemplate(templateId, {
+        sample_preset: samplePreset,
+        sample_lead: buildPreviewSampleLead({ business_type: samplePreset }),
+      });
+      setTemplatePreviews((prev) => ({
+        ...prev,
+        [templateId]: applyPreviewAgentOverride(result.preview, resolvedPreviewAgentName),
+      }));
       showBanner("info", "Template preview loaded.");
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to preview email template.");
@@ -819,12 +903,21 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const loadTemplatePreviewSilently = useCallback(async (templateId) => {
     if (!templateId) return;
     try {
-      const result = await previewEmailTemplate(Number(templateId), { sample_preset: wizardState.business_type || "HVAC", sample_lead: wizardSampleLead });
-      setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
+      const result = await previewEmailTemplate(Number(templateId), {
+        sample_preset: wizardState.business_type || previewValues.business_type || "HVAC",
+        sample_lead: buildPreviewSampleLead({
+          business_type: wizardState.business_type || previewValues.business_type || "HVAC",
+          city: wizardState.city || previewValues.city || wizardSampleLead.city,
+        }),
+      });
+      setTemplatePreviews((prev) => ({
+        ...prev,
+        [templateId]: applyPreviewAgentOverride(result.preview, resolvedPreviewAgentName),
+      }));
     } catch {
       // Keep wizard flow usable even if preview fetch fails.
     }
-  }, [wizardState.business_type]);
+  }, [applyPreviewAgentOverride, buildPreviewSampleLead, previewValues.business_type, previewValues.city, resolvedPreviewAgentName, wizardState.business_type, wizardState.city]);
 
   const handleSaveSegment = async (segmentId) => {
     const draft = segmentDrafts[segmentId];
@@ -962,6 +1055,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     setWizardResult(null);
     setWizardStep(0);
     setWizardOpen(true);
+    setPreviewValues((prev) => ({
+      ...prev,
+      business_type: defaultPack?.business_type || prev.business_type || "HVAC",
+      city: "Toronto",
+    }));
     loadTemplatePreviewSilently(initial);
   };
 
@@ -977,6 +1075,10 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       follow_up_1_template_id: nextFollow1Id,
       follow_up_2_template_id: nextFollow2Id,
       campaign_name: prev.campaign_name || `${value} Launch Campaign`,
+    }));
+    setPreviewValues((prev) => ({
+      ...prev,
+      business_type: value,
     }));
     loadTemplatePreviewSilently(nextInitialId);
   };
@@ -1534,6 +1636,85 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               </Button>
             </Stack>
           </Stack>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: "rgba(37,99,235,0.03)" }}>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Variables & preview values</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Keep templates flexible by using variables. Managers can change preview values here without changing the saved workflow.
+                </Typography>
+              </Box>
+              <Stack direction={{ xs: "column", xl: "row" }} spacing={2}>
+                <Stack spacing={1} sx={{ flex: 1 }}>
+                  {templateVariableGuide.map((row) => (
+                    <Paper key={row.key} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                      <Stack spacing={0.5}>
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <Chip size="small" variant="outlined" label={row.label} />
+                          {row.key === "agent_name" ? (
+                            <Chip size="small" color="info" variant="outlined" label="Sender identity" />
+                          ) : null}
+                        </Stack>
+                        <Typography variant="body2">{row.description}</Typography>
+                        <Typography variant="caption" color="text.secondary">{row.source}</Typography>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, minWidth: { xl: 360 } }}>
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Preview values</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      These values are used by template preview and the launch wizard sample preview.
+                    </Typography>
+                    <TextField
+                      size="small"
+                      label="Preview sender name"
+                      value={previewValues.agent_name}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, agent_name: e.target.value }))}
+                      helperText={
+                        selectedWizardAgent
+                          ? `Leave blank to use the selected Email Agent: ${selectedWizardAgent.display_name}.`
+                          : "Leave blank to use the selected Email Agent display name."
+                      }
+                    />
+                    <TextField
+                      size="small"
+                      label="Preview contact name"
+                      value={previewValues.contact_name}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, contact_name: e.target.value }))}
+                    />
+                    <TextField
+                      size="small"
+                      label="Preview business name"
+                      value={previewValues.business_name}
+                      onChange={(e) => setPreviewValues((prev) => ({ ...prev, business_name: e.target.value }))}
+                    />
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <TextField
+                        size="small"
+                        label="Preview business type"
+                        value={previewValues.business_type}
+                        onChange={(e) => setPreviewValues((prev) => ({ ...prev, business_type: e.target.value }))}
+                        fullWidth
+                      />
+                      <TextField
+                        size="small"
+                        label="Preview city"
+                        value={previewValues.city}
+                        onChange={(e) => setPreviewValues((prev) => ({ ...prev, city: e.target.value }))}
+                        fullWidth
+                      />
+                    </Stack>
+                    <Alert severity="info" variant="outlined">
+                      <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700 }}>{`{{agent_name}}`}</Box>
+                      {" "}comes from the Email Agent display name in real sends. This box only changes preview text.
+                    </Alert>
+                  </Stack>
+                </Paper>
+              </Stack>
+            </Stack>
+          </Paper>
           <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
             Message setup
           </Typography>
@@ -1631,6 +1812,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                                     </Stack>
                                     {preview ? (
                                       <Paper variant="outlined" sx={{ p: 1.25 }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                                          Rendered with sender identity: {preview.variables?.agent_name || resolvedPreviewAgentName}
+                                        </Typography>
                                         <Typography variant="caption" color="text.secondary">{preview.subject}</Typography>
                                         <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>{preview.body}</Typography>
                                         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
@@ -1852,6 +2036,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           <Typography variant="body2" color="text.secondary">
             AI Email Agents are separate from AI calling reps. They control mailbox identity, warmup, and send windows.
           </Typography>
+          <Alert severity="info" variant="outlined">
+            Templates use <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700 }}>{`{{agent_name}}`}</Box> for the human-looking sender name. In real sends, that comes from the Email Agent display name. From name controls the inbox sender label when the provider supports it, and Signature is optional closing text for future use.
+          </Alert>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <TextField
               select
@@ -1866,6 +2053,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               ))}
             </TextField>
             <TextField fullWidth label="Display name" value={agentForm.display_name} onChange={(e) => setAgentForm((prev) => ({ ...prev, display_name: e.target.value }))} />
+            <TextField fullWidth label="From name" value={agentForm.from_name} onChange={(e) => setAgentForm((prev) => ({ ...prev, from_name: e.target.value }))} />
             <TextField fullWidth label="From email" value={agentForm.from_email} onChange={(e) => setAgentForm((prev) => ({ ...prev, from_email: e.target.value }))} />
             <TextField fullWidth label="Reply-To email" value={agentForm.reply_to_email} onChange={(e) => setAgentForm((prev) => ({ ...prev, reply_to_email: e.target.value }))} />
           </Stack>
@@ -1901,6 +2089,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               Add agent
             </Button>
           </Stack>
+          <TextField
+            fullWidth
+            multiline
+            minRows={2}
+            label="Signature"
+            value={agentForm.signature}
+            onChange={(e) => setAgentForm((prev) => ({ ...prev, signature: e.target.value }))}
+            helperText="Optional. Keep the template body using {{agent_name}}. Use this only if you want a reusable signature block later."
+          />
           {!emailAgents.length ? (
             <Alert severity="info" variant="outlined">No Email Agents configured yet.</Alert>
           ) : (
@@ -1920,6 +2117,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                             <Typography variant="caption" color="text.secondary">
                               Provider: {row.provider_connection_name || "Fallback"} • Timezone: {row.timezone || "America/Toronto"} • Window: {row.send_window_start || "--:--"} - {row.send_window_end || "--:--"}
                             </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                              Sender identity: {row.display_name || "Not set"} • From name: {row.from_name || "Not set"}
+                            </Typography>
                           </Box>
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" variant="outlined" label={`Mailbox: ${row.from_email || "Not set"}`} />
@@ -1933,10 +2133,20 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                         </Stack>
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                           <TextField size="small" label="Display" value={draft.display_name || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, display_name: e.target.value } }))} />
+                          <TextField size="small" label="From name" value={draft.from_name || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, from_name: e.target.value } }))} />
                           <TextField size="small" label="From email" value={draft.from_email || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, from_email: e.target.value } }))} />
                           <TextField size="small" label="Reply-To" value={draft.reply_to_email || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reply_to_email: e.target.value } }))} />
                           <TextField size="small" label="Daily limit" type="number" value={draft.daily_limit || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, daily_limit: e.target.value } }))} sx={{ width: 120 }} />
                         </Stack>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          label="Signature"
+                          value={draft.signature || ""}
+                          onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, signature: e.target.value } }))}
+                        />
                       </Stack>
                     </ListItem>
                     <Divider />
@@ -2765,6 +2975,10 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         wizardTemplateOptions={wizardTemplateOptions}
         wizardState={wizardState}
         setWizardState={setWizardState}
+        previewValues={previewValues}
+        setPreviewValues={setPreviewValues}
+        resolvedPreviewAgentName={resolvedPreviewAgentName}
+        selectedWizardAgent={selectedWizardAgent}
         wizardPreview={wizardPreview}
         wizardResult={wizardResult}
         handleWizardBusinessTypeChange={handleWizardBusinessTypeChange}
