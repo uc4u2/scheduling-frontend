@@ -1,10 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
   Button,
   Chip,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  LinearProgress,
   List,
   ListItem,
   ListItemText,
@@ -32,12 +37,15 @@ import {
   createSalesDealFromEmailHotLead,
   getEmailCampaignAnalytics,
   getEmailSdrAnalytics,
+  getEmailSdrOpsSummary,
   generateEmailCampaignDrafts,
   generateEmailCampaignFollowUps,
   getEmailSdrOverview,
   listEmailAgents,
   listEmailProviderConnections,
+  listEmailTemplatePacks,
   listEmailSegments,
+  listMarketingChatbotLeads,
   listEmailTemplates,
   listEmailAgentLimitsToday,
   listEmailCampaigns,
@@ -53,6 +61,7 @@ import {
   previewEmailTemplate,
   previewEmailSegment,
   previewEmailCampaignLeads,
+  previewEmailTargets,
   quickStartEmailCampaign,
   runEmailSdrDueSend,
   sendEmailCampaign,
@@ -143,15 +152,77 @@ const classificationOptions = [
 ];
 
 const editableStatuses = new Set(["draft", "approved", "scheduled"]);
+const launchWizardSteps = [
+  "Choose Provider",
+  "Choose Email Agent",
+  "Choose Template Pack / Templates",
+  "Choose Segment",
+  "Preview",
+  "Generate Drafts",
+  "Approve",
+  "Send",
+];
+const wizardSampleLead = {
+  name: "John Rivera",
+  business_name: "ABC HVAC",
+  business_type: "HVAC",
+  city: "Toronto",
+  email: "john@abchvac.ca",
+};
+
+function metricCard(title, value, caption, color = "primary.main") {
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, minWidth: 150, flex: 1 }}>
+      <Typography variant="caption" color="text.secondary">{title}</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 800, color, lineHeight: 1.1 }}>{value}</Typography>
+      <Typography variant="caption" color="text.secondary">{caption}</Typography>
+    </Paper>
+  );
+}
+
+function TinySeriesChart({ title, rows = [], metric = "sent", color = "#2563eb" }) {
+  const max = Math.max(1, ...rows.map((row) => Number(row?.[metric] || 0)));
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 220 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{title}</Typography>
+      {!rows.length ? (
+        <Typography variant="caption" color="text.secondary">No activity yet.</Typography>
+      ) : (
+        <Stack direction="row" spacing={0.75} alignItems="flex-end" sx={{ mt: 1.5, minHeight: 96 }}>
+          {rows.slice(-10).map((row) => (
+            <Stack key={`${title}-${row.date}`} spacing={0.5} alignItems="center" sx={{ flex: 1 }}>
+              <Box
+                sx={{
+                  width: "100%",
+                  borderRadius: 1,
+                  bgcolor: color,
+                  opacity: 0.9,
+                  minHeight: 6,
+                  height: `${Math.max(6, Math.round((Number(row?.[metric] || 0) / max) * 72))}px`,
+                }}
+              />
+              <Typography variant="caption" color="text.secondary">
+                {String(row.date || "").slice(5)}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+      )}
+    </Paper>
+  );
+}
 
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner }) {
   const [overview, setOverview] = useState({});
+  const [opsSummary, setOpsSummary] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [messages, setMessages] = useState([]);
   const [emailAgents, setEmailAgents] = useState([]);
   const [providerConnections, setProviderConnections] = useState([]);
   const [segments, setSegments] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [templatePacks, setTemplatePacks] = useState([]);
+  const [marketingWidgetLeads, setMarketingWidgetLeads] = useState([]);
   const [hotLeads, setHotLeads] = useState([]);
   const [suppression, setSuppression] = useState([]);
   const [agentLimits, setAgentLimits] = useState([]);
@@ -191,10 +262,49 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [templateDrafts, setTemplateDrafts] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardState, setWizardState] = useState({
+    provider_connection_id: "",
+    email_agent_id: "",
+    business_type: "HVAC",
+    initial_template_id: "",
+    follow_up_1_template_id: "",
+    follow_up_2_template_id: "",
+    segment_id: "",
+    campaign_name: "",
+    city: "Toronto",
+    source_type: "",
+    email_consent_basis: "",
+    email_publicly_listed: "",
+    exclude_do_not_contact: true,
+    exclude_suppressed: true,
+    only_uncontacted: true,
+    only_not_replied: true,
+  });
+  const [wizardPreview, setWizardPreview] = useState(null);
+  const [wizardResult, setWizardResult] = useState(null);
+  const [marketingConsentOnly, setMarketingConsentOnly] = useState(true);
+  const providerSectionRef = useRef(null);
+  const agentSectionRef = useRef(null);
+  const templateSectionRef = useRef(null);
 
   const aiEmailAgents = useMemo(
     () => reps.filter((rep) => rep.is_ai_agent && rep.is_active && !rep.ai_sdr_paused),
     [reps]
+  );
+
+  const wizardTemplateOptions = useMemo(() => {
+    const businessType = (wizardState.business_type || "").toLowerCase();
+    return templates.filter((row) => {
+      const rowType = (row.business_type || "").toLowerCase();
+      return !row.business_type || rowType === businessType;
+    });
+  }, [templates, wizardState.business_type]);
+
+  const visibleMarketingWidgetLeads = useMemo(
+    () => marketingWidgetLeads.filter((row) => (marketingConsentOnly ? row.consent_to_contact : true)),
+    [marketingWidgetLeads, marketingConsentOnly]
   );
 
   const loadWorkspace = useCallback(async () => {
@@ -202,12 +312,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     try {
       const [
         overviewResp,
+        opsSummaryResp,
         analyticsResp,
         campaignRows,
         emailAgentResp,
         providerRows,
         segmentRows,
         templateRows,
+        templatePackRows,
+        marketingLeadRows,
         messageRows,
         hotRows,
         suppressionRows,
@@ -217,12 +330,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         bounceRows,
       ] = await Promise.all([
         getEmailSdrOverview(),
+        getEmailSdrOpsSummary(),
         getEmailSdrAnalytics(),
         listEmailCampaigns(),
         listEmailAgents(),
         listEmailProviderConnections(),
         listEmailSegments(),
         listEmailTemplates(),
+        listEmailTemplatePacks(),
+        listMarketingChatbotLeads({ consent_only: false }),
         listEmailMessages(),
         listEmailHotLeads(),
         listEmailSuppression(),
@@ -232,12 +348,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         listEmailInboundEvents({ queue: "bounces", limit: 50 }),
       ]);
       setOverview(overviewResp || {});
+      setOpsSummary(opsSummaryResp || null);
       setAnalytics(analyticsResp || null);
       setCampaigns(campaignRows || []);
       setEmailAgents(emailAgentResp?.agents || []);
       setProviderConnections(providerRows || []);
       setSegments(segmentRows || []);
       setTemplates(templateRows || []);
+      setTemplatePacks(templatePackRows || []);
+      setMarketingWidgetLeads(marketingLeadRows || []);
       setMessages(messageRows || []);
       setHotLeads(hotRows || []);
       setSuppression(suppressionRows || []);
@@ -532,7 +651,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const handlePreviewTemplate = async (templateId) => {
     setSubmitting(true);
     try {
-      const result = await previewEmailTemplate(templateId, {});
+      const result = await previewEmailTemplate(templateId, { sample_lead: wizardSampleLead });
       setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
       showBanner("info", "Template preview loaded.");
     } catch (error) {
@@ -541,6 +660,16 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       setSubmitting(false);
     }
   };
+
+  const loadTemplatePreviewSilently = useCallback(async (templateId) => {
+    if (!templateId) return;
+    try {
+      const result = await previewEmailTemplate(Number(templateId), { sample_lead: wizardSampleLead });
+      setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
+    } catch {
+      // Keep wizard flow usable even if preview fetch fails.
+    }
+  }, []);
 
   const handleSaveSegment = async (segmentId) => {
     const draft = segmentDrafts[segmentId];
@@ -646,6 +775,142 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       await loadWorkspace();
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to quick-start campaign.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openWizard = () => {
+    const defaultPack = templatePacks.find((row) => row.business_type === "HVAC") || templatePacks[0];
+    const initial = defaultPack?.default_template_ids?.cold_initial || defaultPack?.categories?.cold_initial?.[0]?.id || "";
+    const follow1 = defaultPack?.default_template_ids?.follow_up_1 || defaultPack?.categories?.follow_up_1?.[0]?.id || "";
+    const follow2 = defaultPack?.default_template_ids?.follow_up_2 || defaultPack?.categories?.follow_up_2?.[0]?.id || "";
+    setWizardState({
+      provider_connection_id: providerConnections.find((row) => row.status === "active")?.id || "",
+      email_agent_id: emailAgents.find((row) => row.status === "active")?.sales_rep_id || "",
+      business_type: defaultPack?.business_type || "HVAC",
+      initial_template_id: initial,
+      follow_up_1_template_id: follow1,
+      follow_up_2_template_id: follow2,
+      segment_id: "",
+      campaign_name: `${defaultPack?.business_type || "HVAC"} Launch Campaign`,
+      city: "Toronto",
+      source_type: "",
+      email_consent_basis: "",
+      email_publicly_listed: "",
+      exclude_do_not_contact: true,
+      exclude_suppressed: true,
+      only_uncontacted: true,
+      only_not_replied: true,
+    });
+    setWizardPreview(null);
+    setWizardResult(null);
+    setWizardStep(0);
+    setWizardOpen(true);
+    loadTemplatePreviewSilently(initial);
+  };
+
+  const handleWizardBusinessTypeChange = (value) => {
+    const selectedPack = templatePacks.find((row) => row.business_type === value);
+    const nextInitialId = selectedPack?.default_template_ids?.cold_initial || selectedPack?.categories?.cold_initial?.[0]?.id || "";
+    const nextFollow1Id = selectedPack?.default_template_ids?.follow_up_1 || selectedPack?.categories?.follow_up_1?.[0]?.id || "";
+    const nextFollow2Id = selectedPack?.default_template_ids?.follow_up_2 || selectedPack?.categories?.follow_up_2?.[0]?.id || "";
+    setWizardState((prev) => ({
+      ...prev,
+      business_type: value,
+      initial_template_id: nextInitialId,
+      follow_up_1_template_id: nextFollow1Id,
+      follow_up_2_template_id: nextFollow2Id,
+      campaign_name: prev.campaign_name || `${value} Launch Campaign`,
+    }));
+    loadTemplatePreviewSilently(nextInitialId);
+  };
+
+  const scrollToSection = (ref) => {
+    ref?.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+
+  const handleWizardPreview = async () => {
+    setSubmitting(true);
+    try {
+      const result = await previewEmailTargets(
+        wizardState.segment_id
+          ? { segment_id: Number(wizardState.segment_id) }
+          : {
+              business_type: wizardState.business_type,
+              city: wizardState.city,
+              source_type: wizardState.source_type,
+              email_consent_basis: wizardState.email_consent_basis,
+              email_publicly_listed:
+                wizardState.email_publicly_listed === ""
+                  ? undefined
+                  : wizardState.email_publicly_listed === "true",
+              exclude_do_not_contact: wizardState.exclude_do_not_contact,
+              exclude_suppressed: wizardState.exclude_suppressed,
+              only_uncontacted: wizardState.only_uncontacted,
+              only_not_replied: wizardState.only_not_replied,
+            }
+      );
+      setWizardPreview(result || null);
+      setWizardStep(4);
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to preview wizard targets.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleWizardGenerate = async () => {
+    setSubmitting(true);
+    try {
+      const result = await quickStartEmailCampaign({
+        name: wizardState.campaign_name || `${wizardState.business_type} Launch Campaign`,
+        business_type: wizardState.business_type,
+        city: wizardState.city,
+        provider_connection_id: wizardState.provider_connection_id ? Number(wizardState.provider_connection_id) : null,
+        initial_template_id: wizardState.initial_template_id ? Number(wizardState.initial_template_id) : null,
+        follow_up_1_template_id: wizardState.follow_up_1_template_id ? Number(wizardState.follow_up_1_template_id) : null,
+        follow_up_2_template_id: wizardState.follow_up_2_template_id ? Number(wizardState.follow_up_2_template_id) : null,
+        segment_id: wizardState.segment_id ? Number(wizardState.segment_id) : null,
+        email_agent_ids: wizardState.email_agent_id ? [Number(wizardState.email_agent_id)] : [],
+      });
+      setWizardResult(result);
+      setCampaignPreviews((prev) => ({ ...prev, [result.campaign.id]: result.preview }));
+      setWizardStep(5);
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to generate campaign drafts.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleWizardApprove = async () => {
+    if (!wizardResult?.campaign?.id) return;
+    setSubmitting(true);
+    try {
+      await approveEmailCampaign(wizardResult.campaign.id, {});
+      setWizardStep(6);
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to approve wizard campaign.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleWizardSend = async (mode = "send") => {
+    if (!wizardResult?.campaign?.id) return;
+    setSubmitting(true);
+    try {
+      if (mode === "send") {
+        await sendEmailCampaign(wizardResult.campaign.id);
+      }
+      setWizardStep(7);
+      showBanner("success", mode === "send" ? "Wizard campaign sent." : "Wizard campaign ready for worker send.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to finish wizard send step.");
     } finally {
       setSubmitting(false);
     }
@@ -815,14 +1080,64 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
 
   return (
     <Stack spacing={3}>
-      <Paper sx={{ p: 2.5 }}>
+      <Paper sx={{ p: 2.5 }} ref={templateSectionRef}>
         <Stack spacing={2}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>Email SDR</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Admin-approved email-first outreach on top of the existing Sales CRM. Low-volume sends only, with suppression, reply classification, follow-up generation, and a hot-lead handoff queue.
-            </Typography>
-          </Box>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>Email SDR</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Admin-approved email-first outreach on top of the existing Sales CRM. Low-volume sends only, with suppression, reply classification, follow-up generation, and a hot-lead handoff queue.
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button variant="contained" size="large" onClick={openWizard} disabled={submitting}>
+                Launch Email Campaign
+              </Button>
+              <Button variant="outlined" onClick={handleRunDueSendNow} disabled={submitting}>
+                Run due send now
+              </Button>
+            </Stack>
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} useFlexGap>
+            {metricCard("Sent Today", opsSummary?.today?.sent || 0, "Outbound delivered from worker or manual send")}
+            {metricCard("Replies", opsSummary?.today?.replies || 0, "Inbound replies needing review", "success.main")}
+            {metricCard("Positive", opsSummary?.today?.positive || 0, "Manual follow-up queue", "success.dark")}
+            {metricCard("Bounce", opsSummary?.today?.bounce || 0, "Watch deliverability", "error.main")}
+            {metricCard("Unsubscribe", opsSummary?.today?.unsubscribe || 0, "Compliance / fit signal", "warning.main")}
+            {metricCard("Hot Leads", opsSummary?.today?.hot_leads || 0, "Ready for Yousef or deal handoff", "secondary.main")}
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+            <Paper variant="outlined" sx={{ p: 1.5, flex: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Operations Status</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Worker: {opsSummary?.worker_status?.send_due || "ready"} • Next due send: {opsSummary?.next_due_send_at ? new Date(opsSummary.next_due_send_at).toLocaleString() : "No queued send"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Next follow-up: {opsSummary?.next_due_follow_up_at ? new Date(opsSummary.next_due_follow_up_at).toLocaleString() : "No follow-up queued"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Active campaigns: {opsSummary?.active_campaign_count || 0}
+              </Typography>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 1.5, flex: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Needs Attention</Typography>
+              {(opsSummary?.needs_attention || []).length ? (
+                <Stack spacing={0.75} sx={{ mt: 1 }}>
+                  {(opsSummary?.needs_attention || []).slice(0, 6).map((warning) => (
+                    <Alert key={`ops-${warning.code}`} severity={warning.level === "warning" ? "warning" : "info"} variant="outlined">
+                      {warning.message}
+                    </Alert>
+                  ))}
+                </Stack>
+              ) : (
+                <Alert severity="success" variant="outlined" sx={{ mt: 1 }}>
+                  No urgent Email SDR issues detected.
+                </Alert>
+              )}
+            </Paper>
+          </Stack>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
             <Chip size="small" variant="outlined" label={`Campaigns: ${overview.campaigns_total || 0}`} />
@@ -837,15 +1152,38 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
             <Chip size="small" color="warning" variant="outlined" label={`Unmatched: ${overview.unmatched_events || 0}`} />
             <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${overview.bounce_events || 0}`} />
           </Stack>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-            <Button variant="contained" onClick={handleRunDueSendNow} disabled={submitting}>
-              Run due send now
-            </Button>
-          </Stack>
         </Stack>
       </Paper>
 
-      <Paper sx={{ p: 2.5 }}>
+      {(!providerConnections.length || !emailAgents.length || !campaigns.length) && (
+        <Paper sx={{ p: 2.5 }}>
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Start Here</Typography>
+            <Typography variant="body2" color="text.secondary">
+              First-time setup for Email SDR. Complete these steps in order so the first campaign can launch cleanly.
+            </Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+              <Button variant="outlined" onClick={() => scrollToSection(providerSectionRef)}>
+                1. Add Provider
+              </Button>
+              <Button variant="outlined" onClick={() => scrollToSection(agentSectionRef)}>
+                2. Add Email Agent
+              </Button>
+              <Button variant="outlined" onClick={() => scrollToSection(templateSectionRef)}>
+                3. Choose Template Pack
+              </Button>
+              <Button variant="contained" onClick={openWizard}>
+                4. Launch Campaign
+              </Button>
+              <Button variant="outlined" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
+                5. Review Replies
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
+
+      <Paper sx={{ p: 2.5 }} ref={providerSectionRef}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Saved Segments</Typography>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -930,7 +1268,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         </Stack>
       </Paper>
 
-      <Paper sx={{ p: 2.5 }}>
+      <Paper sx={{ p: 2.5 }} ref={agentSectionRef}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email Templates</Typography>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -988,6 +1326,14 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           <Paper variant="outlined" sx={{ p: 1.25 }}>
                             <Typography variant="caption" color="text.secondary">{preview.subject}</Typography>
                             <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>{preview.body}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                              Variables: {(preview.variables_used || []).join(", ") || "none"}
+                            </Typography>
+                            {!!(preview.missing_variables || []).length && (
+                              <Typography variant="caption" color="warning.main">
+                                Missing sample values: {(preview.missing_variables || []).join(", ")}
+                              </Typography>
+                            )}
                           </Paper>
                         ) : null}
                       </Stack>
@@ -1027,6 +1373,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           <Typography variant="caption" color="text.secondary">
             Last 7 days: {analytics?.last_7_days?.sent || 0} sent / {analytics?.last_7_days?.replied || 0} replies. Last 30 days: {analytics?.last_30_days?.sent || 0} sent / {analytics?.last_30_days?.replied || 0} replies.
           </Typography>
+          <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5}>
+            <TinySeriesChart title="Sent over time" rows={analytics?.time_series || []} metric="sent" color="#2563eb" />
+            <TinySeriesChart title="Replies over time" rows={analytics?.time_series || []} metric="replies" color="#059669" />
+            <TinySeriesChart title="Positive replies" rows={analytics?.time_series || []} metric="positive" color="#0f766e" />
+            <TinySeriesChart title="Bounces / Unsubs" rows={(analytics?.time_series || []).map((row) => ({ ...row, combined: Number(row.bounces || 0) + Number(row.unsubscribes || 0) }))} metric="combined" color="#dc2626" />
+          </Stack>
         </Stack>
       </Paper>
 
@@ -1167,11 +1519,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           <Box>
                             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
                             <Typography variant="body2" color="text.secondary">
-                              {row.provider} • {row.from_email} • Status: {row.status}
+                              {row.provider} • {row.from_email} • Reply-To: {row.reply_to_email || "Not set"} • Status: {row.status}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Health: {row.last_health_check_at ? new Date(row.last_health_check_at).toLocaleString() : "Not checked yet"} {row.last_error ? `• Last error: ${row.last_error}` : ""}
                             </Typography>
                           </Box>
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" variant="outlined" label={`Daily limit: ${row.daily_limit}`} />
+                            <Chip size="small" variant="outlined" label={`Warmup: ${row.warmup_stage || "n/a"}`} />
                             <Chip size="small" color={row.webhook_setup?.webhook_secret_configured ? "success" : "warning"} variant="outlined" label={row.webhook_setup?.webhook_secret_configured ? "Webhook secret ready" : "Webhook secret missing"} />
                           </Stack>
                         </Stack>
@@ -1271,8 +1627,14 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                             <Typography variant="body2" color="text.secondary">
                               {row.sales_rep_name} • {row.role_type} • {row.from_email} • Status: {row.status}
                             </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Provider: {row.provider_connection_name || "Fallback"} • Timezone: {row.timezone || "America/Toronto"} • Window: {row.send_window_start || "--:--"} - {row.send_window_end || "--:--"}
+                            </Typography>
                           </Box>
-                          <Stack direction="row" spacing={1}>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            <Chip size="small" variant="outlined" label={`Mailbox: ${row.from_email || "Not set"}`} />
+                            <Chip size="small" variant="outlined" label={`Warmup: ${row.warmup_stage || "new"}`} />
+                            <Chip size="small" variant="outlined" label={`Limit: ${row.daily_limit || 0}/day`} />
                             <Button size="small" variant="outlined" onClick={() => handleSaveEmailAgent(row.id)} disabled={submitting}>Save</Button>
                             <Button size="small" variant="outlined" onClick={() => handleEmailAgentAction(row.id, row.status === "active" ? "pause" : "activate")} disabled={submitting}>
                               {row.status === "active" ? "Pause" : "Activate"}
@@ -1878,6 +2240,58 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
 
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Marketing Chatbot Leads</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Leads captured from the separate marketing-site lead widget. These can be segmented, added to campaigns, or handled manually.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Consent only</Typography>
+              <Switch checked={marketingConsentOnly} onChange={(e) => setMarketingConsentOnly(e.target.checked)} />
+            </Stack>
+          </Stack>
+          {!visibleMarketingWidgetLeads.length ? (
+            <Alert severity="info" variant="outlined">No marketing widget leads match the current filter.</Alert>
+          ) : (
+            <List disablePadding>
+              {visibleMarketingWidgetLeads.slice(0, 20).map((lead) => (
+                <React.Fragment key={`marketing-lead-${lead.id}`}>
+                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                    <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} sx={{ width: "100%" }}>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {lead.company_name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {lead.contact_name || "No contact"} • {lead.business_type || "Unknown type"} • {lead.city || "No city"}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {lead.email || "No email"}{lead.phone ? ` • ${lead.phone}` : ""} • CRM: {lead.current_crm || "Unknown"}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                          Needs: {lead.needs_booking ? "Booking " : ""}{lead.needs_estimates ? "Estimates " : ""}{lead.needs_invoices ? "Invoices" : ""} • Staff: {lead.employees_count || "n/a"} • Consent: {lead.consent_to_contact ? "Yes" : "No"}
+                        </Typography>
+                      </Box>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        <Chip size="small" color={lead.consent_to_contact ? "success" : "default"} label={lead.consent_to_contact ? "Explicit opt-in" : "Stored only"} />
+                        <Button variant="outlined" size="small" onClick={() => onOpenLead?.(lead.id)}>
+                          Open Lead
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2.5 }}>
+        <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Hot Leads Queue</Typography>
           {!hotLeads.length ? (
             <Alert severity="info" variant="outlined">No hot leads yet. Positive replies will surface here for Yousef/manual follow-up.</Alert>
@@ -1941,6 +2355,318 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           )}
         </Stack>
       </Paper>
+
+      <Dialog open={wizardOpen} onClose={() => setWizardOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Launch Email Campaign</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              Step {wizardStep + 1} of {launchWizardSteps.length}: {launchWizardSteps[wizardStep]}
+            </Typography>
+            <LinearProgress variant="determinate" value={((wizardStep + 1) / launchWizardSteps.length) * 100} />
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+              {launchWizardSteps.map((label, index) => (
+                <Chip
+                  key={label}
+                  size="small"
+                  color={index < wizardStep ? "success" : index === wizardStep ? "primary" : "default"}
+                  variant={index <= wizardStep ? "filled" : "outlined"}
+                  label={label}
+                />
+              ))}
+            </Stack>
+
+            {wizardStep === 0 && (
+              <TextField
+                select
+                label="Provider"
+                value={wizardState.provider_connection_id}
+                onChange={(e) => setWizardState((prev) => ({ ...prev, provider_connection_id: e.target.value }))}
+                helperText="Choose the mailbox/provider connection for this campaign."
+              >
+                <MenuItem value="">Fallback mail helper</MenuItem>
+                {providerConnections.map((row) => (
+                  <MenuItem key={row.id} value={row.id}>{row.name} • {row.from_email}</MenuItem>
+                ))}
+              </TextField>
+            )}
+
+            {wizardStep === 1 && (
+              <TextField
+                select
+                label="Email Agent"
+                value={wizardState.email_agent_id}
+                onChange={(e) => setWizardState((prev) => ({ ...prev, email_agent_id: e.target.value }))}
+                helperText="Choose the AI Email Agent identity for the campaign."
+              >
+                <MenuItem value="">Auto-assign from active agents</MenuItem>
+                {emailAgents.map((row) => (
+                  <MenuItem key={row.id} value={row.sales_rep_id}>{row.display_name} • {row.from_email}</MenuItem>
+                ))}
+              </TextField>
+            )}
+
+            {wizardStep === 2 && (
+              <Stack spacing={2}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    select
+                    label="Template pack"
+                    value={wizardState.business_type}
+                    onChange={(e) => handleWizardBusinessTypeChange(e.target.value)}
+                    sx={{ minWidth: 240 }}
+                  >
+                    {templatePacks.map((pack) => (
+                      <MenuItem key={pack.business_type} value={pack.business_type}>{pack.business_type}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label="Campaign name"
+                    value={wizardState.campaign_name}
+                    onChange={(e) => setWizardState((prev) => ({ ...prev, campaign_name: e.target.value }))}
+                    fullWidth
+                  />
+                  <TextField
+                    label="City"
+                    value={wizardState.city}
+                    onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))}
+                    sx={{ minWidth: 180 }}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                  {templatePacks.map((pack) => (
+                    <Button
+                      key={`pack-${pack.business_type}`}
+                      variant={wizardState.business_type === pack.business_type ? "contained" : "outlined"}
+                      onClick={() => handleWizardBusinessTypeChange(pack.business_type)}
+                    >
+                      Use {pack.business_type.replace(" service business", "")} defaults
+                    </Button>
+                  ))}
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    select
+                    label="Initial template"
+                    value={wizardState.initial_template_id}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setWizardState((prev) => ({ ...prev, initial_template_id: value }));
+                      loadTemplatePreviewSilently(value);
+                    }}
+                    fullWidth
+                  >
+                    {wizardTemplateOptions.filter((row) => row.category === "cold_initial").map((row) => (
+                      <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Follow-up 1"
+                    value={wizardState.follow_up_1_template_id}
+                    onChange={(e) => setWizardState((prev) => ({ ...prev, follow_up_1_template_id: e.target.value }))}
+                    fullWidth
+                  >
+                    {wizardTemplateOptions.filter((row) => row.category === "follow_up_1").map((row) => (
+                      <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    label="Final follow-up"
+                    value={wizardState.follow_up_2_template_id}
+                    onChange={(e) => setWizardState((prev) => ({ ...prev, follow_up_2_template_id: e.target.value }))}
+                    fullWidth
+                  >
+                    {wizardTemplateOptions.filter((row) => row.category === "follow_up_2").map((row) => (
+                      <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+                {wizardState.initial_template_id && (
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Sample preview</Typography>
+                    <Button
+                      size="small"
+                      sx={{ mt: 1 }}
+                      onClick={() => handlePreviewTemplate(Number(wizardState.initial_template_id))}
+                      disabled={submitting}
+                    >
+                      Render sample with John / ABC HVAC / Toronto
+                    </Button>
+                    {templatePreviews[wizardState.initial_template_id] && (
+                      <Box sx={{ mt: 1.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {templatePreviews[wizardState.initial_template_id].subject}
+                        </Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>
+                          {templatePreviews[wizardState.initial_template_id].body}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                )}
+              </Stack>
+            )}
+
+            {wizardStep === 3 && (
+              <Stack spacing={2}>
+                <TextField
+                  select
+                  label="Segment"
+                  value={wizardState.segment_id}
+                  onChange={(e) => setWizardState((prev) => ({ ...prev, segment_id: e.target.value }))}
+                  helperText="Choose a saved segment or leave blank and use wizard filters below."
+                >
+                  <MenuItem value="">Use wizard filters</MenuItem>
+                  {segments.map((row) => (
+                    <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+                  ))}
+                </TextField>
+                {!wizardState.segment_id && (
+                  <>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                      <TextField
+                        label="Business type filter"
+                        value={wizardState.business_type}
+                        onChange={(e) => setWizardState((prev) => ({ ...prev, business_type: e.target.value }))}
+                        fullWidth
+                      />
+                      <TextField
+                        label="City filter"
+                        value={wizardState.city}
+                        onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))}
+                        fullWidth
+                      />
+                      <TextField
+                        label="Source type"
+                        value={wizardState.source_type}
+                        onChange={(e) => setWizardState((prev) => ({ ...prev, source_type: e.target.value }))}
+                        fullWidth
+                      />
+                      <TextField
+                        label="Consent basis"
+                        value={wizardState.email_consent_basis}
+                        onChange={(e) => setWizardState((prev) => ({ ...prev, email_consent_basis: e.target.value }))}
+                        fullWidth
+                      />
+                    </Stack>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                      <TextField
+                        select
+                        label="Public email listed"
+                        value={wizardState.email_publicly_listed}
+                        onChange={(e) => setWizardState((prev) => ({ ...prev, email_publicly_listed: e.target.value }))}
+                        sx={{ minWidth: 180 }}
+                      >
+                        <MenuItem value="">Any</MenuItem>
+                        <MenuItem value="true">Yes</MenuItem>
+                        <MenuItem value="false">No</MenuItem>
+                      </TextField>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="caption">Exclude DNC</Typography>
+                        <Switch checked={wizardState.exclude_do_not_contact} onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_do_not_contact: e.target.checked }))} />
+                      </Stack>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="caption">Exclude suppressed</Typography>
+                        <Switch checked={wizardState.exclude_suppressed} onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_suppressed: e.target.checked }))} />
+                      </Stack>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="caption">Only uncontacted</Typography>
+                        <Switch checked={wizardState.only_uncontacted} onChange={(e) => setWizardState((prev) => ({ ...prev, only_uncontacted: e.target.checked }))} />
+                      </Stack>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="caption">Only not replied</Typography>
+                        <Switch checked={wizardState.only_not_replied} onChange={(e) => setWizardState((prev) => ({ ...prev, only_not_replied: e.target.checked }))} />
+                      </Stack>
+                    </Stack>
+                  </>
+                )}
+              </Stack>
+            )}
+
+            {wizardStep === 4 && (
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                {!wizardPreview || wizardPreview.error ? (
+                  <Alert severity="warning" variant="outlined">
+                    {wizardPreview?.error || "Run preview to see eligible and blocked leads."}
+                  </Alert>
+                ) : (
+                  <Stack spacing={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      {wizardPreview.mode === "saved_segment" ? "Using saved segment" : "Using wizard filters"}
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Preview: {wizardPreview.eligible_count || 0} eligible • {wizardPreview.blocked_count || 0} blocked
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Blocked reasons: {Object.entries(wizardPreview.blocked_reason_counts || {}).map(([key, value]) => `${key} (${value})`).join(", ") || "None"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Sample eligible leads: {(wizardPreview.eligible_sample || []).slice(0, 3).map((row) => row.company_name).join(", ") || "None"}
+                    </Typography>
+                  </Stack>
+                )}
+              </Paper>
+            )}
+
+            {wizardStep >= 5 && wizardResult?.campaign && (
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{wizardResult.campaign.name}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Ready state: {wizardResult.ready_count || 0} messages • Created drafts: {wizardResult.draft_result?.created_count || 0}
+                </Typography>
+                {wizardStep >= 6 && (
+                  <Typography variant="body2" color="text.secondary">
+                    Approved drafts: wizard step complete.
+                  </Typography>
+                )}
+                {wizardStep >= 7 && (
+                  <Alert severity="success" variant="outlined" sx={{ mt: 1 }}>
+                    Campaign is ready. Positive replies will still stay manual and flow to Hot Leads.
+                  </Alert>
+                )}
+              </Paper>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWizardOpen(false)}>Close</Button>
+          {wizardStep > 0 && wizardStep < 5 && (
+            <Button onClick={() => setWizardStep((prev) => Math.max(0, prev - 1))}>Back</Button>
+          )}
+          {wizardStep < 3 && (
+            <Button variant="contained" onClick={() => setWizardStep((prev) => prev + 1)}>
+              Continue
+            </Button>
+          )}
+          {wizardStep === 3 && (
+            <Button variant="contained" onClick={handleWizardPreview} disabled={submitting}>
+              Preview
+            </Button>
+          )}
+          {wizardStep === 4 && (
+            <Button variant="contained" onClick={handleWizardGenerate} disabled={submitting}>
+              Generate drafts
+            </Button>
+          )}
+          {wizardStep === 5 && (
+            <Button variant="contained" onClick={handleWizardApprove} disabled={submitting}>
+              Approve
+            </Button>
+          )}
+          {wizardStep === 6 && (
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" onClick={() => handleWizardSend("schedule")} disabled={submitting}>
+                Leave for worker send
+              </Button>
+              <Button variant="contained" onClick={() => handleWizardSend("send")} disabled={submitting}>
+                Send now
+              </Button>
+            </Stack>
+          )}
+        </DialogActions>
+      </Dialog>
 
       {loading ? (
         <Alert severity="info" variant="outlined">Loading Email SDR workspace…</Alert>

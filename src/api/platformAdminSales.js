@@ -274,6 +274,11 @@ export const getEmailSdrOverview = async () => {
   return data?.overview || {};
 };
 
+export const getEmailSdrOpsSummary = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-ops-summary");
+  return data?.summary || null;
+};
+
 export const listEmailCampaigns = async () => {
   const { data } = await platformAdminApi.get("/sales/email-campaigns");
   return data?.campaigns || [];
@@ -312,6 +317,11 @@ export const generateEmailCampaignDrafts = async (campaignId, payload = {}) => {
 export const previewEmailCampaignLeads = async (campaignId, params = {}) => {
   const { data } = await platformAdminApi.get(`/sales/email-campaigns/${campaignId}/preview`, { params });
   return data || { eligible_count: 0, blocked_count: 0, blocked_reason_counts: {}, eligible_sample: [], blocked_sample: [], campaign: null };
+};
+
+export const previewEmailTargets = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/email-campaigns/preview-targets", payload);
+  return data || { eligible_count: 0, blocked_count: 0, blocked_reason_counts: {}, eligible_sample: [], blocked_sample: [], mode: "ad_hoc_filters" };
 };
 
 export const generateEmailCampaignFollowUps = async (campaignId) => {
@@ -394,6 +404,11 @@ export const listEmailHotLeads = async (params = {}) => {
   return data?.hot_leads || [];
 };
 
+export const listMarketingChatbotLeads = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/marketing-chatbot-leads", { params });
+  return data?.leads || [];
+};
+
 export const assignEmailHotLeadToYousef = async (leadId) => {
   const { data } = await platformAdminApi.post(`/sales/email-hot-leads/${leadId}/assign-yousef`);
   return data || { lead: null };
@@ -467,6 +482,11 @@ export const activateEmailAgent = async (agentId) => {
 export const getEmailSdrAnalytics = async () => {
   const { data } = await platformAdminApi.get("/sales/email-analytics");
   return data?.analytics || null;
+};
+
+export const listEmailTemplatePacks = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-template-packs");
+  return data?.packs || [];
 };
 
 export const listEmailSegments = async () => {
