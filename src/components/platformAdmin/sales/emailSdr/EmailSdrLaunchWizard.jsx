@@ -8,14 +8,52 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  IconButton,
   LinearProgress,
   MenuItem,
   Paper,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
+
+const SOURCE_TYPE_OPTIONS = [
+  ["", "Any source"],
+  ["website", "Business website"],
+  ["directory", "Online directory"],
+  ["facebook_page", "Facebook business page"],
+  ["referral", "Referral"],
+  ["website_chatbot", "Marketing chatbot"],
+  ["manual", "Manual entry"],
+];
+
+const CONSENT_BASIS_OPTIONS = [
+  ["", "Any consent type"],
+  ["explicit_opt_in", "Explicit opt-in"],
+  ["implied_public_business", "Public business contact"],
+  ["referral", "Referral-based"],
+  ["manual_opt_in", "Manual opt-in"],
+  ["unknown", "Unknown / review later"],
+];
+
+function HelpLabel({ label, help }) {
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center">
+      <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>
+        {label}
+      </Typography>
+      <Tooltip title={help} arrow placement="top">
+        <IconButton size="small" sx={{ p: 0.25 }}>
+          <HelpOutlineOutlinedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+        </IconButton>
+      </Tooltip>
+    </Stack>
+  );
+}
 
 export default function EmailSdrLaunchWizard(props) {
   const {
@@ -182,22 +220,126 @@ export default function EmailSdrLaunchWizard(props) {
               </TextField>
               {!wizardState.segment_id && (
                 <>
+                  <Alert severity="info" variant="outlined">
+                    Use these filters only to narrow the first test batch. Keep them simple, then tighten later after you see the preview counts.
+                  </Alert>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <TextField label="Business type filter" value={wizardState.business_type} onChange={(e) => setWizardState((prev) => ({ ...prev, business_type: e.target.value }))} fullWidth />
-                    <TextField label="City filter" value={wizardState.city} onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))} fullWidth />
-                    <TextField label="Source type" value={wizardState.source_type} onChange={(e) => setWizardState((prev) => ({ ...prev, source_type: e.target.value }))} fullWidth />
-                    <TextField label="Consent basis" value={wizardState.email_consent_basis} onChange={(e) => setWizardState((prev) => ({ ...prev, email_consent_basis: e.target.value }))} fullWidth />
+                    <TextField
+                      label="Business type filter"
+                      value={wizardState.business_type}
+                      onChange={(e) => setWizardState((prev) => ({ ...prev, business_type: e.target.value }))}
+                      helperText="Use General for broad service outreach or pick one vertical like HVAC."
+                      fullWidth
+                    />
+                    <TextField
+                      label="City filter"
+                      value={wizardState.city}
+                      onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))}
+                      helperText="Optional. Use one city first to keep the first campaign small."
+                      fullWidth
+                    />
+                    <TextField
+                      select
+                      label="Source type"
+                      value={wizardState.source_type}
+                      onChange={(e) => setWizardState((prev) => ({ ...prev, source_type: e.target.value }))}
+                      helperText="Where the lead came from."
+                      fullWidth
+                    >
+                      {SOURCE_TYPE_OPTIONS.map(([value, label]) => (
+                        <MenuItem key={value || "any"} value={value}>
+                          {label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      select
+                      label="Consent basis"
+                      value={wizardState.email_consent_basis}
+                      onChange={(e) => setWizardState((prev) => ({ ...prev, email_consent_basis: e.target.value }))}
+                      helperText="Use this only if you want to narrow by contact permission type."
+                      fullWidth
+                    >
+                      {CONSENT_BASIS_OPTIONS.map(([value, label]) => (
+                        <MenuItem key={value || "any"} value={value}>
+                          {label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
                   </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <TextField select label="Public email listed" value={wizardState.email_publicly_listed} onChange={(e) => setWizardState((prev) => ({ ...prev, email_publicly_listed: e.target.value }))} sx={{ minWidth: 180 }}>
+                    <TextField
+                      select
+                      label="Public email listed"
+                      value={wizardState.email_publicly_listed}
+                      onChange={(e) => setWizardState((prev) => ({ ...prev, email_publicly_listed: e.target.value }))}
+                      helperText="Use this only if you want to target emails that were publicly listed."
+                      sx={{ minWidth: 220 }}
+                    >
                       <MenuItem value="">Any</MenuItem>
                       <MenuItem value="true">Yes</MenuItem>
                       <MenuItem value="false">No</MenuItem>
                     </TextField>
-                    <Stack direction="row" spacing={1} alignItems="center"><Typography variant="caption">Exclude DNC</Typography><Switch checked={wizardState.exclude_do_not_contact} onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_do_not_contact: e.target.checked }))} /></Stack>
-                    <Stack direction="row" spacing={1} alignItems="center"><Typography variant="caption">Exclude suppressed</Typography><Switch checked={wizardState.exclude_suppressed} onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_suppressed: e.target.checked }))} /></Stack>
-                    <Stack direction="row" spacing={1} alignItems="center"><Typography variant="caption">Only uncontacted</Typography><Switch checked={wizardState.only_uncontacted} onChange={(e) => setWizardState((prev) => ({ ...prev, only_uncontacted: e.target.checked }))} /></Stack>
-                    <Stack direction="row" spacing={1} alignItems="center"><Typography variant="caption">Only not replied</Typography><Switch checked={wizardState.only_not_replied} onChange={(e) => setWizardState((prev) => ({ ...prev, only_not_replied: e.target.checked }))} /></Stack>
+                    <Stack spacing={0.5}>
+                      <HelpLabel
+                        label="Exclude DNC"
+                        help="Skips leads flagged as do not contact / do not call. Keep this on."
+                      />
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={wizardState.exclude_do_not_contact}
+                            onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_do_not_contact: e.target.checked }))}
+                          />
+                        }
+                        label=""
+                      />
+                    </Stack>
+                    <Stack spacing={0.5}>
+                      <HelpLabel
+                        label="Exclude suppressed"
+                        help="Skips unsubscribed, bounced, and manually suppressed emails. Keep this on."
+                      />
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={wizardState.exclude_suppressed}
+                            onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_suppressed: e.target.checked }))}
+                          />
+                        }
+                        label=""
+                      />
+                    </Stack>
+                    <Stack spacing={0.5}>
+                      <HelpLabel
+                        label="Only uncontacted"
+                        help="Limits the batch to leads that have not been emailed yet. Best for a first campaign."
+                      />
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={wizardState.only_uncontacted}
+                            onChange={(e) => setWizardState((prev) => ({ ...prev, only_uncontacted: e.target.checked }))}
+                          />
+                        }
+                        label=""
+                      />
+                    </Stack>
+                    <Stack spacing={0.5}>
+                      <HelpLabel
+                        label="Only not replied"
+                        help="Skips leads that already replied before. Keep this on unless you are intentionally rebuilding a list."
+                      />
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={wizardState.only_not_replied}
+                            onChange={(e) => setWizardState((prev) => ({ ...prev, only_not_replied: e.target.checked }))}
+                          />
+                        }
+                        label=""
+                      />
+                    </Stack>
                   </Stack>
                 </>
               )}
