@@ -5,11 +5,6 @@ import {
   Button,
   Chip,
   Divider,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  LinearProgress,
   List,
   ListItem,
   ListItemText,
@@ -25,17 +20,20 @@ import {
   activateEmailProviderConnection,
   applyEmailSegmentToCampaign,
   approveEmailCampaign,
-  assignEmailHotLeadToYousef,
+  assignHotLead,
   classifyEmailInboundEvent,
   classifyEmailReply,
+  cloneEmailTemplate,
+  closeHotLead,
   createEmailAgent,
   createEmailCampaign,
   createEmailProviderConnection,
+  createEmailRoutingRule,
   createEmailSegment,
   createEmailTemplate,
-  createEmailSuppression,
-  createSalesDealFromEmailHotLead,
+  createDealFromHotLead,
   getEmailCampaignAnalytics,
+  getEmailSdrAnalyticsComparison,
   getEmailSdrAnalytics,
   getEmailSdrOpsSummary,
   generateEmailCampaignDrafts,
@@ -49,14 +47,18 @@ import {
   listEmailTemplates,
   listEmailAgentLimitsToday,
   listEmailCampaigns,
-  listEmailHotLeads,
+  listEmailCampaignReviewQueue,
   listEmailInboundEvents,
   listEmailMessages,
+  listEmailReplyReviewQueue,
+  listEmailRoutingRules,
   listEmailSuppression,
-  markEmailHotLeadContacted,
+  listHotLeads,
+  markHotLeadContacted,
   pauseEmailAgent,
   pauseEmailCampaign,
   pauseEmailProviderConnection,
+  pauseEmailRoutingRule,
   prepareEmailCampaignForSending,
   previewEmailTemplate,
   previewEmailSegment,
@@ -65,7 +67,11 @@ import {
   quickStartEmailCampaign,
   runEmailSdrDueSend,
   sendEmailCampaign,
+  setDefaultEmailTemplate,
+  setHotLeadNextAction,
+  snoozeHotLead,
   testEmailProviderConnection,
+  activateEmailRoutingRule,
   updateEmailAgent,
   updateEmailAgentLimitToday,
   updateEmailCampaignAutomationSettings,
@@ -75,6 +81,15 @@ import {
   updateEmailTemplate,
   archiveEmailTemplate,
 } from "../../../api/platformAdminSales";
+import EmailSdrAnalyticsSection from "./emailSdr/EmailSdrAnalyticsSection";
+import EmailSdrCampaignReviewSection from "./emailSdr/EmailSdrCampaignReviewSection";
+import EmailSdrDashboardCards from "./emailSdr/EmailSdrDashboardCards";
+import EmailSdrHotLeadsSection from "./emailSdr/EmailSdrHotLeadsSection";
+import EmailSdrLaunchWizard from "./emailSdr/EmailSdrLaunchWizard";
+import EmailSdrMarketingLeadsSection from "./emailSdr/EmailSdrMarketingLeadsSection";
+import EmailSdrNeedsAttentionCard from "./emailSdr/EmailSdrNeedsAttentionCard";
+import EmailSdrReplyReviewSection from "./emailSdr/EmailSdrReplyReviewSection";
+import EmailSdrStartChecklist from "./emailSdr/EmailSdrStartChecklist";
 
 const emptyCampaignForm = {
   name: "",
@@ -138,6 +153,18 @@ const emptyTemplateForm = {
   is_default: false,
 };
 
+const emptyRoutingRuleForm = {
+  name: "",
+  source_type: "website_chatbot",
+  business_type: "",
+  city: "",
+  consent_required: true,
+  target_segment_id: "",
+  suggested_campaign_id: "",
+  suggested_template_id: "",
+  priority: 100,
+};
+
 const classificationOptions = [
   "positive_interested",
   "asked_for_demo",
@@ -170,48 +197,6 @@ const wizardSampleLead = {
   email: "john@abchvac.ca",
 };
 
-function metricCard(title, value, caption, color = "primary.main") {
-  return (
-    <Paper variant="outlined" sx={{ p: 1.5, minWidth: 150, flex: 1 }}>
-      <Typography variant="caption" color="text.secondary">{title}</Typography>
-      <Typography variant="h5" sx={{ fontWeight: 800, color, lineHeight: 1.1 }}>{value}</Typography>
-      <Typography variant="caption" color="text.secondary">{caption}</Typography>
-    </Paper>
-  );
-}
-
-function TinySeriesChart({ title, rows = [], metric = "sent", color = "#2563eb" }) {
-  const max = Math.max(1, ...rows.map((row) => Number(row?.[metric] || 0)));
-  return (
-    <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 220 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{title}</Typography>
-      {!rows.length ? (
-        <Typography variant="caption" color="text.secondary">No activity yet.</Typography>
-      ) : (
-        <Stack direction="row" spacing={0.75} alignItems="flex-end" sx={{ mt: 1.5, minHeight: 96 }}>
-          {rows.slice(-10).map((row) => (
-            <Stack key={`${title}-${row.date}`} spacing={0.5} alignItems="center" sx={{ flex: 1 }}>
-              <Box
-                sx={{
-                  width: "100%",
-                  borderRadius: 1,
-                  bgcolor: color,
-                  opacity: 0.9,
-                  minHeight: 6,
-                  height: `${Math.max(6, Math.round((Number(row?.[metric] || 0) / max) * 72))}px`,
-                }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                {String(row.date || "").slice(5)}
-              </Typography>
-            </Stack>
-          ))}
-        </Stack>
-      )}
-    </Paper>
-  );
-}
-
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner }) {
   const [overview, setOverview] = useState({});
   const [opsSummary, setOpsSummary] = useState(null);
@@ -227,7 +212,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [suppression, setSuppression] = useState([]);
   const [agentLimits, setAgentLimits] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [analyticsComparison, setAnalyticsComparison] = useState(null);
   const [campaignAnalytics, setCampaignAnalytics] = useState({});
+  const [routingRules, setRoutingRules] = useState([]);
+  const [campaignReviewRows, setCampaignReviewRows] = useState([]);
+  const [replyReviewRows, setReplyReviewRows] = useState([]);
   const [newReplyEvents, setNewReplyEvents] = useState([]);
   const [unmatchedEvents, setUnmatchedEvents] = useState([]);
   const [bounceEvents, setBounceEvents] = useState([]);
@@ -250,6 +239,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [segmentForm, setSegmentForm] = useState(emptySegmentForm);
   const [agentForm, setAgentForm] = useState(emptyAgentForm);
   const [templateForm, setTemplateForm] = useState(emptyTemplateForm);
+  const [routingRuleForm, setRoutingRuleForm] = useState(emptyRoutingRuleForm);
   const [messageReplyText, setMessageReplyText] = useState({});
   const [messageReplyClass, setMessageReplyClass] = useState({});
   const [inboundReplyText, setInboundReplyText] = useState({});
@@ -285,6 +275,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [wizardPreview, setWizardPreview] = useState(null);
   const [wizardResult, setWizardResult] = useState(null);
   const [marketingConsentOnly, setMarketingConsentOnly] = useState(true);
+  const [myHotLeadsOnly, setMyHotLeadsOnly] = useState(false);
   const providerSectionRef = useRef(null);
   const agentSectionRef = useRef(null);
   const templateSectionRef = useRef(null);
@@ -314,12 +305,14 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         overviewResp,
         opsSummaryResp,
         analyticsResp,
+        analyticsComparisonResp,
         campaignRows,
         emailAgentResp,
         providerRows,
         segmentRows,
         templateRows,
         templatePackRows,
+        routingRuleRows,
         marketingLeadRows,
         messageRows,
         hotRows,
@@ -328,34 +321,42 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         inboundReplyRows,
         unmatchedRows,
         bounceRows,
+        campaignReviewResp,
+        replyReviewResp,
       ] = await Promise.all([
         getEmailSdrOverview(),
         getEmailSdrOpsSummary(),
         getEmailSdrAnalytics(),
+        getEmailSdrAnalyticsComparison(),
         listEmailCampaigns(),
         listEmailAgents(),
         listEmailProviderConnections(),
         listEmailSegments(),
         listEmailTemplates(),
         listEmailTemplatePacks(),
+        listEmailRoutingRules(),
         listMarketingChatbotLeads({ consent_only: false }),
         listEmailMessages(),
-        listEmailHotLeads(),
+        listHotLeads({ my_only: myHotLeadsOnly }),
         listEmailSuppression(),
         listEmailAgentLimitsToday(),
         listEmailInboundEvents({ queue: "new_replies", limit: 50 }),
         listEmailInboundEvents({ queue: "unmatched", limit: 50 }),
         listEmailInboundEvents({ queue: "bounces", limit: 50 }),
+        listEmailCampaignReviewQueue(),
+        listEmailReplyReviewQueue(),
       ]);
       setOverview(overviewResp || {});
       setOpsSummary(opsSummaryResp || null);
       setAnalytics(analyticsResp || null);
+      setAnalyticsComparison(analyticsComparisonResp || null);
       setCampaigns(campaignRows || []);
       setEmailAgents(emailAgentResp?.agents || []);
       setProviderConnections(providerRows || []);
       setSegments(segmentRows || []);
       setTemplates(templateRows || []);
       setTemplatePacks(templatePackRows || []);
+      setRoutingRules(routingRuleRows || []);
       setMarketingWidgetLeads(marketingLeadRows || []);
       setMessages(messageRows || []);
       setHotLeads(hotRows || []);
@@ -364,6 +365,8 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       setNewReplyEvents(inboundReplyRows || []);
       setUnmatchedEvents(unmatchedRows || []);
       setBounceEvents(bounceRows || []);
+      setCampaignReviewRows(campaignReviewResp || []);
+      setReplyReviewRows(replyReviewResp || []);
       setProviderDrafts((prev) => {
         const next = { ...prev };
         (providerRows || []).forEach((row) => {
@@ -450,7 +453,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     } finally {
       setLoading(false);
     }
-  }, [showBanner]);
+  }, [showBanner, myHotLeadsOnly]);
 
   useEffect(() => {
     loadWorkspace();
@@ -620,6 +623,44 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
+  const handleCreateRoutingRule = async () => {
+    setSubmitting(true);
+    try {
+      await createEmailRoutingRule({
+        ...routingRuleForm,
+        target_segment_id: routingRuleForm.target_segment_id ? Number(routingRuleForm.target_segment_id) : null,
+        suggested_campaign_id: routingRuleForm.suggested_campaign_id ? Number(routingRuleForm.suggested_campaign_id) : null,
+        suggested_template_id: routingRuleForm.suggested_template_id ? Number(routingRuleForm.suggested_template_id) : null,
+        priority: Number(routingRuleForm.priority || 100),
+      });
+      setRoutingRuleForm(emptyRoutingRuleForm);
+      showBanner("success", "Routing rule created.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to create routing rule.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleRoutingRule = async (ruleId, active) => {
+    setSubmitting(true);
+    try {
+      if (active) {
+        await pauseEmailRoutingRule(ruleId);
+        showBanner("success", "Routing rule paused.");
+      } else {
+        await activateEmailRoutingRule(ruleId);
+        showBanner("success", "Routing rule activated.");
+      }
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update routing rule.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSaveTemplate = async (templateId) => {
     const draft = templateDrafts[templateId];
     if (!draft) return;
@@ -648,10 +689,36 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
-  const handlePreviewTemplate = async (templateId) => {
+  const handleCloneTemplate = async (templateId) => {
     setSubmitting(true);
     try {
-      const result = await previewEmailTemplate(templateId, { sample_lead: wizardSampleLead });
+      await cloneEmailTemplate(templateId);
+      showBanner("success", "Template cloned.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to clone template.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSetDefaultTemplate = async (templateId) => {
+    setSubmitting(true);
+    try {
+      await setDefaultEmailTemplate(templateId, { default_for_category: true });
+      showBanner("success", "Template marked as default.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to set template default.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePreviewTemplate = async (templateId, samplePreset = "HVAC") => {
+    setSubmitting(true);
+    try {
+      const result = await previewEmailTemplate(templateId, { sample_preset: samplePreset, sample_lead: wizardSampleLead });
       setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
       showBanner("info", "Template preview loaded.");
     } catch (error) {
@@ -664,12 +731,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const loadTemplatePreviewSilently = useCallback(async (templateId) => {
     if (!templateId) return;
     try {
-      const result = await previewEmailTemplate(Number(templateId), { sample_lead: wizardSampleLead });
+      const result = await previewEmailTemplate(Number(templateId), { sample_preset: wizardState.business_type || "HVAC", sample_lead: wizardSampleLead });
       setTemplatePreviews((prev) => ({ ...prev, [templateId]: result.preview }));
     } catch {
       // Keep wizard flow usable even if preview fetch fails.
     }
-  }, []);
+  }, [wizardState.business_type]);
 
   const handleSaveSegment = async (segmentId) => {
     const draft = segmentDrafts[segmentId];
@@ -1020,24 +1087,6 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
-  const handleSuppressLead = async (lead) => {
-    setSubmitting(true);
-    try {
-      await createEmailSuppression({
-        lead_id: lead.id,
-        email: lead.email,
-        reason: "manual_block",
-        notes: "Added from Hot Leads / Email SDR workspace",
-      });
-      showBanner("success", `${lead.email || "Lead"} added to suppression.`);
-      await loadWorkspace();
-    } catch (error) {
-      showBanner("error", error?.response?.data?.error || "Failed to suppress email.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleSaveAgentLimit = async (repId) => {
     const draft = agentLimitDrafts[repId];
     if (!draft) return;
@@ -1057,22 +1106,79 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
-  const handleHotLeadAction = async (leadId, action) => {
+  const handleAssignHotLead = async (leadId, salesRepId) => {
     setSubmitting(true);
     try {
-      if (action === "assign") {
-        await assignEmailHotLeadToYousef(leadId);
-        showBanner("success", "Hot lead assigned to Yousef.");
-      } else if (action === "contacted") {
-        await markEmailHotLeadContacted(leadId, {});
-        showBanner("success", "Hot lead marked contacted.");
-      } else if (action === "deal") {
-        await createSalesDealFromEmailHotLead(leadId);
-        showBanner("success", "Sales deal created from hot lead.");
-      }
+      await assignHotLead(leadId, { sales_rep_id: Number(salesRepId) });
+      showBanner("success", "Hot lead owner updated.");
       await loadWorkspace();
     } catch (error) {
-      showBanner("error", error?.response?.data?.error || "Hot lead action failed.");
+      showBanner("error", error?.response?.data?.error || "Failed to assign hot lead.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSetHotLeadNextAction = async (leadId, nextActionAt) => {
+    setSubmitting(true);
+    try {
+      await setHotLeadNextAction(leadId, { next_action_at: nextActionAt });
+      showBanner("success", "Next action updated.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to set next action.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSnoozeHotLead = async (leadId, preset) => {
+    setSubmitting(true);
+    try {
+      await snoozeHotLead(leadId, { preset });
+      showBanner("success", "Hot lead snoozed.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to snooze hot lead.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMarkHotLeadContacted = async (leadId) => {
+    setSubmitting(true);
+    try {
+      await markHotLeadContacted(leadId, {});
+      showBanner("success", "Hot lead marked contacted.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update hot lead.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateHotLeadDeal = async (leadId) => {
+    setSubmitting(true);
+    try {
+      await createDealFromHotLead(leadId);
+      showBanner("success", "Sales deal created from hot lead.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to create deal.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCloseHotLead = async (leadId) => {
+    setSubmitting(true);
+    try {
+      await closeHotLead(leadId, {});
+      showBanner("success", "Hot lead closed.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to close hot lead.");
     } finally {
       setSubmitting(false);
     }
@@ -1099,45 +1205,8 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
             </Stack>
           </Stack>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} useFlexGap>
-            {metricCard("Sent Today", opsSummary?.today?.sent || 0, "Outbound delivered from worker or manual send")}
-            {metricCard("Replies", opsSummary?.today?.replies || 0, "Inbound replies needing review", "success.main")}
-            {metricCard("Positive", opsSummary?.today?.positive || 0, "Manual follow-up queue", "success.dark")}
-            {metricCard("Bounce", opsSummary?.today?.bounce || 0, "Watch deliverability", "error.main")}
-            {metricCard("Unsubscribe", opsSummary?.today?.unsubscribe || 0, "Compliance / fit signal", "warning.main")}
-            {metricCard("Hot Leads", opsSummary?.today?.hot_leads || 0, "Ready for Yousef or deal handoff", "secondary.main")}
-          </Stack>
-
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-            <Paper variant="outlined" sx={{ p: 1.5, flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Operations Status</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Worker: {opsSummary?.worker_status?.send_due || "ready"} • Next due send: {opsSummary?.next_due_send_at ? new Date(opsSummary.next_due_send_at).toLocaleString() : "No queued send"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Next follow-up: {opsSummary?.next_due_follow_up_at ? new Date(opsSummary.next_due_follow_up_at).toLocaleString() : "No follow-up queued"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Active campaigns: {opsSummary?.active_campaign_count || 0}
-              </Typography>
-            </Paper>
-            <Paper variant="outlined" sx={{ p: 1.5, flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Needs Attention</Typography>
-              {(opsSummary?.needs_attention || []).length ? (
-                <Stack spacing={0.75} sx={{ mt: 1 }}>
-                  {(opsSummary?.needs_attention || []).slice(0, 6).map((warning) => (
-                    <Alert key={`ops-${warning.code}`} severity={warning.level === "warning" ? "warning" : "info"} variant="outlined">
-                      {warning.message}
-                    </Alert>
-                  ))}
-                </Stack>
-              ) : (
-                <Alert severity="success" variant="outlined" sx={{ mt: 1 }}>
-                  No urgent Email SDR issues detected.
-                </Alert>
-              )}
-            </Paper>
-          </Stack>
+          <EmailSdrDashboardCards opsSummary={opsSummary} overview={overview} />
+          <EmailSdrNeedsAttentionCard warnings={opsSummary?.needs_attention || []} />
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
             <Chip size="small" variant="outlined" label={`Campaigns: ${overview.campaigns_total || 0}`} />
@@ -1156,31 +1225,13 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       </Paper>
 
       {(!providerConnections.length || !emailAgents.length || !campaigns.length) && (
-        <Paper sx={{ p: 2.5 }}>
-          <Stack spacing={1.5}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Start Here</Typography>
-            <Typography variant="body2" color="text.secondary">
-              First-time setup for Email SDR. Complete these steps in order so the first campaign can launch cleanly.
-            </Typography>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-              <Button variant="outlined" onClick={() => scrollToSection(providerSectionRef)}>
-                1. Add Provider
-              </Button>
-              <Button variant="outlined" onClick={() => scrollToSection(agentSectionRef)}>
-                2. Add Email Agent
-              </Button>
-              <Button variant="outlined" onClick={() => scrollToSection(templateSectionRef)}>
-                3. Choose Template Pack
-              </Button>
-              <Button variant="contained" onClick={openWizard}>
-                4. Launch Campaign
-              </Button>
-              <Button variant="outlined" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
-                5. Review Replies
-              </Button>
-            </Stack>
-          </Stack>
-        </Paper>
+        <EmailSdrStartChecklist
+          onAddProvider={() => scrollToSection(providerSectionRef)}
+          onAddAgent={() => scrollToSection(agentSectionRef)}
+          onTemplates={() => scrollToSection(templateSectionRef)}
+          onLaunch={openWizard}
+          onReplies={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
+        />
       )}
 
       <Paper sx={{ p: 2.5 }} ref={providerSectionRef}>
@@ -1309,12 +1360,14 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           <Box>
                             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
                             <Typography variant="body2" color="text.secondary">
-                              {row.category} {row.business_type ? `• ${row.business_type}` : ""} • {row.status} {row.is_default ? "• default" : ""}
+                              {row.category} {row.business_type ? `• ${row.business_type}` : ""} • {row.status} {row.is_default ? "• default" : ""}{row.default_for_category ? " • category default" : ""}
                             </Typography>
                           </Box>
                           <Stack direction="row" spacing={1}>
-                            <Button size="small" variant="outlined" onClick={() => handlePreviewTemplate(row.id)} disabled={submitting}>Preview</Button>
+                            <Button size="small" variant="outlined" onClick={() => handlePreviewTemplate(row.id, row.business_type || "General")} disabled={submitting}>Preview</Button>
                             <Button size="small" variant="outlined" onClick={() => handleSaveTemplate(row.id)} disabled={submitting}>Save</Button>
+                            <Button size="small" variant="outlined" onClick={() => handleCloneTemplate(row.id)} disabled={submitting}>Clone</Button>
+                            <Button size="small" variant="outlined" onClick={() => handleSetDefaultTemplate(row.id)} disabled={submitting}>Set default</Button>
                             <Button size="small" variant="outlined" onClick={() => handleArchiveTemplate(row.id)} disabled={submitting || row.status === "archived"}>Archive</Button>
                           </Stack>
                         </Stack>
@@ -1330,10 +1383,15 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                               Variables: {(preview.variables_used || []).join(", ") || "none"}
                             </Typography>
                             {!!(preview.missing_variables || []).length && (
-                              <Typography variant="caption" color="warning.main">
-                                Missing sample values: {(preview.missing_variables || []).join(", ")}
-                              </Typography>
+                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                {(preview.missing_variables || []).map((variable) => (
+                                  <Chip key={`${row.id}-${variable}`} size="small" color="warning" variant="outlined" label={`Missing ${variable}`} />
+                                ))}
+                              </Stack>
                             )}
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                              Character count: {preview.character_count || 0}
+                            </Typography>
                           </Paper>
                         ) : null}
                       </Stack>
@@ -1347,57 +1405,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         </Stack>
       </Paper>
 
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={1.5}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Email SDR Analytics</Typography>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip size="small" variant="outlined" label={`Sent: ${analytics?.totals?.sent || 0}`} />
-            <Chip size="small" variant="outlined" label={`Replies: ${analytics?.totals?.replied || 0}`} />
-            <Chip size="small" color="success" variant="outlined" label={`Positive: ${analytics?.totals?.positive_replies || 0}`} />
-            <Chip size="small" color="warning" variant="outlined" label={`Unsubs: ${analytics?.totals?.unsubscribed || 0}`} />
-            <Chip size="small" color="error" variant="outlined" label={`Bounces: ${analytics?.totals?.bounced || 0}`} />
-            <Chip size="small" variant="outlined" label={`Reply rate: ${analytics?.totals?.reply_rate || 0}%`} />
-            <Chip size="small" variant="outlined" label={`Positive reply rate: ${analytics?.totals?.positive_reply_rate || 0}%`} />
-          </Stack>
-          {(analytics?.warnings || []).length ? (
-            <Stack spacing={1}>
-              {(analytics.warnings || []).map((warning) => (
-                <Alert key={warning.code} severity={warning.level === "warning" ? "warning" : "info"} variant="outlined">
-                  {warning.message}
-                </Alert>
-              ))}
-            </Stack>
-          ) : (
-            <Alert severity="success" variant="outlined">No global Email SDR warning thresholds are currently triggered.</Alert>
-          )}
-          <Typography variant="caption" color="text.secondary">
-            Last 7 days: {analytics?.last_7_days?.sent || 0} sent / {analytics?.last_7_days?.replied || 0} replies. Last 30 days: {analytics?.last_30_days?.sent || 0} sent / {analytics?.last_30_days?.replied || 0} replies.
-          </Typography>
-          <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5}>
-            <TinySeriesChart title="Sent over time" rows={analytics?.time_series || []} metric="sent" color="#2563eb" />
-            <TinySeriesChart title="Replies over time" rows={analytics?.time_series || []} metric="replies" color="#059669" />
-            <TinySeriesChart title="Positive replies" rows={analytics?.time_series || []} metric="positive" color="#0f766e" />
-            <TinySeriesChart title="Bounces / Unsubs" rows={(analytics?.time_series || []).map((row) => ({ ...row, combined: Number(row.bounces || 0) + Number(row.unsubscribes || 0) }))} metric="combined" color="#dc2626" />
-          </Stack>
-        </Stack>
-      </Paper>
-
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={1.5}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Safety Warnings</Typography>
-          {(analytics?.warnings || []).length ? (
-            <Stack spacing={1}>
-              {(analytics.warnings || []).map((warning) => (
-                <Alert key={`global-warning-${warning.code}`} severity="warning" variant="outlined">
-                  {warning.message}
-                </Alert>
-              ))}
-            </Stack>
-          ) : (
-            <Alert severity="success" variant="outlined">No global Email SDR warning thresholds are currently triggered.</Alert>
-          )}
-        </Stack>
-      </Paper>
+      <EmailSdrAnalyticsSection analytics={analytics} comparison={analyticsComparison} />
 
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
@@ -1529,6 +1537,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                             <Chip size="small" variant="outlined" label={`Daily limit: ${row.daily_limit}`} />
                             <Chip size="small" variant="outlined" label={`Warmup: ${row.warmup_stage || "n/a"}`} />
                             <Chip size="small" color={row.webhook_setup?.webhook_secret_configured ? "success" : "warning"} variant="outlined" label={row.webhook_setup?.webhook_secret_configured ? "Webhook secret ready" : "Webhook secret missing"} />
+                            <Chip size="small" variant="outlined" label={`Adapter: ${row.adapter_key || row.provider || "generic"}`} />
+                            <Chip size="small" variant="outlined" label={row.capabilities?.reply_webhook_supported ? "Reply webhook" : "Manual reply setup"} />
+                            <Chip size="small" variant="outlined" label={row.capabilities?.bounce_webhook_supported ? "Bounce webhook" : "Manual bounce setup"} />
                           </Stack>
                         </Stack>
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
@@ -1543,7 +1554,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           </Button>
                         </Stack>
                         <Typography variant="caption" color="text.secondary">
-                          Webhook: {row.webhook_setup?.webhook_url} • Header: {row.webhook_setup?.required_header_name}
+                          Webhook: {row.webhook_setup?.webhook_url} • Header: {row.webhook_setup?.required_header_name}{row.last_test_send_at ? ` • Last test send: ${new Date(row.last_test_send_at).toLocaleString()}` : ""}{row.capabilities?.manual_setup ? " • Manual setup" : ""}
                         </Typography>
                       </Stack>
                     </ListItem>
@@ -2005,6 +2016,33 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         </Stack>
       </Paper>
 
+      <EmailSdrCampaignReviewSection
+        rows={campaignReviewRows}
+        onOpenLead={() => {}}
+        onApproveDrafts={(campaignId) => handleCampaignAction(campaignId, "approve")}
+        onTakeNext={() => {
+          const next = campaignReviewRows[0];
+          if (next) handleCampaignAction(next.campaign.id, "approve");
+        }}
+      />
+
+      <EmailSdrReplyReviewSection
+        rows={replyReviewRows}
+        classificationOptions={classificationOptions}
+        inboundReplyClass={inboundReplyClass}
+        inboundReplyText={inboundReplyText}
+        setInboundReplyClass={setInboundReplyClass}
+        setInboundReplyText={setInboundReplyText}
+        onClassify={handleClassifyInboundReply}
+        onTakeNext={() => {
+          const next = replyReviewRows[0];
+          if (next?.event?.id) {
+            const element = document.getElementById(`reply-review-${next.event.id}`);
+            element?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }}
+      />
+
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Recent Email Messages</Typography>
@@ -2238,46 +2276,68 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         </Stack>
       </Paper>
 
+      <EmailSdrMarketingLeadsSection
+        leads={visibleMarketingWidgetLeads}
+        consentOnly={marketingConsentOnly}
+        setConsentOnly={setMarketingConsentOnly}
+        onOpenLead={onOpenLead}
+      />
+
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Marketing Chatbot Leads</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Leads captured from the separate marketing-site lead widget. These can be segmented, added to campaigns, or handled manually.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="caption">Consent only</Typography>
-              <Switch checked={marketingConsentOnly} onChange={(e) => setMarketingConsentOnly(e.target.checked)} />
-            </Stack>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Routing Rules</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Suggest the next Email SDR step for new marketing widget leads. Rules do not auto-send or auto-enroll.
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField fullWidth label="Rule name" value={routingRuleForm.name} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <TextField fullWidth label="Business type" value={routingRuleForm.business_type} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, business_type: e.target.value }))} />
+            <TextField fullWidth label="City" value={routingRuleForm.city} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, city: e.target.value }))} />
+            <TextField label="Priority" type="number" value={routingRuleForm.priority} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, priority: e.target.value }))} sx={{ minWidth: 120 }} />
           </Stack>
-          {!visibleMarketingWidgetLeads.length ? (
-            <Alert severity="info" variant="outlined">No marketing widget leads match the current filter.</Alert>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField select label="Source type" value={routingRuleForm.source_type} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, source_type: e.target.value }))} sx={{ minWidth: 220 }}>
+              <MenuItem value="website_chatbot">website_chatbot</MenuItem>
+            </TextField>
+            <TextField select label="Target segment" value={routingRuleForm.target_segment_id} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, target_segment_id: e.target.value }))} sx={{ minWidth: 220 }}>
+              <MenuItem value="">None</MenuItem>
+              {segments.map((segment) => <MenuItem key={segment.id} value={segment.id}>{segment.name}</MenuItem>)}
+            </TextField>
+            <TextField select label="Suggested campaign" value={routingRuleForm.suggested_campaign_id} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, suggested_campaign_id: e.target.value }))} sx={{ minWidth: 220 }}>
+              <MenuItem value="">None</MenuItem>
+              {campaigns.map((campaign) => <MenuItem key={campaign.id} value={campaign.id}>{campaign.name}</MenuItem>)}
+            </TextField>
+            <TextField select label="Suggested template" value={routingRuleForm.suggested_template_id} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, suggested_template_id: e.target.value }))} sx={{ minWidth: 220 }}>
+              <MenuItem value="">None</MenuItem>
+              {templates.map((template) => <MenuItem key={template.id} value={template.id}>{template.name}</MenuItem>)}
+            </TextField>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption">Consent required</Typography>
+              <Switch checked={routingRuleForm.consent_required} onChange={(e) => setRoutingRuleForm((prev) => ({ ...prev, consent_required: e.target.checked }))} />
+            </Stack>
+            <Button variant="contained" onClick={handleCreateRoutingRule} disabled={submitting || !routingRuleForm.name}>Add rule</Button>
+          </Stack>
+          {!routingRules.length ? (
+            <Alert severity="info" variant="outlined">No routing rules configured yet.</Alert>
           ) : (
             <List disablePadding>
-              {visibleMarketingWidgetLeads.slice(0, 20).map((lead) => (
-                <React.Fragment key={`marketing-lead-${lead.id}`}>
+              {routingRules.map((rule) => (
+                <React.Fragment key={`rule-${rule.id}`}>
                   <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
                     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} sx={{ width: "100%" }}>
                       <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                          {lead.company_name}
-                        </Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{rule.name}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {lead.contact_name || "No contact"} • {lead.business_type || "Unknown type"} • {lead.city || "No city"}
+                          {rule.source_type || "any source"}{rule.business_type ? ` • ${rule.business_type}` : ""}{rule.city ? ` • ${rule.city}` : ""} • priority {rule.priority}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {lead.email || "No email"}{lead.phone ? ` • ${lead.phone}` : ""} • CRM: {lead.current_crm || "Unknown"}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                          Needs: {lead.needs_booking ? "Booking " : ""}{lead.needs_estimates ? "Estimates " : ""}{lead.needs_invoices ? "Invoices" : ""} • Staff: {lead.employees_count || "n/a"} • Consent: {lead.consent_to_contact ? "Yes" : "No"}
+                          Segment: {rule.target_segment_name || "none"} • Campaign: {rule.suggested_campaign_name || "none"} • Template: {rule.suggested_template_name || "none"}
                         </Typography>
                       </Box>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Chip size="small" color={lead.consent_to_contact ? "success" : "default"} label={lead.consent_to_contact ? "Explicit opt-in" : "Stored only"} />
-                        <Button variant="outlined" size="small" onClick={() => onOpenLead?.(lead.id)}>
-                          Open Lead
+                        <Chip size="small" color={rule.active ? "success" : "default"} variant="outlined" label={rule.active ? "Active" : "Paused"} />
+                        <Button size="small" variant="outlined" onClick={() => handleToggleRoutingRule(rule.id, rule.active)} disabled={submitting}>
+                          {rule.active ? "Pause" : "Activate"}
                         </Button>
                       </Stack>
                     </Stack>
@@ -2290,51 +2350,19 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         </Stack>
       </Paper>
 
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Hot Leads Queue</Typography>
-          {!hotLeads.length ? (
-            <Alert severity="info" variant="outlined">No hot leads yet. Positive replies will surface here for Yousef/manual follow-up.</Alert>
-          ) : (
-            <List disablePadding>
-              {hotLeads.map((lead) => (
-                <React.Fragment key={lead.id}>
-                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
-                    <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1} sx={{ width: "100%" }}>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                          {lead.company_name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {lead.contact_name || "No contact"} • {lead.email || "No email"} • {lead.reply_status || lead.email_outreach_status}
-                        </Typography>
-                      </Box>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Button variant="outlined" size="small" onClick={() => onOpenLead?.(lead.id)}>
-                          Open lead
-                        </Button>
-                        <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleHotLeadAction(lead.id, "assign")}>
-                          Assign to Yousef
-                        </Button>
-                        <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleHotLeadAction(lead.id, "contacted")}>
-                          Mark contacted
-                        </Button>
-                        <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleHotLeadAction(lead.id, "deal")}>
-                          Create deal
-                        </Button>
-                        <Button variant="text" size="small" disabled={submitting || !lead.email} onClick={() => handleSuppressLead(lead)}>
-                          Suppress
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
-          )}
-        </Stack>
-      </Paper>
+      <EmailSdrHotLeadsSection
+        hotLeads={hotLeads}
+        reps={reps}
+        myHotLeadsOnly={myHotLeadsOnly}
+        setMyHotLeadsOnly={setMyHotLeadsOnly}
+        onOpenLead={onOpenLead}
+        onAssign={handleAssignHotLead}
+        onNextAction={handleSetHotLeadNextAction}
+        onSnooze={handleSnoozeHotLead}
+        onContacted={handleMarkHotLeadContacted}
+        onCreateDeal={handleCreateHotLeadDeal}
+        onClose={handleCloseHotLead}
+      />
 
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
@@ -2356,317 +2384,31 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         </Stack>
       </Paper>
 
-      <Dialog open={wizardOpen} onClose={() => setWizardOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Launch Email Campaign</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
-              Step {wizardStep + 1} of {launchWizardSteps.length}: {launchWizardSteps[wizardStep]}
-            </Typography>
-            <LinearProgress variant="determinate" value={((wizardStep + 1) / launchWizardSteps.length) * 100} />
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-              {launchWizardSteps.map((label, index) => (
-                <Chip
-                  key={label}
-                  size="small"
-                  color={index < wizardStep ? "success" : index === wizardStep ? "primary" : "default"}
-                  variant={index <= wizardStep ? "filled" : "outlined"}
-                  label={label}
-                />
-              ))}
-            </Stack>
-
-            {wizardStep === 0 && (
-              <TextField
-                select
-                label="Provider"
-                value={wizardState.provider_connection_id}
-                onChange={(e) => setWizardState((prev) => ({ ...prev, provider_connection_id: e.target.value }))}
-                helperText="Choose the mailbox/provider connection for this campaign."
-              >
-                <MenuItem value="">Fallback mail helper</MenuItem>
-                {providerConnections.map((row) => (
-                  <MenuItem key={row.id} value={row.id}>{row.name} • {row.from_email}</MenuItem>
-                ))}
-              </TextField>
-            )}
-
-            {wizardStep === 1 && (
-              <TextField
-                select
-                label="Email Agent"
-                value={wizardState.email_agent_id}
-                onChange={(e) => setWizardState((prev) => ({ ...prev, email_agent_id: e.target.value }))}
-                helperText="Choose the AI Email Agent identity for the campaign."
-              >
-                <MenuItem value="">Auto-assign from active agents</MenuItem>
-                {emailAgents.map((row) => (
-                  <MenuItem key={row.id} value={row.sales_rep_id}>{row.display_name} • {row.from_email}</MenuItem>
-                ))}
-              </TextField>
-            )}
-
-            {wizardStep === 2 && (
-              <Stack spacing={2}>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                  <TextField
-                    select
-                    label="Template pack"
-                    value={wizardState.business_type}
-                    onChange={(e) => handleWizardBusinessTypeChange(e.target.value)}
-                    sx={{ minWidth: 240 }}
-                  >
-                    {templatePacks.map((pack) => (
-                      <MenuItem key={pack.business_type} value={pack.business_type}>{pack.business_type}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label="Campaign name"
-                    value={wizardState.campaign_name}
-                    onChange={(e) => setWizardState((prev) => ({ ...prev, campaign_name: e.target.value }))}
-                    fullWidth
-                  />
-                  <TextField
-                    label="City"
-                    value={wizardState.city}
-                    onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))}
-                    sx={{ minWidth: 180 }}
-                  />
-                </Stack>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-                  {templatePacks.map((pack) => (
-                    <Button
-                      key={`pack-${pack.business_type}`}
-                      variant={wizardState.business_type === pack.business_type ? "contained" : "outlined"}
-                      onClick={() => handleWizardBusinessTypeChange(pack.business_type)}
-                    >
-                      Use {pack.business_type.replace(" service business", "")} defaults
-                    </Button>
-                  ))}
-                </Stack>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                  <TextField
-                    select
-                    label="Initial template"
-                    value={wizardState.initial_template_id}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setWizardState((prev) => ({ ...prev, initial_template_id: value }));
-                      loadTemplatePreviewSilently(value);
-                    }}
-                    fullWidth
-                  >
-                    {wizardTemplateOptions.filter((row) => row.category === "cold_initial").map((row) => (
-                      <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    select
-                    label="Follow-up 1"
-                    value={wizardState.follow_up_1_template_id}
-                    onChange={(e) => setWizardState((prev) => ({ ...prev, follow_up_1_template_id: e.target.value }))}
-                    fullWidth
-                  >
-                    {wizardTemplateOptions.filter((row) => row.category === "follow_up_1").map((row) => (
-                      <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    select
-                    label="Final follow-up"
-                    value={wizardState.follow_up_2_template_id}
-                    onChange={(e) => setWizardState((prev) => ({ ...prev, follow_up_2_template_id: e.target.value }))}
-                    fullWidth
-                  >
-                    {wizardTemplateOptions.filter((row) => row.category === "follow_up_2").map((row) => (
-                      <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
-                {wizardState.initial_template_id && (
-                  <Paper variant="outlined" sx={{ p: 1.5 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Sample preview</Typography>
-                    <Button
-                      size="small"
-                      sx={{ mt: 1 }}
-                      onClick={() => handlePreviewTemplate(Number(wizardState.initial_template_id))}
-                      disabled={submitting}
-                    >
-                      Render sample with John / ABC HVAC / Toronto
-                    </Button>
-                    {templatePreviews[wizardState.initial_template_id] && (
-                      <Box sx={{ mt: 1.5 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          {templatePreviews[wizardState.initial_template_id].subject}
-                        </Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>
-                          {templatePreviews[wizardState.initial_template_id].body}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Paper>
-                )}
-              </Stack>
-            )}
-
-            {wizardStep === 3 && (
-              <Stack spacing={2}>
-                <TextField
-                  select
-                  label="Segment"
-                  value={wizardState.segment_id}
-                  onChange={(e) => setWizardState((prev) => ({ ...prev, segment_id: e.target.value }))}
-                  helperText="Choose a saved segment or leave blank and use wizard filters below."
-                >
-                  <MenuItem value="">Use wizard filters</MenuItem>
-                  {segments.map((row) => (
-                    <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-                  ))}
-                </TextField>
-                {!wizardState.segment_id && (
-                  <>
-                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                      <TextField
-                        label="Business type filter"
-                        value={wizardState.business_type}
-                        onChange={(e) => setWizardState((prev) => ({ ...prev, business_type: e.target.value }))}
-                        fullWidth
-                      />
-                      <TextField
-                        label="City filter"
-                        value={wizardState.city}
-                        onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))}
-                        fullWidth
-                      />
-                      <TextField
-                        label="Source type"
-                        value={wizardState.source_type}
-                        onChange={(e) => setWizardState((prev) => ({ ...prev, source_type: e.target.value }))}
-                        fullWidth
-                      />
-                      <TextField
-                        label="Consent basis"
-                        value={wizardState.email_consent_basis}
-                        onChange={(e) => setWizardState((prev) => ({ ...prev, email_consent_basis: e.target.value }))}
-                        fullWidth
-                      />
-                    </Stack>
-                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                      <TextField
-                        select
-                        label="Public email listed"
-                        value={wizardState.email_publicly_listed}
-                        onChange={(e) => setWizardState((prev) => ({ ...prev, email_publicly_listed: e.target.value }))}
-                        sx={{ minWidth: 180 }}
-                      >
-                        <MenuItem value="">Any</MenuItem>
-                        <MenuItem value="true">Yes</MenuItem>
-                        <MenuItem value="false">No</MenuItem>
-                      </TextField>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="caption">Exclude DNC</Typography>
-                        <Switch checked={wizardState.exclude_do_not_contact} onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_do_not_contact: e.target.checked }))} />
-                      </Stack>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="caption">Exclude suppressed</Typography>
-                        <Switch checked={wizardState.exclude_suppressed} onChange={(e) => setWizardState((prev) => ({ ...prev, exclude_suppressed: e.target.checked }))} />
-                      </Stack>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="caption">Only uncontacted</Typography>
-                        <Switch checked={wizardState.only_uncontacted} onChange={(e) => setWizardState((prev) => ({ ...prev, only_uncontacted: e.target.checked }))} />
-                      </Stack>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="caption">Only not replied</Typography>
-                        <Switch checked={wizardState.only_not_replied} onChange={(e) => setWizardState((prev) => ({ ...prev, only_not_replied: e.target.checked }))} />
-                      </Stack>
-                    </Stack>
-                  </>
-                )}
-              </Stack>
-            )}
-
-            {wizardStep === 4 && (
-              <Paper variant="outlined" sx={{ p: 1.5 }}>
-                {!wizardPreview || wizardPreview.error ? (
-                  <Alert severity="warning" variant="outlined">
-                    {wizardPreview?.error || "Run preview to see eligible and blocked leads."}
-                  </Alert>
-                ) : (
-                  <Stack spacing={1}>
-                    <Typography variant="caption" color="text.secondary">
-                      {wizardPreview.mode === "saved_segment" ? "Using saved segment" : "Using wizard filters"}
-                    </Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Preview: {wizardPreview.eligible_count || 0} eligible • {wizardPreview.blocked_count || 0} blocked
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Blocked reasons: {Object.entries(wizardPreview.blocked_reason_counts || {}).map(([key, value]) => `${key} (${value})`).join(", ") || "None"}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Sample eligible leads: {(wizardPreview.eligible_sample || []).slice(0, 3).map((row) => row.company_name).join(", ") || "None"}
-                    </Typography>
-                  </Stack>
-                )}
-              </Paper>
-            )}
-
-            {wizardStep >= 5 && wizardResult?.campaign && (
-              <Paper variant="outlined" sx={{ p: 1.5 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{wizardResult.campaign.name}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Ready state: {wizardResult.ready_count || 0} messages • Created drafts: {wizardResult.draft_result?.created_count || 0}
-                </Typography>
-                {wizardStep >= 6 && (
-                  <Typography variant="body2" color="text.secondary">
-                    Approved drafts: wizard step complete.
-                  </Typography>
-                )}
-                {wizardStep >= 7 && (
-                  <Alert severity="success" variant="outlined" sx={{ mt: 1 }}>
-                    Campaign is ready. Positive replies will still stay manual and flow to Hot Leads.
-                  </Alert>
-                )}
-              </Paper>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setWizardOpen(false)}>Close</Button>
-          {wizardStep > 0 && wizardStep < 5 && (
-            <Button onClick={() => setWizardStep((prev) => Math.max(0, prev - 1))}>Back</Button>
-          )}
-          {wizardStep < 3 && (
-            <Button variant="contained" onClick={() => setWizardStep((prev) => prev + 1)}>
-              Continue
-            </Button>
-          )}
-          {wizardStep === 3 && (
-            <Button variant="contained" onClick={handleWizardPreview} disabled={submitting}>
-              Preview
-            </Button>
-          )}
-          {wizardStep === 4 && (
-            <Button variant="contained" onClick={handleWizardGenerate} disabled={submitting}>
-              Generate drafts
-            </Button>
-          )}
-          {wizardStep === 5 && (
-            <Button variant="contained" onClick={handleWizardApprove} disabled={submitting}>
-              Approve
-            </Button>
-          )}
-          {wizardStep === 6 && (
-            <Stack direction="row" spacing={1}>
-              <Button variant="outlined" onClick={() => handleWizardSend("schedule")} disabled={submitting}>
-                Leave for worker send
-              </Button>
-              <Button variant="contained" onClick={() => handleWizardSend("send")} disabled={submitting}>
-                Send now
-              </Button>
-            </Stack>
-          )}
-        </DialogActions>
-      </Dialog>
+      <EmailSdrLaunchWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        wizardStep={wizardStep}
+        setWizardStep={setWizardStep}
+        launchWizardSteps={launchWizardSteps}
+        providerConnections={providerConnections}
+        emailAgents={emailAgents}
+        templatePacks={templatePacks}
+        wizardTemplateOptions={wizardTemplateOptions}
+        wizardState={wizardState}
+        setWizardState={setWizardState}
+        wizardPreview={wizardPreview}
+        wizardResult={wizardResult}
+        handleWizardBusinessTypeChange={handleWizardBusinessTypeChange}
+        loadTemplatePreviewSilently={loadTemplatePreviewSilently}
+        templatePreviews={templatePreviews}
+        handlePreviewTemplate={handlePreviewTemplate}
+        segments={segments}
+        submitting={submitting}
+        handleWizardPreview={handleWizardPreview}
+        handleWizardGenerate={handleWizardGenerate}
+        handleWizardApprove={handleWizardApprove}
+        handleWizardSend={handleWizardSend}
+      />
 
       {loading ? (
         <Alert severity="info" variant="outlined">Loading Email SDR workspace…</Alert>
