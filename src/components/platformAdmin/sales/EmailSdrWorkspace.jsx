@@ -261,6 +261,17 @@ const workspaceViews = [
   },
 ];
 
+function formatWorkerStatus(workerStatus) {
+  if (!workerStatus) return "ready";
+  if (typeof workerStatus === "string") return workerStatus;
+  if (typeof workerStatus === "object") {
+    const sendDue = workerStatus.send_due || "ready";
+    const followUps = workerStatus.follow_ups || "ready";
+    return `send ${sendDue} • follow-ups ${followUps}`;
+  }
+  return "ready";
+}
+
 function formatCampaignDateLabel(date = new Date()) {
   return date.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 }
@@ -1058,7 +1069,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       await updateEmailCampaignAutomationSettings(campaignId, { import_batch_id: Number(importBatchId) });
       const preview = await previewEmailCampaignLeads(campaignId);
       setCampaignPreviews((prev) => ({ ...prev, [campaignId]: preview }));
-      showBanner("success", "Imported batch attached to campaign.");
+      const campaign = campaigns.find((row) => row.id === campaignId);
+      const batch = pendingImportBatch && Number(pendingImportBatch.id) === Number(importBatchId) ? pendingImportBatch : null;
+      showBanner(
+        "success",
+        `Import batch "${batch?.filename || `#${importBatchId}`}" is now attached to campaign "${campaign?.name || `#${campaignId}`}".`
+      );
       await loadWorkspace();
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to attach imported batch.");
@@ -1572,7 +1588,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
               <EmailSdrNeedsAttentionCard warnings={opsSummary?.needs_attention || []} />
               <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-                  <Chip size="small" color="info" variant="outlined" label={`Worker: ${opsSummary?.worker_status || "ready"}`} />
+                  <Chip size="small" color="info" variant="outlined" label={`Worker: ${formatWorkerStatus(opsSummary?.worker_status)}`} />
                   <Chip size="small" variant="outlined" label={`Next due send: ${opsSummary?.next_due_send_estimate || "n/a"}`} />
                   <Chip size="small" variant="outlined" label={`Next follow-up: ${opsSummary?.next_follow_up_estimate || "n/a"}`} />
                   <Chip size="small" variant="outlined" label={`Active campaigns: ${opsSummary?.active_campaign_count || campaigns.length || 0}`} />
@@ -2831,9 +2847,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
           ) : (
             <List disablePadding>
               {messages.slice(0, 16).map((message) => {
+                const displayBody = editableStatuses.has(message.status)
+                  ? (message.body || "")
+                  : (message.rendered_body || message.body || "");
                 const draft = messageDraftState[message.id] || {
                   subject: message.subject,
-                  body: message.body,
+                  body: displayBody,
                   scheduled_for: message.scheduled_for || "",
                   status: message.status,
                 };

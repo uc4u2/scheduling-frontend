@@ -465,7 +465,11 @@ export default function SalesCRMPage() {
       await updateEmailCampaignAutomationSettings(selectedExistingCampaignId, {
         import_batch_id: Number(lastImportResult.batch.id),
       });
-      showBanner("success", "Imported batch attached to the selected email campaign.");
+      const selectedCampaign = existingEmailCampaigns.find((row) => Number(row.id) === Number(selectedExistingCampaignId));
+      showBanner(
+        "success",
+        `Import batch "${lastImportResult.batch.filename || `#${lastImportResult.batch.id}`}" attached to "${selectedCampaign?.name || "selected campaign"}".`
+      );
       setShowExistingCampaignPicker(false);
       setSelectedExistingCampaignId("");
       setWorkspaceTab("email_sdr");
@@ -478,7 +482,7 @@ export default function SalesCRMPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [lastImportResult, selectedExistingCampaignId, showBanner]);
+  }, [existingEmailCampaigns, lastImportResult, selectedExistingCampaignId, showBanner]);
 
   const handleCallModeChange = (mode) => {
     if (mode === "protected_twilio") {
@@ -1182,7 +1186,7 @@ export default function SalesCRMPage() {
                       <MenuItem value="">Select campaign</MenuItem>
                       {existingEmailCampaigns.map((campaign) => (
                         <MenuItem key={campaign.id} value={campaign.id}>
-                          {campaign.name} • {campaign.business_type || "General"} • {campaign.city || "Any city"} • {campaign.status || "draft"}
+                          {campaign.name} • {campaign.business_type || "General"} • {campaign.city || "Any city"} • {campaign.status || "draft"}{campaign.import_batch_name ? ` • current batch: ${campaign.import_batch_name}` : ""}
                         </MenuItem>
                       ))}
                     </TextField>
