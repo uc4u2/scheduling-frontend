@@ -177,6 +177,7 @@ const classificationOptions = [
   "asked_for_demo",
   "asked_for_price",
   "asked_question",
+  "call_me",
   "not_now",
   "not_interested",
   "stop_unsubscribe",
@@ -341,6 +342,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
   const [newReplyEvents, setNewReplyEvents] = useState([]);
   const [unmatchedEvents, setUnmatchedEvents] = useState([]);
   const [bounceEvents, setBounceEvents] = useState([]);
+  const [needsActionEvents, setNeedsActionEvents] = useState([]);
   const [campaignPreviews, setCampaignPreviews] = useState({});
   const [segmentPreviews, setSegmentPreviews] = useState({});
   const [templatePreviews, setTemplatePreviews] = useState({});
@@ -590,6 +592,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
         inboundReplyRows,
         unmatchedRows,
         bounceRows,
+        needsActionRows,
         campaignReviewResp,
         replyReviewResp,
       ] = await Promise.all([
@@ -612,6 +615,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
         listEmailInboundEvents({ queue: "new_replies", limit: 50 }),
         listEmailInboundEvents({ queue: "unmatched", limit: 50 }),
         listEmailInboundEvents({ queue: "bounces", limit: 50 }),
+        listEmailInboundEvents({ queue: "needs_action", limit: 50 }),
         listEmailCampaignReviewQueue(),
         listEmailReplyReviewQueue(),
       ]);
@@ -634,6 +638,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       setNewReplyEvents(inboundReplyRows || []);
       setUnmatchedEvents(unmatchedRows || []);
       setBounceEvents(bounceRows || []);
+      setNeedsActionEvents(needsActionRows || []);
       setCampaignReviewRows(campaignReviewResp || []);
       setReplyReviewRows(replyReviewResp || []);
       setProviderDrafts((prev) => {
@@ -1458,8 +1463,8 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     }
   };
 
-  const handleClassifyInboundReply = async (eventId) => {
-    const classification = inboundReplyClass[eventId];
+  const handleClassifyInboundReply = async (eventId, suggestedClassification = "") => {
+    const classification = inboundReplyClass[eventId] || suggestedClassification || "";
     if (!classification) return;
     setSubmitting(true);
     try {
@@ -2643,7 +2648,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" variant="outlined" label={`Drafts: ${campaign.message_counts?.draft || 0}`} />
                             <Chip size="small" variant="outlined" label={`Approved: ${campaign.message_counts?.approved || 0}`} />
-                            <Chip size="small" variant="outlined" label={`Sent: ${campaign.message_counts?.sent || 0}`} />
+                            <Chip size="small" variant="outlined" label={`Sent: ${campaign.result_counters?.sent || 0}`} />
+                            <Chip size="small" color="info" variant="outlined" label={`Replies: ${campaign.result_counters?.replies || 0}`} />
+                            <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${campaign.result_counters?.hot_leads || 0}`} />
+                            <Chip size="small" color="warning" variant="outlined" label={`Needs action: ${campaign.result_counters?.needs_action || 0}`} />
+                            <Chip size="small" color="error" variant="outlined" label={`Unmatched: ${campaign.result_counters?.unmatched_replies || 0}`} />
                             <Chip size="small" variant="outlined" label={`Agents: ${(campaign.email_agent_ids || []).length || "auto"}`} />
                           </Stack>
                         </Stack>
@@ -2878,8 +2887,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
             Work this queue from replies first, then hot leads, then campaign approvals, then marketing leads that need a next step.
           </Typography>
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-            <Chip size="small" color="info" variant="outlined" label={`Replies needing classification: ${replyReviewRows.length || 0}`} />
+            <Chip size="small" color="info" variant="outlined" label={`New replies: ${newReplyEvents.length || 0}`} />
+            <Chip size="small" color="warning" variant="outlined" label={`Unmatched replies: ${unmatchedEvents.length || 0}`} />
+            <Chip size="small" color="secondary" variant="outlined" label={`Needs action: ${needsActionEvents.length || 0}`} />
             <Chip size="small" color="success" variant="outlined" label={`Hot Leads: ${hotLeads.length || 0}`} />
+            <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${bounceEvents.length || 0}`} />
             <Chip size="small" color="warning" variant="outlined" label={`Campaigns needing review: ${campaignReviewRows.length || 0}`} />
             <Chip size="small" variant="outlined" label={`Marketing leads needing action: ${visibleMarketingWidgetLeads.length || 0}`} />
           </Stack>
@@ -2917,20 +2929,16 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
 
       {workspaceView === "action" ? (
       <EmailSdrReplyReviewSection
-        rows={replyReviewRows}
+        newReplyRows={replyReviewRows.filter((row) => row.issues?.includes("needs_classification")).length ? replyReviewRows.filter((row) => row.issues?.includes("needs_classification")) : newReplyEvents.map((event) => ({ event, issues: ["needs_classification"] }))}
+        unmatchedRows={unmatchedEvents.map((event) => ({ event, issues: ["unmatched_reply"] }))}
+        bounceRows={bounceEvents.map((event) => ({ event, issues: [event.event_type] }))}
+        needsActionRows={needsActionEvents.map((event) => ({ event, issues: ["hot_lead_follow_up"] }))}
         classificationOptions={classificationOptions}
         inboundReplyClass={inboundReplyClass}
         inboundReplyText={inboundReplyText}
         setInboundReplyClass={setInboundReplyClass}
         setInboundReplyText={setInboundReplyText}
         onClassify={handleClassifyInboundReply}
-        onTakeNext={() => {
-          const next = replyReviewRows[0];
-          if (next?.event?.id) {
-            const element = document.getElementById(`reply-review-${next.event.id}`);
-            element?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }}
       />
       ) : null}
 
@@ -3060,68 +3068,6 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                   </React.Fragment>
                 );
               })}
-            </List>
-          )}
-        </Stack>
-      </Paper>
-      ) : null}
-
-      {workspaceView === "action" ? (
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>New Replies Review Queue</Typography>
-          {!newReplyEvents.length ? (
-            <Alert severity="info" variant="outlined">No new reply events waiting for review.</Alert>
-          ) : (
-            <List disablePadding>
-              {newReplyEvents.map((event) => (
-                <React.Fragment key={event.id}>
-                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
-                    <Stack spacing={1.25} sx={{ width: "100%" }}>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                          {event.matched_lead?.company_name || event.from_email || "Inbound reply"}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {event.from_email || "Unknown sender"} • {event.subject || "No subject"} • match: {event.raw_payload?.match_reason || "unknown"}
-                        </Typography>
-                      </Box>
-                      <TextField size="small" fullWidth multiline minRows={3} label="Inbound reply" value={event.body_text || ""} disabled />
-                      <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-                        <TextField
-                          select
-                          size="small"
-                          label="Classification"
-                          value={inboundReplyClass[event.id] || ""}
-                          onChange={(e) => setInboundReplyClass((prev) => ({ ...prev, [event.id]: e.target.value }))}
-                          sx={{ minWidth: 220 }}
-                        >
-                          <MenuItem value="">Select</MenuItem>
-                          {classificationOptions.map((option) => (
-                            <MenuItem key={option} value={option}>{option}</MenuItem>
-                          ))}
-                        </TextField>
-                        <TextField
-                          size="small"
-                          fullWidth
-                          label="Admin note / override reply text"
-                          value={inboundReplyText[event.id] || ""}
-                          onChange={(e) => setInboundReplyText((prev) => ({ ...prev, [event.id]: e.target.value }))}
-                        />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          disabled={submitting || !event.matched_message_id || !inboundReplyClass[event.id]}
-                          onClick={() => handleClassifyInboundReply(event.id)}
-                        >
-                          Classify inbound reply
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
             </List>
           )}
         </Stack>
