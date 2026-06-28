@@ -90,6 +90,8 @@ const emptyImportForm = {
   file: null,
   sales_rep_id: "",
   source: "",
+  purpose: "email_sdr",
+  label: "",
 };
 
 const emptyConfirmAction = {
@@ -159,11 +161,14 @@ export default function SalesCRMPage() {
   const [importForm, setImportForm] = useState(emptyImportForm);
   const [importBatches, setImportBatches] = useState([]);
   const [lastImportResult, setLastImportResult] = useState(null);
+  const [importBatchPurposeFilter, setImportBatchPurposeFilter] = useState("");
+  const [importBatchSearch, setImportBatchSearch] = useState("");
   const [emailSdrLaunchContext, setEmailSdrLaunchContext] = useState(null);
   const [existingEmailCampaigns, setExistingEmailCampaigns] = useState([]);
   const [loadingExistingEmailCampaigns, setLoadingExistingEmailCampaigns] = useState(false);
   const [showExistingCampaignPicker, setShowExistingCampaignPicker] = useState(false);
   const [selectedExistingCampaignId, setSelectedExistingCampaignId] = useState("");
+  const [selectedImportBatchForCampaign, setSelectedImportBatchForCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -182,6 +187,21 @@ export default function SalesCRMPage() {
   const [aiRunOnceResult, setAiRunOnceResult] = useState(null);
 
   const showBanner = useCallback((type, message) => setBanner({ type, message }), []);
+
+  const importBatchPurposeOptions = useMemo(() => {
+    const base = ["email_sdr", "ai_sdr", "investor_outreach", "salon_outreach", "hvac_outreach"];
+    const dynamic = importBatches.map((row) => row?.purpose).filter(Boolean);
+    return Array.from(new Set([...base, ...dynamic]));
+  }, [importBatches]);
+
+  const filteredImportBatches = useMemo(() => {
+    const q = importBatchSearch.trim().toLowerCase();
+    return importBatches.filter((row) => {
+      if (importBatchPurposeFilter && row?.purpose !== importBatchPurposeFilter) return false;
+      if (!q) return true;
+      return [row?.label, row?.filename, row?.purpose].some((value) => String(value || "").toLowerCase().includes(q));
+    });
+  }, [importBatchPurposeFilter, importBatchSearch, importBatches]);
 
   const loadStatic = useCallback(async () => {
     setLoadingCallSettings(true);
@@ -444,7 +464,14 @@ export default function SalesCRMPage() {
     }
   };
 
-  const handleShowExistingCampaignPicker = useCallback(async () => {
+  const handleLaunchEmailSdrFromBatch = useCallback((batch) => {
+    if (!batch) return;
+    setWorkspaceTab("email_sdr");
+    setEmailSdrLaunchContext({ importBatch: batch, mode: "create" });
+  }, []);
+
+  const handleShowExistingCampaignPicker = useCallback(async (batch = null) => {
+    setSelectedImportBatchForCampaign(batch);
     setShowExistingCampaignPicker(true);
     if (existingEmailCampaigns.length) return;
     setLoadingExistingEmailCampaigns(true);
@@ -459,22 +486,24 @@ export default function SalesCRMPage() {
   }, [existingEmailCampaigns.length, showBanner]);
 
   const handleAttachImportToExistingCampaign = useCallback(async () => {
-    if (!lastImportResult?.batch?.id || !selectedExistingCampaignId) return;
+    const targetBatch = selectedImportBatchForCampaign || lastImportResult?.batch;
+    if (!targetBatch?.id || !selectedExistingCampaignId) return;
     setSubmitting(true);
     try {
       await updateEmailCampaignAutomationSettings(selectedExistingCampaignId, {
-        import_batch_id: Number(lastImportResult.batch.id),
+        import_batch_id: Number(targetBatch.id),
       });
       const selectedCampaign = existingEmailCampaigns.find((row) => Number(row.id) === Number(selectedExistingCampaignId));
       showBanner(
         "success",
-        `Import batch "${lastImportResult.batch.filename || `#${lastImportResult.batch.id}`}" attached to "${selectedCampaign?.name || "selected campaign"}".`
+        `Import batch "${targetBatch.label || targetBatch.filename || `#${targetBatch.id}`}" attached to "${selectedCampaign?.name || "selected campaign"}".`
       );
       setShowExistingCampaignPicker(false);
       setSelectedExistingCampaignId("");
+      setSelectedImportBatchForCampaign(null);
       setWorkspaceTab("email_sdr");
       setEmailSdrLaunchContext({
-        importBatch: lastImportResult.batch,
+        importBatch: targetBatch,
         mode: "existing",
       });
     } catch (error) {
@@ -482,7 +511,7 @@ export default function SalesCRMPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [existingEmailCampaigns, lastImportResult, selectedExistingCampaignId, showBanner]);
+  }, [existingEmailCampaigns, lastImportResult, selectedExistingCampaignId, selectedImportBatchForCampaign, showBanner]);
 
   const handleCallModeChange = (mode) => {
     if (mode === "protected_twilio") {
@@ -1127,9 +1156,13 @@ export default function SalesCRMPage() {
             <Stack spacing={1.5}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Import complete</Typography>
               <Typography variant="body2" color="text.secondary">
-                {lastImportResult.batch.filename || `Batch #${lastImportResult.batch.id}`} is ready for the next Email SDR step.
+                {lastImportResult.batch.label || lastImportResult.batch.filename || `Batch #${lastImportResult.batch.id}`} is ready for the next Email SDR step.
               </Typography>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                <Chip size="small" color="info" variant="outlined" label={`Purpose: ${lastImportResult.batch.purpose || "untyped"}`} />
+                {lastImportResult.batch.label ? (
+                  <Chip size="small" color="info" variant="outlined" label={`Label: ${lastImportResult.batch.label}`} />
+                ) : null}
                 <Chip size="small" variant="outlined" label={`Imported: ${lastImportResult.batch.imported_count || 0}`} />
                 <Chip size="small" color="success" variant="outlined" label={`Eligible email: ${lastImportResult.batch.eligible_email_count || 0}`} />
                 <Chip size="small" color="warning" variant="outlined" label={`Missing email: ${lastImportResult.batch.missing_email_count || 0}`} />
@@ -1140,10 +1173,7 @@ export default function SalesCRMPage() {
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
                 <Button
                   variant="contained"
-                  onClick={() => {
-                    setWorkspaceTab("email_sdr");
-                    setEmailSdrLaunchContext({ importBatch: lastImportResult.batch, mode: "create" });
-                  }}
+                  onClick={() => handleLaunchEmailSdrFromBatch(lastImportResult.batch)}
                 >
                   Create Email Campaign from this import
                 </Button>
@@ -1158,7 +1188,7 @@ export default function SalesCRMPage() {
                 </Button>
                 <Button
                   variant="outlined"
-                  onClick={handleShowExistingCampaignPicker}
+                  onClick={() => handleShowExistingCampaignPicker(lastImportResult.batch)}
                 >
                   Add to Existing Campaign
                 </Button>
@@ -1174,6 +1204,9 @@ export default function SalesCRMPage() {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Attach this import batch directly here, then continue in Email SDR with the selected campaign.
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Selected batch: {selectedImportBatchForCampaign?.label || selectedImportBatchForCampaign?.filename || lastImportResult.batch.filename || `Batch #${lastImportResult.batch.id}`}
                     </Typography>
                     <TextField
                       select
@@ -1209,6 +1242,7 @@ export default function SalesCRMPage() {
                         onClick={() => {
                           setShowExistingCampaignPicker(false);
                           setSelectedExistingCampaignId("");
+                          setSelectedImportBatchForCampaign(null);
                         }}
                       >
                         Cancel
@@ -1220,6 +1254,78 @@ export default function SalesCRMPage() {
             </Stack>
           </Paper>
         ) : null}
+
+        <Paper sx={{ p: 2.5 }}>
+          <Stack spacing={1.5}>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between" alignItems={{ md: "center" }}>
+              <div>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Import Library</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Find old import batches by purpose or label, then create a new Email SDR campaign from that same list later.
+                </Typography>
+              </div>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                <TextField
+                  size="small"
+                  label="Search batches"
+                  value={importBatchSearch}
+                  onChange={(e) => setImportBatchSearch(e.target.value)}
+                  placeholder="Salon, investor, HVAC..."
+                  sx={{ minWidth: 260 }}
+                />
+                <TextField
+                  select
+                  size="small"
+                  label="Purpose"
+                  value={importBatchPurposeFilter}
+                  onChange={(e) => setImportBatchPurposeFilter(e.target.value)}
+                  sx={{ minWidth: 220 }}
+                >
+                  <MenuItem value="">All purposes</MenuItem>
+                  {importBatchPurposeOptions.map((purpose) => (
+                    <MenuItem key={purpose} value={purpose}>{purpose}</MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+            </Stack>
+            {!filteredImportBatches.length ? (
+              <Alert severity="info" variant="outlined">No import batches match the current filter.</Alert>
+            ) : (
+              <Stack spacing={1.25}>
+                {filteredImportBatches.slice(0, 12).map((batch) => (
+                  <Paper key={batch.id} variant="outlined" sx={{ p: 1.5 }}>
+                    <Stack spacing={1}>
+                      <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                        <div>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {batch.label || batch.filename || `Batch #${batch.id}`}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {batch.filename || `Batch #${batch.id}`} • {batch.created_at ? formatDateTimeInTz(batch.created_at, timezone, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "recent"}
+                          </Typography>
+                        </div>
+                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                          <Chip size="small" color="info" variant="outlined" label={`Purpose: ${batch.purpose || "untyped"}`} />
+                          <Chip size="small" variant="outlined" label={`Imported: ${batch.imported_count || 0}`} />
+                          <Chip size="small" color="warning" variant="outlined" label={`Duplicate: ${batch.duplicate_count || 0}`} />
+                          <Chip size="small" color="warning" variant="outlined" label={`Suppressed: ${batch.suppressed_count || 0}`} />
+                        </Stack>
+                      </Stack>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+                        <Button variant="contained" size="small" onClick={() => handleLaunchEmailSdrFromBatch(batch)}>
+                          Create Email Campaign
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={() => handleShowExistingCampaignPicker(batch)}>
+                          Add to Existing Campaign
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
 
         <Paper sx={{ p: 2 }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>

@@ -257,6 +257,8 @@ export const importLeads = async (payload) => {
   formData.append("file", payload.file);
   if (payload.sales_rep_id) formData.append("sales_rep_id", payload.sales_rep_id);
   if (payload.source) formData.append("source", payload.source);
+  if (payload.purpose) formData.append("purpose", payload.purpose);
+  if (payload.label) formData.append("label", payload.label);
   if (payload.assign_reason) formData.append("assign_reason", payload.assign_reason);
   const { data } = await platformAdminApi.post("/sales/leads/import", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -264,8 +266,8 @@ export const importLeads = async (payload) => {
   return data || null;
 };
 
-export const listLeadImportBatches = async () => {
-  const { data } = await platformAdminApi.get("/sales/leads/import-batches");
+export const listLeadImportBatches = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/leads/import-batches", { params });
   return data?.batches || [];
 };
 

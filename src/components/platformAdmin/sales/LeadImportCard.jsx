@@ -67,6 +67,23 @@ export default function LeadImportCard({
             onChange={(e) => onChange("source", e.target.value)}
             sx={{ minWidth: 180 }}
           />
+          <TextField
+            label="Import purpose"
+            value={value.purpose}
+            onChange={(e) => onChange("purpose", e.target.value)}
+            placeholder="email_sdr"
+            sx={{ minWidth: 180 }}
+          />
+        </Stack>
+
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          <TextField
+            fullWidth
+            label="Batch label"
+            value={value.label}
+            onChange={(e) => onChange("label", e.target.value)}
+            placeholder="Salon owners - Toronto - June"
+          />
           <Button variant="outlined" onClick={onImport} disabled={!value.file || importing} sx={{ minWidth: 160 }}>
             {importing ? "Importing..." : "Import leads"}
           </Button>
@@ -101,6 +118,11 @@ Brow Artisto,Sarah Lee,+14165550124,hello@browartisto.com,https://browartisto.co
             Email SDR fields also supported: <strong>source_type</strong>, <strong>source_url</strong>, <strong>source_proof_url</strong>,
             <strong> email_publicly_listed</strong>, <strong>do_not_contact_found</strong>, <strong>email_consent_basis</strong>.
           </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Use a stable <strong>Import purpose</strong> like <strong>email_sdr</strong>, <strong>ai_sdr</strong>,
+            <strong> investor_outreach</strong>, <strong> salon_outreach</strong>, or <strong>hvac_outreach</strong>.
+            The optional <strong>Batch label</strong> makes that list easy to find again later.
+          </Typography>
         </Stack>
 
         {batches?.length ? (
@@ -110,8 +132,8 @@ Brow Artisto,Sarah Lee,+14165550124,hello@browartisto.com,https://browartisto.co
               {batches.slice(0, 4).map((batch) => (
                 <ListItem key={batch.id} disableGutters sx={{ py: 0.5 }}>
                   <ListItemText
-                    primary={batch.filename || `Batch #${batch.id}`}
-                    secondary={`${batch.imported_count} imported • ${batch.duplicate_count} duplicate • ${batch.suppressed_count} suppressed`}
+                    primary={batch.label || batch.filename || `Batch #${batch.id}`}
+                    secondary={`${batch.purpose || "untyped"} • ${batch.imported_count} imported • ${batch.duplicate_count} duplicate • ${batch.suppressed_count} suppressed`}
                   />
                 </ListItem>
               ))}

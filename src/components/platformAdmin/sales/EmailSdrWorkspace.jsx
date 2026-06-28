@@ -280,7 +280,7 @@ function formatCampaignDateLabel(date = new Date()) {
 function buildSuggestedCampaignName({ importBatchName, businessType, city, sourceLabel = "Campaign" }) {
   const parts = [];
   if (importBatchName) {
-    parts.push("Imported Leads");
+    parts.push(importBatchName);
   } else {
     parts.push(sourceLabel);
   }
@@ -1194,7 +1194,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     const businessType = context.business_type || context.importBatch?.business_type || "General";
     const city = context.city || context.importBatch?.city || "";
     const importBatchId = context.importBatch?.id || "";
-    const importBatchName = context.importBatch?.filename || "";
+    const importBatchName = context.importBatch?.label || context.importBatch?.filename || "";
     const defaultPack =
       templatePacks.find((row) => String(row.business_type || "").toLowerCase() === String(businessType || "").toLowerCase()) ||
       templatePacks.find((row) => row.business_type === "General") ||
