@@ -73,6 +73,7 @@ import {
   quickStartEmailCampaign,
   runEmailSdrDueSend,
   sendEmailCampaign,
+  deleteEmailCampaign,
   setDefaultEmailTemplate,
   setHotLeadNextAction,
   snoozeHotLead,
@@ -289,6 +290,34 @@ function buildSuggestedCampaignName({ importBatchName, businessType, city, sourc
   return parts.join(" - ");
 }
 
+function campaignCount(campaign, status) {
+  return Number(campaign?.message_counts?.[status] || 0);
+}
+
+function getCampaignAutomationSummary(campaign) {
+  return [
+    `Drafts: ${campaign.auto_generate_drafts ? "auto planned" : "manual start"}`,
+    `Approval: ${campaign.auto_approve_drafts ? "auto" : "manual"}`,
+    `Send: ${campaign.auto_send_approved ? "auto" : "manual"}`,
+    `Follow-ups: ${campaign.follow_up_mode === "auto_draft" ? "auto draft" : campaign.follow_up_mode === "auto_approved" ? "auto approve" : "manual"}`,
+  ];
+}
+
+function getCampaignNextStep(campaign, preview) {
+  const sentCount = campaignCount(campaign, "sent") + campaignCount(campaign, "delivered") + campaignCount(campaign, "replied");
+  const draftCount = campaignCount(campaign, "draft");
+  const approvedCount = campaignCount(campaign, "approved") + campaignCount(campaign, "scheduled");
+  const eligibleCount = Number(preview?.eligible_count || 0);
+  if (campaign.status === "cancelled") return "Archived";
+  if (draftCount > 0 && !campaign.auto_approve_drafts) return "Approve drafts";
+  if (approvedCount > 0 && !campaign.auto_send_approved) return "Run due send now";
+  if (approvedCount > 0 && campaign.auto_send_approved) return "Worker will send approved messages";
+  if (draftCount > 0 && campaign.auto_approve_drafts) return "Automation can approve drafts";
+  if (sentCount > 0) return "Watch replies and hot leads";
+  if (eligibleCount > 0) return "Generate drafts";
+  return "Preview targets";
+}
+
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, importLaunchContext = null, onImportLaunchContextHandled = null }) {
   const [overview, setOverview] = useState({});
   const [opsSummary, setOpsSummary] = useState(null);
@@ -387,6 +416,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
   const agentSectionRef = useRef(null);
   const templateSectionRef = useRef(null);
   const campaignQueueRef = useRef(null);
+  const visibleCampaigns = useMemo(
+    () => campaigns.filter((row) => row.status !== "cancelled"),
+    [campaigns]
+  );
+  const archivedCampaignCount = Math.max(campaigns.length - visibleCampaigns.length, 0);
 
   const aiEmailAgents = useMemo(
     () => reps.filter((rep) => rep.is_ai_agent && rep.is_active && !rep.ai_sdr_paused),
@@ -1057,6 +1091,24 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       await loadWorkspace();
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to update campaign automation.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCampaign = async (campaign) => {
+    if (!campaign?.id) return;
+    setSubmitting(true);
+    try {
+      const result = await deleteEmailCampaign(campaign.id);
+      if (result?.mode === "archived") {
+        showBanner("success", `Campaign "${campaign.name}" archived and removed from the active queue.`);
+      } else {
+        showBanner("success", `Campaign "${campaign.name}" deleted.`);
+      }
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to clean up campaign.");
     } finally {
       setSubmitting(false);
     }
@@ -2548,13 +2600,27 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       <Paper sx={{ p: 2.5 }} ref={campaignQueueRef}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign Queue</Typography>
-          {!campaigns.length ? (
+          {archivedCampaignCount ? (
+            <Typography variant="caption" color="text.secondary">
+              Archived campaigns hidden from this queue: {archivedCampaignCount}
+            </Typography>
+          ) : null}
+          {!visibleCampaigns.length ? (
             <Alert severity="info" variant="outlined">No email campaigns yet.</Alert>
           ) : (
             <List disablePadding>
-              {campaigns.map((campaign) => {
+              {visibleCampaigns.map((campaign) => {
                 const preview = campaignPreviews[campaign.id];
                 const analyticsRow = campaignAnalytics[campaign.id];
+                const automationSummary = getCampaignAutomationSummary(campaign);
+                const nextStepLabel = getCampaignNextStep(campaign, preview);
+                const hasSendHistory =
+                  campaignCount(campaign, "sent") +
+                    campaignCount(campaign, "delivered") +
+                    campaignCount(campaign, "replied") +
+                    campaignCount(campaign, "bounced") +
+                    campaignCount(campaign, "failed") >
+                  0;
                 return (
                   <React.Fragment key={campaign.id}>
                     <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
@@ -2580,6 +2646,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                             <Chip size="small" variant="outlined" label={`Sent: ${campaign.message_counts?.sent || 0}`} />
                             <Chip size="small" variant="outlined" label={`Agents: ${(campaign.email_agent_ids || []).length || "auto"}`} />
                           </Stack>
+                        </Stack>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                          {automationSummary.map((label) => (
+                            <Chip key={`${campaign.id}-${label}`} size="small" color="info" variant="outlined" label={label} />
+                          ))}
+                          <Chip size="small" color="success" variant="outlined" label={`Next step: ${nextStepLabel}`} />
                         </Stack>
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "preview")}>
@@ -2625,6 +2697,30 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                             }
                           >
                             {campaign.auto_approve_drafts ? "Auto-approve on" : "Auto-approve off"}
+                          </Button>
+                          <Button
+                            variant="text"
+                            size="small"
+                            disabled={submitting}
+                            onClick={() =>
+                              handleSaveCampaignAutomation(campaign.id, {
+                                auto_approve_drafts: campaign.auto_approve_drafts,
+                                auto_send_approved: !campaign.auto_send_approved,
+                                follow_up_mode: campaign.follow_up_mode,
+                                max_sequence_steps: campaign.max_sequence_steps,
+                              })
+                            }
+                          >
+                            {campaign.auto_send_approved ? "Auto-send on" : "Auto-send off"}
+                          </Button>
+                          <Button
+                            color="error"
+                            variant="text"
+                            size="small"
+                            disabled={submitting}
+                            onClick={() => handleDeleteCampaign(campaign)}
+                          >
+                            {hasSendHistory ? "Archive campaign" : "Delete campaign"}
                           </Button>
                         </Stack>
                         <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>

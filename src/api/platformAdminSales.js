@@ -304,6 +304,11 @@ export const updateEmailCampaignAutomationSettings = async (campaignId, payload 
   return data || { campaign: null, changed_fields: [] };
 };
 
+export const deleteEmailCampaign = async (campaignId) => {
+  const { data } = await platformAdminApi.delete(`/sales/email-campaigns/${campaignId}`);
+  return data || { mode: "deleted", campaign_id: campaignId };
+};
+
 export const getEmailCampaignAnalytics = async (campaignId) => {
   const { data } = await platformAdminApi.get(`/sales/email-campaigns/${campaignId}/analytics`);
   return data?.analytics || null;
