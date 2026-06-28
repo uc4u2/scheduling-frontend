@@ -2315,12 +2315,37 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                             </Button>
                           </Stack>
                         </Stack>
-                        <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                           <TextField size="small" label="Display" value={draft.display_name || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, display_name: e.target.value } }))} />
                           <TextField size="small" label="From name" value={draft.from_name || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, from_name: e.target.value } }))} />
                           <TextField size="small" label="From email" value={draft.from_email || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, from_email: e.target.value } }))} />
                           <TextField size="small" label="Reply-To" value={draft.reply_to_email || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, reply_to_email: e.target.value } }))} />
                           <TextField size="small" label="Daily limit" type="number" value={draft.daily_limit || ""} onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, daily_limit: e.target.value } }))} sx={{ width: 120 }} />
+                          <TextField
+                            size="small"
+                            label="Timezone"
+                            value={draft.timezone || ""}
+                            onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, timezone: e.target.value } }))}
+                            sx={{ minWidth: 180 }}
+                          />
+                          <TextField
+                            size="small"
+                            label="Window start"
+                            type="time"
+                            value={draft.send_window_start || ""}
+                            onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, send_window_start: e.target.value } }))}
+                            InputLabelProps={{ shrink: true }}
+                            sx={{ minWidth: 150 }}
+                          />
+                          <TextField
+                            size="small"
+                            label="Window end"
+                            type="time"
+                            value={draft.send_window_end || ""}
+                            onChange={(e) => setAgentDrafts((prev) => ({ ...prev, [row.id]: { ...draft, send_window_end: e.target.value } }))}
+                            InputLabelProps={{ shrink: true }}
+                            sx={{ minWidth: 150 }}
+                          />
                         </Stack>
                         <TextField
                           size="small"
