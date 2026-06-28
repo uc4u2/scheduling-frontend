@@ -261,7 +261,24 @@ const workspaceViews = [
   },
 ];
 
-export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner }) {
+function formatCampaignDateLabel(date = new Date()) {
+  return date.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+}
+
+function buildSuggestedCampaignName({ importBatchName, businessType, city, sourceLabel = "Campaign" }) {
+  const parts = [];
+  if (importBatchName) {
+    parts.push("Imported Leads");
+  } else {
+    parts.push(sourceLabel);
+  }
+  if (businessType) parts.push(businessType);
+  if (city) parts.push(city);
+  parts.push(formatCampaignDateLabel());
+  return parts.join(" - ");
+}
+
+export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, importLaunchContext = null, onImportLaunchContextHandled = null }) {
   const [overview, setOverview] = useState({});
   const [opsSummary, setOpsSummary] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
@@ -320,14 +337,18 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const [wizardStep, setWizardStep] = useState(0);
   const [wizardState, setWizardState] = useState({
     provider_connection_id: "",
-    email_agent_id: "",
-    business_type: "HVAC",
+    email_agent_ids: [],
+    use_all_active_agents: true,
+    import_batch_id: "",
+    import_batch_name: "",
+    campaign_name_auto: true,
+    business_type: "General",
     initial_template_id: "",
     follow_up_1_template_id: "",
     follow_up_2_template_id: "",
     segment_id: "",
     campaign_name: "",
-    city: "Toronto",
+    city: "",
     source_type: "",
     email_consent_basis: "",
     email_publicly_listed: "",
@@ -338,6 +359,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   });
   const [wizardPreview, setWizardPreview] = useState(null);
   const [wizardResult, setWizardResult] = useState(null);
+  const [pendingImportBatch, setPendingImportBatch] = useState(null);
   const [previewValues, setPreviewValues] = useState({
     contact_name: wizardSampleLead.name,
     business_name: wizardSampleLead.business_name,
@@ -353,6 +375,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
   const providerSectionRef = useRef(null);
   const agentSectionRef = useRef(null);
   const templateSectionRef = useRef(null);
+  const campaignQueueRef = useRef(null);
 
   const aiEmailAgents = useMemo(
     () => reps.filter((rep) => rep.is_ai_agent && rep.is_active && !rep.ai_sdr_paused),
@@ -391,14 +414,49 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     () => workspaceViews.find((row) => row.key === workspaceView) || workspaceViews[0],
     [workspaceView]
   );
-  const selectedWizardAgent = useMemo(
-    () => emailAgents.find(
-      (row) =>
-        String(row.sales_rep_id || "") === String(wizardState.email_agent_id || "") ||
-        String(row.id || "") === String(wizardState.email_agent_id || "")
-    ) || null,
-    [emailAgents, wizardState.email_agent_id]
+  const selectedWizardAgents = useMemo(() => {
+    const selectedIds = new Set((wizardState.email_agent_ids || []).map((value) => String(value)));
+    const activeRows = emailAgents.filter((row) => row.status === "active");
+    if (wizardState.use_all_active_agents) {
+      return activeRows;
+    }
+    return emailAgents.filter(
+      (row) => selectedIds.has(String(row.sales_rep_id || "")) || selectedIds.has(String(row.id || ""))
+    );
+  }, [emailAgents, wizardState.email_agent_ids, wizardState.use_all_active_agents]);
+  const selectedWizardAgent = selectedWizardAgents[0] || null;
+  const selectedWizardAgentMetrics = useMemo(
+    () =>
+      selectedWizardAgents.map((row) => {
+        const limitRow = agentLimits.find((limit) => Number(limit.sales_rep_id) === Number(row.sales_rep_id));
+        const dailyLimit = Number(limitRow?.daily_limit || row.daily_limit || 0);
+        const sentToday = Number(limitRow?.sent_count || 0);
+        return {
+          ...row,
+          daily_limit_effective: dailyLimit,
+          sent_today: sentToday,
+          remaining_today: Math.max(dailyLimit - sentToday, 0),
+          paused: row.status !== "active" || Boolean(limitRow?.paused),
+          warmup_stage_effective: limitRow?.warmup_stage || row.warmup_stage || "",
+        };
+      }),
+    [agentLimits, selectedWizardAgents]
   );
+  const wizardCapacityPreview = useMemo(() => {
+    const eligibleLeads = Number(wizardPreview?.eligible_count || 0);
+    const selectedAgentsCount = selectedWizardAgentMetrics.length;
+    const totalDailyCapacity = selectedWizardAgentMetrics.reduce(
+      (sum, row) => sum + (row.paused ? 0 : Number(row.daily_limit_effective || 0)),
+      0
+    );
+    const estimatedDays = eligibleLeads && totalDailyCapacity ? Math.ceil(eligibleLeads / totalDailyCapacity) : null;
+    return {
+      eligibleLeads,
+      selectedAgentsCount,
+      totalDailyCapacity,
+      estimatedDays,
+    };
+  }, [selectedWizardAgentMetrics, wizardPreview]);
   const resolvedPreviewAgentName = useMemo(
     () => previewValues.agent_name || selectedWizardAgent?.display_name || selectedWizardAgent?.from_name || "Yousef",
     [previewValues.agent_name, selectedWizardAgent]
@@ -993,6 +1051,22 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
+  const handleAttachImportBatchToCampaign = async (campaignId, importBatchId) => {
+    if (!campaignId || !importBatchId) return;
+    setSubmitting(true);
+    try {
+      await updateEmailCampaignAutomationSettings(campaignId, { import_batch_id: Number(importBatchId) });
+      const preview = await previewEmailCampaignLeads(campaignId);
+      setCampaignPreviews((prev) => ({ ...prev, [campaignId]: preview }));
+      showBanner("success", "Imported batch attached to campaign.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to attach imported batch.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handlePrepareCampaign = async (campaignId) => {
     setSubmitting(true);
     try {
@@ -1028,21 +1102,58 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     }
   };
 
-  const openWizard = () => {
-    const defaultPack = templatePacks.find((row) => row.business_type === "HVAC") || templatePacks[0];
+  const activeEmailAgents = useMemo(
+    () => emailAgents.filter((row) => row.status === "active"),
+    [emailAgents]
+  );
+
+  const syncAutoCampaignName = useCallback((nextPatch = {}) => {
+    setWizardState((prev) => {
+      const nextState = { ...prev, ...nextPatch };
+      if (nextState.campaign_name_auto) {
+        nextState.campaign_name = buildSuggestedCampaignName({
+          importBatchName: nextState.import_batch_name,
+          businessType: nextState.business_type,
+          city: nextState.city,
+          sourceLabel: nextState.import_batch_id ? "Imported Leads" : "Email Campaign",
+        });
+      }
+      return nextState;
+    });
+  }, []);
+
+  const openWizard = useCallback((context = {}) => {
+    const businessType = context.business_type || context.importBatch?.business_type || "General";
+    const city = context.city || context.importBatch?.city || "";
+    const importBatchId = context.importBatch?.id || "";
+    const importBatchName = context.importBatch?.filename || "";
+    const defaultPack =
+      templatePacks.find((row) => String(row.business_type || "").toLowerCase() === String(businessType || "").toLowerCase()) ||
+      templatePacks.find((row) => row.business_type === "General") ||
+      templatePacks[0];
     const initial = defaultPack?.default_template_ids?.cold_initial || defaultPack?.categories?.cold_initial?.[0]?.id || "";
     const follow1 = defaultPack?.default_template_ids?.follow_up_1 || defaultPack?.categories?.follow_up_1?.[0]?.id || "";
     const follow2 = defaultPack?.default_template_ids?.follow_up_2 || defaultPack?.categories?.follow_up_2?.[0]?.id || "";
+    const defaultAgentIds = activeEmailAgents.map((row) => Number(row.sales_rep_id));
     setWizardState({
       provider_connection_id: providerConnections.find((row) => row.status === "active")?.id || "",
-      email_agent_id: emailAgents.find((row) => row.status === "active")?.sales_rep_id || "",
-      business_type: defaultPack?.business_type || "HVAC",
+      email_agent_ids: defaultAgentIds,
+      use_all_active_agents: true,
+      import_batch_id: importBatchId,
+      import_batch_name: importBatchName,
+      campaign_name_auto: true,
+      business_type: defaultPack?.business_type || businessType || "General",
       initial_template_id: initial,
       follow_up_1_template_id: follow1,
       follow_up_2_template_id: follow2,
       segment_id: "",
-      campaign_name: `${defaultPack?.business_type || "HVAC"} Launch Campaign`,
-      city: "Toronto",
+      campaign_name: buildSuggestedCampaignName({
+        importBatchName,
+        businessType: defaultPack?.business_type || businessType || "General",
+        city,
+        sourceLabel: importBatchId ? "Imported Leads" : "Email Campaign",
+      }),
+      city,
       source_type: "",
       email_consent_basis: "",
       email_publicly_listed: "",
@@ -1057,25 +1168,23 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     setWizardOpen(true);
     setPreviewValues((prev) => ({
       ...prev,
-      business_type: defaultPack?.business_type || prev.business_type || "HVAC",
-      city: "Toronto",
+      business_type: defaultPack?.business_type || prev.business_type || "General",
+      city: city || prev.city || "",
     }));
     loadTemplatePreviewSilently(initial);
-  };
+  }, [activeEmailAgents, loadTemplatePreviewSilently, providerConnections, templatePacks]);
 
   const handleWizardBusinessTypeChange = (value) => {
     const selectedPack = templatePacks.find((row) => row.business_type === value);
     const nextInitialId = selectedPack?.default_template_ids?.cold_initial || selectedPack?.categories?.cold_initial?.[0]?.id || "";
     const nextFollow1Id = selectedPack?.default_template_ids?.follow_up_1 || selectedPack?.categories?.follow_up_1?.[0]?.id || "";
     const nextFollow2Id = selectedPack?.default_template_ids?.follow_up_2 || selectedPack?.categories?.follow_up_2?.[0]?.id || "";
-    setWizardState((prev) => ({
-      ...prev,
+    syncAutoCampaignName({
       business_type: value,
       initial_template_id: nextInitialId,
       follow_up_1_template_id: nextFollow1Id,
       follow_up_2_template_id: nextFollow2Id,
-      campaign_name: prev.campaign_name || `${value} Launch Campaign`,
-    }));
+    });
     setPreviewValues((prev) => ({
       ...prev,
       business_type: value,
@@ -1083,9 +1192,22 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     loadTemplatePreviewSilently(nextInitialId);
   };
 
-  const scrollToSection = (ref) => {
+  useEffect(() => {
+    if (!importLaunchContext?.importBatch) return;
+    setPendingImportBatch(importLaunchContext.importBatch);
+    if (importLaunchContext.mode === "create") {
+      setWorkspaceView("setup");
+      openWizard(importLaunchContext);
+    } else if (importLaunchContext.mode === "existing") {
+      setWorkspaceView("control");
+      setTimeout(() => scrollToSection(campaignQueueRef), 150);
+    }
+    onImportLaunchContextHandled?.();
+  }, [importLaunchContext, onImportLaunchContextHandled, openWizard]);
+
+  function scrollToSection(ref) {
     ref?.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-  };
+  }
 
   const handleWizardPreview = async () => {
     setSubmitting(true);
@@ -1094,6 +1216,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         wizardState.segment_id
           ? { segment_id: Number(wizardState.segment_id) }
           : {
+              import_batch_id: wizardState.import_batch_id ? Number(wizardState.import_batch_id) : undefined,
               business_type: wizardState.business_type,
               city: wizardState.city,
               source_type: wizardState.source_type,
@@ -1121,15 +1244,23 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
     setSubmitting(true);
     try {
       const result = await quickStartEmailCampaign({
-        name: wizardState.campaign_name || `${wizardState.business_type} Launch Campaign`,
+        name:
+          wizardState.campaign_name ||
+          buildSuggestedCampaignName({
+            importBatchName: wizardState.import_batch_name,
+            businessType: wizardState.business_type,
+            city: wizardState.city,
+            sourceLabel: wizardState.import_batch_id ? "Imported Leads" : "Email Campaign",
+          }),
         business_type: wizardState.business_type,
         city: wizardState.city,
+        import_batch_id: wizardState.import_batch_id ? Number(wizardState.import_batch_id) : null,
         provider_connection_id: wizardState.provider_connection_id ? Number(wizardState.provider_connection_id) : null,
         initial_template_id: wizardState.initial_template_id ? Number(wizardState.initial_template_id) : null,
         follow_up_1_template_id: wizardState.follow_up_1_template_id ? Number(wizardState.follow_up_1_template_id) : null,
         follow_up_2_template_id: wizardState.follow_up_2_template_id ? Number(wizardState.follow_up_2_template_id) : null,
         segment_id: wizardState.segment_id ? Number(wizardState.segment_id) : null,
-        email_agent_ids: wizardState.email_agent_id ? [Number(wizardState.email_agent_id)] : [],
+        email_agent_ids: wizardState.use_all_active_agents ? [] : (wizardState.email_agent_ids || []).map(Number),
       });
       setWizardResult(result);
       setCampaignPreviews((prev) => ({ ...prev, [result.campaign.id]: result.preview }));
@@ -1386,7 +1517,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button variant="contained" size="large" onClick={openWizard} disabled={submitting}>
+              <Button variant="contained" size="large" onClick={() => openWizard()} disabled={submitting}>
                 Launch Email Campaign
               </Button>
               <Button variant="outlined" onClick={handleRunDueSendNow} disabled={submitting}>
@@ -1460,17 +1591,70 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                 <Chip size="small" color="warning" variant="outlined" label={`Unmatched: ${overview.unmatched_events || 0}`} />
                 <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${overview.bounce_events || 0}`} />
               </Stack>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Next step after sending</Typography>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                    <Chip size="small" color="info" variant="outlined" label={`Replies needing classification: ${replyReviewRows.length || 0}`} />
+                    <Chip size="small" color="success" variant="outlined" label={`Hot Leads: ${hotLeads.length || 0}`} />
+                    <Chip size="small" color="error" variant="outlined" label={`Bounced: ${bounceEvents.filter((row) => row.event_type === "bounce").length || 0}`} />
+                    <Chip size="small" color="warning" variant="outlined" label={`Unsubscribed: ${bounceEvents.filter((row) => row.event_type === "unsubscribe").length || 0}`} />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    After sending, move into Action Queue to classify replies first, then work hot leads and campaign approvals.
+                  </Typography>
+                </Stack>
+              </Paper>
             </>
           ) : null}
         </Stack>
       </Paper>
+
+      {workspaceView === "setup" && pendingImportBatch ? (
+        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, borderColor: "#bfdbfe", backgroundColor: "#f8fbff" }}>
+          <Stack spacing={1.5}>
+            <Typography variant="overline" sx={{ color: "#2563eb", fontWeight: 800, letterSpacing: 0.8 }}>
+              Imported leads ready
+            </Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {pendingImportBatch.filename || `Import batch #${pendingImportBatch.id}`}
+            </Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+              <Chip size="small" variant="outlined" label={`Imported: ${pendingImportBatch.imported_count || 0}`} />
+              <Chip size="small" color="success" variant="outlined" label={`Eligible email: ${pendingImportBatch.eligible_email_count || 0}`} />
+              <Chip size="small" color="warning" variant="outlined" label={`Missing email: ${pendingImportBatch.missing_email_count || 0}`} />
+              <Chip size="small" color="warning" variant="outlined" label={`Duplicates/skipped: ${(pendingImportBatch.duplicate_count || 0) + (pendingImportBatch.skipped_count || 0)}`} />
+              <Chip size="small" color="warning" variant="outlined" label={`DNC found: ${pendingImportBatch.do_not_contact_found_count || 0}`} />
+              <Chip size="small" color="warning" variant="outlined" label={`Suppressed: ${pendingImportBatch.suppressed_count || 0}`} />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+              <Button variant="contained" onClick={() => openWizard({ importBatch: pendingImportBatch })} disabled={submitting}>
+                Create Email Campaign from this import
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setWorkspaceView("control");
+                  setTimeout(() => scrollToSection(campaignQueueRef), 150);
+                }}
+                disabled={submitting}
+              >
+                Add to Existing Campaign
+              </Button>
+              <Button variant="text" onClick={() => setPendingImportBatch(null)} disabled={submitting}>
+                Dismiss
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      ) : null}
 
       {workspaceView === "setup" && setupIncomplete && (
         <EmailSdrStartChecklist
           onAddProvider={() => scrollToSection(providerSectionRef)}
           onAddAgent={() => scrollToSection(agentSectionRef)}
           onTemplates={() => scrollToSection(templateSectionRef)}
-          onLaunch={openWizard}
+          onLaunch={() => openWizard()}
           onReplies={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}
         />
       )}
@@ -1495,7 +1679,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
               Build the sending setup first, then use the guided launch flow to preview leads, generate drafts, and move into review safely.
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
-              <Button variant="contained" size="large" onClick={openWizard} disabled={submitting}>
+              <Button variant="contained" size="large" onClick={() => openWizard()} disabled={submitting}>
                 Launch Email Campaign
               </Button>
               <Chip
@@ -2320,7 +2504,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
       ) : null}
 
       {workspaceView === "control" ? (
-      <Paper sx={{ p: 2.5 }}>
+      <Paper sx={{ p: 2.5 }} ref={campaignQueueRef}>
         <Stack spacing={2}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign Queue</Typography>
           {!campaigns.length ? (
@@ -2343,6 +2527,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                               {campaign.timezone ? ` • ${campaign.timezone}` : ""}
                               {campaign.provider_connection_name ? ` • Provider: ${campaign.provider_connection_name}` : " • Provider: fallback"}
                             </Typography>
+                            {campaign.import_batch_name ? (
+                              <Typography variant="caption" color="text.secondary">
+                                Import batch: {campaign.import_batch_name}
+                              </Typography>
+                            ) : null}
                           </Box>
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" variant="outlined" label={`Drafts: ${campaign.message_counts?.draft || 0}`} />
@@ -2364,6 +2553,11 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleLoadCampaignAnalytics(campaign.id)}>
                             Analytics
                           </Button>
+                          {pendingImportBatch ? (
+                            <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleAttachImportBatchToCampaign(campaign.id, pendingImportBatch.id)}>
+                              Use import batch
+                            </Button>
+                          ) : null}
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "followups")}>
                             Generate due follow-ups
                           </Button>
@@ -2546,6 +2740,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
           <Typography variant="body2" color="text.secondary">
             Work this queue from replies first, then hot leads, then campaign approvals, then marketing leads that need a next step.
           </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+            <Chip size="small" color="info" variant="outlined" label={`Replies needing classification: ${replyReviewRows.length || 0}`} />
+            <Chip size="small" color="success" variant="outlined" label={`Hot Leads: ${hotLeads.length || 0}`} />
+            <Chip size="small" color="warning" variant="outlined" label={`Campaigns needing review: ${campaignReviewRows.length || 0}`} />
+            <Chip size="small" variant="outlined" label={`Marketing leads needing action: ${visibleMarketingWidgetLeads.length || 0}`} />
+          </Stack>
         </Stack>
       </Paper>
       ) : null}
@@ -2979,9 +3179,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner })
         setPreviewValues={setPreviewValues}
         resolvedPreviewAgentName={resolvedPreviewAgentName}
         selectedWizardAgent={selectedWizardAgent}
+        selectedWizardAgents={selectedWizardAgentMetrics}
+        wizardCapacityPreview={wizardCapacityPreview}
         wizardPreview={wizardPreview}
         wizardResult={wizardResult}
         handleWizardBusinessTypeChange={handleWizardBusinessTypeChange}
+        syncAutoCampaignName={syncAutoCampaignName}
         loadTemplatePreviewSilently={loadTemplatePreviewSilently}
         templatePreviews={templatePreviews}
         handlePreviewTemplate={handlePreviewTemplate}

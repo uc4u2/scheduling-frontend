@@ -156,6 +156,8 @@ export default function SalesCRMPage() {
   const [assignReason, setAssignReason] = useState("");
   const [importForm, setImportForm] = useState(emptyImportForm);
   const [importBatches, setImportBatches] = useState([]);
+  const [lastImportResult, setLastImportResult] = useState(null);
+  const [emailSdrLaunchContext, setEmailSdrLaunchContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -423,6 +425,7 @@ export default function SalesCRMPage() {
       const result = await importLeads(importForm);
       setImportForm(emptyImportForm);
       setImportBatches((prev) => [result?.batch, ...prev.filter((row) => row?.id !== result?.batch?.id)].filter(Boolean));
+      setLastImportResult(result || null);
       showBanner(
         "success",
         `Imported ${result?.batch?.imported_count || 0} leads, marked ${result?.batch?.duplicate_count || 0} duplicate, suppressed ${result?.batch?.suppressed_count || 0}.`
@@ -743,6 +746,8 @@ export default function SalesCRMPage() {
             openLeadWorkspace(leadId, { tab: "overview", editMode: false });
           }}
           showBanner={showBanner}
+          importLaunchContext={emailSdrLaunchContext}
+          onImportLaunchContextHandled={() => setEmailSdrLaunchContext(null)}
         />
       ) : (
       <Stack spacing={3}>
@@ -1070,6 +1075,57 @@ export default function SalesCRMPage() {
           importing={importing}
           batches={importBatches}
         />
+
+        {lastImportResult?.batch ? (
+          <Paper sx={{ p: 2.5 }}>
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Import complete</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {lastImportResult.batch.filename || `Batch #${lastImportResult.batch.id}`} is ready for the next Email SDR step.
+              </Typography>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                <Chip size="small" variant="outlined" label={`Imported: ${lastImportResult.batch.imported_count || 0}`} />
+                <Chip size="small" color="success" variant="outlined" label={`Eligible email: ${lastImportResult.batch.eligible_email_count || 0}`} />
+                <Chip size="small" color="warning" variant="outlined" label={`Missing email: ${lastImportResult.batch.missing_email_count || 0}`} />
+                <Chip size="small" color="warning" variant="outlined" label={`Duplicates/skipped: ${(lastImportResult.batch.duplicate_count || 0) + (lastImportResult.batch.skipped_count || 0)}`} />
+                <Chip size="small" color="warning" variant="outlined" label={`DNC found: ${lastImportResult.batch.do_not_contact_found_count || 0}`} />
+                <Chip size="small" color="warning" variant="outlined" label={`Suppressed: ${lastImportResult.batch.suppressed_count || 0}`} />
+              </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setWorkspaceTab("email_sdr");
+                    setEmailSdrLaunchContext({ importBatch: lastImportResult.batch, mode: "create" });
+                  }}
+                >
+                  Create Email Campaign from this import
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setWorkspaceTab("outbound");
+                    showBanner("info", "Imported leads are now in Sales CRM. Review the newest leads in the outbound list or move into Email SDR.");
+                  }}
+                >
+                  Review Imported Leads
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setWorkspaceTab("email_sdr");
+                    setEmailSdrLaunchContext({ importBatch: lastImportResult.batch, mode: "existing" });
+                  }}
+                >
+                  Add to Existing Campaign
+                </Button>
+                <Button variant="text" onClick={() => setLastImportResult(null)}>
+                  Done
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        ) : null}
 
         <Paper sx={{ p: 2 }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>

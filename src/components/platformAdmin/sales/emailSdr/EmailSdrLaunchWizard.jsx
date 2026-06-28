@@ -72,9 +72,12 @@ export default function EmailSdrLaunchWizard(props) {
     setPreviewValues,
     resolvedPreviewAgentName,
     selectedWizardAgent,
+    selectedWizardAgents,
+    wizardCapacityPreview,
     wizardPreview,
     wizardResult,
     handleWizardBusinessTypeChange,
+    syncAutoCampaignName,
     loadTemplatePreviewSilently,
     templatePreviews,
     handlePreviewTemplate,
@@ -133,10 +136,75 @@ export default function EmailSdrLaunchWizard(props) {
           )}
 
           {wizardStep === 1 && (
-            <TextField select label="Email Agent" value={wizardState.email_agent_id} onChange={(e) => setWizardState((prev) => ({ ...prev, email_agent_id: e.target.value }))} helperText="Choose the AI Email Agent identity for the campaign.">
-              <MenuItem value="">Auto-assign from active agents</MenuItem>
-              {emailAgents.map((row) => <MenuItem key={row.id} value={row.sales_rep_id}>{row.display_name} • {row.from_email}</MenuItem>)}
-            </TextField>
+            <Stack spacing={1.5}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={wizardState.use_all_active_agents}
+                    onChange={(e) =>
+                      setWizardState((prev) => ({
+                        ...prev,
+                        use_all_active_agents: e.target.checked,
+                        email_agent_ids: e.target.checked ? emailAgents.filter((row) => row.status === "active").map((row) => Number(row.sales_rep_id)) : prev.email_agent_ids,
+                      }))
+                    }
+                  />
+                }
+                label="Use all active Email Agents"
+              />
+              <TextField
+                select
+                SelectProps={{ multiple: true }}
+                label="Email Agents"
+                value={wizardState.email_agent_ids || []}
+                onChange={(e) =>
+                  setWizardState((prev) => ({
+                    ...prev,
+                    email_agent_ids: e.target.value,
+                    use_all_active_agents: false,
+                  }))
+                }
+                helperText="Choose one or more sender identities, or keep all active agents enabled."
+                disabled={wizardState.use_all_active_agents}
+                fullWidth
+              >
+                {emailAgents.map((row) => (
+                  <MenuItem key={row.id} value={row.sales_rep_id}>{row.display_name} • {row.from_email} • {row.daily_limit || 0}/day</MenuItem>
+                ))}
+              </TextField>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Selected agents</Typography>
+                  {!selectedWizardAgents?.length ? (
+                    <Alert severity="warning" variant="outlined">No active Email Agents selected yet.</Alert>
+                  ) : (
+                    <>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                        <Chip size="small" variant="outlined" label={`Selected agents: ${wizardCapacityPreview?.selectedAgentsCount || 0}`} />
+                        <Chip size="small" color="primary" variant="outlined" label={`Total capacity: ${wizardCapacityPreview?.totalDailyCapacity || 0}/day`} />
+                      </Stack>
+                      {selectedWizardAgents.map((row) => (
+                        <Paper key={`wizard-agent-${row.id}`} variant="outlined" sx={{ p: 1.25, backgroundColor: "#f8fafc" }}>
+                          <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between">
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.display_name}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {row.from_email} • provider {row.provider_connection_name || "Fallback"} • warmup {row.warmup_stage_effective || "new"}
+                              </Typography>
+                            </Box>
+                            <Stack direction="row" spacing={1} useFlexGap>
+                              <Chip size="small" variant="outlined" label={`Limit: ${row.daily_limit_effective || 0}/day`} />
+                              <Chip size="small" variant="outlined" label={`Sent today: ${row.sent_today || 0}`} />
+                              <Chip size="small" color={row.paused ? "warning" : "success"} variant="outlined" label={row.paused ? "Paused" : "Active"} />
+                            </Stack>
+                          </Stack>
+                        </Paper>
+                      ))}
+                    </>
+                  )}
+                </Stack>
+              </Paper>
+            </Stack>
           )}
 
           {wizardStep === 2 && (
@@ -145,9 +213,14 @@ export default function EmailSdrLaunchWizard(props) {
                 <TextField select label="Template pack" value={wizardState.business_type} onChange={(e) => handleWizardBusinessTypeChange(e.target.value)} sx={{ minWidth: 240 }}>
                   {templatePacks.map((pack) => <MenuItem key={pack.business_type} value={pack.business_type}>{pack.business_type}</MenuItem>)}
                 </TextField>
-                <TextField label="Campaign name" value={wizardState.campaign_name} onChange={(e) => setWizardState((prev) => ({ ...prev, campaign_name: e.target.value }))} fullWidth />
-                <TextField label="City" value={wizardState.city} onChange={(e) => setWizardState((prev) => ({ ...prev, city: e.target.value }))} sx={{ minWidth: 180 }} />
+                <TextField label="Campaign name" value={wizardState.campaign_name} onChange={(e) => setWizardState((prev) => ({ ...prev, campaign_name: e.target.value, campaign_name_auto: false }))} fullWidth />
+                <TextField label="City" value={wizardState.city} onChange={(e) => syncAutoCampaignName({ city: e.target.value })} sx={{ minWidth: 180 }} />
               </Stack>
+              {wizardState.import_batch_name ? (
+                <Alert severity="info" variant="outlined">
+                  Using imported batch: <strong>{wizardState.import_batch_name}</strong>. Preview and draft generation will target this batch directly.
+                </Alert>
+              ) : null}
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
                 {templatePacks.map((pack) => (
                   <Button
@@ -404,6 +477,12 @@ export default function EmailSdrLaunchWizard(props) {
                 <Alert severity="warning" variant="outlined">{wizardPreview?.error || "Run preview to see eligible and blocked leads."}</Alert>
               ) : (
                 <Stack spacing={1}>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                    <Chip size="small" variant="outlined" label={`Eligible leads: ${wizardCapacityPreview?.eligibleLeads || 0}`} />
+                    <Chip size="small" variant="outlined" label={`Selected agents: ${wizardCapacityPreview?.selectedAgentsCount || 0}`} />
+                    <Chip size="small" color="primary" variant="outlined" label={`Total capacity: ${wizardCapacityPreview?.totalDailyCapacity || 0}/day`} />
+                    <Chip size="small" variant="outlined" label={`Estimated finish: ${wizardCapacityPreview?.estimatedDays || 0} day(s)`} />
+                  </Stack>
                   <Typography variant="caption" color="text.secondary">
                     {wizardPreview.mode === "saved_segment" ? "Using saved segment" : "Using wizard filters"}
                   </Typography>
@@ -416,6 +495,17 @@ export default function EmailSdrLaunchWizard(props) {
                   <Typography variant="caption" color="text.secondary">
                     Sample eligible leads: {(wizardPreview.eligible_sample || []).slice(0, 3).map((row) => row.company_name).join(", ") || "None"}
                   </Typography>
+                  <Paper variant="outlined" sx={{ p: 1.25, backgroundColor: "#f8fafc" }}>
+                    <Stack spacing={0.75}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>AI Manager Recommendations</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Review import quality first, then start with a small approved batch. Suggested daily pace for this campaign: {wizardCapacityPreview?.totalDailyCapacity || 0}/day across {wizardCapacityPreview?.selectedAgentsCount || 0} selected agent(s).
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Suggested next step: generate drafts, approve a small first batch, then work replies and hot leads from Action Queue.
+                      </Typography>
+                    </Stack>
+                  </Paper>
                 </Stack>
               )}
             </Paper>
