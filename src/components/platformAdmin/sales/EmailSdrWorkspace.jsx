@@ -31,6 +31,7 @@ import {
   classifyEmailReply,
   cloneEmailTemplate,
   closeHotLead,
+  copyEmailInboundReply,
   createEmailAgent,
   createEmailCampaign,
   createEmailProviderConnection,
@@ -41,6 +42,7 @@ import {
   getEmailCampaignAnalytics,
   getEmailSdrAnalyticsComparison,
   getEmailSdrAnalytics,
+  getEmailSdrDailySummary,
   getEmailSdrOpsSummary,
   generateEmailCampaignDrafts,
   generateEmailCampaignFollowUps,
@@ -60,6 +62,7 @@ import {
   listEmailRoutingRules,
   listEmailSuppression,
   listHotLeads,
+  markEmailInboundReplyReplied,
   markHotLeadContacted,
   pauseEmailAgent,
   pauseEmailCampaign,
@@ -79,6 +82,7 @@ import {
   snoozeHotLead,
   testEmailProviderConnection,
   activateEmailRoutingRule,
+  unsubscribeEmailInboundLead,
   updateEmailAgent,
   updateEmailAgentLimitToday,
   updateEmailCampaignAutomationSettings,
@@ -322,6 +326,7 @@ function getCampaignNextStep(campaign, preview) {
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, importLaunchContext = null, onImportLaunchContextHandled = null }) {
   const [overview, setOverview] = useState({});
   const [opsSummary, setOpsSummary] = useState(null);
+  const [dailySummary, setDailySummary] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [messages, setMessages] = useState([]);
   const [emailAgents, setEmailAgents] = useState([]);
@@ -575,6 +580,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       const [
         overviewResp,
         opsSummaryResp,
+        dailySummaryResp,
         analyticsResp,
         analyticsComparisonResp,
         campaignRows,
@@ -598,6 +604,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       ] = await Promise.all([
         getEmailSdrOverview(),
         getEmailSdrOpsSummary(),
+        getEmailSdrDailySummary(),
         getEmailSdrAnalytics(),
         getEmailSdrAnalyticsComparison(),
         listEmailCampaigns(),
@@ -621,6 +628,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       ]);
       setOverview(overviewResp || {});
       setOpsSummary(opsSummaryResp || null);
+      setDailySummary(dailySummaryResp || null);
       setAnalytics(analyticsResp || null);
       setAnalyticsComparison(analyticsComparisonResp || null);
       setCampaigns(campaignRows || []);
@@ -1481,6 +1489,88 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     }
   };
 
+  const handleCopyReplyDraft = async (event) => {
+    const latest = event?.latest_classification || {};
+    const subject = latest.draft_reply_subject || "";
+    const body = latest.draft_reply_body || "";
+    const clipboardText = subject ? `Subject: ${subject}\n\n${body}` : body;
+    if (!clipboardText) {
+      showBanner("error", "No suggested reply draft is available yet.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await copyEmailInboundReply(event.id);
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(clipboardText);
+      }
+      showBanner("success", "Suggested reply copied.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to copy suggested reply.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMarkReplySentManually = async (event) => {
+    setSubmitting(true);
+    try {
+      await markEmailInboundReplyReplied(event.id, {
+        note: inboundReplyText[event.id] || event.latest_classification?.draft_reply_subject || "",
+      });
+      showBanner("success", "Reply marked as handled manually.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to mark reply handled.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReplyMarkedCalled = async (event) => {
+    if (!event?.matched_lead?.id) return;
+    await handleMarkHotLeadContacted(event.matched_lead.id);
+  };
+
+  const handleReplyCreateDeal = async (event) => {
+    if (!event?.matched_lead?.id) return;
+    await handleCreateHotLeadDeal(event.matched_lead.id);
+  };
+
+  const handleReplySnooze = async (event) => {
+    if (!event?.matched_lead?.id) return;
+    setSubmitting(true);
+    try {
+      const classification = event.latest_classification?.classification || "";
+      if (classification === "not_now") {
+        const until = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)).toISOString();
+        await snoozeHotLead(event.matched_lead.id, { snooze_until: until, note: "Reply assistant snooze" });
+      } else {
+        await snoozeHotLead(event.matched_lead.id, { preset: "tomorrow", note: "Reply assistant snooze" });
+      }
+      showBanner("success", "Reply follow-up snoozed.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to snooze reply follow-up.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReplyUnsubscribe = async (event) => {
+    setSubmitting(true);
+    try {
+      await unsubscribeEmailInboundLead(event.id, { note: inboundReplyText[event.id] || "" });
+      showBanner("success", "Lead unsubscribed from future Email SDR outreach.");
+      await loadWorkspace();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to unsubscribe lead.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSaveAgentLimit = async (repId) => {
     const draft = agentLimitDrafts[repId];
     if (!draft) return;
@@ -1642,6 +1732,30 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
           {workspaceView === "control" ? (
             <>
               <EmailSdrDashboardCards opsSummary={opsSummary} overview={overview} />
+              {dailySummary ? (
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack spacing={1.25}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Daily manager summary</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {dailySummary.today?.date || "Today"} • Sent {dailySummary.today?.sent || 0} • Replies {dailySummary.today?.replies || 0} • Positive {dailySummary.today?.positive_replies || 0} • Bounces {dailySummary.today?.bounces || 0} • Unsubscribes {dailySummary.today?.unsubscribes || 0}
+                    </Typography>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                      <Chip size="small" color="warning" variant="outlined" label={`Campaigns needing attention: ${dailySummary.campaigns_needing_attention?.length || 0}`} />
+                      <Chip size="small" color="secondary" variant="outlined" label={`Replies needing action: ${dailySummary.replies_needing_action?.length || 0}`} />
+                      <Chip size="small" color="success" variant="outlined" label={`Top hot leads: ${dailySummary.top_hot_leads?.length || 0}`} />
+                    </Stack>
+                    {(dailySummary.suggested_next_steps || []).length ? (
+                      <List dense disablePadding>
+                        {(dailySummary.suggested_next_steps || []).map((step) => (
+                          <ListItem key={step} disableGutters sx={{ py: 0.25 }}>
+                            <ListItemText primary={step} primaryTypographyProps={{ variant: "body2" }} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : null}
+                  </Stack>
+                </Paper>
+              ) : null}
               <EmailSdrNeedsAttentionCard warnings={opsSummary?.needs_attention || []} />
               <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
@@ -2649,9 +2763,17 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                             <Chip size="small" variant="outlined" label={`Drafts: ${campaign.message_counts?.draft || 0}`} />
                             <Chip size="small" variant="outlined" label={`Approved: ${campaign.message_counts?.approved || 0}`} />
                             <Chip size="small" variant="outlined" label={`Sent: ${campaign.result_counters?.sent || 0}`} />
+                            <Chip size="small" variant="outlined" label={`Delivered: ${campaign.result_counters?.delivered || 0}`} />
+                            <Chip size="small" variant="outlined" label={`No reply yet: ${campaign.result_counters?.no_reply_yet || 0}`} />
                             <Chip size="small" color="info" variant="outlined" label={`Replies: ${campaign.result_counters?.replies || 0}`} />
                             <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${campaign.result_counters?.hot_leads || 0}`} />
+                            <Chip size="small" color="success" variant="outlined" label={`Positive: ${campaign.result_counters?.positive_replies || 0}`} />
+                            <Chip size="small" color="warning" variant="outlined" label={`Negative: ${campaign.result_counters?.negative_replies || 0}`} />
+                            <Chip size="small" color="warning" variant="outlined" label={`Not now: ${campaign.result_counters?.not_now || 0}`} />
+                            <Chip size="small" color="warning" variant="outlined" label={`Wrong contact: ${campaign.result_counters?.wrong_contact || 0}`} />
                             <Chip size="small" color="warning" variant="outlined" label={`Needs action: ${campaign.result_counters?.needs_action || 0}`} />
+                            <Chip size="small" color="error" variant="outlined" label={`Bounced: ${campaign.result_counters?.bounced || 0}`} />
+                            <Chip size="small" color="error" variant="outlined" label={`Unsubscribed: ${campaign.result_counters?.unsubscribed || 0}`} />
                             <Chip size="small" color="error" variant="outlined" label={`Unmatched: ${campaign.result_counters?.unmatched_replies || 0}`} />
                             <Chip size="small" variant="outlined" label={`Agents: ${(campaign.email_agent_ids || []).length || "auto"}`} />
                           </Stack>
@@ -2939,6 +3061,12 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
         setInboundReplyClass={setInboundReplyClass}
         setInboundReplyText={setInboundReplyText}
         onClassify={handleClassifyInboundReply}
+        onCopyReply={handleCopyReplyDraft}
+        onMarkReplied={handleMarkReplySentManually}
+        onMarkCalled={handleReplyMarkedCalled}
+        onCreateDeal={handleReplyCreateDeal}
+        onSnooze={handleReplySnooze}
+        onUnsubscribe={handleReplyUnsubscribe}
       />
       ) : null}
 

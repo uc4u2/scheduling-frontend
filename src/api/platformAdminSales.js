@@ -281,6 +281,11 @@ export const getEmailSdrOpsSummary = async () => {
   return data?.summary || null;
 };
 
+export const getEmailSdrDailySummary = async () => {
+  const { data } = await platformAdminApi.get("/sales/email-daily-summary");
+  return data?.summary || null;
+};
+
 export const listEmailCampaigns = async () => {
   const { data } = await platformAdminApi.get("/sales/email-campaigns");
   return data?.campaigns || [];
@@ -389,6 +394,21 @@ export const listEmailInboundEvents = async (params = {}) => {
 export const classifyEmailInboundEvent = async (eventId, payload = {}) => {
   const { data } = await platformAdminApi.post(`/sales/email-inbound-events/${eventId}/classify`, payload);
   return data || { event: null, classification: null };
+};
+
+export const copyEmailInboundReply = async (eventId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-inbound-events/${eventId}/copy-reply`);
+  return data || { event: null };
+};
+
+export const markEmailInboundReplyReplied = async (eventId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-inbound-events/${eventId}/mark-replied`, payload);
+  return data || { event: null };
+};
+
+export const unsubscribeEmailInboundLead = async (eventId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/email-inbound-events/${eventId}/unsubscribe`, payload);
+  return data || { event: null };
 };
 
 export const listEmailSuppression = async () => {

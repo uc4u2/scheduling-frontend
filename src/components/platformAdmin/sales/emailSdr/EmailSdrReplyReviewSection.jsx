@@ -10,10 +10,17 @@ function ReplyRow({
   setInboundReplyClass,
   setInboundReplyText,
   onClassify,
+  onCopyReply,
+  onMarkReplied,
+  onMarkCalled,
+  onCreateDeal,
+  onSnooze,
+  onUnsubscribe,
   showClassify = true,
 }) {
   const matchedLead = event.matched_lead || {};
   const matchedMessage = event.matched_message || {};
+  const latest = event.latest_classification || {};
   const selectedClass = inboundReplyClass[event.id] || event.suggested_classification || "";
   const selectedText = inboundReplyText[event.id] || "";
 
@@ -51,6 +58,52 @@ function ReplyRow({
             Original: {matchedMessage.subject || "No original message"}{matchedMessage.sent_at ? ` • sent ${matchedMessage.sent_at}` : ""}
           </Typography>
           <TextField size="small" fullWidth multiline minRows={3} label="Reply text" value={event.body_text || ""} disabled />
+          {!showClassify ? (
+            <Stack spacing={1}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
+                {latest.classification ? (
+                  <Chip size="small" color="info" variant="outlined" label={`Classification: ${latest.classification}`} />
+                ) : null}
+                {latest.confidence ? (
+                  <Chip size="small" variant="outlined" label={`Confidence: ${Math.round(latest.confidence * 100)}%`} />
+                ) : null}
+                {(latest.suggested_next_action || event.suggested_next_action) ? (
+                  <Chip
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                    label={`Suggested next action: ${latest.suggested_next_action || event.suggested_next_action}`}
+                  />
+                ) : null}
+              </Stack>
+              {(latest.draft_reply_subject || latest.draft_reply_body) ? (
+                <>
+                  <TextField size="small" fullWidth label="Suggested reply subject" value={latest.draft_reply_subject || ""} disabled />
+                  <TextField size="small" fullWidth multiline minRows={4} label="Suggested reply draft" value={latest.draft_reply_body || ""} disabled />
+                </>
+              ) : null}
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                <Button variant="outlined" size="small" disabled={!(latest.draft_reply_subject || latest.draft_reply_body)} onClick={() => onCopyReply?.(event)}>
+                  Copy reply
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => onMarkReplied?.(event)}>
+                  Mark replied manually
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => onMarkCalled?.(event)}>
+                  Mark called
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => onCreateDeal?.(event)}>
+                  Create deal
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => onSnooze?.(event)}>
+                  Snooze
+                </Button>
+                <Button color="warning" variant="outlined" size="small" onClick={() => onUnsubscribe?.(event)}>
+                  Unsubscribe
+                </Button>
+              </Stack>
+            </Stack>
+          ) : null}
           {showClassify ? (
             <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
               <TextField
@@ -109,6 +162,12 @@ function QueueBlock({
   setInboundReplyClass,
   setInboundReplyText,
   onClassify,
+  onCopyReply,
+  onMarkReplied,
+  onMarkCalled,
+  onCreateDeal,
+  onSnooze,
+  onUnsubscribe,
   showClassify = true,
   severity = "info",
 }) {
@@ -134,6 +193,12 @@ function QueueBlock({
                 setInboundReplyClass={setInboundReplyClass}
                 setInboundReplyText={setInboundReplyText}
                 onClassify={onClassify}
+                onCopyReply={onCopyReply}
+                onMarkReplied={onMarkReplied}
+                onMarkCalled={onMarkCalled}
+                onCreateDeal={onCreateDeal}
+                onSnooze={onSnooze}
+                onUnsubscribe={onUnsubscribe}
                 showClassify={showClassify}
               />
             ))}
@@ -155,6 +220,12 @@ export default function EmailSdrReplyReviewSection({
   setInboundReplyClass,
   setInboundReplyText,
   onClassify,
+  onCopyReply,
+  onMarkReplied,
+  onMarkCalled,
+  onCreateDeal,
+  onSnooze,
+  onUnsubscribe,
 }) {
   return (
     <Paper sx={{ p: 2.5 }}>
@@ -173,6 +244,12 @@ export default function EmailSdrReplyReviewSection({
           setInboundReplyClass={setInboundReplyClass}
           setInboundReplyText={setInboundReplyText}
           onClassify={onClassify}
+          onCopyReply={onCopyReply}
+          onMarkReplied={onMarkReplied}
+          onMarkCalled={onMarkCalled}
+          onCreateDeal={onCreateDeal}
+          onSnooze={onSnooze}
+          onUnsubscribe={onUnsubscribe}
           showClassify
           severity="success"
         />
@@ -186,6 +263,12 @@ export default function EmailSdrReplyReviewSection({
           setInboundReplyClass={setInboundReplyClass}
           setInboundReplyText={setInboundReplyText}
           onClassify={onClassify}
+          onCopyReply={onCopyReply}
+          onMarkReplied={onMarkReplied}
+          onMarkCalled={onMarkCalled}
+          onCreateDeal={onCreateDeal}
+          onSnooze={onSnooze}
+          onUnsubscribe={onUnsubscribe}
           showClassify={false}
           severity="info"
         />
@@ -199,6 +282,12 @@ export default function EmailSdrReplyReviewSection({
           setInboundReplyClass={setInboundReplyClass}
           setInboundReplyText={setInboundReplyText}
           onClassify={onClassify}
+          onCopyReply={onCopyReply}
+          onMarkReplied={onMarkReplied}
+          onMarkCalled={onMarkCalled}
+          onCreateDeal={onCreateDeal}
+          onSnooze={onSnooze}
+          onUnsubscribe={onUnsubscribe}
           showClassify={false}
           severity="info"
         />
@@ -212,6 +301,12 @@ export default function EmailSdrReplyReviewSection({
           setInboundReplyClass={setInboundReplyClass}
           setInboundReplyText={setInboundReplyText}
           onClassify={onClassify}
+          onCopyReply={onCopyReply}
+          onMarkReplied={onMarkReplied}
+          onMarkCalled={onMarkCalled}
+          onCreateDeal={onCreateDeal}
+          onSnooze={onSnooze}
+          onUnsubscribe={onUnsubscribe}
           showClassify={false}
           severity="info"
         />
