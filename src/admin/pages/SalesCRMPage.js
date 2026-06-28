@@ -46,6 +46,7 @@ import {
   getLeadSummary,
   listLeadImportBatches,
   listLeads,
+  listEmailCampaigns,
   getSalesRepProductivity,
   getSalesSupervisorQueue,
   listSalesReps,
@@ -58,6 +59,7 @@ import {
   bulkUpdateLeadQaReview,
   updateLeadQaReview,
   updateLead,
+  updateEmailCampaignAutomationSettings,
   saveSalesCallSettings,
 } from "../../api/platformAdminSales";
 
@@ -158,6 +160,10 @@ export default function SalesCRMPage() {
   const [importBatches, setImportBatches] = useState([]);
   const [lastImportResult, setLastImportResult] = useState(null);
   const [emailSdrLaunchContext, setEmailSdrLaunchContext] = useState(null);
+  const [existingEmailCampaigns, setExistingEmailCampaigns] = useState([]);
+  const [loadingExistingEmailCampaigns, setLoadingExistingEmailCampaigns] = useState(false);
+  const [showExistingCampaignPicker, setShowExistingCampaignPicker] = useState(false);
+  const [selectedExistingCampaignId, setSelectedExistingCampaignId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -437,6 +443,42 @@ export default function SalesCRMPage() {
       setImporting(false);
     }
   };
+
+  const handleShowExistingCampaignPicker = useCallback(async () => {
+    setShowExistingCampaignPicker(true);
+    if (existingEmailCampaigns.length) return;
+    setLoadingExistingEmailCampaigns(true);
+    try {
+      const rows = await listEmailCampaigns();
+      setExistingEmailCampaigns(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to load existing email campaigns.");
+    } finally {
+      setLoadingExistingEmailCampaigns(false);
+    }
+  }, [existingEmailCampaigns.length, showBanner]);
+
+  const handleAttachImportToExistingCampaign = useCallback(async () => {
+    if (!lastImportResult?.batch?.id || !selectedExistingCampaignId) return;
+    setSubmitting(true);
+    try {
+      await updateEmailCampaignAutomationSettings(selectedExistingCampaignId, {
+        import_batch_id: Number(lastImportResult.batch.id),
+      });
+      showBanner("success", "Imported batch attached to the selected email campaign.");
+      setShowExistingCampaignPicker(false);
+      setSelectedExistingCampaignId("");
+      setWorkspaceTab("email_sdr");
+      setEmailSdrLaunchContext({
+        importBatch: lastImportResult.batch,
+        mode: "existing",
+      });
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to attach imported batch to the selected campaign.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [lastImportResult, selectedExistingCampaignId, showBanner]);
 
   const handleCallModeChange = (mode) => {
     if (mode === "protected_twilio") {
@@ -1112,10 +1154,7 @@ export default function SalesCRMPage() {
                 </Button>
                 <Button
                   variant="outlined"
-                  onClick={() => {
-                    setWorkspaceTab("email_sdr");
-                    setEmailSdrLaunchContext({ importBatch: lastImportResult.batch, mode: "existing" });
-                  }}
+                  onClick={handleShowExistingCampaignPicker}
                 >
                   Add to Existing Campaign
                 </Button>
@@ -1123,6 +1162,57 @@ export default function SalesCRMPage() {
                   Done
                 </Button>
               </Stack>
+              {showExistingCampaignPicker ? (
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, backgroundColor: "#f8fbff" }}>
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Choose existing campaign
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Attach this import batch directly here, then continue in Email SDR with the selected campaign.
+                    </Typography>
+                    <TextField
+                      select
+                      label="Existing campaign"
+                      value={selectedExistingCampaignId}
+                      onChange={(e) => setSelectedExistingCampaignId(e.target.value)}
+                      disabled={loadingExistingEmailCampaigns}
+                      sx={{ maxWidth: 520 }}
+                    >
+                      <MenuItem value="">Select campaign</MenuItem>
+                      {existingEmailCampaigns.map((campaign) => (
+                        <MenuItem key={campaign.id} value={campaign.id}>
+                          {campaign.name} • {campaign.business_type || "General"} • {campaign.city || "Any city"} • {campaign.status || "draft"}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    {!loadingExistingEmailCampaigns && !existingEmailCampaigns.length ? (
+                      <Alert severity="info" variant="outlined">
+                        No existing email campaigns found yet. Create a new campaign from this import instead.
+                      </Alert>
+                    ) : null}
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+                      <Button
+                        variant="contained"
+                        disabled={submitting || loadingExistingEmailCampaigns || !selectedExistingCampaignId}
+                        onClick={handleAttachImportToExistingCampaign}
+                      >
+                        Attach Import Batch
+                      </Button>
+                      <Button
+                        variant="text"
+                        disabled={submitting}
+                        onClick={() => {
+                          setShowExistingCampaignPicker(false);
+                          setSelectedExistingCampaignId("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ) : null}
             </Stack>
           </Paper>
         ) : null}
