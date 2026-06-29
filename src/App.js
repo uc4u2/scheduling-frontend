@@ -191,6 +191,7 @@ import CandidateIntakePage from "./pages/CandidateIntakePage";
 import PublicJobsListPage from "./pages/public/PublicJobsListPage";
 import PublicJobDetailPage from "./pages/public/PublicJobDetailPage";
 import DocumentRequestUploadPage from "./pages/public/DocumentRequestUploadPage";
+import EmailSdrUnsubscribeRedirectPage from "./pages/public/EmailSdrUnsubscribeRedirectPage";
 import CandidateLoginCallbackPage from "./pages/candidate/CandidateLoginCallbackPage";
 import CandidateDashboardPage from "./pages/candidate/CandidateDashboardPage";
 import ClientRescheduleBooking from "./pages/client/ClientRescheduleBooking";
@@ -759,6 +760,7 @@ const AppContent = ({ token, setToken }) => {
               />
             </Route>
               <Route element={<PublicLayout token={token} setToken={setToken} />}>
+                <Route path="/email-sdr/unsubscribe/:token" element={<EmailSdrUnsubscribeRedirectPage />} />
                 <Route path="/pricing" element={<ExternalRedirect to={APP_MARKETING_PRICING_URL} />} />
                 {SHOW_LOCAL_PRICING_PREVIEW ? (
                   <Route path="/pricing-local" element={<PricingPage />} />
