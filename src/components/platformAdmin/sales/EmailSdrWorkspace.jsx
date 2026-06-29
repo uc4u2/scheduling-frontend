@@ -12,6 +12,7 @@ import {
   ListItem,
   ListItemText,
   MenuItem,
+  Pagination,
   Paper,
   Stack,
   Switch,
@@ -323,6 +324,29 @@ function getCampaignNextStep(campaign, preview) {
   return "Preview targets";
 }
 
+function normalizeQueueSearch(value) {
+  return String(value || "").toLowerCase();
+}
+
+function messageSearchBlob(message) {
+  return normalizeQueueSearch([
+    message.lead?.company_name,
+    message.lead?.email,
+    message.subject,
+    message.body,
+    message.rendered_body,
+    message.email_agent_name,
+    message.status,
+    message.error_code,
+  ].filter(Boolean).join(" "));
+}
+
+function compactMessageBody(value, max = 240) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "No message body.";
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
 export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, importLaunchContext = null, onImportLaunchContextHandled = null }) {
   const [overview, setOverview] = useState({});
   const [opsSummary, setOpsSummary] = useState(null);
@@ -373,6 +397,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
   const [inboundReplyText, setInboundReplyText] = useState({});
   const [inboundReplyClass, setInboundReplyClass] = useState({});
   const [messageDraftState, setMessageDraftState] = useState({});
+  const [messageSearchTerm, setMessageSearchTerm] = useState("");
+  const [messageStatusFilter, setMessageStatusFilter] = useState("");
+  const [messagePage, setMessagePage] = useState(1);
   const [agentLimitDrafts, setAgentLimitDrafts] = useState({});
   const [agentDrafts, setAgentDrafts] = useState({});
   const [providerDrafts, setProviderDrafts] = useState({});
@@ -462,10 +489,31 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     }
     return rows;
   }, [templateBusinessFilter, templateShowAll, templates]);
+  const filteredMessages = useMemo(() => {
+    const q = normalizeQueueSearch(messageSearchTerm);
+    return messages.filter((message) => {
+      if (messageStatusFilter && message.status !== messageStatusFilter) return false;
+      if (q && !messageSearchBlob(message).includes(q)) return false;
+      return true;
+    });
+  }, [messages, messageSearchTerm, messageStatusFilter]);
+  const messagePageCount = Math.max(1, Math.ceil(filteredMessages.length / 6));
+  const visibleMessages = useMemo(
+    () => filteredMessages.slice((messagePage - 1) * 6, messagePage * 6),
+    [filteredMessages, messagePage]
+  );
   const activeWorkspaceView = useMemo(
     () => workspaceViews.find((row) => row.key === workspaceView) || workspaceViews[0],
     [workspaceView]
   );
+  useEffect(() => {
+    setMessagePage(1);
+  }, [messageSearchTerm, messageStatusFilter, messages.length]);
+  useEffect(() => {
+    if (messagePage > messagePageCount) {
+      setMessagePage(messagePageCount);
+    }
+  }, [messagePage, messagePageCount]);
   const selectedWizardAgents = useMemo(() => {
     const selectedIds = new Set((wizardState.email_agent_ids || []).map((value) => String(value)));
     const activeRows = emailAgents.filter((row) => row.status === "active");
@@ -3071,14 +3119,41 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       ) : null}
 
       {workspaceView === "action" ? (
-      <Paper sx={{ p: 2.5 }}>
+      <Paper sx={{ p: 2.5, borderRadius: 3 }}>
         <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Recent Email Messages</Typography>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Recent Email Messages</Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+              <TextField
+                size="small"
+                label="Search messages"
+                placeholder="Company, email, subject, agent"
+                value={messageSearchTerm}
+                onChange={(event) => setMessageSearchTerm(event.target.value)}
+                sx={{ minWidth: 280 }}
+              />
+              <TextField
+                size="small"
+                select
+                label="Status"
+                value={messageStatusFilter}
+                onChange={(event) => setMessageStatusFilter(event.target.value)}
+                sx={{ minWidth: 160 }}
+              >
+                <MenuItem value="">All statuses</MenuItem>
+                {["draft", "approved", "scheduled", "sent", "delivered", "replied", "bounced", "failed", "cancelled"].map((status) => (
+                  <MenuItem key={status} value={status}>{status}</MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+          </Stack>
           {!messages.length ? (
             <Alert severity="info" variant="outlined">No email messages yet.</Alert>
+          ) : !filteredMessages.length ? (
+            <Alert severity="info" variant="outlined">No email messages match the current filters.</Alert>
           ) : (
-            <List disablePadding>
-              {messages.slice(0, 16).map((message) => {
+            <Stack spacing={1.25}>
+              {visibleMessages.map((message) => {
                 const displayBody = editableStatuses.has(message.status)
                   ? (message.body || "")
                   : (message.rendered_body || message.body || "");
@@ -3090,8 +3165,8 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                 };
                 const editable = editableStatuses.has(message.status);
                 return (
-                  <React.Fragment key={message.id}>
-                    <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
+                  <Accordion key={message.id} disableGutters variant="outlined" sx={{ borderRadius: 2, "&:before": { display: "none" } }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Stack spacing={1.25} sx={{ width: "100%" }}>
                         <Box>
                           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -3115,6 +3190,16 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                             ) : null}
                           </Stack>
                         </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {message.subject || "No subject"}
+                        </Typography>
+                        <Typography variant="body2">
+                          {compactMessageBody(displayBody)}
+                        </Typography>
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack spacing={1.25}>
                         <TextField
                           size="small"
                           fullWidth
@@ -3191,12 +3276,16 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                           </Button>
                         </Stack>
                       </Stack>
-                    </ListItem>
-                    <Divider />
-                  </React.Fragment>
+                    </AccordionDetails>
+                  </Accordion>
                 );
               })}
-            </List>
+              {messagePageCount > 1 ? (
+                <Stack alignItems="flex-end">
+                  <Pagination size="small" page={messagePage} count={messagePageCount} onChange={(_, nextPage) => setMessagePage(nextPage)} />
+                </Stack>
+              ) : null}
+            </Stack>
           )}
         </Stack>
       </Paper>
