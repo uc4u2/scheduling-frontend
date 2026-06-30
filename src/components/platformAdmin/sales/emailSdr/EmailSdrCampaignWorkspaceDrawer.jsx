@@ -492,9 +492,9 @@ const drawerTabs = [
   { key: "analytics", label: "Analytics" },
 ];
 
-export default function EmailSdrCampaignWorkspaceDrawer({
-  open = false,
+function CampaignWorkspacePanel({
   onClose,
+  closeLabel = "Close",
   workspace,
   loading = false,
   reps = [],
@@ -522,138 +522,152 @@ export default function EmailSdrCampaignWorkspaceDrawer({
   const overview = workspace?.overview || {};
 
   React.useEffect(() => {
-    if (open) setTab("overview");
-  }, [open, workspace?.campaign?.id]);
+    setTab("overview");
+  }, [workspace?.campaign?.id]);
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: "100%", lg: 1100 } } }}>
-      <Stack spacing={0} sx={{ height: "100%" }}>
-        <Box sx={{ p: 3, borderBottom: "1px solid", borderColor: "divider" }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Stack spacing={0.75}>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                {campaign?.name || "Campaign workspace"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {[campaign?.business_type || "Any business type", campaign?.city, campaign?.status, campaign?.provider_connection_name || campaign?.provider_connection?.name].filter(Boolean).join(" • ")}
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              <Chip size="small" variant="outlined" label={`Sent: ${overview.sent || 0}`} />
-              <Chip size="small" variant="outlined" label={`Replies: ${overview.replies || 0}`} />
-              <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
-              <Chip size="small" color="warning" variant="outlined" label={`Needs action: ${overview.needs_action || 0}`} />
-              <Button size="small" variant="outlined" onClick={onClose}>Close</Button>
-            </Stack>
+    <Stack spacing={0} sx={{ height: "100%" }}>
+      <Box sx={{ p: 3, borderBottom: "1px solid", borderColor: "divider" }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+          <Stack spacing={0.75}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              {campaign?.name || "Campaign workspace"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {[campaign?.business_type || "Any business type", campaign?.city, campaign?.status, campaign?.provider_connection_name || campaign?.provider_connection?.name].filter(Boolean).join(" • ")}
+            </Typography>
           </Stack>
-        </Box>
-        <Box sx={{ px: 3, pt: 2 }}>
-          <Tabs
-            value={tab}
-            onChange={(_, nextValue) => setTab(nextValue)}
-            variant="scrollable"
-            allowScrollButtonsMobile
-            sx={{ minHeight: 0, ".MuiTab-root": { minHeight: 0, py: 1 } }}
-          >
-            {drawerTabs.map((item) => (
-              <Tab key={item.key} value={item.key} label={item.label} />
-            ))}
-          </Tabs>
-        </Box>
-        <Box sx={{ p: 3, overflowY: "auto", flex: 1 }}>
-          {loading ? <Alert severity="info" variant="outlined">Loading campaign workspace…</Alert> : null}
-          {!loading && !campaign ? <Alert severity="info" variant="outlined">Choose a campaign to open its workspace.</Alert> : null}
-          {!loading && campaign ? (
-            <>
-              {tab === "overview" ? (
-                <Stack spacing={2}>
-                  <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-                    <Stack spacing={1.5}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign overview</Typography>
-                      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                        <Chip size="small" variant="outlined" label={`Sent: ${overview.sent || 0}`} />
-                        <Chip size="small" variant="outlined" label={`Delivered: ${overview.delivered || 0}`} />
-                        <Chip size="small" color="info" variant="outlined" label={`Replies: ${overview.replies || 0}`} />
-                        <Chip size="small" color="success" variant="outlined" label={`Positive replies: ${overview.positive_replies || 0}`} />
-                        <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
-                        <Chip size="small" color="warning" variant="outlined" label={`Needs action: ${overview.needs_action || 0}`} />
-                        <Chip size="small" color="error" variant="outlined" label={`Bounced: ${overview.bounced || 0}`} />
-                        <Chip size="small" color="error" variant="outlined" label={`Unsubscribed: ${overview.unsubscribed || 0}`} />
-                        <Chip size="small" color="warning" variant="outlined" label={`Unmatched replies: ${overview.unmatched_replies || 0}`} />
-                        <Chip size="small" variant="outlined" label={`No reply yet: ${overview.no_reply_yet || 0}`} />
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Chip size="small" variant="outlined" label={`Sent: ${overview.sent || 0}`} />
+            <Chip size="small" variant="outlined" label={`Replies: ${overview.replies || 0}`} />
+            <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
+            <Chip size="small" color="warning" variant="outlined" label={`Needs action: ${overview.needs_action || 0}`} />
+            <Button size="small" variant="outlined" onClick={onClose}>{closeLabel}</Button>
+          </Stack>
+        </Stack>
+      </Box>
+      <Box sx={{ px: 3, pt: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, nextValue) => setTab(nextValue)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+          sx={{ minHeight: 0, ".MuiTab-root": { minHeight: 0, py: 1 } }}
+        >
+          {drawerTabs.map((item) => (
+            <Tab key={item.key} value={item.key} label={item.label} />
+          ))}
+        </Tabs>
+      </Box>
+      <Box sx={{ p: 3, overflowY: "auto", flex: 1 }}>
+        {loading ? <Alert severity="info" variant="outlined">Loading campaign workspace…</Alert> : null}
+        {!loading && !campaign ? <Alert severity="info" variant="outlined">Choose a campaign to open its workspace.</Alert> : null}
+        {!loading && campaign ? (
+          <>
+            {tab === "overview" ? (
+              <Stack spacing={2}>
+                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Campaign overview</Typography>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      <Chip size="small" variant="outlined" label={`Sent: ${overview.sent || 0}`} />
+                      <Chip size="small" variant="outlined" label={`Delivered: ${overview.delivered || 0}`} />
+                      <Chip size="small" color="info" variant="outlined" label={`Replies: ${overview.replies || 0}`} />
+                      <Chip size="small" color="success" variant="outlined" label={`Positive replies: ${overview.positive_replies || 0}`} />
+                      <Chip size="small" color="success" variant="outlined" label={`Hot leads: ${overview.hot_leads || 0}`} />
+                      <Chip size="small" color="warning" variant="outlined" label={`Needs action: ${overview.needs_action || 0}`} />
+                      <Chip size="small" color="error" variant="outlined" label={`Bounced: ${overview.bounced || 0}`} />
+                      <Chip size="small" color="error" variant="outlined" label={`Unsubscribed: ${overview.unsubscribed || 0}`} />
+                      <Chip size="small" color="warning" variant="outlined" label={`Unmatched replies: ${overview.unmatched_replies || 0}`} />
+                      <Chip size="small" variant="outlined" label={`No reply yet: ${overview.no_reply_yet || 0}`} />
+                    </Stack>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Routing and sender setup</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Send window: {[campaign.send_window_start, campaign.send_window_end].filter(Boolean).join(" - ") || "Not set"}{campaign.timezone ? ` • ${campaign.timezone}` : ""}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Daily limit per agent: {campaign.daily_limit_per_agent || 0}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Provider: {campaign.provider_connection?.name || campaign.provider_connection_name || "Fallback"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Created: {formatDateTime(campaign.created_at)}
+                    </Typography>
+                    <Divider />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Selected email agents</Typography>
+                    {(campaign.selected_email_agents || []).length ? (
+                      <Stack spacing={1}>
+                        {(campaign.selected_email_agents || []).map((agent) => (
+                          <Paper key={`campaign-workspace-agent-${agent.sales_rep_id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{agent.display_name || agent.sales_rep_name}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {[agent.from_email, agent.provider_connection_name, agent.status].filter(Boolean).join(" • ")}
+                            </Typography>
+                          </Paper>
+                        ))}
                       </Stack>
-                    </Stack>
-                  </Paper>
-                  <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-                    <Stack spacing={1.5}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Routing and sender setup</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Send window: {[campaign.send_window_start, campaign.send_window_end].filter(Boolean).join(" - ") || "Not set"}{campaign.timezone ? ` • ${campaign.timezone}` : ""}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Daily limit per agent: {campaign.daily_limit_per_agent || 0}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Provider: {campaign.provider_connection?.name || campaign.provider_connection_name || "Fallback"}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Created: {formatDateTime(campaign.created_at)}
-                      </Typography>
-                      <Divider />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Selected email agents</Typography>
-                      {(campaign.selected_email_agents || []).length ? (
-                        <Stack spacing={1}>
-                          {(campaign.selected_email_agents || []).map((agent) => (
-                            <Paper key={`campaign-workspace-agent-${agent.sales_rep_id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{agent.display_name || agent.sales_rep_name}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {[agent.from_email, agent.provider_connection_name, agent.status].filter(Boolean).join(" • ")}
-                              </Typography>
-                            </Paper>
-                          ))}
-                        </Stack>
-                      ) : (
-                        <Alert severity="info" variant="outlined">No specific agent selection is stored on this campaign.</Alert>
-                      )}
-                    </Stack>
-                  </Paper>
-                </Stack>
-              ) : null}
-              {tab === "replies" ? (
-                <RepliesTab
-                  replies={workspace?.replies || []}
-                  classificationOptions={classificationOptions}
-                  inboundReplyClass={inboundReplyClass}
-                  inboundReplyText={inboundReplyText}
-                  setInboundReplyClass={setInboundReplyClass}
-                  setInboundReplyText={setInboundReplyText}
-                  onClassify={onClassify}
-                  onCopyReply={onCopyReply}
-                  onMarkReplied={onMarkReplied}
-                  onMarkCalled={onMarkCalled}
-                  onCreateDeal={onCreateDeal}
-                  onReplySnooze={onReplySnooze}
-                  onUnsubscribe={onUnsubscribe}
-                />
-              ) : null}
-              {tab === "hot_leads" ? (
-                <HotLeadsTab
-                  hotLeads={workspace?.hot_leads || []}
-                  reps={reps}
-                  onAssign={onAssignHotLead}
-                  onNextAction={onSetHotLeadNextAction}
-                  onSnooze={onHotLeadSnooze}
-                  onContacted={onMarkHotLeadContacted}
-                  onCreateDeal={onCreateHotLeadDeal}
-                  onClose={onCloseHotLead}
-                />
-              ) : null}
-              {tab === "messages" ? <MessagesTab messages={workspace?.messages || []} /> : null}
-              {tab === "analytics" ? <AnalyticsTab overview={overview} analytics={workspace?.analytics || {}} /> : null}
-            </>
-          ) : null}
-        </Box>
-      </Stack>
+                    ) : (
+                      <Alert severity="info" variant="outlined">No specific agent selection is stored on this campaign.</Alert>
+                    )}
+                  </Stack>
+                </Paper>
+              </Stack>
+            ) : null}
+            {tab === "replies" ? (
+              <RepliesTab
+                replies={workspace?.replies || []}
+                classificationOptions={classificationOptions}
+                inboundReplyClass={inboundReplyClass}
+                inboundReplyText={inboundReplyText}
+                setInboundReplyClass={setInboundReplyClass}
+                setInboundReplyText={setInboundReplyText}
+                onClassify={onClassify}
+                onCopyReply={onCopyReply}
+                onMarkReplied={onMarkReplied}
+                onMarkCalled={onMarkCalled}
+                onCreateDeal={onCreateDeal}
+                onReplySnooze={onReplySnooze}
+                onUnsubscribe={onUnsubscribe}
+              />
+            ) : null}
+            {tab === "hot_leads" ? (
+              <HotLeadsTab
+                hotLeads={workspace?.hot_leads || []}
+                reps={reps}
+                onAssign={onAssignHotLead}
+                onNextAction={onSetHotLeadNextAction}
+                onSnooze={onHotLeadSnooze}
+                onContacted={onMarkHotLeadContacted}
+                onCreateDeal={onCreateHotLeadDeal}
+                onClose={onCloseHotLead}
+              />
+            ) : null}
+            {tab === "messages" ? <MessagesTab messages={workspace?.messages || []} /> : null}
+            {tab === "analytics" ? <AnalyticsTab overview={overview} analytics={workspace?.analytics || {}} /> : null}
+          </>
+        ) : null}
+      </Box>
+    </Stack>
+  );
+}
+
+export function EmailSdrCampaignWorkspacePage(props) {
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
+      <CampaignWorkspacePanel {...props} closeLabel="Back to Email SDR" />
+    </Paper>
+  );
+}
+
+export default function EmailSdrCampaignWorkspaceDrawer({ open = false, onClose, ...rest }) {
+  return (
+    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: "100%", lg: 1100 } } }}>
+      <CampaignWorkspacePanel {...rest} onClose={onClose} />
     </Drawer>
   );
 }

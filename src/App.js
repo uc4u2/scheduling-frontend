@@ -658,6 +658,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="search" element={<SearchPage />} />
             <Route path="prediction" element={<PredictionAdminPage />} />
             <Route path="tenants/:companyId" element={<Tenant360Page />} />
+            <Route path="sales/crm/campaigns/:campaignId" element={<SalesCRMPage />} />
             <Route path="sales/crm" element={<SalesCRMPage />} />
             <Route path="sales/reps" element={<SalesRepsPage />} />
             <Route path="sales/reps/:repId" element={<SalesRepProfilePage />} />

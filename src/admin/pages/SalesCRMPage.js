@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -115,6 +116,7 @@ const defaultCallSettings = {
 };
 
 export default function SalesCRMPage() {
+  const { campaignId: campaignWorkspaceRouteId } = useParams();
   const timezone = useMemo(() => getUserTimezone(), []);
   const topOffset = { xs: 56, sm: 64 };
   const [summary, setSummary] = useState({});
@@ -187,6 +189,12 @@ export default function SalesCRMPage() {
   const [aiRunOnceResult, setAiRunOnceResult] = useState(null);
 
   const showBanner = useCallback((type, message) => setBanner({ type, message }), []);
+
+  useEffect(() => {
+    if (campaignWorkspaceRouteId) {
+      setWorkspaceTab("email_sdr");
+    }
+  }, [campaignWorkspaceRouteId]);
 
   const importBatchPurposeOptions = useMemo(() => {
     const base = ["email_sdr", "ai_sdr", "investor_outreach", "salon_outreach", "hvac_outreach"];
@@ -816,6 +824,7 @@ export default function SalesCRMPage() {
       ) : workspaceTab === "email_sdr" ? (
         <EmailSdrWorkspace
           reps={reps}
+          campaignRouteId={campaignWorkspaceRouteId ? Number(campaignWorkspaceRouteId) : null}
           onOpenLead={(leadId) => {
             setWorkspaceTab("outbound");
             openLeadWorkspace(leadId, { tab: "overview", editMode: false });

@@ -7,7 +7,13 @@ function normalizeSearch(value) {
   return String(value || "").toLowerCase();
 }
 
-export default function EmailSdrCampaignReviewSection({ rows = [], onOpenWorkspace, onApproveDrafts, onTakeNext }) {
+function compactConversation(value, max = 180) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+export default function EmailSdrCampaignReviewSection({ rows = [], campaignSummaries = {}, onOpenWorkspace, onApproveDrafts, onTakeNext }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
 
@@ -53,12 +59,20 @@ export default function EmailSdrCampaignReviewSection({ rows = [], onOpenWorkspa
           <Alert severity="success" variant="outlined">No campaigns currently need review.</Alert>
         ) : (
           <Stack spacing={1.25}>
-            {visibleRows.map((row) => (
+            {visibleRows.map((row) => {
+              const summary = campaignSummaries[row.campaign.id] || {};
+              return (
               <Paper key={`review-campaign-${row.campaign.id}`} variant="outlined" sx={{ p: 1.75, borderRadius: 2 }}>
                 <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
                   <Stack spacing={0.75}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{row.campaign.name}</Typography>
                     <Typography variant="body2" color="text.secondary">{row.campaign.status}</Typography>
+                    {summary.senderLine ? (
+                      <Typography variant="body2" color="text.secondary">Sender identity: {summary.senderLine}</Typography>
+                    ) : null}
+                    {summary.latestConversationLine ? (
+                      <Typography variant="body2">Latest conversation: {compactConversation(summary.latestConversationLine)}</Typography>
+                    ) : null}
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       {(row.issues || []).map((issue) => (
                         <Chip key={`${row.campaign.id}-${issue}`} size="small" variant="outlined" label={issue} />
@@ -71,7 +85,8 @@ export default function EmailSdrCampaignReviewSection({ rows = [], onOpenWorkspa
                   </Stack>
                 </Stack>
               </Paper>
-            ))}
+              );
+            })}
             {pageCount > 1 ? (
               <Stack alignItems="flex-end">
                 <Pagination size="small" page={page} count={pageCount} onChange={(_, nextPage) => setPage(nextPage)} />
