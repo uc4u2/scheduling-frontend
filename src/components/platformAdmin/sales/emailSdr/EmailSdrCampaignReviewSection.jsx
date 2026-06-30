@@ -7,7 +7,7 @@ function normalizeSearch(value) {
   return String(value || "").toLowerCase();
 }
 
-export default function EmailSdrCampaignReviewSection({ rows = [], onOpenLead, onApproveDrafts, onTakeNext }) {
+export default function EmailSdrCampaignReviewSection({ rows = [], onOpenWorkspace, onApproveDrafts, onTakeNext }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
 
@@ -66,7 +66,7 @@ export default function EmailSdrCampaignReviewSection({ rows = [], onOpenLead, o
                     </Stack>
                   </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-                    <Button size="small" variant="outlined" onClick={() => onOpenLead?.(row.campaign.id)}>Open campaign</Button>
+                    <Button size="small" variant="outlined" onClick={() => onOpenWorkspace?.(row.campaign.id)}>Open workspace</Button>
                     <Button size="small" variant="outlined" onClick={() => onApproveDrafts?.(row.campaign.id)}>Approve drafts</Button>
                   </Stack>
                 </Stack>

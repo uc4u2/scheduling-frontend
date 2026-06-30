@@ -551,6 +551,11 @@ export const getEmailSdrAnalytics = async () => {
   return data?.analytics || null;
 };
 
+export const getEmailCampaignWorkspace = async (campaignId) => {
+  const { data } = await platformAdminApi.get(`/sales/email-campaigns/${campaignId}/workspace`);
+  return data || { campaign: null, overview: null, replies: [], hot_leads: [], messages: [], analytics: null };
+};
+
 export const listEmailCampaignReviewQueue = async (params = {}) => {
   const { data } = await platformAdminApi.get("/sales/email-campaigns/review-queue", { params });
   return data?.rows || [];

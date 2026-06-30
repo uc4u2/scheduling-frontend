@@ -27,6 +27,7 @@ export default function EmailSdrHotLeadsSection({
   myHotLeadsOnly = false,
   setMyHotLeadsOnly,
   onOpenLead,
+  onOpenWorkspace,
   onAssign,
   onNextAction,
   onSnooze,
@@ -144,6 +145,9 @@ export default function EmailSdrHotLeadsSection({
                     </Stack>
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                       <Button variant="outlined" size="small" onClick={() => onOpenLead?.(lead.id)}>Open lead</Button>
+                      {lead.campaign_workspace_id ? (
+                        <Button variant="outlined" size="small" onClick={() => onOpenWorkspace?.(lead.campaign_workspace_id)}>Open workspace</Button>
+                      ) : null}
                       <Button variant="outlined" size="small" onClick={() => onContacted?.(lead.id)}>Mark contacted</Button>
                       <Button variant="outlined" size="small" onClick={() => onCreateDeal?.(lead.id)}>Create deal</Button>
                       <Button variant="text" size="small" color="error" onClick={() => onClose?.(lead.id)}>Close</Button>

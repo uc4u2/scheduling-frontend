@@ -41,6 +41,7 @@ import {
   createEmailTemplate,
   createDealFromHotLead,
   getEmailCampaignAnalytics,
+  getEmailCampaignWorkspace,
   getEmailSdrAnalyticsComparison,
   getEmailSdrAnalytics,
   getEmailSdrDailySummary,
@@ -95,6 +96,7 @@ import {
 } from "../../../api/platformAdminSales";
 import EmailSdrAnalyticsSection from "./emailSdr/EmailSdrAnalyticsSection";
 import EmailSdrCampaignReviewSection from "./emailSdr/EmailSdrCampaignReviewSection";
+import EmailSdrCampaignWorkspaceDrawer from "./emailSdr/EmailSdrCampaignWorkspaceDrawer";
 import EmailSdrDashboardCards from "./emailSdr/EmailSdrDashboardCards";
 import EmailSdrHotLeadsSection from "./emailSdr/EmailSdrHotLeadsSection";
 import EmailSdrLaunchWizard from "./emailSdr/EmailSdrLaunchWizard";
@@ -201,6 +203,13 @@ const launchWizardSteps = [
   "Generate Drafts",
   "Approve",
   "Send",
+];
+const actionPanels = [
+  { key: "replies", label: "Replies" },
+  { key: "hot_leads", label: "Hot Leads" },
+  { key: "campaigns", label: "Campaigns" },
+  { key: "messages", label: "Messages" },
+  { key: "marketing", label: "Leads" },
 ];
 const wizardSampleLead = {
   name: "John Rivera",
@@ -365,6 +374,10 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
   const [analytics, setAnalytics] = useState(null);
   const [analyticsComparison, setAnalyticsComparison] = useState(null);
   const [campaignAnalytics, setCampaignAnalytics] = useState({});
+  const [campaignWorkspaceOpen, setCampaignWorkspaceOpen] = useState(false);
+  const [campaignWorkspaceId, setCampaignWorkspaceId] = useState(null);
+  const [campaignWorkspaceData, setCampaignWorkspaceData] = useState(null);
+  const [campaignWorkspaceLoading, setCampaignWorkspaceLoading] = useState(false);
   const [routingRules, setRoutingRules] = useState([]);
   const [campaignReviewRows, setCampaignReviewRows] = useState([]);
   const [replyReviewRows, setReplyReviewRows] = useState([]);
@@ -444,6 +457,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
   const [marketingConsentOnly, setMarketingConsentOnly] = useState(true);
   const [myHotLeadsOnly, setMyHotLeadsOnly] = useState(false);
   const [workspaceView, setWorkspaceView] = useState("setup");
+  const [actionPanel, setActionPanel] = useState("replies");
   const [templateBusinessFilter, setTemplateBusinessFilter] = useState("default");
   const [templateShowAll, setTemplateShowAll] = useState(false);
   const providerSectionRef = useRef(null);
@@ -455,6 +469,19 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     [campaigns]
   );
   const archivedCampaignCount = Math.max(campaigns.length - visibleCampaigns.length, 0);
+
+  const loadCampaignWorkspaceById = useCallback(async (campaignId, { showLoader = false } = {}) => {
+    if (!campaignId) return null;
+    if (showLoader) setCampaignWorkspaceLoading(true);
+    try {
+      const result = await getEmailCampaignWorkspace(campaignId);
+      setCampaignWorkspaceData(result);
+      setCampaignWorkspaceId(campaignId);
+      return result;
+    } finally {
+      if (showLoader) setCampaignWorkspaceLoading(false);
+    }
+  }, []);
 
   const aiEmailAgents = useMemo(
     () => reps.filter((rep) => rep.is_ai_agent && rep.is_active && !rep.ai_sdr_paused),
@@ -502,6 +529,22 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     () => filteredMessages.slice((messagePage - 1) * 6, messagePage * 6),
     [filteredMessages, messagePage]
   );
+  const leadWorkspaceCampaignMap = useMemo(() => {
+    const mapping = {};
+    [...needsActionEvents, ...newReplyEvents, ...unmatchedEvents].forEach((event) => {
+      const leadId = event?.matched_lead?.id || event?.matched_lead_id;
+      const campaignId = event?.matched_message?.campaign_id;
+      if (leadId && campaignId && !mapping[leadId]) {
+        mapping[leadId] = campaignId;
+      }
+    });
+    messages.forEach((message) => {
+      if (message?.lead_id && message?.campaign_id && !mapping[message.lead_id]) {
+        mapping[message.lead_id] = message.campaign_id;
+      }
+    });
+    return mapping;
+  }, [messages, needsActionEvents, newReplyEvents, unmatchedEvents]);
   const activeWorkspaceView = useMemo(
     () => workspaceViews.find((row) => row.key === workspaceView) || workspaceViews[0],
     [workspaceView]
@@ -697,6 +740,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       setNeedsActionEvents(needsActionRows || []);
       setCampaignReviewRows(campaignReviewResp || []);
       setReplyReviewRows(replyReviewResp || []);
+      if (campaignWorkspaceOpen && campaignWorkspaceId) {
+        await loadCampaignWorkspaceById(campaignWorkspaceId);
+      }
       setProviderDrafts((prev) => {
         const next = { ...prev };
         (providerRows || []).forEach((row) => {
@@ -783,11 +829,26 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
     } finally {
       setLoading(false);
     }
-  }, [showBanner, myHotLeadsOnly]);
+  }, [campaignWorkspaceId, campaignWorkspaceOpen, loadCampaignWorkspaceById, myHotLeadsOnly, showBanner]);
 
   useEffect(() => {
     loadWorkspace();
   }, [loadWorkspace]);
+
+  const handleOpenCampaignWorkspace = async (campaignId) => {
+    if (!campaignId) return;
+    setCampaignWorkspaceOpen(true);
+    try {
+      await loadCampaignWorkspaceById(campaignId, { showLoader: true });
+    } catch (error) {
+      setCampaignWorkspaceOpen(false);
+      showBanner("error", error?.response?.data?.error || "Failed to load campaign workspace.");
+    }
+  };
+
+  const handleCloseCampaignWorkspace = () => {
+    setCampaignWorkspaceOpen(false);
+  };
 
   const handleCreateCampaign = async () => {
     setSubmitting(true);
@@ -2839,6 +2900,9 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handlePrepareCampaign(campaign.id)}>
                             Prepare
                           </Button>
+                          <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleOpenCampaignWorkspace(campaign.id)}>
+                            Open workspace
+                          </Button>
                           <Button variant="outlined" size="small" disabled={submitting} onClick={() => handleCampaignAction(campaign.id, "drafts")}>
                             Generate drafts
                           </Button>
@@ -3048,34 +3112,46 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
 
       {workspaceView === "action" ? (
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, backgroundColor: "rgba(248,250,252,0.8)" }}>
-        <Stack spacing={1}>
+        <Stack spacing={1.5}>
           <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
             Work to do now
           </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Action Queue priorities</Typography>
           <Typography variant="body2" color="text.secondary">
-            Work this queue from replies first, then hot leads, then campaign approvals, then marketing leads that need a next step.
+            Work this queue from replies first, then hot leads, then campaign approvals. Open a campaign workspace as soon as you know which campaign the conversation belongs to.
           </Typography>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap>
-            <Chip size="small" color="info" variant="outlined" label={`New replies: ${newReplyEvents.length || 0}`} />
-            <Chip size="small" color="warning" variant="outlined" label={`Unmatched replies: ${unmatchedEvents.length || 0}`} />
-            <Chip size="small" color="secondary" variant="outlined" label={`Needs action: ${needsActionEvents.length || 0}`} />
-            <Chip size="small" color="success" variant="outlined" label={`Hot Leads: ${hotLeads.length || 0}`} />
-            <Chip size="small" color="error" variant="outlined" label={`Bounces/unsubs: ${bounceEvents.length || 0}`} />
-            <Chip size="small" color="warning" variant="outlined" label={`Campaigns needing review: ${campaignReviewRows.length || 0}`} />
-            <Chip size="small" variant="outlined" label={`Marketing leads needing action: ${visibleMarketingWidgetLeads.length || 0}`} />
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+            <Chip size="small" color="info" variant={actionPanel === "replies" ? "filled" : "outlined"} label={`New replies: ${newReplyEvents.length || 0}`} onClick={() => setActionPanel("replies")} />
+            <Chip size="small" color="warning" variant={actionPanel === "replies" ? "filled" : "outlined"} label={`Unmatched replies: ${unmatchedEvents.length || 0}`} onClick={() => setActionPanel("replies")} />
+            <Chip size="small" color="secondary" variant={actionPanel === "replies" ? "filled" : "outlined"} label={`Needs action: ${needsActionEvents.length || 0}`} onClick={() => setActionPanel("replies")} />
+            <Chip size="small" color="success" variant={actionPanel === "hot_leads" ? "filled" : "outlined"} label={`Hot Leads: ${hotLeads.length || 0}`} onClick={() => setActionPanel("hot_leads")} />
+            <Chip size="small" color="warning" variant={actionPanel === "campaigns" ? "filled" : "outlined"} label={`Campaigns needing review: ${campaignReviewRows.length || 0}`} onClick={() => setActionPanel("campaigns")} />
+            <Chip size="small" color="error" variant={actionPanel === "replies" ? "filled" : "outlined"} label={`Bounces/unsubs: ${bounceEvents.length || 0}`} onClick={() => setActionPanel("replies")} />
+            <Chip size="small" variant={actionPanel === "marketing" ? "filled" : "outlined"} label={`Marketing leads needing action: ${visibleMarketingWidgetLeads.length || 0}`} onClick={() => setActionPanel("marketing")} />
           </Stack>
+          <Tabs
+            value={actionPanel}
+            onChange={(_, nextValue) => setActionPanel(nextValue)}
+            variant="scrollable"
+            allowScrollButtonsMobile
+            sx={{ minHeight: 0, ".MuiTab-root": { minHeight: 0, py: 0.75 } }}
+          >
+            {actionPanels.map((panel) => (
+              <Tab key={panel.key} value={panel.key} label={panel.label} />
+            ))}
+          </Tabs>
         </Stack>
       </Paper>
       ) : null}
 
-      {workspaceView === "action" ? (
+      {workspaceView === "action" && actionPanel === "hot_leads" ? (
       <EmailSdrHotLeadsSection
-        hotLeads={hotLeads}
+        hotLeads={hotLeads.map((lead) => ({ ...lead, campaign_workspace_id: leadWorkspaceCampaignMap[lead.id] || null }))}
         reps={reps}
         myHotLeadsOnly={myHotLeadsOnly}
         setMyHotLeadsOnly={setMyHotLeadsOnly}
         onOpenLead={onOpenLead}
+        onOpenWorkspace={handleOpenCampaignWorkspace}
         onAssign={handleAssignHotLead}
         onNextAction={handleSetHotLeadNextAction}
         onSnooze={handleSnoozeHotLead}
@@ -3085,19 +3161,19 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       />
       ) : null}
 
-      {workspaceView === "action" ? (
+      {workspaceView === "action" && actionPanel === "campaigns" ? (
       <EmailSdrCampaignReviewSection
         rows={campaignReviewRows}
-        onOpenLead={() => {}}
+        onOpenWorkspace={handleOpenCampaignWorkspace}
         onApproveDrafts={(campaignId) => handleCampaignAction(campaignId, "approve")}
         onTakeNext={() => {
           const next = campaignReviewRows[0];
-          if (next) handleCampaignAction(next.campaign.id, "approve");
+          if (next) handleOpenCampaignWorkspace(next.campaign.id);
         }}
       />
       ) : null}
 
-      {workspaceView === "action" ? (
+      {workspaceView === "action" && actionPanel === "replies" ? (
       <EmailSdrReplyReviewSection
         newReplyRows={replyReviewRows.filter((row) => row.issues?.includes("needs_classification")).length ? replyReviewRows.filter((row) => row.issues?.includes("needs_classification")) : newReplyEvents.map((event) => ({ event, issues: ["needs_classification"] }))}
         unmatchedRows={unmatchedEvents.map((event) => ({ event, issues: ["unmatched_reply"] }))}
@@ -3115,37 +3191,41 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
         onCreateDeal={handleReplyCreateDeal}
         onSnooze={handleReplySnooze}
         onUnsubscribe={handleReplyUnsubscribe}
+        onOpenWorkspace={handleOpenCampaignWorkspace}
       />
       ) : null}
 
-      {workspaceView === "action" ? (
+      {workspaceView === "action" && actionPanel === "messages" ? (
       <Paper sx={{ p: 2.5, borderRadius: 3 }}>
         <Stack spacing={2}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Recent Email Messages</Typography>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-              <TextField
-                size="small"
-                label="Search messages"
-                placeholder="Company, email, subject, agent"
-                value={messageSearchTerm}
-                onChange={(event) => setMessageSearchTerm(event.target.value)}
-                sx={{ minWidth: 280 }}
-              />
-              <TextField
-                size="small"
-                select
-                label="Status"
-                value={messageStatusFilter}
-                onChange={(event) => setMessageStatusFilter(event.target.value)}
-                sx={{ minWidth: 160 }}
-              >
-                <MenuItem value="">All statuses</MenuItem>
-                {["draft", "approved", "scheduled", "sent", "delivered", "replied", "bounced", "failed", "cancelled"].map((status) => (
-                  <MenuItem key={status} value={status}>{status}</MenuItem>
-                ))}
-              </TextField>
-            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Use campaign workspaces for campaign-specific message history. This queue stays global.
+            </Typography>
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+            <TextField
+              size="small"
+              label="Search messages"
+              placeholder="Company, email, subject, agent"
+              value={messageSearchTerm}
+              onChange={(event) => setMessageSearchTerm(event.target.value)}
+              sx={{ minWidth: 280 }}
+            />
+            <TextField
+              size="small"
+              select
+              label="Status"
+              value={messageStatusFilter}
+              onChange={(event) => setMessageStatusFilter(event.target.value)}
+              sx={{ minWidth: 160 }}
+            >
+              <MenuItem value="">All statuses</MenuItem>
+              {["draft", "approved", "scheduled", "sent", "delivered", "replied", "bounced", "failed", "cancelled"].map((status) => (
+                <MenuItem key={status} value={status}>{status}</MenuItem>
+              ))}
+            </TextField>
           </Stack>
           {!messages.length ? (
             <Alert severity="info" variant="outlined">No email messages yet.</Alert>
@@ -3338,7 +3418,7 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
       </Paper>
       ) : null}
 
-      {workspaceView === "action" ? (
+      {workspaceView === "action" && actionPanel === "marketing" ? (
       <EmailSdrMarketingLeadsSection
         leads={visibleMarketingWidgetLeads}
         consentOnly={marketingConsentOnly}
@@ -3497,6 +3577,32 @@ export default function EmailSdrWorkspace({ reps = [], onOpenLead, showBanner, i
         handleWizardGenerate={handleWizardGenerate}
         handleWizardApprove={handleWizardApprove}
         handleWizardSend={handleWizardSend}
+      />
+
+      <EmailSdrCampaignWorkspaceDrawer
+        open={campaignWorkspaceOpen}
+        onClose={handleCloseCampaignWorkspace}
+        workspace={campaignWorkspaceData}
+        loading={campaignWorkspaceLoading}
+        reps={reps}
+        classificationOptions={classificationOptions}
+        inboundReplyClass={inboundReplyClass}
+        inboundReplyText={inboundReplyText}
+        setInboundReplyClass={setInboundReplyClass}
+        setInboundReplyText={setInboundReplyText}
+        onClassify={handleClassifyInboundReply}
+        onCopyReply={handleCopyReplyDraft}
+        onMarkReplied={handleMarkReplySentManually}
+        onMarkCalled={handleReplyMarkedCalled}
+        onCreateDeal={handleReplyCreateDeal}
+        onReplySnooze={handleReplySnooze}
+        onUnsubscribe={handleReplyUnsubscribe}
+        onAssignHotLead={handleAssignHotLead}
+        onSetHotLeadNextAction={handleSetHotLeadNextAction}
+        onHotLeadSnooze={handleSnoozeHotLead}
+        onMarkHotLeadContacted={handleMarkHotLeadContacted}
+        onCreateHotLeadDeal={handleCreateHotLeadDeal}
+        onCloseHotLead={handleCloseHotLead}
       />
 
       {loading ? (

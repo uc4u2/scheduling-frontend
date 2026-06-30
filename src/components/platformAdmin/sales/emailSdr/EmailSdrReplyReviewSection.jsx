@@ -74,6 +74,7 @@ function ReplyRow({
   onCreateDeal,
   onSnooze,
   onUnsubscribe,
+  onOpenWorkspace,
   showClassify = true,
 }) {
   const matchedLead = event.matched_lead || {};
@@ -157,6 +158,11 @@ function ReplyRow({
                 <Button color="warning" variant="outlined" size="small" onClick={() => onUnsubscribe?.(event)}>
                   Unsubscribe
                 </Button>
+                {event.matched_message?.campaign_id ? (
+                  <Button variant="text" size="small" onClick={() => onOpenWorkspace?.(event.matched_message.campaign_id)}>
+                    Open workspace
+                  </Button>
+                ) : null}
               </Stack>
             </Stack>
           ) : (
@@ -189,6 +195,11 @@ function ReplyRow({
               >
                 Classify
               </Button>
+              {event.matched_message?.campaign_id ? (
+                <Button variant="text" size="small" onClick={() => onOpenWorkspace?.(event.matched_message.campaign_id)}>
+                  Open workspace
+                </Button>
+              ) : null}
             </Stack>
           )}
         </Stack>
@@ -213,6 +224,7 @@ function QueueBlock({
   onCreateDeal,
   onSnooze,
   onUnsubscribe,
+  onOpenWorkspace,
   showClassify = true,
   severity = "info",
   searchTerm = "",
@@ -268,6 +280,7 @@ function QueueBlock({
                 onCreateDeal={onCreateDeal}
                 onSnooze={onSnooze}
                 onUnsubscribe={onUnsubscribe}
+                onOpenWorkspace={onOpenWorkspace}
                 showClassify={showClassify}
               />
             ))}
@@ -308,6 +321,7 @@ export default function EmailSdrReplyReviewSection({
   onCreateDeal,
   onSnooze,
   onUnsubscribe,
+  onOpenWorkspace,
 }) {
   const [queueTab, setQueueTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -357,6 +371,7 @@ export default function EmailSdrReplyReviewSection({
             onCreateDeal={onCreateDeal}
             onSnooze={onSnooze}
             onUnsubscribe={onUnsubscribe}
+            onOpenWorkspace={onOpenWorkspace}
             showClassify
             severity="success"
             searchTerm={searchTerm}
@@ -379,6 +394,7 @@ export default function EmailSdrReplyReviewSection({
             onCreateDeal={onCreateDeal}
             onSnooze={onSnooze}
             onUnsubscribe={onUnsubscribe}
+            onOpenWorkspace={onOpenWorkspace}
             showClassify={false}
             severity="info"
             searchTerm={searchTerm}
@@ -401,6 +417,7 @@ export default function EmailSdrReplyReviewSection({
             onCreateDeal={onCreateDeal}
             onSnooze={onSnooze}
             onUnsubscribe={onUnsubscribe}
+            onOpenWorkspace={onOpenWorkspace}
             showClassify={false}
             severity="info"
             searchTerm={searchTerm}
@@ -423,6 +440,7 @@ export default function EmailSdrReplyReviewSection({
             onCreateDeal={onCreateDeal}
             onSnooze={onSnooze}
             onUnsubscribe={onUnsubscribe}
+            onOpenWorkspace={onOpenWorkspace}
             showClassify={false}
             severity="info"
             searchTerm={searchTerm}
