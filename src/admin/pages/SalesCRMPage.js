@@ -1720,9 +1720,9 @@ export default function SalesCRMPage() {
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>How the Email SDR workspace is organized</Typography>
                   <Stack spacing={1}>
                     <Typography variant="body2"><strong>Preparation</strong> is where you configure providers, Email Agents, templates, segments, routing rules, and campaign setup.</Typography>
-                    <Typography variant="body2"><strong>Control Room</strong> shows today’s metrics, warnings, campaign status, worker timing, and agent limits.</Typography>
-                    <Typography variant="body2"><strong>Action Queue</strong> is where you handle replies, hot leads, review work, and marketing leads that need action.</Typography>
-                    <Typography variant="body2"><strong>Results &amp; Quality</strong> is where you review analytics, suppression, unmatched inbound events, bounces, and quality warnings.</Typography>
+                    <Typography variant="body2"><strong>Campaigns</strong> is the campaign index and the entry point into the full campaign workspace route.</Typography>
+                    <Typography variant="body2"><strong>Action Queue</strong> is the compact global triage layer for replies, unmatched events, hot leads, and approvals across all campaigns.</Typography>
+                    <Typography variant="body2"><strong>Results</strong> is where you review analytics, suppression, unmatched inbound events, bounces, and quality warnings before scaling.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
@@ -1791,36 +1791,44 @@ export default function SalesCRMPage() {
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 7: Use Control Room to monitor sending</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 7: Send carefully and monitor safeguards</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Open <strong>Control Room</strong> to see today’s sent, replies, positive, bounces, unsubscribes, Hot Leads, and worker timing.</Typography>
-                    <Typography variant="body2">2. Review <strong>Needs Attention</strong> before sending more volume.</Typography>
-                    <Typography variant="body2">3. Approve reviewed drafts only, then use <strong>Run due send now</strong> for manual execution or let the worker run due sends.</Typography>
-                    <Typography variant="body2">4. The system still checks:
+                    <Typography variant="body2">1. Approve reviewed drafts only, then use <strong>Run due send now</strong> for manual execution or let the worker run due sends.</Typography>
+                    <Typography variant="body2">2. The system still checks:
                       <Box component="span" sx={{ ml: 0.5 }}>
-                        suppression, unsubscribe, bounce state, paused agents/providers, daily limits, and send windows.
+                        suppression, unsubscribe, bounce state, paused agents/providers, daily limits, send windows, and branded reply routing.
                       </Box>
                     </Typography>
-                    <Typography variant="body2">5. Every Email SDR send includes an unsubscribe link and activity logging.</Typography>
+                    <Typography variant="body2">3. Every Email SDR send includes a branded unsubscribe flow, tokenized Reply-To routing, and activity logging.</Typography>
+                    <Typography variant="body2">4. SendGrid Email SDR messages explicitly disable open, click, and subscription tracking.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 8: Work the Action Queue</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 8: Use Action Queue only for cross-campaign triage</Typography>
                   <Stack spacing={1}>
                     <Typography variant="body2">1. Review replies needing classification first.</Typography>
-                    <Typography variant="body2">2. Classify the reply instead of replying automatically.</Typography>
-                    <Typography variant="body2">3. Work <strong>Hot Leads</strong> next for owner assignment, contact status, next action, and deal creation.</Typography>
-                    <Typography variant="body2">4. Review campaigns needing approval or review after that.</Typography>
-                    <Typography variant="body2">5. Review marketing chatbot leads that need action or campaign follow-up.</Typography>
-                    <Typography variant="body2">6. Positive replies remain manual. This is intentional.</Typography>
+                    <Typography variant="body2">2. As soon as you know which campaign the conversation belongs to, click <strong>Open workspace</strong>.</Typography>
+                    <Typography variant="body2">3. Work unmatched replies, hot leads, and approvals here only when they are still cross-campaign issues.</Typography>
+                    <Typography variant="body2">4. Positive replies remain manual. This is intentional.</Typography>
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 9: Use Results &amp; Quality before scaling volume</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 9: Work the campaign workspace</Typography>
                   <Stack spacing={1}>
-                    <Typography variant="body2">1. Open <strong>Results &amp; Quality</strong> to review analytics first.</Typography>
+                    <Typography variant="body2">1. Open a campaign from <strong>Campaigns</strong> or from a row in <strong>Action Queue</strong>.</Typography>
+                    <Typography variant="body2">2. Use <strong>Overview</strong> for counters, warnings, sender setup, and send limits.</Typography>
+                    <Typography variant="body2">3. Use <strong>Replies</strong> to review the original message, reply text, suggested classification, next action, and reply draft.</Typography>
+                    <Typography variant="body2">4. Use <strong>Hot Leads</strong> to assign owners, mark contacted, snooze, or create deals.</Typography>
+                    <Typography variant="body2">5. Use <strong>Messages</strong> to see sender identity, provider, delivery state, Reply-To, and unsubscribe state for that campaign only.</Typography>
+                    <Typography variant="body2">6. Use <strong>Analytics</strong> to decide whether this campaign is safe to scale.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Step 10: Use Results before scaling volume</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">1. Open <strong>Results</strong> to review analytics first.</Typography>
                     <Typography variant="body2">2. Watch warnings, suppression, bounces/unsubscribes, and unmatched inbound events.</Typography>
-                    <Typography variant="body2">3. Current warnings include bounce rate, unsubscribe rate, complaint events, no active agents, paused provider, and weak positive-reply performance.</Typography>
+                    <Typography variant="body2">3. Current warnings include bounce rate, unsubscribe rate, complaint events, no active agents, paused provider, weak positive-reply performance, missing public base URL, and missing reply domain.</Typography>
                     <Typography variant="body2">4. If warnings appear, fix the setup before sending more email.</Typography>
                   </Stack>
                 </Paper>
@@ -1836,7 +1844,8 @@ export default function SalesCRMPage() {
                     <Typography variant="body2">7. Preview targets.</Typography>
                     <Typography variant="body2">8. Generate drafts.</Typography>
                     <Typography variant="body2">9. Edit and approve.</Typography>
-                    <Typography variant="body2">10. Send a small batch, then move to Control Room and Action Queue before scaling.</Typography>
+                    <Typography variant="body2">10. Open the campaign workspace to review sender identity, replies, hot leads, and message history.</Typography>
+                    <Typography variant="body2">11. Use Action Queue and Results before increasing volume.</Typography>
                   </Stack>
                 </Paper>
               </>

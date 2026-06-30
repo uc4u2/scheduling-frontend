@@ -944,14 +944,22 @@ export default function EmailSdrWorkspace({
 
   useEffect(() => {
     if (!activeCampaignWorkspaceId) return;
-    setWorkspaceView("action");
+    setWorkspaceView("control");
     loadCampaignWorkspaceById(activeCampaignWorkspaceId, { showLoader: true }).catch((error) => {
       showBanner("error", error?.response?.data?.error || "Failed to load campaign workspace.");
     });
   }, [activeCampaignWorkspaceId, loadCampaignWorkspaceById, showBanner]);
 
+  const handleWorkspaceViewChange = (_, nextView) => {
+    setWorkspaceView(nextView);
+    if (activeCampaignWorkspaceId && nextView !== "control") {
+      navigate("/admin/sales/crm");
+    }
+  };
+
   const handleOpenCampaignWorkspace = async (campaignId) => {
     if (!campaignId) return;
+    setWorkspaceView("control");
     navigate(`/admin/sales/crm/campaigns/${campaignId}`);
   };
 
@@ -1917,46 +1925,35 @@ export default function EmailSdrWorkspace({
             }}
           >
             <Stack spacing={1.5}>
-              {activeCampaignWorkspaceId ? (
-                <>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Campaign workspace
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Work one campaign end to end: replies, hot leads, sender identity, message history, and results in one place.
-                  </Typography>
-                </>
-              ) : (
-                <>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {activeWorkspaceView.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {activeWorkspaceView.description}
-                  </Typography>
-                  <Tabs
-                    value={workspaceView}
-                    onChange={(_, value) => setWorkspaceView(value)}
-                    variant="scrollable"
-                    scrollButtons="auto"
-                    sx={{
-                      "& .MuiTab-root": {
-                        minHeight: 42,
-                        textTransform: "none",
-                        fontWeight: 700,
-                        color: "#334155",
-                      },
-                      "& .Mui-selected": {
-                        color: "#1d4ed8 !important",
-                      },
-                    }}
-                  >
-                    {workspaceViews.map((view) => (
-                      <Tab key={view.key} value={view.key} label={view.label} />
-                    ))}
-                  </Tabs>
-                </>
-              )}
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                {activeWorkspaceView.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {activeCampaignWorkspaceId
+                  ? "You are inside a specific campaign workspace. Use Campaigns to stay in this campaign or switch tabs to return to the global Email SDR page."
+                  : activeWorkspaceView.description}
+              </Typography>
+              <Tabs
+                value={workspaceView}
+                onChange={handleWorkspaceViewChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  "& .MuiTab-root": {
+                    minHeight: 42,
+                    textTransform: "none",
+                    fontWeight: 700,
+                    color: "#334155",
+                  },
+                  "& .Mui-selected": {
+                    color: "#1d4ed8 !important",
+                  },
+                }}
+              >
+                {workspaceViews.map((view) => (
+                  <Tab key={view.key} value={view.key} label={view.label} />
+                ))}
+              </Tabs>
             </Stack>
           </Paper>
         </Stack>
