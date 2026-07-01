@@ -370,6 +370,11 @@ export const pauseEmailCampaign = async (campaignId) => {
   return data?.campaign || null;
 };
 
+export const activateEmailCampaign = async (campaignId) => {
+  const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/activate`);
+  return data?.campaign || null;
+};
+
 export const sendEmailCampaign = async (campaignId) => {
   const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/send`);
   return data || { sent_count: 0, blocked: [], campaign: null };

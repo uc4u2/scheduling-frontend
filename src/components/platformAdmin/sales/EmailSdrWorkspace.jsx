@@ -2416,6 +2416,8 @@ export default function EmailSdrWorkspace({
           campaigns={campaigns}
           providerConnections={providerConnections}
           onOpenWorkspace={handleOpenCampaignWorkspace}
+          onOpenLead={onOpenLead}
+          showBanner={showBanner}
         />
       ) : null}
 

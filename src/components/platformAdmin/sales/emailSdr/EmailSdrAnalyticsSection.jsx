@@ -5,6 +5,7 @@ import {
   Button,
   Chip,
   FormControlLabel,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -12,10 +13,20 @@ import {
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import LaunchIcon from "@mui/icons-material/Launch";
-import { getEmailSdrResults } from "../../../../api/platformAdminSales";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutline";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import {
+  activateEmailCampaign,
+  getEmailSdrResults,
+  pauseEmailCampaign,
+} from "../../../../api/platformAdminSales";
 
 const resultTabs = [
   { key: "campaigns", label: "Campaigns" },
@@ -140,7 +151,10 @@ export default function EmailSdrAnalyticsSection({
   campaigns = [],
   providerConnections = [],
   onOpenWorkspace,
+  onOpenLead,
+  showBanner,
 }) {
+  const presetStorageKey = "email-sdr-results-presets-v1";
   const [dateRange, setDateRange] = useState("30d");
   const [viewMode, setViewMode] = useState("all");
   const [campaignId, setCampaignId] = useState("");
@@ -153,6 +167,17 @@ export default function EmailSdrAnalyticsSection({
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [savedPresetName, setSavedPresetName] = useState("");
+  const [savedPresets, setSavedPresets] = useState([]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(presetStorageKey);
+      setSavedPresets(stored ? JSON.parse(stored) : []);
+    } catch {
+      setSavedPresets([]);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,6 +216,16 @@ export default function EmailSdrAnalyticsSection({
     () => campaigns.find((row) => Number(row.id) === Number(campaignId)) || null,
     [campaignId, campaigns]
   );
+  const activeFilters = useMemo(() => ({
+    dateRange,
+    viewMode,
+    campaignId,
+    providerId,
+    healthFilter,
+    statusFilter,
+    searchTerm,
+    warningsOnly,
+  }), [campaignId, dateRange, healthFilter, providerId, searchTerm, statusFilter, viewMode, warningsOnly]);
   const campaignHealthRows = useMemo(() => {
     const rows = results?.campaign_health_rows || [];
     if (!warningsOnly) return rows;
@@ -208,6 +243,70 @@ export default function EmailSdrAnalyticsSection({
     at_risk: "At risk",
     pause_and_fix: "Pause and fix",
   }[healthState] || "Monitor";
+
+  const persistPresets = (nextPresets) => {
+    setSavedPresets(nextPresets);
+    try {
+      window.localStorage.setItem(presetStorageKey, JSON.stringify(nextPresets));
+    } catch {
+      // ignore local storage errors
+    }
+  };
+
+  const handleSavePreset = () => {
+    const name = savedPresetName.trim();
+    if (!name) {
+      showBanner?.("warning", "Enter a preset name before saving.");
+      return;
+    }
+    const nextPresets = [
+      ...savedPresets.filter((row) => row.name !== name),
+      { name, filters: activeFilters },
+    ].sort((a, b) => a.name.localeCompare(b.name));
+    persistPresets(nextPresets);
+    showBanner?.("success", `Saved results preset: ${name}.`);
+  };
+
+  const handleApplyPreset = (name) => {
+    const preset = savedPresets.find((row) => row.name === name);
+    if (!preset) return;
+    const filters = preset.filters || {};
+    setDateRange(filters.dateRange || "30d");
+    setViewMode(filters.viewMode || "all");
+    setCampaignId(filters.campaignId || "");
+    setProviderId(filters.providerId || "");
+    setHealthFilter(filters.healthFilter || "");
+    setStatusFilter(filters.statusFilter || "");
+    setSearchTerm(filters.searchTerm || "");
+    setWarningsOnly(Boolean(filters.warningsOnly));
+  };
+
+  const handleDeletePreset = (name) => {
+    persistPresets(savedPresets.filter((row) => row.name !== name));
+  };
+
+  const handleToggleCampaignStatus = async (row) => {
+    try {
+      if (row.status === "paused") {
+        await activateEmailCampaign(row.campaign_id);
+        showBanner?.("success", "Campaign resumed.");
+      } else {
+        await pauseEmailCampaign(row.campaign_id);
+        showBanner?.("success", "Campaign paused.");
+      }
+      const payload = await getEmailSdrResults({
+        date_range: dateRange,
+        campaign_id: viewMode === "campaign" && campaignId ? campaignId : undefined,
+        provider_connection_id: providerId || undefined,
+        status: statusFilter || undefined,
+        health: healthFilter || undefined,
+        search: searchTerm || undefined,
+      });
+      setResults(payload);
+    } catch (actionError) {
+      showBanner?.("error", actionError?.response?.data?.error || "Failed to update campaign status.");
+    }
+  };
 
   return (
     <Stack spacing={2.25}>
@@ -318,7 +417,44 @@ export default function EmailSdrAnalyticsSection({
             label="Warnings only"
             sx={{ ml: 0.5 }}
           />
+          <TextField
+            select
+            size="small"
+            label="Saved preset"
+            value=""
+            onChange={(event) => handleApplyPreset(event.target.value)}
+            sx={{ minWidth: 220 }}
+          >
+            <MenuItem value="">Choose preset</MenuItem>
+            {savedPresets.map((row) => (
+              <MenuItem key={`results-preset-${row.name}`} value={row.name}>{row.name}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            size="small"
+            label="Save current filters as"
+            value={savedPresetName}
+            onChange={(event) => setSavedPresetName(event.target.value)}
+            sx={{ minWidth: 220 }}
+          />
+          <Button variant="outlined" startIcon={<SaveOutlinedIcon fontSize="small" />} onClick={handleSavePreset}>
+            Save preset
+          </Button>
         </Stack>
+        {!!savedPresets.length && (
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+            {savedPresets.map((row) => (
+              <Chip
+                key={`results-preset-chip-${row.name}`}
+                label={row.name}
+                onClick={() => handleApplyPreset(row.name)}
+                onDelete={() => handleDeletePreset(row.name)}
+                variant="outlined"
+                size="small"
+              />
+            ))}
+          </Stack>
+        )}
       </SectionCard>
 
       {error ? <Alert severity="error" variant="outlined">{error}</Alert> : null}
@@ -408,12 +544,12 @@ export default function EmailSdrAnalyticsSection({
                     <Typography variant="body2" color="text.secondary">
                       {[row.business_type, row.city, row.status].filter(Boolean).join(" • ")}
                     </Typography>
-                    {!!row.warnings?.length && (
-                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                        {row.warnings.slice(0, 2).map((warning) => (
-                          <Chip key={`${row.campaign_id}-${warning.code}`} size="small" color="warning" variant="outlined" label={warning.code.replaceAll("_", " ")} />
-                        ))}
-                      </Stack>
+                      {!!row.warnings?.length && (
+                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                          {row.warnings.slice(0, 2).map((warning) => (
+                            <Chip key={`${row.campaign_id}-${warning.code}`} size="small" color="warning" variant="outlined" label={warning.code.replaceAll("_", " ")} />
+                          ))}
+                        </Stack>
                     )}
                   </Stack>
                   <Stack spacing={0.5}>
@@ -430,7 +566,14 @@ export default function EmailSdrAnalyticsSection({
                     </Typography>
                   </Stack>
                   <Stack spacing={0.75}>
-                    <Chip size="small" color={healthTone[row.health_state] || "default"} variant="outlined" label={row.health_state.replaceAll("_", " ")} />
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Chip size="small" color={healthTone[row.health_state] || "default"} variant="outlined" label={row.health_state.replaceAll("_", " ")} />
+                      <Tooltip title={row.health_reason || "No additional health context."}>
+                        <IconButton size="small" sx={{ p: 0.25 }}>
+                          <InfoOutlinedIcon fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                     <Typography variant="caption" color="text.secondary">
                       Bounce {row.bounce_rate}% • Unsub {row.unsubscribe_rate}%
                     </Typography>
@@ -438,7 +581,14 @@ export default function EmailSdrAnalyticsSection({
                   <Typography variant="body2" color="text.secondary">{formatDateTime(row.last_activity_at)}</Typography>
                   <Stack spacing={1} alignItems="flex-start">
                     <Button variant="outlined" size="small" onClick={() => onOpenWorkspace?.(row.campaign_id)}>Open workspace</Button>
-                    <Button variant="text" size="small" onClick={() => onOpenWorkspace?.(row.campaign_id)}>Review issues</Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      startIcon={row.status === "paused" ? <PlayCircleOutlineIcon fontSize="small" /> : <PauseCircleOutlineIcon fontSize="small" />}
+                      onClick={() => handleToggleCampaignStatus(row)}
+                    >
+                      {row.status === "paused" ? "Resume" : "Pause"}
+                    </Button>
                   </Stack>
                 </TableRow>
               ))}
@@ -461,7 +611,14 @@ export default function EmailSdrAnalyticsSection({
                       </Typography>
                       <Typography variant="caption" color="text.secondary">{formatDateTime(row.created_at)}</Typography>
                     </Stack>
-                    {row.campaign_id ? <Button variant="outlined" size="small" onClick={() => onOpenWorkspace?.(row.campaign_id)}>Open workspace</Button> : null}
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      {row.lead_id ? (
+                        <Button variant="text" size="small" startIcon={<OpenInNewIcon fontSize="small" />} onClick={() => onOpenLead?.(row.lead_id)}>
+                          Open lead
+                        </Button>
+                      ) : null}
+                      {row.campaign_id ? <Button variant="outlined" size="small" onClick={() => onOpenWorkspace?.(row.campaign_id)}>Open workspace</Button> : null}
+                    </Stack>
                   </Stack>
                 </Paper>
               ))}
@@ -516,7 +673,14 @@ export default function EmailSdrAnalyticsSection({
                       </Typography>
                       <Typography variant="body2">{compactText(row.details)}</Typography>
                     </Stack>
-                    <Typography variant="caption" color="text.secondary">{formatDateTime(row.time)}</Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {row.lead_id ? (
+                        <Button variant="text" size="small" startIcon={<OpenInNewIcon fontSize="small" />} onClick={() => onOpenLead?.(row.lead_id)}>
+                          Open lead
+                        </Button>
+                      ) : null}
+                      <Typography variant="caption" color="text.secondary">{formatDateTime(row.time)}</Typography>
+                    </Stack>
                   </Stack>
                 </Paper>
               ))}
