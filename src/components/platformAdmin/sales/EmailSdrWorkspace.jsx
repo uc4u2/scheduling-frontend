@@ -11,7 +11,6 @@ import {
   Divider,
   List,
   ListItem,
-  ListItemText,
   MenuItem,
   Pagination,
   Paper,
@@ -43,8 +42,6 @@ import {
   createDealFromHotLead,
   getEmailCampaignAnalytics,
   getEmailCampaignWorkspace,
-  getEmailSdrAnalyticsComparison,
-  getEmailSdrAnalytics,
   getEmailSdrOpsSummary,
   generateEmailCampaignDrafts,
   generateEmailCampaignFollowUps,
@@ -62,7 +59,6 @@ import {
   listEmailMessages,
   listEmailReplyReviewQueue,
   listEmailRoutingRules,
-  listEmailSuppression,
   listHotLeads,
   markEmailInboundReplyReplied,
   markHotLeadContacted,
@@ -374,10 +370,7 @@ export default function EmailSdrWorkspace({
   const [templatePacks, setTemplatePacks] = useState([]);
   const [marketingWidgetLeads, setMarketingWidgetLeads] = useState([]);
   const [hotLeads, setHotLeads] = useState([]);
-  const [suppression, setSuppression] = useState([]);
   const [agentLimits, setAgentLimits] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
-  const [analyticsComparison, setAnalyticsComparison] = useState(null);
   const [campaignAnalytics, setCampaignAnalytics] = useState({});
   const [campaignWorkspaceId, setCampaignWorkspaceId] = useState(null);
   const [campaignWorkspaceData, setCampaignWorkspaceData] = useState(null);
@@ -781,8 +774,6 @@ export default function EmailSdrWorkspace({
       const [
         overviewResp,
         opsSummaryResp,
-        analyticsResp,
-        analyticsComparisonResp,
         campaignRows,
         emailAgentResp,
         providerRows,
@@ -793,7 +784,6 @@ export default function EmailSdrWorkspace({
         marketingLeadRows,
         messageRows,
         hotRows,
-        suppressionRows,
         agentLimitRows,
         inboundReplyRows,
         unmatchedRows,
@@ -804,8 +794,6 @@ export default function EmailSdrWorkspace({
       ] = await Promise.all([
         getEmailSdrOverview(),
         getEmailSdrOpsSummary(),
-        getEmailSdrAnalytics(),
-        getEmailSdrAnalyticsComparison(),
         listEmailCampaigns(),
         listEmailAgents(),
         listEmailProviderConnections(),
@@ -816,7 +804,6 @@ export default function EmailSdrWorkspace({
         listMarketingChatbotLeads({ consent_only: false }),
         listEmailMessages(),
         listHotLeads({ my_only: myHotLeadsOnly }),
-        listEmailSuppression(),
         listEmailAgentLimitsToday(),
         listEmailInboundEvents({ queue: "new_replies", limit: 50 }),
         listEmailInboundEvents({ queue: "unmatched", limit: 50 }),
@@ -827,8 +814,6 @@ export default function EmailSdrWorkspace({
       ]);
       setOverview(overviewResp || {});
       setOpsSummary(opsSummaryResp || null);
-      setAnalytics(analyticsResp || null);
-      setAnalyticsComparison(analyticsComparisonResp || null);
       setCampaigns(campaignRows || []);
       setEmailAgents(emailAgentResp?.agents || []);
       setProviderConnections(providerRows || []);
@@ -839,7 +824,6 @@ export default function EmailSdrWorkspace({
       setMarketingWidgetLeads(marketingLeadRows || []);
       setMessages(messageRows || []);
       setHotLeads(hotRows || []);
-      setSuppression(suppressionRows || []);
       setAgentLimits(agentLimitRows || []);
       setNewReplyEvents(inboundReplyRows || []);
       setUnmatchedEvents(unmatchedRows || []);
@@ -2428,7 +2412,11 @@ export default function EmailSdrWorkspace({
       ) : null}
 
       {workspaceView === "results" ? (
-        <EmailSdrAnalyticsSection analytics={analytics} comparison={analyticsComparison} />
+        <EmailSdrAnalyticsSection
+          campaigns={campaigns}
+          providerConnections={providerConnections}
+          onOpenWorkspace={handleOpenCampaignWorkspace}
+        />
       ) : null}
 
       {workspaceView === "setup" ? (
@@ -3506,52 +3494,6 @@ export default function EmailSdrWorkspace({
       </Paper>
       ) : null}
 
-      {workspaceView === "results" ? (
-        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
-          <Stack spacing={1}>
-            <Typography variant="overline" sx={{ color: "#64748b", fontWeight: 800, letterSpacing: 0.8 }}>
-              Performance and safety
-            </Typography>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Warnings & quality signals</Typography>
-            {(opsSummary?.needs_attention || []).length ? (
-              <Stack spacing={1}>
-                {(opsSummary?.needs_attention || []).map((warning) => (
-                  <Alert key={`quality-${warning.code || warning.message}`} severity="warning" variant="outlined">
-                    {warning.message || warning.code}
-                  </Alert>
-                ))}
-              </Stack>
-            ) : (
-              <Alert severity="success" variant="outlined">No active quality warnings right now.</Alert>
-            )}
-          </Stack>
-        </Paper>
-      ) : null}
-
-      {workspaceView === "results" ? (
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Bounces & Unsubscribes</Typography>
-          {!bounceEvents.length ? (
-            <Alert severity="info" variant="outlined">No bounce or unsubscribe events recorded.</Alert>
-          ) : (
-            <List disablePadding>
-              {bounceEvents.map((event) => (
-                <React.Fragment key={event.id}>
-                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
-                    <ListItemText
-                      primary={`${event.event_type} • ${event.matched_lead?.company_name || event.from_email || "Unknown sender"}`}
-                      secondary={`${event.from_email || "Unknown sender"}${event.matched_message ? ` • message ${event.matched_message.id}` : ""}${event.processed_at ? ` • processed ${event.processed_at}` : ""}`}
-                    />
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
-          )}
-        </Stack>
-      </Paper>
-      ) : null}
 
       {workspaceView === "action" && actionPanel === "marketing" ? (
       <EmailSdrMarketingLeadsSection
@@ -3624,53 +3566,6 @@ export default function EmailSdrWorkspace({
                         </Button>
                       </Stack>
                     </Stack>
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
-          )}
-        </Stack>
-      </Paper>
-      ) : null}
-
-      {workspaceView === "results" ? (
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Suppression List</Typography>
-          {!suppression.length ? (
-            <Alert severity="info" variant="outlined">No suppressed emails yet.</Alert>
-          ) : (
-            <List dense disablePadding>
-              {suppression.slice(0, 10).map((row) => (
-                <ListItem key={row.id} disableGutters sx={{ py: 0.75 }}>
-                  <ListItemText
-                    primary={row.email_normalized}
-                    secondary={`${row.reason} • ${row.source}${row.created_at ? ` • ${row.created_at}` : ""}`}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Stack>
-      </Paper>
-      ) : null}
-
-      {workspaceView === "results" ? (
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Unmatched Inbound Events</Typography>
-          {!unmatchedEvents.length ? (
-            <Alert severity="info" variant="outlined">No unmatched inbound events.</Alert>
-          ) : (
-            <List disablePadding>
-              {unmatchedEvents.map((event) => (
-                <React.Fragment key={event.id}>
-                  <ListItem disableGutters sx={{ py: 1.25, alignItems: "flex-start" }}>
-                    <ListItemText
-                      primary={`${event.event_type} • ${event.from_email || "Unknown sender"} • ${event.subject || "No subject"}`}
-                      secondary={`${event.raw_payload?.match_reason || "unmatched"}${event.body_text ? ` • ${event.body_text.slice(0, 180)}` : ""}`}
-                    />
                   </ListItem>
                   <Divider />
                 </React.Fragment>

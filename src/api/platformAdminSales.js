@@ -326,6 +326,20 @@ export const getEmailSdrAnalyticsComparison = async () => {
   return data?.comparison || null;
 };
 
+export const getEmailSdrResults = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/email-results", { params });
+  return data?.results || {
+    filters: {},
+    executive_summary: null,
+    campaign_health_rows: [],
+    operational_issues: [],
+    suppression_rows: [],
+    unmatched_rows: [],
+    recent_events: [],
+    provider_health_rows: [],
+  };
+};
+
 export const generateEmailCampaignDrafts = async (campaignId, payload = {}) => {
   const { data } = await platformAdminApi.post(`/sales/email-campaigns/${campaignId}/generate-drafts`, payload);
   return data || { created_count: 0, blocked: [], campaign: null };
