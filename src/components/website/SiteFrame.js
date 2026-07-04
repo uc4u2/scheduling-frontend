@@ -231,18 +231,8 @@ export default function SiteFrame({
     site?.theme?.secondaryBackground,
   ]);
   const mobileDrawerTextColor = useMemo(() => {
-    const preferred = headerConfig?.text_color || headerTextColor || navStyle?.text;
-    const fallback = pickTextColorForBg(mobileDrawerBg);
-    const bgLum = getLuminance(mobileDrawerBg);
-    const prefLum = getLuminance(preferred);
-    if (
-      !preferred ||
-      (bgLum != null && prefLum != null && Math.abs(bgLum - prefLum) < 0.45)
-    ) {
-      return fallback;
-    }
-    return preferred;
-  }, [mobileDrawerBg, navStyle?.text, headerConfig?.text_color, headerTextColor]);
+    return pickTextColorForBg(mobileDrawerBg);
+  }, [mobileDrawerBg]);
   const mobileNavButtonStyling = useMemo(() => {
     return (active) => {
       const base = navButtonSx(active);
