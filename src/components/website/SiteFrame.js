@@ -189,6 +189,45 @@ export default function SiteFrame({
       return { ...base, color: active ? base.color : preferred || fallbackText };
     };
   }, [navButtonSx, headerBg, navStyle?.variant, navStyle?.text]);
+  const mobileDrawerBg =
+    headerConfig?.scrolled_bg ||
+    headerConfig?.bg ||
+    themeOverrides?.header?.background ||
+    "rgba(255,255,255,0.98)";
+  const mobileDrawerTextColor = useMemo(() => {
+    const preferred = navStyle?.text || headerConfig?.text_color || headerTextColor;
+    const fallback = pickTextColorForBg(mobileDrawerBg);
+    const bgLum = getLuminance(mobileDrawerBg);
+    const prefLum = getLuminance(preferred);
+    if (
+      !preferred ||
+      (bgLum != null && prefLum != null && Math.abs(bgLum - prefLum) < 0.45)
+    ) {
+      return fallback;
+    }
+    return preferred;
+  }, [mobileDrawerBg, navStyle?.text, headerConfig?.text_color, headerTextColor]);
+  const mobileNavButtonStyling = useMemo(() => {
+    return (active) => {
+      const base = navButtonSx(active);
+      const hover =
+        base["&:hover"] && typeof base["&:hover"] === "object"
+          ? base["&:hover"]
+          : {};
+      return {
+        ...base,
+        color: mobileDrawerTextColor,
+        borderColor:
+          navStyle?.variant === "ghost" ? mobileDrawerTextColor : base.borderColor,
+        "&:hover": {
+          ...hover,
+          color: mobileDrawerTextColor,
+          borderColor:
+            navStyle?.variant === "ghost" ? mobileDrawerTextColor : hover.borderColor,
+        },
+      };
+    };
+  }, [navButtonSx, mobileDrawerTextColor, navStyle?.variant]);
 
   // auth state for showing login / my bookings / logout
   const token = (typeof localStorage !== "undefined" && localStorage.getItem("token")) || "";
@@ -836,7 +875,7 @@ export default function SiteFrame({
             {...props}
             color="inherit"
             fullWidth
-            sx={{ ...navButtonStyling(active), justifyContent: "flex-start" }}
+            sx={{ ...mobileNavButtonStyling(active), justifyContent: "flex-start" }}
             onClick={handleMobileClose}
           >
             {item.label || "Link"}
@@ -849,7 +888,7 @@ export default function SiteFrame({
           to={reviewsHref()}
           color={isReviewsActive ? "primary" : "inherit"}
           fullWidth
-          sx={{ ...navButtonStyling(isReviewsActive), justifyContent: "flex-start" }}
+          sx={{ ...mobileNavButtonStyling(isReviewsActive), justifyContent: "flex-start" }}
           onClick={handleMobileClose}
         >
           {nav.reviews_tab_label || "Reviews"}
@@ -1414,14 +1453,14 @@ export default function SiteFrame({
               pt: 2,
               pb: 3,
               px: 2.5,
-              color: resolvedHeaderTextColor,
-              backgroundColor: resolvedHeaderBg,
-              backgroundImage: isTranslucentCssColor(resolvedHeaderBg)
-                ? resolvedHeaderBg
-                : `linear-gradient(180deg, ${resolvedHeaderBg}, ${resolvedHeaderBg})`,
+              color: mobileDrawerTextColor,
+              backgroundColor: mobileDrawerBg,
+              backgroundImage: isTranslucentCssColor(mobileDrawerBg)
+                ? mobileDrawerBg
+                : `linear-gradient(180deg, ${mobileDrawerBg}, ${mobileDrawerBg})`,
               backdropFilter: "blur(18px)",
               WebkitBackdropFilter: "blur(18px)",
-              borderBottom: `1px solid ${alpha(resolvedHeaderTextColor || "#ffffff", 0.18)}`,
+              borderBottom: `1px solid ${alpha(mobileDrawerTextColor || "#111827", 0.18)}`,
               boxShadow: "0 16px 36px rgba(15,23,42,0.18)",
             },
           }}
