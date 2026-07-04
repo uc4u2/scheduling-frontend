@@ -173,6 +173,7 @@ const normalizeNavOverrides = (raw = {}) => ({
   login_tab_label: String(raw?.login_tab_label || "Login").trim() || "Login",
   show_my_bookings_tab: raw?.show_my_bookings_tab !== false,
   my_bookings_tab_label: String(raw?.my_bookings_tab_label || "My Bookings").trim() || "My Bookings",
+  mobile_menu_safe_dark: raw?.mobile_menu_safe_dark === true,
 });
 
 const NavPreview = ({ tokens, highlightActive = true }) => {
@@ -622,6 +623,28 @@ const handleSave = () => {
               </Typography>
             )}
             <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(navOverrides.mobile_menu_safe_dark)}
+                            onChange={(e) =>
+                              updateNavOverrideField("mobile_menu_safe_dark", e.target.checked)
+                            }
+                          />
+                        }
+                        label="Use safe dark mobile menu"
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        Off by default. When off, the mobile menu follows the website header/theme colors. Turn this on only if a tenant design creates mobile contrast problems.
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
               <Grid item xs={12}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
                   <CardContent>

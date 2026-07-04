@@ -29,7 +29,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
 import PublishIcon from "@mui/icons-material/Publish";
@@ -2327,20 +2327,37 @@ const siteTitle = useMemo(() => {
     ]
   );
 
-  const mobileDrawerTextColor = useMemo(() => {
-    const candidate =
-      activePageCssVars?.["--page-body-color"] ||
-      activePageCssVars?.["--page-heading-color"] ||
-      headerConfig?.scrolled_text_color ||
-      headerConfig?.text_color ||
-      theme.palette.text.primary;
-    return candidate || theme.palette.text.primary;
+  const useSafeDarkMobileMenu = nav?.mobile_menu_safe_dark === true;
+  const mobileDrawerBg = useMemo(() => {
+    if (useSafeDarkMobileMenu) return "rgba(10, 14, 24, 0.98)";
+    const candidates = [
+      resolvedHeaderBg,
+      headerConfig?.scrolled_bg,
+      headerConfig?.bg,
+      activePageCssVars?.["--page-secondary-bg"],
+      activePageCssVars?.["--page-card-bg"],
+    ].filter(Boolean);
+    const solid = candidates.find((value) => !isTranslucentCssColor(value));
+    return solid || "rgba(10, 14, 24, 0.98)";
   }, [
+    useSafeDarkMobileMenu,
+    resolvedHeaderBg,
+    headerConfig?.scrolled_bg,
+    headerConfig?.bg,
     activePageCssVars,
-    headerConfig?.scrolled_text_color,
-    headerConfig?.text_color,
-    theme.palette.text.primary,
   ]);
+  const mobileDrawerTextColor = useMemo(() => {
+    if (useSafeDarkMobileMenu) return "#f8fafc";
+    return (
+      resolvedHeaderTextColor ||
+      pickTextColorForBg(mobileDrawerBg) ||
+      "#f8fafc"
+    );
+  }, [useSafeDarkMobileMenu, resolvedHeaderTextColor, mobileDrawerBg]);
+  const mobileDrawerAccent = useMemo(() => {
+    if (useSafeDarkMobileMenu) return "rgba(212, 175, 114, 0.92)";
+    return navStyle?.bg || "var(--page-link-color, rgba(212, 175, 114, 0.92))";
+  }, [useSafeDarkMobileMenu, navStyle?.bg]);
 
   const renderMobileNavButtons = () => (
     <Stack spacing={1} alignItems="stretch">
@@ -2355,6 +2372,13 @@ const siteTitle = useMemo(() => {
               sx={{
                 justifyContent: "flex-start",
                 color: mobileDrawerTextColor,
+                borderRadius: 0,
+                backgroundColor: "transparent",
+                "&:hover": {
+                  backgroundColor: useSafeDarkMobileMenu
+                    ? alpha("#ffffff", 0.06)
+                    : alpha(mobileDrawerAccent, 0.12),
+                },
               }}
               onClick={() => {
                 item.onClick();
@@ -2378,6 +2402,13 @@ const siteTitle = useMemo(() => {
             sx={{
               justifyContent: "flex-start",
               color: mobileDrawerTextColor,
+              borderRadius: 0,
+              backgroundColor: "transparent",
+              "&:hover": {
+                backgroundColor: useSafeDarkMobileMenu
+                  ? alpha("#ffffff", 0.06)
+                  : alpha(mobileDrawerAccent, 0.12),
+              },
             }}
             {...commonProps}
               onClick={handleMobileClose}
@@ -2904,16 +2935,17 @@ const siteTitle = useMemo(() => {
             pt: 2,
             pb: 3,
             px: 2.5,
-            backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.98))",
-            backgroundImage:
-              theme.palette.mode === "dark"
-                ? "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92))"
-                : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96))",
+            backgroundColor: mobileDrawerBg,
+            backgroundImage: useSafeDarkMobileMenu
+              ? `linear-gradient(180deg, ${mobileDrawerBg}, rgba(15, 23, 42, 0.96))`
+              : `linear-gradient(180deg, ${mobileDrawerBg}, ${mobileDrawerBg})`,
             color: mobileDrawerTextColor,
             backdropFilter: "blur(18px)",
             WebkitBackdropFilter: "blur(18px)",
-            borderBottom: "1px solid rgba(148,163,184,0.18)",
-            boxShadow: "0 16px 36px rgba(15,23,42,0.12)",
+            borderBottom: `1px solid ${alpha(mobileDrawerAccent, 0.28)}`,
+            boxShadow: useSafeDarkMobileMenu
+              ? "0 16px 36px rgba(0,0,0,0.42)"
+              : "0 16px 36px rgba(15,23,42,0.18)",
           },
         }}
       >
