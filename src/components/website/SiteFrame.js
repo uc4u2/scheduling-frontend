@@ -231,8 +231,8 @@ export default function SiteFrame({
     site?.theme?.secondaryBackground,
   ]);
   const mobileDrawerTextColor = useMemo(() => {
-    return pickTextColorForBg(mobileDrawerBg);
-  }, [mobileDrawerBg]);
+    return "#111827";
+  }, []);
   const mobileNavButtonStyling = useMemo(() => {
     return (active) => {
       const base = navButtonSx(active);
@@ -243,6 +243,8 @@ export default function SiteFrame({
         ...base,
         backgroundColor: active ? activeBg : "transparent",
         color: mobileDrawerTextColor,
+        WebkitTextFillColor: mobileDrawerTextColor,
+        opacity: 1,
         border:
           navStyle?.variant === "ghost"
             ? `1px solid ${ghostBorder}`
@@ -251,6 +253,8 @@ export default function SiteFrame({
         "&:hover": {
           backgroundColor: hoverBg,
           color: mobileDrawerTextColor,
+          WebkitTextFillColor: mobileDrawerTextColor,
+          opacity: 1,
           border:
             navStyle?.variant === "ghost"
               ? `1px solid ${ghostBorder}`
@@ -1486,6 +1490,7 @@ export default function SiteFrame({
               pb: 3,
               px: 2.5,
               color: mobileDrawerTextColor,
+              WebkitTextFillColor: mobileDrawerTextColor,
               backgroundColor: mobileDrawerBg,
               backgroundImage: isTranslucentCssColor(mobileDrawerBg)
                 ? mobileDrawerBg
@@ -1494,6 +1499,11 @@ export default function SiteFrame({
               WebkitBackdropFilter: "blur(18px)",
               borderBottom: `1px solid ${alpha(mobileDrawerTextColor || "#111827", 0.18)}`,
               boxShadow: "0 16px 36px rgba(15,23,42,0.18)",
+              "& .MuiButton-root, & .MuiTypography-root, & .MuiSvgIcon-root": {
+                color: `${mobileDrawerTextColor} !important`,
+                WebkitTextFillColor: `${mobileDrawerTextColor} !important`,
+                opacity: "1 !important",
+              },
             },
           }}
         >
