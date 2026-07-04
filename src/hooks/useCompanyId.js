@@ -137,7 +137,6 @@ export function useCompanyIdEx({
             data?.company_id ??
             data?.company?.id ??
             data?.profile?.company_id ??
-            data?.id ??
             null;
           const n = Number(id);
           if (alive && Number.isFinite(n) && n > 0) {

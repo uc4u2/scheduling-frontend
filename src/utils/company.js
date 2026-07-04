@@ -83,7 +83,6 @@ export async function ensureCompanyId() {
       // try a handful of shapes
       const id =
         data?.company_id ??
-        data?.id ??
         data?.company?.id ??
         data?.profile?.company_id ??
         null;

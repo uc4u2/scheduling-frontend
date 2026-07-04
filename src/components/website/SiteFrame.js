@@ -672,7 +672,7 @@ export default function SiteFrame({
             })}
 
           {/* fixed “extra” tabs that every site has */}
-          {!hasReviewsLink && nav.show_reviews_tab !== false && (
+          {!isPreview && !hasReviewsLink && nav.show_reviews_tab !== false && (
             <Button component={RouterLink} to={reviewsHref()} color={isReviewsActive ? "primary" : "inherit"}>
               {nav.reviews_tab_label || "Reviews"}
             </Button>
@@ -810,7 +810,7 @@ export default function SiteFrame({
           </Box>
         );
       })}
-      {!hasReviewsLink && nav.show_reviews_tab !== false && (
+      {!isPreview && !hasReviewsLink && nav.show_reviews_tab !== false && (
         <Button
           component={RouterLink}
           to={reviewsHref()}
@@ -843,7 +843,7 @@ export default function SiteFrame({
           </Button>
         );
       })}
-      {!hasReviewsLink && nav.show_reviews_tab !== false && (
+      {!isPreview && !hasReviewsLink && nav.show_reviews_tab !== false && (
         <Button
           component={RouterLink}
           to={reviewsHref()}

@@ -29,9 +29,16 @@ import { normalizeBlockHtml, isEmptyHtml } from "../../utils/html";
 export default function ContactFormSection(props) {
   const {
     title = "Contact Us",
+    eyebrow = "",
     intro = "",
     formKey = "contact",
     successMessage = "Thanks! We’ll get back to you shortly.",
+    submitLabel = "Send message",
+    layoutVariant = "default",
+    mediaImage = "",
+    mediaAlt = "",
+    mediaTitle = "",
+    mediaBody = "",
     fields = [
       { name: "name", label: "Full name", required: true },
       { name: "email", label: "Email", required: true },
@@ -94,6 +101,7 @@ export default function ContactFormSection(props) {
 
   const onChange = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
   const introHtml = useMemo2(() => normalizeBlockHtml(String(intro || "")), [intro]);
+  const mediaBodyHtml = useMemo2(() => normalizeBlockHtml(String(mediaBody || "")), [mediaBody]);
 
   async function submit(e) {
     e.preventDefault();
@@ -128,6 +136,51 @@ export default function ContactFormSection(props) {
   }
 
   const gridCols = (f) => (f.type === "textarea" || f.name === "message" ? 12 : 6);
+  const isEditorialSplit = layoutVariant === "editorialSplit";
+
+  const formGrid = (
+    <Box component="form" onSubmit={submit} noValidate>
+      <Grid container spacing={2}>
+        {normFields.map((f) => (
+          <Grid key={f.name} item xs={12} sm={gridCols(f)}>
+            {f.type === "textarea" ? (
+              <TextField
+                label={f.label}
+                value={values[f.name] || ""}
+                onChange={onChange(f.name)}
+                required={!!f.required}
+                fullWidth
+                multiline
+                minRows={4}
+                placeholder={f.placeholder || ""}
+              />
+            ) : (
+              <TextField
+                label={f.label}
+                type={f.type || "text"}
+                value={values[f.name] || ""}
+                onChange={onChange(f.name)}
+                required={!!f.required}
+                fullWidth
+                placeholder={f.placeholder || ""}
+              />
+            )}
+          </Grid>
+        ))}
+        <Grid item xs={12}>
+          <Button type="submit" variant="contained" size="large" disabled={sending || !resolvedSlug}>
+            {sending ? (
+              <>
+                <CircularProgress size={20} sx={{ mr: 1 }} /> Sending…
+              </>
+            ) : (
+              submitLabel
+            )}
+          </Button>
+        </Grid>
+      </Grid>
+    </Box>
+  );
 
   return (
     <Box component="section">
@@ -135,7 +188,21 @@ export default function ContactFormSection(props) {
         maxWidth={maxWidth === "full" ? false : maxWidth}
         sx={{ px: typeof gutterX === "number" ? `${gutterX}px` : undefined }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={2.5}>
+          {!!eyebrow && (
+            <Typography
+              variant="overline"
+              sx={{
+                letterSpacing: ".22em",
+                textTransform: "uppercase",
+                color: "var(--page-btn-bg, #c49b63)",
+                textAlign: titleAlign,
+                fontWeight: 700,
+              }}
+            >
+              {eyebrow}
+            </Typography>
+          )}
           {!!title && (
             <Typography variant="h4" sx={{ fontWeight: 800, textAlign: titleAlign }}>
               {title}
@@ -156,58 +223,131 @@ export default function ContactFormSection(props) {
           {ok && <Alert severity="success">{successMessage}</Alert>}
           {err && <Alert severity="error">{err}</Alert>}
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, md: 3 },
-              borderRadius: "var(--page-card-radius, 12px)",
-              backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
-              boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
-              border: "1px solid rgba(148,163,184,0.18)",
-            }}
-          >
-            <Box component="form" onSubmit={submit} noValidate>
-              <Grid container spacing={2}>
-                {normFields.map((f) => (
-                  <Grid key={f.name} item xs={12} sm={gridCols(f)}>
-                    {f.type === "textarea" ? (
-                      <TextField
-                        label={f.label}
-                        value={values[f.name] || ""}
-                        onChange={onChange(f.name)}
-                        required={!!f.required}
-                        fullWidth
-                        multiline
-                        minRows={4}
-                        placeholder={f.placeholder || ""}
-                      />
-                    ) : (
-                      <TextField
-                        label={f.label}
-                        type={f.type || "text"}
-                        value={values[f.name] || ""}
-                        onChange={onChange(f.name)}
-                        required={!!f.required}
-                        fullWidth
-                        placeholder={f.placeholder || ""}
-                      />
-                    )}
-                  </Grid>
-                ))}
-                <Grid item xs={12}>
-                  <Button type="submit" variant="contained" size="large" disabled={sending || !resolvedSlug}>
-                    {sending ? (
-                      <>
-                        <CircularProgress size={20} sx={{ mr: 1 }} /> Sending…
-                      </>
-                    ) : (
-                      "Send message"
-                    )}
-                  </Button>
+          {isEditorialSplit ? (
+            <Paper
+              elevation={0}
+              sx={{
+                overflow: "hidden",
+                borderRadius: "calc(var(--page-card-radius, 12px) * 1.35)",
+                background:
+                  "linear-gradient(135deg, rgba(10,10,10,0.94) 0%, rgba(25,22,18,0.98) 46%, rgba(14,14,14,0.98) 100%)",
+                boxShadow: "0 24px 70px rgba(0,0,0,0.46)",
+                border: "1px solid rgba(212,170,106,0.20)",
+              }}
+            >
+              <Grid container>
+                <Grid item xs={12} md={5}>
+                  <Box
+                    sx={{
+                      minHeight: { xs: 320, md: 100 },
+                      height: "100%",
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "flex-end",
+                      justifyContent: "flex-start",
+                      p: { xs: 3, md: 4 },
+                      color: "#f5f1e8",
+                      backgroundColor: "#151515",
+                      backgroundImage: mediaImage
+                        ? `linear-gradient(180deg, rgba(10,10,10,0.12) 0%, rgba(10,10,10,0.72) 62%, rgba(10,10,10,0.92) 100%), url(${mediaImage})`
+                        : "linear-gradient(135deg, rgba(196,155,99,0.26) 0%, rgba(17,17,17,0.98) 62%)",
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                    role={mediaImage ? "img" : undefined}
+                    aria-label={mediaImage ? mediaAlt || mediaTitle || title : undefined}
+                  >
+                    <Stack spacing={1.25} sx={{ maxWidth: 420 }}>
+                      {!!mediaTitle && (
+                        <Typography
+                          variant="h4"
+                          sx={{
+                            fontWeight: 800,
+                            lineHeight: 1.1,
+                            color: "#f9f5ec",
+                          }}
+                        >
+                          {mediaTitle}
+                        </Typography>
+                      )}
+                      {!!mediaBody && !isEmptyHtml(mediaBodyHtml) && (
+                        <Box
+                          sx={{
+                            color: "rgba(245,241,232,0.88)",
+                            fontSize: "1rem",
+                            lineHeight: 1.7,
+                            "& p": { margin: 0, marginBottom: "0.55rem" },
+                            "& p:last-of-type": { marginBottom: 0 },
+                          }}
+                          dangerouslySetInnerHTML={{ __html: safeHtml(mediaBodyHtml) }}
+                        />
+                      )}
+                    </Stack>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={7}>
+                  <Box
+                    sx={{
+                      p: { xs: 3, md: 4 },
+                      background:
+                        "linear-gradient(180deg, rgba(28,28,28,0.98) 0%, rgba(13,13,13,0.98) 100%)",
+                      "& .MuiTextField-root .MuiOutlinedInput-root": {
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        color: "#f5f1e8",
+                        borderRadius: 2,
+                        "& fieldset": {
+                          borderColor: "rgba(212,170,106,0.22)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(212,170,106,0.40)",
+                        },
+                        "&.Mui-focused fieldset": {
+                          borderColor: "var(--page-btn-bg, #c49b63)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(245,241,232,0.72)",
+                      },
+                      "& .MuiInputBase-input, & .MuiInputBase-inputMultiline": {
+                        color: "#f5f1e8",
+                      },
+                      "& .MuiButton-contained": {
+                        px: 3.5,
+                        py: 1.4,
+                        borderRadius: 2,
+                        fontWeight: 800,
+                        letterSpacing: ".08em",
+                        textTransform: "uppercase",
+                        background:
+                          "linear-gradient(90deg, var(--page-btn-bg, #c49b63) 0%, #e9c88f 100%)",
+                        color: "#14110d",
+                        boxShadow: "0 12px 28px rgba(0,0,0,0.28)",
+                        "&:hover": {
+                          background:
+                            "linear-gradient(90deg, #d3a868 0%, #f2d39b 100%)",
+                        },
+                      },
+                    }}
+                  >
+                    {formGrid}
+                  </Box>
                 </Grid>
               </Grid>
-            </Box>
-          </Paper>
+            </Paper>
+          ) : (
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2, md: 3 },
+                borderRadius: "var(--page-card-radius, 12px)",
+                backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
+                boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
+                border: "1px solid rgba(148,163,184,0.18)",
+              }}
+            >
+              {formGrid}
+            </Paper>
+          )}
         </Stack>
       </Container>
     </Box>

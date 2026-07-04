@@ -176,10 +176,20 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
   };
 
   // ---------- Import (then redirect to builder) ----------
-  const goToBuilder = () =>
-    navigate(`/manage/website/builder${supportQuery}`, {
+  const goToBuilder = () => {
+    const params = new URLSearchParams();
+    if (companyId) params.set("company_id", String(companyId));
+    if (supportQuery) {
+      const supportParams = new URLSearchParams(supportQuery.replace(/^\?/, ""));
+      for (const [key, value] of supportParams.entries()) {
+        if (!params.has(key)) params.set(key, value);
+      }
+    }
+    const query = params.toString();
+    navigate(`/manage/website/builder${query ? `?${query}` : ""}`, {
       state: { postImportReload: true },
     });
+  };
 
   const runImport = async (keyOverride, versionOverride) => {
     const key = keyOverride || selectedKey;

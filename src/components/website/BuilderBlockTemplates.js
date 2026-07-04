@@ -15,6 +15,108 @@ export const NEW_BLOCKS = {
 
     },
   }),
+  pricingTableModern: () => ({
+    type: "pricingTable",
+    props: {
+      title: "Indicative pricing",
+      intro:
+        "Choose a starting package, then contact us for a tailored quote based on duration, location, and retouching needs.",
+      titleAlign: "center",
+      maxWidth: "xl",
+      layout: "logo-cards",
+      plans: [
+        {
+          ribbon: "Portrait",
+          name: "Portrait session",
+          price: "From CHF 250",
+          features: [
+            "1 guided session",
+            "Curated retouched selection",
+            "High-resolution digital delivery",
+          ],
+          ctaText: "Book now",
+          ctaLink: "?page=contact",
+        },
+        {
+          ribbon: "Wedding",
+          name: "Wedding coverage",
+          price: "Custom quote",
+          features: [
+            "Partial or full-day coverage",
+            "Carefully retouched gallery",
+            "Private online delivery",
+          ],
+          ctaText: "Request a quote",
+          ctaLink: "?page=contact",
+          featured: true,
+        },
+        {
+          ribbon: "Commercial",
+          name: "Product / publicity",
+          price: "Custom quote",
+          features: [
+            "Product shoots or campaigns",
+            "Retouching included",
+            "Web and print-ready formats",
+          ],
+          ctaText: "Discuss the project",
+          ctaLink: "?page=contact",
+        },
+      ],
+    },
+    sx: {
+      py: 88,
+      background:
+        "linear-gradient(180deg, rgba(5,5,5,1) 0%, rgba(13,13,13,1) 100%)",
+      color: "var(--page-heading-color, #ffffff)",
+      position: "relative",
+      overflow: "hidden",
+      "& .MuiTypography-root": {
+        color: "var(--page-heading-color, #ffffff)",
+      },
+      "& .MuiTypography-root.MuiTypography-body2": {
+        color: "var(--page-body-color, #d4d0c8)",
+      },
+      "& .pricing-logo-grid": {
+        position: "relative",
+        paddingTop: "18px",
+      },
+      "& .pricing-logo-card": {
+        background:
+          "linear-gradient(180deg, rgba(28,28,28,0.96) 0%, rgba(12,12,12,0.98) 100%)",
+        border: "1px solid rgba(196,155,99,0.22)",
+        boxShadow: "0 26px 64px rgba(0,0,0,0.45)",
+        borderRadius: 4,
+        color: "#f8f4ec",
+        padding: "42px 28px 30px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        overflow: "visible",
+        backdropFilter: "blur(10px)",
+      },
+      "& .pricing-logo-card.featured": {
+        background:
+          "linear-gradient(180deg, rgba(38,30,20,0.98) 0%, rgba(15,15,15,1) 100%)",
+        border: "1px solid rgba(196,155,99,0.58)",
+      },
+      "& .pricing-logo-ribbon": {
+        fontSize: "0.72rem",
+        letterSpacing: ".18em",
+        textTransform: "uppercase",
+        background: "linear-gradient(135deg, #c49b63, #e7c797)",
+        padding: "7px 18px",
+        borderRadius: 999,
+        position: "absolute",
+        top: "-18px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        color: "#151515",
+        fontWeight: 700,
+        zIndex: 3,
+      },
+    },
+  }),
   text: () => ({
     type: "text",
     props: {
@@ -473,6 +575,30 @@ export const NEW_BLOCKS = {
       ],
       intervalMs: 3500,
       showDots: true,
+    },
+  }),
+  contactFormEditorialSplit: () => ({
+    type: "contactForm",
+    props: {
+      title: "Contact us",
+      intro: "We would love to hear from you and discuss your next photo project.",
+      eyebrow: "Start the conversation",
+      formKey: "contact",
+      layoutVariant: "editorialSplit",
+      mediaImage:
+        "/website/tenant-photography-ophoto-editorial/side-01.jpg",
+      mediaAlt: "Photography contact preview",
+      mediaTitle: "Let's create images with character.",
+      mediaBody:
+        "Share your idea, timeline, or preferred session type and we will come back with a tailored proposal.",
+      submitLabel: "Send request",
+      fields: [
+        { name: "name", label: "Full name", required: true },
+        { name: "email", label: "Email", required: true },
+        { name: "phone", label: "Phone" },
+        { name: "subject", label: "Project type" },
+        { name: "message", label: "Tell us about your project", required: true },
+      ],
     },
   }),
   testimonialCarousel: () => ({

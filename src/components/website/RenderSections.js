@@ -226,6 +226,8 @@ function pageStyleToVars(ps = {}) {
 
     // cards
     "--page-card-bg":       has(ps.cardBg)       ? ps.cardBg       : undefined, // rgba(...) supported
+    "--page-card-text-color":
+      has(ps.cardTextColor) ? ps.cardTextColor : has(ps.cardHeadingColor) ? ps.cardHeadingColor : undefined,
     "--page-card-radius":   ps.cardRadius != null ? toWebsiteRadiusPx(ps.cardRadius) : undefined,
     "--page-card-shadow":   has(ps.cardShadow)   ? ps.cardShadow   : undefined,
     "--page-card-blur":     ps.cardBlur != null  ? `${ps.cardBlur}px` : undefined,
@@ -6326,33 +6328,72 @@ const BookingCtaBar = ({
   const align = ((titleAlign || inlineAlign || "left") + "").toLowerCase();
   const isCenter = align === "center";
   const isRight = align === "right";
+  const headingColor = "var(--page-card-text-color, #1f2937)";
+  const cardSurface =
+    "linear-gradient(135deg, color-mix(in srgb, var(--page-card-bg, rgba(255,255,255,0.96)) 88%, #fff8ee 12%) 0%, color-mix(in srgb, var(--page-card-bg, rgba(255,255,255,0.96)) 72%, var(--page-link-color, #c49b63) 28%) 100%)";
+  const buttonBg =
+    "linear-gradient(135deg, var(--page-btn-bg, var(--sched-primary)) 0%, color-mix(in srgb, var(--page-btn-bg, var(--sched-primary)) 28%, #f1cf95 72%) 100%)";
+  const buttonColor = "var(--page-btn-color, #ffffff)";
   return (
     <Box sx={{ position: "sticky", bottom: 16, zIndex: 1200 }}>
       <Container maxWidth="lg">
         <Box
           className="booking-cta-card"
           sx={{
-            p: 2,
-            borderRadius: websiteRadius(3),
-            boxShadow: 6,
+            p: 2.5,
+            borderRadius: websiteRadius(2),
+            boxShadow: "0 20px 44px rgba(0,0,0,0.26)",
             bgcolor: "var(--page-card-bg, rgba(255,255,255,0.12))",
+            background: cardSurface,
+            backdropFilter: "blur(var(--page-card-blur, 0px))",
             display: "flex",
             gap: 2,
             alignItems: "center",
             justifyContent: isCenter ? "center" : "space-between",
             flexDirection: isCenter ? "column" : isRight ? "row-reverse" : "row",
             textAlign: align,
-            border: (t) => `1px solid ${t.palette.divider}`
+            color: headingColor,
+            border:
+              "1px solid color-mix(in srgb, var(--page-link-color, #c49b63) 24%, rgba(255,255,255,0.5))"
           }}
         >
           <HtmlTypo
             variant="subtitle1"
             className="booking-cta-text"
-            sx={{ fontWeight: 700, m: 0, textAlign: titleAlign ? align : undefined }}
+            sx={{
+              fontWeight: 700,
+              m: 0,
+              flex: 1,
+              textAlign: titleAlign ? align : undefined,
+              color: headingColor,
+              "&, & *": {
+                color: `${headingColor} !important`,
+              },
+            }}
           >
             {resolvedText}
           </HtmlTypo>
-          <Button href={resolvedButtonLink} variant="contained" size="large">
+          <Button
+            href={resolvedButtonLink}
+            variant="contained"
+            size="large"
+            sx={{
+              bgcolor: buttonBg,
+              background: buttonBg,
+              color: buttonColor,
+              borderRadius: "var(--page-btn-radius, 12px)",
+              boxShadow: "none",
+              fontWeight: 800,
+              px: 3,
+              "&:hover": {
+                bgcolor: buttonBg,
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--page-btn-bg, var(--sched-primary)) 82%, #1d4ed8 18%) 0%, color-mix(in srgb, var(--page-btn-bg, var(--sched-primary)) 18%, #f6d7a6 82%) 100%)",
+                boxShadow: "none",
+                filter: "brightness(1.02)",
+              },
+            }}
+          >
             {toPlain(resolvedButtonText)}
           </Button>
         </Box>
@@ -7072,6 +7113,7 @@ const pageWrapSx = {
 
   // cards
   "--page-card-bg":     pageStyle.cardBg || colorWithOpacity(pageStyle.cardColor || "#ffffff", pageStyle.cardOpacity ?? 0.92),
+  "--page-card-text-color": pageStyle.cardTextColor ?? pageStyle.cardHeadingColor ?? undefined,
   "--page-card-radius": pageStyle.cardRadius != null ? toWebsiteRadiusPx(pageStyle.cardRadius) : undefined,
   "--page-card-shadow": pageStyle.cardShadow || undefined,
   "--page-card-blur":   pageStyle.cardBlur ? `${pageStyle.cardBlur}px` : undefined,

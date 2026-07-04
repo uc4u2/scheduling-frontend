@@ -1098,14 +1098,27 @@ export const SCHEMA_REGISTRY = {
 
 
 
-    contactForm: {
+  contactForm: {
     title: "Contact Form",
     fields: [
       { name: "title",          type: "richinline", label: "Title", labelKey: "manager.visualBuilder.schemas.testimonials.fields.title", default: "Contact Us" },
+      { name: "eyebrow",        type: "richinline", label: "Eyebrow (optional)" },
       { name: "intro",          type: "richtext",   label: "Intro (optional)", minRows: 4 },
       { name: "formKey",        type: "string",     label: "Form key", default: "contact",
         help: "Sent to POST /api/public/:slug/form/:formKey" },
       { name: "successMessage", type: "string",     label: "Success message", default: "Thanks! We’ll get back to you shortly." },
+      { name: "submitLabel",    type: "string",     label: "Submit button label", default: "Send message" },
+      {
+        name: "layoutVariant",
+        type: "select",
+        label: "Layout variant",
+        options: ["default", "editorialSplit"],
+        default: "default"
+      },
+      { name: "mediaImage",     type: "image",      label: "Media image (split layout)" },
+      { name: "mediaAlt",       type: "string",     label: "Media image alt text" },
+      { name: "mediaTitle",     type: "richinline", label: "Media title (split layout)" },
+      { name: "mediaBody",      type: "richtext",   label: "Media copy (split layout)", minRows: 4 },
       {
         name: "fields",
         type: "objectArray",
@@ -1188,6 +1201,7 @@ export const SCHEMA_REGISTRY = {
 
       // --- Card / “box” look (affects MUI Paper / Section cards etc.) ---
       { name: "cardBg",     type: "string", label: "Card background (CSS color or rgba())", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBg", ui: "gradient" },
+      { name: "cardTextColor", type: "color", label: "Card text color" },
       { name: "cardRadius", type: "number", label: "Card radius (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardRadius", min: 0, max: 32, step: 1, default: 12 },
       { name: "cardBlur",   type: "number", label: "Card blur (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBlur", min: 0, max: 20, step: 1, default: 0 },
       { name: "cardShadow", type: "string", label: "Card shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardShadow", placeholder: "0 8px 30px rgba(0,0,0,.08)", ui: "shadow", shadowType: "box" },

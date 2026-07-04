@@ -141,6 +141,7 @@ const BLOCK_PREVIEWS = {
   discoverStory: "/block-previews/discoverStory.png",
   logoCloud: "/block-previews/logoCloud.png",
   workshopsCommissions: "/block-previews/workshopsCommissions.png",
+  pricingTableModern: "/block-previews/workshopsCommissions.png",
   textFree: "/block-previews/textFree.png",
   galleryCarousel: "/block-previews/galleryCarousel.png",
   faq: "/block-previews/faq.png",
@@ -150,6 +151,7 @@ const BLOCK_PREVIEWS = {
   teamGrid: "/block-previews/teamGrid.png",
   contact: "/block-previews/contact.png",
   contactForm: "/block-previews/contactForm.png",
+  contactFormEditorialSplit: "/block-previews/contactForm.png",
   popupCta: "/block-previews/cta.png",
   cta: "/block-previews/cta.png",
   pricingTable: "/block-previews/workshopsCommissions.png",
@@ -310,6 +312,72 @@ const ensureSectionIds = (page) => {
     ...page,
     content: { ...(page.content || {}), sections },
   });
+};
+
+const LEGACY_REVIEWS_PAGE_SLUG = "reviews";
+
+const parseLegacyPageSlugFromHref = (href) => {
+  const raw = String(href || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw.includes("?page=reviews") || raw.endsWith("/reviews")) return "reviews";
+  return "";
+};
+
+const readNavOverridesFromSettings = (settingsObj) =>
+  settingsObj?.nav_overrides ||
+  settingsObj?.settings?.nav_overrides ||
+  {};
+
+const readHeaderFromSettings = (settingsObj) =>
+  settingsObj?.header ||
+  settingsObj?.settings?.header ||
+  defaultHeaderConfig();
+
+const shouldEnsureLegacyReviewsPage = (settingsObj, pagesList) => {
+  const nav = readNavOverridesFromSettings(settingsObj);
+  const header = readHeaderFromSettings(settingsObj);
+  const pageSlug = String(nav?.reviews_page_slug || LEGACY_REVIEWS_PAGE_SLUG)
+    .trim()
+    .toLowerCase();
+  const hasPage = (pagesList || []).some(
+    (page) => String(page?.slug || "").trim().toLowerCase() === pageSlug
+  );
+  if (hasPage) return null;
+
+  const manualNavHasReviews = Array.isArray(header?.nav_items)
+    ? header.nav_items.some((item) => parseLegacyPageSlugFromHref(item?.href) === pageSlug)
+    : false;
+  const syntheticReviewsEnabled = nav?.show_reviews_tab !== false;
+
+  if (!syntheticReviewsEnabled && !manualNavHasReviews) return null;
+  return {
+    slug: pageSlug,
+    title: nav?.reviews_tab_label || "Reviews",
+    menu_title: nav?.reviews_tab_label || "Reviews",
+    show_in_menu: true,
+    sort_order:
+      ((pagesList || []).reduce(
+        (max, page) => Math.max(max, Number(page?.sort_order ?? 0)),
+        0
+      ) || 0) + 1,
+    published: true,
+    is_homepage: false,
+    content: {
+      sections: [
+        {
+          id: uid(),
+          type: "richText",
+          props: {
+            title: nav?.reviews_tab_label || "Reviews",
+            body: "<p>This legacy reviews page was restored so it can be managed from the website builder like a normal page.</p>",
+            align: "center",
+          },
+          sx: { py: 8 },
+        },
+      ],
+      meta: { layout: "full" },
+    },
+  };
 };
 
 
@@ -2619,8 +2687,16 @@ useEffect(() => {
           }
         }
 
+        const normalizedLegacy = await ensureLegacyBuilderPages(
+          companyId,
+          settingsPayload,
+          pagesList
+        );
         if (!alive) return;
-        setPages(pagesList);
+        const finalSettings = normalizedLegacy.settings || settingsPayload;
+        setSiteSettings(finalSettings);
+        setNavDraft(deriveNavDraft(finalSettings));
+        setPages(normalizedLegacy.pages || pagesList);
         await loadCheckpoints(companyId);
         setLoading(false);
       } catch (e) {
@@ -3270,6 +3346,74 @@ const saveNavSettings = useCallback(
   [companyId, setSiteSettings, navStyleState, navOverridesWithDefault, t]
 );
 
+async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
+  if (!cid) return { pages: pagesList || [], settings: settingsObj };
+
+  let nextPages = Array.isArray(pagesList) ? [...pagesList] : [];
+  let nextSettings = settingsObj || {};
+  const reviewsStub = shouldEnsureLegacyReviewsPage(nextSettings, nextPages);
+
+  if (reviewsStub) {
+    const refreshedBeforeCreate = await wb.listPages(cid).catch(() => null);
+    const refreshedPages = Array.isArray(refreshedBeforeCreate?.data)
+      ? refreshedBeforeCreate.data
+      : Array.isArray(refreshedBeforeCreate)
+      ? refreshedBeforeCreate
+      : [];
+    const existingPage = refreshedPages.find(
+      (page) =>
+        String(page?.slug || "").trim().toLowerCase() ===
+        String(reviewsStub.slug || LEGACY_REVIEWS_PAGE_SLUG).trim().toLowerCase()
+    );
+
+    if (existingPage) {
+      nextPages = refreshedPages;
+    } else {
+      try {
+        const created = await wb.createPage(
+          cid,
+          serializePage(ensureSectionIds(withLiftedLayout(reviewsStub)))
+        );
+        const createdPage = normalizePage(created?.data || created || reviewsStub);
+        nextPages = [...nextPages, createdPage];
+      } catch (err) {
+        const duplicateSlug =
+          err?.response?.status === 409 &&
+          String(err?.response?.data?.error || "")
+            .toLowerCase()
+            .includes("duplicate slug");
+        if (!duplicateSlug) throw err;
+
+        const refetchedAfterConflict = await wb.listPages(cid).catch(() => null);
+        nextPages = Array.isArray(refetchedAfterConflict?.data)
+          ? refetchedAfterConflict.data
+          : Array.isArray(refetchedAfterConflict)
+          ? refetchedAfterConflict
+          : nextPages;
+      }
+    }
+
+    const nav = {
+      ...readNavOverridesFromSettings(nextSettings),
+      show_reviews_tab: false,
+      reviews_page_slug: String(
+        existingPage?.slug ||
+          nextPages.find(
+            (page) =>
+              String(page?.slug || "").trim().toLowerCase() ===
+              String(reviewsStub.slug || LEGACY_REVIEWS_PAGE_SLUG).trim().toLowerCase()
+          )?.slug ||
+          LEGACY_REVIEWS_PAGE_SLUG
+      ),
+      reviews_tab_target: "page",
+    };
+    await navSettings.updateOverrides(cid, nav);
+    nextSettings = mergeNavIntoSettings(nextSettings, { nav_overrides: nav });
+  }
+
+  return { pages: nextPages, settings: nextSettings };
+}
+
   const saveBrandingSettings = useCallback(
   async (payload) => {
     if (!companyId) {
@@ -3818,7 +3962,14 @@ const autoProvisionIfEmpty = useCallback(
       }
     }
 
-    const pg = pgRaw.map((p) => ensureSectionIds(withLiftedLayout(p)));
+    const normalizedLegacy = await ensureLegacyBuilderPages(cid, settingsObj, pgRaw);
+    const pg = (normalizedLegacy.pages || pgRaw).map((p) =>
+      ensureSectionIds(withLiftedLayout(p))
+    );
+    if (normalizedLegacy.settings) {
+      setSiteSettings(normalizedLegacy.settings);
+      setNavDraft(deriveNavDraft(normalizedLegacy.settings));
+    }
     setPages(pg);
     await loadCheckpoints(cid);
 
@@ -4554,6 +4705,7 @@ const autoProvisionIfEmpty = useCallback(
     ["logoCloud", "manager.visualBuilder.sections.add.logoCloud"],
     ["workshopsCommissions", "manager.visualBuilder.sections.add.workshopsCommissions"],
     ["pricingTable", "manager.visualBuilder.sections.add.pricingTable"],
+    ["pricingTableModern", "Modern Pricing Table"],
     ["galleryCarousel", "manager.visualBuilder.sections.add.carousel"],
     ["logoCarousel", "manager.visualBuilder.sections.add.logoCarousel"],
     ["faq", "manager.visualBuilder.sections.add.faq"],
@@ -4571,6 +4723,7 @@ const autoProvisionIfEmpty = useCallback(
     ["mapEmbed", "manager.visualBuilder.sections.add.mapEmbed"],
     ["contact", "manager.visualBuilder.sections.add.contact"],
     ["contactForm", "manager.visualBuilder.sections.add.contactForm"],
+    ["contactFormEditorialSplit", "Premium Contact Form"],
     ["popupCta", "Popup CTA"],
     ["cta", "manager.visualBuilder.sections.add.cta"],
     ["bookingCtaBar", "manager.visualBuilder.sections.add.bookingCtaBar"],
