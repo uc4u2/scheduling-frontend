@@ -431,18 +431,21 @@ const normalizeTextValue = (value) => {
 const getClientDocumentCategoryLabel = (value) =>
   CLIENT_DOCUMENT_CATEGORIES.find(([key]) => key === value)?.[1] || formatStatusLabel(value, "Other");
 
+const getClientDocumentRequestTemplate = (key) =>
+  CLIENT_DOCUMENT_REQUEST_TEMPLATES.find((row) => row.key === key) || null;
+
 const documentRequestStateMeta = (row = {}) => {
   const status = String(row.status || "").toLowerCase();
   if (row.expired && status === "pending") {
-    return { key: "expired", label: "Expired", tone: "warning", priority: 2 };
+    return { key: "expired", label: "Expired", tone: "warning", priority: 2, helper: "The upload link expired before the client uploaded a file." };
   }
   if (status === "uploaded") {
-    return { key: "uploaded", label: "Uploaded", tone: "success", priority: 1 };
+    return { key: "uploaded", label: "Uploaded", tone: "success", priority: 1, helper: "The client uploaded the requested file. It is now stored below in the document vault." };
   }
   if (status === "cancelled") {
-    return { key: "cancelled", label: "Cancelled", tone: "default", priority: 3 };
+    return { key: "cancelled", label: "Cancelled", tone: "default", priority: 3, helper: "This request was cancelled and the upload link is no longer active." };
   }
-  return { key: "pending", label: "Pending", tone: "primary", priority: 0 };
+  return { key: "pending", label: "Pending", tone: "primary", priority: 0, helper: "Secure link sent. Waiting for the client to upload the file." };
 };
 
 const toCents = (value) => {
@@ -1125,6 +1128,7 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
   }, [open, initialValues]);
 
   const fileList = Array.from(files || []);
+  const isSignedDocumentFlow = initialValues?.requestKind === "signed";
 
   const applyTemplate = (template) => {
     setForm({
@@ -1137,9 +1141,14 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
 
   return (
     <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Request document</DialogTitle>
+      <DialogTitle>{isSignedDocumentFlow ? "Request signed document" : "Request document"}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+          <Alert severity="info" sx={{ alignItems: "flex-start" }}>
+            {isSignedDocumentFlow
+              ? "Send the unsigned file or instructions here. We send a secure link, the client uploads the signed copy, and the returned file appears in Stored documents."
+              : "We send a secure upload link. When the client uploads the file, it appears below in Stored documents."}
+          </Alert>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {CLIENT_DOCUMENT_REQUEST_TEMPLATES.map((template) => (
               <Chip
@@ -1219,7 +1228,7 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
           onClick={() => onSubmit({ ...form, attachments: fileList })}
           disabled={saving || !String(form.title || "").trim()}
         >
-          {saving ? "Requesting..." : "Send request"}
+          {saving ? "Requesting..." : isSignedDocumentFlow ? "Send signed-document request" : "Send request"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -2921,6 +2930,7 @@ export default function ManagerClientsWorkspace() {
             message: template.message,
             expiry_days: template.expiry_days,
             templateLabel: template.dialogLabel,
+            requestKind: template.key === "signed_agreement" ? "signed" : "general",
           }
         : {
             title: "",
@@ -2928,10 +2938,15 @@ export default function ManagerClientsWorkspace() {
             message: "",
             expiry_days: 7,
             templateLabel: "",
+            requestKind: "general",
           }
     );
     setRequestDocumentOpen(true);
   }, []);
+
+  const handleOpenSignedDocumentRequest = useCallback(() => {
+    openRequestDocumentPreset(getClientDocumentRequestTemplate("signed_agreement"));
+  }, [openRequestDocumentPreset]);
 
   const handleCancelDocumentRequest = async (requestId) => {
     if (!clientId || !requestId) return;
@@ -4105,26 +4120,30 @@ export default function ManagerClientsWorkspace() {
                       </SectionCard>
                     </Grid>
                     <Grid item xs={12} lg={5}>
-                      <SectionCard title="Request document from client" description="Send a secure upload link to the client and track the response here.">
+                      <SectionCard title="Send upload request" description="Send a secure link so the client can upload a file without signing in.">
                         <Stack spacing={1.5}>
                           {documentRequestsError ? <Alert severity="error">{documentRequestsError}</Alert> : null}
-                          <Typography variant="body2" color="text.secondary">
-                            Reuse the existing secure document-request flow without requiring client login.
-                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "background.default" }}>
+                            <Stack spacing={0.75}>
+                              <Typography variant="subtitle2" fontWeight={700}>
+                                What happens next
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                1. We send a secure upload link.
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                2. The client uploads the requested file.
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                3. The returned file appears below in Stored documents.
+                              </Typography>
+                            </Stack>
+                          </Paper>
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            {CLIENT_DOCUMENT_REQUEST_TEMPLATES.filter((template) => Boolean(template.quickLabel)).map((template) => (
-                              <Button
-                                key={template.key}
-                                size="small"
-                                variant="outlined"
-                                onClick={() => openRequestDocumentPreset(template)}
-                              >
-                                {template.quickLabel}
-                              </Button>
-                            ))}
-                          </Stack>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            <Button variant="contained" onClick={() => openRequestDocumentPreset()}>
+                            <Button variant="contained" onClick={handleOpenSignedDocumentRequest}>
+                              Request signed document
+                            </Button>
+                            <Button variant="outlined" onClick={() => openRequestDocumentPreset()}>
                               Request document
                             </Button>
                             <Button variant="text" onClick={loadDocumentRequests} disabled={documentRequestsLoading || requestDocumentSaving}>
@@ -4237,7 +4256,7 @@ export default function ManagerClientsWorkspace() {
                   </SectionCard>
                   </Box>
 
-                  <SectionCard title="Requested documents" description="See pending, uploaded, expired, or cancelled requests.">
+                  <SectionCard title="Request status" description="Track each upload request and see when the returned file comes back.">
                     {documentRequestsLoading ? (
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
                         <CircularProgress size={18} />
@@ -4248,7 +4267,7 @@ export default function ManagerClientsWorkspace() {
                       <Stack spacing={2}>
                         <Box>
                           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                            Pending requests
+                            Waiting for client
                           </Typography>
                           <PagedStackList
                             items={pendingDocumentRequests}
@@ -4280,6 +4299,9 @@ export default function ManagerClientsWorkspace() {
                                         </Typography>
                                       </Stack>
                                     </Stack>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {stateMeta.helper}
+                                    </Typography>
                                     {row.message ? <ExpandableText text={row.message} limit={180} /> : null}
                                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                       {row.upload_url ? (
@@ -4306,12 +4328,12 @@ export default function ManagerClientsWorkspace() {
                                 </Paper>
                               );
                             }}
-                            empty={<Typography color="text.secondary">No pending document requests.</Typography>}
+                            empty={<Typography color="text.secondary">No upload requests are currently waiting on the client.</Typography>}
                           />
                         </Box>
                         <Box>
                           <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                            Completed and past requests
+                            Uploaded or closed requests
                           </Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
                             Returned documents appear in the document vault.
@@ -4351,6 +4373,9 @@ export default function ManagerClientsWorkspace() {
                                         ) : null}
                                       </Stack>
                                     </Stack>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {stateMeta.helper}
+                                    </Typography>
                                     {row.message ? <ExpandableText text={row.message} limit={180} /> : null}
                                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                       {row.upload_url ? (
@@ -4387,10 +4412,10 @@ export default function ManagerClientsWorkspace() {
                         {!sortedDocumentRequests.length ? (
                           <EmptyStateCard
                             title="No document requests yet"
-                            description="Request a document from the client and track the upload status here."
+                            description="Send a secure upload request and the returned file will appear here and in the document vault."
                             primaryAction={(
-                              <Button variant="contained" size="small" onClick={() => openRequestDocumentPreset()}>
-                                Request document
+                              <Button variant="contained" size="small" onClick={handleOpenSignedDocumentRequest}>
+                                Request signed document
                               </Button>
                             )}
                           />
