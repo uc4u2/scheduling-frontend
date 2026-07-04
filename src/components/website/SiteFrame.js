@@ -190,10 +190,11 @@ export default function SiteFrame({
     };
   }, [navButtonSx, headerBg, navStyle?.variant, navStyle?.text]);
   const mobileDrawerBg =
-    headerConfig?.scrolled_bg ||
-    headerConfig?.bg ||
-    themeOverrides?.header?.background ||
-    "rgba(255,255,255,0.98)";
+    headerConfig?.bg && String(headerConfig.bg).trim().toLowerCase() !== "transparent"
+      ? headerConfig.bg
+      : headerConfig?.scrolled_bg ||
+        themeOverrides?.header?.background ||
+        "rgba(255,255,255,0.98)";
   const mobileDrawerTextColor = useMemo(() => {
     const preferred = navStyle?.text || headerConfig?.text_color || headerTextColor;
     const fallback = pickTextColorForBg(mobileDrawerBg);
