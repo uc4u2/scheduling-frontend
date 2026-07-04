@@ -196,7 +196,7 @@ export default function SiteFrame({
         themeOverrides?.header?.background ||
         "rgba(255,255,255,0.98)";
   const mobileDrawerTextColor = useMemo(() => {
-    const preferred = navStyle?.text || headerConfig?.text_color || headerTextColor;
+    const preferred = headerConfig?.text_color || headerTextColor || navStyle?.text;
     const fallback = pickTextColorForBg(mobileDrawerBg);
     const bgLum = getLuminance(mobileDrawerBg);
     const prefLum = getLuminance(preferred);
