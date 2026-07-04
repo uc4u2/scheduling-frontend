@@ -60,11 +60,20 @@ export const getAuthRedirectTarget = ({ user, searchParams }) => {
       : new URLSearchParams(searchParams || "");
   const tab = String(qs.get("tab") || "").toLowerCase();
   const plan = String(qs.get("plan") || "").toLowerCase();
+  const addon = String(qs.get("addon") || "").toLowerCase();
   const interval = String(qs.get("interval") || "").toLowerCase();
   const returnTo = String(qs.get("returnTo") || "").trim();
   const site =
     String(qs.get("site") || "").trim() ||
     (typeof localStorage !== "undefined" ? String(localStorage.getItem("site") || "").trim() : "");
+
+  if (addon) {
+    const upgradeParams = new URLSearchParams();
+    upgradeParams.set("addon", addon);
+    if (interval) upgradeParams.set("interval", interval);
+    if (returnTo) upgradeParams.set("returnTo", returnTo);
+    return `/upgrade?${upgradeParams.toString()}`;
+  }
 
   if (tab === "billing" || plan) {
     const billingParams = new URLSearchParams();

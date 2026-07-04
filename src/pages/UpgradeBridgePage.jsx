@@ -8,6 +8,7 @@ import MobileWebOnlyNotice from "../components/mobile/MobileWebOnlyNotice";
 
 const VALID_PLANS = new Set(["starter", "pro", "business"]);
 const VALID_INTERVALS = new Set(["monthly", "annual", "yearly"]);
+const VALID_ADDONS = new Set(["website_design"]);
 
 const fallbackByRole = (role) => {
   if (role === "manager") return "/manager/dashboard";
@@ -22,6 +23,7 @@ const UpgradeBridgePage = () => {
 
   const query = useMemo(() => new URLSearchParams(location.search || ""), [location.search]);
   const plan = String(query.get("plan") || "").toLowerCase();
+  const addon = String(query.get("addon") || "").toLowerCase();
   const rawInterval = String(query.get("interval") || "").toLowerCase();
   const interval = rawInterval === "yearly" ? "annual" : rawInterval || "monthly";
   const returnTo = String(query.get("returnTo") || "").trim();
@@ -36,6 +38,7 @@ const UpgradeBridgePage = () => {
       const loginParams = new URLSearchParams();
       loginParams.set("tab", "billing");
       if (plan) loginParams.set("plan", plan);
+      if (addon) loginParams.set("addon", addon);
       if (interval) loginParams.set("interval", interval);
       if (returnTo) loginParams.set("returnTo", returnTo);
 
@@ -56,6 +59,35 @@ const UpgradeBridgePage = () => {
 
       if (user.role !== "manager") {
         window.location.replace(fallbackByRole(user.role));
+        return;
+      }
+
+      if (addon) {
+        if (!VALID_ADDONS.has(addon)) {
+          if (!active) return;
+          setState({
+            loading: false,
+            error: "Invalid or missing addon. Please restart from the pricing page.",
+          });
+          return;
+        }
+        try {
+          const res = await api.post("/api/manager/website-design/checkout");
+          const url = res?.data?.checkout_url || res?.data?.url;
+          if (!url) throw new Error("Checkout URL missing.");
+          window.location.href = url;
+        } catch (error) {
+          if (!active) return;
+          setState({
+            loading: false,
+            error:
+              error?.displayMessage ||
+              error?.response?.data?.message ||
+              error?.response?.data?.error ||
+              error?.message ||
+              "Unable to start website setup checkout.",
+          });
+        }
         return;
       }
 
@@ -99,15 +131,15 @@ const UpgradeBridgePage = () => {
     return () => {
       active = false;
     };
-  }, [interval, mobileComplianceMode, plan, rawInterval, returnTo]);
+  }, [addon, interval, mobileComplianceMode, plan, rawInterval, returnTo]);
 
   if (mobileComplianceMode) {
     return (
       <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center", px: 2 }}>
         <Box sx={{ width: "100%", maxWidth: 720 }}>
           <MobileWebOnlyNotice
-            title="Plan upgrades are web-only in mobile app mode"
-            webPath={`/manager/dashboard?view=settings&tab=billing${plan ? `&plan=${plan}` : ""}`}
+            title={addon ? "Website setup checkout is web-only in mobile app mode" : "Plan upgrades are web-only in mobile app mode"}
+            webPath={`/manager/dashboard?view=settings&tab=billing${plan ? `&plan=${plan}` : addon ? `&addon=${addon}` : ""}`}
           />
         </Box>
       </Box>

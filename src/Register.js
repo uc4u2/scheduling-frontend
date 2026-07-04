@@ -68,6 +68,7 @@ const Register = ({ slugOverride = "" }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [searchParams] = useSearchParams();
   const siteParam = (searchParams.get("site") || "").trim();
+  const addonParam = (searchParams.get("addon") || "").toLowerCase();
   const intervalParam = (searchParams.get("interval") || "").toLowerCase();
   const returnToParam = (searchParams.get("returnTo") || "").trim();
   const persistedSite =
@@ -134,6 +135,7 @@ const Register = ({ slugOverride = "" }) => {
       const loginParams = new URLSearchParams();
       if (targetRole === "client" && clientSite) loginParams.set("site", clientSite);
       if (selectedPlan) loginParams.set("plan", selectedPlan);
+      if (addonParam) loginParams.set("addon", addonParam);
       if (intervalParam) loginParams.set("interval", intervalParam === "yearly" ? "annual" : intervalParam);
       if (returnToParam) loginParams.set("returnTo", returnToParam);
       const nextPath = loginParams.toString() ? `/login?${loginParams.toString()}` : "/login";

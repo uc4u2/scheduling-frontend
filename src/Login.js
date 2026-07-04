@@ -106,6 +106,7 @@ const Login = ({ setToken, slugOverride = "" }) => {
   const nextParam = qs.get("next") || "";
   const siteParam = qs.get("site") || "";
   const planParam = (qs.get("plan") || "").toLowerCase();
+  const addonParam = (qs.get("addon") || "").toLowerCase();
   const intervalParam = (qs.get("interval") || "").toLowerCase();
   const returnToParam = (qs.get("returnTo") || "").trim();
   const disabledReasonParam = (qs.get("reason") || "").trim();
@@ -193,9 +194,10 @@ const Login = ({ setToken, slugOverride = "" }) => {
     return "";
   };
 
-  const upgradeTargetForPlan = (planKey) => {
+  const buildUpgradeTarget = ({ planKey = "", addonKey = "" } = {}) => {
     const upgradeQs = new URLSearchParams();
     if (planKey) upgradeQs.set("plan", planKey);
+    if (addonKey) upgradeQs.set("addon", addonKey);
     if (intervalParam) upgradeQs.set("interval", intervalParam === "yearly" ? "annual" : intervalParam);
     if (returnToParam) upgradeQs.set("returnTo", returnToParam);
     return `/upgrade?${upgradeQs.toString()}`;
@@ -290,10 +292,12 @@ const Login = ({ setToken, slugOverride = "" }) => {
         const next =
           nextParam ||
           (site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
-        if (planParam) {
+        if (addonParam) {
+          navigate(buildUpgradeTarget({ addonKey: addonParam }));
+        } else if (planParam) {
           localStorage.setItem("pending_plan_key", planParam);
           if (intervalParam) localStorage.setItem("pending_plan_interval", intervalParam === "yearly" ? "annual" : intervalParam);
-          navigate(upgradeTargetForPlan(planParam));
+          navigate(buildUpgradeTarget({ planKey: planParam }));
         } else {
           navigate(next);
         }
@@ -360,10 +364,15 @@ const Login = ({ setToken, slugOverride = "" }) => {
         return;
       }
 
+      if (addonParam) {
+        navigate(buildUpgradeTarget({ addonKey: addonParam }));
+        return;
+      }
+
       if (planParam) {
         localStorage.setItem("pending_plan_key", planParam);
         if (intervalParam) localStorage.setItem("pending_plan_interval", intervalParam === "yearly" ? "annual" : intervalParam);
-        navigate(upgradeTargetForPlan(planParam));
+        navigate(buildUpgradeTarget({ planKey: planParam }));
         return;
       }
 
@@ -637,6 +646,7 @@ const Login = ({ setToken, slugOverride = "" }) => {
                     onClick={() => {
                       const registerQs = new URLSearchParams();
                       if (planParam) registerQs.set("plan", planParam);
+                      if (addonParam) registerQs.set("addon", addonParam);
                       if (intervalParam) registerQs.set("interval", intervalParam);
                       if (returnToParam) registerQs.set("returnTo", returnToParam);
                       if (siteForRedirect()) registerQs.set("site", siteForRedirect());
