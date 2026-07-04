@@ -2330,22 +2330,14 @@ const siteTitle = useMemo(() => {
   const useSafeDarkMobileMenu = nav?.mobile_menu_safe_dark === true;
   const mobileDrawerBg = useMemo(() => {
     if (useSafeDarkMobileMenu) return "rgba(10, 14, 24, 0.98)";
-    const headerSurfaceCandidates = [
-      resolvedHeaderBg,
-      headerConfig?.scrolled_bg,
-      headerConfig?.bg,
-    ].filter(Boolean);
-    const solidHeaderSurface = headerSurfaceCandidates.find(
-      (value) => !isTranslucentCssColor(value)
-    );
-    if (solidHeaderSurface) return solidHeaderSurface;
-    const fallbackSurface =
+    return (
+      resolvedHeaderBg ||
+      headerConfig?.scrolled_bg ||
+      headerConfig?.bg ||
       activePageCssVars?.["--page-secondary-bg"] ||
-      activePageCssVars?.["--page-card-bg"];
-    if (fallbackSurface && !isTranslucentCssColor(fallbackSurface)) {
-      return fallbackSurface;
-    }
-    return "rgba(10, 14, 24, 0.98)";
+      activePageCssVars?.["--page-card-bg"] ||
+      "rgba(10, 14, 24, 0.98)"
+    );
   }, [
     useSafeDarkMobileMenu,
     resolvedHeaderBg,
