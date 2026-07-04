@@ -210,20 +210,26 @@ export default function SiteFrame({
   const mobileNavButtonStyling = useMemo(() => {
     return (active) => {
       const base = navButtonSx(active);
-      const hover =
-        base["&:hover"] && typeof base["&:hover"] === "object"
-          ? base["&:hover"]
-          : {};
+      const hoverBg = alpha(mobileDrawerTextColor || "#111827", active ? 0.14 : 0.08);
+      const activeBg = alpha(mobileDrawerTextColor || "#111827", 0.12);
+      const ghostBorder = alpha(mobileDrawerTextColor || "#111827", 0.22);
       return {
         ...base,
+        backgroundColor: active ? activeBg : "transparent",
         color: mobileDrawerTextColor,
-        borderColor:
-          navStyle?.variant === "ghost" ? mobileDrawerTextColor : base.borderColor,
+        border:
+          navStyle?.variant === "ghost"
+            ? `1px solid ${ghostBorder}`
+            : "1px solid transparent",
+        boxShadow: "none",
         "&:hover": {
-          ...hover,
+          backgroundColor: hoverBg,
           color: mobileDrawerTextColor,
-          borderColor:
-            navStyle?.variant === "ghost" ? mobileDrawerTextColor : hover.borderColor,
+          border:
+            navStyle?.variant === "ghost"
+              ? `1px solid ${ghostBorder}`
+              : "1px solid transparent",
+          boxShadow: "none",
         },
       };
     };
