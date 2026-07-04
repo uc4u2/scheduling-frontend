@@ -462,7 +462,23 @@ export const listManagerClient360DocumentRequests = (clientId) =>
   unwrap(api.get(`/api/manager/client-360/${clientId}/document-requests`));
 
 export const createManagerClient360DocumentRequest = (clientId, payload) =>
-  unwrap(api.post(`/api/manager/client-360/${clientId}/document-requests`, payload));
+  (() => {
+    const attachments = Array.from(payload?.attachments || []);
+    if (!attachments.length) {
+      return unwrap(api.post(`/api/manager/client-360/${clientId}/document-requests`, payload));
+    }
+    const formData = new FormData();
+    formData.append("title", String(payload?.title || "").trim());
+    formData.append("category", String(payload?.category || "other"));
+    formData.append("message", String(payload?.message || "").trim());
+    formData.append("expiry_days", String(payload?.expiry_days || 7));
+    attachments.forEach((file) => formData.append("attachments", file));
+    return unwrap(
+      api.post(`/api/manager/client-360/${clientId}/document-requests`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+    );
+  })();
 
 export const cancelManagerClient360DocumentRequest = (clientId, requestId) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/document-requests/${requestId}/cancel`));

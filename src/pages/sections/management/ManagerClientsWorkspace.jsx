@@ -24,6 +24,9 @@ import {
   Link,
   IconButton,
   InputLabel,
+  List,
+  ListItem,
+  ListItemText,
   Menu,
   MenuItem,
   Paper,
@@ -1108,6 +1111,7 @@ function EmailTemplateManagerDialog({
 
 function RequestDocumentDialog({ open, saving, initialValues = null, onClose, onSubmit }) {
   const [form, setForm] = useState({ title: "", category: "other", message: "", expiry_days: 7 });
+  const [files, setFiles] = useState([]);
 
   useEffect(() => {
     if (!open) return;
@@ -1117,7 +1121,10 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
       message: initialValues?.message || "",
       expiry_days: initialValues?.expiry_days || 7,
     });
+    setFiles([]);
   }, [open, initialValues]);
+
+  const fileList = Array.from(files || []);
 
   const applyTemplate = (template) => {
     setForm({
@@ -1180,13 +1187,36 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
             onChange={(event) => setForm((prev) => ({ ...prev, expiry_days: event.target.value }))}
             inputProps={{ min: 1, max: 30 }}
           />
+          <Box>
+            <Button variant="outlined" component="label" sx={{ textTransform: "none" }}>
+              Attach files
+              <input
+                hidden
+                multiple
+                type="file"
+                onChange={(event) => setFiles(event.target.files)}
+              />
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file.
+            </Typography>
+            {fileList.length > 0 && (
+              <List dense sx={{ mt: 1 }}>
+                {fileList.map((file) => (
+                  <ListItem key={`${file.name}-${file.size}`} disableGutters>
+                    <ListItemText primary={file.name} secondary={`${Math.round(file.size / 1024)} KB`} />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
         </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Cancel</Button>
         <Button
           variant="contained"
-          onClick={() => onSubmit(form)}
+          onClick={() => onSubmit({ ...form, attachments: fileList })}
           disabled={saving || !String(form.title || "").trim()}
         >
           {saving ? "Requesting..." : "Send request"}
