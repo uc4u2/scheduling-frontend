@@ -189,12 +189,47 @@ export default function SiteFrame({
       return { ...base, color: active ? base.color : preferred || fallbackText };
     };
   }, [navButtonSx, headerBg, navStyle?.variant, navStyle?.text]);
-  const mobileDrawerBg =
-    headerConfig?.bg && String(headerConfig.bg).trim().toLowerCase() !== "transparent"
-      ? headerConfig.bg
-      : headerConfig?.scrolled_bg ||
-        themeOverrides?.header?.background ||
-        "rgba(255,255,255,0.98)";
+  const mobileDrawerBg = useMemo(() => {
+    const headerCandidate =
+      headerConfig?.bg && String(headerConfig.bg).trim().toLowerCase() !== "transparent"
+        ? headerConfig.bg
+        : null;
+    const scrolledCandidate =
+      headerConfig?.scrolled_bg && String(headerConfig.scrolled_bg).trim()
+        ? headerConfig.scrolled_bg
+        : null;
+    const pageCandidate =
+      themeOverrides?.page?.secondaryBackground ||
+      site?.theme?.secondaryBackground ||
+      "rgba(15,23,42,0.96)";
+    const preferredText = headerConfig?.text_color || headerTextColor || navStyle?.text;
+
+    const hasEnoughContrast = (bg, text) => {
+      const bgLum = getLuminance(bg);
+      const textLum = getLuminance(text);
+      return (
+        bgLum != null &&
+        textLum != null &&
+        Math.abs(bgLum - textLum) >= 0.45
+      );
+    };
+
+    if (headerCandidate && hasEnoughContrast(headerCandidate, preferredText)) {
+      return headerCandidate;
+    }
+    if (scrolledCandidate && hasEnoughContrast(scrolledCandidate, preferredText)) {
+      return scrolledCandidate;
+    }
+    return pageCandidate;
+  }, [
+    headerConfig?.bg,
+    headerConfig?.scrolled_bg,
+    headerConfig?.text_color,
+    headerTextColor,
+    navStyle?.text,
+    themeOverrides?.page?.secondaryBackground,
+    site?.theme?.secondaryBackground,
+  ]);
   const mobileDrawerTextColor = useMemo(() => {
     const preferred = headerConfig?.text_color || headerTextColor || navStyle?.text;
     const fallback = pickTextColorForBg(mobileDrawerBg);
