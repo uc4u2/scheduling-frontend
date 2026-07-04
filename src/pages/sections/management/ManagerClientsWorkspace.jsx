@@ -1146,8 +1146,8 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
         <Stack spacing={1.5} sx={{ mt: 0.5 }}>
           <Alert severity="info" sx={{ alignItems: "flex-start" }}>
             {isSignedDocumentFlow
-              ? "Send the unsigned file or instructions here. We send a secure link, the client uploads the signed copy, and the returned file appears in Stored documents."
-              : "We send a secure upload link. When the client uploads the file, it appears below in Stored documents."}
+              ? "Attach the unsigned file if needed. We send a secure link, the client uploads the signed copy, and it appears in Stored documents."
+              : "We send a secure upload link. When the client uploads the file, it appears in Stored documents."}
           </Alert>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {CLIENT_DOCUMENT_REQUEST_TEMPLATES.map((template) => (
@@ -1162,7 +1162,7 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
           </Stack>
           <TextField
             fullWidth
-            label="Document name"
+            label="Request title"
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
           />
@@ -1207,7 +1207,7 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
               />
             </Button>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file.
+              Optional. Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file.
             </Typography>
             {fileList.length > 0 && (
               <List dense sx={{ mt: 1 }}>
@@ -4328,7 +4328,7 @@ export default function ManagerClientsWorkspace() {
                                 </Paper>
                               );
                             }}
-                            empty={<Typography color="text.secondary">No upload requests are currently waiting on the client.</Typography>}
+                            empty={<Typography color="text.secondary">No active upload requests.</Typography>}
                           />
                         </Box>
                         <Box>
@@ -4406,13 +4406,13 @@ export default function ManagerClientsWorkspace() {
                                 </Paper>
                               );
                             }}
-                            empty={<Typography color="text.secondary">Returned documents appear in the document vault.</Typography>}
+                            empty={<Typography color="text.secondary">No completed or closed requests yet.</Typography>}
                           />
                         </Box>
                         {!sortedDocumentRequests.length ? (
                           <EmptyStateCard
                             title="No document requests yet"
-                            description="Send a secure upload request and the returned file will appear here and in the document vault."
+                            description="Send a secure upload request. Returned files will appear here and in the document vault."
                             primaryAction={(
                               <Button variant="contained" size="small" onClick={handleOpenSignedDocumentRequest}>
                                 Request signed document
