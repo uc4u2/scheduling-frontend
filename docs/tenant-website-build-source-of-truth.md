@@ -9,9 +9,12 @@ It is intentionally practical. Use it before creating or changing a tenant websi
 - Tenant/client reference: `ophoto.ch`
 - Build type: photography / gallery-first public website
 - Delivery method: importable JSON template
-- Template key: `tenant-photography-ophoto-noir-v2`
-- Backend template file:
+- French template key: `tenant-photography-ophoto-noir-v2`
+- French backend template file:
   - `backend/app/website_templates/tenant-photography-ophoto-noir-v2.json`
+- English neutral template key: `tenant-photography-gallery-neutral-en-v1`
+- English neutral backend template file:
+  - `backend/app/website_templates/tenant-photography-gallery-neutral-en-v1.json`
 - Frontend asset folder:
   - `frontend/public/website/tenant-photography-ophoto-editorial/`
 
@@ -46,7 +49,7 @@ This is not a generic service business site.
 
 ## Page map
 
-Required pages in the template:
+Required pages in the French tenant template:
 - `home`
 - `about`
 - `pricing`
@@ -60,12 +63,26 @@ Required pages in the template:
 - `evenements`
 - `traitement`
 
+Required pages in the English neutral template:
+- `home`
+- `about`
+- `services-classic`
+- `gallery`
+- `pricing`
+- `contact`
+- `products`
+- `my-bookings`
+- `weddings`
+- `maternity`
+- `children`
+- `commercial`
+- `fashion`
+- `events`
+- `retouching`
+
 Top navigation should stay lean:
-- Home
-- À propos
-- Galerie
-- Prix
-- Contact
+- French version: `Accueil`, `À propos`, `Galerie`, `Prix`, `Contact`
+- English neutral version: `Home`, `About`, `Services`, `Gallery`, `Pricing`, `Contact`, `Products`
 
 Category pages should be reachable from:
 - home category cards
@@ -119,7 +136,9 @@ These are source pools, not final locked selections.
 
 ## Content direction
 
-Use French-first copy.
+Use French-first copy for the OPhoto tenant file.
+
+Use English neutral copy for the reusable gallery version.
 
 Tone:
 - artistic

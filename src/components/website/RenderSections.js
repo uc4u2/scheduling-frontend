@@ -659,85 +659,88 @@ const HeroInner = ({
   ctaLink,
   secondaryCtaText,
   secondaryCtaLink,
-}) => (
-  <Stack
-    spacing={2}
-    alignItems={
-      textAlign === "center" ? "center" : textAlign === "right" ? "flex-end" : "flex-start"
-    }
-    sx={{ textAlign }}
-  >
-    {eyebrow && (
-      <HtmlTypo
-        variant="overline"
-        sx={{
-          letterSpacing: ".12em",
-          opacity: 0.9,
-          // eyebrow inherits the hero text color by default
-          color:
-            "var(--page-hero-eyebrow-color, var(--page-hero-text-color, inherit))",
-          fontFamily:
-            "var(--page-hero-heading-font, var(--page-heading-font, inherit))",
-        }}
-      >
-        {eyebrow}
-      </HtmlTypo>
-    )}
+}) => {
+  const theme = useTheme();
+  const smDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const hideNarrativeOnMobile = smDown && Boolean(ctaText || secondaryCtaText);
 
-    {heading && (
-      <HtmlTypo
-        variant="h2"
-        sx={{
-          // let managers control heading color/font via Page Style
-          color:
-            "var(--page-hero-heading-color, var(--page-heading-color, inherit))",
-          fontFamily:
-            "var(--page-hero-heading-font, var(--page-heading-font, inherit))",
-          fontWeight: 800,
-          letterSpacing: "-0.01em",
-          textShadow: "var(--page-hero-heading-shadow, 0 2px 24px rgba(0,0,0,.25))",
-        }}
-      >
-        {heading}
-      </HtmlTypo>
-    )}
+  return (
+    <Stack
+      spacing={2}
+      alignItems={
+        textAlign === "center" ? "center" : textAlign === "right" ? "flex-end" : "flex-start"
+      }
+      sx={{ textAlign }}
+    >
+      {!hideNarrativeOnMobile && eyebrow && (
+        <HtmlTypo
+          variant="overline"
+          sx={{
+            letterSpacing: ".12em",
+            opacity: 0.9,
+            color:
+              "var(--page-hero-eyebrow-color, var(--page-hero-text-color, inherit))",
+            fontFamily:
+              "var(--page-hero-heading-font, var(--page-heading-font, inherit))",
+          }}
+        >
+          {eyebrow}
+        </HtmlTypo>
+      )}
 
-    {subheading && (
-      <HtmlTypo
-        variant="h6"
-        sx={{
-          // previously hard-coded grey; now inherit hero text color
-          color:
-            "var(--page-hero-text-color, var(--page-body-color, inherit))",
-          maxWidth: 900,
-          fontFamily:
-            "var(--page-hero-body-font, var(--page-body-font, inherit))",
-        }}
-      >
-        {subheading}
-      </HtmlTypo>
-    )}
+      {!hideNarrativeOnMobile && heading && (
+        <HtmlTypo
+          variant="h2"
+          sx={{
+            color:
+              "var(--page-hero-heading-color, var(--page-heading-color, inherit))",
+            fontFamily:
+              "var(--page-hero-heading-font, var(--page-heading-font, inherit))",
+            fontWeight: 800,
+            letterSpacing: "-0.01em",
+            textShadow: "var(--page-hero-heading-shadow, 0 2px 24px rgba(0,0,0,.25))",
+          }}
+        >
+          {heading}
+        </HtmlTypo>
+      )}
 
-    {(ctaText || secondaryCtaText) && (
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ width: textAlign === "center" ? "auto" : "fit-content", ml: textAlign === "right" ? "auto" : 0 }}
-      >
-        {ctaText && (
-          <Button aria-label={toPlain(ctaText)} href={ctaLink || "#"} size="large" variant="contained">
-            {toPlain(ctaText)}
-          </Button>
-        )}
-        {secondaryCtaText && (
-          <Button aria-label={toPlain(secondaryCtaText)} href={secondaryCtaLink || "#"} size="large" variant="outlined">
-            {toPlain(secondaryCtaText)}
-          </Button>
-        )}
-      </Stack>
-    )}
-  </Stack>
-);
+      {!hideNarrativeOnMobile && subheading && (
+        <HtmlTypo
+          variant="h6"
+          sx={{
+            color:
+              "var(--page-hero-text-color, var(--page-body-color, inherit))",
+            maxWidth: 900,
+            fontFamily:
+              "var(--page-hero-body-font, var(--page-body-font, inherit))",
+          }}
+        >
+          {subheading}
+        </HtmlTypo>
+      )}
+
+      {(ctaText || secondaryCtaText) && (
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ width: textAlign === "center" ? "auto" : "fit-content", ml: textAlign === "right" ? "auto" : 0 }}
+        >
+          {ctaText && (
+            <Button aria-label={toPlain(ctaText)} href={ctaLink || "#"} size="large" variant="contained">
+              {toPlain(ctaText)}
+            </Button>
+          )}
+          {secondaryCtaText && (
+            <Button aria-label={toPlain(secondaryCtaText)} href={secondaryCtaLink || "#"} size="large" variant="outlined">
+              {toPlain(secondaryCtaText)}
+            </Button>
+          )}
+        </Stack>
+      )}
+    </Stack>
+  );
+};
 
 function useTimedIndex(length, intervalMs = 5000, autoplay = true) {
   const [i, setI] = React.useState(0);
