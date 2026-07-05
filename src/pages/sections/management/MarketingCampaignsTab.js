@@ -33,6 +33,7 @@ function CampaignCard({
   columns,             // [{key,label,align?}]
   mapRowKey,           // fn(row) -> unique key
   enableCopyOverrides = true,   // NEW
+  providerReady = false,
 }) {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -53,7 +54,7 @@ function CampaignCard({
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState({});
-  const [dryRun, setDryRun] = useState(false);
+  const [dryRun, setDryRun] = useState(true);
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState("");
 
@@ -140,7 +141,7 @@ function CampaignCard({
       const dryMode = data?.dry_run ? t("campaigns.dryRunStatusOnShort") : t("campaigns.dryRunStatusOffShort");
       setInfo(t("campaigns.sendResult", { count: sentCount, mode: dryMode }));
     } catch (e) {
-      setErr(e?.response?.data?.error || e?.message || t("campaigns.failedToSend"));
+      setErr(e?.response?.data?.message || e?.response?.data?.error || e?.message || t("campaigns.failedToSend"));
     } finally {
       setSending(false);
     }
@@ -151,6 +152,11 @@ function CampaignCard({
       <CardHeader title={title} subheader={subtitle} />
       <CardContent>
         {helpText && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{helpText}</Typography>}
+        {!providerReady && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Connect SendGrid to enable live marketing sends. Recipient preview still works, but shared Schedulaa mail is no longer used for marketing campaigns.
+          </Alert>
+        )}
 
         {/* Params */}
         <Grid container spacing={2} alignItems="center">
@@ -223,13 +229,13 @@ function CampaignCard({
           <Grid item xs={12} md="auto">
             <FormControlLabel
               control={<Switch checked={dryRun} onChange={(e)=>setDryRun(e.target.checked)} />}
-              label={`${t("campaigns.dryRun")} (${dryRun ? t("campaigns.dryRunOn") : t("campaigns.dryRunOff")})`}
+              label={`Preview recipients only (${dryRun ? "ON" : "OFF"})`}
             />
           </Grid>
           <Grid item xs={12} md="auto">
             <Button
               variant="outlined"
-              disabled={sending || rows.length === 0}
+              disabled={sending || rows.length === 0 || !providerReady}
               onClick={()=>send("selected")}
             >
               {t("buttons.sendSelected")}
@@ -238,7 +244,7 @@ function CampaignCard({
           <Grid item xs={12} md="auto">
             <Button
               variant="outlined"
-              disabled={sending}
+              disabled={sending || !providerReady}
               onClick={()=>send("all")}
             >
               {t("buttons.sendAllServer")}
@@ -352,6 +358,198 @@ function CampaignCard({
   );
 }
 
+function MarketingProviderCard({ auth, onProviderChange }) {
+  const [provider, setProvider] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [form, setForm] = useState({
+    provider: "sendgrid",
+    name: "Primary SendGrid",
+    from_email: "",
+    from_name: "",
+    reply_to_email: "",
+    daily_limit: 500,
+    hourly_limit: 100,
+    sendgrid_api_key: "",
+    test_to_email: "",
+  });
+
+  const loadProvider = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get("/api/manager/marketing/provider", auth);
+      const row = data?.provider || null;
+      setProvider(row);
+      if (onProviderChange) onProviderChange(row);
+      setForm((prev) => ({
+        ...prev,
+        provider: "sendgrid",
+        name: row?.name || "Primary SendGrid",
+        from_email: row?.from_email || "",
+        from_name: row?.from_name || "",
+        reply_to_email: row?.reply_to_email || "",
+        daily_limit: row?.daily_limit || 500,
+        hourly_limit: row?.hourly_limit || 100,
+        sendgrid_api_key: "",
+      }));
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to load marketing provider.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProvider();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onChange = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
+
+  const saveProvider = async () => {
+    setSaving(true);
+    setError("");
+    setInfo("");
+    try {
+      const payload = {
+        provider: "sendgrid",
+        name: form.name,
+        from_email: form.from_email,
+        from_name: form.from_name,
+        reply_to_email: form.reply_to_email,
+        daily_limit: Number(form.daily_limit || 500),
+        hourly_limit: Number(form.hourly_limit || 100),
+      };
+      if (form.sendgrid_api_key) payload.sendgrid_api_key = form.sendgrid_api_key;
+      const { data } = provider?.id
+        ? await api.patch(`/api/manager/marketing/provider/${provider.id}`, payload, auth)
+        : await api.post("/api/manager/marketing/provider", payload, auth);
+      if (onProviderChange) onProviderChange(data?.provider || null);
+      setForm((prev) => ({ ...prev, sendgrid_api_key: "" }));
+      setInfo("SendGrid provider saved.");
+      await loadProvider();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to save marketing provider.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testProvider = async () => {
+    if (!provider?.id) return;
+    setSaving(true);
+    setError("");
+    setInfo("");
+    try {
+      const { data } = await api.post(`/api/manager/marketing/provider/${provider.id}/test`, {
+        to_email: form.test_to_email || form.reply_to_email || form.from_email,
+      }, auth);
+      setInfo(`Test email sent to ${data?.result?.sent_to || form.test_to_email || form.from_email}.`);
+      await loadProvider();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to send provider test email.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setProviderStatus = async (action) => {
+    if (!provider?.id) return;
+    setSaving(true);
+    setError("");
+    setInfo("");
+    try {
+      const { data } = await api.post(`/api/manager/marketing/provider/${provider.id}/${action}`, {}, auth);
+      if (onProviderChange) onProviderChange(data?.provider || null);
+      setInfo(action === "activate" ? "Provider activated." : "Provider paused.");
+      await loadProvider();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || `Failed to ${action} provider.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const statusLabel = provider?.status || "missing";
+
+  return (
+    <Card variant="outlined" sx={{ mb: 3 }}>
+      <CardHeader
+        title="Marketing Email Provider"
+        subheader="Use your own SendGrid account for marketing campaigns. Transactional Schedulaa emails stay on shared app mail."
+      />
+      <CardContent>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {info && <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert>}
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={2}>
+            <TextField label="Provider" fullWidth value="SendGrid" disabled />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField label="Connection status" fullWidth value={statusLabel} disabled />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField label="Connection name" fullWidth value={form.name} onChange={(e) => onChange("name", e.target.value)} disabled={loading || saving} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              label={provider?.credentials_configured ? "SendGrid API key (leave blank to keep current key)" : "SendGrid API key"}
+              fullWidth
+              type="password"
+              value={form.sendgrid_api_key}
+              onChange={(e) => onChange("sendgrid_api_key", e.target.value)}
+              disabled={loading || saving}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField label="From email" fullWidth value={form.from_email} onChange={(e) => onChange("from_email", e.target.value)} disabled={loading || saving} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField label="From name" fullWidth value={form.from_name} onChange={(e) => onChange("from_name", e.target.value)} disabled={loading || saving} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField label="Reply-to email" fullWidth value={form.reply_to_email} onChange={(e) => onChange("reply_to_email", e.target.value)} disabled={loading || saving} />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField label="Daily limit" type="number" fullWidth value={form.daily_limit} onChange={(e) => onChange("daily_limit", e.target.value)} disabled={loading || saving} />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField label="Hourly limit" type="number" fullWidth value={form.hourly_limit} onChange={(e) => onChange("hourly_limit", e.target.value)} disabled={loading || saving} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField label="Test email recipient" fullWidth value={form.test_to_email} onChange={(e) => onChange("test_to_email", e.target.value)} disabled={loading || saving || !provider?.id} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="body2" color="text.secondary">
+              Last provider test: {provider?.last_test_send_at || "Never"}<br />
+              Last provider error: {provider?.last_error || "None"}
+            </Typography>
+          </Grid>
+          <Grid item xs={12}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button variant="contained" onClick={saveProvider} disabled={loading || saving}>
+                Save
+              </Button>
+              <Button variant="outlined" onClick={testProvider} disabled={loading || saving || !provider?.id}>
+                Test send
+              </Button>
+              <Button variant="outlined" onClick={() => setProviderStatus("pause")} disabled={loading || saving || !provider?.id || provider?.status === "paused"}>
+                Pause
+              </Button>
+              <Button variant="outlined" onClick={() => setProviderStatus("activate")} disabled={loading || saving || !provider?.id || provider?.status === "active"}>
+                Activate
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function MarketingCampaignsTab() {
   const { t, i18n } = useTranslation();
   const { status: billingStatus } = useBillingStatus();
@@ -396,6 +594,21 @@ export default function MarketingCampaignsTab() {
   ), [i18n.language]);
 
   const [guideOpen, setGuideOpen] = useState(false);
+  const { auth } = useAuth();
+  const [provider, setProvider] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await api.get("/api/manager/marketing/provider", auth);
+        if (alive) setProvider(data?.provider || null);
+      } catch {
+        if (alive) setProvider(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [auth]);
 
   if (!canAccess) {
     return (
@@ -435,6 +648,7 @@ export default function MarketingCampaignsTab() {
         <MarketingCampaignsGuide onClose={()=>setGuideOpen(false)} />
       </Drawer>
       {/* Export: company clients (scoped) */}
+      <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
       <ExportClientsCard />
 
       {/* 0) Broadcast (Simple Announcement) */}
@@ -465,6 +679,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`broadcast_${r.client_id}`}
         enableCopyOverrides={false}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 1) Win-Back */}
@@ -495,6 +710,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_expiry", label: columnLabel("expiry") },
         ]}
         mapRowKey={(r)=>`winback_${r.client_id}`}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 2) Skipped Rebook */}
@@ -520,6 +736,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`skipped_${r.client_id}_${r.last_service_date}`}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 3) VIP Loyalty */}
@@ -546,6 +763,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`vip_${r.client_id}`}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 4) Anniversary */}
@@ -572,6 +790,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`anniv_${r.client_id}`}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 5) New Service Launch (optional) */}
@@ -598,6 +817,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`newsvc_${r.client_id}`}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 6) No-Show Recovery (optional) */}
@@ -625,6 +845,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`nsr_${r.client_id}`}
+        providerReady={provider?.status === "active"}
       />
 
       {/* 7) Add-on Upsell (optional) */}
@@ -652,6 +873,7 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`upsell_${r.client_id}`}
+        providerReady={provider?.status === "active"}
       />
 
     </Box>
