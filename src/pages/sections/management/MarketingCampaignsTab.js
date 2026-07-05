@@ -34,6 +34,7 @@ function CampaignCard({
   mapRowKey,           // fn(row) -> unique key
   enableCopyOverrides = true,   // NEW
   providerReady = false,
+  onCampaignSent,
 }) {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -57,6 +58,7 @@ function CampaignCard({
   const [dryRun, setDryRun] = useState(true);
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState("");
+  const [sendSummary, setSendSummary] = useState(null);
 
   // Service lookup (for fields with type: "service")
   const [serviceOptions, setServiceOptions] = useState([]);
@@ -114,16 +116,18 @@ function CampaignCard({
   };
 
   const send = async (mode /* "selected" | "all" */) => {
-    setErr(""); setInfo(""); setSending(true);
+    setErr(""); setInfo(""); setSendSummary(null); setSending(true);
     try {
       let payload = { dry_run: !!dryRun };
       if (mode === "selected") {
         const targets = rows
           .filter(r => selected[mapRowKey(r)])
           .map(r => ({
+            client_id: r.client_id ?? null,
             email: r.email,
             subject: r.subject,
-            html: r.html
+            html: r.html,
+            text: r.text || "",
           }));
         if (targets.length === 0) {
           setInfo(t("campaigns.noSelection"));
@@ -134,12 +138,31 @@ function CampaignCard({
       }
       if (mode === "all") {
         if (!rows.length) { setInfo(t("campaigns.noPreviewRows")); setSending(false); return; }
-        payload.targets = rows.map(r => ({ email: r.email, subject: r.subject, html: r.html }));
+        payload.targets = rows.map(r => ({
+          client_id: r.client_id ?? null,
+          email: r.email,
+          subject: r.subject,
+          html: r.html,
+          text: r.text || "",
+        }));
       }
       const { data } = await api.post(`${sendPath}`, payload, auth);
-      const sentCount = data?.sent ?? 0;
-      const dryMode = data?.dry_run ? t("campaigns.dryRunStatusOnShort") : t("campaigns.dryRunStatusOffShort");
-      setInfo(t("campaigns.sendResult", { count: sentCount, mode: dryMode }));
+      if (data?.dry_run) {
+        const sentCount = data?.sent ?? 0;
+        const dryMode = data?.dry_run ? t("campaigns.dryRunStatusOnShort") : t("campaigns.dryRunStatusOffShort");
+        setInfo(t("campaigns.sendResult", { count: sentCount, mode: dryMode }));
+      } else {
+        setSendSummary({
+          campaignId: data?.campaign_id,
+          status: data?.status,
+          sent: data?.counts?.sent ?? 0,
+          skipped: data?.counts?.skipped ?? 0,
+          failed: data?.counts?.failed ?? 0,
+          provider: data?.provider?.name || "SendGrid",
+        });
+        setInfo(data?.message || "Campaign sent through your connected SendGrid provider.");
+        if (onCampaignSent) onCampaignSent();
+      }
     } catch (e) {
       setErr(e?.response?.data?.message || e?.response?.data?.error || e?.message || t("campaigns.failedToSend"));
     } finally {
@@ -235,19 +258,19 @@ function CampaignCard({
           <Grid item xs={12} md="auto">
             <Button
               variant="outlined"
-              disabled={sending || rows.length === 0 || !providerReady}
+              disabled={sending || rows.length === 0 || (!providerReady && !dryRun)}
               onClick={()=>send("selected")}
             >
-              {t("buttons.sendSelected")}
+              {dryRun ? "Preview selected" : "Send selected"}
             </Button>
           </Grid>
           <Grid item xs={12} md="auto">
             <Button
-              variant="outlined"
-              disabled={sending || !providerReady}
+              variant={dryRun ? "outlined" : "contained"}
+              disabled={sending || (!providerReady && !dryRun)}
               onClick={()=>send("all")}
             >
-              {t("buttons.sendAllServer")}
+              {dryRun ? "Preview all rows" : "Send campaign"}
             </Button>
           </Grid>
         </Grid>
@@ -308,6 +331,11 @@ function CampaignCard({
         {(loading || sending) && <LinearProgress sx={{ my: 2 }} />}
         {err && <Alert severity="error" sx={{ my: 2 }}>{err}</Alert>}
         {info && <Alert severity="success" sx={{ my: 2 }}>{info}</Alert>}
+        {sendSummary && (
+          <Alert severity="info" sx={{ my: 2 }}>
+            Campaign #{sendSummary.campaignId} via {sendSummary.provider}: sent {sendSummary.sent}, skipped {sendSummary.skipped}, failed {sendSummary.failed}. Status: {sendSummary.status}.
+          </Alert>
+        )}
 
         <Divider sx={{ my: 2 }} />
 
@@ -347,6 +375,73 @@ function CampaignCard({
                       if (v === undefined || v === null || v === "") v = t("campaigns.placeholders.empty");
                       return <TableCell key={col.key} align={col.align || "left"}>{String(v)}</TableCell>;
                     })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get("/api/manager/marketing/campaigns?limit=10", auth);
+        if (alive) setCampaigns(Array.isArray(data?.campaigns) ? data.campaigns : []);
+      } catch {
+        if (alive) setCampaigns([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [auth, refreshKey]);
+
+  return (
+    <Card variant="outlined" sx={{ mb: 3 }}>
+      <CardHeader
+        title="Recent marketing campaigns"
+        subheader="Latest campaigns sent through your connected provider."
+      />
+      <CardContent>
+        {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+        {!loading && campaigns.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No campaign history yet.
+          </Typography>
+        ) : (
+          <Box sx={{ overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Sent</TableCell>
+                  <TableCell align="right">Failed</TableCell>
+                  <TableCell>Created</TableCell>
+                  <TableCell>Provider</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {campaigns.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>{row.name}</TableCell>
+                    <TableCell>{row.campaign_type}</TableCell>
+                    <TableCell>{row.status}</TableCell>
+                    <TableCell align="right">{row?.counts?.sent ?? 0}</TableCell>
+                    <TableCell align="right">{row?.counts?.failed ?? 0}</TableCell>
+                    <TableCell>{row.created_at || "-"}</TableCell>
+                    <TableCell>{row.provider_name || "SendGrid"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -596,6 +691,9 @@ export default function MarketingCampaignsTab() {
   const [guideOpen, setGuideOpen] = useState(false);
   const { auth } = useAuth();
   const [provider, setProvider] = useState(null);
+  const [campaignRefreshKey, setCampaignRefreshKey] = useState(0);
+
+  const handleCampaignSent = () => setCampaignRefreshKey((v) => v + 1);
 
   useEffect(() => {
     let alive = true;
@@ -649,6 +747,7 @@ export default function MarketingCampaignsTab() {
       </Drawer>
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
+      <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
 
       {/* 0) Broadcast (Simple Announcement) */}
@@ -680,6 +779,7 @@ export default function MarketingCampaignsTab() {
         mapRowKey={(r)=>`broadcast_${r.client_id}`}
         enableCopyOverrides={false}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 1) Win-Back */}
@@ -711,6 +811,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`winback_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 2) Skipped Rebook */}
@@ -737,6 +838,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`skipped_${r.client_id}_${r.last_service_date}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 3) VIP Loyalty */}
@@ -764,6 +866,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`vip_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 4) Anniversary */}
@@ -791,6 +894,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`anniv_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 5) New Service Launch (optional) */}
@@ -818,6 +922,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`newsvc_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 6) No-Show Recovery (optional) */}
@@ -846,6 +951,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`nsr_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
       {/* 7) Add-on Upsell (optional) */}
@@ -874,6 +980,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`upsell_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        onCampaignSent={handleCampaignSent}
       />
 
     </Box>
