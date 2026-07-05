@@ -199,6 +199,50 @@ export default function MarketingCampaignsGuide({ onClose }) {
       <Typography variant="h5" gutterBottom>{t("help.marketing.title")}</Typography>
       <Typography variant="body1" gutterBottom>{t("help.marketing.intro")}</Typography>
 
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="h6" gutterBottom>SendGrid setup for live campaigns</Typography>
+      <Typography variant="body2" gutterBottom>
+        Marketing campaigns only send live email after you connect your own SendGrid account and activate it.
+        Transactional Schedulaa emails are separate and stay on shared app mail.
+      </Typography>
+      <ol>
+        <li>
+          <Typography variant="body2">
+            Create or log in to your SendGrid account in Twilio SendGrid.
+          </Typography>
+        </li>
+        <li>
+          <Typography variant="body2">
+            In SendGrid, go to <strong>Settings</strong> → <strong>API Keys</strong>, create a new API key, and give it Mail Send access.
+          </Typography>
+        </li>
+        <li>
+          <Typography variant="body2">
+            Copy that API key and paste it into the <strong>SendGrid API key</strong> field in Schedulaa.
+          </Typography>
+        </li>
+        <li>
+          <Typography variant="body2">
+            Fill in the sender details exactly how you want clients to see them:
+            <strong> From email</strong>, <strong>From name</strong>, and optional <strong>Reply-to email</strong>.
+          </Typography>
+        </li>
+        <li>
+          <Typography variant="body2">
+            Click <strong>Save</strong>, then use <strong>Test send</strong> to confirm the provider works.
+          </Typography>
+        </li>
+        <li>
+          <Typography variant="body2">
+            After the test email arrives successfully, click <strong>Activate</strong>. Until you activate it, live campaign sending stays disabled.
+          </Typography>
+        </li>
+      </ol>
+      <Typography variant="body2" sx={{ mb: 2 }}>
+        Recommended SendGrid setup: authenticate your sender domain in SendGrid before large campaigns so Gmail, Yahoo, and Outlook are less likely to spam your emails.
+      </Typography>
+
       <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>{t("help.marketing.quickStartTitle")}</Typography>
       <ol>
         {quickStartSteps.map((step, idx) => (<li key={idx}>{step}</li>))}

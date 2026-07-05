@@ -34,6 +34,7 @@ function CampaignCard({
   mapRowKey,           // fn(row) -> unique key
   enableCopyOverrides = true,   // NEW
   providerReady = false,
+  providerStatus = "missing",
   onCampaignSent,
 }) {
   const { t } = useTranslation();
@@ -177,7 +178,10 @@ function CampaignCard({
         {helpText && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{helpText}</Typography>}
         {!providerReady && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Connect SendGrid to enable live marketing sends. Recipient preview still works, but shared Schedulaa mail is no longer used for marketing campaigns.
+            {providerStatus === "draft" && "SendGrid is connected and testable, but live campaigns stay disabled until you click Activate."}
+            {providerStatus === "paused" && "Your SendGrid connection is paused. Reactivate it before sending live campaigns."}
+            {providerStatus === "error" && "Your SendGrid connection needs attention before live campaigns can be sent."}
+            {providerStatus === "missing" && "Connect SendGrid to enable live marketing sends. Recipient preview still works, but shared Schedulaa mail is no longer used for marketing campaigns."}
           </Alert>
         )}
 
@@ -386,9 +390,79 @@ function CampaignCard({
   );
 }
 
+function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [recipients, setRecipients] = useState([]);
+
+  useEffect(() => {
+    if (!open || !campaign?.id) return;
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const { data } = await api.get(`/api/manager/marketing/campaigns/${campaign.id}/recipients?limit=200`, auth);
+        if (alive) setRecipients(Array.isArray(data?.recipients) ? data.recipients : []);
+      } catch (e) {
+        if (alive) setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to load recipients.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [auth, open, campaign?.id]);
+
+  return (
+    <Drawer anchor="right" open={open} onClose={onClose} sx={{ '& .MuiDrawer-paper': { width: { xs: "100%", md: 760 }, p: 2 } }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Campaign recipients
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {campaign ? `${campaign.name} · ${campaign.campaign_type}` : ""}
+      </Typography>
+      {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+      {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+      <Box sx={{ overflowX: "auto" }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Email</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Provider message ID</TableCell>
+              <TableCell>Sent</TableCell>
+              <TableCell>Delivered</TableCell>
+              <TableCell>Opened</TableCell>
+              <TableCell>Clicked</TableCell>
+              <TableCell>Bounced</TableCell>
+              <TableCell>Error</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {recipients.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.email || "-"}</TableCell>
+                <TableCell>{row.status}</TableCell>
+                <TableCell>{row.provider_message_id || "-"}</TableCell>
+                <TableCell>{row.sent_at || "-"}</TableCell>
+                <TableCell>{row.delivered_at || "-"}</TableCell>
+                <TableCell>{row.opened_at || "-"}</TableCell>
+                <TableCell>{row.clicked_at || "-"}</TableCell>
+                <TableCell>{row.bounced_at || "-"}</TableCell>
+                <TableCell>{row.error_code || "-"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+    </Drawer>
+  );
+}
+
 function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -428,8 +502,10 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Sent</TableCell>
                   <TableCell align="right">Failed</TableCell>
+                  <TableCell>Compliance</TableCell>
                   <TableCell>Created</TableCell>
                   <TableCell>Provider</TableCell>
+                  <TableCell />
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -438,16 +514,146 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.campaign_type}</TableCell>
                     <TableCell>{row.status}</TableCell>
-                    <TableCell align="right">{row?.counts?.sent ?? 0}</TableCell>
+                    <TableCell align="right">{row?.counts?.sent_total ?? row?.counts?.sent ?? 0}</TableCell>
                     <TableCell align="right">{row?.counts?.failed ?? 0}</TableCell>
+                    <TableCell>
+                      {`Delivered ${row?.compliance_summary?.delivered ?? 0} | Bounced ${row?.compliance_summary?.bounced ?? 0} | Unsubscribed ${row?.compliance_summary?.unsubscribed ?? 0}`}
+                    </TableCell>
                     <TableCell>{row.created_at || "-"}</TableCell>
                     <TableCell>{row.provider_name || "SendGrid"}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" onClick={() => setSelectedCampaign(row)}>
+                        View recipients
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </Box>
         )}
+      </CardContent>
+      <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
+    </Card>
+  );
+}
+
+function MarketingSuppressionsCard({ auth, refreshKey = 0 }) {
+  const [suppressions, setSuppressions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [form, setForm] = useState({ email: "", reason: "manual", notes: "" });
+
+  const loadSuppressions = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get("/api/manager/marketing/suppressions?limit=50", auth);
+      setSuppressions(Array.isArray(data?.suppressions) ? data.suppressions : []);
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to load suppressions.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSuppressions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
+  const addSuppression = async () => {
+    setSaving(true);
+    setError("");
+    setInfo("");
+    try {
+      await api.post("/api/manager/marketing/suppressions", form, auth);
+      setForm({ email: "", reason: "manual", notes: "" });
+      setInfo("Suppression added.");
+      await loadSuppressions();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to add suppression.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeSuppression = async (id) => {
+    setSaving(true);
+    setError("");
+    setInfo("");
+    try {
+      await api.delete(`/api/manager/marketing/suppressions/${id}`, auth);
+      setInfo("Suppression removed.");
+      await loadSuppressions();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to remove suppression.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card variant="outlined" sx={{ mb: 3 }}>
+      <CardHeader
+        title="Marketing suppressions"
+        subheader="Suppressed emails are skipped automatically before live marketing sends."
+      />
+      <CardContent>
+        {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+        {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        {info ? <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert> : null}
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+          <Grid item xs={12} md={4}>
+            <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField select label="Reason" fullWidth value={form.reason} onChange={(e) => setForm((prev) => ({ ...prev, reason: e.target.value }))}>
+              <MenuItem value="manual">Manual block</MenuItem>
+              <MenuItem value="unsubscribe">Unsubscribe</MenuItem>
+              <MenuItem value="bounce">Bounce</MenuItem>
+              <MenuItem value="complaint">Complaint</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField label="Notes (optional)" fullWidth value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <Button variant="contained" fullWidth onClick={addSuppression} disabled={saving || !form.email.trim()}>
+              Add suppression
+            </Button>
+          </Grid>
+        </Grid>
+        <Box sx={{ overflowX: "auto" }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Email</TableCell>
+                <TableCell>Reason</TableCell>
+                <TableCell>Source</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell align="right" />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {suppressions.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.email}</TableCell>
+                  <TableCell>{row.reason}</TableCell>
+                  <TableCell>{row.source}</TableCell>
+                  <TableCell>{row.created_at || "-"}</TableCell>
+                  <TableCell align="right">
+                    <Button color="error" size="small" onClick={() => removeSuppression(row.id)} disabled={saving}>
+                      Remove
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
       </CardContent>
     </Card>
   );
@@ -569,6 +775,9 @@ function MarketingProviderCard({ auth, onProviderChange }) {
   };
 
   const statusLabel = provider?.status || "missing";
+  const showDraftActivationHint = provider?.id && provider?.status === "draft";
+  const showPausedHint = provider?.id && provider?.status === "paused";
+  const showErrorHint = provider?.id && provider?.status === "error";
 
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
@@ -579,6 +788,21 @@ function MarketingProviderCard({ auth, onProviderChange }) {
       <CardContent>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {info && <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert>}
+        {showDraftActivationHint && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Your SendGrid connection saved successfully. Test it first, then click <strong>Activate</strong> to enable live marketing sends.
+          </Alert>
+        )}
+        {showPausedHint && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This SendGrid connection is paused. Preview still works, but live campaigns will stay disabled until you click <strong>Activate</strong>.
+          </Alert>
+        )}
+        {showErrorHint && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            This SendGrid connection is in an error state. Review the last provider error, update the connection, and test again before activating it.
+          </Alert>
+        )}
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={2}>
             <TextField label="Provider" fullWidth value="SendGrid" disabled />
@@ -745,9 +969,13 @@ export default function MarketingCampaignsTab() {
       >
         <MarketingCampaignsGuide onClose={()=>setGuideOpen(false)} />
       </Drawer>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically before live sends.
+      </Alert>
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} />
+      <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
 
       {/* 0) Broadcast (Simple Announcement) */}
@@ -779,6 +1007,7 @@ export default function MarketingCampaignsTab() {
         mapRowKey={(r)=>`broadcast_${r.client_id}`}
         enableCopyOverrides={false}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -811,6 +1040,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`winback_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -838,6 +1068,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`skipped_${r.client_id}_${r.last_service_date}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -866,6 +1097,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`vip_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -894,6 +1126,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`anniv_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -922,6 +1155,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`newsvc_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -951,6 +1185,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`nsr_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
@@ -980,6 +1215,7 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`upsell_${r.client_id}`}
         providerReady={provider?.status === "active"}
+        providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
       />
 
