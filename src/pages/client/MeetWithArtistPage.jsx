@@ -25,6 +25,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import EventIcon from "@mui/icons-material/Event";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import { DateTime } from "luxon";
 
 import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
@@ -121,22 +122,14 @@ const daysInMonth = (view) =>
 const firstWeekday = (view) =>
   new Date(view.getFullYear(), view.getMonth(), 1).getDay();
 
-/** Build an ISO-like string from local date/time + timezone */
-const isoFromParts = (dateStr, timeStr, tz) => {
+const slotDateTimeForViewer = (dateStr, timeStr, tz) => {
+  if (!dateStr || !timeStr) return null;
   try {
-    const d = new Date(`${dateStr}T${timeStr || "00:00"}`);
-    return d
-      .toLocaleString("sv-SE", {
-        timeZone: tz || "UTC",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })
-      .replace(" ", "T");
+    const providerLocal = DateTime.fromISO(`${dateStr}T${timeStr}`, {
+      zone: tz || "UTC",
+    });
+    if (!providerLocal.isValid) return null;
+    return providerLocal.toLocal();
   } catch {
     return null;
   }
@@ -144,10 +137,9 @@ const isoFromParts = (dateStr, timeStr, tz) => {
 
 const formatTimeForViewer = (slot) => {
   const tz = slot.timezone || "UTC";
-  const iso = isoFromParts(slot.date, slot.start_time, tz);
-  if (!iso) return slot.start_time || "";
-  const dt = new Date(iso);
-  return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const local = slotDateTimeForViewer(slot.date, slot.start_time, tz);
+  if (!local?.isValid) return slot.start_time || "";
+  return local.toFormat("h:mm a");
 };
 
 const DEFAULT_PUBLIC_MEET_VIDEO_URL = "https://youtu.be/y7kygIhnZm8";
@@ -173,23 +165,32 @@ function normalizeSlots(raw, fallbackTz) {
   const normalized = [];
   (raw || []).forEach((s) => {
     const timezone = s.timezone || tzFallback;
-    const iso = isoFromParts(s.date, s.start_time, timezone);
-    if (!iso) return;
-    const when = new Date(iso);
+    const local = slotDateTimeForViewer(s.date, s.start_time, timezone);
+    if (!local?.isValid) return;
+    const when = local.toJSDate();
     if (when < now) return; // hide past slots completely
     if (!slotIsAvailable(s)) return;
-    normalized.push({ ...s, timezone, iso, when });
+    normalized.push({
+      ...s,
+      timezone,
+      when,
+      localDate: local.toISODate(),
+      localTimeLabel: local.toFormat("h:mm a"),
+    });
   });
 
   normalized.sort((a, b) => a.when - b.when);
 
   const byDate = {};
   normalized.forEach((s) => {
-    if (!byDate[s.date]) byDate[s.date] = [];
-    byDate[s.date].push(s);
+    if (!s.localDate) return;
+    if (!byDate[s.localDate]) byDate[s.localDate] = [];
+    byDate[s.localDate].push(s);
   });
 
-  const dateKeys = Array.from(new Set(normalized.map((s) => s.date)));
+  const dateKeys = Array.from(
+    new Set(normalized.map((s) => s.localDate).filter(Boolean))
+  );
 
   return {
     byDate,
@@ -825,7 +826,7 @@ const MeetWithArtistPageContent = ({
                           color="text.secondary"
                           sx={{ mt: 0.5 }}
                         >
-                          Times are shown in your local time based on{" "}
+                          Times are shown in your local timezone. Host timezone:{" "}
                           {availabilityTz}.
                         </Typography>
                       </Stack>

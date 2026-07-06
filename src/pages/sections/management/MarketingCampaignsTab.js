@@ -2,9 +2,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import api from "../../../utils/api";
 import {
   Alert, Box, Button, Card, CardContent, CardHeader, Checkbox, Divider,
-  FormControlLabel, Grid, LinearProgress, MenuItem, Switch,
+  FormControlLabel, Grid, LinearProgress, MenuItem, Switch, Chip, Stack,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
-  Tooltip, IconButton, Drawer, Accordion, AccordionSummary, AccordionDetails
+  Tooltip, IconButton, Drawer, Accordion, AccordionSummary, AccordionDetails,
+  Dialog, DialogTitle, DialogContent, DialogActions, TablePagination
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { HelpOutline } from "@mui/icons-material";
@@ -23,7 +24,242 @@ function useAuth() {
   return { token, auth };
 }
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const COPY_FIELD_NAMES = ["subject", "heading", "intro", "subtext", "cta_text", "cta_url", "rebook_link", "anniv_link", "launch_link", "deep_link", "vip_link"];
+
+const CAMPAIGN_TYPE_OPTIONS = [
+  {
+    key: "broadcast",
+    title: "Broadcast",
+    description: "Send a simple announcement or promotion to a broad client segment.",
+    anchorId: "campaign-card-broadcast",
+    presetParams: {
+      subject: "Update from our team",
+      heading: "A quick note from the studio",
+      intro: "We're sharing an update with our clients.",
+      subtext: "Thanks for being part of our community.",
+      cta_text: "View details",
+      cta_url: "?page=services-classic",
+      limit: 500,
+      segment: "all",
+    },
+  },
+  {
+    key: "winback",
+    title: "Win-Back",
+    description: "Target overdue clients with a limited-time rebooking offer.",
+    anchorId: "campaign-card-winback",
+    presetParams: {
+      subject: "We'd love to welcome you back",
+      heading: "A little welcome-back offer",
+      intro: "It's been a little while since your last visit, so we saved something just for you.",
+      subtext: "Use the offer below if you'd like to come back soon.",
+      discount_percent: 15,
+      valid_days: 7,
+      coupon_prefix: "WINBACK",
+      rebook_link: "/book",
+      limit: 50,
+    },
+  },
+  {
+    key: "skipped_rebook",
+    title: "Skipped Rebook Nudge",
+    description: "Nudge recent clients who did not book their next visit.",
+    anchorId: "campaign-card-skipped_rebook",
+    presetParams: {
+      subject: "Ready to book your next visit?",
+      heading: "Let's get your next appointment booked",
+      intro: "We noticed you may not have booked your next visit yet.",
+      subtext: "If you'd like, you can book the next one in just a few clicks.",
+      discount_percent: 0,
+      coupon_prefix: "REBOOK",
+      deep_link: "?page=services-classic",
+      lookback_days: 3,
+    },
+  },
+  {
+    key: "vip",
+    title: "VIP",
+    description: "Reward your top-spending clients with a premium offer.",
+    anchorId: "campaign-card-vip",
+    presetParams: {
+      subject: "A VIP offer just for you",
+      heading: "You've unlocked a VIP offer",
+      intro: "As one of our top clients, we wanted to share something special with you.",
+      subtext: "Thanks for your continued support.",
+      discount_percent: 20,
+      coupon_prefix: "VIP",
+      vip_link: "/vip",
+      limit: 50,
+    },
+  },
+  {
+    key: "anniversary",
+    title: "Anniversary Thank-You",
+    description: "Celebrate client anniversaries with a thank-you note and offer.",
+    anchorId: "campaign-card-anniversary",
+    presetParams: {
+      subject: "Thank you for being with us",
+      heading: "Happy anniversary with us",
+      intro: "We're grateful you've been part of our journey.",
+      subtext: "Here is a small thank-you from our team.",
+      coupon_prefix: "ANNIV",
+      anniv_link: "/book",
+      limit: 50,
+    },
+  },
+  {
+    key: "new_service",
+    title: "New Service Launch",
+    description: "Announce a new service to clients likely to be interested.",
+    anchorId: "campaign-card-new_service",
+    presetParams: {
+      subject: "We launched something new",
+      heading: "A new service is now available",
+      intro: "We just launched something we think you'll love.",
+      subtext: "Take a look and see if it's a fit for your next visit.",
+      launch_link: "?page=services-classic",
+      coupon_prefix: "NEW",
+      limit: 200,
+    },
+  },
+  {
+    key: "no_show_recovery",
+    title: "No-Show Recovery",
+    description: "Recover missed appointments with a gentle rebooking message.",
+    anchorId: "campaign-card-no_show_recovery",
+    presetParams: {
+      subject: "We saved a spot for your next visit",
+      heading: "Let's get you booked again",
+      intro: "We'd be happy to help you get back on the schedule.",
+      subtext: "If you'd like to return, use the link below to rebook.",
+      coupon_prefix: "RECOVER",
+      rebook_link: "/",
+      limit: 200,
+    },
+  },
+  {
+    key: "addon_upsell",
+    title: "Add-on Upsell",
+    description: "Promote a useful add-on to clients who booked a related service.",
+    anchorId: "campaign-card-addon_upsell",
+    presetParams: {
+      subject: "A useful add-on for your next visit",
+      heading: "Make your next visit even better",
+      intro: "We thought you might be interested in adding this to your next booking.",
+      subtext: "Here is a quick offer if you want to try it.",
+      coupon_prefix: "ADDON",
+      deep_link: "?page=services-classic",
+      discount_percent: 10,
+      limit: 200,
+    },
+  },
+];
+
+function buildCampaignSeed(row) {
+  return {
+    type: row.campaign_type,
+    campaignId: row.id,
+    campaignName: row.name,
+    params: {
+      ...(row.filters_json || {}),
+      ...(row.content_json || {}),
+    },
+  };
+}
+
+function summarizeCampaignFilters(fieldDefs = [], params = {}) {
+  return fieldDefs
+    .map((fd) => {
+      const raw = params[fd.name];
+      if (raw === undefined || raw === null || String(raw).trim() === "") return null;
+      if (COPY_FIELD_NAMES.includes(fd.name)) return null;
+      const label = fd.label || fd.name;
+      if (fd.select) {
+        const selected = fd.select.find((opt) => String(opt.value) === String(raw));
+        return `${label}: ${selected?.label || raw}`;
+      }
+      return `${label}: ${raw}`;
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function extractCampaignContent(params = {}) {
+  return COPY_FIELD_NAMES.reduce((acc, key) => {
+    if (params[key] !== undefined && params[key] !== null && String(params[key]).trim() !== "") {
+      acc[key] = params[key];
+    }
+    return acc;
+  }, {});
+}
+
+const CONTENT_PRESET_OPTIONS = [
+  {
+    key: "announcement",
+    label: "Simple announcement",
+    values: {
+      subject: "Update from our team",
+      heading: "A quick note from the studio",
+      intro: "We're sharing an update with our clients.",
+      subtext: "Thanks for being part of our community.",
+      cta_text: "View details",
+      cta_url: "?page=services-classic",
+    },
+  },
+  {
+    key: "offer",
+    label: "Offer / promotion",
+    values: {
+      subject: "A special offer for you",
+      heading: "A limited-time offer",
+      intro: "We put together a special offer for our clients.",
+      subtext: "Take a look before it expires.",
+      cta_text: "Claim offer",
+      cta_url: "?page=services-classic",
+    },
+  },
+  {
+    key: "reminder",
+    label: "Reminder / rebook",
+    values: {
+      subject: "Time to book your next visit",
+      heading: "Ready for your next appointment?",
+      intro: "If you're due for another visit, we're ready when you are.",
+      subtext: "Book now to secure your preferred time.",
+      cta_text: "Book now",
+      cta_url: "?page=services-classic",
+    },
+  },
+  {
+    key: "vip",
+    label: "VIP invite",
+    values: {
+      subject: "A VIP invite for you",
+      heading: "You're on our VIP list",
+      intro: "We wanted to share something special with you first.",
+      subtext: "Thanks for being one of our valued clients.",
+      cta_text: "See VIP offer",
+      cta_url: "/vip",
+    },
+  },
+  {
+    key: "thankyou",
+    label: "Thank-you",
+    values: {
+      subject: "Thank you from our team",
+      heading: "We appreciate you",
+      intro: "Thank you for choosing us.",
+      subtext: "We're grateful for your support.",
+      cta_text: "Visit us again",
+      cta_url: "?page=services-classic",
+    },
+  },
+];
+
 function CampaignCard({
+  sectionId,
+  campaignType,
   title,
   subtitle,
   helpText,
@@ -36,6 +272,7 @@ function CampaignCard({
   providerReady = false,
   providerStatus = "missing",
   onCampaignSent,
+  composerSeed = null,
 }) {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -60,6 +297,9 @@ function CampaignCard({
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState("");
   const [sendSummary, setSendSummary] = useState(null);
+  const [previewMeta, setPreviewMeta] = useState(null);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftId, setDraftId] = useState(null);
 
   // Service lookup (for fields with type: "service")
   const [serviceOptions, setServiceOptions] = useState([]);
@@ -87,9 +327,36 @@ function CampaignCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const nextSelections = {};
+    (fieldDefs || [])
+      .filter((fd) => fd.type === "service")
+      .forEach((fd) => {
+        const currentValue = params[fd.name];
+        const match = serviceOptions.find((opt) => String(opt?.id) === String(currentValue));
+        if (match) nextSelections[fd.name] = match;
+      });
+    if (Object.keys(nextSelections).length) {
+      setServiceSelections((prev) => ({ ...prev, ...nextSelections }));
+    }
+  }, [fieldDefs, params, serviceOptions]);
+
+  useEffect(() => {
+    if (!composerSeed) return;
+    setParams((prev) => ({ ...prev, ...composerSeed }));
+    setRows([]);
+    setSelected({});
+    setErr("");
+    setInfo("");
+    setSendSummary(null);
+    setPreviewMeta(null);
+    setDraftId(composerSeed?.campaignId || null);
+  }, [composerSeed]);
+
   const onChangeParam = (name, value) => {
     setParams(p => ({ ...p, [name]: value }));
     setRows([]); // clear preview so manager must re-run Preview
+    setPreviewMeta(null);
   };
 
   const preview = async () => {
@@ -98,12 +365,43 @@ function CampaignCard({
       const qs = new URLSearchParams(params).toString();
       const { data } = await api.get(`${previewPath}?${qs}`, auth);
       setRows(Array.isArray(data?.results) ? data.results : []);
+      setPreviewMeta(data?.meta || null);
     } catch (e) {
       setErr(e?.response?.data?.error || e?.message || t("campaigns.failedToLoadPreview"));
     } finally {
       setLoading(false);
     }
   };
+
+  const saveDraft = async () => {
+    setDraftBusy(true);
+    setErr("");
+    setInfo("");
+    try {
+      const payload = {
+        campaign_type: campaignType,
+        name: composerSeed?.campaignName || `${title} draft`,
+        filters_json: params,
+        content_json: extractCampaignContent(params),
+        dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: rows.length } : {},
+        send_batch_size: 10,
+      };
+      const response = draftId
+        ? await api.patch(`/api/manager/marketing/campaigns/${draftId}/draft`, payload, auth)
+        : await api.post("/api/manager/marketing/campaigns/drafts", payload, auth);
+      const campaign = response?.data?.campaign;
+      setDraftId(campaign?.id || draftId);
+      setInfo(draftId ? "Draft updated." : "Draft saved.");
+      if (onCampaignSent) onCampaignSent();
+    } catch (e) {
+      setErr(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to save draft.");
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const filterSummary = useMemo(() => summarizeCampaignFilters(fieldDefs, params), [fieldDefs, params]);
+  const previewCount = Number(previewMeta?.eligible ?? rows.length ?? 0);
 
   const toggleSelect = (key) => {
     setSelected(s => ({ ...s, [key]: !s[key] }));
@@ -174,7 +472,7 @@ function CampaignCard({
   };
 
   return (
-    <Card variant="outlined" sx={{ mb: 3 }}>
+    <Card id={sectionId} variant="outlined" sx={{ mb: 3, scrollMarginTop: 96 }}>
       <CardHeader title={title} subheader={subtitle} />
       <CardContent>
         {helpText && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{helpText}</Typography>}
@@ -252,8 +550,25 @@ function CampaignCard({
               )}
             </Grid>
           ))}
+          {filterSummary.length ? (
+            <Grid item xs={12}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                Campaign filters summary
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {filterSummary.map((item) => (
+                  <Chip key={item} size="small" label={item} />
+                ))}
+              </Stack>
+            </Grid>
+          ) : null}
           <Grid item xs={12} md="auto">
             <Button variant="contained" onClick={preview}>{t("campaigns.preview")}</Button>
+          </Grid>
+          <Grid item xs={12} md="auto">
+            <Button variant="outlined" onClick={saveDraft} disabled={draftBusy || loading || sending}>
+              {draftBusy ? "Saving draft..." : (draftId ? "Update draft" : "Save draft")}
+            </Button>
           </Grid>
           <Grid item xs={12} md="auto">
             <FormControlLabel
@@ -337,6 +652,11 @@ function CampaignCard({
         {(loading || sending) && <LinearProgress sx={{ my: 2 }} />}
         {err && <Alert severity="error" sx={{ my: 2 }}>{err}</Alert>}
         {info && <Alert severity="success" sx={{ my: 2 }}>{info}</Alert>}
+        {previewMeta && (
+          <Alert severity="info" sx={{ my: 2 }}>
+            Preview ready. Eligible recipients: <strong>{previewCount}</strong>
+          </Alert>
+        )}
         {sendSummary && (
           <Alert severity="info" sx={{ my: 2 }}>
             Campaign #{sendSummary.campaignId} via {sendSummary.provider}: queued {sendSummary.queued}, sent {sendSummary.sent}, skipped {sendSummary.skipped}, suppressed {sendSummary.suppressed}, failed {sendSummary.failed}. Status: {sendSummary.status}.
@@ -474,21 +794,26 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
   );
 }
 
-function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
+function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [total, setTotal] = useState(0);
 
   const loadCampaigns = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/api/manager/marketing/campaigns?limit=10", auth);
+      const { data } = await api.get(`/api/manager/marketing/campaigns?page=${page + 1}&page_size=${rowsPerPage}`, auth);
       setCampaigns(Array.isArray(data?.campaigns) ? data.campaigns : []);
+      setTotal(Number(data?.total || 0));
     } catch {
       setCampaigns([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -497,7 +822,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
   useEffect(() => {
     loadCampaigns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, refreshKey]);
+  }, [auth, refreshKey, page, rowsPerPage]);
 
   const runAction = async (campaignId, action) => {
     setActionBusy(true);
@@ -514,6 +839,22 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
       await loadCampaigns();
     } catch (e) {
       setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Campaign action failed.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const duplicateCampaign = async (campaignId) => {
+    setActionBusy(true);
+    setError("");
+    setInfo("");
+    try {
+      const { data } = await api.post(`/api/manager/marketing/campaigns/${campaignId}/duplicate`, {}, auth);
+      setInfo("Campaign duplicated into a new draft.");
+      await loadCampaigns();
+      if (onOpenCampaign && data?.campaign) onOpenCampaign(data.campaign);
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to duplicate campaign.");
     } finally {
       setActionBusy(false);
     }
@@ -573,10 +914,19 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
                         <Button size="small" onClick={() => setSelectedCampaign(row)}>
                           View recipients
                         </Button>
-                        <Button size="small" onClick={() => runAction(row.id, "process-batch")} disabled={actionBusy || ["paused", "cancelled", "completed"].includes(row.status)}>
+                        {row.status === "draft" ? (
+                          <Button size="small" onClick={() => onOpenCampaign && onOpenCampaign(row)}>
+                            Open draft
+                          </Button>
+                        ) : (
+                          <Button size="small" onClick={() => duplicateCampaign(row.id)} disabled={actionBusy}>
+                            Duplicate
+                          </Button>
+                        )}
+                        <Button size="small" onClick={() => runAction(row.id, "process-batch")} disabled={actionBusy || ["draft", "paused", "cancelled", "completed"].includes(row.status)}>
                           Process next batch
                         </Button>
-                        <Button size="small" onClick={() => runAction(row.id, "pause")} disabled={actionBusy || ["paused", "cancelled", "completed"].includes(row.status)}>
+                        <Button size="small" onClick={() => runAction(row.id, "pause")} disabled={actionBusy || ["draft", "paused", "cancelled", "completed"].includes(row.status)}>
                           Pause
                         </Button>
                         <Button size="small" onClick={() => runAction(row.id, "resume")} disabled={actionBusy || row.status !== "paused"}>
@@ -593,9 +943,194 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
             </Table>
           </Box>
         )}
+        <TablePagination
+          component="div"
+          count={total}
+          page={page}
+          onPageChange={(_, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(event) => {
+            setRowsPerPage(parseInt(event.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+        />
       </CardContent>
       <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
     </Card>
+  );
+}
+
+function CreateCampaignDialog({ open, onClose, onApply }) {
+  const [step, setStep] = useState(0);
+  const [campaignType, setCampaignType] = useState(CAMPAIGN_TYPE_OPTIONS[0].key);
+  const [presetKey, setPresetKey] = useState(CONTENT_PRESET_OPTIONS[0].key);
+  const [content, setContent] = useState({ ...CONTENT_PRESET_OPTIONS[0].values });
+
+  const selectedType = useMemo(
+    () => CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === campaignType) || CAMPAIGN_TYPE_OPTIONS[0],
+    [campaignType]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setStep(0);
+    setCampaignType(CAMPAIGN_TYPE_OPTIONS[0].key);
+    setPresetKey(CONTENT_PRESET_OPTIONS[0].key);
+    setContent({ ...CONTENT_PRESET_OPTIONS[0].values });
+  }, [open]);
+
+  const applyPreset = (nextPresetKey) => {
+    const preset = CONTENT_PRESET_OPTIONS.find((item) => item.key === nextPresetKey) || CONTENT_PRESET_OPTIONS[0];
+    setPresetKey(preset.key);
+    setContent((prev) => ({ ...prev, ...preset.values }));
+  };
+
+  const handleContinue = () => {
+    if (step === 0) {
+      setContent((prev) => ({
+        ...selectedType.presetParams,
+        ...prev,
+      }));
+      setStep(1);
+      return;
+    }
+    onApply?.({
+      type: selectedType.key,
+      anchorId: selectedType.anchorId,
+      params: {
+        ...selectedType.presetParams,
+        ...content,
+      },
+    });
+    onClose?.();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>{step === 0 ? "Create campaign" : `Compose ${selectedType.title}`}</DialogTitle>
+      <DialogContent dividers>
+        {step === 0 ? (
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Choose the campaign type you want to launch. Schedulaa will open the matching campaign section with suggested defaults.
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                select
+                fullWidth
+                label="Campaign type"
+                value={campaignType}
+                onChange={(e) => setCampaignType(e.target.value)}
+              >
+                {CAMPAIGN_TYPE_OPTIONS.map((option) => (
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.title}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <Alert severity="info">{selectedType.description}</Alert>
+            </Grid>
+          </Grid>
+        ) : (
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <TextField
+                select
+                fullWidth
+                label="Content preset"
+                value={presetKey}
+                onChange={(e) => applyPreset(e.target.value)}
+              >
+                {CONTENT_PRESET_OPTIONS.map((option) => (
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={8}>
+              <Alert severity="info">
+                This flow pre-fills the email body and jumps you to the {selectedType.title} section, where you can preview recipients and queue the campaign.
+              </Alert>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Subject"
+                value={content.subject || ""}
+                onChange={(e) => setContent((prev) => ({ ...prev, subject: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Heading"
+                value={content.heading || ""}
+                onChange={(e) => setContent((prev) => ({ ...prev, heading: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                label="Main message"
+                value={content.intro || ""}
+                onChange={(e) => setContent((prev) => ({ ...prev, intro: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={2}
+                label="Supporting text"
+                value={content.subtext || ""}
+                onChange={(e) => setContent((prev) => ({ ...prev, subtext: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="CTA text"
+                value={content.cta_text || ""}
+                onChange={(e) => setContent((prev) => ({ ...prev, cta_text: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="CTA link"
+                value={content.cta_url || content.rebook_link || content.anniv_link || content.launch_link || content.deep_link || content.vip_link || "/book"}
+                onChange={(e) =>
+                  setContent((prev) => ({
+                    ...prev,
+                    cta_url: e.target.value,
+                    rebook_link: e.target.value,
+                    anniv_link: e.target.value,
+                    launch_link: e.target.value,
+                    deep_link: e.target.value,
+                    vip_link: e.target.value,
+                  }))
+                }
+              />
+            </Grid>
+          </Grid>
+        )}
+      </DialogContent>
+      <DialogActions>
+        {step === 1 ? <Button onClick={() => setStep(0)}>Back</Button> : null}
+        <Button onClick={onClose}>Close</Button>
+        <Button variant="contained" onClick={handleContinue}>
+          {step === 0 ? "Continue" : "Open campaign section"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -977,8 +1512,26 @@ export default function MarketingCampaignsTab() {
   const { auth } = useAuth();
   const [provider, setProvider] = useState(null);
   const [campaignRefreshKey, setCampaignRefreshKey] = useState(0);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerSeed, setComposerSeed] = useState(null);
 
   const handleCampaignSent = () => setCampaignRefreshKey((v) => v + 1);
+  const handleApplyComposer = ({ anchorId, params, type }) => {
+    setComposerSeed({ type, params, appliedAt: Date.now() });
+    window.setTimeout(() => {
+      const target = document.getElementById(anchorId);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+  const handleOpenSavedCampaign = (campaign) => {
+    if (!campaign?.campaign_type) return;
+    const selectedType = CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === campaign.campaign_type);
+    setComposerSeed(buildCampaignSeed(campaign));
+    window.setTimeout(() => {
+      const target = document.getElementById(selectedType?.anchorId);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -1012,13 +1565,22 @@ export default function MarketingCampaignsTab() {
       {/* Header + Guide */}
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h4">{t("titles.marketingCampaigns")}</Typography>
-        <Tooltip title={t("tooltips.marketingGuide")}>
-
-          <IconButton onClick={() => setGuideOpen(true)}>
-            <HelpOutline />
-          </IconButton>
-        </Tooltip>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Button variant="contained" onClick={() => setComposerOpen(true)}>
+            Create campaign
+          </Button>
+          <Tooltip title={t("tooltips.marketingGuide")}>
+            <IconButton onClick={() => setGuideOpen(true)}>
+              <HelpOutline />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
+      <CreateCampaignDialog
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onApply={handleApplyComposer}
+      />
 
       {/* Guide Drawer (content imported to keep this file lean) */}
       <Drawer
@@ -1035,12 +1597,14 @@ export default function MarketingCampaignsTab() {
       </Alert>
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
-      <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} />
+      <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
 
       {/* 0) Broadcast (Simple Announcement) */}
       <CampaignCard
+        sectionId="campaign-card-broadcast"
+        campaignType="broadcast"
         title={t("campaigns.cards.broadcast.title")}
         subtitle={t("campaigns.cards.broadcast.subtitle")}
         helpText={t("campaigns.cards.broadcast.help")}
@@ -1070,10 +1634,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "broadcast" ? composerSeed.params : null}
       />
 
       {/* 1) Win-Back */}
       <CampaignCard
+        sectionId="campaign-card-winback"
+        campaignType="winback"
         title={t("campaigns.cards.winback.title")}
         subtitle={t("campaigns.cards.winback.subtitle")}
         helpText={t("campaigns.cards.winback.help")}
@@ -1103,10 +1670,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "winback" ? composerSeed.params : null}
       />
 
       {/* 2) Skipped Rebook */}
       <CampaignCard
+        sectionId="campaign-card-skipped_rebook"
+        campaignType="skipped_rebook"
         title={t("campaigns.cards.skippedRebook.title")}
         subtitle={t("campaigns.cards.skippedRebook.subtitle")}
         helpText={t("campaigns.cards.skippedRebook.help")}
@@ -1131,10 +1701,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "skipped_rebook" ? composerSeed.params : null}
       />
 
       {/* 3) VIP Loyalty */}
       <CampaignCard
+        sectionId="campaign-card-vip"
+        campaignType="vip"
         title={t("campaigns.cards.vip.title")}
         subtitle={t("campaigns.cards.vip.subtitle")}
         helpText={t("campaigns.cards.vip.help")}
@@ -1160,10 +1733,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "vip" ? composerSeed.params : null}
       />
 
       {/* 4) Anniversary */}
       <CampaignCard
+        sectionId="campaign-card-anniversary"
+        campaignType="anniversary"
         title={t("campaigns.cards.anniversary.title")}
         subtitle={t("campaigns.cards.anniversary.subtitle")}
         helpText={t("campaigns.cards.anniversary.help")}
@@ -1189,10 +1765,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "anniversary" ? composerSeed.params : null}
       />
 
       {/* 5) New Service Launch (optional) */}
       <CampaignCard
+        sectionId="campaign-card-new_service"
+        campaignType="new_service"
         title={t("campaigns.cards.newService.title")}
         subtitle={t("campaigns.cards.newService.subtitle")}
         helpText={t("campaigns.cards.newService.help")}
@@ -1218,10 +1797,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "new_service" ? composerSeed.params : null}
       />
 
       {/* 6) No-Show Recovery (optional) */}
       <CampaignCard
+        sectionId="campaign-card-no_show_recovery"
+        campaignType="no_show_recovery"
         title={t("campaigns.cards.noShow.title")}
         subtitle={t("campaigns.cards.noShow.subtitle")}
         helpText={t("campaigns.cards.noShow.help")}
@@ -1248,10 +1830,13 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "no_show_recovery" ? composerSeed.params : null}
       />
 
       {/* 7) Add-on Upsell (optional) */}
       <CampaignCard
+        sectionId="campaign-card-addon_upsell"
+        campaignType="addon_upsell"
         title={t("campaigns.cards.addonUpsell.title")}
         subtitle={t("campaigns.cards.addonUpsell.subtitle")}
         helpText={t("campaigns.cards.addonUpsell.help")}
@@ -1278,6 +1863,7 @@ export default function MarketingCampaignsTab() {
         providerReady={provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
+        composerSeed={composerSeed?.type === "addon_upsell" ? composerSeed.params : null}
       />
 
     </Box>
