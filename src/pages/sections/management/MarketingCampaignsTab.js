@@ -416,7 +416,16 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
   }, [auth, open, campaign?.id]);
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} sx={{ '& .MuiDrawer-paper': { width: { xs: "100%", md: 760 }, p: 2 } }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
+      sx={{
+        zIndex: (theme) => theme.zIndex.modal + 3000,
+        '& .MuiDrawer-paper': { zIndex: "inherit", width: { xs: "100%", md: 760 }, p: 2 },
+      }}
+    >
       <Typography variant="h6" sx={{ mb: 1 }}>
         Campaign recipients
       </Typography>

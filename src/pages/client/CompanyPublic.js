@@ -952,12 +952,17 @@ export default function CompanyPublic({
   const pageFromQuery = (forcedPageSlug || searchParams.get("page") || "").trim();
   const jobFromQuery = (searchParams.get("job") || "").trim();
   const blogPostSlug = (searchParams.get("post") || "").trim();
+  const normalizePageQuerySlug = (value) => {
+    const raw = String(value || "").trim().toLowerCase();
+    const base = raw.split("?")[0].trim();
+    if (base === "services") return "services-classic";
+    return base;
+  };
 
   const currentPage = useMemo(() => {
     if (!pages.length) return null;
     if (pageFromQuery) {
-      const qRaw = String(pageFromQuery).toLowerCase();
-      const q = qRaw === "services" ? "services-classic" : qRaw;
+      const q = normalizePageQuerySlug(pageFromQuery);
       const defaultStyle = pickDefaultPageStyle(pages);
 
       const directMatch = pages.find(
@@ -1153,8 +1158,7 @@ export default function CompanyPublic({
   const pageSlugToFetch = useMemo(() => {
     if (!pages.length) return null;
     if (pageFromQuery) {
-      const qRaw = String(pageFromQuery).toLowerCase();
-      const q = qRaw === "services" ? "services-classic" : qRaw;
+      const q = normalizePageQuerySlug(pageFromQuery);
       const directMatch = pages.find(
         (p) =>
           String(p.slug || "").toLowerCase() === q ||

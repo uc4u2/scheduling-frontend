@@ -21,7 +21,7 @@ import {
 } from "./theme";
 
 import { getTenantHostMode, normalizeDomain } from "./utils/tenant";
-import api, { publicSite } from "./utils/api";
+import api, { publicSite, API_BASE_URL } from "./utils/api";
 
 // Components
 import MainNav from "./landing/components/MainNav";
@@ -232,6 +232,19 @@ const ExternalRedirect = ({ to }) => {
     }
   }, [to]);
   return null;
+};
+
+const CompanyMarketingUnsubscribeBridge = () => {
+  const { token = "" } = useParams();
+  const location = useLocation();
+
+  useEffect(() => {
+    const base = String(API_BASE_URL || "").replace(/\/$/, "");
+    if (!base || !token) return;
+    window.location.replace(`${base}/public/company-marketing/unsubscribe/${encodeURIComponent(token)}${location.search || ""}`);
+  }, [location.search, token]);
+
+  return <Typography sx={{ mt: 5, textAlign: "center" }}>Redirecting...</Typography>;
 };
 
 const themeMap = {
@@ -652,6 +665,7 @@ const AppContent = ({ token, setToken }) => {
 
       <Box className="main-content">
         <Routes>
+          <Route path="/public/company-marketing/unsubscribe/:token" element={<CompanyMarketingUnsubscribeBridge />} />
           <Route path="/admin/login" element={<PlatformAdminLogin />} />
           <Route path="/admin/reset-password" element={<PlatformAdminResetPassword />} />
           <Route path="/admin" element={<PlatformAdminShell />}>
