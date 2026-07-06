@@ -156,12 +156,14 @@ function CampaignCard({
         setSendSummary({
           campaignId: data?.campaign_id,
           status: data?.status,
+          queued: data?.counts?.queued ?? 0,
           sent: data?.counts?.sent ?? 0,
           skipped: data?.counts?.skipped ?? 0,
           failed: data?.counts?.failed ?? 0,
+          suppressed: data?.counts?.suppressed ?? 0,
           provider: data?.provider?.name || "SendGrid",
         });
-        setInfo(data?.message || "Campaign sent through your connected SendGrid provider.");
+        setInfo(data?.message || "Campaign queued. Schedulaa will send gradually using your SendGrid limits.");
         if (onCampaignSent) onCampaignSent();
       }
     } catch (e) {
@@ -337,7 +339,7 @@ function CampaignCard({
         {info && <Alert severity="success" sx={{ my: 2 }}>{info}</Alert>}
         {sendSummary && (
           <Alert severity="info" sx={{ my: 2 }}>
-            Campaign #{sendSummary.campaignId} via {sendSummary.provider}: sent {sendSummary.sent}, skipped {sendSummary.skipped}, failed {sendSummary.failed}. Status: {sendSummary.status}.
+            Campaign #{sendSummary.campaignId} via {sendSummary.provider}: queued {sendSummary.queued}, sent {sendSummary.sent}, skipped {sendSummary.skipped}, suppressed {sendSummary.suppressed}, failed {sendSummary.failed}. Status: {sendSummary.status}.
           </Alert>
         )}
 
@@ -429,6 +431,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
             <TableRow>
               <TableCell>Email</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Attempts</TableCell>
               <TableCell>Provider message ID</TableCell>
               <TableCell>Sent</TableCell>
               <TableCell>Delivered</TableCell>
@@ -436,6 +439,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
               <TableCell>Clicked</TableCell>
               <TableCell>Bounced</TableCell>
               <TableCell>Error</TableCell>
+              <TableCell>Last error</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -443,6 +447,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
               <TableRow key={row.id}>
                 <TableCell>{row.email || "-"}</TableCell>
                 <TableCell>{row.status}</TableCell>
+                <TableCell>{row.attempt_count ?? 0}</TableCell>
                 <TableCell>{row.provider_message_id || "-"}</TableCell>
                 <TableCell>{row.sent_at || "-"}</TableCell>
                 <TableCell>{row.delivered_at || "-"}</TableCell>
@@ -450,6 +455,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
                 <TableCell>{row.clicked_at || "-"}</TableCell>
                 <TableCell>{row.bounced_at || "-"}</TableCell>
                 <TableCell>{row.error_code || "-"}</TableCell>
+                <TableCell>{row.last_error || "-"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -462,32 +468,58 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
 function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [selectedCampaign, setSelectedCampaign] = useState(null);
 
+  const loadCampaigns = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get("/api/manager/marketing/campaigns?limit=10", auth);
+      setCampaigns(Array.isArray(data?.campaigns) ? data.campaigns : []);
+    } catch {
+      setCampaigns([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await api.get("/api/manager/marketing/campaigns?limit=10", auth);
-        if (alive) setCampaigns(Array.isArray(data?.campaigns) ? data.campaigns : []);
-      } catch {
-        if (alive) setCampaigns([]);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
+    loadCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, refreshKey]);
+
+  const runAction = async (campaignId, action) => {
+    setActionBusy(true);
+    setError("");
+    setInfo("");
+    try {
+      if (action === "process-batch") {
+        const { data } = await api.post(`/api/manager/marketing/campaigns/${campaignId}/process-batch`, {}, auth);
+        setInfo(data?.summary?.message || "Campaign batch processed.");
+      } else {
+        await api.post(`/api/manager/marketing/campaigns/${campaignId}/${action}`, {}, auth);
+        setInfo(`Campaign ${action.replace("-", " ")} successful.`);
+      }
+      await loadCampaigns();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Campaign action failed.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
 
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardHeader
         title="Recent marketing campaigns"
-        subheader="Latest campaigns sent through your connected provider."
+        subheader="Campaigns are sent gradually to protect deliverability."
       />
       <CardContent>
         {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+        {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        {info ? <Alert severity="info" sx={{ mb: 2 }}>{info}</Alert> : null}
         {!loading && campaigns.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No campaign history yet.
@@ -500,10 +532,13 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
                   <TableCell>Name</TableCell>
                   <TableCell>Type</TableCell>
                   <TableCell>Status</TableCell>
+                  <TableCell align="right">Progress</TableCell>
+                  <TableCell align="right">Queued</TableCell>
                   <TableCell align="right">Sent</TableCell>
                   <TableCell align="right">Failed</TableCell>
+                  <TableCell align="right">Suppressed</TableCell>
                   <TableCell>Compliance</TableCell>
-                  <TableCell>Created</TableCell>
+                  <TableCell>Last processed</TableCell>
                   <TableCell>Provider</TableCell>
                   <TableCell />
                 </TableRow>
@@ -514,17 +549,34 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0 }) {
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.campaign_type}</TableCell>
                     <TableCell>{row.status}</TableCell>
-                    <TableCell align="right">{row?.counts?.sent_total ?? row?.counts?.sent ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.progress_percent ?? 0}%</TableCell>
+                    <TableCell align="right">{row?.progress?.queued ?? row?.counts?.queued ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.sent ?? row?.counts?.sent_total ?? row?.counts?.sent ?? 0}</TableCell>
                     <TableCell align="right">{row?.counts?.failed ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.suppressed ?? row?.counts?.suppressed ?? 0}</TableCell>
                     <TableCell>
                       {`Delivered ${row?.compliance_summary?.delivered ?? 0} | Bounced ${row?.compliance_summary?.bounced ?? 0} | Unsubscribed ${row?.compliance_summary?.unsubscribed ?? 0}`}
                     </TableCell>
-                    <TableCell>{row.created_at || "-"}</TableCell>
+                    <TableCell>{row?.progress?.last_processed_at || "-"}</TableCell>
                     <TableCell>{row.provider_name || "SendGrid"}</TableCell>
                     <TableCell align="right">
-                      <Button size="small" onClick={() => setSelectedCampaign(row)}>
-                        View recipients
-                      </Button>
+                      <Box display="flex" gap={1} justifyContent="flex-end" flexWrap="wrap">
+                        <Button size="small" onClick={() => setSelectedCampaign(row)}>
+                          View recipients
+                        </Button>
+                        <Button size="small" onClick={() => runAction(row.id, "process-batch")} disabled={actionBusy || ["paused", "cancelled", "completed"].includes(row.status)}>
+                          Process next batch
+                        </Button>
+                        <Button size="small" onClick={() => runAction(row.id, "pause")} disabled={actionBusy || ["paused", "cancelled", "completed"].includes(row.status)}>
+                          Pause
+                        </Button>
+                        <Button size="small" onClick={() => runAction(row.id, "resume")} disabled={actionBusy || row.status !== "paused"}>
+                          Resume
+                        </Button>
+                        <Button size="small" color="error" onClick={() => runAction(row.id, "cancel")} disabled={actionBusy || ["cancelled", "completed"].includes(row.status)}>
+                          Cancel
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -970,7 +1022,7 @@ export default function MarketingCampaignsTab() {
         <MarketingCampaignsGuide onClose={()=>setGuideOpen(false)} />
       </Drawer>
       <Alert severity="info" sx={{ mb: 2 }}>
-        Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically before live sends.
+        Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically, and campaigns are sent gradually to protect deliverability.
       </Alert>
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
