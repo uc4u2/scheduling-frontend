@@ -94,6 +94,7 @@ import EmailSdrAnalyticsSection from "./emailSdr/EmailSdrAnalyticsSection";
 import EmailSdrCampaignReviewSection from "./emailSdr/EmailSdrCampaignReviewSection";
 import { EmailSdrCampaignWorkspacePage } from "./emailSdr/EmailSdrCampaignWorkspaceDrawer";
 import EmailSdrHotLeadsSection from "./emailSdr/EmailSdrHotLeadsSection";
+import EmailSdrLeadFinderSection from "./emailSdr/EmailSdrLeadFinderSection";
 import EmailSdrLaunchWizard from "./emailSdr/EmailSdrLaunchWizard";
 import EmailSdrMarketingLeadsSection from "./emailSdr/EmailSdrMarketingLeadsSection";
 import EmailSdrReplyReviewSection from "./emailSdr/EmailSdrReplyReviewSection";
@@ -2071,6 +2072,10 @@ export default function EmailSdrWorkspace({
             </Stack>
           </Stack>
         </Paper>
+      ) : null}
+
+      {workspaceView === "setup" ? (
+      <EmailSdrLeadFinderSection onOpenLead={onOpenLead} />
       ) : null}
 
       {workspaceView === "setup" ? (

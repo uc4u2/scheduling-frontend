@@ -271,6 +271,56 @@ export const listLeadImportBatches = async (params = {}) => {
   return data?.batches || [];
 };
 
+export const getLeadFinderConfigStatus = async () => {
+  const { data } = await platformAdminApi.get("/sales/lead-finder/config/status");
+  return data || { provider: "google_places", configured: false, setup_required: true, message: "" };
+};
+
+export const getLeadFinderUsage = async () => {
+  const { data } = await platformAdminApi.get("/sales/lead-finder/usage");
+  return data?.usage || null;
+};
+
+export const listLeadFinderSearches = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/lead-finder/searches", { params });
+  return data?.searches || [];
+};
+
+export const createLeadFinderSearch = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/lead-finder/searches", payload);
+  return data?.search || null;
+};
+
+export const getLeadFinderSearch = async (searchId) => {
+  const { data } = await platformAdminApi.get(`/sales/lead-finder/searches/${searchId}`);
+  return data?.search || null;
+};
+
+export const runLeadFinderDiscovery = async (searchId) => {
+  const { data } = await platformAdminApi.post(`/sales/lead-finder/searches/${searchId}/run-discovery`);
+  return data || { search: null, results: [], setup_required: false, message: "" };
+};
+
+export const scanLeadFinderEmails = async (searchId) => {
+  const { data } = await platformAdminApi.post(`/sales/lead-finder/searches/${searchId}/scan-emails`);
+  return data || { search: null, results: [], message: "" };
+};
+
+export const listLeadFinderResults = async (searchId) => {
+  const { data } = await platformAdminApi.get(`/sales/lead-finder/searches/${searchId}/results`);
+  return data || { search: null, results: [], summary: {} };
+};
+
+export const selectLeadFinderEmail = async (resultId, emailId) => {
+  const { data } = await platformAdminApi.patch(`/sales/lead-finder/results/${resultId}/select-email`, { email_id: emailId });
+  return data?.result || null;
+};
+
+export const importLeadFinderResults = async (searchId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/lead-finder/searches/${searchId}/import`, payload);
+  return data || { imported: 0, duplicates: 0, skipped: 0, missing_email: 0, created_lead_ids: [] };
+};
+
 export const getEmailSdrOverview = async () => {
   const { data } = await platformAdminApi.get("/sales/email-overview");
   return data?.overview || {};
