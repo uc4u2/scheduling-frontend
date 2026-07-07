@@ -301,8 +301,8 @@ export const runLeadFinderDiscovery = async (searchId) => {
   return data || { search: null, results: [], setup_required: false, message: "" };
 };
 
-export const scanLeadFinderEmails = async (searchId) => {
-  const { data } = await platformAdminApi.post(`/sales/lead-finder/searches/${searchId}/scan-emails`);
+export const scanLeadFinderEmails = async (searchId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/lead-finder/searches/${searchId}/scan-emails`, payload);
   return data || { search: null, results: [], message: "" };
 };
 

@@ -85,6 +85,8 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     personal: false,
     noEmail: false,
     duplicates: false,
+    hasPhone: false,
+    hasWebsite: false,
     readyOnly: false,
     importedOnly: false,
   });
@@ -132,16 +134,30 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     loadSearches();
   }, [loadConfig, loadSearches]);
 
+  const usageWarning = useMemo(() => {
+    const budget = Number(usage?.monthly_budget_usd || 0);
+    const estimated = Number(usage?.estimated_cost_usd || 0);
+    if (!budget || budget <= 0) return null;
+    const pct = estimated / budget;
+    if (pct >= 1) return { level: "error", label: "100% used" };
+    if (pct >= 0.9) return { level: "warning", label: "90% used" };
+    if (pct >= 0.75) return { level: "warning", label: "75% used" };
+    return null;
+  }, [usage]);
+
   const filteredResults = useMemo(() => {
     return results.filter((row) => {
       const emails = Array.isArray(row.emails) ? row.emails : [];
       const selected = emails.find((email) => email.id === row.selected_email_id) || emails.find((email) => email.is_selected) || null;
       const type = selected?.email_type || "";
-      if (!filters.businessDomain && type === "business_domain") return false;
-      if (!filters.businessLike && type === "free_provider_business_like") return false;
-      if (!filters.personal && type === "free_provider_personal_like") return false;
-      if (!filters.noEmail && row.email_status === "missing_email") return false;
+      const hasEmail = Boolean(row.selected_email);
+      if (type === "business_domain" && !filters.businessDomain) return false;
+      if (type === "free_provider_business_like" && !filters.businessLike) return false;
+      if (type === "free_provider_personal_like" && !filters.personal) return false;
+      if (!hasEmail && !filters.noEmail) return false;
       if (!filters.duplicates && row.duplicate_status !== "new") return false;
+      if (filters.hasPhone && !row.phone) return false;
+      if (filters.hasWebsite && !row.website) return false;
       if (filters.readyOnly && row.import_status !== "ready") return false;
       if (filters.importedOnly && row.import_status !== "imported") return false;
       return true;
@@ -169,17 +185,17 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     }
   };
 
-  const handleScanEmails = async () => {
-    if (!searchId) return;
+  const handleScanEmails = async (targetSearchId = searchId) => {
+    if (!targetSearchId) return;
     setSubmitting(true);
     setError("");
     setSuccess("");
     try {
-      const payload = await scanLeadFinderEmails(searchId);
+      const payload = await scanLeadFinderEmails(targetSearchId);
       setSuccess(payload?.message || "Website email scan completed.");
       await loadUsage();
-      await loadResults(searchId);
-      await loadSearches(searchId);
+      await loadResults(targetSearchId);
+      await loadSearches(targetSearchId);
     } catch (err) {
       setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Unable to scan websites for emails.");
     } finally {
@@ -187,15 +203,55 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     }
   };
 
-  const handleImport = async (mode = "selected") => {
-    if (!searchId) return;
-    const resultIds = mode === "selected" ? selectedIds : filteredResults.map((row) => row.id);
+  const handleScanMissingEmails = async (targetSearchId = searchId) => {
+    if (!targetSearchId) return;
+    setSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const payload = await scanLeadFinderEmails(targetSearchId, { missing_only: true });
+      setSuccess(payload?.message || "Missing-email website scan completed.");
+      await loadUsage();
+      await loadResults(targetSearchId);
+      await loadSearches(targetSearchId);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Unable to scan missing email results.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRerunSearch = async (targetSearchId = searchId) => {
+    if (!targetSearchId) return;
+    setSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const payload = await runLeadFinderDiscovery(targetSearchId);
+      setSuccess(payload?.message || "Lead Finder discovery reran successfully.");
+      await loadConfig();
+      await loadUsage();
+      await loadResults(targetSearchId);
+      await loadSearches(targetSearchId);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Unable to rerun this search.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleImport = async (mode = "selected", opts = {}) => {
+    const targetSearchId = opts.searchId || searchId;
+    const targetResults = opts.results || filteredResults;
+    const targetSelectedIds = opts.selectedIds || selectedIds;
+    if (!targetSearchId) return;
+    const resultIds = mode === "selected" ? targetSelectedIds : targetResults.map((row) => row.id);
     if (!resultIds.length) return;
     setSubmitting(true);
     setError("");
     setSuccess("");
     try {
-      const payload = await importLeadFinderResults(searchId, {
+      const payload = await importLeadFinderResults(targetSearchId, {
         result_ids: resultIds,
         require_email: true,
         include_personal: includePersonal,
@@ -206,8 +262,8 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       );
       setLastImportedLeadIds(Array.isArray(payload.created_lead_ids) ? payload.created_lead_ids : []);
       await loadUsage();
-      await loadResults(searchId);
-      await loadSearches(searchId);
+      await loadResults(targetSearchId);
+      await loadSearches(targetSearchId);
       if (payload.created_lead_ids?.length && onOpenLead) {
         onOpenLead(payload.created_lead_ids[0]);
       }
@@ -233,7 +289,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
 
   const exportVisibleCsv = () => {
     const rows = [
-      ["Company", "Website", "Phone", "City", "Selected Email", "Email Type", "Confidence", "Email Source", "Duplicate Status", "Import Status"],
+      ["Company", "Website", "Phone", "City", "Selected Email", "Email Type", "Confidence", "Email Source", "Contact Score", "Contact Status", "Duplicate Status", "Import Status"],
       ...filteredResults.map((row) => {
         const selected = (row.emails || []).find((email) => email.id === row.selected_email_id) || {};
         return [
@@ -245,6 +301,8 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           selected.email_type || "",
           selected.confidence_label || "",
           selected.source_url || "",
+          row.contact_score,
+          row.contact_readiness,
           row.duplicate_status,
           row.import_status,
         ];
@@ -252,6 +310,11 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     ];
     downloadCsv(`lead-finder-${searchId || "results"}.csv`, rows);
   };
+
+  const importRemainingValidCount = useMemo(
+    () => filteredResults.filter((row) => row.import_status === "ready" && !selectedIds.includes(row.id)).length,
+    [filteredResults, selectedIds]
+  );
 
   return (
     <Paper sx={{ p: 2.5 }}>
@@ -285,7 +348,10 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                     Estimated Google Places usage for {usage.month_key}. New discoveries stop automatically when the monthly budget is reached.
                   </Typography>
                 </Box>
-                {statusChip(usage.budget_reached ? "Budget reached" : "Budget active", usage.budget_reached ? "warning" : "success")}
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {statusChip(usage.budget_reached ? "Budget reached" : "Budget active", usage.budget_reached ? "warning" : "success")}
+                  {usageWarning ? statusChip(usageWarning.label, usageWarning.level === "error" ? "error" : "warning") : null}
+                </Stack>
               </Stack>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                 <Chip label={`Searches ${usage.searches || 0}`} variant="outlined" />
@@ -298,6 +364,11 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
               <Typography variant="caption" color="text.secondary">
                 Geocode: {usage.geocode_requests || 0} • Nearby search: {usage.places_search_requests || 0} • Place details: {usage.places_details_requests || 0}
               </Typography>
+              {usageWarning ? (
+                <Alert severity={usageWarning.level}>
+                  Lead Finder is approaching its monthly Google Places budget. Discovery will automatically stop at 100%.
+                </Alert>
+              ) : null}
             </Stack>
           </Paper>
         ) : null}
@@ -346,6 +417,12 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           <Button variant="outlined" onClick={handleScanEmails} disabled={submitting || !searchId || !search || search.total_found === 0}>
             Scan Emails
           </Button>
+          <Button variant="outlined" onClick={handleScanMissingEmails} disabled={submitting || !searchId || !search || search.total_found === 0}>
+            Scan Missing Emails
+          </Button>
+          <Button variant="outlined" onClick={handleRerunSearch} disabled={submitting || !searchId}>
+            Rerun Search
+          </Button>
           <Button variant="outlined" onClick={() => handleImport("selected")} disabled={submitting || selectedIds.length === 0}>
             Import Selected
           </Button>
@@ -357,6 +434,60 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           </Button>
         </Stack>
 
+        {searches.length ? (
+          <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Search history
+              </Typography>
+              {searches.slice(0, 6).map((row) => (
+                <Stack
+                  key={row.id}
+                  direction={{ xs: "column", md: "row" }}
+                  justifyContent="space-between"
+                  spacing={1}
+                  sx={{ borderTop: "1px solid #e2e8f0", pt: 1 }}
+                >
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {row.industry} • {row.location} • {row.radius_km} km
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      #{row.id} • {row.total_found || 0} found • {row.total_email_found || 0} with email • {row.status}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button size="small" onClick={async () => { setSearchId(String(row.id)); await loadResults(row.id); }}>
+                      Open results
+                    </Button>
+                    <Button size="small" onClick={async () => { setSearchId(String(row.id)); await loadResults(row.id); await handleRerunSearch(row.id); }} disabled={submitting}>
+                      Rerun search
+                    </Button>
+                    <Button size="small" onClick={async () => { setSearchId(String(row.id)); await loadResults(row.id); await handleScanMissingEmails(row.id); }} disabled={submitting}>
+                      Scan missing emails
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={async () => {
+                        setSearchId(String(row.id));
+                        const payload = await listLeadFinderResults(row.id);
+                        const rowResults = Array.isArray(payload.results) ? payload.results.filter((item) => item.import_status === "ready") : [];
+                        setSearch(payload.search || null);
+                        setResults(Array.isArray(payload.results) ? payload.results : []);
+                        setSummary(payload.summary || {});
+                        await handleImport("all", { searchId: row.id, results: rowResults });
+                      }}
+                      disabled={submitting}
+                    >
+                      Import remaining valid
+                    </Button>
+                  </Stack>
+                </Stack>
+              ))}
+            </Stack>
+          </Paper>
+        ) : null}
+
         <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`Found ${summary.found || 0}`} variant="outlined" />
           <Chip label={`Email found ${summary.email_found || 0}`} color="success" variant="outlined" />
@@ -364,12 +495,15 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           <Chip label={`Duplicates ${summary.duplicates || 0}`} color="warning" variant="outlined" />
           <Chip label={`Imported ${summary.imported || 0}`} color="info" variant="outlined" />
           <Chip label={`Ready ${summary.ready || 0}`} color="success" variant="outlined" />
+          <Chip label={`Remaining valid ${importRemainingValidCount}`} variant="outlined" />
         </Stack>
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
           <FormControlLabel control={<Switch checked={filters.businessDomain} onChange={(e) => setFilters((prev) => ({ ...prev, businessDomain: e.target.checked }))} />} label="Business domain" />
           <FormControlLabel control={<Switch checked={filters.businessLike} onChange={(e) => setFilters((prev) => ({ ...prev, businessLike: e.target.checked }))} />} label="Gmail/Outlook/Yahoo business-like" />
           <FormControlLabel control={<Switch checked={filters.personal} onChange={(e) => setFilters((prev) => ({ ...prev, personal: e.target.checked }))} />} label="Personal-looking free-provider" />
+          <FormControlLabel control={<Switch checked={filters.hasPhone} onChange={(e) => setFilters((prev) => ({ ...prev, hasPhone: e.target.checked }))} />} label="Has phone" />
+          <FormControlLabel control={<Switch checked={filters.hasWebsite} onChange={(e) => setFilters((prev) => ({ ...prev, hasWebsite: e.target.checked }))} />} label="Has website" />
           <FormControlLabel control={<Switch checked={filters.noEmail} onChange={(e) => setFilters((prev) => ({ ...prev, noEmail: e.target.checked }))} />} label="No email" />
           <FormControlLabel control={<Switch checked={filters.duplicates} onChange={(e) => setFilters((prev) => ({ ...prev, duplicates: e.target.checked }))} />} label="Include duplicates" />
           <FormControlLabel control={<Switch checked={filters.readyOnly} onChange={(e) => setFilters((prev) => ({ ...prev, readyOnly: e.target.checked }))} />} label="Ready to import" />
@@ -407,6 +541,8 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                   <TableCell>Email type</TableCell>
                   <TableCell>Confidence</TableCell>
                   <TableCell>Email source</TableCell>
+                  <TableCell>Contact score</TableCell>
+                  <TableCell>Status</TableCell>
                   <TableCell>Duplicate status</TableCell>
                   <TableCell>Import status</TableCell>
                 </TableRow>
@@ -441,6 +577,8 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                       <TableCell>{selected?.email_type || "—"}</TableCell>
                       <TableCell>{selected ? `${selected.confidence_label} (${selected.confidence_score})` : "—"}</TableCell>
                       <TableCell>{selected?.source_page_type || "—"}</TableCell>
+                      <TableCell>{row.contact_score ?? "—"}</TableCell>
+                      <TableCell>{row.contact_readiness || "—"}</TableCell>
                       <TableCell>{row.duplicate_status}</TableCell>
                       <TableCell>{row.import_status}</TableCell>
                     </TableRow>
@@ -490,6 +628,12 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                   </TableBody>
                 </Table>
               )}
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {dialogResult.has_contact_form ? statusChip("Contact form exists", "info") : null}
+                {(dialogResult.social_links || []).slice(0, 3).map((link) => (
+                  <Chip key={link} size="small" variant="outlined" label={new URL(link).hostname.replace(/^www\./, "")} component="a" href={link} clickable />
+                ))}
+              </Stack>
             </Stack>
           ) : null}
         </DialogContent>
