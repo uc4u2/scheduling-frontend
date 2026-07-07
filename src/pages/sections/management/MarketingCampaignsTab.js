@@ -956,7 +956,123 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
           rowsPerPageOptions={PAGE_SIZE_OPTIONS}
         />
       </CardContent>
-      <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
+  <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
+    </Card>
+  );
+}
+
+function DeliverabilityOverview({ auth, refreshKey = 0 }) {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadSummary = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get("/api/manager/marketing/dashboard", auth);
+      setSummary(data || null);
+    } catch (e) {
+      setSummary(null);
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to load deliverability summary.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
+  const rateCards = summary?.rate_cards || {};
+  const providerHealth = summary?.provider_health || {};
+  const suppressionInsights = summary?.suppression_insights || {};
+  const cards = [
+    { label: "Delivery rate", value: `${rateCards.delivery_rate ?? 0}%`, helper: `${rateCards.delivered ?? 0} delivered / ${rateCards.sent ?? 0} sent` },
+    { label: "Open rate", value: `${rateCards.open_rate ?? 0}%`, helper: `${rateCards.opened ?? 0} opens tracked` },
+    { label: "Click rate", value: `${rateCards.click_rate ?? 0}%`, helper: `${rateCards.clicked ?? 0} clicks tracked` },
+    { label: "Bounce rate", value: `${rateCards.bounce_rate ?? 0}%`, helper: `${rateCards.bounced ?? 0} bounced` },
+  ];
+
+  return (
+    <Card variant="outlined" sx={{ mb: 3 }}>
+      <CardHeader
+        title="Deliverability overview"
+        subheader="Lightweight health metrics for your recent tenant marketing activity."
+      />
+      <CardContent>
+        {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+        {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {cards.map((card) => (
+            <Grid item xs={12} sm={6} md={3} key={card.label}>
+              <Card variant="outlined" sx={{ height: "100%" }}>
+                <CardContent>
+                  <Typography variant="overline" color="text.secondary">{card.label}</Typography>
+                  <Typography variant="h5" fontWeight={800} sx={{ mt: 0.5 }}>{card.value}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{card.helper}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <Card variant="outlined" sx={{ height: "100%" }}>
+              <CardHeader
+                title="Provider health summary"
+                subheader="Current SendGrid connection status and remaining capacity."
+              />
+              <CardContent>
+                <Stack spacing={1}>
+                  <Typography variant="body2"><strong>Status:</strong> {providerHealth.status || "missing"}</Typography>
+                  <Typography variant="body2"><strong>Connection:</strong> {providerHealth.name || "Not connected"}</Typography>
+                  <Typography variant="body2"><strong>From email:</strong> {providerHealth.from_email || "—"}</Typography>
+                  <Typography variant="body2"><strong>Used today:</strong> {providerHealth.daily_used ?? 0} / {providerHealth.daily_limit ?? 0}</Typography>
+                  <Typography variant="body2"><strong>Remaining today:</strong> {providerHealth.daily_remaining ?? 0}</Typography>
+                  <Typography variant="body2"><strong>Used this hour:</strong> {providerHealth.hourly_used ?? 0} / {providerHealth.hourly_limit ?? 0}</Typography>
+                  <Typography variant="body2"><strong>Remaining this hour:</strong> {providerHealth.hourly_remaining ?? 0}</Typography>
+                  <Typography variant="body2"><strong>Last test send:</strong> {providerHealth.last_test_send_at || "Never"}</Typography>
+                  <Typography variant="body2"><strong>Last error:</strong> {providerHealth.last_error || "None"}</Typography>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card variant="outlined" sx={{ height: "100%" }}>
+              <CardHeader
+                title="Suppression insights"
+                subheader="Company-scoped blocks that protect compliance and deliverability."
+              />
+              <CardContent>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="overline" color="text.secondary">Total suppressed</Typography>
+                    <Typography variant="h5" fontWeight={800}>{suppressionInsights.total ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="overline" color="text.secondary">Manual blocks</Typography>
+                    <Typography variant="h5" fontWeight={800}>{suppressionInsights.manual ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="overline" color="text.secondary">Unsubscribes</Typography>
+                    <Typography variant="h6" fontWeight={700}>{suppressionInsights.unsubscribe ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="overline" color="text.secondary">Bounces</Typography>
+                    <Typography variant="h6" fontWeight={700}>{suppressionInsights.bounce ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="overline" color="text.secondary">Complaints</Typography>
+                    <Typography variant="h6" fontWeight={700}>{suppressionInsights.complaint ?? 0}</Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </CardContent>
     </Card>
   );
 }
@@ -1595,6 +1711,7 @@ export default function MarketingCampaignsTab() {
       <Alert severity="info" sx={{ mb: 2 }}>
         Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically, and campaigns are sent gradually to protect deliverability.
       </Alert>
+      <DeliverabilityOverview auth={auth} refreshKey={campaignRefreshKey} />
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} />
