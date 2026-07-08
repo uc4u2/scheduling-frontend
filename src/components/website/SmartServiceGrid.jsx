@@ -37,7 +37,7 @@ export default function SmartServiceGrid({
         {subtitle && (
           <Typography
             variant="body1"
-            sx={{ color: "var(--page-body-color, rgba(248,250,252,0.85))" }}
+            color="var(--page-body-color, rgba(248,250,252,0.85))"
             component="div"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(subtitle)) }}
           >

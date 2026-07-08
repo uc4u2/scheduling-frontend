@@ -1295,11 +1295,9 @@ export default function SiteFrame({
                         <MuiLink
                           component={component || RouterLink}
                           {...rest}
+                          color="var(--page-link-color)"
                           underline="hover"
-                          sx={{
-                            fontSize: "0.95rem",
-                            color: "var(--page-link-color)",
-                          }}
+                          sx={{ fontSize: "0.95rem" }}
                         >
                           {link.label || link.href}
                         </MuiLink>
@@ -1404,11 +1402,9 @@ export default function SiteFrame({
                     <MuiLink
                       component={component || RouterLink}
                       {...rest}
+                      color="var(--page-link-color)"
                       underline="hover"
-                      sx={{
-                        fontSize: "0.875rem",
-                        color: "var(--page-link-color)",
-                      }}
+                      sx={{ fontSize: "0.875rem" }}
                     >
                       {link.label || link.href}
                     </MuiLink>

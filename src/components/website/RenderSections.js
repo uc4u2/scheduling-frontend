@@ -34,49 +34,6 @@ import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../utils/websiteRadius
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
-// Render note: keep a small source change here when forcing static rebuilds.
-
-class PublicSectionErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error) {
-    if (typeof console !== "undefined") {
-      console.error("[PublicSite] Section render failed", {
-        sectionType: this.props.sectionType,
-        sectionId: this.props.sectionId,
-        error,
-      });
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <Box
-          sx={{
-            borderRadius: "var(--page-card-radius, 4px)",
-            border: "1px solid rgba(15,23,42,0.08)",
-            backgroundColor: "rgba(255,255,255,0.78)",
-            px: 2,
-            py: 1.5,
-          }}
-        >
-          <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--page-heading-color, #0f172a)" }}>
-            This section could not be displayed.
-          </Typography>
-        </Box>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const WEBSITE_RADIUS_MIN = 2;
@@ -4255,12 +4212,8 @@ const LogoCarousel = ({
           {active.src && label && (
             <Typography
               variant="subtitle2"
-              sx={{
-                mt: 1,
-                textTransform: "uppercase",
-                letterSpacing: ".12em",
-                color: themeDriven ? "var(--page-body-color, text.secondary)" : "text.secondary",
-              }}
+              color={themeDriven ? "var(--page-body-color, text.secondary)" : "text.secondary"}
+              sx={{ mt: 1, textTransform: "uppercase", letterSpacing: ".12em" }}
             >
               {label}
             </Typography>
@@ -7245,14 +7198,12 @@ return (
 
         return (
           <Section key={s?.id || i} id={s?.id} sx={perSectionSx}>
-            <PublicSectionErrorBoundary sectionType={s?.type} sectionId={s?.id || i}>
-              {frame(
-                <Cmp {...effectiveProps} />,
-                fullBleedFrameTypes.has(s?.type)
-                  ? { ...effectiveProps, layoutOverride: "full", gutterX: 0 }
-                  : effectiveProps
-              )}
-            </PublicSectionErrorBoundary>
+            {frame(
+              <Cmp {...effectiveProps} />,
+              fullBleedFrameTypes.has(s?.type)
+                ? { ...effectiveProps, layoutOverride: "full", gutterX: 0 }
+                : effectiveProps
+            )}
           </Section>
         );
       })}

@@ -2666,16 +2666,7 @@ const siteTitle = useMemo(() => {
       <NavStyleHydrator website={sitePayload || settings || {}} scopeSelector=".site-nav" />
       {/* Manager toolbar — only if role === 'manager' (and matches company if both ids exist) */}
       {isManagerForCompany && (
-        <AppBar
-          position="sticky"
-          color="inherit"
-          elevation={0}
-          sx={{
-            backgroundColor: "transparent",
-            borderBottom: "1px solid rgba(0,0,0,0.08)",
-            backdropFilter: "blur(6px)",
-          }}
-        >
+        <AppBar position="sticky" color="transparent" elevation={0} sx={{ borderBottom: "1px solid rgba(0,0,0,0.08)", backdropFilter: "blur(6px)" }}>
           <Toolbar>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ flexGrow: 1, minWidth: 0, flexWrap: "wrap" }}>
               <Chip label={`Editing: ${company?.name ?? "Company"}`} size="small" />

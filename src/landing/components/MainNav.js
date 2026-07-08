@@ -618,7 +618,7 @@ const MainNav = ({ token, setToken }) => {
     <AppBar
       position="sticky"
       top={0}
-      color="inherit"
+      color="transparent"
       elevation={0}
       sx={{
         backgroundColor: chromeBg,

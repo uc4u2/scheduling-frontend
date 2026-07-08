@@ -333,7 +333,7 @@ const NavBar = ({ token, setToken }) => {
   return (
     <AppBar
       position="static"
-      color="inherit"
+      color="transparent"
       elevation={0}
       sx={{
         backgroundColor: chromeBg,
