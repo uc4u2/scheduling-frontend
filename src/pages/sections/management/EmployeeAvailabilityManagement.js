@@ -27,7 +27,7 @@ import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedD
 import api from "../../../utils/api";
 import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   filterAvailabilityRows,
   formatAvailabilityLeaveTooltip,
@@ -53,7 +53,6 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
-  const location = useLocation();
   /* ─────────────────────────────── Reference data ─────────────────────────────── */
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -134,21 +133,6 @@ const EmployeeAvailabilityManagement = ({ token }) => {
     setSuccessMessage("");
     setAvailabilityConflict(null);
   };
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const requestedTab = (params.get("availabilityTab") || "").toLowerCase();
-    if (!requestedTab) return;
-    if (requestedTab === "daily") setTab(0);
-    if (requestedTab === "recurring") setTab(1);
-    if (
-      requestedTab === "service-slot-assignment" ||
-      requestedTab === "service_slots" ||
-      requestedTab === "service-slots"
-    ) {
-      setTab(2);
-    }
-  }, [location.search]);
 
   useEffect(() => {
     const today = DateTime.now().toISODate();

@@ -107,36 +107,6 @@ const financeInventoryMovementTypeLabel = (row) => {
   return row?.transaction_type || "movement";
 };
 
-const productChipBaseSx = {
-  color: "#4a2b1a",
-  bgcolor: "rgba(255, 255, 255, 0.82)",
-  borderColor: "rgba(233, 109, 64, 0.24)",
-  fontWeight: 700,
-  "& .MuiChip-label": {
-    color: "#4a2b1a",
-  },
-};
-
-const productChipAlertSx = {
-  color: "#9a3412",
-  bgcolor: "rgba(251, 191, 36, 0.2)",
-  borderColor: "rgba(245, 158, 11, 0.32)",
-  fontWeight: 700,
-  "& .MuiChip-label": {
-    color: "#9a3412",
-  },
-};
-
-const productChipSuccessSx = {
-  color: "#166534",
-  bgcolor: "rgba(34, 197, 94, 0.18)",
-  borderColor: "rgba(34, 197, 94, 0.28)",
-  fontWeight: 700,
-  "& .MuiChip-label": {
-    color: "#166534",
-  },
-};
-
 const ProductManagement = ({ token }) => {
   const { t, i18n } = useTranslation();
 
@@ -542,24 +512,12 @@ const ProductManagement = ({ token }) => {
             const color = qty <= 0 ? "default" : isLow ? "warning" : "success";
             return (
               <Stack direction="row" spacing={0.5} alignItems="center">
-                <Chip
-                  label={qty}
-                  color={color}
-                  size="small"
-                  sx={
-                    qty <= 0
-                      ? productChipBaseSx
-                      : isLow
-                        ? productChipAlertSx
-                        : productChipSuccessSx
-                  }
-                />
+                <Chip label={qty} color={color} size="small" />
                 <Chip
                   label={params.row?.stock_source === "finance_inventory" ? "Linked inventory" : "Product stock"}
                   variant={params.row?.stock_source === "finance_inventory" ? "outlined" : "filled"}
                   size="small"
                   color={params.row?.stock_source === "finance_inventory" ? "default" : "default"}
-                  sx={productChipBaseSx}
                 />
               </Stack>
             );
@@ -866,23 +824,9 @@ const ProductManagement = ({ token }) => {
 
       <Paper sx={{ mb: 2, p: 1.5 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }}>
-          <Chip
-            label={`Low-stock alerts: ${Number(lowStockSummary.count || 0)}`}
-            color={Number(lowStockSummary.count || 0) > 0 ? "warning" : "default"}
-            sx={Number(lowStockSummary.count || 0) > 0 ? productChipAlertSx : productChipBaseSx}
-          />
-          <Chip
-            label={`Out of stock: ${Number(lowStockSummary.out_of_stock_count || 0)}`}
-            color="default"
-            size="small"
-            sx={productChipBaseSx}
-          />
-          <Chip
-            label={`Low stock: ${Number(lowStockSummary.low_stock_count || 0)}`}
-            color="warning"
-            size="small"
-            sx={productChipAlertSx}
-          />
+          <Chip label={`Low-stock alerts: ${Number(lowStockSummary.count || 0)}`} color={Number(lowStockSummary.count || 0) > 0 ? "warning" : "default"} />
+          <Chip label={`Out of stock: ${Number(lowStockSummary.out_of_stock_count || 0)}`} color="default" size="small" />
+          <Chip label={`Low stock: ${Number(lowStockSummary.low_stock_count || 0)}`} color="warning" size="small" />
         </Stack>
         {lowStockItems.length > 0 && (
           <List dense sx={{ mt: 1 }}>

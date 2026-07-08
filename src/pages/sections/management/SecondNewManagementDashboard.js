@@ -448,7 +448,6 @@ const panels = useMemo(
   () => [
 
     {
-      key: "services",
 
       label: t("manager.advanced.panels.services"),
 
@@ -459,7 +458,6 @@ const panels = useMemo(
     },
 
     {
-      key: "products",
 
       label: t("manager.advanced.panels.products"),
 
@@ -470,7 +468,6 @@ const panels = useMemo(
     },
 
     {
-      key: "product-orders",
 
       label: t("manager.advanced.panels.productOrders"),
 
@@ -480,7 +477,6 @@ const panels = useMemo(
 
     },
     {
-      key: "digital-products",
 
       label: t("manager.advanced.panels.digitalProducts", "Digital Products"),
 
@@ -490,7 +486,6 @@ const panels = useMemo(
 
     },
     {
-      key: "easypost-shipping",
 
       label: t("manager.advanced.panels.easypostShipping", "EasyPost Shipping"),
 
@@ -501,7 +496,6 @@ const panels = useMemo(
     },
 
     {
-      key: "assign-services",
 
       label: t("manager.advanced.panels.assignServices"),
 
@@ -512,7 +506,6 @@ const panels = useMemo(
     },
 
     {
-      key: "promotions",
 
       label: t("manager.advanced.panels.promotions"),
 
@@ -523,7 +516,6 @@ const panels = useMemo(
     },
 
     {
-      key: "campaigns",
 
       label: t("manager.advanced.panels.campaigns"),
 
@@ -534,7 +526,6 @@ const panels = useMemo(
     },
 
     {
-      key: "addons",
 
       label: t("manager.advanced.panels.addons"),
 
@@ -545,7 +536,6 @@ const panels = useMemo(
     },
 
     {
-      key: "slots",
 
       label: t("manager.advanced.panels.slots"),
 
@@ -558,7 +548,6 @@ const panels = useMemo(
     },
 
     {
-      key: "resources",
 
       label: t("manager.advanced.panels.resources"),
 
@@ -569,7 +558,6 @@ const panels = useMemo(
     },
 
     {
-      key: "employee-availability",
 
       label: t("manager.advanced.panels.employeeAvailability"),
 
@@ -580,7 +568,6 @@ const panels = useMemo(
     },
 
     {
-      key: "shift-templates",
 
       label: t("manager.advanced.panels.shiftTemplates"),
 
@@ -616,7 +603,6 @@ const panels = useMemo(
     },
 
     {
-      key: "manual-payments",
 
       label: "Manual Payments / Invoices",
 
@@ -627,7 +613,6 @@ const panels = useMemo(
     },
 
     {
-      key: "payments",
 
       label: t("manager.advanced.panels.payments"),
 
