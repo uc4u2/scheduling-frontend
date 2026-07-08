@@ -257,7 +257,13 @@ export default function ContactFormSection(props) {
                     role={mediaImage ? "img" : undefined}
                     aria-label={mediaImage ? mediaAlt || mediaTitle || title : undefined}
                   >
-                    <Stack spacing={1.25} sx={{ maxWidth: 420 }}>
+                    <Stack
+                      spacing={1.25}
+                      sx={{
+                        maxWidth: 420,
+                        display: { xs: "none", md: "flex" },
+                      }}
+                    >
                       {!!mediaTitle && (
                         <Typography
                           variant="h4"

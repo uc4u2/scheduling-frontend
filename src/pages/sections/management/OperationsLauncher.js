@@ -34,6 +34,10 @@ import ProfessionSettings from "../ProfessionSetting";
 import { PROFESSION_OPTIONS } from "../../../constants/professions";
 import { ensureCompanyId } from "../../../utils/company";
 import api, { settingsApi, website } from "../../../utils/api";
+import {
+  PROFESSION_TEMPLATE_MAP,
+  TEMPLATE_DISPLAY_NAME_OVERRIDES,
+} from "./operationsLauncherTemplateMap";
 
 const TEAM_SIZE_OPTIONS = [
   { value: "solo", label: "Just me" },
@@ -66,9 +70,9 @@ const PROFESSION_TEMPLATE_HINTS = {
   chiropractic: ["clinic", "wellness", "therapy"],
   physiotherapy: ["clinic", "wellness", "therapy"],
   cleaning: ["clean", "service", "home"],
-  home_services: ["service", "home", "business", "contractor"],
+  home_services: ["hvac", "plumbing", "electrical", "trades", "contractor"],
   auto_services: ["auto", "service", "business"],
-  pet_care: ["pet", "service", "business"],
+  pet_care: ["pet", "grooming", "spa"],
   hospitality: ["hospitality", "business"],
   general: ["business", "service"],
 };
@@ -460,6 +464,9 @@ const getSetupShortcutLabels = (answers) => {
 };
 
 const getTemplateRank = (template, profession) => {
+  const explicit = PROFESSION_TEMPLATE_MAP[profession]?.recommended || [];
+  const explicitIndex = explicit.indexOf(template?.key);
+  if (explicitIndex >= 0) return 1000 - explicitIndex * 20;
   const hintTerms = PROFESSION_TEMPLATE_HINTS[profession] || PROFESSION_TEMPLATE_HINTS.general;
   const haystack = [
     template?.name,
@@ -482,6 +489,7 @@ const getTemplateRank = (template, profession) => {
 };
 
 const getTemplateDisplayName = (template) => {
+  if (TEMPLATE_DISPLAY_NAME_OVERRIDES[template?.key]) return TEMPLATE_DISPLAY_NAME_OVERRIDES[template.key];
   const key = String(template?.key || "").toLowerCase();
   const rawName = String(template?.name || "").trim();
   if (/beauty|salon|spa/.test(key) || /beauty|salon|spa/i.test(rawName)) return "Beauty business";
@@ -492,6 +500,8 @@ const getTemplateDisplayName = (template) => {
 };
 
 const getTemplateRecommendationLabel = (profession) => {
+  const mappedLabel = PROFESSION_TEMPLATE_MAP[profession]?.label;
+  if (mappedLabel) return `Recommended for ${mappedLabel.toLowerCase()}`;
   switch (profession) {
     case "cleaning":
       return "Recommended for cleaning teams";
@@ -622,6 +632,7 @@ export default function OperationsLauncher() {
   }, [templates, effectiveProfession]);
 
   const topRecommendedTemplates = useMemo(() => rankedTemplates.slice(0, 3), [rankedTemplates]);
+  const secondaryTemplates = useMemo(() => rankedTemplates.slice(3, 8), [rankedTemplates]);
 
   useEffect(() => {
     if (!selectedTemplateKey && rankedTemplates.length) {
@@ -1060,6 +1071,23 @@ export default function OperationsLauncher() {
                                     variant={selectedTemplateKey === template.key ? "filled" : "outlined"}
                                   />
                                 ))}
+                              </Stack>
+                            ) : null}
+                            {secondaryTemplates.length ? (
+                              <Stack spacing={1}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Good alternatives for this industry
+                                </Typography>
+                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                  {secondaryTemplates.map((template) => (
+                                    <Chip
+                                      key={template.key}
+                                      label={getTemplateDisplayName(template)}
+                                      onClick={() => setSelectedTemplateKey(template.key)}
+                                      variant="outlined"
+                                    />
+                                  ))}
+                                </Stack>
                               </Stack>
                             ) : null}
                             <FormControl fullWidth disabled={loadingTemplates || !templates.length}>
