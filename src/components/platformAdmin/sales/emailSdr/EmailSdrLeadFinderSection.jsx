@@ -95,6 +95,9 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     hasWebsite: false,
     readyOnly: false,
     importedOnly: false,
+    highPriorityOnly: false,
+    healthBelow50: false,
+    tech: "",
   });
 
   const loadResults = useCallback(async (id) => {
@@ -172,6 +175,9 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       if (filters.hasWebsite && !row.website) return false;
       if (filters.readyOnly && row.import_status !== "ready") return false;
       if (filters.importedOnly && row.import_status !== "imported") return false;
+      if (filters.highPriorityOnly && Number(row.priority?.score || 0) < 70) return false;
+      if (filters.healthBelow50 && Number(row.company_health?.score || 0) >= 50) return false;
+      if (filters.tech && (row.website_technology?.name || "unknown") !== filters.tech) return false;
       return true;
     });
   }, [filters, results]);
@@ -306,7 +312,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
 
   const exportVisibleCsv = () => {
     const rows = [
-      ["Company", "Website", "Phone", "City", "Selected Email", "Email Type", "Confidence", "Email Source", "Contact Score", "Contact Status", "Duplicate Status", "Import Status"],
+      ["Company", "Website", "Phone", "City", "Selected Email", "Email Type", "Confidence", "Email Source", "Tech", "Health", "Priority", "Contact Score", "Contact Status", "Duplicate Status", "Import Status"],
       ...filteredResults.map((row) => {
         const selected = (row.emails || []).find((email) => email.id === row.selected_email_id) || {};
         return [
@@ -320,6 +326,9 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           selected.source_url || "",
           row.contact_score,
           row.contact_readiness,
+          row.website_technology?.name || "unknown",
+          row.company_health?.score ?? 0,
+          row.priority?.score ?? 0,
           row.duplicate_status,
           row.import_status,
         ];
@@ -675,6 +684,26 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           <FormControlLabel control={<Switch checked={filters.duplicates} onChange={(e) => setFilters((prev) => ({ ...prev, duplicates: e.target.checked }))} />} label="Include duplicates" />
           <FormControlLabel control={<Switch checked={filters.readyOnly} onChange={(e) => setFilters((prev) => ({ ...prev, readyOnly: e.target.checked }))} />} label="Ready to import" />
           <FormControlLabel control={<Switch checked={filters.importedOnly} onChange={(e) => setFilters((prev) => ({ ...prev, importedOnly: e.target.checked }))} />} label="Imported" />
+          <FormControlLabel control={<Switch checked={filters.highPriorityOnly} onChange={(e) => setFilters((prev) => ({ ...prev, highPriorityOnly: e.target.checked }))} />} label="High priority only" />
+          <FormControlLabel control={<Switch checked={filters.healthBelow50} onChange={(e) => setFilters((prev) => ({ ...prev, healthBelow50: e.target.checked }))} />} label="Health below 50" />
+          <TextField
+            select
+            size="small"
+            label="Tech"
+            value={filters.tech}
+            onChange={(e) => setFilters((prev) => ({ ...prev, tech: e.target.value }))}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="">All tech</MenuItem>
+            <MenuItem value="wordpress">WordPress</MenuItem>
+            <MenuItem value="shopify">Shopify</MenuItem>
+            <MenuItem value="wix">Wix</MenuItem>
+            <MenuItem value="squarespace">Squarespace</MenuItem>
+            <MenuItem value="webflow">Webflow</MenuItem>
+            <MenuItem value="godaddy">GoDaddy</MenuItem>
+            <MenuItem value="custom">Custom</MenuItem>
+            <MenuItem value="unknown">Unknown</MenuItem>
+          </TextField>
         </Stack>
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -708,6 +737,9 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                   <TableCell>Email type</TableCell>
                   <TableCell>Confidence</TableCell>
                   <TableCell>Email source</TableCell>
+                  <TableCell>Tech</TableCell>
+                  <TableCell>Health</TableCell>
+                  <TableCell>Priority</TableCell>
                   <TableCell>Contact score</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Duplicate status</TableCell>
@@ -744,6 +776,9 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                       <TableCell>{selected?.email_type || "—"}</TableCell>
                       <TableCell>{selected ? `${selected.confidence_label} (${selected.confidence_score})` : "—"}</TableCell>
                       <TableCell>{selected?.source_page_type || "—"}</TableCell>
+                      <TableCell>{row.website_technology?.name || "unknown"}</TableCell>
+                      <TableCell>{row.company_health ? `${row.company_health.score} (${row.company_health.label})` : "—"}</TableCell>
+                      <TableCell>{row.priority ? `${row.priority.score} (${row.priority.label})` : "—"}</TableCell>
                       <TableCell>{row.contact_score ?? "—"}</TableCell>
                       <TableCell>{row.contact_readiness || "—"}</TableCell>
                       <TableCell>{row.duplicate_status}</TableCell>
