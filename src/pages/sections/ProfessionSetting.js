@@ -15,7 +15,7 @@ import {
 import { PROFESSION_OPTIONS } from "../../constants/professions";
 import { settingsApi } from "../../utils/api";
 
-const ProfessionSettings = ({ variant = "standalone" } = {}) => {
+const ProfessionSettings = ({ variant = "standalone", onSaved = null, onLoaded = null } = {}) => {
   const [profession, setProfession] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,6 +34,7 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
         setProfession(data?.default_profession ?? "");
         setIsManager(Boolean(data?.is_manager));
         setError("");
+        if (typeof onLoaded === "function") onLoaded(data);
       } catch (err) {
         if (!active) return;
         const msg =
@@ -49,7 +50,7 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [onLoaded]);
 
   const handleSave = async () => {
     if (!isManager) {
@@ -67,6 +68,7 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
       setProfession(refreshed?.default_profession ?? "");
       setMessage("Default profession updated.");
       setError("");
+      if (typeof onSaved === "function") onSaved(refreshed);
     } catch (err) {
       const msg =
         err?.displayMessage ||
