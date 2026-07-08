@@ -281,6 +281,11 @@ export const getLeadFinderUsage = async () => {
   return data?.usage || null;
 };
 
+export const getLeadFinderAnalytics = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/sales/lead-finder/analytics", { params });
+  return data || { totals: null, top_keywords: [], top_cities_by_email_discovery: [], top_searches_by_imported_leads: [] };
+};
+
 export const listLeadFinderSearches = async (params = {}) => {
   const { data } = await platformAdminApi.get("/sales/lead-finder/searches", { params });
   return data?.searches || [];

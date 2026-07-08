@@ -25,6 +25,7 @@ import {
 import {
   createLeadFinderSearch,
   getLeadFinderConfigStatus,
+  getLeadFinderAnalytics,
   getLeadFinderUsage,
   importLeadFinderResults,
   listLeadFinderResults,
@@ -60,6 +61,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
   const [config, setConfig] = useState({ provider: "google_places", configured: false, setup_required: true, message: "" });
   const [usage, setUsage] = useState(null);
   const [searches, setSearches] = useState([]);
+  const [analytics, setAnalytics] = useState({ totals: null, top_keywords: [], top_cities_by_email_discovery: [], top_searches_by_imported_leads: [] });
   const [searchId, setSearchId] = useState("");
   const [search, setSearch] = useState(null);
   const [results, setResults] = useState([]);
@@ -129,10 +131,16 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     if (payload) setUsage(payload);
   }, []);
 
+  const loadAnalytics = useCallback(async () => {
+    const payload = await getLeadFinderAnalytics({ limit: 50 });
+    setAnalytics(payload || { totals: null, top_keywords: [], top_cities_by_email_discovery: [], top_searches_by_imported_leads: [] });
+  }, []);
+
   useEffect(() => {
     loadConfig();
     loadSearches();
-  }, [loadConfig, loadSearches]);
+    loadAnalytics();
+  }, [loadAnalytics, loadConfig, loadSearches]);
 
   const usageWarning = useMemo(() => {
     const budget = Number(usage?.monthly_budget_usd || 0);
@@ -177,6 +185,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       setSuccess(payload?.message || "Business discovery completed.");
       await loadConfig();
       await loadUsage();
+      await loadAnalytics();
       await loadSearches(created.id);
     } catch (err) {
       setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Unable to run Lead Finder discovery.");
@@ -194,6 +203,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       const payload = await scanLeadFinderEmails(targetSearchId);
       setSuccess(payload?.message || "Website email scan completed.");
       await loadUsage();
+      await loadAnalytics();
       await loadResults(targetSearchId);
       await loadSearches(targetSearchId);
     } catch (err) {
@@ -212,6 +222,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       const payload = await scanLeadFinderEmails(targetSearchId, { missing_only: true });
       setSuccess(payload?.message || "Missing-email website scan completed.");
       await loadUsage();
+      await loadAnalytics();
       await loadResults(targetSearchId);
       await loadSearches(targetSearchId);
     } catch (err) {
@@ -231,6 +242,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       setSuccess(payload?.message || "Lead Finder discovery reran successfully.");
       await loadConfig();
       await loadUsage();
+      await loadAnalytics();
       await loadResults(targetSearchId);
       await loadSearches(targetSearchId);
     } catch (err) {
@@ -262,6 +274,7 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
       );
       setLastImportedLeadIds(Array.isArray(payload.created_lead_ids) ? payload.created_lead_ids : []);
       await loadUsage();
+      await loadAnalytics();
       await loadResults(targetSearchId);
       await loadSearches(targetSearchId);
       if (payload.created_lead_ids?.length && onOpenLead) {
@@ -316,6 +329,8 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
     [filteredResults, selectedIds]
   );
 
+  const summaryReasons = summary?.reasons || {};
+
   return (
     <Paper sx={{ p: 2.5 }}>
       <Stack spacing={2}>
@@ -369,6 +384,67 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
                   Lead Finder is approaching its monthly Google Places budget. Discovery will automatically stop at 100%.
                 </Alert>
               ) : null}
+            </Stack>
+          </Paper>
+        ) : null}
+        {analytics?.totals ? (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Lead Finder analytics
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    See which keywords and cities produce the best email discovery and SDR import yield.
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip label={`Cost / imported lead $${analytics.totals.cost_per_imported_lead_usd || "0.0000"}`} color="info" variant="outlined" />
+                  <Chip label={`Imported ${analytics.totals.imported || 0}`} color="success" variant="outlined" />
+                </Stack>
+              </Stack>
+              <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>Best keywords by imported leads</Typography>
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    {(analytics.top_keywords || []).map((row) => (
+                      <Paper key={`${row.search_id}-keyword`} variant="outlined" sx={{ p: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.keyword} • {row.location}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Imported {row.imported} • Email rate {row.email_discovery_rate}% • Cost/lead {row.cost_per_imported_lead_usd ? `$${row.cost_per_imported_lead_usd}` : "—"}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>Best cities by email discovery rate</Typography>
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    {(analytics.top_cities_by_email_discovery || []).map((row) => (
+                      <Paper key={`${row.search_id}-city`} variant="outlined" sx={{ p: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.city}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {row.keyword} • {row.email_discovery_rate}% email discovery • {row.emails_found}/{row.found} emails
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 700 }}>Top searches by imported SDR leads</Typography>
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    {(analytics.top_searches_by_imported_leads || []).map((row) => (
+                      <Paper key={`${row.search_id}-import`} variant="outlined" sx={{ p: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Imported {row.imported} • Found {row.found} • Cost/lead {row.cost_per_imported_lead_usd ? `$${row.cost_per_imported_lead_usd}` : "—"}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              </Stack>
             </Stack>
           </Paper>
         ) : null}
@@ -494,9 +570,32 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
           <Chip label={`No email ${summary.missing_email || 0}`} color="warning" variant="outlined" />
           <Chip label={`Duplicates ${summary.duplicates || 0}`} color="warning" variant="outlined" />
           <Chip label={`Imported ${summary.imported || 0}`} color="info" variant="outlined" />
+          <Chip label={`Skipped ${summary.skipped || 0}`} variant="outlined" />
           <Chip label={`Ready ${summary.ready || 0}`} color="success" variant="outlined" />
           <Chip label={`Remaining valid ${importRemainingValidCount}`} variant="outlined" />
         </Stack>
+        {searchId ? (
+          <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Import funnel breakdown
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This shows why discovered businesses did not become SDR leads.
+              </Typography>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip label={`Duplicate ${summaryReasons.duplicate || 0}`} variant="outlined" />
+                <Chip label={`Possible duplicate ${summaryReasons.possible_duplicate || 0}`} variant="outlined" />
+                <Chip label={`No email ${summaryReasons.no_email || 0}`} color="warning" variant="outlined" />
+                <Chip label={`Personal email ${summaryReasons.personal_email || 0}`} variant="outlined" />
+                <Chip label={`Suppressed ${summaryReasons.suppressed || 0}`} variant="outlined" />
+                <Chip label={`Invalid email ${summaryReasons.invalid_email || 0}`} variant="outlined" />
+                <Chip label={`Missing website ${summaryReasons.missing_website || 0}`} variant="outlined" />
+                <Chip label={`Blocked ${summaryReasons.blocked || 0}`} variant="outlined" />
+              </Stack>
+            </Stack>
+          </Paper>
+        ) : null}
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
           <FormControlLabel control={<Switch checked={filters.businessDomain} onChange={(e) => setFilters((prev) => ({ ...prev, businessDomain: e.target.checked }))} />} label="Business domain" />
