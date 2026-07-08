@@ -84,6 +84,49 @@ const HEALTH_LABELS = {
   "20_plus": "Multi-staff setup",
 };
 
+const launcherChipSx = {
+  color: "#4a2b1a",
+  bgcolor: "rgba(255, 255, 255, 0.78)",
+  borderColor: "rgba(233, 109, 64, 0.28)",
+  fontWeight: 700,
+  "& .MuiChip-label": {
+    color: "#4a2b1a",
+  },
+};
+
+const launcherChipSelectedSx = {
+  color: "#ffffff",
+  bgcolor: "#ef5b2e",
+  borderColor: "#ef5b2e",
+  fontWeight: 700,
+  "& .MuiChip-label": {
+    color: "#ffffff",
+  },
+};
+
+const launcherChipSuccessSx = {
+  color: "#155724",
+  bgcolor: "rgba(34, 197, 94, 0.18)",
+  borderColor: "rgba(34, 197, 94, 0.3)",
+  fontWeight: 700,
+  "& .MuiChip-label": {
+    color: "#155724",
+  },
+};
+
+const launcherProgressChipSx = {
+  minHeight: 32,
+  width: "100%",
+  justifyContent: "center",
+  "& .MuiChip-label": {
+    width: "100%",
+    textAlign: "center",
+    whiteSpace: "normal",
+    lineHeight: 1.2,
+    paddingInline: 10,
+  },
+};
+
 const ACTION_CATALOG = {
   add_services: {
     title: "Add services",
@@ -515,6 +558,162 @@ const getTemplateRecommendationLabel = (profession) => {
   }
 };
 
+const getBusinessMode = (profession, answers) => {
+  const teamLabel =
+    answers.team_size === "solo"
+      ? "Solo"
+      : answers.team_size === "2_5"
+        ? "Small team"
+        : answers.team_size === "6_20"
+          ? "Growing team"
+          : "Multi-staff";
+  const goalLabel =
+    answers.primary_goal === "online_bookings"
+      ? "booking-first"
+      : answers.primary_goal === "quotes_invoices"
+        ? "quote-first"
+        : answers.primary_goal === "products"
+          ? "products-first"
+          : answers.primary_goal === "website"
+            ? "website-first"
+            : "staff-setup";
+  const industryLabel =
+    profession === "home_services"
+      ? "service business"
+      : profession === "cleaning"
+        ? "cleaning business"
+        : profession === "dental"
+          ? "dental practice"
+          : profession === "medical_clinic"
+            ? "clinic"
+            : profession === "coaching"
+              ? "coaching business"
+              : profession === "hospitality"
+                ? "hospitality business"
+                : profession === "pet_care"
+                  ? "pet care business"
+                  : getProfessionLabel(profession).toLowerCase();
+  return {
+    title: `${teamLabel} ${industryLabel}`,
+    subtitle: `Current mode: ${goalLabel.replace("-", " ")}`,
+    description:
+      answers.primary_goal === "quotes_invoices"
+        ? "Prioritize estimates, invoices, and payment flow before polishing the rest."
+        : answers.primary_goal === "online_bookings"
+          ? "Prioritize services, availability, and booking readiness first."
+          : answers.primary_goal === "products"
+            ? "Prioritize product setup, checkout, and add-on sales first."
+            : answers.primary_goal === "website"
+              ? "Prioritize template choice and public website polish first."
+              : "Prioritize staff setup and operational readiness first.",
+  };
+};
+
+const buildProgressChecklist = ({ profession, answers, selectedTemplateKey, companySlug }) => {
+  const items = [
+    {
+      key: "industry",
+      label: "Company industry chosen",
+      done: profession && profession !== "general",
+    },
+    {
+      key: "team",
+      label: "Team mode chosen",
+      done: Boolean(answers.team_size),
+    },
+    {
+      key: "goal",
+      label: "Main workflow chosen",
+      done: Boolean(answers.primary_goal),
+    },
+    {
+      key: "booking",
+      label: "Booking plan decided",
+      done: answers.booking_now === "yes" || answers.booking_now === "no",
+    },
+    {
+      key: "products",
+      label: "Product mode decided",
+      done: answers.sells_products === "yes" || answers.sells_products === "no",
+    },
+    {
+      key: "template",
+      label: "Website template selected",
+      done: Boolean(selectedTemplateKey),
+    },
+    {
+      key: "public_site",
+      label: "Public website link available",
+      done: Boolean(companySlug),
+    },
+  ];
+  const doneCount = items.filter((item) => item.done).length;
+  const score = Math.round((doneCount / items.length) * 100);
+  let label = "Getting started";
+  if (score >= 85) label = "Launch-ready";
+  else if (score >= 60) label = "Strong setup";
+  else if (score >= 40) label = "Setup in progress";
+  return { items, doneCount, total: items.length, score, label };
+};
+
+const getPriorityStrip = ({ recommendedActionKeys, profession }) => {
+  const intro =
+    profession === "home_services"
+      ? "Best next steps for a service team"
+      : profession === "cleaning"
+        ? "Best next steps for a cleaning business"
+        : profession === "dental"
+          ? "Best next steps for a clinic team"
+          : "Best next steps today";
+  return {
+    intro,
+    items: recommendedActionKeys.slice(0, 3),
+  };
+};
+
+const getActionPresentation = (actionKey, action, profession, answers) => {
+  const base = {
+    ...action,
+    buttonLabel: "Open",
+  };
+  if (profession === "dental") {
+    if (actionKey === "create_estimate") return { ...base, title: "Create treatment estimate", description: "Start treatment quotes and estimate approvals for clients.", buttonLabel: "Open estimate tools" };
+    if (actionKey === "booking_link") return { ...base, title: "Open appointment page", description: "Open the public appointment flow patients can use online.", buttonLabel: "Open booking page" };
+    if (actionKey === "add_services") return { ...base, title: "Add care services", description: "Create the visit and care services patients can request or book." };
+  }
+  if (profession === "cleaning") {
+    if (actionKey === "create_estimate") return { ...base, title: "Create cleaning quote", description: "Start residential or commercial cleaning quotes for clients.", buttonLabel: "Open quote tools" };
+    if (actionKey === "add_services") return { ...base, title: "Add cleaning services", description: "Create the cleaning services clients can book or request." };
+    if (actionKey === "booking_link") return { ...base, title: "Open booking page", description: "Open the public booking page for cleaning requests and repeat clients." };
+  }
+  if (profession === "home_services") {
+    if (actionKey === "create_estimate") return { ...base, title: "Send service estimate", description: "Start field-service estimates and estimate approvals for clients.", buttonLabel: "Open estimate tools" };
+    if (actionKey === "payment_link") return { ...base, title: "Send payment link", description: "Collect deposits or send a manual invoice link before or after the job.", buttonLabel: "Open payment tools" };
+    if (actionKey === "booking_link") return { ...base, title: "Open service booking page", description: "Open the public booking flow for service calls and appointment requests." };
+    if (actionKey === "add_services") return { ...base, title: "Add service types", description: "Create the services clients can book or request from your team." };
+  }
+  if (profession === "coaching") {
+    if (actionKey === "booking_link") return { ...base, title: "Open discovery booking page", description: "Open the public booking flow for discovery calls and sessions." };
+    if (actionKey === "create_estimate") return { ...base, title: "Create coaching proposal", description: "Start custom coaching quotes, program proposals, or approval-ready estimates." };
+  }
+  if (profession === "hospitality") {
+    if (actionKey === "booking_link") return { ...base, title: "Open stay booking page", description: "Open the public booking flow for stays, visits, or hospitality requests." };
+    if (actionKey === "create_estimate") return { ...base, title: "Create package quote", description: "Start quotes for hospitality packages, retreats, or custom guest requests." };
+  }
+  if (profession === "pet_care") {
+    if (actionKey === "booking_link") return { ...base, title: "Open pet booking page", description: "Open the public booking flow for grooming, daycare, and care visits." };
+    if (actionKey === "create_estimate") return { ...base, title: "Create care quote", description: "Start custom pet-care estimates and intake approvals." };
+  }
+  if (profession === "music_lessons") {
+    if (actionKey === "booking_link") return { ...base, title: "Open lesson booking page", description: "Open the public booking flow for classes, lessons, and consultations." };
+    if (actionKey === "create_estimate") return { ...base, title: "Create lesson quote", description: "Start private lesson or program estimates for students." };
+  }
+  if (answers.team_size === "solo" && actionKey === "add_employee") {
+    return { ...base, title: "Add staff later", description: "You can skip this for now if you are the only person being booked.", buttonLabel: "Open staff setup" };
+  }
+  return base;
+};
+
 const ActionCard = ({ action, onOpen }) => (
   <Card variant="outlined" sx={{ height: "100%" }}>
     <CardContent>
@@ -529,7 +728,7 @@ const ActionCard = ({ action, onOpen }) => (
           {action.description}
         </Typography>
         <Button variant="contained" size="small" onClick={() => onOpen(action)}>
-          Open
+          {action.buttonLabel || "Open"}
         </Button>
       </Stack>
     </CardContent>
@@ -648,6 +847,28 @@ export default function OperationsLauncher() {
     () => getSetupShortcutLabels(answers),
     [answers]
   );
+  const businessMode = useMemo(
+    () => getBusinessMode(effectiveProfession, answers),
+    [effectiveProfession, answers]
+  );
+  const setupProgress = useMemo(
+    () =>
+      buildProgressChecklist({
+        profession: effectiveProfession,
+        answers,
+        selectedTemplateKey,
+        companySlug,
+      }),
+    [effectiveProfession, answers, selectedTemplateKey, companySlug]
+  );
+  const priorityStrip = useMemo(
+    () =>
+      getPriorityStrip({
+        recommendedActionKeys,
+        profession: effectiveProfession,
+      }),
+    [recommendedActionKeys, effectiveProfession]
+  );
 
   const openAction = (action) => {
     if (!action) return;
@@ -729,7 +950,12 @@ export default function OperationsLauncher() {
   const renderActionGrid = (actionKeys) => (
     <Grid container spacing={2}>
       {actionKeys.map((actionKey) => {
-        const action = ACTION_CATALOG[actionKey];
+        const action = getActionPresentation(
+          actionKey,
+          ACTION_CATALOG[actionKey],
+          effectiveProfession,
+          answers
+        );
         if (!action) return null;
         return (
           <Grid key={actionKey} item xs={12} md={6} xl={4}>
@@ -771,6 +997,120 @@ export default function OperationsLauncher() {
         <Alert severity="info">
           This launcher only opens the current source-of-truth tools. It does not replace your existing booking, website, product, or finance workflows.
         </Alert>
+
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <Card variant="outlined" sx={{ height: "100%" }}>
+              <CardContent>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Business mode
+                  </Typography>
+                  <Typography variant="h6" fontWeight={800}>
+                    {businessMode.title}
+                  </Typography>
+                  <Typography variant="body2" color="primary.main" fontWeight={700}>
+                    {businessMode.subtitle}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {businessMode.description}
+                  </Typography>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card variant="outlined" sx={{ height: "100%" }}>
+              <CardContent>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Setup progress
+                  </Typography>
+                  <Typography variant="h6" fontWeight={800}>
+                    {setupProgress.doneCount}/{setupProgress.total} ready
+                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Chip
+                      label={setupProgress.label}
+                      color="primary"
+                      variant="outlined"
+                      sx={launcherChipSx}
+                    />
+                    <Chip label={`${setupProgress.score}%`} variant="outlined" sx={launcherChipSx} />
+                  </Stack>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        sm: "repeat(2, minmax(0, 1fr))",
+                      },
+                      gap: 1,
+                    }}
+                  >
+                    {setupProgress.items.map((item) => (
+                      <Chip
+                        key={item.key}
+                        size="small"
+                        color={item.done ? "success" : "default"}
+                        variant={item.done ? "filled" : "outlined"}
+                        label={item.label}
+                        sx={{
+                          ...launcherProgressChipSx,
+                          ...(item.done ? launcherChipSuccessSx : launcherChipSx),
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card variant="outlined" sx={{ height: "100%" }}>
+              <CardContent>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Today&apos;s priorities
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {priorityStrip.intro}
+                  </Typography>
+                  <Stack spacing={1}>
+                    {priorityStrip.items.map((actionKey, index) => {
+                      const action = getActionPresentation(
+                        actionKey,
+                        ACTION_CATALOG[actionKey],
+                        effectiveProfession,
+                        answers
+                      );
+                      if (!action) return null;
+                      return (
+                        <Box
+                          key={actionKey}
+                          sx={{
+                            p: 1.25,
+                            borderRadius: 1.5,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            bgcolor: "background.default",
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary">
+                            Step {index + 1}
+                          </Typography>
+                          <Typography variant="body2" fontWeight={700}>
+                            {action.title}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         <Card variant="outlined">
           <CardContent>
@@ -1053,7 +1393,12 @@ export default function OperationsLauncher() {
                             </Typography>
                             {topRecommendedTemplates.length ? (
                               <Stack direction="row" spacing={1} flexWrap="wrap">
-                                <Chip color="primary" variant="outlined" label={getTemplateRecommendationLabel(effectiveProfession)} />
+                                <Chip
+                                  color="primary"
+                                  variant="outlined"
+                                  label={getTemplateRecommendationLabel(effectiveProfession)}
+                                  sx={launcherChipSx}
+                                />
                                 {topRecommendedTemplates.map((template) => (
                                   <Chip
                                     key={template.key}
@@ -1061,6 +1406,11 @@ export default function OperationsLauncher() {
                                     onClick={() => setSelectedTemplateKey(template.key)}
                                     color={selectedTemplateKey === template.key ? "primary" : "default"}
                                     variant={selectedTemplateKey === template.key ? "filled" : "outlined"}
+                                    sx={
+                                      selectedTemplateKey === template.key
+                                        ? launcherChipSelectedSx
+                                        : launcherChipSx
+                                    }
                                   />
                                 ))}
                               </Stack>
@@ -1077,6 +1427,7 @@ export default function OperationsLauncher() {
                                       label={getTemplateDisplayName(template)}
                                       onClick={() => setSelectedTemplateKey(template.key)}
                                       variant="outlined"
+                                      sx={launcherChipSx}
                                     />
                                   ))}
                                 </Stack>
