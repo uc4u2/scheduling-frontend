@@ -181,3 +181,34 @@ export const TEMPLATE_DISPLAY_NAME_OVERRIDES = {
   "minimal-studio": "Minimal business site",
   "aurora-atlas-modern": "Modern service business",
 };
+
+export function getFriendlyTemplateName(templateOrKey, fallbackName = "") {
+  const key =
+    typeof templateOrKey === "string"
+      ? templateOrKey
+      : String(templateOrKey?.key || "").trim();
+  const explicit = TEMPLATE_DISPLAY_NAME_OVERRIDES[key];
+  if (explicit) return explicit;
+  const rawName =
+    (typeof templateOrKey === "object" && templateOrKey?.name) || fallbackName || key || "";
+  const cleaned = String(rawName)
+    .replace(/\benterprise\b/gi, "")
+    .replace(/\btenant\b/gi, "")
+    .replace(/\bpro\b/gi, "")
+    .replace(/\bpremium\b/gi, "")
+    .replace(/\bwith enterprise contact\b/gi, "")
+    .replace(/\bwith pro contact\b/gi, "")
+    .replace(/\bcontact fix\b/gi, "")
+    .replace(/\bv\d+(\.\d+)?\b/gi, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) {
+    return key
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+  return cleaned.replace(/\b\w/g, (m) => m.toUpperCase());
+}

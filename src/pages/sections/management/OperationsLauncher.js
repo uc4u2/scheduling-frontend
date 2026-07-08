@@ -36,7 +36,7 @@ import { ensureCompanyId } from "../../../utils/company";
 import api, { settingsApi, website } from "../../../utils/api";
 import {
   PROFESSION_TEMPLATE_MAP,
-  TEMPLATE_DISPLAY_NAME_OVERRIDES,
+  getFriendlyTemplateName,
 } from "./operationsLauncherTemplateMap";
 
 const TEAM_SIZE_OPTIONS = [
@@ -488,16 +488,8 @@ const getTemplateRank = (template, profession) => {
   return score;
 };
 
-const getTemplateDisplayName = (template) => {
-  if (TEMPLATE_DISPLAY_NAME_OVERRIDES[template?.key]) return TEMPLATE_DISPLAY_NAME_OVERRIDES[template.key];
-  const key = String(template?.key || "").toLowerCase();
-  const rawName = String(template?.name || "").trim();
-  if (/beauty|salon|spa/.test(key) || /beauty|salon|spa/i.test(rawName)) return "Beauty business";
-  if (/therapy|clinic|medical|dental/.test(key) || /clinic|medical|therapy|dental/i.test(rawName)) return "Clinic / wellness";
-  if (/clean|service|home|contractor/.test(key) || /service|home/i.test(rawName)) return "Service business";
-  if (/photo|creative/.test(key) || /photo|creative/i.test(rawName)) return "Creative / portfolio";
-  return rawName || (template?.key || "Template");
-};
+const getTemplateDisplayName = (template) =>
+  getFriendlyTemplateName(template, template?.name || template?.key || "Template");
 
 const getTemplateRecommendationLabel = (profession) => {
   const mappedLabel = PROFESSION_TEMPLATE_MAP[profession]?.label;
