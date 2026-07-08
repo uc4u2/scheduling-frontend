@@ -34,6 +34,7 @@ import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../utils/websiteRadius
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
+// Render note: keep a small source change here when forcing static rebuilds.
 
 class PublicSectionErrorBoundary extends React.Component {
   constructor(props) {
