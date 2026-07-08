@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -22,6 +25,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   createLeadFinderSearch,
   getLeadFinderConfigStatus,
@@ -349,6 +353,70 @@ export default function EmailSdrLeadFinderSection({ onOpenLead }) {
             {search ? statusChip(`Search #${search.id} • ${search.status}`) : null}
           </Stack>
         </Stack>
+
+        <Accordion variant="outlined" disableGutters>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Stack spacing={0.25}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Lead Finder guide
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Source of truth, workflow steps, and Google cost model for Admin Email SDR lead intake.
+              </Typography>
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Source of truth</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Lead Finder is the upstream intake module for Admin Email SDR. It discovers businesses through Google Places,
+                  scans only the company’s own public website for contact emails, lets you review/select the best email candidate,
+                  and imports selected valid leads into SDR Leads. It does not auto-send, auto-create campaigns, or change SendGrid/Email SDR sending.
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Step-by-step</Typography>
+                <Stack spacing={0.5} sx={{ mt: 0.75 }}>
+                  <Typography variant="body2">1. Enter industry, city/location, radius, and limit.</Typography>
+                  <Typography variant="body2">2. Click <strong>Find Businesses</strong> to run Google Places discovery.</Typography>
+                  <Typography variant="body2">3. Click <strong>Scan Emails</strong> to crawl only the company’s public website pages.</Typography>
+                  <Typography variant="body2">4. Review email candidates and select the best business email for each result.</Typography>
+                  <Typography variant="body2">5. Filter for ready, non-duplicate leads and import selected rows into SDR Leads.</Typography>
+                  <Typography variant="body2">6. Continue inside the normal SDR flow: Segment → Campaign → Draft → Review → Send.</Typography>
+                </Stack>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>What Lead Finder scans</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Homepage, contact/contact-us, about/about-us, team, privacy-policy, and terms pages on the company’s own website.
+                  It also detects <code>mailto:</code> links, visible emails, footer hints, contact forms, and social links. It does not scrape Google Maps pages, bypass logins, or touch paywalled/private content.
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Google cost model used by Schedulaa</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  The usage card shows live estimated spend and monthly budget enforcement. Schedulaa currently estimates cost per API request using:
+                </Typography>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                  <Chip label={`Geocode $${usage?.cost_model_usd_per_request?.geocode_usd || "0.0000"} / request`} variant="outlined" />
+                  <Chip label={`Places search $${usage?.cost_model_usd_per_request?.places_search_usd || "0.0000"} / request`} variant="outlined" />
+                  <Chip label={`Place details $${usage?.cost_model_usd_per_request?.places_details_usd || "0.0000"} / request`} variant="outlined" />
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                  These estimates come from backend configuration. Monthly discovery stops automatically when the configured budget is reached.
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Google setup</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  In Render/backend env, set <code>GOOGLE_PLACES_API_KEY</code>. Budget control uses <code>LEAD_FINDER_MONTHLY_BUDGET_USD</code>.
+                  Optional overrides: <code>LEAD_FINDER_COST_GEOCODE_USD</code>, <code>LEAD_FINDER_COST_PLACES_SEARCH_USD</code>, and <code>LEAD_FINDER_COST_PLACES_DETAILS_USD</code>.
+                </Typography>
+              </Box>
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
 
         {!config.configured ? <Alert severity="warning" variant="outlined">{config.message}</Alert> : null}
         {usage ? (
