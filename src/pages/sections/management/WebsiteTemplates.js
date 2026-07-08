@@ -35,6 +35,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import SectionCard from "../../../components/ui/SectionCard";
 import TabShell from "../../../components/ui/TabShell";
+import { getFriendlyTemplateName } from "./operationsLauncherTemplateMap";
 
 const DEFAULT_VERSION = "1.0.0";
 
@@ -264,7 +265,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
         return (
           <Grid item xs={12} sm={6} md={4} key={t.key}>
             <SectionCard
-              title={t.name || t.key}
+              title={getFriendlyTemplateName(t, t.name || t.key)}
               description={`Key: ${t.key}`}
               actions={
                 isSelected ? (
@@ -317,7 +318,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                 {t.preview ? (
                   <img
                     src={t.preview}
-                    alt={`${t.name || t.key} preview`}
+                    alt={`${getFriendlyTemplateName(t, t.name || t.key)} preview`}
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                     onError={(e) => (e.currentTarget.style.display = "none")}
                   />
