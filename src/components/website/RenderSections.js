@@ -4212,8 +4212,14 @@ const LogoCarousel = ({
           {active.src && label && (
             <Typography
               variant="subtitle2"
-              color={themeDriven ? "var(--page-body-color, text.secondary)" : "text.secondary"}
-              sx={{ mt: 1, textTransform: "uppercase", letterSpacing: ".12em" }}
+              sx={{
+                mt: 1,
+                textTransform: "uppercase",
+                letterSpacing: ".12em",
+                color: themeDriven
+                  ? "var(--page-body-color, text.secondary)"
+                  : "text.secondary",
+              }}
             >
               {label}
             </Typography>
