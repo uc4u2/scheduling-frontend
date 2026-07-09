@@ -1147,7 +1147,7 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
     setFiles([]);
   }, [open, initialValues]);
 
-  const fileList = Array.from(files || []);
+  const fileList = Array.isArray(files) ? files : Array.from(files || []);
   const isSignedDocumentFlow = initialValues?.requestKind === "signed";
 
   const applyTemplate = (template) => {
@@ -1157,6 +1157,17 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
       message: template.message,
       expiry_days: template.expiry_days,
     });
+  };
+
+  const handleFilesSelected = (event) => {
+    const nextFiles = Array.from(event.target.files || []);
+    if (!nextFiles.length) return;
+    setFiles((prev) => [...(Array.isArray(prev) ? prev : Array.from(prev || [])), ...nextFiles]);
+    event.target.value = "";
+  };
+
+  const handleRemoveFile = (targetIndex) => {
+    setFiles((prev) => (Array.isArray(prev) ? prev.filter((_, index) => index !== targetIndex) : []));
   };
 
   return (
@@ -1217,23 +1228,41 @@ function RequestDocumentDialog({ open, saving, initialValues = null, onClose, on
             inputProps={{ min: 1, max: 30 }}
           />
           <Box>
-            <Button variant="outlined" component="label" sx={{ textTransform: "none" }}>
-              Attach files
+            <Button
+              variant="outlined"
+              component="label"
+              sx={{ textTransform: "none" }}
+              startIcon={<UploadFileOutlinedIcon />}
+            >
+              {isSignedDocumentFlow ? "Attach file to send" : "Attach reference files"}
               <input
                 hidden
                 multiple
                 type="file"
-                onChange={(event) => setFiles(event.target.files)}
+                onChange={handleFilesSelected}
               />
             </Button>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-              Optional. Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file.
+              {isSignedDocumentFlow
+                ? "Optional. Attached files are emailed to the client and also shown on the secure upload page. Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file."
+                : "Optional. Attached files are shown on the secure upload page as reference files. Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file."}
             </Typography>
             {fileList.length > 0 && (
               <List dense sx={{ mt: 1 }}>
-                {fileList.map((file) => (
-                  <ListItem key={`${file.name}-${file.size}`} disableGutters>
-                    <ListItemText primary={file.name} secondary={`${Math.round(file.size / 1024)} KB`} />
+                {fileList.map((file, index) => (
+                  <ListItem
+                    key={`${file.name}-${file.size}-${index}`}
+                    disableGutters
+                    secondaryAction={(
+                      <IconButton edge="end" size="small" onClick={() => handleRemoveFile(index)}>
+                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  >
+                    <ListItemText
+                      primary={file.name}
+                      secondary={`${Math.round(file.size / 1024)} KB${isSignedDocumentFlow ? " · will be emailed to client" : ""}`}
+                    />
                   </ListItem>
                 ))}
               </List>
