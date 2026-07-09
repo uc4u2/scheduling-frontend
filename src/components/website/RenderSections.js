@@ -828,7 +828,10 @@ const HeroCarousel = ({
   );
 };
 
-const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, maxWidth }) => (
+const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, maxWidth }) => {
+  const align = titleAlign || "left";
+  const justify = align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start";
+  return (
   <Container maxWidth={toContainerMax(maxWidth)}>
     <Grid container spacing={4} alignItems="center">
       <Grid item xs={12} md={6}>
@@ -838,7 +841,7 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
             sx={{
               fontWeight: 800,
               mb: 1,
-              textAlign: titleAlign || "left",
+              textAlign: align,
               color: "var(--page-heading-color, currentColor)"
             }}
           >
@@ -851,16 +854,18 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
             sx={{
               mb: 2,
               color: "var(--page-body-color, text.secondary)",
-              textAlign: titleAlign || "left"
+              textAlign: align
             }}
           >
             {subheading}
           </HtmlTypo>
         )}
         {ctaText && (
-          <Button aria-label={toPlain(ctaText)} href={ctaLink || "#"} variant="contained">
-            {toPlain(ctaText)}
-          </Button>
+          <Box sx={{ display: "flex", justifyContent: justify }}>
+            <Button aria-label={toPlain(ctaText)} href={ctaLink || "#"} variant="contained">
+              {toPlain(ctaText)}
+            </Button>
+          </Box>
         )}
       </Grid>
       <Grid item xs={12} md={6}>
@@ -888,7 +893,8 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
       </Grid>
     </Grid>
   </Container>
-);
+  );
+};
 
 const FeatureZigzag = ({
   eyebrow,
@@ -2284,28 +2290,30 @@ const Testimonials = ({ title, items = [], titleAlign, maxWidth }) => {
   if (!list.length) return null;
 
   const t = list[index] || {};
+  const align = titleAlign || "center";
+  const justify = align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start";
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: "center" }}>
+        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: align }}>
           {title}
         </HtmlTypo>
       )}
       <Card sx={{ p: { xs: 2, md: 3 } }}>
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent={justify}>
           {t.avatar && <Avatar src={t.avatar} alt="" />}
           {t.quote && (
-            <HtmlTypo variant="h6" sx={{ fontWeight: 700 }}>
+            <HtmlTypo variant="h6" sx={{ fontWeight: 700, textAlign: align }}>
               {`“${t.quote}”`}
             </HtmlTypo>
           )}
         </Stack>
         {t.author && (
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography color="text.secondary" sx={{ mt: 0.5, textAlign: align }}>
             — {toPlain(t.author)}
           </Typography>
         )}
-        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+        <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: justify }}>
           {list.map((_, i) => (
             <Box
               key={i}
@@ -5437,19 +5445,22 @@ const ReviewEditorialGrid = ({
     ? "color-mix(in srgb, var(--page-link-color, #3b2416) 70%, #16a34a 30%)"
     : "#2f6f3e";
   const starColor = "#1f2937";
+  const resolvedAlign = titleAlign || "center";
+  const stackAlign = resolvedAlign === "center" ? "center" : resolvedAlign === "right" ? "flex-end" : "flex-start";
+  const rowJustify = resolvedAlign === "center" ? "center" : resolvedAlign === "right" ? "flex-end" : "space-between";
 
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       <Stack spacing={3.5}>
         {(title || subtitle) && (
-          <Stack spacing={0.8} sx={{ textAlign: titleAlign }}>
+          <Stack spacing={0.8} sx={{ textAlign: resolvedAlign, alignItems: stackAlign }}>
             {title ? (
               <HtmlTypo
                 variant="h4"
                 sx={{
                   fontWeight: 800,
                   color: headingColor,
-                  textAlign: titleAlign,
+                  textAlign: resolvedAlign,
                 }}
               >
                 {title}
@@ -5460,7 +5471,7 @@ const ReviewEditorialGrid = ({
                 variant="body1"
                 sx={{
                   color: bodyColor,
-                  textAlign: titleAlign,
+                  textAlign: resolvedAlign,
                 }}
               >
                 {subtitle}
@@ -5472,11 +5483,11 @@ const ReviewEditorialGrid = ({
         {(reviewCountLabel || platformLabel) && (
           <Stack
             direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent={{ xs: "flex-start", md: rowJustify }}
+            alignItems={{ xs: stackAlign, md: "center" }}
             spacing={1.5}
           >
-            <Stack spacing={0.5}>
+            <Stack spacing={0.5} sx={{ textAlign: resolvedAlign, alignItems: stackAlign }}>
               <Box sx={{ color: starColor, letterSpacing: "0.18em", fontSize: 20, lineHeight: 1 }}>
                 ★★★★★
               </Box>
@@ -5487,7 +5498,13 @@ const ReviewEditorialGrid = ({
               ) : null}
             </Stack>
             {platformLabel ? (
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ color: headingColor }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                justifyContent={resolvedAlign === "center" ? "center" : resolvedAlign === "right" ? "flex-end" : "flex-start"}
+                sx={{ color: headingColor }}
+              >
                 <Box component="span" sx={{ color: "#10b981", fontSize: 18, lineHeight: 1 }}>★</Box>
                 <HtmlTypo variant="subtitle1" sx={{ fontWeight: 800 }}>
                   {platformLabel}
@@ -5580,7 +5597,11 @@ const ReviewEditorialGrid = ({
         </Box>
 
         {buttonText ? (
-          <Stack direction="row" justifyContent="center" sx={{ pt: 0.5 }}>
+          <Stack
+            direction="row"
+            justifyContent={resolvedAlign === "center" ? "center" : resolvedAlign === "right" ? "flex-end" : "flex-start"}
+            sx={{ pt: 0.5 }}
+          >
             <Button
               component="a"
               href={buttonLink || "#"}
@@ -5860,6 +5881,9 @@ const MapEmbed = ({
     Boolean(toPlain(ctaText)) ||
     Boolean(toPlain(ctaHref)) ||
     detailBlocks.length > 0;
+  const resolvedAlign = titleAlign || "left";
+  const contentAlign = resolvedAlign === "center" ? "center" : resolvedAlign === "right" ? "flex-end" : "flex-start";
+  const ctaJustify = resolvedAlign === "center" ? "center" : resolvedAlign === "right" ? "flex-end" : "flex-start";
 
   const mapCard = (
     <Box
@@ -5897,9 +5921,9 @@ const MapEmbed = ({
   if (useSplitLayout) {
     const containerMax = toContainerMax(maxWidth);
     const contentStack = (
-      <Stack spacing={2}>
+      <Stack spacing={2} sx={{ textAlign: resolvedAlign, alignItems: contentAlign }}>
         {eyebrow ? (
-          <Box>
+          <Box sx={{ width: "100%" }}>
             <HtmlTypo
               variant="overline"
               sx={{
@@ -5929,6 +5953,7 @@ const MapEmbed = ({
               fontSize: "clamp(2rem, 3.6vw, 3.55rem)",
               color: "var(--page-heading-color, #1f2937)",
               maxWidth: 440,
+              mx: resolvedAlign === "center" ? "auto" : 0,
             }}
           >
             {title}
@@ -5942,13 +5967,14 @@ const MapEmbed = ({
               maxWidth: 500,
               fontSize: "1.02rem",
               lineHeight: 1.65,
+              mx: resolvedAlign === "center" ? "auto" : 0,
             }}
           >
             {body}
           </HtmlTypo>
         ) : null}
         {ctaText && ctaHref ? (
-          <Box>
+          <Box sx={{ width: "100%", display: "flex", justifyContent: ctaJustify }}>
             <Button
               component="a"
               href={ctaHref}
@@ -5997,6 +6023,7 @@ const MapEmbed = ({
                         whiteSpace: "pre-line",
                         lineHeight: 1.6,
                         fontSize: "0.98rem",
+                        textAlign: resolvedAlign,
                       }}
                     >
                       {item.text}
@@ -6059,15 +6086,15 @@ const MapEmbed = ({
   );
 };
 
-const Footer = ({ text, maxWidth }) => (
+const Footer = ({ text, align = "center", maxWidth }) => (
   <Container maxWidth={toContainerMax(maxWidth)}>
     <Divider sx={{ my: 2 }} />
     {text ? (
-      <HtmlTypo variant="body2" sx={{ color: "text.secondary", textAlign: "center" }}>
+      <HtmlTypo variant="body2" sx={{ color: "text.secondary", textAlign: align || "center" }}>
         {text}
       </HtmlTypo>
     ) : (
-      <Typography variant="body2" color="text.secondary" align="center">
+      <Typography variant="body2" color="text.secondary" align={align || "center"}>
         © Your business
       </Typography>
     )}
