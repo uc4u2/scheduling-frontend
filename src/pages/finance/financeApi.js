@@ -175,8 +175,8 @@ export const getWorkOrderPhotoShareLink = (id) =>
   unwrap(api.get(`/finance/work-orders/${id}/photo-share-link`));
 export const getWorkOrderDispatch = (id) =>
   unwrap(api.get(`/finance/work-orders/${id}/dispatch`));
-export const listDispatchItems = () =>
-  unwrap(api.get("/finance/dispatch"));
+export const listDispatchItems = (params = {}) =>
+  unwrap(api.get("/finance/dispatch", { params }));
 export const createWorkOrderDispatchLink = (workOrderId, recruiterId) =>
   unwrap(api.post(`/finance/work-orders/${workOrderId}/dispatch/${recruiterId}/tracking-link`));
 export const revokeWorkOrderDispatchLink = (workOrderId, recruiterId) =>

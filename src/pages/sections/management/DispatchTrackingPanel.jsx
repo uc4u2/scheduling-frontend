@@ -8,6 +8,7 @@ import {
   Grid,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
@@ -47,24 +48,40 @@ export default function DispatchTrackingPanel() {
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [filtersApplied, setFiltersApplied] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState("");
+  const [filters, setFilters] = useState({
+    date: "today",
+    status: "active",
+    search: "",
+    date_from: "",
+    date_to: "",
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await listDispatchItems();
+      const params = {
+        date: filters.date,
+        status: filters.status,
+        search: filters.search || undefined,
+        date_from: filters.date === "custom" ? filters.date_from || undefined : undefined,
+        date_to: filters.date === "custom" ? filters.date_to || undefined : undefined,
+      };
+      const res = await listDispatchItems(params);
       setItems(Array.isArray(res?.items) ? res.items : []);
       setSummary(res?.summary || null);
       setSettings(res?.settings || null);
+      setFiltersApplied(res?.filters_applied || null);
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load dispatch trips.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     load();
@@ -118,6 +135,10 @@ export default function DispatchTrackingPanel() {
     }
   };
 
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
   return (
     <ManagementFrame
       title="Dispatch"
@@ -135,15 +156,114 @@ export default function DispatchTrackingPanel() {
           <Stack alignItems="center" sx={{ py: 8 }}><CircularProgress /></Stack>
         ) : (
           <>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between">
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip
+                      label="Today"
+                      color={filters.date === "today" ? "primary" : "default"}
+                      variant={filters.date === "today" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("date", "today")}
+                    />
+                    <Chip
+                      label="Tomorrow"
+                      color={filters.date === "tomorrow" ? "primary" : "default"}
+                      variant={filters.date === "tomorrow" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("date", "tomorrow")}
+                    />
+                    <Chip
+                      label="Custom"
+                      color={filters.date === "custom" ? "primary" : "default"}
+                      variant={filters.date === "custom" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("date", "custom")}
+                    />
+                    <Chip
+                      label="All dates"
+                      color={filters.date === "all" ? "primary" : "default"}
+                      variant={filters.date === "all" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("date", "all")}
+                    />
+                  </Stack>
+                  <Button variant="outlined" onClick={load}>Refresh</Button>
+                </Stack>
+                <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25}>
+                  <TextField
+                    size="small"
+                    label="Search employee, client, work order"
+                    value={filters.search}
+                    onChange={(event) => updateFilter("search", event.target.value)}
+                    sx={{ minWidth: { xs: "100%", lg: 320 } }}
+                  />
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                    <Chip
+                      label="Active"
+                      color={filters.status === "active" ? "primary" : "default"}
+                      variant={filters.status === "active" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("status", "active")}
+                    />
+                    <Chip
+                      label="On my way"
+                      color={filters.status === "on_my_way" ? "primary" : "default"}
+                      variant={filters.status === "on_my_way" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("status", "on_my_way")}
+                    />
+                    <Chip
+                      label="Arrived"
+                      color={filters.status === "arrived" ? "primary" : "default"}
+                      variant={filters.status === "arrived" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("status", "arrived")}
+                    />
+                    <Chip
+                      label="All statuses"
+                      color={filters.status === "all" ? "primary" : "default"}
+                      variant={filters.status === "all" ? "filled" : "outlined"}
+                      onClick={() => updateFilter("status", "all")}
+                    />
+                  </Stack>
+                </Stack>
+                {filters.date === "custom" ? (
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+                    <TextField
+                      size="small"
+                      label="From"
+                      type="date"
+                      value={filters.date_from}
+                      onChange={(event) => updateFilter("date_from", event.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                      size="small"
+                      label="To"
+                      type="date"
+                      value={filters.date_to}
+                      onChange={(event) => updateFilter("date_to", event.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Stack>
+                ) : null}
+                {filtersApplied ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Showing {summary?.matching_trips || 0} trip{Number(summary?.matching_trips || 0) === 1 ? "" : "s"} for {filtersApplied.date === "today" ? "today" : filtersApplied.date === "tomorrow" ? "tomorrow" : filtersApplied.date === "custom" ? "the selected dates" : "all dates"}.
+                  </Typography>
+                ) : null}
+              </Stack>
+            </Paper>
             <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <FinanceMetricCard label="Matching trips" value={String(summary?.matching_trips || 0)} helper="Trips matching the current date, status, and search filters." accent="secondary" />
+              </Grid>
               <Grid item xs={12} md={4}>
                 <FinanceMetricCard label="On the way" value={String(summary?.on_my_way || 0)} helper="Employees currently traveling to a client job." accent="primary" />
               </Grid>
               <Grid item xs={12} md={4}>
                 <FinanceMetricCard label="Arrived" value={String(summary?.arrived || 0)} helper="Trips marked as arrived." accent="success" />
               </Grid>
-              <Grid item xs={12} md={4}>
-                <FinanceMetricCard label="Tracking links sent" value={String(summary?.tracking_links_sent || 0)} helper="Client emails sent from active dispatch trips." accent="info" />
+              <Grid item xs={12} md={6}>
+                <FinanceMetricCard label="Tracking links sent" value={String(summary?.tracking_links_sent || 0)} helper="Client emails sent from the filtered dispatch trips." accent="info" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FinanceMetricCard label="Stale trips" value={String(summary?.stale_trips || 0)} helper="On my way trips with no fresh location update in the last 10 minutes." accent="warning" />
               </Grid>
             </Grid>
             {items.length ? (
@@ -163,6 +283,13 @@ export default function DispatchTrackingPanel() {
                           <Typography variant="body2" color="text.secondary">
                             {row.destination || "No destination set"}
                           </Typography>
+                          {row.assignment?.work_date ? (
+                            <Typography variant="caption" color="text.secondary">
+                              Scheduled {row.assignment.work_date}
+                              {row.assignment.start_time ? ` • ${row.assignment.start_time}` : ""}
+                              {row.assignment.end_time ? ` to ${row.assignment.end_time}` : ""}
+                            </Typography>
+                          ) : null}
                         </Box>
                         <Stack alignItems={{ xs: "flex-start", md: "flex-end" }} spacing={0.5}>
                           <Typography variant="caption" color="text.secondary">
@@ -173,10 +300,13 @@ export default function DispatchTrackingPanel() {
                               Location captured {formatDateTime(row.location.captured_at, timezone)}
                             </Typography>
                           ) : null}
+                          {row.status === "on_my_way" && !row.location?.captured_at ? (
+                            <Chip size="small" color="warning" variant="outlined" label="Waiting for location" />
+                          ) : null}
                         </Stack>
                       </Stack>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Button size="small" variant="outlined" onClick={() => navigate(`/manager/business-finance?work_order_id=${row.work_order_id}`)}>
+                        <Button size="small" variant="outlined" onClick={() => navigate("/manager/dashboard?view=finance-work-orders")}>
                           Open work order
                         </Button>
                         {row.client_id ? (
