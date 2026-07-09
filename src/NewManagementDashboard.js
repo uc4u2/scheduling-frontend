@@ -62,7 +62,6 @@ import {
   CalendarToday,
   People,
   EventNote,
-  EmojiEvents,
   Assignment,
   AssignmentTurnedIn,
   Article,
@@ -89,6 +88,7 @@ import {
   HelpOutline as HelpOutlineIcon,
   PhotoCamera as PhotoCameraIcon,
   SwapHoriz as SwapHorizIcon,
+  RocketLaunchOutlined,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
@@ -132,6 +132,7 @@ import Tax from "./pages/sections/Tax";
 import SavedPayrollsPortal from "./pages/sections/SavedPayrollsPortal";
 import AddRecruiter from "./AddRecruiter";
 import WebsiteSuite from "./pages/sections/management/WebsiteSuite";
+import OperationsLauncher from "./pages/sections/management/OperationsLauncher";
 import ManagerClientsWorkspace from "./pages/sections/management/ManagerClientsWorkspace";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import ManagerInvoicesPage from "./pages/sections/ManagerInvoicesPage";
@@ -149,8 +150,6 @@ import EmployeeManagementHelpDrawer from "./pages/sections/management/components
 import EmployeeProfileAuditTimeline from "./pages/Payroll/EmployeeProfileAuditTimeline";
 import MobileManagerHome from "./components/manager/MobileManagerHome";
 import BusinessFinanceShell from "./pages/finance/BusinessFinanceShell";
-import PredictionShell from "./pages/prediction/PredictionShell";
-import PredictionPromoBanner from "./pages/prediction/PredictionPromoBanner";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -185,11 +184,11 @@ const overviewChildrenConfig = [
 
 const menuConfig = [
   {
-    label: "Football Prediction Challenge",
-    navLabel: "Football Predictions",
-    key: "prediction",
-    icon: <EmojiEvents />,
-    tooltip: "Prediction challenge: weekly football picks, leaderboard, and campaign rules.",
+    label: "Operations Launcher",
+    navLabel: "Operations Launcher",
+    key: "operations-launcher",
+    icon: <RocketLaunchOutlined />,
+    tooltip: "Guided shortcuts for setup, bookings, finance, products, and website actions.",
   },
 
   // Employee group (first)
@@ -1763,7 +1762,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     if (canManagePayroll) allowedGroups.add("payroll-group");
     if (canManagePayroll) allowedGroups.add("finance-group");
     const base = menuConfig
-      .filter((item) => item.key === "prediction" || allowedGroups.has(item.key))
+      .filter((item) => allowedGroups.has(item.key))
       .map((item) => {
         if (item.key === "employee-group") {
           return {
@@ -3048,6 +3047,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "advanced-management":
         return <SecondNewManagementDashboard token={token} />;
 
+      case "operations-launcher":
+        return <OperationsLauncher />;
+
       case "booking-checkout":
         return <BookingCheckoutPanel token={token} currentUserInfo={currentUserInfo} />;
 
@@ -3108,6 +3110,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
               flexWrap="wrap"
               sx={{ mb: 2 }}
             >
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => setSelectedView("operations-launcher")}
+                fullWidth={isMobileViewport}
+              >
+                Operations Launcher
+              </Button>
               <Button
                 variant="contained"
                 onClick={() => setSelectedView("website-pages")}
@@ -3603,9 +3613,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "clients":
         return <ManagerClientsWorkspace />;
 
-      case "prediction":
-        return <PredictionShell token={token} currentUserInfo={currentUserInfo} />;
-
       case "zapier":
         return <ZapierIntegrationPage />;
 
@@ -3941,17 +3948,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           </Alert>
         )}
         {selectedView !== "team" && <GlobalBillingBanner />}
-        {selectedView !== "prediction" && selectedView !== "team" && (
-          <PredictionPromoBanner
-            onEnterPredictions={() => handleNavSelect("prediction")}
-            onViewRules={() => {
-              if (typeof window !== "undefined") {
-                window.localStorage.setItem("prediction_initial_tab", "rules");
-              }
-              handleNavSelect("prediction");
-            }}
-          />
-        )}
         {renderView()}
       </Box>
     </Box>
