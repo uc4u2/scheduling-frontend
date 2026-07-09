@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
+import { useNavigate } from "react-router-dom";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
@@ -72,6 +73,7 @@ const ACTION_HELP = {
 export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onChanged, clients = [], estimates = [] }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
   const tWorkOrders = React.useCallback(
     (key, fallback, options = {}) => t(`manager.finance.workOrders.detail.${key}`, { defaultValue: fallback, ...options }),
     [t]
@@ -181,6 +183,53 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
 
             <WorkOrderAssignmentsPanel workOrder={workOrder} onChanged={async () => { await load(); onChanged?.(); }} />
             <WorkOrderMaterialsPanel workOrder={workOrder} onChanged={async () => { await load(); onChanged?.(); }} />
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ md: "center" }} sx={{ mb: 1.5 }}>
+                <Box>
+                  <Typography variant="h6" fontWeight={800}>{tWorkOrders("photos.title", "Job Photos")}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {tWorkOrders("photos.helper", "Employee field photos linked to this work order appear here and can also surface in Client 360.")}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/manager/field-photos?work_order_id=${workOrder.id}`)}
+                >
+                  {tWorkOrders("photos.openAll", "Open Field Photos")}
+                </Button>
+              </Stack>
+              {(workOrder.recent_field_photos || []).length ? (
+                <Stack spacing={1}>
+                  {(workOrder.recent_field_photos || []).map((photo) => (
+                    <Stack key={photo.id} direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between">
+                      <Box>
+                        <Typography variant="body2" fontWeight={700}>
+                          {photo.work_order?.work_order_number || workOrder.work_order_number} • {photo.uploaded_by || tWorkOrders("photos.employeeFallback", "Employee photo")}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {photo.note || photo.file_name || tWorkOrders("photos.noteFallback", "No note added")}
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {photo.created_at ? formatDateTimeInTz(photo.created_at, timezone) : tWorkOrders("photos.noDate", "No date")}
+                      </Typography>
+                    </Stack>
+                  ))}
+                  {Number(workOrder.field_photo_count || 0) > Number((workOrder.recent_field_photos || []).length) ? (
+                    <Typography variant="caption" color="text.secondary">
+                      {tWorkOrders("photos.moreCount", "{{count}} more photos are available in Field Photos.", {
+                        count: Number(workOrder.field_photo_count || 0) - Number((workOrder.recent_field_photos || []).length),
+                      })}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  {tWorkOrders("photos.empty", "No work-order-linked photos yet. Employees can upload photos directly from their assigned job view now.")}
+                </Typography>
+              )}
+            </Paper>
 
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>{tWorkOrders("notes.title", "Job Notes")}</Typography>

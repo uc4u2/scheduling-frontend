@@ -204,6 +204,12 @@ const shiftLabel = (row) => {
   return `${formatDate(shift.date)}${time}`;
 };
 
+const workOrderLabel = (row) => {
+  const workOrder = row?.work_order || {};
+  if (!workOrder?.id) return "";
+  return [workOrder.work_order_number, workOrder.title].filter(Boolean).join(" • ");
+};
+
 const RowsPerPageSelect = ({ value, onChange }) => (
   <FormControl size="small" sx={{ minWidth: 118 }}>
     <InputLabel>Rows</InputLabel>
@@ -300,6 +306,11 @@ const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDown
                   Client: {row.client.name}
                 </Typography>
               )}
+              {workOrderLabel(row) ? (
+                <Typography variant="caption" color="text.secondary" sx={lineClampSx(1)}>
+                  Work order: {workOrderLabel(row)}
+                </Typography>
+              ) : null}
               {row.department?.name && <Typography variant="caption" color="text.secondary">{row.department.name}</Typography>}
             </Box>
             <Stack direction="row" spacing={0.25}>
@@ -438,6 +449,11 @@ const GalleryDialog = ({ rows, selectedId, previewUrls, onClose, onSelect, onDow
                   Client: {row.client.name}{row.client.email ? ` • ${row.client.email}` : ""}
                 </Typography>
               ) : null}
+              {workOrderLabel(row) ? (
+                <Typography variant="body2" color="text.secondary">
+                  Work order: {workOrderLabel(row)}
+                </Typography>
+              ) : null}
               <Chip size="small" label={uploadTimingLabel(row)} {...readableChipProps(theme, uploadTimingTone(uploadTimingLabel(row)))} sx={{ alignSelf: "flex-start", ...readableChipProps(theme, uploadTimingTone(uploadTimingLabel(row))).sx }} />
               {row.note && <Typography variant="body2">{row.note}</Typography>}
               <Typography variant="body2" color="text.secondary">Uploaded {formatDateTime(row.created_at)}</Typography>
@@ -492,6 +508,7 @@ const FieldPhotos = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [shiftId, setShiftId] = useState(initialParams.get("shift_id") || "");
+  const [workOrderId, setWorkOrderId] = useState(initialParams.get("work_order_id") || "");
 
   const summary = data.summary || billingStatus?.field_photos || {};
   const visible = Boolean(summary.addon_active || summary.read_only);
@@ -530,6 +547,7 @@ const FieldPhotos = () => {
             employee_id: employeeId || undefined,
             search: search || undefined,
             shift_id: shiftId || undefined,
+            work_order_id: workOrderId || undefined,
             archived: archived === "archived" ? "true" : undefined,
             ...dateRange,
           },
@@ -544,7 +562,7 @@ const FieldPhotos = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [page, pageSize, readiness, locationStatus, departmentId, employeeId, archived, shiftId, dateRange.start_date, dateRange.end_date]);
+  useEffect(() => { loadData(); }, [page, pageSize, readiness, locationStatus, departmentId, employeeId, archived, shiftId, workOrderId, dateRange.start_date, dateRange.end_date]);
 
   useEffect(() => {
     rows.forEach((row) => {
@@ -607,6 +625,12 @@ const FieldPhotos = () => {
 
   const clearShiftFilter = () => {
     setShiftId("");
+    setPage(1);
+    navigate("/manager/field-photos", { replace: true });
+  };
+
+  const clearWorkOrderFilter = () => {
+    setWorkOrderId("");
     setPage(1);
     navigate("/manager/field-photos", { replace: true });
   };
@@ -683,6 +707,11 @@ const FieldPhotos = () => {
             {shiftId && (
               <Alert severity="info" action={<Button size="small" onClick={clearShiftFilter}>Clear</Button>}>
                 Showing photos for shift #{shiftId}.
+              </Alert>
+            )}
+            {workOrderId && (
+              <Alert severity="info" action={<Button size="small" onClick={clearWorkOrderFilter}>Clear</Button>}>
+                Showing photos for work order #{workOrderId}.
               </Alert>
             )}
 

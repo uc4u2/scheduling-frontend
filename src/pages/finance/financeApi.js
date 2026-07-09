@@ -274,6 +274,12 @@ export const voidPurchase = (id, payload = {}) =>
 
 export const listMyWorkOrders = (params = {}) => unwrap(api.get("/finance/my-work-orders", { params }));
 export const getMyWorkOrder = (id) => unwrap(api.get(`/finance/my-work-orders/${id}`));
+export const listMyWorkOrderFieldPhotos = (id) =>
+  unwrap(api.get(`/finance/my-work-orders/${id}/field-photos`));
+export const uploadMyWorkOrderFieldPhoto = (id, formData) =>
+  unwrap(api.post(`/finance/my-work-orders/${id}/field-photos`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }));
 export const submitMyFieldReport = (id, payload) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/field-report`, payload));
 export const listMyFieldReports = (params = {}) => unwrap(api.get("/finance/my-field-reports", { params }));

@@ -4334,7 +4334,7 @@ export default function ManagerClientsWorkspace() {
                                 Why this is easier
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
-                                Employee field photos linked to appointments appear here automatically.
+                                Employee field photos linked through appointments or work orders appear here automatically.
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
                                 Manager uploads stay with the client profile and can be reviewed in the same gallery.
@@ -4431,6 +4431,11 @@ export default function ManagerClientsWorkspace() {
                                     <Typography variant="body2" color="text.secondary">
                                       Uploaded by {row?.uploaded_by?.name || row?.employee_name || "Team member"}
                                     </Typography>
+                                    {row?.work_order?.work_order_number ? (
+                                      <Typography variant="body2" color="text.secondary">
+                                        Work order: {[row.work_order.work_order_number, row.work_order.title].filter(Boolean).join(" • ")}
+                                      </Typography>
+                                    ) : null}
                                     {row.note ? <ExpandableText text={row.note} limit={180} /> : null}
                                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                       <Button
@@ -4453,7 +4458,12 @@ export default function ManagerClientsWorkspace() {
                                           {deletingPhotoId === row.id ? "Removing..." : "Remove"}
                                         </Button>
                                       ) : (
-                                        <Button size="small" variant="text" component={RouterLink} to="/manager/field-photos">
+                                        <Button
+                                          size="small"
+                                          variant="text"
+                                          component={RouterLink}
+                                          to={row?.work_order?.id ? `/manager/field-photos?work_order_id=${row.work_order.id}` : "/manager/field-photos"}
+                                        >
                                           Open Field Photos
                                         </Button>
                                       )}

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  Box,
   Button,
   CircularProgress,
   Dialog,
@@ -14,15 +15,24 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
-import { getMyWorkOrder } from "../financeApi";
+import { getMyWorkOrder, listMyWorkOrderFieldPhotos, uploadMyWorkOrderFieldPhoto } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
+import { API_BASE_URL } from "../../../utils/api";
+import { getAuthedCompanyId } from "../../../utils/authedCompany";
 
 export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports }) {
   const [workOrder, setWorkOrder] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoNote, setPhotoNote] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -31,9 +41,13 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       setLoading(true);
       setError("");
       try {
-        const res = await getMyWorkOrder(workOrderId);
+        const [res, photoRes] = await Promise.all([
+          getMyWorkOrder(workOrderId),
+          listMyWorkOrderFieldPhotos(workOrderId).catch(() => ({ items: [] })),
+        ]);
         if (!mounted) return;
         setWorkOrder(res?.work_order || res);
+        setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
       } catch (err) {
         if (!mounted) return;
         setError(err?.response?.data?.error || err?.message || "Unable to load work order.");
@@ -46,6 +60,78 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       mounted = false;
     };
   }, [open, workOrderId]);
+
+  const loadSignedPreview = useCallback(async (photoId) => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") || "" : "";
+    const companyId = getAuthedCompanyId?.();
+    const apiBase = String(API_BASE_URL || "").replace(/\/$/, "");
+    const response = await fetch(`${apiBase}/employee/field-photos/${photoId}/download`, {
+      method: "GET",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(companyId ? { "X-Company-Id": String(companyId) } : {}),
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Photo is not available yet.");
+    }
+    const payload = await response.json();
+    return payload?.url || "";
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPreviewUrls = async () => {
+      for (const row of photos) {
+        if (!row?.id || !row?.is_download_ready || photoPreviewUrls[row.id]) continue;
+        try {
+          const url = await loadSignedPreview(row.id);
+          if (!cancelled && url) {
+            setPhotoPreviewUrls((prev) => (prev[row.id] ? prev : { ...prev, [row.id]: url }));
+          }
+        } catch (_err) {
+          // leave preview empty until opened manually
+        }
+      }
+    };
+    if (photos.length) loadPreviewUrls();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadSignedPreview, photoPreviewUrls, photos]);
+
+  const handleOpenPhoto = async (row) => {
+    try {
+      const existing = photoPreviewUrls[row.id];
+      const url = existing || await loadSignedPreview(row.id);
+      if (url && !existing) {
+        setPhotoPreviewUrls((prev) => ({ ...prev, [row.id]: url }));
+      }
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setPhotoError(err?.message || "Photo is not available yet.");
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!workOrder?.id || !photoFile) return;
+    setUploadingPhoto(true);
+    setPhotoError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", photoFile);
+      if (photoNote.trim()) formData.append("note", photoNote.trim());
+      await uploadMyWorkOrderFieldPhoto(workOrder.id, formData);
+      const photoRes = await listMyWorkOrderFieldPhotos(workOrder.id);
+      setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
+      setPhotoFile(null);
+      setPhotoNote("");
+    } catch (err) {
+      setPhotoError(err?.response?.data?.error || err?.message || "Unable to upload work-order photo.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -108,6 +194,91 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               ) : (
                 <Typography variant="body2" color="text.secondary">No planned materials were shared for this job.</Typography>
               )}
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ md: "center" }}>
+                  <Box>
+                    <Typography variant="h6" fontWeight={800}>Job photos</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Upload proof-of-work photos directly to this assigned job. These photos also appear for the manager and in Client 360 when the work order is client-linked.
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {photos.length || workOrder.field_photo_count || 0} linked photo{Number(photos.length || workOrder.field_photo_count || 0) === 1 ? "" : "s"}
+                  </Typography>
+                </Stack>
+                {photoError ? <Alert severity="error">{photoError}</Alert> : null}
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
+                  <Button component="label" variant="outlined">
+                    {photoFile ? photoFile.name : "Choose photo"}
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                    />
+                  </Button>
+                  <TextField
+                    size="small"
+                    label="Photo note"
+                    value={photoNote}
+                    onChange={(event) => setPhotoNote(event.target.value)}
+                    sx={{ minWidth: { xs: "100%", md: 260 } }}
+                  />
+                  <Button variant="contained" disabled={!photoFile || uploadingPhoto} onClick={handleUploadPhoto}>
+                    {uploadingPhoto ? "Uploading..." : "Upload photo"}
+                  </Button>
+                </Stack>
+                {(photos || []).length ? (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {photos.slice(0, 8).map((row) => (
+                      <Stack
+                        key={row.id}
+                        spacing={0.75}
+                        sx={{
+                          width: 120,
+                          p: 1,
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Box
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleOpenPhoto(row)}
+                          onKeyDown={(event) => { if (event.key === "Enter") handleOpenPhoto(row); }}
+                          sx={{
+                            height: 88,
+                            borderRadius: 1,
+                            bgcolor: "action.hover",
+                            overflow: "hidden",
+                            display: "grid",
+                            placeItems: "center",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {photoPreviewUrls[row.id] ? (
+                            <Box component="img" src={photoPreviewUrls[row.id]} alt={row.file_name || "Job photo"} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">{row.is_download_ready ? "Preview" : "Processing"}</Typography>
+                          )}
+                        </Box>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                          {row.note || row.file_name || "Job photo"}
+                        </Typography>
+                        <Button size="small" variant="text" onClick={() => handleOpenPhoto(row)} disabled={!row.is_download_ready}>
+                          Open
+                        </Button>
+                      </Stack>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No job photos uploaded yet.</Typography>
+                )}
+              </Stack>
             </Paper>
 
             <Alert severity="info">Submit a field report when work is done or when the manager needs an update from the field.</Alert>
