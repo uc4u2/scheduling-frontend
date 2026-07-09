@@ -432,6 +432,16 @@ const normalizeTextValue = (value) => {
   return String(value);
 };
 
+const getClientPhotoUploaderLabel = (row = {}) => {
+  const uploadedBy = row.uploaded_by;
+  if (typeof uploadedBy === "string" && uploadedBy.trim()) return uploadedBy.trim();
+  if (uploadedBy && typeof uploadedBy === "object" && typeof uploadedBy.name === "string" && uploadedBy.name.trim()) {
+    return uploadedBy.name.trim();
+  }
+  if (typeof row.employee_name === "string" && row.employee_name.trim()) return row.employee_name.trim();
+  return row.source === "manager_client_photo" ? "Manager" : "Team member";
+};
+
 const getClientDocumentCategoryLabel = (value) =>
   CLIENT_DOCUMENT_CATEGORIES.find(([key]) => key === value)?.[1] || formatStatusLabel(value, "Other");
 
@@ -4429,7 +4439,7 @@ export default function ManagerClientsWorkspace() {
                                       </Typography>
                                     </Stack>
                                     <Typography variant="body2" color="text.secondary">
-                                      Uploaded by {row?.uploaded_by?.name || row?.employee_name || "Team member"}
+                                      Uploaded by {getClientPhotoUploaderLabel(row)}
                                     </Typography>
                                     {row?.work_order?.work_order_number ? (
                                       <Typography variant="body2" color="text.secondary">
