@@ -191,21 +191,36 @@ export default function ContactFormSection(props) {
       >
         <Stack spacing={2.5}>
           {!!eyebrow && (
-            <Typography
-              variant="overline"
-              sx={{
-                letterSpacing: ".22em",
-                textTransform: "uppercase",
-                color: "var(--page-btn-bg, #c49b63)",
-                textAlign: titleAlign,
-                fontWeight: 700,
-              }}
-            >
-              {eyebrow}
-            </Typography>
+            <Box sx={{ textAlign: titleAlign }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  px: 1.4,
+                  py: 0.75,
+                  borderRadius: 999,
+                  letterSpacing: ".22em",
+                  textTransform: "uppercase",
+                  color: "var(--page-heading-color, #2b2119)",
+                  background: "color-mix(in srgb, var(--page-btn-bg, #c49b63) 12%, rgba(255,255,255,0.9))",
+                  border: "1px solid color-mix(in srgb, var(--page-btn-bg, #c49b63) 24%, rgba(255,255,255,0.24))",
+                  fontWeight: 700,
+                }}
+              >
+                {eyebrow}
+              </Typography>
+            </Box>
           )}
           {!!title && (
-            <Typography variant="h4" sx={{ fontWeight: 800, textAlign: titleAlign }}>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 800,
+                fontSize: "clamp(2rem, 3.2vw, 3rem)",
+                textAlign: titleAlign,
+              }}
+            >
               {title}
             </Typography>
           )}

@@ -1627,6 +1627,7 @@ const ServiceHoverSlider = ({
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
+                      objectPosition: "center center",
                       display: "block",
                       filter: "grayscale(1)",
                       transform: "scale(1)",
@@ -1665,7 +1666,8 @@ const ServiceHoverSlider = ({
                       sx={{
                         textAlign: "center",
                         color: "#121212",
-                        fontSize: { xs: "1.5rem", md: "1.8rem" },
+                        fontSize: { xs: "1.65rem", md: "1.95rem" },
+                        fontWeight: 700,
                         lineHeight: 1.1,
                         textShadow: "0 1px 1px rgba(255,255,255,0.4)",
                       }}
@@ -1710,9 +1712,10 @@ const ServiceHoverSlider = ({
                 width: 48,
                 height: 48,
                 borderRadius: websiteRadius(2),
-                bgcolor: "rgba(255,255,255,0.78)",
+                bgcolor: "rgba(255,255,255,0.84)",
                 border: "1px solid rgba(15,23,42,0.14)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.95)" },
+                boxShadow: "0 10px 26px rgba(15,23,42,0.12)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.98)" },
               }}
             >
               <ArrowBackIosNewIcon fontSize="small" />
@@ -1727,9 +1730,10 @@ const ServiceHoverSlider = ({
                 width: 48,
                 height: 48,
                 borderRadius: websiteRadius(2),
-                bgcolor: "rgba(255,255,255,0.78)",
+                bgcolor: "rgba(255,255,255,0.84)",
                 border: "1px solid rgba(15,23,42,0.14)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.95)" },
+                boxShadow: "0 10px 26px rgba(15,23,42,0.12)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.98)" },
               }}
             >
               <ArrowForwardIosIcon fontSize="small" />
@@ -1873,8 +1877,12 @@ const CollectionShowcase = ({
             <Stack spacing={1} alignItems="center">
               {title && (
                 <HtmlTypo
-                  variant="h4"
-                  sx={{ fontWeight: 800, color: "var(--page-heading-color, text.primary)" }}
+                  variant="h3"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "clamp(2rem, 3.2vw, 3rem)",
+                    color: "var(--page-heading-color, text.primary)",
+                  }}
                 >
                   {title}
                 </HtmlTypo>
@@ -2345,9 +2353,10 @@ const PricingTable = ({
       <Stack spacing={1.5} sx={{ mb: 4, textAlign: align }}>
         {title && (
           <HtmlTypo
-            variant="h4"
+            variant="h3"
             sx={{
               fontWeight: 800,
+              fontSize: "clamp(2rem, 3.2vw, 3rem)",
               textAlign: align,
               color: "var(--page-heading-color, currentColor)",
             }}
@@ -2560,6 +2569,12 @@ const PricingTable = ({
                   color: "var(--page-heading-color, #f5f7ff)",
                   boxShadow: "var(--page-card-shadow, 0 30px 60px rgba(5,6,20,0.45))",
                   backdropFilter: "blur(var(--page-card-blur, 0px))",
+                  transition: "transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: "var(--page-card-shadow, 0 36px 70px rgba(5,6,20,0.5))",
+                    borderColor: "color-mix(in srgb, var(--page-btn-bg, #c49b63) 38%, rgba(255,255,255,0.18))",
+                  },
                 }}
               >
                 {p.ribbon && (
@@ -2569,7 +2584,13 @@ const PricingTable = ({
                     sx={{
                       letterSpacing: ".18em",
                       textTransform: "uppercase",
-                      color: "var(--page-body-color, rgba(196,181,253,0.9))",
+                      color: "var(--page-heading-color, #161616)",
+                      background: "linear-gradient(135deg, color-mix(in srgb, var(--page-btn-bg, #c49b63) 84%, white 16%) 0%, color-mix(in srgb, var(--page-btn-bg, #c49b63) 60%, white 40%) 100%)",
+                      borderRadius: 999,
+                      px: 1.3,
+                      py: 0.6,
+                      alignSelf: "center",
+                      fontWeight: 800,
                     }}
                   >
                     {toPlain(p.ribbon)}
@@ -2741,7 +2762,15 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "center" }}>
+        <HtmlTypo
+          variant="h3"
+          sx={{
+            mb: 2,
+            fontWeight: 800,
+            fontSize: "clamp(2rem, 3.2vw, 3rem)",
+            textAlign: titleAlign || "center",
+          }}
+        >
           {title}
         </HtmlTypo>
       )}
@@ -2759,6 +2788,12 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
             overflow: "hidden",
             mb: 1.25,
             "&:before": { display: "none" },
+            transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+            "&:hover": {
+              transform: "translateY(-2px)",
+              boxShadow: "var(--page-card-shadow, 0 20px 52px rgba(15,23,42,0.12))",
+              borderColor: "color-mix(in srgb, var(--page-btn-bg, #c49b63) 24%, rgba(148,163,184,0.22))",
+            },
           }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -3452,7 +3487,7 @@ const VideoStorySplit = ({
   contentColor = "var(--page-body-color, inherit)",
   titleColor = "var(--page-heading-color, currentColor)",
   contentPadding = 48,
-  maxWidth = "full",
+  maxWidth = "xl",
   borderRadius = 4,
 }) => {
   const themeDriven = followSiteTheme !== false;
@@ -3549,27 +3584,35 @@ const VideoStorySplit = ({
             }}
           >
             {eyebrow && (
-              <HtmlTypo
-                variant="overline"
-                sx={{
-                  letterSpacing: ".2em",
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  color: resolvedContentColor,
-                  opacity: 0.86,
-                }}
-              >
-                {eyebrow}
-              </HtmlTypo>
+              <Box>
+                <HtmlTypo
+                  variant="overline"
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    px: 1.4,
+                    py: 0.75,
+                    borderRadius: 999,
+                    letterSpacing: ".2em",
+                    textTransform: "uppercase",
+                    fontWeight: 700,
+                    color: resolvedTitleColor,
+                    background: "color-mix(in srgb, var(--page-btn-bg, #c49b63) 12%, rgba(255,255,255,0.82))",
+                    border: "1px solid color-mix(in srgb, var(--page-btn-bg, #c49b63) 22%, rgba(255,255,255,0.24))",
+                  }}
+                >
+                  {eyebrow}
+                </HtmlTypo>
+              </Box>
             )}
             {title && (
               <HtmlTypo
                 variant="h3"
                 sx={{
-                  fontWeight: 300,
+                  fontWeight: 800,
                   letterSpacing: "-0.01em",
                   color: resolvedTitleColor,
-                  fontSize: { xs: "2rem", md: "3rem" },
+                  fontSize: "clamp(2rem, 3.2vw, 3rem)",
                 }}
               >
                 {title}
@@ -5834,15 +5877,25 @@ const MapEmbed = ({
     const contentStack = (
       <Stack spacing={2}>
         {eyebrow ? (
-          <HtmlTypo
-            variant="overline"
-            sx={{
-              letterSpacing: "0.18em",
-              color: "var(--page-body-color, rgba(15,23,42,0.72))",
-            }}
-          >
-            {eyebrow}
-          </HtmlTypo>
+          <Box>
+            <HtmlTypo
+              variant="overline"
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                px: 1.4,
+                py: 0.75,
+                borderRadius: 999,
+                letterSpacing: "0.18em",
+                fontWeight: 700,
+                color: "var(--page-heading-color, #1f2937)",
+                background: "color-mix(in srgb, var(--page-btn-bg, #c49b63) 12%, rgba(255,255,255,0.9))",
+                border: "1px solid color-mix(in srgb, var(--page-btn-bg, #c49b63) 24%, rgba(255,255,255,0.24))",
+              }}
+            >
+              {eyebrow}
+            </HtmlTypo>
+          </Box>
         ) : null}
         {title ? (
           <HtmlTypo
