@@ -18,49 +18,49 @@ export const NEW_BLOCKS = {
   pricingTableModern: () => ({
     type: "pricingTable",
     props: {
-      title: "Indicative pricing",
+      title: "Plans made simple",
       intro:
-        "Choose a starting package, then contact us for a tailored quote based on duration, location, and retouching needs.",
+        "Choose a package or contact us for a tailored recommendation.",
       titleAlign: "center",
       maxWidth: "xl",
       layout: "logo-cards",
       plans: [
         {
-          ribbon: "Portrait",
-          name: "Portrait session",
-          price: "From CHF 250",
+          ribbon: "Starter",
+          name: "Core service package",
+          price: "From $249",
           features: [
-            "1 guided session",
-            "Curated retouched selection",
-            "High-resolution digital delivery",
+            "Focused scope and planning",
+            "Clear timeline and deliverables",
+            "Best for straightforward bookings",
           ],
           ctaText: "Book now",
-          ctaLink: "?page=contact",
+          ctaLink: "?page=services-classic",
         },
         {
-          ribbon: "Wedding",
-          name: "Wedding coverage",
+          ribbon: "Most popular",
+          name: "Signature package",
           price: "Custom quote",
           features: [
-            "Partial or full-day coverage",
-            "Carefully retouched gallery",
-            "Private online delivery",
+            "Expanded service coverage",
+            "Priority scheduling and support",
+            "Ideal for recurring or higher-touch work",
           ],
           ctaText: "Request a quote",
-          ctaLink: "?page=contact",
+          ctaLink: "?page=request-quote",
           featured: true,
         },
         {
-          ribbon: "Commercial",
-          name: "Product / publicity",
+          ribbon: "Custom",
+          name: "Project-based package",
           price: "Custom quote",
           features: [
-            "Product shoots or campaigns",
-            "Retouching included",
-            "Web and print-ready formats",
+            "Multi-step or specialty requests",
+            "Built around your location or scope",
+            "Best for larger or unique projects",
           ],
           ctaText: "Discuss the project",
-          ctaLink: "?page=contact",
+          ctaLink: "?page=request-quote",
         },
       ],
     },
@@ -880,9 +880,47 @@ featureStories: () => ({
     type: "faq",
     props: {
       title: "Frequently asked questions",
+      titleAlign: "center",
+      maxWidth: "lg",
       items: [
-        { q: "How do I book?", a: "Use the Book button or call us." },
-        { q: "Do you accept walk-ins?", a: "We recommend booking to guarantee a slot." },
+        {
+          question: "How do I book?",
+          answer: "Use the booking button or contact us directly and we will guide you to the right appointment path.",
+        },
+        {
+          question: "Do you accept walk-ins?",
+          answer: "We recommend booking ahead so we can confirm availability and prepare the right service or consultation.",
+        },
+      ],
+    },
+  }),
+  faqModern: () => ({
+    type: "faq",
+    props: {
+      title: "Questions clients ask before booking",
+      titleAlign: "center",
+      maxWidth: "xl",
+      items: [
+        {
+          question: "How do I know which service or package is right for me?",
+          answer:
+            "Start with the option that feels closest to your needs. If the scope is still unclear, use the quote or contact page and we will recommend the best-fit next step.",
+        },
+        {
+          question: "Can I request a custom quote before I book?",
+          answer:
+            "Yes. Use the quote request flow when timing, location, materials, or service details need to be confirmed before final pricing.",
+        },
+        {
+          question: "What happens after I submit a request?",
+          answer:
+            "We review the details, confirm the best service path, and follow up with the next step for booking, pricing, or scheduling.",
+        },
+        {
+          question: "Can I come back later if I am not ready yet?",
+          answer:
+            "Absolutely. Clients often start with one service, quote, or consultation and return later for additional work or follow-up bookings.",
+        },
       ],
     },
   }),
