@@ -2281,6 +2281,7 @@ export default function ManagerClientsWorkspace() {
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
+  const [documentPreviewUrls, setDocumentPreviewUrls] = useState({});
   const [documentFile, setDocumentFile] = useState(null);
   const [documentCategory, setDocumentCategory] = useState("other");
   const [documentNote, setDocumentNote] = useState("");
@@ -2426,6 +2427,7 @@ export default function ManagerClientsWorkspace() {
       setPhotoPreviewUrls({});
       setDocuments([]);
       setDocumentsError("");
+      setDocumentPreviewUrls({});
       setDocumentRequests([]);
       setDocumentRequestsError("");
       setEmailTemplates([]);
@@ -2444,6 +2446,7 @@ export default function ManagerClientsWorkspace() {
     setPhotoNote("");
     setPhotoPreviewUrls({});
     setDocumentFile(null);
+    setDocumentPreviewUrls({});
     setDocumentCategory("other");
     setDocumentNote("");
     setRequestDocumentOpen(false);
@@ -2504,6 +2507,37 @@ export default function ManagerClientsWorkspace() {
       ),
     [documents]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const generatedUrls = [];
+    const loadDocumentPreviews = async () => {
+      const imageRowsNeedingPreview = sortedDocuments.filter((row) => {
+        if (!row?.id) return false;
+        if (row.thumbnail_url || row.direct_file_url) return false;
+        const contentType = String(row?.content_type || "").toLowerCase();
+        return contentType.startsWith("image/") && !documentPreviewUrls[row.id];
+      });
+      for (const row of imageRowsNeedingPreview) {
+        try {
+          const res = await api.get(row.download_url, { responseType: "blob" });
+          const contentType = res?.headers?.["content-type"] || row.content_type || "image/*";
+          const objectUrl = window.URL.createObjectURL(new Blob([res.data], { type: contentType }));
+          generatedUrls.push(objectUrl);
+          if (!cancelled) {
+            setDocumentPreviewUrls((prev) => (prev[row.id] ? prev : { ...prev, [row.id]: objectUrl }));
+          }
+        } catch (_err) {
+          // Leave preview empty if the file is not previewable yet.
+        }
+      }
+    };
+    if (sortedDocuments.length) loadDocumentPreviews();
+    return () => {
+      cancelled = true;
+      generatedUrls.forEach((url) => window.URL.revokeObjectURL(url));
+    };
+  }, [sortedDocuments, documentPreviewUrls]);
   const sortedPhotos = useMemo(
     () =>
       [...photos].sort((a, b) =>
@@ -3043,6 +3077,30 @@ export default function ManagerClientsWorkspace() {
       enqueueSnackbar(message, { variant: "error" });
     } finally {
       setDeletingDocumentId(null);
+    }
+  };
+
+  const handleOpenDocument = async (row) => {
+    if (!row?.id) return;
+    try {
+      const directUrl = row.direct_file_url || row.thumbnail_url;
+      if (directUrl) {
+        window.open(directUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+      if (row.download_url) {
+        const res = await api.get(row.download_url, { responseType: "blob" });
+        const contentType = res?.headers?.["content-type"] || row.content_type || "application/octet-stream";
+        const objectUrl = window.URL.createObjectURL(new Blob([res.data], { type: contentType }));
+        window.open(objectUrl, "_blank", "noopener,noreferrer");
+        window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 30_000);
+        return;
+      }
+      throw new Error("Document is not available yet.");
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Unable to open client document.";
+      setDocumentsError(message);
+      enqueueSnackbar(message, { variant: "error" });
     }
   };
 
@@ -4559,64 +4617,82 @@ export default function ManagerClientsWorkspace() {
                         renderItem={(row) => (
                           <Paper key={`client-document-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                             <Stack spacing={1.1}>
-                              <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between">
-                                <Stack spacing={0.5}>
-                                  <Typography fontWeight={700}>{row.original_filename || "Document"}</Typography>
-                                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                                    <Chip
+                              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                                {(row.thumbnail_url || row.direct_file_url || documentPreviewUrls[row.id]) ? (
+                                  <Box
+                                    component="img"
+                                    src={row.thumbnail_url || row.direct_file_url || documentPreviewUrls[row.id]}
+                                    alt={row.original_filename || "Document preview"}
+                                    sx={{
+                                      width: { xs: "100%", md: 120 },
+                                      height: { xs: 180, md: 120 },
+                                      objectFit: "cover",
+                                      borderRadius: 1.25,
+                                      border: "1px solid",
+                                      borderColor: "divider",
+                                      bgcolor: "background.default",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                ) : null}
+                                <Stack spacing={1.1} sx={{ minWidth: 0, flex: 1 }}>
+                                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between">
+                                    <Stack spacing={0.5}>
+                                      <Typography fontWeight={700}>{row.original_filename || "Document"}</Typography>
+                                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                        <Chip
+                                          size="small"
+                                          label={getClientDocumentCategoryLabel(row.category)}
+                                          variant="outlined"
+                                          sx={readableChipSx("info")}
+                                        />
+                                        <Chip
+                                          size="small"
+                                          label={row.is_email_attachable ? "Attachable" : "Not attachable"}
+                                          variant="outlined"
+                                          sx={readableChipSx(getDocumentAttachabilityTone(row))}
+                                        />
+                                        {row.scan_status ? (
+                                          <Chip
+                                            size="small"
+                                            label={formatStatusLabel(row.scan_status)}
+                                            variant="outlined"
+                                            sx={readableChipSx(statusTone(row.scan_status))}
+                                          />
+                                        ) : null}
+                                      </Stack>
+                                    </Stack>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {formatDateTime(row.created_at, timezone)}
+                                    </Typography>
+                                  </Stack>
+                                  {row.email_attachability_reason ? (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {row.email_attachability_reason}
+                                    </Typography>
+                                  ) : null}
+                                  {row.note ? <ExpandableText text={row.note} limit={180} /> : null}
+                                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                    <Button
                                       size="small"
-                                      label={getClientDocumentCategoryLabel(row.category)}
                                       variant="outlined"
-                                      sx={readableChipSx("info")}
-                                    />
-                                    <Chip
+                                      startIcon={<DownloadOutlinedIcon />}
+                                      onClick={() => handleOpenDocument(row)}
+                                    >
+                                      Open / download
+                                    </Button>
+                                    <Button
                                       size="small"
-                                      label={row.is_email_attachable ? "Attachable" : "Not attachable"}
-                                      variant="outlined"
-                                      sx={readableChipSx(getDocumentAttachabilityTone(row))}
-                                    />
-                                    {row.scan_status ? (
-                                      <Chip
-                                        size="small"
-                                        label={formatStatusLabel(row.scan_status)}
-                                        variant="outlined"
-                                        sx={readableChipSx(statusTone(row.scan_status))}
-                                      />
-                                    ) : null}
+                                      color="error"
+                                      variant="text"
+                                      startIcon={<DeleteOutlineOutlinedIcon />}
+                                      onClick={() => handleDeleteDocument(row.id)}
+                                      disabled={deletingDocumentId === row.id}
+                                    >
+                                      {deletingDocumentId === row.id ? "Removing..." : "Remove"}
+                                    </Button>
                                   </Stack>
                                 </Stack>
-                                <Typography variant="body2" color="text.secondary">
-                                  {formatDateTime(row.created_at, timezone)}
-                                </Typography>
-                              </Stack>
-                              {row.email_attachability_reason ? (
-                                <Typography variant="caption" color="text.secondary">
-                                  {row.email_attachability_reason}
-                                </Typography>
-                              ) : null}
-                              {row.note ? <ExpandableText text={row.note} limit={180} /> : null}
-                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={<DownloadOutlinedIcon />}
-                                  component="a"
-                                  href={row.download_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  Open / download
-                                </Button>
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  variant="text"
-                                  startIcon={<DeleteOutlineOutlinedIcon />}
-                                  onClick={() => handleDeleteDocument(row.id)}
-                                  disabled={deletingDocumentId === row.id}
-                                >
-                                  {deletingDocumentId === row.id ? "Removing..." : "Remove"}
-                                </Button>
                               </Stack>
                             </Stack>
                           </Paper>
