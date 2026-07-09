@@ -2277,6 +2277,7 @@ export default function ManagerClientsWorkspace() {
   const [photoNote, setPhotoNote] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState({});
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
@@ -2422,6 +2423,7 @@ export default function ManagerClientsWorkspace() {
       setPhotos([]);
       setPhotosError("");
       setPhotoSummary({ total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+      setPhotoPreviewUrls({});
       setDocuments([]);
       setDocumentsError("");
       setDocumentRequests([]);
@@ -2440,6 +2442,7 @@ export default function ManagerClientsWorkspace() {
     setDetailSections(DEFAULT_DETAIL_SECTIONS);
     setPhotoFile(null);
     setPhotoNote("");
+    setPhotoPreviewUrls({});
     setDocumentFile(null);
     setDocumentCategory("other");
     setDocumentNote("");
@@ -2508,6 +2511,30 @@ export default function ManagerClientsWorkspace() {
       ),
     [photos]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProtectedPreviews = async () => {
+      const employeeRowsNeedingPreview = sortedPhotos.filter(
+        (row) => row?.source === "employee_field_photo" && row?.id && !photoPreviewUrls[row.id]
+      );
+      for (const row of employeeRowsNeedingPreview) {
+        try {
+          const res = await api.get(`/manager/field-photos/${row.id}/download`);
+          const url = res?.data?.url;
+          if (!cancelled && url) {
+            setPhotoPreviewUrls((prev) => (prev[row.id] ? prev : { ...prev, [row.id]: url }));
+          }
+        } catch (_err) {
+          // Leave preview empty when the secured download is not ready yet.
+        }
+      }
+    };
+    if (sortedPhotos.length) loadProtectedPreviews();
+    return () => {
+      cancelled = true;
+    };
+  }, [sortedPhotos, photoPreviewUrls]);
   const sortedDocumentRequests = useMemo(
     () =>
       [...documentRequests].sort((a, b) => {
@@ -2966,6 +2993,40 @@ export default function ManagerClientsWorkspace() {
       enqueueSnackbar(message, { variant: "error" });
     } finally {
       setDeletingPhotoId(null);
+    }
+  };
+
+  const handleOpenPhoto = async (row) => {
+    if (!row?.id) return;
+    try {
+      if (row.source === "manager_client_photo") {
+        const directUrl = row.direct_file_url || row.thumbnail_url || row.download_url;
+        if (directUrl) {
+          window.open(directUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+      }
+      if (row.source === "employee_field_photo") {
+        const res = await api.get(`/manager/field-photos/${row.id}/download`);
+        const url = res?.data?.url;
+        if (url) {
+          window.open(url, "_blank", "noopener,noreferrer");
+          return;
+        }
+      }
+      if (row.download_url) {
+        const res = await api.get(row.download_url, { responseType: "blob" });
+        const contentType = res?.headers?.["content-type"] || "application/octet-stream";
+        const objectUrl = window.URL.createObjectURL(new Blob([res.data], { type: contentType }));
+        window.open(objectUrl, "_blank", "noopener,noreferrer");
+        window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 30_000);
+        return;
+      }
+      throw new Error("Photo is not available yet.");
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Photo is not available yet.";
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
     }
   };
 
@@ -4246,10 +4307,16 @@ export default function ManagerClientsWorkspace() {
                             <Paper key={`client-photo-${row.source}-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                               <Stack spacing={1.25}>
                                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-                                  {row.thumbnail_url || row.download_url ? (
+                                  {(row.source === "manager_client_photo"
+                                    ? (row.thumbnail_url || row.direct_file_url || row.download_url)
+                                    : photoPreviewUrls[row.id] || row.thumbnail_url || row.download_url) ? (
                                     <Box
                                       component="img"
-                                      src={row.thumbnail_url || row.download_url}
+                                      src={
+                                        row.source === "manager_client_photo"
+                                          ? (row.thumbnail_url || row.direct_file_url || row.download_url)
+                                          : (photoPreviewUrls[row.id] || row.thumbnail_url || row.download_url)
+                                      }
                                       alt={row.file_name || "Client photo"}
                                       sx={{
                                         width: { xs: "100%", md: 120 },
@@ -4312,10 +4379,7 @@ export default function ManagerClientsWorkspace() {
                                         size="small"
                                         variant="outlined"
                                         startIcon={<DownloadOutlinedIcon />}
-                                        component="a"
-                                        href={row.download_url}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                        onClick={() => handleOpenPhoto(row)}
                                       >
                                         Open / download
                                       </Button>
