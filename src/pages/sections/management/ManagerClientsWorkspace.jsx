@@ -55,6 +55,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import MailOutlineOutlinedIcon from "@mui/icons-material/MailOutlineOutlined";
+import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
@@ -96,10 +97,12 @@ import {
   getManagerClient360,
   listManagerClient360EmailTemplates,
   listManagerClient360Documents,
+  listManagerClient360FieldPhotos,
   listManagerClient360DocumentRequests,
   listManagerClient360,
   sendManagerClient360Email,
   setManagerClient360EmailTemplateDefault,
+  uploadManagerClient360PhotoFromDevice,
   updateFinanceClient,
   updateManagerClient360EmailTemplate,
 } from "../../finance/financeApi";
@@ -117,6 +120,7 @@ const DEFAULT_DETAIL_SECTIONS = {
   bookings: true,
   finance: false,
   notes: false,
+  photos: false,
   documents: false,
   timeline: false,
   insights: false,
@@ -2265,6 +2269,14 @@ export default function ManagerClientsWorkspace() {
   const [createClientOpen, setCreateClientOpen] = useState(false);
   const [createClientForm, setCreateClientForm] = useState({ name: "", email: "", phone: "" });
   const [createClientSaving, setCreateClientSaving] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [photosError, setPhotosError] = useState("");
+  const [photoSummary, setPhotoSummary] = useState({ total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoNote, setPhotoNote] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
@@ -2281,6 +2293,7 @@ export default function ManagerClientsWorkspace() {
   const [requestDocumentSaving, setRequestDocumentSaving] = useState(false);
   const [cancellingRequestId, setCancellingRequestId] = useState(null);
   const [requestTemplateLabels, setRequestTemplateLabels] = useState({});
+  const photosSectionRef = useRef(null);
   const documentsSectionRef = useRef(null);
 
   const loadList = useCallback(async () => {
@@ -2341,6 +2354,26 @@ export default function ManagerClientsWorkspace() {
     }
   }, [clientId]);
 
+  const loadPhotos = useCallback(async () => {
+    if (!clientId) return [];
+    setPhotosLoading(true);
+    setPhotosError("");
+    try {
+      const payload = await listManagerClient360FieldPhotos(clientId, { page: 1, page_size: 48, source: "all" });
+      const rows = Array.isArray(payload?.items) ? payload.items : [];
+      setPhotos(rows);
+      setPhotoSummary(payload?.summary || { total: rows.length, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+      return rows;
+    } catch (err) {
+      setPhotos([]);
+      setPhotoSummary({ total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+      setPhotosError(err?.response?.data?.error || err?.message || "Unable to load client photos.");
+      return [];
+    } finally {
+      setPhotosLoading(false);
+    }
+  }, [clientId]);
+
   const loadEmailTemplates = useCallback(async () => {
     setEmailTemplatesLoading(true);
     setEmailTemplatesError("");
@@ -2386,6 +2419,9 @@ export default function ManagerClientsWorkspace() {
 
   useEffect(() => {
     if (!clientId) {
+      setPhotos([]);
+      setPhotosError("");
+      setPhotoSummary({ total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
       setDocuments([]);
       setDocumentsError("");
       setDocumentRequests([]);
@@ -2394,13 +2430,16 @@ export default function ManagerClientsWorkspace() {
       setEmailTemplatesError("");
       return;
     }
+    loadPhotos();
     loadDocuments();
     loadDocumentRequests();
     loadEmailTemplates();
-  }, [clientId, loadDocuments, loadDocumentRequests, loadEmailTemplates]);
+  }, [clientId, loadPhotos, loadDocuments, loadDocumentRequests, loadEmailTemplates]);
 
   useEffect(() => {
     setDetailSections(DEFAULT_DETAIL_SECTIONS);
+    setPhotoFile(null);
+    setPhotoNote("");
     setDocumentFile(null);
     setDocumentCategory("other");
     setDocumentNote("");
@@ -2461,6 +2500,13 @@ export default function ManagerClientsWorkspace() {
         String(b?.created_at || b?.updated_at || "").localeCompare(String(a?.created_at || a?.updated_at || ""))
       ),
     [documents]
+  );
+  const sortedPhotos = useMemo(
+    () =>
+      [...photos].sort((a, b) =>
+        String(b?.created_at || b?.captured_at || "").localeCompare(String(a?.created_at || a?.captured_at || ""))
+      ),
+    [photos]
   );
   const sortedDocumentRequests = useMemo(
     () =>
@@ -2874,6 +2920,54 @@ export default function ManagerClientsWorkspace() {
       documentsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
   }, []);
+
+  const handleGoToPhotos = useCallback(() => {
+    setDetailSections((prev) => ({ ...prev, photos: true }));
+    setTimeout(() => {
+      photosSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, []);
+
+  const handleUploadPhoto = async () => {
+    if (!clientId || !photoFile) {
+      enqueueSnackbar("Choose a photo to upload first.", { variant: "warning" });
+      return;
+    }
+    setPhotoUploading(true);
+    setPhotosError("");
+    try {
+      await uploadManagerClient360PhotoFromDevice(clientId, photoFile, {
+        category: "photos",
+        note: photoNote?.trim() || "",
+      });
+      setPhotoFile(null);
+      setPhotoNote("");
+      enqueueSnackbar("Client photo uploaded.", { variant: "success" });
+      await loadPhotos();
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Unable to upload client photo.";
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (row) => {
+    if (!clientId || !row?.id || row?.source !== "manager_client_photo") return;
+    setDeletingPhotoId(row.id);
+    try {
+      await deleteManagerClient360Document(clientId, row.id);
+      enqueueSnackbar("Client photo removed.", { variant: "success" });
+      await loadPhotos();
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Unable to remove client photo.";
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
 
   const handleDeleteDocument = async (documentId) => {
     if (!clientId || !documentId) return;
@@ -3498,6 +3592,9 @@ export default function ManagerClientsWorkspace() {
                       <Button variant="text" component={RouterLink} to={`/manager/finance-work-orders?clientId=${profile.id}&action=create`}>
                         Create work order
                       </Button>
+                      <Button variant="text" startIcon={<PhotoCameraOutlinedIcon fontSize="small" />} onClick={handleGoToPhotos}>
+                        Client photos
+                      </Button>
                       <Button
                         variant="text"
                         onClick={() => handleSmartPaymentLink()}
@@ -4040,6 +4137,231 @@ export default function ManagerClientsWorkspace() {
                       </SectionCard>
                     </Grid>
                   </Grid>
+                </Stack>
+              </SectionAccordion>
+
+              <SectionAccordion
+                title="Client Photos"
+                description="Employee field photos and manager-added project photos in one place."
+                icon={<PhotoCameraOutlinedIcon color="primary" />}
+                expanded={detailSections.photos}
+                onChange={toggleSection("photos")}
+              >
+                <Stack spacing={2}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} lg={7}>
+                      <SectionCard title="Upload photos" description="Add manager photos directly to the client record without using the employee shift flow.">
+                        <Stack spacing={1.5}>
+                          {photosError ? <Alert severity="error">{photosError}</Alert> : null}
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} md={5}>
+                              <Button
+                                component="label"
+                                variant="outlined"
+                                startIcon={<UploadFileOutlinedIcon />}
+                                fullWidth
+                                disabled={photoUploading}
+                                sx={{ justifyContent: "flex-start", py: 1.4 }}
+                              >
+                                {photoFile ? photoFile.name : "Choose photo"}
+                                <input
+                                  hidden
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/webp"
+                                  onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                                />
+                              </Button>
+                            </Grid>
+                            <Grid item xs={12} md={7}>
+                              <TextField
+                                fullWidth
+                                label="Photo note (optional)"
+                                value={photoNote}
+                                onChange={(event) => setPhotoNote(event.target.value)}
+                              />
+                            </Grid>
+                          </Grid>
+                          <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap>
+                            <Typography variant="caption" color="text.secondary">
+                              Upload progress photos, before/after images, or client-approved reference shots.
+                            </Typography>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Button variant="text" onClick={loadPhotos} disabled={photosLoading || photoUploading}>
+                                Refresh photos
+                              </Button>
+                              <Button variant="contained" onClick={handleUploadPhoto} disabled={!photoFile || photoUploading}>
+                                {photoUploading ? "Uploading..." : "Upload photo"}
+                              </Button>
+                            </Stack>
+                          </Stack>
+                        </Stack>
+                      </SectionCard>
+                    </Grid>
+                    <Grid item xs={12} lg={5}>
+                      <SectionCard title="Photo summary" description="Recent client-facing image activity, newest first.">
+                        <Stack spacing={1.25}>
+                          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                            <Chip size="small" label={`${photoSummary.total || 0} total`} variant="outlined" sx={readableChipSx("default")} />
+                            <Chip size="small" label={`${photoSummary.employee_uploaded || 0} employee`} variant="outlined" sx={readableChipSx("info")} />
+                            <Chip size="small" label={`${photoSummary.manager_uploaded || 0} manager`} variant="outlined" sx={readableChipSx("primary")} />
+                            <Chip size="small" label={`${photoSummary.ready || 0} ready`} variant="outlined" sx={readableChipSx("success")} />
+                            {(photoSummary.processing || 0) > 0 ? (
+                              <Chip size="small" label={`${photoSummary.processing || 0} processing`} variant="outlined" sx={readableChipSx("warning")} />
+                            ) : null}
+                          </Stack>
+                          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "background.default" }}>
+                            <Stack spacing={0.75}>
+                              <Typography variant="subtitle2" fontWeight={700}>
+                                Why this is easier
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Employee field photos linked to appointments appear here automatically.
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Manager uploads stay with the client profile and can be reviewed in the same gallery.
+                              </Typography>
+                            </Stack>
+                          </Paper>
+                        </Stack>
+                      </SectionCard>
+                    </Grid>
+                  </Grid>
+
+                  <Box ref={photosSectionRef}>
+                    <SectionCard
+                      title="Recent photos"
+                      description="Open, review, and manage employee field photos plus manager-added client photos."
+                    >
+                      {photosLoading ? (
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
+                          <CircularProgress size={18} />
+                          <Typography color="text.secondary">Loading client photos...</Typography>
+                        </Stack>
+                      ) : null}
+                      {!photosLoading ? (
+                        <PagedStackList
+                          items={sortedPhotos}
+                          initialVisible={6}
+                          renderItem={(row) => (
+                            <Paper key={`client-photo-${row.source}-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                              <Stack spacing={1.25}>
+                                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                                  {row.thumbnail_url || row.download_url ? (
+                                    <Box
+                                      component="img"
+                                      src={row.thumbnail_url || row.download_url}
+                                      alt={row.file_name || "Client photo"}
+                                      sx={{
+                                        width: { xs: "100%", md: 120 },
+                                        height: { xs: 180, md: 120 },
+                                        objectFit: "cover",
+                                        borderRadius: 1.25,
+                                        border: "1px solid",
+                                        borderColor: "divider",
+                                        bgcolor: "background.default",
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                  ) : (
+                                    <Stack
+                                      alignItems="center"
+                                      justifyContent="center"
+                                      sx={{
+                                        width: { xs: "100%", md: 120 },
+                                        height: { xs: 180, md: 120 },
+                                        borderRadius: 1.25,
+                                        border: "1px dashed",
+                                        borderColor: "divider",
+                                        color: "text.secondary",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      <PhotoCameraOutlinedIcon />
+                                      <Typography variant="caption">No preview</Typography>
+                                    </Stack>
+                                  )}
+                                  <Stack spacing={1} sx={{ minWidth: 0, flex: 1 }}>
+                                    <Stack direction={{ xs: "column", lg: "row" }} spacing={1} justifyContent="space-between">
+                                      <Stack spacing={0.5}>
+                                        <Typography fontWeight={700}>{row.file_name || row.original_filename || "Photo"}</Typography>
+                                        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                          <Chip
+                                            size="small"
+                                            label={row.source === "manager_client_photo" ? "Manager upload" : "Employee field photo"}
+                                            variant="outlined"
+                                            sx={readableChipSx(row.source === "manager_client_photo" ? "primary" : "info")}
+                                          />
+                                          {row.security_status_label ? (
+                                            <Chip size="small" label={row.security_status_label} variant="outlined" sx={readableChipSx(statusTone(row.scan_status || row.security_status_label))} />
+                                          ) : null}
+                                          {row.category ? (
+                                            <Chip size="small" label={getClientDocumentCategoryLabel(row.category)} variant="outlined" sx={readableChipSx("default")} />
+                                          ) : null}
+                                        </Stack>
+                                      </Stack>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {formatDateTime(row.created_at || row.captured_at, timezone)}
+                                      </Typography>
+                                    </Stack>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Uploaded by {row?.uploaded_by?.name || row?.employee_name || "Team member"}
+                                    </Typography>
+                                    {row.note ? <ExpandableText text={row.note} limit={180} /> : null}
+                                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<DownloadOutlinedIcon />}
+                                        component="a"
+                                        href={row.download_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Open / download
+                                      </Button>
+                                      {row.source === "manager_client_photo" ? (
+                                        <Button
+                                          size="small"
+                                          color="error"
+                                          variant="text"
+                                          startIcon={<DeleteOutlineOutlinedIcon />}
+                                          onClick={() => handleDeletePhoto(row)}
+                                          disabled={deletingPhotoId === row.id}
+                                        >
+                                          {deletingPhotoId === row.id ? "Removing..." : "Remove"}
+                                        </Button>
+                                      ) : (
+                                        <Button size="small" variant="text" component={RouterLink} to="/manager/field-photos">
+                                          Open Field Photos
+                                        </Button>
+                                      )}
+                                    </Stack>
+                                  </Stack>
+                                </Stack>
+                              </Stack>
+                            </Paper>
+                          )}
+                          empty={(
+                            <EmptyStateCard
+                              title="No photos yet"
+                              description="Employee field photos linked to this client will appear here, and managers can add more photos directly."
+                              primaryAction={(
+                                <Button component="label" variant="contained" size="small" startIcon={<UploadFileOutlinedIcon />}>
+                                  Choose photo
+                                  <input
+                                    hidden
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                                  />
+                                </Button>
+                              )}
+                            />
+                          )}
+                        />
+                      ) : null}
+                    </SectionCard>
+                  </Box>
                 </Stack>
               </SectionAccordion>
 
