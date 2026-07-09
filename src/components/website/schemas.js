@@ -790,6 +790,7 @@ export const SCHEMA_REGISTRY = {
       { name: "eyebrow", type: "richinline", label: "Eyebrow" },
       { name: "title", type: "richinline", label: "Title" },
       { name: "body", type: "richtext", label: "Body", minRows: 4 },
+      { name: "titleAlign", type: "select", label: "Content alignment", options: ["left","center","right"], default: "center" },
       { name: "ctaText", type: "richinline", label: "CTA text" },
       { name: "ctaLink", type: "string", label: "CTA link (URL)" },
       { name: "videoUrl", type: "string", label: "Video URL (YouTube/Vimeo/embed)" },

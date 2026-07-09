@@ -19,6 +19,7 @@ export const SCHEMA_REGISTRY = {
       { name: "eyebrow", type: "string", label: "Eyebrow" },
       { name: "title", type: "string", label: "Title" },
       { name: "body", type: "text", label: "Body", minRows: 4 },
+      { name: "titleAlign", type: "select", label: "Content alignment", options: ["left", "center", "right"], default: "center" },
       { name: "ctaText", type: "string", label: "CTA text" },
       { name: "ctaLink", type: "string", label: "CTA link" },
       { name: "videoUrl", type: "string", label: "Video URL" },

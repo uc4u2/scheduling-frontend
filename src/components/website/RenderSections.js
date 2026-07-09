@@ -3477,6 +3477,7 @@ const VideoStorySplit = ({
   eyebrow,
   title,
   body,
+  titleAlign = "center",
   ctaText,
   ctaLink,
   videoUrl,
@@ -3509,6 +3510,21 @@ const VideoStorySplit = ({
   const resolvedTitleColor = themeDriven
     ? "var(--page-heading-color, currentColor)"
     : titleColor;
+  const resolvedAlign = String(titleAlign || "center").toLowerCase();
+  const alignItems =
+    resolvedAlign === "left"
+      ? "flex-start"
+      : resolvedAlign === "right"
+      ? "flex-end"
+      : "center";
+  const textAlign =
+    resolvedAlign === "left" || resolvedAlign === "right" ? resolvedAlign : "center";
+  const ctaJustify =
+    resolvedAlign === "left"
+      ? "flex-start"
+      : resolvedAlign === "right"
+      ? "flex-end"
+      : "center";
 
   return (
     <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false} sx={{ px: resolvedMax === false ? 0 : undefined }}>
@@ -3580,7 +3596,8 @@ const VideoStorySplit = ({
               maxWidth: 620,
               px: { xs: 3, md: paddingValue },
               py: { xs: 4, md: 5 },
-              textAlign: "center",
+              textAlign,
+              alignItems,
             }}
           >
             {eyebrow && (
@@ -3626,14 +3643,19 @@ const VideoStorySplit = ({
                   opacity: 0.92,
                   lineHeight: 1.8,
                   maxWidth: 560,
-                  mx: "auto",
+                  mx:
+                    resolvedAlign === "center"
+                      ? "auto"
+                      : resolvedAlign === "right"
+                      ? "0 0 0 auto"
+                      : 0,
                 }}
               >
                 {body}
               </HtmlTypo>
             )}
             {ctaText && (
-              <Box>
+              <Box sx={{ width: "100%", display: "flex", justifyContent: ctaJustify }}>
                 <Button
                   variant="contained"
                   href={ctaLink || "#"}
