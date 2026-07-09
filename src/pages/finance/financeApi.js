@@ -171,6 +171,12 @@ export const deleteEstimateTemplate = (id) =>
 
 export const listWorkOrders = (params = {}) => unwrap(api.get("/finance/work-orders", { params }));
 export const getWorkOrder = (id) => unwrap(api.get(`/finance/work-orders/${id}`));
+export const getWorkOrderPhotoShareLink = (id) =>
+  unwrap(api.get(`/finance/work-orders/${id}/photo-share-link`));
+export const createWorkOrderPhotoShareLink = (id) =>
+  unwrap(api.post(`/finance/work-orders/${id}/photo-share-link`));
+export const revokeWorkOrderPhotoShareLink = (id) =>
+  unwrap(api.post(`/finance/work-orders/${id}/photo-share-link/revoke`));
 export const createWorkOrder = (payload) => unwrap(api.post("/finance/work-orders", payload));
 export const updateWorkOrder = (id, payload) => unwrap(api.patch(`/finance/work-orders/${id}`, payload));
 export const cancelWorkOrder = (id) => unwrap(api.delete(`/finance/work-orders/${id}`));
@@ -280,6 +286,8 @@ export const uploadMyWorkOrderFieldPhoto = (id, formData) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/field-photos`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }));
+export const getPublicClientPhotoGallery = (token) =>
+  unwrap(api.get(`/api/public/client-photo-galleries/${encodeURIComponent(token)}`, { noAuth: true, noCompanyHeader: true }));
 export const submitMyFieldReport = (id, payload) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/field-report`, payload));
 export const listMyFieldReports = (params = {}) => unwrap(api.get("/finance/my-field-reports", { params }));
@@ -460,6 +468,12 @@ export const listManagerClient360Documents = (clientId) =>
 
 export const listManagerClient360FieldPhotos = (clientId, params = {}) =>
   unwrap(api.get(`/api/manager/client-360/${clientId}/field-photos`, { params }));
+export const getManagerClient360PhotoShareLink = (clientId) =>
+  unwrap(api.get(`/api/manager/client-360/${clientId}/photo-share-link`));
+export const createManagerClient360PhotoShareLink = (clientId) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/photo-share-link`));
+export const revokeManagerClient360PhotoShareLink = (clientId) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/photo-share-link/revoke`));
 
 export const createManagerClient360Document = (clientId, payload) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/documents`, payload));

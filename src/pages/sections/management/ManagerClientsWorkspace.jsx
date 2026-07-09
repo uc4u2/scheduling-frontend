@@ -55,6 +55,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import MailOutlineOutlinedIcon from "@mui/icons-material/MailOutlineOutlined";
+import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
@@ -63,6 +64,7 @@ import SmsOutlinedIcon from "@mui/icons-material/SmsOutlined";
 import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
+import LinkOffOutlinedIcon from "@mui/icons-material/LinkOffOutlined";
 import { useSnackbar } from "notistack";
 import {
   Bar,
@@ -91,15 +93,18 @@ import {
   createManagerClient360Document,
   createManagerClient360DocumentRequest,
   createManagerClient360Note,
+  createManagerClient360PhotoShareLink,
   createManagerClient360SessionNote,
   deleteManagerClient360EmailTemplate,
   deleteManagerClient360Document,
   getManagerClient360,
+  getManagerClient360PhotoShareLink,
   listManagerClient360EmailTemplates,
   listManagerClient360Documents,
   listManagerClient360FieldPhotos,
   listManagerClient360DocumentRequests,
   listManagerClient360,
+  revokeManagerClient360PhotoShareLink,
   sendManagerClient360Email,
   setManagerClient360EmailTemplateDefault,
   uploadManagerClient360PhotoFromDevice,
@@ -2288,6 +2293,8 @@ export default function ManagerClientsWorkspace() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState({});
+  const [photoShareLink, setPhotoShareLink] = useState(null);
+  const [photoShareLoading, setPhotoShareLoading] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
@@ -2386,6 +2393,19 @@ export default function ManagerClientsWorkspace() {
     }
   }, [clientId]);
 
+  const loadPhotoShareLink = useCallback(async () => {
+    if (!clientId) return null;
+    try {
+      const payload = await getManagerClient360PhotoShareLink(clientId);
+      const row = payload?.share_link || null;
+      setPhotoShareLink(row);
+      return row;
+    } catch {
+      setPhotoShareLink(null);
+      return null;
+    }
+  }, [clientId]);
+
   const loadEmailTemplates = useCallback(async () => {
     setEmailTemplatesLoading(true);
     setEmailTemplatesError("");
@@ -2445,10 +2465,11 @@ export default function ManagerClientsWorkspace() {
       return;
     }
     loadPhotos();
+    loadPhotoShareLink();
     loadDocuments();
     loadDocumentRequests();
     loadEmailTemplates();
-  }, [clientId, loadPhotos, loadDocuments, loadDocumentRequests, loadEmailTemplates]);
+  }, [clientId, loadPhotos, loadPhotoShareLink, loadDocuments, loadDocumentRequests, loadEmailTemplates]);
 
   useEffect(() => {
     setDetailSections(DEFAULT_DETAIL_SECTIONS);
@@ -3071,6 +3092,41 @@ export default function ManagerClientsWorkspace() {
       const message = err?.response?.data?.error || err?.message || "Photo is not available yet.";
       setPhotosError(message);
       enqueueSnackbar(message, { variant: "error" });
+    }
+  };
+
+  const handleCreateOrCopyPhotoShareLink = async () => {
+    if (!clientId) return;
+    setPhotoShareLoading(true);
+    try {
+      const payload = photoShareLink?.public_url ? { share_link: photoShareLink } : await createManagerClient360PhotoShareLink(clientId);
+      const row = payload?.share_link || null;
+      setPhotoShareLink(row);
+      if (row?.public_url) {
+        await copyText(row.public_url, enqueueSnackbar, "Client photo gallery link copied.");
+      }
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Unable to create the photo gallery link.";
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setPhotoShareLoading(false);
+    }
+  };
+
+  const handleRevokePhotoShareLink = async () => {
+    if (!clientId || !photoShareLink?.public_url) return;
+    setPhotoShareLoading(true);
+    try {
+      await revokeManagerClient360PhotoShareLink(clientId);
+      setPhotoShareLink(null);
+      enqueueSnackbar("Client photo gallery link revoked.", { variant: "success" });
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Unable to revoke the photo gallery link.";
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setPhotoShareLoading(false);
     }
   };
 
@@ -4361,6 +4417,51 @@ export default function ManagerClientsWorkspace() {
                       title="Recent photos"
                       description="Open, review, and manage employee field photos plus manager-added client photos."
                     >
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" sx={{ mb: 1.5 }}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
+                            onClick={handleCreateOrCopyPhotoShareLink}
+                            disabled={photoShareLoading}
+                          >
+                            {photoShareLoading ? "Working..." : photoShareLink?.public_url ? "Copy share link" : "Create share link"}
+                          </Button>
+                          {photoShareLink?.public_url ? (
+                            <>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<OpenInNewOutlinedIcon fontSize="small" />}
+                                onClick={() => window.open(photoShareLink.public_url, "_blank", "noopener,noreferrer")}
+                              >
+                                Open gallery
+                              </Button>
+                              <Button
+                                size="small"
+                                color="warning"
+                                variant="text"
+                                startIcon={<LinkOffOutlinedIcon fontSize="small" />}
+                                onClick={handleRevokePhotoShareLink}
+                                disabled={photoShareLoading}
+                              >
+                                Revoke link
+                              </Button>
+                            </>
+                          ) : null}
+                        </Stack>
+                      </Stack>
+                      {photoShareLink?.public_url ? (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Client photo gallery link"
+                          value={photoShareLink.public_url}
+                          InputProps={{ readOnly: true }}
+                          sx={{ mb: 1.5 }}
+                        />
+                      ) : null}
                       {photosLoading ? (
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
                           <CircularProgress size={18} />

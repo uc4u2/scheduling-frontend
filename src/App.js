@@ -191,6 +191,7 @@ import CandidateIntakePage from "./pages/CandidateIntakePage";
 import PublicJobsListPage from "./pages/public/PublicJobsListPage";
 import PublicJobDetailPage from "./pages/public/PublicJobDetailPage";
 import DocumentRequestUploadPage from "./pages/public/DocumentRequestUploadPage";
+import ClientPhotoGalleryPage from "./pages/public/ClientPhotoGalleryPage";
 import EmailSdrUnsubscribeRedirectPage from "./pages/public/EmailSdrUnsubscribeRedirectPage";
 import CandidateLoginCallbackPage from "./pages/candidate/CandidateLoginCallbackPage";
 import CandidateDashboardPage from "./pages/candidate/CandidateDashboardPage";
@@ -850,6 +851,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/client-document-request/:token" element={<DocumentRequestUploadPage />} />
+          <Route path="/client-photos/:token" element={<ClientPhotoGalleryPage />} />
           <Route path="/candidate/login/:token" element={<CandidateLoginCallbackPage />} />
           <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
           {!isCustomDomain && (

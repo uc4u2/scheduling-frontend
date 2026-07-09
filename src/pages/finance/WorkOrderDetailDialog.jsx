@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  TextField,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,6 +16,9 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
+import LinkOffOutlinedIcon from "@mui/icons-material/LinkOffOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +26,10 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
 import {
+  createWorkOrderPhotoShareLink,
   getWorkOrder,
+  getWorkOrderPhotoShareLink,
+  revokeWorkOrderPhotoShareLink,
   updateWorkOrderStatus,
 } from "./financeApi";
 import WorkOrderAssignmentsPanel from "./WorkOrderAssignmentsPanel";
@@ -84,6 +91,8 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
   const [error, setError] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
   const [editingOpen, setEditingOpen] = useState(false);
+  const [photoShareLink, setPhotoShareLink] = useState(null);
+  const [photoShareLoading, setPhotoShareLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!workOrderId) return;
@@ -92,12 +101,50 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
     try {
       const res = await getWorkOrder(workOrderId);
       setWorkOrder(res?.work_order || res);
+      try {
+        const share = await getWorkOrderPhotoShareLink(workOrderId);
+        setPhotoShareLink(share?.share_link || null);
+      } catch {
+        setPhotoShareLink(null);
+      }
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.loadFailed", "Unable to load work order."));
     } finally {
       setLoading(false);
     }
   }, [workOrderId, tWorkOrders]);
+
+  const handleCreateOrCopyPhotoShareLink = async () => {
+    if (!workOrder?.id) return;
+    setPhotoShareLoading(true);
+    try {
+      const res = photoShareLink?.public_url ? { share_link: photoShareLink } : await createWorkOrderPhotoShareLink(workOrder.id);
+      const next = res?.share_link || null;
+      setPhotoShareLink(next);
+      if (next?.public_url) {
+        await navigator.clipboard.writeText(next.public_url);
+        enqueueSnackbar("Photo gallery link copied.", { variant: "success" });
+      }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create the photo gallery link.", { variant: "error" });
+    } finally {
+      setPhotoShareLoading(false);
+    }
+  };
+
+  const handleRevokePhotoShareLink = async () => {
+    if (!workOrder?.id || !photoShareLink?.public_url) return;
+    setPhotoShareLoading(true);
+    try {
+      await revokeWorkOrderPhotoShareLink(workOrder.id);
+      setPhotoShareLink(null);
+      enqueueSnackbar("Photo gallery link revoked.", { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to revoke the photo gallery link.", { variant: "error" });
+    } finally {
+      setPhotoShareLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (open) load();
@@ -192,13 +239,50 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
                     {tWorkOrders("photos.helper", "Employee field photos linked to this work order appear here and can also surface in Client 360.")}
                   </Typography>
                 </Box>
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate(`/manager/field-photos?work_order_id=${workOrder.id}`)}
-                >
-                  {tWorkOrders("photos.openAll", "Open Field Photos")}
-                </Button>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button variant="outlined" onClick={() => navigate(`/manager/field-photos?work_order_id=${workOrder.id}`)}>
+                    {tWorkOrders("photos.openAll", "Open Field Photos")}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<ContentCopyOutlinedIcon />}
+                    onClick={handleCreateOrCopyPhotoShareLink}
+                    disabled={photoShareLoading}
+                  >
+                    {photoShareLoading ? "Working..." : photoShareLink?.public_url ? "Copy share link" : "Create share link"}
+                  </Button>
+                  {photoShareLink?.public_url ? (
+                    <>
+                      <Button
+                        variant="text"
+                        startIcon={<OpenInNewOutlinedIcon />}
+                        onClick={() => window.open(photoShareLink.public_url, "_blank", "noopener,noreferrer")}
+                      >
+                        Open gallery
+                      </Button>
+                      <Button
+                        variant="text"
+                        color="warning"
+                        startIcon={<LinkOffOutlinedIcon />}
+                        onClick={handleRevokePhotoShareLink}
+                        disabled={photoShareLoading}
+                      >
+                        Revoke link
+                      </Button>
+                    </>
+                  ) : null}
+                </Stack>
               </Stack>
+              {photoShareLink?.public_url ? (
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Client photo gallery link"
+                  value={photoShareLink.public_url}
+                  InputProps={{ readOnly: true }}
+                  sx={{ mb: 1.5 }}
+                />
+              ) : null}
               {(workOrder.recent_field_photos || []).length ? (
                 <Stack spacing={1}>
                   {(workOrder.recent_field_photos || []).map((photo) => (
