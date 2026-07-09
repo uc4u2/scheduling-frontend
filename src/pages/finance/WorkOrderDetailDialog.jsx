@@ -19,6 +19,7 @@ import {
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import LinkOffOutlinedIcon from "@mui/icons-material/LinkOffOutlined";
+import MailOutlineOutlinedIcon from "@mui/icons-material/MailOutlineOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +31,7 @@ import {
   getWorkOrder,
   getWorkOrderPhotoShareLink,
   revokeWorkOrderPhotoShareLink,
+  sendWorkOrderPhotoShareLinkEmail,
   updateWorkOrderStatus,
 } from "./financeApi";
 import WorkOrderAssignmentsPanel from "./WorkOrderAssignmentsPanel";
@@ -93,6 +95,7 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
   const [editingOpen, setEditingOpen] = useState(false);
   const [photoShareLink, setPhotoShareLink] = useState(null);
   const [photoShareLoading, setPhotoShareLoading] = useState(false);
+  const [photoShareEmailSending, setPhotoShareEmailSending] = useState(false);
 
   const load = useCallback(async () => {
     if (!workOrderId) return;
@@ -143,6 +146,21 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
       enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to revoke the photo gallery link.", { variant: "error" });
     } finally {
       setPhotoShareLoading(false);
+    }
+  };
+
+  const handleSendPhotoShareLinkEmail = async () => {
+    if (!workOrder?.id) return;
+    setPhotoShareEmailSending(true);
+    try {
+      const res = await sendWorkOrderPhotoShareLinkEmail(workOrder.id);
+      const next = res?.share_link || null;
+      setPhotoShareLink(next);
+      enqueueSnackbar(`Photo gallery link emailed to ${res?.sent_to || "the client"}.`, { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to send the photo gallery email.", { variant: "error" });
+    } finally {
+      setPhotoShareEmailSending(false);
     }
   };
 
@@ -253,6 +271,14 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
                   </Button>
                   {photoShareLink?.public_url ? (
                     <>
+                      <Button
+                        variant="text"
+                        startIcon={<MailOutlineOutlinedIcon />}
+                        onClick={handleSendPhotoShareLinkEmail}
+                        disabled={photoShareEmailSending}
+                      >
+                        {photoShareEmailSending ? "Sending..." : "Send to client"}
+                      </Button>
                       <Button
                         variant="text"
                         startIcon={<OpenInNewOutlinedIcon />}

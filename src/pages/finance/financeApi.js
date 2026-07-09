@@ -177,6 +177,8 @@ export const createWorkOrderPhotoShareLink = (id) =>
   unwrap(api.post(`/finance/work-orders/${id}/photo-share-link`));
 export const revokeWorkOrderPhotoShareLink = (id) =>
   unwrap(api.post(`/finance/work-orders/${id}/photo-share-link/revoke`));
+export const sendWorkOrderPhotoShareLinkEmail = (id, payload = {}) =>
+  unwrap(api.post(`/finance/work-orders/${id}/photo-share-link/send-email`, payload));
 export const createWorkOrder = (payload) => unwrap(api.post("/finance/work-orders", payload));
 export const updateWorkOrder = (id, payload) => unwrap(api.patch(`/finance/work-orders/${id}`, payload));
 export const cancelWorkOrder = (id) => unwrap(api.delete(`/finance/work-orders/${id}`));
@@ -474,6 +476,8 @@ export const createManagerClient360PhotoShareLink = (clientId) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/photo-share-link`));
 export const revokeManagerClient360PhotoShareLink = (clientId) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/photo-share-link/revoke`));
+export const sendManagerClient360PhotoShareLinkEmail = (clientId, payload = {}) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/photo-share-link/send-email`, payload));
 
 export const createManagerClient360Document = (clientId, payload) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/documents`, payload));

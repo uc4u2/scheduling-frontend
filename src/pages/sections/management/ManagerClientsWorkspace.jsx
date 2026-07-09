@@ -105,6 +105,7 @@ import {
   listManagerClient360DocumentRequests,
   listManagerClient360,
   revokeManagerClient360PhotoShareLink,
+  sendManagerClient360PhotoShareLinkEmail,
   sendManagerClient360Email,
   setManagerClient360EmailTemplateDefault,
   uploadManagerClient360PhotoFromDevice,
@@ -2295,6 +2296,7 @@ export default function ManagerClientsWorkspace() {
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState({});
   const [photoShareLink, setPhotoShareLink] = useState(null);
   const [photoShareLoading, setPhotoShareLoading] = useState(false);
+  const [photoShareEmailSending, setPhotoShareEmailSending] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState("");
@@ -3127,6 +3129,23 @@ export default function ManagerClientsWorkspace() {
       enqueueSnackbar(message, { variant: "error" });
     } finally {
       setPhotoShareLoading(false);
+    }
+  };
+
+  const handleSendPhotoShareLinkEmail = async () => {
+    if (!clientId) return;
+    setPhotoShareEmailSending(true);
+    try {
+      const payload = await sendManagerClient360PhotoShareLinkEmail(clientId);
+      const row = payload?.share_link || null;
+      setPhotoShareLink(row);
+      enqueueSnackbar(`Photo gallery link emailed to ${payload?.sent_to || "the client"}.`, { variant: "success" });
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || "Unable to send the photo gallery email.";
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setPhotoShareEmailSending(false);
     }
   };
 
@@ -4430,6 +4449,15 @@ export default function ManagerClientsWorkspace() {
                           </Button>
                           {photoShareLink?.public_url ? (
                             <>
+                              <Button
+                                size="small"
+                                variant="text"
+                                startIcon={<MailOutlineOutlinedIcon fontSize="small" />}
+                                onClick={handleSendPhotoShareLinkEmail}
+                                disabled={photoShareEmailSending}
+                              >
+                                {photoShareEmailSending ? "Sending..." : "Send to client"}
+                              </Button>
                               <Button
                                 size="small"
                                 variant="outlined"
