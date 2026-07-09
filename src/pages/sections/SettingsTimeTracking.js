@@ -51,6 +51,8 @@ const SettingsTimeTracking = () => {
         unpaid_break_minutes_over_6h: data.unpaid_break_minutes_over_6h ?? 30,
         require_manager_approval: data.require_manager_approval ?? true,
         punch_location_mode: data.punch_location_mode || "off",
+        enable_dispatch_tracking: data.enable_dispatch_tracking ?? false,
+        auto_send_dispatch_link_to_client: data.auto_send_dispatch_link_to_client ?? false,
       });
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to load time-tracking settings.");
@@ -193,6 +195,36 @@ const SettingsTimeTracking = () => {
             </Grid>
           ))}
         </Grid>
+
+        <SectionCard
+          title="Dispatch tracking"
+          description="Separate trip-tracking controls for On my way links and client-facing technician updates."
+        >
+          <Stack spacing={2}>
+            <FormControlLabel
+              control={(
+                <Switch
+                  checked={Boolean(policy.enable_dispatch_tracking)}
+                  onChange={handleToggle("enable_dispatch_tracking")}
+                />
+              )}
+              label="Enable On my way trip tracking"
+            />
+            <FormControlLabel
+              control={(
+                <Switch
+                  checked={Boolean(policy.auto_send_dispatch_link_to_client)}
+                  onChange={handleToggle("auto_send_dispatch_link_to_client")}
+                  disabled={!policy.enable_dispatch_tracking}
+                />
+              )}
+              label="Auto-send tracking link to client when employee taps On my way"
+            />
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              Trip tracking is separate from punch-location evidence. It is meant for assigned work orders and client-facing technician updates.
+            </Alert>
+          </Stack>
+        </SectionCard>
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="flex-start">
           <Button variant="contained" onClick={save} disabled={saving}>

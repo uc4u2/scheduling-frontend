@@ -27,10 +27,14 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
 import {
+  createWorkOrderDispatchLink,
+  getWorkOrderDispatch,
   createWorkOrderPhotoShareLink,
   getWorkOrder,
   getWorkOrderPhotoShareLink,
+  revokeWorkOrderDispatchLink,
   revokeWorkOrderPhotoShareLink,
+  sendWorkOrderDispatchLinkEmail,
   sendWorkOrderPhotoShareLinkEmail,
   updateWorkOrderStatus,
 } from "./financeApi";
@@ -96,6 +100,9 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
   const [photoShareLink, setPhotoShareLink] = useState(null);
   const [photoShareLoading, setPhotoShareLoading] = useState(false);
   const [photoShareEmailSending, setPhotoShareEmailSending] = useState(false);
+  const [dispatchRows, setDispatchRows] = useState([]);
+  const [dispatchSettings, setDispatchSettings] = useState(null);
+  const [dispatchBusyKey, setDispatchBusyKey] = useState("");
 
   const load = useCallback(async () => {
     if (!workOrderId) return;
@@ -109,6 +116,14 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
         setPhotoShareLink(share?.share_link || null);
       } catch {
         setPhotoShareLink(null);
+      }
+      try {
+        const dispatch = await getWorkOrderDispatch(workOrderId);
+        setDispatchRows(Array.isArray(dispatch?.states) ? dispatch.states : []);
+        setDispatchSettings(dispatch?.settings || null);
+      } catch {
+        setDispatchRows([]);
+        setDispatchSettings(null);
       }
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || tWorkOrders("errors.loadFailed", "Unable to load work order."));
@@ -187,6 +202,62 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
     ...action,
     label: tWorkOrders(`statusActions.${action.key}`, action.label),
   }));
+
+  const handleCreateOrCopyDispatchLink = async (row) => {
+    if (!workOrder?.id || !row?.recruiter_id) return;
+    const busyId = `dispatch-copy-${row.recruiter_id}`;
+    setDispatchBusyKey(busyId);
+    try {
+      const next = row?.public_url
+        ? row
+        : (await createWorkOrderDispatchLink(workOrder.id, row.recruiter_id))?.dispatch;
+      if (next?.public_url) {
+        await navigator.clipboard.writeText(next.public_url);
+        enqueueSnackbar("Tracking link copied.", { variant: "success" });
+      }
+      const dispatch = await getWorkOrderDispatch(workOrder.id);
+      setDispatchRows(Array.isArray(dispatch?.states) ? dispatch.states : []);
+      setDispatchSettings(dispatch?.settings || null);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to create tracking link.", { variant: "error" });
+    } finally {
+      setDispatchBusyKey("");
+    }
+  };
+
+  const handleSendDispatchLink = async (row) => {
+    if (!workOrder?.id || !row?.recruiter_id) return;
+    const busyId = `dispatch-send-${row.recruiter_id}`;
+    setDispatchBusyKey(busyId);
+    try {
+      const res = await sendWorkOrderDispatchLinkEmail(workOrder.id, row.recruiter_id);
+      enqueueSnackbar(`Tracking link emailed to ${res?.sent_to || "the client"}.`, { variant: "success" });
+      const dispatch = await getWorkOrderDispatch(workOrder.id);
+      setDispatchRows(Array.isArray(dispatch?.states) ? dispatch.states : []);
+      setDispatchSettings(dispatch?.settings || null);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to send tracking link.", { variant: "error" });
+    } finally {
+      setDispatchBusyKey("");
+    }
+  };
+
+  const handleRevokeDispatchLink = async (row) => {
+    if (!workOrder?.id || !row?.recruiter_id || !row?.public_url) return;
+    const busyId = `dispatch-revoke-${row.recruiter_id}`;
+    setDispatchBusyKey(busyId);
+    try {
+      await revokeWorkOrderDispatchLink(workOrder.id, row.recruiter_id);
+      enqueueSnackbar("Tracking link revoked.", { variant: "success" });
+      const dispatch = await getWorkOrderDispatch(workOrder.id);
+      setDispatchRows(Array.isArray(dispatch?.states) ? dispatch.states : []);
+      setDispatchSettings(dispatch?.settings || null);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to revoke tracking link.", { variant: "error" });
+    } finally {
+      setDispatchBusyKey("");
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
@@ -358,6 +429,85 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
                   <Typography variant="subtitle2">{tWorkOrders("notes.general", "General notes")}</Typography>
                   <Typography variant="body2" color="text.secondary">{workOrder.notes || tWorkOrders("notes.generalEmpty", "No general notes yet.")}</Typography>
                 </Box>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="h6" fontWeight={800}>Dispatch</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Keep On my way tracking separate from timeclock audit. These controls create and send client-facing trip links for assigned employees.
+                  </Typography>
+                </Box>
+                {!dispatchSettings?.enabled ? (
+                  <Alert severity="info">Dispatch tracking is disabled in Time Tracking settings.</Alert>
+                ) : dispatchRows.length ? (
+                  <Stack spacing={1.25}>
+                    {dispatchRows.map((row) => (
+                      <Paper key={`dispatch-row-${row.recruiter_id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1.5 }}>
+                        <Stack spacing={1}>
+                          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                            <Box>
+                              <Typography fontWeight={700}>{row.recruiter_name || "Assigned employee"}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {String(row.status || "not_started").replaceAll("_", " ")}
+                                {row.destination ? ` • ${row.destination}` : ""}
+                              </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.secondary">
+                              Last update {row.updated_at ? formatDateTimeInTz(row.updated_at, timezone, "LLL d, yyyy h:mm a") : "—"}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            {row.map_url ? (
+                              <Button size="small" variant="outlined" component="a" href={row.map_url} target="_blank" rel="noreferrer">
+                                Open map
+                              </Button>
+                            ) : null}
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<ContentCopyOutlinedIcon />}
+                              onClick={() => handleCreateOrCopyDispatchLink(row)}
+                              disabled={Boolean(dispatchBusyKey)}
+                            >
+                              {dispatchBusyKey === `dispatch-copy-${row.recruiter_id}` ? "Working..." : row.public_url ? "Copy tracking link" : "Create tracking link"}
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<MailOutlineOutlinedIcon />}
+                              onClick={() => handleSendDispatchLink(row)}
+                              disabled={Boolean(dispatchBusyKey)}
+                            >
+                              {dispatchBusyKey === `dispatch-send-${row.recruiter_id}` ? "Sending..." : "Send to client"}
+                            </Button>
+                            {row.public_url ? (
+                              <Button size="small" variant="outlined" startIcon={<OpenInNewOutlinedIcon />} component="a" href={row.public_url} target="_blank" rel="noreferrer">
+                                Open tracking page
+                              </Button>
+                            ) : null}
+                            {row.public_url ? (
+                              <Button
+                                size="small"
+                                color="warning"
+                                variant="text"
+                                startIcon={<LinkOffOutlinedIcon />}
+                                onClick={() => handleRevokeDispatchLink(row)}
+                                disabled={Boolean(dispatchBusyKey)}
+                              >
+                                {dispatchBusyKey === `dispatch-revoke-${row.recruiter_id}` ? "Revoking..." : "Revoke link"}
+                              </Button>
+                            ) : null}
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Alert severity="info">No assigned dispatch rows yet. When an assigned employee taps On my way, their trip will appear here.</Alert>
+                )}
               </Stack>
             </Paper>
 

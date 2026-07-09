@@ -117,6 +117,7 @@ import Meetings from "./pages/sections/Meetings";
 import Training from "./pages/sections/Training";
 import Communications from "./pages/sections/Communications";
 import FieldPhotos from "./pages/sections/FieldPhotos";
+import DispatchTrackingPanel from "./pages/sections/management/DispatchTrackingPanel";
 import ROE from "./pages/sections/ROE";
 import T4 from "./pages/sections/T4";
 import W2 from "./pages/sections/W2";
@@ -205,6 +206,7 @@ const menuConfig = [
       { labelKey: "manager.menu.training", key: "training", icon: <Assignment /> },
       { label: "Communications", key: "communications", icon: <Article /> },
       { label: "Field Photos", key: "field-photos", icon: <PhotoCameraIcon /> },
+      { label: "Dispatch", key: "dispatch-tracking", icon: <History /> },
     ],
   },
 
@@ -3542,6 +3544,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
       case "field-photos":
         return <FieldPhotos token={token} />;
+
+      case "dispatch-tracking":
+        return <DispatchTrackingPanel />;
 
       case "leaves":
         return <LeaveRequests token={token} currentUserInfo={currentUserInfo} />;

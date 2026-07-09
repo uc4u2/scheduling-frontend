@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -18,10 +19,16 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { getMyWorkOrder, listMyWorkOrderFieldPhotos, uploadMyWorkOrderFieldPhoto } from "../financeApi";
+import { getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
 import { API_BASE_URL } from "../../../utils/api";
 import { getAuthedCompanyId } from "../../../utils/authedCompany";
+
+const DISPATCH_STATUS_LABELS = {
+  not_started: "Not started",
+  on_my_way: "On my way",
+  arrived: "Arrived",
+};
 
 export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports }) {
   const [workOrder, setWorkOrder] = useState(null);
@@ -33,6 +40,12 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const [photoFile, setPhotoFile] = useState(null);
   const [photoNote, setPhotoNote] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [dispatch, setDispatch] = useState(null);
+  const [dispatchSettings, setDispatchSettings] = useState(null);
+  const [dispatchError, setDispatchError] = useState("");
+  const [dispatchBusy, setDispatchBusy] = useState(false);
+  const watchIdRef = useRef(null);
+  const lastPingAtRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -41,13 +54,17 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       setLoading(true);
       setError("");
       try {
-        const [res, photoRes] = await Promise.all([
+        const [res, photoRes, dispatchRes] = await Promise.all([
           getMyWorkOrder(workOrderId),
           listMyWorkOrderFieldPhotos(workOrderId).catch(() => ({ items: [] })),
+          getMyWorkOrderDispatch(workOrderId).catch(() => null),
         ]);
         if (!mounted) return;
         setWorkOrder(res?.work_order || res);
         setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
+        setDispatch(dispatchRes?.dispatch || null);
+        setDispatchSettings(dispatchRes?.settings || null);
+        setDispatchError("");
       } catch (err) {
         if (!mounted) return;
         setError(err?.response?.data?.error || err?.message || "Unable to load work order.");
@@ -133,6 +150,89 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
     }
   };
 
+  const stopDispatchTracking = useCallback(() => {
+    if (watchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation?.clearWatch) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+    watchIdRef.current = null;
+    lastPingAtRef.current = 0;
+  }, []);
+
+  const sendDispatchLocation = useCallback(async (position) => {
+    if (!workOrder?.id) return;
+    const coords = position?.coords;
+    if (!coords) return;
+    const now = Date.now();
+    if (now - lastPingAtRef.current < 30000) return;
+    lastPingAtRef.current = now;
+    try {
+      const response = await updateMyWorkOrderDispatchLocation(workOrder.id, {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        accuracy_m: coords.accuracy ?? null,
+        heading: Number.isFinite(coords.heading) ? coords.heading : null,
+        speed: Number.isFinite(coords.speed) ? coords.speed : null,
+        permission_state: "granted",
+        source: "employee_work_order",
+        captured_at: new Date(position.timestamp || now).toISOString(),
+      });
+      setDispatch(response?.dispatch || null);
+      setDispatchError("");
+    } catch (err) {
+      setDispatchError(err?.response?.data?.error || err?.message || "Unable to send trip location.");
+    }
+  }, [workOrder?.id]);
+
+  const startDispatchTracking = useCallback(() => {
+    if (watchIdRef.current !== null || typeof navigator === "undefined" || !navigator.geolocation?.watchPosition) return;
+    setDispatchError("");
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        void sendDispatchLocation(position);
+      },
+      (geoError) => {
+        setDispatchError(geoError?.message || "Location access is required while you are on the way.");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 15000,
+        timeout: 20000,
+      }
+    );
+  }, [sendDispatchLocation]);
+
+  useEffect(() => {
+    if (!open || !dispatchSettings?.enabled) {
+      stopDispatchTracking();
+      return;
+    }
+    if (dispatch?.status === "on_my_way") {
+      startDispatchTracking();
+    } else {
+      stopDispatchTracking();
+    }
+    return () => {
+      stopDispatchTracking();
+    };
+  }, [dispatch?.status, dispatchSettings?.enabled, open, startDispatchTracking, stopDispatchTracking]);
+
+  const handleDispatchStatus = async (nextStatus) => {
+    if (!workOrder?.id || !dispatchSettings?.enabled) return;
+    setDispatchBusy(true);
+    setDispatchError("");
+    try {
+      const response = await updateMyWorkOrderDispatchStatus(workOrder.id, { status: nextStatus });
+      setDispatch(response?.dispatch || null);
+      if (nextStatus === "arrived") {
+        stopDispatchTracking();
+      }
+    } catch (err) {
+      setDispatchError(err?.response?.data?.error || err?.message || "Unable to update trip status.");
+    } finally {
+      setDispatchBusy(false);
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>My Work Order</DialogTitle>
@@ -165,6 +265,53 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               ) : (
                 <Typography variant="body2" color="text.secondary">No assignment rows are visible for this job.</Typography>
               )}
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ md: "center" }}>
+                  <Box>
+                    <Typography variant="h6" fontWeight={800}>Trip status</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Use On my way when you start traveling to this job. Location sharing only stays active while you are on the way.
+                    </Typography>
+                  </Box>
+                  <Chip
+                    color={dispatch?.status === "on_my_way" ? "warning" : dispatch?.status === "arrived" ? "success" : "default"}
+                    label={DISPATCH_STATUS_LABELS[String(dispatch?.status || "not_started")] || "Not started"}
+                  />
+                </Stack>
+                {!dispatchSettings?.enabled ? (
+                  <Alert severity="info">Dispatch tracking is disabled for this company.</Alert>
+                ) : null}
+                {dispatchError ? <Alert severity="error">{dispatchError}</Alert> : null}
+                {dispatch?.public_url ? (
+                  <Typography variant="caption" color="text.secondary">
+                    The manager can share a live client tracking link for this trip.
+                  </Typography>
+                ) : null}
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+                  <Button
+                    variant="contained"
+                    disabled={!dispatchSettings?.enabled || dispatchBusy || dispatch?.status === "on_my_way"}
+                    onClick={() => handleDispatchStatus("on_my_way")}
+                  >
+                    {dispatchBusy && dispatch?.status !== "on_my_way" ? "Working..." : "On my way"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    disabled={!dispatchSettings?.enabled || dispatchBusy || dispatch?.status === "arrived"}
+                    onClick={() => handleDispatchStatus("arrived")}
+                  >
+                    {dispatchBusy && dispatch?.status === "on_my_way" ? "Working..." : "Arrived"}
+                  </Button>
+                </Stack>
+                {dispatch?.last_location_captured_at ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Last trip location sent at {new Date(dispatch.last_location_captured_at).toLocaleString()}.
+                  </Typography>
+                ) : null}
+              </Stack>
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>

@@ -173,6 +173,16 @@ export const listWorkOrders = (params = {}) => unwrap(api.get("/finance/work-ord
 export const getWorkOrder = (id) => unwrap(api.get(`/finance/work-orders/${id}`));
 export const getWorkOrderPhotoShareLink = (id) =>
   unwrap(api.get(`/finance/work-orders/${id}/photo-share-link`));
+export const getWorkOrderDispatch = (id) =>
+  unwrap(api.get(`/finance/work-orders/${id}/dispatch`));
+export const listDispatchItems = () =>
+  unwrap(api.get("/finance/dispatch"));
+export const createWorkOrderDispatchLink = (workOrderId, recruiterId) =>
+  unwrap(api.post(`/finance/work-orders/${workOrderId}/dispatch/${recruiterId}/tracking-link`));
+export const revokeWorkOrderDispatchLink = (workOrderId, recruiterId) =>
+  unwrap(api.post(`/finance/work-orders/${workOrderId}/dispatch/${recruiterId}/tracking-link/revoke`));
+export const sendWorkOrderDispatchLinkEmail = (workOrderId, recruiterId, payload = {}) =>
+  unwrap(api.post(`/finance/work-orders/${workOrderId}/dispatch/${recruiterId}/tracking-link/send-email`, payload));
 export const createWorkOrderPhotoShareLink = (id) =>
   unwrap(api.post(`/finance/work-orders/${id}/photo-share-link`));
 export const revokeWorkOrderPhotoShareLink = (id) =>
@@ -282,6 +292,12 @@ export const voidPurchase = (id, payload = {}) =>
 
 export const listMyWorkOrders = (params = {}) => unwrap(api.get("/finance/my-work-orders", { params }));
 export const getMyWorkOrder = (id) => unwrap(api.get(`/finance/my-work-orders/${id}`));
+export const getMyWorkOrderDispatch = (id) =>
+  unwrap(api.get(`/finance/my-work-orders/${id}/dispatch`));
+export const updateMyWorkOrderDispatchStatus = (id, payload) =>
+  unwrap(api.post(`/finance/my-work-orders/${id}/dispatch/status`, payload));
+export const updateMyWorkOrderDispatchLocation = (id, payload) =>
+  unwrap(api.post(`/finance/my-work-orders/${id}/dispatch/location`, payload));
 export const listMyWorkOrderFieldPhotos = (id) =>
   unwrap(api.get(`/finance/my-work-orders/${id}/field-photos`));
 export const uploadMyWorkOrderFieldPhoto = (id, formData) =>
@@ -290,6 +306,8 @@ export const uploadMyWorkOrderFieldPhoto = (id, formData) =>
   }));
 export const getPublicClientPhotoGallery = (token) =>
   unwrap(api.get(`/api/public/client-photo-galleries/${encodeURIComponent(token)}`, { noAuth: true, noCompanyHeader: true }));
+export const getPublicWorkOrderTracking = (token) =>
+  unwrap(api.get(`/api/public/work-order-tracking/${encodeURIComponent(token)}`, { noAuth: true, noCompanyHeader: true }));
 export const submitMyFieldReport = (id, payload) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/field-report`, payload));
 export const listMyFieldReports = (params = {}) => unwrap(api.get("/finance/my-field-reports", { params }));
