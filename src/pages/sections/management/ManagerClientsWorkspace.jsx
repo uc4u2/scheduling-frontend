@@ -468,6 +468,15 @@ const documentRequestStateMeta = (row = {}) => {
   return { key: "pending", label: "Pending", tone: "primary", priority: 0, helper: "Secure link sent. Waiting for the client to upload the file." };
 };
 
+const getDocumentRequestAttachmentSummary = (row = {}) => {
+  const attachments = Array.isArray(row.attachments) ? row.attachments : [];
+  if (!attachments.length) return null;
+  if (attachments.length === 1) {
+    return attachments[0]?.filename ? `Attachment: ${attachments[0].filename}` : "1 attached file";
+  }
+  return `${attachments.length} attached files`;
+};
+
 const toCents = (value) => {
   const numeric = Number(value || 0);
   if (!Number.isFinite(numeric)) return 0;
@@ -4906,6 +4915,14 @@ export default function ManagerClientsWorkspace() {
                     ) : null}
                     {!documentRequestsLoading ? (
                       <Stack spacing={2}>
+                        {sortedDocumentRequests.length ? (
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            <Chip size="small" label={`${pendingDocumentRequests.length} waiting`} variant="outlined" sx={readableChipSx("primary")} />
+                            <Chip size="small" label={`${completedDocumentRequests.filter((row) => documentRequestStateMeta(row).key === "uploaded").length} uploaded`} variant="outlined" sx={readableChipSx("success")} />
+                            <Chip size="small" label={`${completedDocumentRequests.filter((row) => documentRequestStateMeta(row).key === "expired").length} expired`} variant="outlined" sx={readableChipSx("warning")} />
+                            <Chip size="small" label={`${completedDocumentRequests.filter((row) => documentRequestStateMeta(row).key === "cancelled").length} cancelled`} variant="outlined" sx={readableChipSx("default")} />
+                          </Stack>
+                        ) : null}
                         <Box>
                           <Typography variant="subtitle2" sx={{ mb: 1 }}>
                             Waiting for client
@@ -4913,8 +4930,11 @@ export default function ManagerClientsWorkspace() {
                           <PagedStackList
                             items={pendingDocumentRequests}
                             initialVisible={4}
+                            showMoreLabel="Show more waiting requests"
+                            showLessLabel="Show fewer waiting requests"
                             renderItem={(row) => {
                               const stateMeta = documentRequestStateMeta(row);
+                              const attachmentSummary = getDocumentRequestAttachmentSummary(row);
                               return (
                                 <Paper key={`client-document-request-pending-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                                   <Stack spacing={1.1}>
@@ -4935,6 +4955,11 @@ export default function ManagerClientsWorkspace() {
                                         <Typography variant="body2" color="text.secondary">
                                           Requested {formatDateTime(row.created_at, timezone)}
                                         </Typography>
+                                        {row.requested_by_name ? (
+                                          <Typography variant="caption" color="text.secondary">
+                                            Requested by {row.requested_by_name}
+                                          </Typography>
+                                        ) : null}
                                         <Typography variant="caption" color="text.secondary">
                                           Expires {row.expires_at ? formatDateTime(row.expires_at, timezone) : "—"}
                                         </Typography>
@@ -4943,6 +4968,14 @@ export default function ManagerClientsWorkspace() {
                                     <Typography variant="body2" color="text.secondary">
                                       {stateMeta.helper}
                                     </Typography>
+                                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                      {attachmentSummary ? (
+                                        <Chip size="small" label={attachmentSummary} variant="outlined" sx={readableChipSx("default")} />
+                                      ) : null}
+                                      {row.upload_url ? (
+                                        <Chip size="small" label="Secure link ready" variant="outlined" sx={readableChipSx("info")} />
+                                      ) : null}
+                                    </Stack>
                                     {row.message ? <ExpandableText text={row.message} limit={180} /> : null}
                                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                       {row.upload_url ? (
@@ -4982,8 +5015,11 @@ export default function ManagerClientsWorkspace() {
                           <PagedStackList
                             items={completedDocumentRequests}
                             initialVisible={4}
+                            showMoreLabel="Show more history"
+                            showLessLabel="Show fewer history items"
                             renderItem={(row) => {
                               const stateMeta = documentRequestStateMeta(row);
+                              const attachmentSummary = getDocumentRequestAttachmentSummary(row);
                               return (
                                 <Paper key={`client-document-request-history-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                                   <Stack spacing={1.1}>
@@ -5004,6 +5040,11 @@ export default function ManagerClientsWorkspace() {
                                         <Typography variant="body2" color="text.secondary">
                                           Requested {formatDateTime(row.created_at, timezone)}
                                         </Typography>
+                                        {row.requested_by_name ? (
+                                          <Typography variant="caption" color="text.secondary">
+                                            Requested by {row.requested_by_name}
+                                          </Typography>
+                                        ) : null}
                                         <Typography variant="caption" color="text.secondary">
                                           Expires {row.expires_at ? formatDateTime(row.expires_at, timezone) : "—"}
                                         </Typography>
@@ -5017,6 +5058,14 @@ export default function ManagerClientsWorkspace() {
                                     <Typography variant="body2" color="text.secondary">
                                       {stateMeta.helper}
                                     </Typography>
+                                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                      {attachmentSummary ? (
+                                        <Chip size="small" label={attachmentSummary} variant="outlined" sx={readableChipSx("default")} />
+                                      ) : null}
+                                      {row.uploaded_document?.original_filename ? (
+                                        <Chip size="small" label={`Returned file: ${row.uploaded_document.original_filename}`} variant="outlined" sx={readableChipSx("success")} />
+                                      ) : null}
+                                    </Stack>
                                     {row.message ? <ExpandableText text={row.message} limit={180} /> : null}
                                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                       {row.upload_url ? (
