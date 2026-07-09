@@ -3228,6 +3228,7 @@ export default function ManagerClientsWorkspace() {
         category: String(form.category || "other"),
         message: String(form.message || "").trim(),
         expiry_days: Number(form.expiry_days || 7),
+        attachments: Array.from(form.attachments || []),
       };
       const res = await createManagerClient360DocumentRequest(clientId, payload);
       if (res?.request?.id && requestDocumentDraft?.templateLabel) {
