@@ -295,6 +295,11 @@ const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDown
                 {row.uploaded_by || "Employee photo"}
               </Typography>
               <Typography variant="body2" color="text.secondary">{shiftLabel(row)}</Typography>
+              {row.client?.name && (
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, ...lineClampSx(1) }}>
+                  Client: {row.client.name}
+                </Typography>
+              )}
               {row.department?.name && <Typography variant="caption" color="text.secondary">{row.department.name}</Typography>}
             </Box>
             <Stack direction="row" spacing={0.25}>
@@ -428,6 +433,11 @@ const GalleryDialog = ({ rows, selectedId, previewUrls, onClose, onSelect, onDow
               <Chip size="small" label={statusLabel(row)} {...readableChipProps(theme, fileStatusTone(row.scan_status))} sx={{ alignSelf: "flex-start", ...readableChipProps(theme, fileStatusTone(row.scan_status)).sx }} />
               <Typography variant="h6" sx={{ fontWeight: 950 }}>{row.uploaded_by || "Employee photo"}</Typography>
               <Typography variant="body2" color="text.secondary">{shiftLabel(row)}</Typography>
+              {row.client?.name ? (
+                <Typography variant="body2" color="text.secondary">
+                  Client: {row.client.name}{row.client.email ? ` • ${row.client.email}` : ""}
+                </Typography>
+              ) : null}
               <Chip size="small" label={uploadTimingLabel(row)} {...readableChipProps(theme, uploadTimingTone(uploadTimingLabel(row)))} sx={{ alignSelf: "flex-start", ...readableChipProps(theme, uploadTimingTone(uploadTimingLabel(row))).sx }} />
               {row.note && <Typography variant="body2">{row.note}</Typography>}
               <Typography variant="body2" color="text.secondary">Uploaded {formatDateTime(row.created_at)}</Typography>
