@@ -137,6 +137,7 @@ export default function ContactFormSection(props) {
 
   const gridCols = (f) => (f.type === "textarea" || f.name === "message" ? 12 : 6);
   const isEditorialSplit = layoutVariant === "editorialSplit";
+  const resolvedMaxWidth = isEditorialSplit && maxWidth === "lg" ? "xl" : maxWidth;
 
   const formGrid = (
     <Box component="form" onSubmit={submit} noValidate>
@@ -185,7 +186,7 @@ export default function ContactFormSection(props) {
   return (
     <Box component="section">
       <Container
-        maxWidth={maxWidth === "full" ? false : maxWidth}
+        maxWidth={resolvedMaxWidth === "full" ? false : resolvedMaxWidth}
         sx={{ px: typeof gutterX === "number" ? `${gutterX}px` : undefined }}
       >
         <Stack spacing={2.5}>
@@ -239,7 +240,7 @@ export default function ContactFormSection(props) {
                 <Grid item xs={12} md={5}>
                   <Box
                     sx={{
-                      minHeight: { xs: 320, md: 100 },
+                      minHeight: { xs: 300, md: 560 },
                       height: "100%",
                       position: "relative",
                       display: "flex",
@@ -260,7 +261,7 @@ export default function ContactFormSection(props) {
                     <Stack
                       spacing={1.25}
                       sx={{
-                        maxWidth: 420,
+                        maxWidth: 340,
                         display: { xs: "none", md: "flex" },
                       }}
                     >
@@ -294,7 +295,10 @@ export default function ContactFormSection(props) {
                 <Grid item xs={12} md={7}>
                   <Box
                     sx={{
-                      p: { xs: 3, md: 4 },
+                      p: { xs: 3, md: 4.5 },
+                      minHeight: { md: 560 },
+                      display: "flex",
+                      alignItems: "center",
                       background:
                         "linear-gradient(180deg, rgba(28,28,28,0.98) 0%, rgba(13,13,13,0.98) 100%)",
                       "& .MuiTextField-root .MuiOutlinedInput-root": {
@@ -335,7 +339,7 @@ export default function ContactFormSection(props) {
                       },
                     }}
                   >
-                    {formGrid}
+                    <Box sx={{ width: "100%" }}>{formGrid}</Box>
                   </Box>
                 </Grid>
               </Grid>

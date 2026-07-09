@@ -1066,7 +1066,7 @@ const FeatureZigzagModern = ({
   title,
   supportingText,
   titleAlign = "left",
-  maxWidth,
+  maxWidth = "xl",
   items = []
 }) => {
   const list = toArray(items);
@@ -1087,11 +1087,11 @@ const FeatureZigzagModern = ({
           order: { xs: 2, md: align === "right" ? 2 : 1 },
           justifySelf: "center",
           width: "100%",
-          maxWidth: { xs: "100%", md: 640 },
+          maxWidth: { xs: "100%", md: 520 },
           backgroundColor: "transparent",
           border: "none",
           borderRadius: 0,
-          p: { xs: 2.5, md: 3.5 },
+          p: { xs: 2, md: 2.5 },
           boxShadow: "none"
         }}
       >
@@ -1133,10 +1133,10 @@ const FeatureZigzagModern = ({
           order: { xs: 1, md: align === "right" ? 1 : 2 },
           justifySelf: "center",
           width: "100%",
-          maxWidth: { xs: "100%", md: 700 },
+          maxWidth: { xs: "100%", md: 680 },
           borderRadius: 0,
           overflow: "hidden",
-          aspectRatio: { xs: "4 / 3", md: "5 / 4" },
+          aspectRatio: { xs: "4 / 3", md: "1.28 / 1" },
           boxShadow: "none",
           backgroundColor: "transparent"
         }}
@@ -1162,9 +1162,9 @@ const FeatureZigzagModern = ({
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr",
-            md: "repeat(2, minmax(0, 1fr))"
+            md: "minmax(0, 0.92fr) minmax(0, 1.08fr)"
           },
-          gap: { xs: 2.5, md: 8 },
+          gap: { xs: 2.5, md: 5 },
           alignItems: "center"
         }}
       >
@@ -1525,12 +1525,12 @@ const ServiceHoverSlider = ({
   subtitle,
   items = [],
   titleAlign = "center",
-  maxWidth = "full",
+  maxWidth = "xl",
   cardsDesktop = 4,
   cardsTablet = 2,
   cardsMobile = 1,
   gap = 12,
-  imageHeight = 392,
+  imageHeight = 420,
   zoomScale = 1.08,
   showArrows = true,
   showDots = true,
@@ -1776,13 +1776,13 @@ const CollectionShowcase = ({
   ctaSubtitle,
   ctaButtonText,
   ctaButtonLink,
-  maxWidth = "lg",
+  maxWidth = "xl",
   perView = {},
   showArrows = true,
   showDots = false,
   autoplay = true,
   intervalMs = 4200,
-  imageMaxWidth = 260
+  imageMaxWidth = 300
 }) => {
   const entries = toArray(items)
     .map((item) => ({
@@ -1929,7 +1929,7 @@ const CollectionShowcase = ({
                             display: "grid",
                             justifyItems: "center",
                             textAlign: "center",
-                            rowGap: 1,
+                            rowGap: 0.75,
                           }}
                         >
                           {item.image && (
@@ -1951,7 +1951,11 @@ const CollectionShowcase = ({
                           )}
                           {item.title && (
                             <Typography
-                              sx={{ fontWeight: 700, color: "var(--page-heading-color, text.primary)" }}
+                              sx={{
+                                fontWeight: 700,
+                                color: "var(--page-heading-color, text.primary)",
+                                maxWidth: imageWidth,
+                              }}
                             >
                               {item.title}
                             </Typography>
@@ -5755,9 +5759,9 @@ const MapEmbed = ({
   provider = "google",
   query = "",
   embedUrl = "",
-  height = 320,
+  height = 440,
   borderRadius = 4,
-  maxWidth = "lg",
+  maxWidth = "xl",
   title = "",
   titleAlign = "left",
   eyebrow = "",
@@ -5828,7 +5832,7 @@ const MapEmbed = ({
   if (useSplitLayout) {
     const containerMax = toContainerMax(maxWidth);
     const contentStack = (
-      <Stack spacing={2.25}>
+      <Stack spacing={2}>
         {eyebrow ? (
           <HtmlTypo
             variant="overline"
@@ -5847,7 +5851,7 @@ const MapEmbed = ({
               fontWeight: 700,
               lineHeight: 1.12,
               letterSpacing: "-0.03em",
-              fontSize: "clamp(2.1rem, 4.4vw, 4rem)",
+              fontSize: "clamp(2rem, 3.6vw, 3.55rem)",
               color: "var(--page-heading-color, #1f2937)",
               maxWidth: 440,
             }}
@@ -5956,11 +5960,11 @@ const MapEmbed = ({
 
     return (
       <Container maxWidth={containerMax} disableGutters={containerMax === false}>
-        <Grid container spacing={{ xs: 3, md: 5 }} alignItems="stretch">
-          <Grid item xs={12} md={5} lg={4}>
+        <Grid container spacing={{ xs: 3, md: 4 }} alignItems="stretch">
+          <Grid item xs={12} md={5}>
             {contentStack}
           </Grid>
-          <Grid item xs={12} md={7} lg={8} sx={{ display: "flex", alignItems: "stretch" }}>
+          <Grid item xs={12} md={7} sx={{ display: "flex", alignItems: "stretch" }}>
             {mapCard}
           </Grid>
         </Grid>
