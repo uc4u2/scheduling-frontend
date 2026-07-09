@@ -417,6 +417,18 @@ const cssColorWithOpacity = (color, overrideOpacity) => {
   return hexToRgba(parsed.hex, finalOpacity);
 };
 
+const safeAlpha = (color, opacity, fallback) => {
+  const str = typeof color === "string" ? color.trim() : "";
+  if (!str || str.toLowerCase() === "transparent" || str.startsWith("var(")) {
+    return fallback;
+  }
+  try {
+    return alpha(str, opacity);
+  } catch {
+    return fallback;
+  }
+};
+
 const pageStyleToCssVars = (style) => {
   if (!style) return null;
   const vars = {};
@@ -2380,7 +2392,7 @@ const siteTitle = useMemo(() => {
                 "&:hover": {
                   backgroundColor: useSafeDarkMobileMenu
                     ? alpha("#ffffff", 0.06)
-                    : alpha(mobileDrawerAccent, 0.12),
+                    : safeAlpha(mobileDrawerAccent, 0.12, "rgba(15,23,42,0.08)"),
                 },
               }}
               onClick={() => {
@@ -2410,7 +2422,7 @@ const siteTitle = useMemo(() => {
               "&:hover": {
                 backgroundColor: useSafeDarkMobileMenu
                   ? alpha("#ffffff", 0.06)
-                  : alpha(mobileDrawerAccent, 0.12),
+                  : safeAlpha(mobileDrawerAccent, 0.12, "rgba(15,23,42,0.08)"),
               },
             }}
             {...commonProps}
@@ -2945,7 +2957,7 @@ const siteTitle = useMemo(() => {
             color: mobileDrawerTextColor,
             backdropFilter: "blur(18px)",
             WebkitBackdropFilter: "blur(18px)",
-            borderBottom: `1px solid ${alpha(mobileDrawerAccent, 0.28)}`,
+            borderBottom: `1px solid ${safeAlpha(mobileDrawerAccent, 0.28, "rgba(15,23,42,0.12)")}`,
             boxShadow: useSafeDarkMobileMenu
               ? "0 16px 36px rgba(0,0,0,0.42)"
               : "0 16px 36px rgba(15,23,42,0.18)",
