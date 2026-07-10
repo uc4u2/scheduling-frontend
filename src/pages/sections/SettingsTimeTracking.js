@@ -6,6 +6,8 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
+  Divider,
+  Drawer,
   Grid,
   MenuItem,
   Snackbar,
@@ -18,6 +20,9 @@ import {
 import SectionCard from "../../components/ui/SectionCard";
 import { timeTracking } from "../../utils/api";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { useTranslation } from "react-i18next";
 
 const numericFields = [
@@ -45,6 +50,9 @@ const SettingsTimeTracking = () => {
   const [error, setError] = useState("");
   const [dispatchEmployerAck, setDispatchEmployerAck] = useState(false);
   const [dispatchClientShareAck, setDispatchClientShareAck] = useState(false);
+  const [policyTemplateOpen, setPolicyTemplateOpen] = useState(false);
+  const [policyTemplateLoading, setPolicyTemplateLoading] = useState(false);
+  const [policyTemplate, setPolicyTemplate] = useState({ content: "", filename: "" });
 
   const loadPolicy = async () => {
     setLoading(true);
@@ -160,6 +168,53 @@ const SettingsTimeTracking = () => {
         open: true,
         severity: "error",
         message: err?.response?.data?.error || "Unable to download the policy template.",
+      });
+    }
+  };
+
+  const loadDispatchTemplate = async () => {
+    setPolicyTemplateLoading(true);
+    try {
+      const payload = await timeTracking.getDispatchPolicyTemplate();
+      setPolicyTemplate({
+        content: payload?.content || "",
+        filename: payload?.filename || "schedulaa-dispatch-policy-template.txt",
+      });
+      return payload;
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Unable to load the policy template.",
+      });
+      return null;
+    } finally {
+      setPolicyTemplateLoading(false);
+    }
+  };
+
+  const openPolicyTemplate = async () => {
+    setPolicyTemplateOpen(true);
+    if (!policyTemplate.content) {
+      await loadDispatchTemplate();
+    }
+  };
+
+  const copyDispatchTemplate = async () => {
+    const content = policyTemplate.content || (await loadDispatchTemplate())?.content || "";
+    if (!content) return;
+    try {
+      await navigator.clipboard.writeText(content);
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "Employee policy template copied.",
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "Unable to copy the policy template.",
       });
     }
   };
@@ -371,7 +426,25 @@ const SettingsTimeTracking = () => {
               />
             ) : null}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
-              <Button variant="outlined" onClick={downloadDispatchTemplate}>
+              <Button
+                variant="outlined"
+                startIcon={<DescriptionOutlinedIcon />}
+                onClick={openPolicyTemplate}
+              >
+                View employee policy template
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyOutlinedIcon />}
+                onClick={copyDispatchTemplate}
+              >
+                Copy template
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadOutlinedIcon />}
+                onClick={downloadDispatchTemplate}
+              >
                 Download employee policy template
               </Button>
             </Stack>
@@ -419,6 +492,70 @@ const SettingsTimeTracking = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <Drawer
+        anchor="right"
+        open={policyTemplateOpen}
+        onClose={() => setPolicyTemplateOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 520 },
+            p: 0,
+          },
+        }}
+      >
+        <Stack spacing={0} sx={{ height: "100%" }}>
+          <Box sx={{ p: 3, pb: 2 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Employee policy template
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                  Review and adapt this template for your company before asking employees to sign it.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button size="small" variant="outlined" startIcon={<ContentCopyOutlinedIcon />} onClick={copyDispatchTemplate}>
+                  Copy
+                </Button>
+                <Button size="small" variant="outlined" startIcon={<DownloadOutlinedIcon />} onClick={downloadDispatchTemplate}>
+                  Download
+                </Button>
+              </Stack>
+            </Stack>
+            <Alert severity="info" sx={{ mt: 2 }}>
+              This template is provided for operational convenience only and should be reviewed and adapted for your company, workforce, and jurisdiction.
+            </Alert>
+          </Box>
+          <Divider />
+          <Box sx={{ flex: 1, overflow: "auto", p: 3, bgcolor: "background.default" }}>
+            {policyTemplateLoading ? (
+              <Box display="flex" justifyContent="center" py={6}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <Box
+                component="pre"
+                sx={{
+                  m: 0,
+                  p: 2,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                  fontFamily: "Monaco, Menlo, Consolas, monospace",
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                }}
+              >
+                {policyTemplate.content || "No template content is available yet."}
+              </Box>
+            )}
+          </Box>
+        </Stack>
+      </Drawer>
     </>
   );
 };
