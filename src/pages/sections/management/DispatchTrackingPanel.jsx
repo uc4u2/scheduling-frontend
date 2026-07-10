@@ -5,7 +5,9 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
   Grid,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -77,6 +79,18 @@ function FitMapToPoints({ items }) {
   return null;
 }
 
+function FocusSelectedTrip({ row }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!Number.isFinite(row?.location?.lat) || !Number.isFinite(row?.location?.lng)) return;
+    map.flyTo([row.location.lat, row.location.lng], Math.max(map.getZoom(), 12), {
+      animate: true,
+      duration: 0.45,
+    });
+  }, [map, row?.id, row?.location?.lat, row?.location?.lng]);
+  return null;
+}
+
 function MapBoundsWatcher({ onChange }) {
   useMapEvents({
     moveend(event) {
@@ -104,6 +118,95 @@ function clusterIcon(pointCount) {
   });
 }
 
+function eventChipSx(eventType) {
+  const value = String(eventType || "").toLowerCase();
+  if (value === "location_stale") {
+    return {
+      bgcolor: "rgba(217, 119, 6, 0.12)",
+      color: "#b45309",
+      borderColor: "rgba(217, 119, 6, 0.28)",
+    };
+  }
+  if (value === "location_resumed" || value === "arrived") {
+    return {
+      bgcolor: "rgba(22, 163, 74, 0.12)",
+      color: "#15803d",
+      borderColor: "rgba(22, 163, 74, 0.28)",
+    };
+  }
+  if (value === "on_my_way" || value === "tracking_link_created" || value === "tracking_link_sent") {
+    return {
+      bgcolor: "rgba(37, 99, 235, 0.12)",
+      color: "#1d4ed8",
+      borderColor: "rgba(37, 99, 235, 0.28)",
+    };
+  }
+  return {
+    bgcolor: "rgba(15, 23, 42, 0.06)",
+    color: "text.secondary",
+    borderColor: "divider",
+  };
+}
+
+function activityMetaSummary(row) {
+  const meta = row?.meta_json || {};
+  if (meta.sent_to) return `Sent to ${meta.sent_to}`;
+  if (meta.minutes_since_location != null) return `No location update for ${meta.minutes_since_location} min`;
+  if (meta.resume_source === "arrived") return "Stale warning closed after arrival";
+  if (meta.resume_source === "location_update") return "Fresh location update received";
+  if (meta.public_path) return meta.public_path;
+  return "";
+}
+
+function DispatchMapMarkers({ clusters, clusterIndex, selectedDispatchId, onSelect }) {
+  const map = useMap();
+  return clusters.map((cluster) => {
+    const [lng, lat] = cluster.geometry.coordinates;
+    const { cluster: isCluster, point_count: pointCount } = cluster.properties || {};
+    if (isCluster) {
+      return (
+        <Marker
+          key={`cluster-${cluster.id}`}
+          position={[lat, lng]}
+          icon={clusterIcon(pointCount)}
+          eventHandlers={{
+            click: () => {
+              if (!clusterIndex?.getClusterExpansionZoom) return;
+              const zoom = Math.min(clusterIndex.getClusterExpansionZoom(cluster.id), 16);
+              map.flyTo([lat, lng], zoom, { animate: true, duration: 0.4 });
+            },
+          }}
+        >
+          <Popup>{pointCount} employees in this area</Popup>
+        </Marker>
+      );
+    }
+    const row = cluster.properties?.row;
+    return (
+      <CircleMarker
+        key={`dispatch-marker-${row.id}`}
+        center={[lat, lng]}
+        radius={row.id === selectedDispatchId ? 12 : 9}
+        pathOptions={{
+          color: "#fff",
+          weight: row.id === selectedDispatchId ? 3 : 2,
+          fillColor: statusMarkerColor(row),
+          fillOpacity: row.id === selectedDispatchId ? 0.98 : 0.82,
+        }}
+        eventHandlers={{ click: () => onSelect(row.id) }}
+      >
+        <Popup>
+          <Stack spacing={0.5}>
+            <Typography fontWeight={700}>{row.recruiter_name || "Assigned employee"}</Typography>
+            <Typography variant="body2">{[row.work_order_number, row.work_order_title].filter(Boolean).join(" • ")}</Typography>
+            <Typography variant="caption" color="text.secondary">{row.client_name || "No client linked"}</Typography>
+          </Stack>
+        </Popup>
+      </CircleMarker>
+    );
+  });
+}
+
 export default function DispatchTrackingPanel() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
@@ -112,6 +215,7 @@ export default function DispatchTrackingPanel() {
   const [summary, setSummary] = useState(null);
   const [settings, setSettings] = useState(null);
   const [filtersApplied, setFiltersApplied] = useState(null);
+  const [filterOptions, setFilterOptions] = useState({ employees: [], clients: [], work_orders: [] });
   const [activity, setActivity] = useState([]);
   const [selectedDispatchId, setSelectedDispatchId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,6 +229,9 @@ export default function DispatchTrackingPanel() {
     search: "",
     date_from: "",
     date_to: "",
+    employee_id: "",
+    client_id: "",
+    work_order_id: "",
   });
 
   const load = useCallback(async () => {
@@ -137,6 +244,9 @@ export default function DispatchTrackingPanel() {
         search: filters.search || undefined,
         date_from: filters.date === "custom" ? filters.date_from || undefined : undefined,
         date_to: filters.date === "custom" ? filters.date_to || undefined : undefined,
+        employee_id: filters.employee_id || undefined,
+        client_id: filters.client_id || undefined,
+        work_order_id: filters.work_order_id || undefined,
       };
       const res = await listDispatchItems(params);
       const nextItems = Array.isArray(res?.items) ? res.items : [];
@@ -144,6 +254,7 @@ export default function DispatchTrackingPanel() {
       setSummary(res?.summary || null);
       setSettings(res?.settings || null);
       setFiltersApplied(res?.filters_applied || null);
+      setFilterOptions(res?.filter_options || { employees: [], clients: [], work_orders: [] });
       setSelectedDispatchId((prev) => (nextItems.some((row) => row.id === prev) ? prev : nextItems[0]?.id || null));
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load dispatch trips.");
@@ -162,6 +273,9 @@ export default function DispatchTrackingPanel() {
       const res = await listDispatchActivity({
         dispatch_state_id: selectedDispatchId || undefined,
         search: filters.search || undefined,
+        employee_id: filters.employee_id || undefined,
+        client_id: filters.client_id || undefined,
+        work_order_id: filters.work_order_id || undefined,
         limit: 25,
       });
       setActivity(Array.isArray(res?.items) ? res.items : []);
@@ -170,15 +284,15 @@ export default function DispatchTrackingPanel() {
     } finally {
       setActivityLoading(false);
     }
-  }, [filters.search, selectedDispatchId]);
+  }, [filters.search, filters.employee_id, filters.client_id, filters.work_order_id, selectedDispatchId]);
 
   useEffect(() => {
-    if (!selectedDispatchId && !filters.search) {
+    if (!selectedDispatchId && !filters.search && !filters.employee_id && !filters.client_id && !filters.work_order_id) {
       setActivity([]);
       return;
     }
     loadActivity();
-  }, [loadActivity, selectedDispatchId, filters.search]);
+  }, [loadActivity, selectedDispatchId, filters.search, filters.employee_id, filters.client_id, filters.work_order_id]);
 
   const handleCreateOrCopyLink = async (row) => {
     if (!row?.work_order_id || !row?.recruiter_id) return;
@@ -257,14 +371,35 @@ export default function DispatchTrackingPanel() {
     [mapPoints]
   );
 
+  const clusterIndex = useMemo(() => {
+    if (!geoPoints.length) return null;
+    const nextIndex = new Supercluster({ radius: 68, maxZoom: 16 });
+    nextIndex.load(geoPoints);
+    return nextIndex;
+  }, [geoPoints]);
+
   const clusters = useMemo(() => {
-    if (!geoPoints.length) return [];
-    const clusterIndex = new Supercluster({ radius: 60, maxZoom: 16 });
-    clusterIndex.load(geoPoints);
+    if (!clusterIndex?.getClusters) return [];
     const bbox = mapState.bounds || [-140, 20, -40, 70];
     const zoom = Number.isFinite(mapState.zoom) ? Math.round(mapState.zoom) : 5;
     return clusterIndex.getClusters(bbox, zoom);
-  }, [geoPoints, mapState.bounds, mapState.zoom]);
+  }, [clusterIndex, mapState.bounds, mapState.zoom]);
+
+  const selectedLinkStatus = selectedRow?.public_url
+    ? selectedRow?.public_link_revoked_at
+      ? "Revoked"
+      : "Active"
+    : "Not created";
+
+  const selectedAuditSummary = useMemo(() => {
+    if (!selectedRow) return [];
+    return [
+      selectedRow.on_my_way_at ? `On my way: ${formatDateTime(selectedRow.on_my_way_at, timezone)}` : null,
+      selectedRow.arrived_at ? `Arrived: ${formatDateTime(selectedRow.arrived_at, timezone)}` : null,
+      selectedRow.last_client_email_sent_at ? `Last tracking email: ${formatDateTime(selectedRow.last_client_email_sent_at, timezone)}` : null,
+      selectedRow.location?.captured_at ? `Last location ping: ${formatDateTime(selectedRow.location.captured_at, timezone)}` : null,
+    ].filter(Boolean);
+  }, [selectedRow, timezone]);
 
   return (
     <ManagementFrame
@@ -302,6 +437,45 @@ export default function DispatchTrackingPanel() {
                     onChange={(event) => updateFilter("search", event.target.value)}
                     sx={{ minWidth: { xs: "100%", lg: 320 } }}
                   />
+                  <TextField
+                    select
+                    size="small"
+                    label="Employee"
+                    value={filters.employee_id}
+                    onChange={(event) => updateFilter("employee_id", event.target.value)}
+                    sx={{ minWidth: { xs: "100%", md: 180 } }}
+                  >
+                    <MenuItem value="">All employees</MenuItem>
+                    {(filterOptions.employees || []).map((option) => (
+                      <MenuItem key={option.id} value={String(option.id)}>{option.label}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    size="small"
+                    label="Client"
+                    value={filters.client_id}
+                    onChange={(event) => updateFilter("client_id", event.target.value)}
+                    sx={{ minWidth: { xs: "100%", md: 200 } }}
+                  >
+                    <MenuItem value="">All clients</MenuItem>
+                    {(filterOptions.clients || []).map((option) => (
+                      <MenuItem key={option.id} value={String(option.id)}>{option.label}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    size="small"
+                    label="Work order"
+                    value={filters.work_order_id}
+                    onChange={(event) => updateFilter("work_order_id", event.target.value)}
+                    sx={{ minWidth: { xs: "100%", md: 240 } }}
+                  >
+                    <MenuItem value="">All work orders</MenuItem>
+                    {(filterOptions.work_orders || []).map((option) => (
+                      <MenuItem key={option.id} value={String(option.id)}>{option.label}</MenuItem>
+                    ))}
+                  </TextField>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
                     <Chip label="Active" variant={filters.status === "active" ? "filled" : "outlined"} sx={neutralFilterChipSx(filters.status === "active")} onClick={() => updateFilter("status", "active")} />
                     <Chip label="On my way" color={filters.status === "on_my_way" ? "primary" : "default"} variant={filters.status === "on_my_way" ? "filled" : "outlined"} onClick={() => updateFilter("status", "on_my_way")} />
@@ -431,6 +605,70 @@ export default function DispatchTrackingPanel() {
 
               <Grid item xs={12} lg={7}>
                 <Stack spacing={2}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
+                      <Box>
+                        <Typography fontWeight={800}>Selected trip details</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedRow ? "Use this panel to review the trip state, link status, and the last audit checkpoints." : "Select a trip from the list or map to focus dispatch details here."}
+                        </Typography>
+                      </Box>
+                      {selectedRow ? (
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          <Chip size="small" label={String(selectedRow.status || "").replaceAll("_", " ")} color={statusChipColor(selectedRow.status)} variant="outlined" />
+                          {selectedRow.is_stale ? <Chip size="small" label="Stale" color="warning" variant="outlined" /> : null}
+                          <Chip size="small" label={`Link: ${selectedLinkStatus}`} variant="outlined" />
+                        </Stack>
+                      ) : null}
+                    </Stack>
+                    {selectedRow ? (
+                      <Stack spacing={1.25} sx={{ mt: 1.75 }}>
+                        <Grid container spacing={1.5}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="caption" color="text.secondary">Employee</Typography>
+                            <Typography fontWeight={700}>{selectedRow.recruiter_name || "Assigned employee"}</Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="caption" color="text.secondary">Client</Typography>
+                            <Typography fontWeight={700}>{selectedRow.client_name || "No client linked"}</Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="caption" color="text.secondary">Work order</Typography>
+                            <Typography fontWeight={700}>{[selectedRow.work_order_number, selectedRow.work_order_title].filter(Boolean).join(" • ") || "—"}</Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="caption" color="text.secondary">Destination</Typography>
+                            <Typography fontWeight={700}>{selectedRow.destination || "No destination set"}</Typography>
+                          </Grid>
+                        </Grid>
+                        <Divider flexItem />
+                        <Stack spacing={0.75}>
+                          {selectedAuditSummary.map((line) => (
+                            <Typography key={line} variant="body2" color="text.secondary">{line}</Typography>
+                          ))}
+                          {!selectedAuditSummary.length ? (
+                            <Typography variant="body2" color="text.secondary">No audit checkpoints have been recorded for this trip yet.</Typography>
+                          ) : null}
+                        </Stack>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          <Button size="small" variant="outlined" onClick={() => navigate("/manager/dashboard?view=finance-work-orders")}>
+                            Open work order
+                          </Button>
+                          {selectedRow.client_id ? (
+                            <Button size="small" variant="outlined" onClick={() => navigate(`/manager/clients/${selectedRow.client_id}`)}>
+                              Open client
+                            </Button>
+                          ) : null}
+                          {selectedRow.map_url ? (
+                            <Button size="small" variant="outlined" component="a" href={selectedRow.map_url} target="_blank" rel="noreferrer">
+                              Open map
+                            </Button>
+                          ) : null}
+                        </Stack>
+                      </Stack>
+                    ) : null}
+                  </Paper>
+
                   <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, height: 420, overflow: "hidden" }}>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                       <RoomOutlinedIcon fontSize="small" />
@@ -447,36 +685,14 @@ export default function DispatchTrackingPanel() {
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                           />
                           <FitMapToPoints items={mapPoints} />
+                          <FocusSelectedTrip row={selectedRow} />
                           <MapBoundsWatcher onChange={setMapState} />
-                          {clusters.map((cluster) => {
-                            const [lng, lat] = cluster.geometry.coordinates;
-                            const { cluster: isCluster, point_count: pointCount } = cluster.properties || {};
-                            if (isCluster) {
-                              return (
-                                <Marker key={`cluster-${cluster.id}`} position={[lat, lng]} icon={clusterIcon(pointCount)}>
-                                  <Popup>{pointCount} employees in this area</Popup>
-                                </Marker>
-                              );
-                            }
-                            const row = cluster.properties?.row;
-                            return (
-                              <CircleMarker
-                                key={`dispatch-marker-${row.id}`}
-                                center={[lat, lng]}
-                                radius={row.id === selectedDispatchId ? 12 : 9}
-                                pathOptions={{ color: "#fff", weight: 2, fillColor: statusMarkerColor(row), fillOpacity: 0.92 }}
-                                eventHandlers={{ click: () => setSelectedDispatchId(row.id) }}
-                              >
-                                <Popup>
-                                  <Stack spacing={0.5}>
-                                    <Typography fontWeight={700}>{row.recruiter_name || "Assigned employee"}</Typography>
-                                    <Typography variant="body2">{[row.work_order_number, row.work_order_title].filter(Boolean).join(" • ")}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{row.client_name || "No client linked"}</Typography>
-                                  </Stack>
-                                </Popup>
-                              </CircleMarker>
-                            );
-                          })}
+                          <DispatchMapMarkers
+                            clusters={clusters}
+                            clusterIndex={clusterIndex}
+                            selectedDispatchId={selectedDispatchId}
+                            onSelect={setSelectedDispatchId}
+                          />
                         </MapContainer>
                       </Box>
                     ) : (
@@ -504,10 +720,18 @@ export default function DispatchTrackingPanel() {
                       <Stack spacing={1.25}>
                         {activity.map((row) => (
                           <Stack key={row.id} spacing={0.25} sx={{ pb: 1.25, borderBottom: "1px solid", borderColor: "divider" }}>
-                            <Typography variant="body2" fontWeight={700}>{row.event_label}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                              <Typography variant="body2" fontWeight={700}>{row.event_label}</Typography>
+                              <Chip size="small" variant="outlined" label={String(row.event_type || "event").replaceAll("_", " ")} sx={eventChipSx(row.event_type)} />
+                            </Stack>
                             <Typography variant="caption" color="text.secondary">
                               {[row.recruiter_name, row.work_order_number, row.client_name].filter(Boolean).join(" • ")}
                             </Typography>
+                            {activityMetaSummary(row) ? (
+                              <Typography variant="caption" color="text.secondary">
+                                {activityMetaSummary(row)}
+                              </Typography>
+                            ) : null}
                             <Typography variant="caption" color="text.secondary">
                               {formatDateTime(row.created_at, timezone)}
                             </Typography>
