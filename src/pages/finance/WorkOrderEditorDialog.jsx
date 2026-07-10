@@ -180,6 +180,7 @@ export default function WorkOrderEditorDialog({
     if (Number.isFinite(destinationLat) && Number.isFinite(destinationLng)) {
       nextMetadata.destination_lat = destinationLat;
       nextMetadata.destination_lng = destinationLng;
+      nextMetadata.destination_source = "manual";
       nextMetadata.destination = {
         ...(nextMetadata.destination && typeof nextMetadata.destination === "object" ? nextMetadata.destination : {}),
         lat: destinationLat,
@@ -188,6 +189,7 @@ export default function WorkOrderEditorDialog({
     } else {
       delete nextMetadata.destination_lat;
       delete nextMetadata.destination_lng;
+      delete nextMetadata.destination_source;
       if (nextMetadata.destination && typeof nextMetadata.destination === "object") {
         delete nextMetadata.destination.lat;
         delete nextMetadata.destination.lng;
@@ -362,7 +364,7 @@ export default function WorkOrderEditorDialog({
               {tWorkOrders("sections.dispatchDestination", "Dispatch destination coordinates")}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {tWorkOrders("sections.dispatchDestinationHelp", "Optional. Add coordinates if you want route preview, ETA, and destination-aware trip tracking to work reliably.")}
+              {tWorkOrders("sections.dispatchDestinationHelp", "Optional advanced override. If left blank, Schedulaa will try to geocode the Location automatically when you save the work order.")}
             </Typography>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <TextField
