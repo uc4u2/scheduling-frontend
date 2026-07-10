@@ -27,8 +27,34 @@ import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
 import ClientLookupField from "./ClientLookupField";
 import { buildClientCreatePayload } from "./clientUtils";
 
+const extractDispatchDestination = (metadata = {}) => {
+  const source = metadata && typeof metadata === "object" ? metadata : {};
+  const nestedDestination = source.destination && typeof source.destination === "object" ? source.destination : {};
+  const nestedLocation = source.location && typeof source.location === "object" ? source.location : {};
+  return {
+    lat:
+      nestedDestination.lat ??
+      nestedDestination.latitude ??
+      source.destination_lat ??
+      source.location_lat ??
+      nestedLocation.lat ??
+      nestedLocation.latitude ??
+      "",
+    lng:
+      nestedDestination.lng ??
+      nestedDestination.longitude ??
+      source.destination_lng ??
+      source.location_lng ??
+      nestedLocation.lng ??
+      nestedLocation.longitude ??
+      "",
+  };
+};
+
 const buildBlankForm = (prefillEstimate) => {
   const defaultTimezone = normalizeTimezoneValue(prefillEstimate?.timezone || getUserTimezone()) || "UTC";
+  const baseMetadata = prefillEstimate?.metadata && typeof prefillEstimate.metadata === "object" ? prefillEstimate.metadata : {};
+  const destination = extractDispatchDestination(baseMetadata);
   return {
     title: prefillEstimate?.title || "",
     client_id: prefillEstimate?.client_id || "",
@@ -42,6 +68,9 @@ const buildBlankForm = (prefillEstimate) => {
     manager_only_notes: "",
     employee_visible_notes: "",
     copy_materials_from_estimate: !!prefillEstimate,
+    destination_lat: destination.lat === "" ? "" : String(destination.lat),
+    destination_lng: destination.lng === "" ? "" : String(destination.lng),
+    metadata: baseMetadata,
   };
 };
 
@@ -76,6 +105,8 @@ export default function WorkOrderEditorDialog({
   useEffect(() => {
     if (!open) return;
     if (workOrder) {
+      const baseMetadata = workOrder.metadata && typeof workOrder.metadata === "object" ? workOrder.metadata : {};
+      const destination = extractDispatchDestination(baseMetadata);
       setForm({
         title: workOrder.title || "",
         client_id: workOrder.client_id || "",
@@ -89,6 +120,9 @@ export default function WorkOrderEditorDialog({
         manager_only_notes: workOrder.manager_only_notes || "",
         employee_visible_notes: workOrder.employee_visible_notes || "",
         copy_materials_from_estimate: false,
+        destination_lat: destination.lat === "" ? "" : String(destination.lat),
+        destination_lng: destination.lng === "" ? "" : String(destination.lng),
+        metadata: baseMetadata,
       });
       setError("");
       return;
@@ -104,6 +138,7 @@ export default function WorkOrderEditorDialog({
       client_id: selectedEstimate.client_id || current.client_id,
       title: current.title || selectedEstimate.title || "",
       copy_materials_from_estimate: current.copy_materials_from_estimate ?? true,
+      metadata: current.metadata && Object.keys(current.metadata).length ? current.metadata : (selectedEstimate.metadata || {}),
     }));
   }, [selectedEstimate, workOrder]);
 
@@ -122,6 +157,47 @@ export default function WorkOrderEditorDialog({
     }
     setSaving(true);
     setError("");
+    const nextMetadata = {
+      ...(form.metadata && typeof form.metadata === "object" ? form.metadata : {}),
+    };
+    const destinationLat = form.destination_lat === "" ? null : Number(form.destination_lat);
+    const destinationLng = form.destination_lng === "" ? null : Number(form.destination_lng);
+    if (form.destination_lat !== "" && !Number.isFinite(destinationLat)) {
+      setSaving(false);
+      setError(tWorkOrders("errors.destinationLatInvalid", "Destination latitude must be a valid number."));
+      return;
+    }
+    if (form.destination_lng !== "" && !Number.isFinite(destinationLng)) {
+      setSaving(false);
+      setError(tWorkOrders("errors.destinationLngInvalid", "Destination longitude must be a valid number."));
+      return;
+    }
+    if ((form.destination_lat === "") !== (form.destination_lng === "")) {
+      setSaving(false);
+      setError(tWorkOrders("errors.destinationPairRequired", "Add both destination latitude and longitude, or leave both blank."));
+      return;
+    }
+    if (Number.isFinite(destinationLat) && Number.isFinite(destinationLng)) {
+      nextMetadata.destination_lat = destinationLat;
+      nextMetadata.destination_lng = destinationLng;
+      nextMetadata.destination = {
+        ...(nextMetadata.destination && typeof nextMetadata.destination === "object" ? nextMetadata.destination : {}),
+        lat: destinationLat,
+        lng: destinationLng,
+      };
+    } else {
+      delete nextMetadata.destination_lat;
+      delete nextMetadata.destination_lng;
+      if (nextMetadata.destination && typeof nextMetadata.destination === "object") {
+        delete nextMetadata.destination.lat;
+        delete nextMetadata.destination.lng;
+        delete nextMetadata.destination.latitude;
+        delete nextMetadata.destination.longitude;
+        if (!Object.keys(nextMetadata.destination).length) {
+          delete nextMetadata.destination;
+        }
+      }
+    }
     const payload = {
       title: form.title,
       client_id: form.client_id || null,
@@ -135,6 +211,7 @@ export default function WorkOrderEditorDialog({
       manager_only_notes: form.manager_only_notes || null,
       employee_visible_notes: form.employee_visible_notes || null,
       copy_materials_from_estimate: !!form.copy_materials_from_estimate,
+      metadata: nextMetadata,
     };
     try {
       const res = workOrder
@@ -277,7 +354,33 @@ export default function WorkOrderEditorDialog({
             value={form.location}
             onChange={(e) => setField("location", e.target.value)}
             fullWidth
+            helperText={tWorkOrders("fields.locationHelp", "Service address or destination label shown to managers, employees, and clients.")}
           />
+
+          <Stack spacing={1}>
+            <Typography variant="subtitle2" fontWeight={800}>
+              {tWorkOrders("sections.dispatchDestination", "Dispatch destination coordinates")}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {tWorkOrders("sections.dispatchDestinationHelp", "Optional. Add coordinates if you want route preview, ETA, and destination-aware trip tracking to work reliably.")}
+            </Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <TextField
+                label={tWorkOrders("fields.destinationLatitude", "Destination latitude")}
+                value={form.destination_lat}
+                onChange={(e) => setField("destination_lat", e.target.value)}
+                fullWidth
+                placeholder="44.1041"
+              />
+              <TextField
+                label={tWorkOrders("fields.destinationLongitude", "Destination longitude")}
+                value={form.destination_lng}
+                onChange={(e) => setField("destination_lng", e.target.value)}
+                fullWidth
+                placeholder="-79.5644"
+              />
+            </Stack>
+          </Stack>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             <ThemedDateField
