@@ -589,71 +589,82 @@ export default function DispatchTrackingPanel() {
 
             <Grid container spacing={2} alignItems="flex-start">
               <Grid item xs={12} lg={4}>
-                <Stack spacing={1.5}>
-                  {presetFilteredItems.length ? presetFilteredItems.map((row) => (
-                    <Paper
-                      key={row.id}
-                      variant="outlined"
-                      sx={{
-                        p: 2,
-                        borderRadius: 2,
-                        borderColor: row.id === selectedDispatchId ? "primary.main" : "divider",
-                        cursor: "pointer",
-                        ...(row.is_stale ? stalePulseSx : null),
-                      }}
-                      onClick={() => setSelectedDispatchId(row.id)}
-                    >
-                      <Stack spacing={1.25}>
-                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-                          <Box>
-                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 0.75 }}>
-                              <Typography fontWeight={800}>{row.recruiter_name || "Assigned employee"}</Typography>
-                              <Chip size="small" label={String(row.status || "").replaceAll("_", " ")} color={statusChipColor(row.status)} variant="outlined" />
-                              {row.is_stale ? <Chip size="small" color="warning" variant="outlined" label="Stale" /> : null}
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: "100%", minHeight: 420, display: "flex", flexDirection: "column" }}>
+                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} sx={{ mb: 1.5 }}>
+                    <Box>
+                      <Typography fontWeight={800}>Trip queue</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Review and select active trips before opening details, map focus, and activity.
+                      </Typography>
+                    </Box>
+                    <Chip size="small" variant="outlined" label={`${presetFilteredItems.length} shown`} />
+                  </Stack>
+                  <Stack spacing={1.5} sx={{ flex: 1, overflowY: "auto", pr: 0.5 }}>
+                    {presetFilteredItems.length ? presetFilteredItems.map((row) => (
+                      <Paper
+                        key={row.id}
+                        variant="outlined"
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          borderColor: row.id === selectedDispatchId ? "primary.main" : "divider",
+                          cursor: "pointer",
+                          ...(row.is_stale ? stalePulseSx : null),
+                        }}
+                        onClick={() => setSelectedDispatchId(row.id)}
+                      >
+                        <Stack spacing={1.25}>
+                          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+                            <Box>
+                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 0.75 }}>
+                                <Typography fontWeight={800}>{row.recruiter_name || "Assigned employee"}</Typography>
+                                <Chip size="small" label={String(row.status || "").replaceAll("_", " ")} color={statusChipColor(row.status)} variant="outlined" />
+                                {row.is_stale ? <Chip size="small" color="warning" variant="outlined" label="Stale" /> : null}
+                              </Stack>
+                              <Typography variant="body2" color="text.secondary">
+                                {[row.work_order_number, row.work_order_title, row.client_name].filter(Boolean).join(" • ")}
+                              </Typography>
+                              {row.department_name ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  Department: {row.department_name}
+                                </Typography>
+                              ) : null}
+                              <Typography variant="body2" color="text.secondary">
+                                {row.destination || "No destination set"}
+                              </Typography>
+                              {row.assignment?.work_date ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  Scheduled {row.assignment.work_date}
+                                  {row.assignment.start_time ? ` • ${row.assignment.start_time}` : ""}
+                                  {row.assignment.end_time ? ` to ${row.assignment.end_time}` : ""}
+                                </Typography>
+                              ) : null}
+                            </Box>
+                            <Stack alignItems={{ xs: "flex-start", md: "flex-end" }} spacing={0.5}>
+                              <Typography variant="caption" color="text.secondary">
+                                Last update {formatDateTime(row.updated_at || row.last_location_captured_at, timezone)}
+                              </Typography>
+                              {row.location?.captured_at ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  Location captured {formatDateTime(row.location.captured_at, timezone)}
+                                </Typography>
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">
+                                  No location ping yet
+                                </Typography>
+                              )}
+                              <Button size="small" variant={row.id === selectedDispatchId ? "contained" : "outlined"} onClick={(event) => { event.stopPropagation(); setSelectedDispatchId(row.id); }}>
+                                {row.id === selectedDispatchId ? "Selected" : "Review trip"}
+                              </Button>
                             </Stack>
-                            <Typography variant="body2" color="text.secondary">
-                              {[row.work_order_number, row.work_order_title, row.client_name].filter(Boolean).join(" • ")}
-                            </Typography>
-                            {row.department_name ? (
-                              <Typography variant="caption" color="text.secondary">
-                                Department: {row.department_name}
-                              </Typography>
-                            ) : null}
-                            <Typography variant="body2" color="text.secondary">
-                              {row.destination || "No destination set"}
-                            </Typography>
-                            {row.assignment?.work_date ? (
-                              <Typography variant="caption" color="text.secondary">
-                                Scheduled {row.assignment.work_date}
-                                {row.assignment.start_time ? ` • ${row.assignment.start_time}` : ""}
-                                {row.assignment.end_time ? ` to ${row.assignment.end_time}` : ""}
-                              </Typography>
-                            ) : null}
-                          </Box>
-                          <Stack alignItems={{ xs: "flex-start", md: "flex-end" }} spacing={0.5}>
-                            <Typography variant="caption" color="text.secondary">
-                              Last update {formatDateTime(row.updated_at || row.last_location_captured_at, timezone)}
-                            </Typography>
-                            {row.location?.captured_at ? (
-                              <Typography variant="caption" color="text.secondary">
-                                Location captured {formatDateTime(row.location.captured_at, timezone)}
-                              </Typography>
-                            ) : (
-                              <Typography variant="caption" color="text.secondary">
-                                No location ping yet
-                              </Typography>
-                            )}
-                            <Button size="small" variant={row.id === selectedDispatchId ? "contained" : "outlined"} onClick={(event) => { event.stopPropagation(); setSelectedDispatchId(row.id); }}>
-                              {row.id === selectedDispatchId ? "Selected" : "Review trip"}
-                            </Button>
                           </Stack>
                         </Stack>
-                      </Stack>
-                    </Paper>
-                  )) : (
-                    <Alert severity="info">No dispatch trips match the current filters.</Alert>
-                  )}
-                </Stack>
+                      </Paper>
+                    )) : (
+                      <Alert severity="info">No dispatch trips match the current filters.</Alert>
+                    )}
+                  </Stack>
+                </Paper>
               </Grid>
 
               <Grid item xs={12} lg={8}>
