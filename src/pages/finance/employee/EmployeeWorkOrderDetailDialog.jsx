@@ -23,6 +23,8 @@ import { getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, upd
 import FinanceStatusChip from "../components/FinanceStatusChip";
 import { API_BASE_URL } from "../../../utils/api";
 import { getAuthedCompanyId } from "../../../utils/authedCompany";
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 const DISPATCH_STATUS_LABELS = {
   not_started: "Not started",
@@ -31,6 +33,7 @@ const DISPATCH_STATUS_LABELS = {
 };
 
 export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports }) {
+  const viewerTimezone = getUserTimezone();
   const [workOrder, setWorkOrder] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState({});
@@ -308,7 +311,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                 </Stack>
                 {dispatch?.last_location_captured_at ? (
                   <Typography variant="caption" color="text.secondary">
-                    Last trip location sent at {new Date(dispatch.last_location_captured_at).toLocaleString()}.
+                    Last trip location sent at {formatDateTimeInTz(dispatch.last_location_captured_at, workOrder?.timezone || viewerTimezone, "LLL d, yyyy h:mm:ss a")}.
                   </Typography>
                 ) : null}
               </Stack>
