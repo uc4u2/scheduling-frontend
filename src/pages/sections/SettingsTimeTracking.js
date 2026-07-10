@@ -41,6 +41,18 @@ const formatRecordedAt = (value) => {
   return parsed.toLocaleString();
 };
 
+const formatAcknowledgementOwner = (ack) => {
+  if (!ack) return "No active record";
+  const name = ack.recruiter_name || ack.recruiter_email || `Recruiter #${ack.recruiter_id || "?"}`;
+  return ack.recruiter_email && ack.recruiter_email !== name ? `${name} (${ack.recruiter_email})` : name;
+};
+
+const formatAcknowledgementStatement = (ack, fallbackLabel) => {
+  const label = ack?.meta_json?.statement_label || fallbackLabel;
+  const statement = ack?.meta_json?.statement_text || "";
+  return { label, statement };
+};
+
 const SettingsTimeTracking = () => {
   const { t } = useTranslation();
   const [policy, setPolicy] = useState(null);
@@ -55,7 +67,13 @@ const SettingsTimeTracking = () => {
   const [policyTemplate, setPolicyTemplate] = useState({ content: "", filename: "" });
   const [ackDrawerOpen, setAckDrawerOpen] = useState(false);
   const [ackLoading, setAckLoading] = useState(false);
-  const [ackData, setAckData] = useState({ policy_version: "v1", policy_acknowledgements: [], employee_acknowledgements: [] });
+  const [ackData, setAckData] = useState({
+    policy_version: "v1",
+    current_dispatch_tracking_acknowledgement: null,
+    current_client_share_acknowledgement: null,
+    policy_acknowledgements: [],
+    employee_acknowledgements: [],
+  });
 
   const loadPolicy = async () => {
     setLoading(true);
@@ -80,8 +98,14 @@ const SettingsTimeTracking = () => {
         dispatch_tracking_ack_required: data.dispatch_tracking_ack_required ?? true,
         dispatch_tracking_employer_acknowledged_at: data.dispatch_tracking_employer_acknowledged_at || "",
         dispatch_tracking_employer_acknowledged_by: data.dispatch_tracking_employer_acknowledged_by || "",
+        dispatch_tracking_employer_acknowledged_by_name: data.dispatch_tracking_employer_acknowledged_by_name || "",
+        dispatch_tracking_employer_acknowledged_by_email: data.dispatch_tracking_employer_acknowledged_by_email || "",
         dispatch_tracking_client_share_acknowledged_at: data.dispatch_tracking_client_share_acknowledged_at || "",
         dispatch_tracking_client_share_acknowledged_by: data.dispatch_tracking_client_share_acknowledged_by || "",
+        dispatch_tracking_client_share_acknowledged_by_name: data.dispatch_tracking_client_share_acknowledged_by_name || "",
+        dispatch_tracking_client_share_acknowledged_by_email: data.dispatch_tracking_client_share_acknowledged_by_email || "",
+        current_dispatch_tracking_acknowledgement: data.current_dispatch_tracking_acknowledgement || null,
+        current_client_share_acknowledgement: data.current_client_share_acknowledgement || null,
         dispatch_tracking_retention_days: data.dispatch_tracking_retention_days ?? 30,
         dispatch_tracking_link_expiry_mode: data.dispatch_tracking_link_expiry_mode || "arrived",
         dispatch_tracking_auto_stop_on_arrived: data.dispatch_tracking_auto_stop_on_arrived ?? true,
@@ -228,6 +252,8 @@ const SettingsTimeTracking = () => {
       const payload = await timeTracking.getDispatchAcknowledgements();
       setAckData({
         policy_version: payload?.policy_version || "v1",
+        current_dispatch_tracking_acknowledgement: payload?.current_dispatch_tracking_acknowledgement || null,
+        current_client_share_acknowledgement: payload?.current_client_share_acknowledgement || null,
         policy_acknowledgements: Array.isArray(payload?.policy_acknowledgements) ? payload.policy_acknowledgements : [],
         employee_acknowledgements: Array.isArray(payload?.employee_acknowledgements) ? payload.employee_acknowledgements : [],
       });
@@ -247,6 +273,62 @@ const SettingsTimeTracking = () => {
     await loadDispatchAcknowledgements();
   };
 
+  const requireDispatchReack = async (scope) => {
+    const confirmed = window.confirm(
+      scope === "dispatch_tracking"
+        ? "Require a fresh manager acknowledgment for dispatch tracking? This will turn dispatch tracking off until it is re-approved."
+        : "Require a fresh manager acknowledgment for client trip-link sharing? This will turn auto-send off until it is re-approved."
+    );
+    if (!confirmed) return;
+    try {
+      const result = await timeTracking.requireDispatchReacknowledgement(scope);
+      if (result?.policy) {
+        setPolicy(result.policy);
+      }
+      await loadDispatchAcknowledgements();
+      setDispatchEmployerAck(false);
+      setDispatchClientShareAck(false);
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: result?.message || "Re-acknowledgment is now required.",
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Unable to require re-acknowledgment.",
+      });
+    }
+  };
+
+  const publishNewPolicyVersion = async () => {
+    const confirmed = window.confirm(
+      "Publish a new dispatch policy version? This will require fresh manager acknowledgments and turn dispatch/client auto-send off until they are re-approved."
+    );
+    if (!confirmed) return;
+    try {
+      const result = await timeTracking.publishDispatchPolicyVersion();
+      if (result?.policy) {
+        setPolicy(result.policy);
+      }
+      await loadDispatchAcknowledgements();
+      setDispatchEmployerAck(false);
+      setDispatchClientShareAck(false);
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: result?.message || "A new dispatch policy version is now active.",
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Unable to publish a new policy version.",
+      });
+    }
+  };
+
   const renderBody = () => {
     if (loading) {
       return (
@@ -263,6 +345,11 @@ const SettingsTimeTracking = () => {
       );
     }
     if (!policy) return null;
+
+    const currentDispatchAck = policy.current_dispatch_tracking_acknowledgement || null;
+    const currentClientAck = policy.current_client_share_acknowledgement || null;
+    const dispatchAckMeta = formatAcknowledgementStatement(currentDispatchAck, "Employer dispatch tracking");
+    const clientAckMeta = formatAcknowledgementStatement(currentClientAck, "Client link sharing");
 
     return (
       <Stack spacing={3}>
@@ -424,18 +511,28 @@ const SettingsTimeTracking = () => {
                 <Box>
                   <Typography variant="body2" fontWeight={600}>Employer dispatch tracking</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {policy.dispatch_tracking_employer_acknowledged_at
-                      ? `Recorded ${formatRecordedAt(policy.dispatch_tracking_employer_acknowledged_at)}${policy.dispatch_tracking_employer_acknowledged_by ? ` by ${policy.dispatch_tracking_employer_acknowledged_by}` : ""}.`
+                    {currentDispatchAck
+                      ? `Current effective acknowledgment: ${formatAcknowledgementOwner(currentDispatchAck)} on ${formatRecordedAt(currentDispatchAck.accepted_at)}.`
                       : "Required before dispatch tracking can be enabled."}
                   </Typography>
+                  {currentDispatchAck ? (
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.35 }}>
+                      {dispatchAckMeta.statement_text || "Trip-only employee location tracking for assigned work travel."}
+                    </Typography>
+                  ) : null}
                 </Box>
                 <Box>
                   <Typography variant="body2" fontWeight={600}>Client link sharing</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {policy.dispatch_tracking_client_share_acknowledged_at
-                      ? `Recorded ${formatRecordedAt(policy.dispatch_tracking_client_share_acknowledged_at)}${policy.dispatch_tracking_client_share_acknowledged_by ? ` by ${policy.dispatch_tracking_client_share_acknowledged_by}` : ""}.`
+                    {currentClientAck
+                      ? `Current effective acknowledgment: ${formatAcknowledgementOwner(currentClientAck)} on ${formatRecordedAt(currentClientAck.accepted_at)}.`
                       : "Required before tracking links can be auto-sent to clients."}
                   </Typography>
+                  {currentClientAck ? (
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.35 }}>
+                      {clientAckMeta.statement_text || "Temporary live trip links for active assigned visits only."}
+                    </Typography>
+                  ) : null}
                 </Box>
               </Stack>
             </Stack>
@@ -461,6 +558,26 @@ const SettingsTimeTracking = () => {
               >
                 View acknowledgment log
               </Button>
+              <Button
+                variant="outlined"
+                onClick={() => requireDispatchReack("dispatch_tracking")}
+              >
+                Require dispatch re-acknowledgment
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => requireDispatchReack("client_share")}
+              >
+                Require client-link re-acknowledgment
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={publishNewPolicyVersion}
+              >
+                Publish new policy version
+              </Button>
+            </Stack>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
               <Button
                 variant="outlined"
                 startIcon={<DescriptionOutlinedIcon />}
@@ -569,6 +686,48 @@ const SettingsTimeTracking = () => {
               <Stack spacing={3}>
                 <Box>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                    Current effective acknowledgments
+                  </Typography>
+                  <Stack spacing={1.25}>
+                    {[
+                      {
+                        key: "dispatch",
+                        title: "Employer dispatch tracking",
+                        row: ackData.current_dispatch_tracking_acknowledgement,
+                      },
+                      {
+                        key: "client",
+                        title: "Client link sharing",
+                        row: ackData.current_client_share_acknowledgement,
+                      },
+                    ].map((item) => {
+                      const statementMeta = formatAcknowledgementStatement(item.row, item.title);
+                      return (
+                        <Box key={item.key} sx={{ p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                          <Typography variant="body2" fontWeight={700}>
+                            {item.title}
+                          </Typography>
+                          {item.row ? (
+                            <>
+                              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                                {formatAcknowledgementOwner(item.row)} on {formatRecordedAt(item.row.accepted_at)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.35 }}>
+                                {statementMeta.statement || "No statement snapshot stored."}
+                              </Typography>
+                            </>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                              No current effective acknowledgment.
+                            </Typography>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
                     Manager policy acknowledgments
                   </Typography>
                   {ackData.policy_acknowledgements.length === 0 ? (
@@ -589,6 +748,19 @@ const SettingsTimeTracking = () => {
                           <Typography variant="caption" color="text.secondary" display="block">
                             Recorded {formatRecordedAt(row.accepted_at)}
                           </Typography>
+                          {row.recruiter_email ? (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Email: {row.recruiter_email}
+                            </Typography>
+                          ) : null}
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Acknowledged: {row?.meta_json?.statement_label || (row.acknowledgement_type === "dispatch_client_share_enable" ? "Client link sharing" : "Dispatch tracking")}
+                          </Typography>
+                          {row?.meta_json?.statement_text ? (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
+                              {row.meta_json.statement_text}
+                            </Typography>
+                          ) : null}
                           <Typography variant="caption" color="text.secondary" display="block">
                             IP: {row.accepted_ip || "—"}
                           </Typography>
@@ -621,6 +793,11 @@ const SettingsTimeTracking = () => {
                           <Typography variant="caption" color="text.secondary" display="block">
                             Accepted {formatRecordedAt(row.accepted_at)}
                           </Typography>
+                          {row.recruiter_email ? (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Email: {row.recruiter_email}
+                            </Typography>
+                          ) : null}
                           <Typography variant="caption" color="text.secondary" display="block">
                             IP: {row.accepted_ip || "—"}
                           </Typography>
