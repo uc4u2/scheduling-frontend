@@ -83,6 +83,21 @@ const ACTION_HELP = {
   cancel: "Use this when the job should stop and no longer move forward in the current work-order flow.",
 };
 
+const buildPlannedScheduleLabel = (workOrder, timezone) => {
+  if (!workOrder) return "";
+  const startDate = workOrder.start_date;
+  const endDate = workOrder.end_date;
+  const tzLabel = workOrder.timezone || timezone || "";
+  if (!startDate && !endDate) {
+    return tzLabel ? `Planned schedule not set • ${tzLabel}` : "Planned schedule not set";
+  }
+  if (startDate && endDate && startDate === endDate) {
+    return tzLabel ? `${startDate} • ${tzLabel}` : startDate;
+  }
+  const windowLabel = `${startDate || "Start date not set"} to ${endDate || "End date not set"}`;
+  return tzLabel ? `${windowLabel} • ${tzLabel}` : windowLabel;
+};
+
 export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onChanged, clients = [], estimates = [] }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
@@ -203,6 +218,11 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
     label: tWorkOrders(`statusActions.${action.key}`, action.label),
   }));
 
+  const plannedScheduleLabel = useMemo(
+    () => buildPlannedScheduleLabel(workOrder, timezone),
+    [timezone, workOrder]
+  );
+
   const handleCreateOrCopyDispatchLink = async (row) => {
     if (!workOrder?.id || !row?.recruiter_id) return;
     const busyId = `dispatch-copy-${row.recruiter_id}`;
@@ -281,8 +301,11 @@ export default function WorkOrderDetailDialog({ open, workOrderId, onClose, onCh
                 </Stack>
                 <Typography variant="body2" color="text.secondary">{workOrder.client_name || tWorkOrders("fallbacks.noClientLinked", "No client linked")}{workOrder.client_email ? ` • ${workOrder.client_email}` : ""}</Typography>
                 <Typography variant="body2" color="text.secondary">{workOrder.location || tWorkOrders("fallbacks.noLocation", "No location set")}</Typography>
+                <Typography variant="subtitle2" sx={{ mt: 1, fontWeight: 700 }}>
+                  {tWorkOrders("schedule.windowLabel", "Planned schedule")}
+                </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {tWorkOrders("schedule.windowLabel", "Planned schedule")}: {workOrder.start_date || "-"} {tWorkOrders("schedule.to", "to")} {workOrder.end_date || "-"}{workOrder.timezone ? ` • ${workOrder.timezone}` : ""}
+                  {plannedScheduleLabel}
                 </Typography>
               </Box>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "flex-start" }}>

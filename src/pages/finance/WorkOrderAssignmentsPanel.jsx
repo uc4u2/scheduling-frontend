@@ -40,10 +40,10 @@ import {
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 
-const buildBlankForm = (timezone) => ({
+const buildBlankForm = (timezone, workDate = "") => ({
   recruiter_id: "",
   recruiter_ids: [],
-  work_date: "",
+  work_date: workDate,
   start_time: "",
   end_time: "",
   planned_hours: "",
@@ -73,6 +73,17 @@ const mapAssignmentError = (err, tAssignments) => {
   }
 };
 
+const derivePlannedHours = (startTime, endTime) => {
+  if (!startTime || !endTime || endTime <= startTime) return "";
+  const [startHours, startMinutes] = String(startTime).split(":").map(Number);
+  const [endHours, endMinutes] = String(endTime).split(":").map(Number);
+  if ([startHours, startMinutes, endHours, endMinutes].some((value) => Number.isNaN(value))) return "";
+  const startTotalMinutes = (startHours * 60) + startMinutes;
+  const endTotalMinutes = (endHours * 60) + endMinutes;
+  if (endTotalMinutes <= startTotalMinutes) return "";
+  return ((endTotalMinutes - startTotalMinutes) / 60).toFixed(2);
+};
+
 export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -86,7 +97,7 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const [loadingRecruiters, setLoadingRecruiters] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState(buildBlankForm(workOrder?.timezone));
+  const [form, setForm] = useState(buildBlankForm(workOrder?.timezone, workOrder?.start_date || ""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -121,13 +132,26 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     setForm((current) => ({ ...current, timezone: workOrder?.timezone || current.timezone || "UTC" }));
   }, [workOrder?.timezone]);
 
+  const derivedPlannedHours = useMemo(
+    () => derivePlannedHours(form.start_time, form.end_time),
+    [form.end_time, form.start_time]
+  );
+
+  useEffect(() => {
+    if (!derivedPlannedHours) return;
+    setForm((current) => {
+      if (current.planned_hours === derivedPlannedHours) return current;
+      return { ...current, planned_hours: derivedPlannedHours };
+    });
+  }, [derivedPlannedHours]);
+
   const openAdd = () => {
     setEditingId(null);
     setError("");
     setBulkFailures([]);
     setMode("single");
     setShowAdvanced(false);
-    setForm(buildBlankForm(workOrder?.timezone));
+    setForm(buildBlankForm(workOrder?.timezone, workOrder?.start_date || ""));
     setFormOpen(true);
   };
 
@@ -387,9 +411,22 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
                 value={form.planned_hours}
                 onChange={(e) => setForm((current) => ({ ...current, planned_hours: e.target.value }))}
                 fullWidth
-                helperText={tAssignments("fields.plannedHoursHelp", "Optional when start and end times are set.")}
+                disabled={Boolean(derivedPlannedHours)}
+                helperText={
+                  derivedPlannedHours
+                    ? tAssignments("fields.plannedHoursDerived", "Auto-calculated from the selected start and end times.")
+                    : tAssignments("fields.plannedHoursHelp", "Optional when start and end times are set.")
+                }
               />
             </Stack>
+
+            {derivedPlannedHours ? (
+              <Alert severity="info">
+                {tAssignments("fields.plannedHoursDerivedAlert", "Planned hours are currently {{hours}} based on the selected time window.", {
+                  hours: derivedPlannedHours,
+                })}
+              </Alert>
+            ) : null}
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <TextField
