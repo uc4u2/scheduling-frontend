@@ -179,6 +179,8 @@ export const listDispatchItems = (params = {}) =>
   unwrap(api.get("/finance/dispatch", { params }));
 export const listDispatchActivity = (params = {}) =>
   unwrap(api.get("/finance/dispatch/activity", { params }));
+export const getDispatchRoute = (dispatchStateId) =>
+  unwrap(api.get(`/finance/dispatch/${dispatchStateId}/route`));
 export const getEmployeeDispatchAcknowledgement = () =>
   unwrap(api.get("/finance/dispatch/employee-acknowledgement"));
 export const acceptEmployeeDispatchAcknowledgement = (payload) =>

@@ -19,9 +19,10 @@ import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import LinkOffOutlinedIcon from "@mui/icons-material/LinkOffOutlined";
 import RoomOutlinedIcon from "@mui/icons-material/RoomOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import Supercluster from "supercluster";
 import "leaflet/dist/leaflet.css";
@@ -29,6 +30,7 @@ import ManagementFrame from "../../../components/ui/ManagementFrame";
 import FinanceMetricCard from "../../finance/components/FinanceMetricCard";
 import {
   createWorkOrderDispatchLink,
+  getDispatchRoute,
   listDispatchActivity,
   listDispatchItems,
   revokeWorkOrderDispatchLink,
@@ -61,6 +63,23 @@ const statusMarkerColor = (row) => {
 };
 
 const formatDateTime = (value, timezone) => (value ? formatDateTimeInTz(value, timezone, "LLL d, yyyy h:mm a") : "—");
+
+const formatDistance = (meters) => {
+  const value = Number(meters);
+  if (!Number.isFinite(value)) return "—";
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)} km`;
+  return `${Math.round(value)} m`;
+};
+
+const formatEta = (seconds) => {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return "—";
+  const minutes = Math.max(1, Math.round(value / 60));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining ? `${hours}h ${remaining}m` : `${hours}h`;
+};
 
 const formatApproxLocation = (snapshot) => {
   const lat = Number(snapshot?.lat);
@@ -105,6 +124,17 @@ function FocusSelectedTrip({ row }) {
       duration: 0.45,
     });
   }, [map, row?.id, row?.location?.lat, row?.location?.lng]);
+  return null;
+}
+
+function FitRouteBounds({ route }) {
+  const map = useMap();
+  useEffect(() => {
+    const points = Array.isArray(route?.polyline) ? route.polyline : [];
+    if (points.length < 2) return;
+    const bounds = L.latLngBounds(points.map((point) => [point[0], point[1]]));
+    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
+  }, [map, route?.polyline]);
   return null;
 }
 
@@ -239,6 +269,9 @@ export default function DispatchTrackingPanel() {
   const [selectedDispatchId, setSelectedDispatchId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [routeError, setRouteError] = useState("");
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState("");
   const [mapState, setMapState] = useState({ zoom: 5, bounds: null });
@@ -323,6 +356,40 @@ export default function DispatchTrackingPanel() {
     }
     loadActivity();
   }, [loadActivity, selectedDispatchId, filters.search, filters.employee_id, filters.department_id, filters.client_id, filters.work_order_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRoute = async () => {
+      if (!selectedRow?.id) {
+        setSelectedRoute(null);
+        setRouteError("");
+        return;
+      }
+      if (!selectedRow.can_route) {
+        setSelectedRoute(null);
+        setRouteError(selectedRow.route_ready_reason || "");
+        return;
+      }
+      setRouteLoading(true);
+      setRouteError("");
+      try {
+        const res = await getDispatchRoute(selectedRow.id);
+        if (cancelled) return;
+        setSelectedRoute(res?.route || null);
+        setRouteError(res?.route?.reason || "");
+      } catch (err) {
+        if (cancelled) return;
+        setSelectedRoute(null);
+        setRouteError(err?.response?.data?.error || err?.message || "Unable to load route details.");
+      } finally {
+        if (!cancelled) setRouteLoading(false);
+      }
+    };
+    loadRoute();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRow?.id, selectedRow?.can_route, selectedRow?.route_ready_reason]);
 
   const handleCreateOrCopyLink = async (row) => {
     if (!row?.work_order_id || !row?.recruiter_id) return;
@@ -456,6 +523,29 @@ export default function DispatchTrackingPanel() {
       selectedRow.location?.captured_at ? `Last location ping: ${formatDateTime(selectedRow.location.captured_at, timezone)}` : null,
     ].filter(Boolean);
   }, [activity, selectedRow, timezone]);
+
+  const routeSummary = useMemo(() => {
+    if (!selectedRoute || selectedRoute.status !== "available") return [];
+    return [
+      selectedRoute.eta_seconds != null ? `ETA: ${formatEta(selectedRoute.eta_seconds)}` : null,
+      selectedRoute.distance_meters != null ? `Distance remaining: ${formatDistance(selectedRoute.distance_meters)}` : null,
+    ].filter(Boolean);
+  }, [selectedRoute]);
+
+  const routeReasonLabel = useMemo(() => {
+    switch (String(routeError || "").toLowerCase()) {
+      case "route_only_available_on_my_way":
+        return "Routing is shown only while the trip is On my way.";
+      case "missing_origin_location":
+        return "No live trip location is available yet.";
+      case "missing_destination_coordinates":
+        return "Destination coordinates are not available for this work order yet.";
+      case "stale_origin_location":
+        return "Trip location is stale, so the route preview is paused.";
+      default:
+        return routeError ? "Route preview is unavailable right now." : "";
+    }
+  }, [routeError]);
 
   return (
     <ManagementFrame
@@ -728,10 +818,18 @@ export default function DispatchTrackingPanel() {
                               {selectedAuditSummary.map((line) => (
                                 <Typography key={line} variant="caption" color="text.secondary">{line}</Typography>
                               ))}
-                              {!selectedAuditSummary.length ? (
+                              {routeSummary.map((line) => (
+                                <Typography key={line} variant="caption" color="text.secondary">{line}</Typography>
+                              ))}
+                              {!selectedAuditSummary.length && !routeSummary.length ? (
                                 <Typography variant="caption" color="text.secondary">No audit checkpoints recorded yet.</Typography>
                               ) : null}
                             </Stack>
+                            {routeReasonLabel ? (
+                              <Alert severity="info" icon={<AltRouteOutlinedIcon fontSize="inherit" />} sx={{ py: 0.25 }}>
+                                {routeReasonLabel}
+                              </Alert>
+                            ) : null}
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                               <Button size="small" variant="outlined" onClick={() => navigate("/manager/dashboard?view=finance-work-orders")}>
                                 Open work order
@@ -788,6 +886,7 @@ export default function DispatchTrackingPanel() {
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                               />
                               <FitMapToPoints items={mapPoints} />
+                              <FitRouteBounds route={selectedRoute} />
                               <FocusSelectedTrip row={selectedRow} />
                               <MapBoundsWatcher onChange={setMapState} />
                               <DispatchMapMarkers
@@ -796,6 +895,37 @@ export default function DispatchTrackingPanel() {
                                 selectedDispatchId={selectedDispatchId}
                                 onSelect={setSelectedDispatchId}
                               />
+                              {selectedRoute?.status === "available" && Array.isArray(selectedRoute.polyline) && selectedRoute.polyline.length >= 2 ? (
+                                <>
+                                  <Polyline positions={selectedRoute.polyline} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.75, dashArray: "8 8" }} />
+                                  {Number.isFinite(selectedRoute.destination?.lat) && Number.isFinite(selectedRoute.destination?.lng) ? (
+                                    <CircleMarker
+                                      center={[selectedRoute.destination.lat, selectedRoute.destination.lng]}
+                                      radius={9}
+                                      pathOptions={{ color: "#fff", weight: 2, fillColor: "#dc2626", fillOpacity: 0.88 }}
+                                    >
+                                      <Popup>
+                                        <Stack spacing={0.5}>
+                                          <Typography fontWeight={700}>Destination</Typography>
+                                          <Typography variant="body2">{selectedRoute.destination?.label || "Work order destination"}</Typography>
+                                          {selectedRoute.destination?.map_url ? (
+                                            <Typography
+                                              component="a"
+                                              href={selectedRoute.destination.map_url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              variant="caption"
+                                              sx={{ color: "primary.main", textDecoration: "none", fontWeight: 700 }}
+                                            >
+                                              Open map
+                                            </Typography>
+                                          ) : null}
+                                        </Stack>
+                                      </Popup>
+                                    </CircleMarker>
+                                  ) : null}
+                                </>
+                              ) : null}
                             </MapContainer>
                           </Box>
                         ) : (
