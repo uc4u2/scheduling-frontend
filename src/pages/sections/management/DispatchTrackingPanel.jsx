@@ -167,6 +167,8 @@ function activityMetaSummary(row) {
   return "";
 }
 
+const DISPATCH_AUTO_REFRESH_MS = 2 * 60 * 1000;
+
 function DispatchMapMarkers({ clusters, clusterIndex, selectedDispatchId, onSelect }) {
   const map = useMap();
   return clusters.map((cluster) => {
@@ -280,7 +282,7 @@ export default function DispatchTrackingPanel() {
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       load();
-    }, 30000);
+    }, DISPATCH_AUTO_REFRESH_MS);
     return () => window.clearInterval(intervalId);
   }, [load]);
 
