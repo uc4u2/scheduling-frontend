@@ -357,40 +357,6 @@ export default function DispatchTrackingPanel() {
     loadActivity();
   }, [loadActivity, selectedDispatchId, filters.search, filters.employee_id, filters.department_id, filters.client_id, filters.work_order_id]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadRoute = async () => {
-      if (!selectedRow?.id) {
-        setSelectedRoute(null);
-        setRouteError("");
-        return;
-      }
-      if (!selectedRow.can_route) {
-        setSelectedRoute(null);
-        setRouteError(selectedRow.route_ready_reason || "");
-        return;
-      }
-      setRouteLoading(true);
-      setRouteError("");
-      try {
-        const res = await getDispatchRoute(selectedRow.id);
-        if (cancelled) return;
-        setSelectedRoute(res?.route || null);
-        setRouteError(res?.route?.reason || "");
-      } catch (err) {
-        if (cancelled) return;
-        setSelectedRoute(null);
-        setRouteError(err?.response?.data?.error || err?.message || "Unable to load route details.");
-      } finally {
-        if (!cancelled) setRouteLoading(false);
-      }
-    };
-    loadRoute();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedRow?.id, selectedRow?.can_route, selectedRow?.route_ready_reason]);
-
   const handleCreateOrCopyLink = async (row) => {
     if (!row?.work_order_id || !row?.recruiter_id) return;
     const busyId = `copy-${row.id}`;
@@ -467,6 +433,40 @@ export default function DispatchTrackingPanel() {
     () => presetFilteredItems.find((row) => row.id === selectedDispatchId) || null,
     [presetFilteredItems, selectedDispatchId]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRoute = async () => {
+      if (!selectedRow?.id) {
+        setSelectedRoute(null);
+        setRouteError("");
+        return;
+      }
+      if (!selectedRow.can_route) {
+        setSelectedRoute(null);
+        setRouteError(selectedRow.route_ready_reason || "");
+        return;
+      }
+      setRouteLoading(true);
+      setRouteError("");
+      try {
+        const res = await getDispatchRoute(selectedRow.id);
+        if (cancelled) return;
+        setSelectedRoute(res?.route || null);
+        setRouteError(res?.route?.reason || "");
+      } catch (err) {
+        if (cancelled) return;
+        setSelectedRoute(null);
+        setRouteError(err?.response?.data?.error || err?.message || "Unable to load route details.");
+      } finally {
+        if (!cancelled) setRouteLoading(false);
+      }
+    };
+    loadRoute();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRow?.id, selectedRow?.can_route, selectedRow?.route_ready_reason]);
 
   const mapPoints = useMemo(
     () => presetFilteredItems.filter((row) => Number.isFinite(row?.location?.lat) && Number.isFinite(row?.location?.lng)),
