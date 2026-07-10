@@ -433,6 +433,8 @@ export const timeTracking = {
     api.get("/admin/time-tracking-settings", config).then((r) => r.data?.policy || r.data),
   saveSettings: (payload, config = {}) =>
     api.post("/admin/time-tracking-settings", payload, config).then((r) => r.data),
+  getDispatchAcknowledgements: (config = {}) =>
+    api.get("/manager/dispatch-acknowledgements", config).then((r) => r.data),
   getDispatchPolicyTemplate: (config = {}) =>
     api.get("/manager/dispatch-policy-template", config).then((r) => r.data),
   clockIn: (shiftId, payload = {}, config = {}) =>

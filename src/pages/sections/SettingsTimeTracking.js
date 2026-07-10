@@ -53,6 +53,9 @@ const SettingsTimeTracking = () => {
   const [policyTemplateOpen, setPolicyTemplateOpen] = useState(false);
   const [policyTemplateLoading, setPolicyTemplateLoading] = useState(false);
   const [policyTemplate, setPolicyTemplate] = useState({ content: "", filename: "" });
+  const [ackDrawerOpen, setAckDrawerOpen] = useState(false);
+  const [ackLoading, setAckLoading] = useState(false);
+  const [ackData, setAckData] = useState({ policy_version: "v1", policy_acknowledgements: [], employee_acknowledgements: [] });
 
   const loadPolicy = async () => {
     setLoading(true);
@@ -217,6 +220,31 @@ const SettingsTimeTracking = () => {
         message: "Unable to copy the policy template.",
       });
     }
+  };
+
+  const loadDispatchAcknowledgements = async () => {
+    setAckLoading(true);
+    try {
+      const payload = await timeTracking.getDispatchAcknowledgements();
+      setAckData({
+        policy_version: payload?.policy_version || "v1",
+        policy_acknowledgements: Array.isArray(payload?.policy_acknowledgements) ? payload.policy_acknowledgements : [],
+        employee_acknowledgements: Array.isArray(payload?.employee_acknowledgements) ? payload.employee_acknowledgements : [],
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Unable to load dispatch acknowledgment records.",
+      });
+    } finally {
+      setAckLoading(false);
+    }
+  };
+
+  const openAckDrawer = async () => {
+    setAckDrawerOpen(true);
+    await loadDispatchAcknowledgements();
   };
 
   const renderBody = () => {
@@ -428,6 +456,13 @@ const SettingsTimeTracking = () => {
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
               <Button
                 variant="outlined"
+                startIcon={<InfoOutlinedIcon />}
+                onClick={openAckDrawer}
+              >
+                View acknowledgment log
+              </Button>
+              <Button
+                variant="outlined"
                 startIcon={<DescriptionOutlinedIcon />}
                 onClick={openPolicyTemplate}
               >
@@ -492,6 +527,116 @@ const SettingsTimeTracking = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <Drawer
+        anchor="right"
+        open={ackDrawerOpen}
+        onClose={() => setAckDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 560 },
+            p: 0,
+          },
+        }}
+      >
+        <Stack spacing={0} sx={{ height: "100%" }}>
+          <Box sx={{ p: 3, pb: 2 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Dispatch acknowledgment log
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                  Recorded proof for manager policy acknowledgments and employee first-use dispatch acknowledgments.
+                </Typography>
+              </Box>
+              <Button size="small" variant="outlined" onClick={loadDispatchAcknowledgements} disabled={ackLoading}>
+                {ackLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+            </Stack>
+            <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label={`Policy ${ackData.policy_version || "v1"}`} variant="outlined" />
+              <Chip size="small" label={`${ackData.policy_acknowledgements.length} manager records`} variant="outlined" />
+              <Chip size="small" label={`${ackData.employee_acknowledgements.length} employee records`} variant="outlined" />
+            </Stack>
+          </Box>
+          <Divider />
+          <Box sx={{ flex: 1, overflow: "auto", p: 3, bgcolor: "background.default" }}>
+            {ackLoading ? (
+              <Box display="flex" justifyContent="center" py={6}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                    Manager policy acknowledgments
+                  </Typography>
+                  {ackData.policy_acknowledgements.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No manager acknowledgment records yet.
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1.25}>
+                      {ackData.policy_acknowledgements.map((row) => (
+                        <Box key={`policy-${row.id}`} sx={{ p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.75 }}>
+                            <Typography variant="body2" fontWeight={700}>
+                              {row.recruiter_name || `Recruiter #${row.recruiter_id}`}
+                            </Typography>
+                            <Chip size="small" label={row.acknowledgement_type === "dispatch_client_share_enable" ? "Client link sharing" : "Dispatch tracking"} variant="outlined" />
+                            <Chip size="small" label={`Policy ${row.policy_version || "v1"}`} variant="outlined" />
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Recorded {formatRecordedAt(row.accepted_at)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            IP: {row.accepted_ip || "—"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ wordBreak: "break-word" }} display="block">
+                            User agent: {row.accepted_user_agent || "—"}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                    Employee first-use acknowledgments
+                  </Typography>
+                  {ackData.employee_acknowledgements.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No employee acknowledgment records yet.
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1.25}>
+                      {ackData.employee_acknowledgements.map((row) => (
+                        <Box key={`employee-${row.id}`} sx={{ p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.75 }}>
+                            <Typography variant="body2" fontWeight={700}>
+                              {row.recruiter_name || `Recruiter #${row.recruiter_id}`}
+                            </Typography>
+                            <Chip size="small" label={`Policy ${row.policy_version || "v1"}`} variant="outlined" />
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Accepted {formatRecordedAt(row.accepted_at)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            IP: {row.accepted_ip || "—"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ wordBreak: "break-word" }} display="block">
+                            User agent: {row.accepted_user_agent || "—"}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Stack>
+            )}
+          </Box>
+        </Stack>
+      </Drawer>
       <Drawer
         anchor="right"
         open={policyTemplateOpen}
