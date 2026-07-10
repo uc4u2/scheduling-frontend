@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   CircularProgress,
   Grid,
   MenuItem,
@@ -12,6 +13,7 @@ import {
   Switch,
   TextField,
   FormControlLabel,
+  Typography,
 } from "@mui/material";
 import SectionCard from "../../components/ui/SectionCard";
 import { timeTracking } from "../../utils/api";
@@ -26,6 +28,13 @@ const numericFields = [
   { key: "rounding_minutes", label: "Rounding interval (minutes)", helper: "Rounding applied to approved entries (e.g., 15 = quarter hour)." },
   { key: "unpaid_break_minutes_over_6h", label: "Automatic unpaid break (>6h)", helper: "Minutes deducted automatically when approved hours exceed 6h." },
 ];
+
+const formatRecordedAt = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleString();
+};
 
 const SettingsTimeTracking = () => {
   const { t } = useTranslation();
@@ -254,9 +263,14 @@ const SettingsTimeTracking = () => {
 
         <SectionCard
           title="Dispatch tracking"
-          description="Separate trip-tracking controls for On my way links and client-facing technician updates."
+          description="Trip-only location sharing for On my way, manager dispatch visibility, and optional client tracking links."
         >
           <Stack spacing={2}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label={`Policy ${policy.dispatch_tracking_policy_version || "v1"}`} color="primary" variant="outlined" />
+              <Chip size="small" label="Trip-only tracking" variant="outlined" />
+              {policy.dispatch_tracking_ack_required ? <Chip size="small" label="Employee acknowledgment required" variant="outlined" /> : null}
+            </Stack>
             <FormControlLabel
               control={(
                 <Switch
@@ -295,7 +309,7 @@ const SettingsTimeTracking = () => {
                   value={policy.dispatch_tracking_retention_days}
                   onChange={handleNumberChange("dispatch_tracking_retention_days")}
                   disabled={!policy.enable_dispatch_tracking}
-                  helperText="How long trip-tracking records should remain available by default."
+                  helperText="How long trip logs and trip-location records stay available by default."
                 >
                   <MenuItem value={7}>7 days</MenuItem>
                   <MenuItem value={30}>30 days</MenuItem>
@@ -306,11 +320,11 @@ const SettingsTimeTracking = () => {
                 <TextField
                   select
                   fullWidth
-                  label="Client tracking link expiry"
+                  label="Client link expiry rule"
                   value={policy.dispatch_tracking_link_expiry_mode || "arrived"}
                   onChange={handleSelectChange("dispatch_tracking_link_expiry_mode")}
                   disabled={!policy.enable_dispatch_tracking}
-                  helperText="When a client trip link should stop working."
+                  helperText="Default rule for client trip links. Managers can still revoke any link manually."
                 >
                   <MenuItem value="arrived">When employee arrives</MenuItem>
                   <MenuItem value="two_hours">2 hours after link creation</MenuItem>
@@ -319,37 +333,50 @@ const SettingsTimeTracking = () => {
               </Grid>
             </Grid>
             <Alert severity="warning" sx={{ py: 0.5 }}>
-              Do not enable this feature unless affected employees have been informed and your business is authorized to use trip-only location tracking.
+              Use this only for active assigned trips after employees have been informed.
             </Alert>
+            <Stack spacing={1} sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "background.paper" }}>
+              <Typography variant="subtitle2">Recorded acknowledgment status</Typography>
+              <Stack spacing={0.75}>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>Employer dispatch tracking</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {policy.dispatch_tracking_employer_acknowledged_at
+                      ? `Recorded ${formatRecordedAt(policy.dispatch_tracking_employer_acknowledged_at)}${policy.dispatch_tracking_employer_acknowledged_by ? ` by ${policy.dispatch_tracking_employer_acknowledged_by}` : ""}.`
+                      : "Required before dispatch tracking can be enabled."}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>Client link sharing</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {policy.dispatch_tracking_client_share_acknowledged_at
+                      ? `Recorded ${formatRecordedAt(policy.dispatch_tracking_client_share_acknowledged_at)}${policy.dispatch_tracking_client_share_acknowledged_by ? ` by ${policy.dispatch_tracking_client_share_acknowledged_by}` : ""}.`
+                      : "Required before tracking links can be auto-sent to clients."}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Stack>
             {!policy.dispatch_tracking_employer_acknowledged_at ? (
               <Stack spacing={0.5}>
                 <FormControlLabel
                   control={<Checkbox checked={dispatchEmployerAck} onChange={(event) => setDispatchEmployerAck(event.target.checked)} />}
-                  label="I confirm my business has a lawful basis to use employee trip-location tracking and affected employees will receive written notice before this feature is used."
+                  label="I confirm this business is authorized to use trip-only employee location tracking and will give written notice before use."
                 />
               </Stack>
-            ) : (
-              <Alert severity="success" sx={{ py: 0.5 }}>
-                Employer tracking acknowledgment recorded.
-              </Alert>
-            )}
+            ) : null}
             {!policy.dispatch_tracking_client_share_acknowledged_at ? (
               <FormControlLabel
                 control={<Checkbox checked={dispatchClientShareAck} onChange={(event) => setDispatchClientShareAck(event.target.checked)} />}
-                label="I confirm clients may receive temporary live-trip links only for active assigned visits."
+                label="I confirm clients may receive temporary live trip links only for active assigned visits."
               />
-            ) : (
-              <Alert severity="success" sx={{ py: 0.5 }}>
-                Client-share acknowledgment recorded.
-              </Alert>
-            )}
+            ) : null}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
               <Button variant="outlined" onClick={downloadDispatchTemplate}>
                 Download employee policy template
               </Button>
             </Stack>
             <Alert severity="info" sx={{ py: 0.5 }}>
-              Trip tracking is separate from punch-location evidence. It is meant for assigned work orders and client-facing technician updates, and only while the employee is On my way.
+              Separate from punch-location evidence. This only applies while the employee is On my way for an assigned work order.
             </Alert>
           </Stack>
         </SectionCard>

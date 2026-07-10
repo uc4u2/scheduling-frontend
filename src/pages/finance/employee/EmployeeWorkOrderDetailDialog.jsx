@@ -526,31 +526,33 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       <Dialog open={dispatchAckModalOpen} onClose={() => !dispatchAckBusy && setDispatchAckModalOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Trip location sharing notice</DialogTitle>
         <DialogContent dividers>
-          <Stack spacing={1.5}>
-            <Typography variant="body2">
-              Your location will be shared only while you are traveling to an assigned job after tapping On my way.
-            </Typography>
-            <Typography variant="body2">
-              Your manager can view your trip status and last known trip location.
-            </Typography>
-            {dispatchAckInfo?.client_sharing_possible ? (
-              <Typography variant="body2">
-                If your company enables it, the client may receive a temporary tracking link for this trip.
-              </Typography>
-            ) : null}
-            <Typography variant="body2">
-              Tracking stops when you tap Arrived or when the trip is ended under your company settings.
-            </Typography>
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label="Trip-only tracking" color="primary" variant="outlined" />
+              <Chip size="small" label={`Policy ${dispatchAckInfo?.policy_version || "v1"}`} variant="outlined" />
+            </Stack>
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              This only turns on after you tap <strong>On my way</strong> for an assigned job.
+            </Alert>
+            <Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "background.paper" }}>
+              <Stack spacing={1}>
+                <Typography variant="body2">• Your manager can view your trip status and last known trip location.</Typography>
+                {dispatchAckInfo?.client_sharing_possible ? (
+                  <Typography variant="body2">• The client may receive a temporary tracking link for this trip if your company enables it.</Typography>
+                ) : null}
+                <Typography variant="body2">• Tracking stops when you tap Arrived or when your company ends the trip automatically.</Typography>
+              </Stack>
+            </Box>
             <FormControlLabel
               control={<Checkbox checked={dispatchAckRemember} onChange={(event) => setDispatchAckRemember(event.target.checked)} />}
-              label="Don’t show this again unless the policy changes"
+              label="Remember my acknowledgment until this policy changes"
             />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDispatchAckModalOpen(false)} disabled={dispatchAckBusy}>Cancel</Button>
           <Button variant="contained" onClick={handleAcceptDispatchAcknowledgement} disabled={dispatchAckBusy}>
-            {dispatchAckBusy ? "Saving..." : "I understand and continue"}
+            {dispatchAckBusy ? "Saving..." : "Continue"}
           </Button>
         </DialogActions>
       </Dialog>
