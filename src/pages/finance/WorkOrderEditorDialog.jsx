@@ -22,7 +22,7 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getUserTimezone, normalizeTimezoneValue } from "../../utils/timezone";
-import { createManagerClient, createWorkOrder, updateWorkOrder } from "./financeApi";
+import { createManagerClient, createWorkOrder, previewWorkOrderDestination, updateWorkOrder } from "./financeApi";
 import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
 import ClientLookupField from "./ClientLookupField";
 import { buildClientCreatePayload } from "./clientUtils";
@@ -96,6 +96,9 @@ export default function WorkOrderEditorDialog({
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "" });
+  const [destinationPreview, setDestinationPreview] = useState(null);
+  const [destinationPreviewLoading, setDestinationPreviewLoading] = useState(false);
+  const [destinationPreviewError, setDestinationPreviewError] = useState("");
 
   const selectedEstimate = useMemo(() => {
     const estimateId = Number(form.finance_estimate_id || 0);
@@ -141,6 +144,42 @@ export default function WorkOrderEditorDialog({
       metadata: current.metadata && Object.keys(current.metadata).length ? current.metadata : (selectedEstimate.metadata || {}),
     }));
   }, [selectedEstimate, workOrder]);
+
+  useEffect(() => {
+    const location = String(form.location || "").trim();
+    if (!open || !location) {
+      setDestinationPreview(null);
+      setDestinationPreviewError("");
+      setDestinationPreviewLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setDestinationPreviewLoading(true);
+      setDestinationPreviewError("");
+      try {
+        const res = await previewWorkOrderDestination(location);
+        if (cancelled) return;
+        if (res?.resolved && res?.destination) {
+          setDestinationPreview(res.destination);
+          setDestinationPreviewError("");
+        } else {
+          setDestinationPreview(null);
+          setDestinationPreviewError(tWorkOrders("fields.locationPreviewUnavailable", "We could not confirm this destination yet. Routing will stay text-only until the location resolves."));
+        }
+      } catch (_err) {
+        if (cancelled) return;
+        setDestinationPreview(null);
+        setDestinationPreviewError(tWorkOrders("fields.locationPreviewUnavailable", "We could not confirm this destination yet. Routing will stay text-only until the location resolves."));
+      } finally {
+        if (!cancelled) setDestinationPreviewLoading(false);
+      }
+    }, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [form.location, open, tWorkOrders]);
 
   const setField = (name, value) => {
     setForm((current) => ({ ...current, [name]: value }));
@@ -358,6 +397,22 @@ export default function WorkOrderEditorDialog({
             fullWidth
             helperText={tWorkOrders("fields.locationHelp", "Service address or destination label shown to managers, employees, and clients.")}
           />
+          {destinationPreviewLoading ? (
+            <Typography variant="caption" color="text.secondary">
+              {tWorkOrders("fields.locationPreviewLoading", "Checking destination…")}
+            </Typography>
+          ) : null}
+          {!destinationPreviewLoading && destinationPreview ? (
+            <Alert severity="success">
+              <strong>{tWorkOrders("fields.locationPreviewReady", "Destination found")}:</strong> {destinationPreview.label}
+              {Number.isFinite(Number(destinationPreview.lat)) && Number.isFinite(Number(destinationPreview.lng))
+                ? ` (${Number(destinationPreview.lat).toFixed(4)}, ${Number(destinationPreview.lng).toFixed(4)})`
+                : ""}
+            </Alert>
+          ) : null}
+          {!destinationPreviewLoading && !destinationPreview && destinationPreviewError ? (
+            <Alert severity="warning">{destinationPreviewError}</Alert>
+          ) : null}
 
           <Stack spacing={1}>
             <Typography variant="subtitle2" fontWeight={800}>

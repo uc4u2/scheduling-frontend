@@ -175,6 +175,8 @@ export const getWorkOrderPhotoShareLink = (id) =>
   unwrap(api.get(`/finance/work-orders/${id}/photo-share-link`));
 export const getWorkOrderDispatch = (id) =>
   unwrap(api.get(`/finance/work-orders/${id}/dispatch`));
+export const previewWorkOrderDestination = (location) =>
+  unwrap(api.get("/finance/work-orders/geocode-preview", { params: { location } }));
 export const listDispatchItems = (params = {}) =>
   unwrap(api.get("/finance/dispatch", { params }));
 export const listDispatchActivity = (params = {}) =>
