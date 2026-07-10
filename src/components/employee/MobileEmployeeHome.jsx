@@ -3,6 +3,7 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
   Grid,
   Paper,
   Stack,
@@ -72,6 +73,10 @@ const MobileEmployeeHome = ({
   managerViewingEmployee = false,
   onBackToManager,
   shortcuts = [],
+  todaysJobs = [],
+  onOpenJob,
+  onDispatchJob,
+  onAddPhoto,
 }) => {
   const theme = useTheme();
   const greeting = resolveGreeting();
@@ -167,6 +172,49 @@ const MobileEmployeeHome = ({
             </Grid>
           ))}
         </Grid>
+      </Box>
+
+      <Box>
+        <Typography sx={{ mb: 1, fontSize: 12, fontWeight: 800, color: "text.secondary", letterSpacing: 0.3 }}>
+          Today&apos;s jobs
+        </Typography>
+        <Stack spacing={1.25}>
+          {todaysJobs.length ? todaysJobs.map((job) => (
+            <Paper key={job.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="flex-start">
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 800 }}>{job.work_order_number}</Typography>
+                    <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{job.title}</Typography>
+                  </Box>
+                  <Chip
+                    size="small"
+                    label={String(job.dispatch_status || "not_started").replaceAll("_", " ")}
+                    color={job.dispatch_status === "on_my_way" ? "primary" : job.dispatch_status === "arrived" ? "success" : "default"}
+                    variant="outlined"
+                  />
+                </Stack>
+                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{job.location || "No location set"}</Typography>
+                <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{job.assignment_preview || "No assignment details"}</Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Button size="small" variant="outlined" onClick={() => onOpenJob?.(job)}>Open</Button>
+                  <Button size="small" variant="outlined" onClick={() => onAddPhoto?.(job)}>Add photo</Button>
+                  {job.dispatch_status === "on_my_way" ? (
+                    <Button size="small" variant="contained" color="success" onClick={() => onDispatchJob?.(job, "arrived")}>Arrived</Button>
+                  ) : (
+                    <Button size="small" variant="contained" sx={{ color: "#0f172a", fontWeight: 800 }} onClick={() => onDispatchJob?.(job, "on_my_way")}>On my way</Button>
+                  )}
+                </Stack>
+              </Stack>
+            </Paper>
+          )) : (
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2.5 }}>
+              <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                No jobs are scheduled for today yet.
+              </Typography>
+            </Paper>
+          )}
+        </Stack>
       </Box>
     </Stack>
   );

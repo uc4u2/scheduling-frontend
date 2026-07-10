@@ -32,7 +32,7 @@ const DISPATCH_STATUS_LABELS = {
   arrived: "Arrived",
 };
 
-export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports }) {
+export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports, initialSection = "" }) {
   const viewerTimezone = getUserTimezone();
   const [workOrder, setWorkOrder] = useState(null);
   const [photos, setPhotos] = useState([]);
@@ -49,6 +49,8 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const [dispatchBusy, setDispatchBusy] = useState(false);
   const watchIdRef = useRef(null);
   const lastPingAtRef = useRef(0);
+  const dispatchSectionRef = useRef(null);
+  const photoSectionRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -236,6 +238,16 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
     }
   };
 
+  useEffect(() => {
+    if (!open || !initialSection) return;
+    const targetRef = initialSection === "photos" ? photoSectionRef : initialSection === "dispatch" ? dispatchSectionRef : null;
+    if (!targetRef?.current) return;
+    const timer = window.setTimeout(() => {
+      targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [initialSection, open, workOrder?.id]);
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>My Work Order</DialogTitle>
@@ -255,7 +267,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               <FinanceStatusChip status={workOrder.status} />
             </Stack>
 
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+            <Paper ref={dispatchSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Assigned date and time</Typography>
               {(workOrder.assignments || []).length ? (
                 <Stack spacing={1}>
@@ -296,6 +308,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
                   <Button
                     variant="contained"
+                    sx={{ color: "#0f172a", fontWeight: 800 }}
                     disabled={!dispatchSettings?.enabled || dispatchBusy || dispatch?.status === "on_my_way"}
                     onClick={() => handleDispatchStatus("on_my_way")}
                   >
@@ -317,7 +330,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+            <Paper ref={photoSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Instructions</Typography>
               <Typography variant="body2" color="text.secondary">{workOrder.employee_visible_notes || "No employee instructions yet."}</Typography>
             </Paper>

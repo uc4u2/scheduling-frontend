@@ -6,8 +6,10 @@ import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 import MobileEmployeeHome, { employeeShortcutIconMap } from "../../components/employee/MobileEmployeeHome";
+import EmployeeWorkOrderDetailDialog from "../finance/employee/EmployeeWorkOrderDetailDialog";
 import api from "../../utils/api";
 import { payrollSetupApi } from "../../utils/api";
+import { listMyWorkOrders, updateMyWorkOrderDispatchStatus } from "../finance/financeApi";
 
 const getStoredDisplayName = () => {
   if (typeof window === "undefined") return "";
@@ -48,6 +50,11 @@ const RecruiterHomePage = () => {
   const [payrollOnboardingLoading, setPayrollOnboardingLoading] = useState(false);
   const [payrollOnboardingError, setPayrollOnboardingError] = useState("");
   const [payrollOnboardingActionLoading, setPayrollOnboardingActionLoading] = useState(false);
+  const [todayJobs, setTodayJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailSection, setDetailSection] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -119,6 +126,55 @@ const RecruiterHomePage = () => {
     };
   }, []);
 
+  const assignmentPreview = (assignments = [], timezone = "") => {
+    if (!assignments.length) return "No assignment details";
+    const first = assignments[0];
+    return `${first.work_date || "No date"}${first.start_time ? ` • ${first.start_time}` : ""}${first.end_time ? ` to ${first.end_time}` : ""}${first.timezone || timezone ? ` • ${first.timezone || timezone}` : ""}`;
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const loadJobs = async () => {
+      setJobsLoading(true);
+      try {
+        const res = await listMyWorkOrders({ page: 1, per_page: 10 });
+        if (!mounted) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const rows = Array.isArray(res?.items) ? res.items : [];
+        const todayOnly = rows.filter((row) => Array.isArray(row.assignments) && row.assignments.some((assignment) => assignment.work_date === today));
+        setTodayJobs(todayOnly.slice(0, 3));
+      } catch {
+        if (mounted) setTodayJobs([]);
+      } finally {
+        if (mounted) setJobsLoading(false);
+      }
+    };
+    loadJobs();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const openJobDetail = (job, section = "") => {
+    setSelectedWorkOrderId(job?.id || null);
+    setDetailSection(section);
+    setDetailOpen(true);
+  };
+
+  const handleDispatchJob = async (job, status) => {
+    if (!job?.id) return;
+    try {
+      await updateMyWorkOrderDispatchStatus(job.id, { status });
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await listMyWorkOrders({ page: 1, per_page: 10 });
+      const rows = Array.isArray(res?.items) ? res.items : [];
+      const todayOnly = rows.filter((row) => Array.isArray(row.assignments) && row.assignments.some((assignment) => assignment.work_date === today));
+      setTodayJobs(todayOnly.slice(0, 3));
+    } catch {
+      // leave existing UI state unchanged
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     const loadPayrollOnboarding = async () => {
@@ -167,6 +223,7 @@ const RecruiterHomePage = () => {
     { label: "Time Off", icon: employeeShortcutIconMap["time-off"], onClick: () => navigate(`${basePath}/my-time`) },
     { label: "Shift Swap", icon: employeeShortcutIconMap["shift-swap"], onClick: () => navigate(`${basePath}/my-time`) },
     { label: "My Work Orders", icon: employeeShortcutIconMap["work-orders"], onClick: () => navigate(`${basePath}/work-orders`) },
+    { label: "Add Job Photo", icon: employeeShortcutIconMap["work-orders"], onClick: () => navigate(`${basePath}/work-orders`) },
     { label: "My Field Reports", icon: employeeShortcutIconMap["field-reports"], onClick: () => navigate(`${basePath}/field-reports`) },
     { label: "Training", icon: employeeShortcutIconMap.training, onClick: () => navigate(`${basePath}/my-training`) },
     { label: "Communications", icon: employeeShortcutIconMap.communications, onClick: () => navigate(`${basePath}/communications`) },
@@ -246,8 +303,27 @@ const RecruiterHomePage = () => {
           managerViewingEmployee={managerViewingEmployee}
           onBackToManager={() => navigate("/manager/dashboard")}
           shortcuts={shortcuts}
+          todaysJobs={jobsLoading ? [] : todayJobs.map((job) => ({
+            ...job,
+            dispatch_status: String(job?.dispatch?.status || "not_started").toLowerCase(),
+            assignment_preview: assignmentPreview(job.assignments, job.timezone),
+          }))}
+          onOpenJob={(job) => openJobDetail(job)}
+          onAddPhoto={(job) => openJobDetail(job, "photos")}
+          onDispatchJob={handleDispatchJob}
         />
       </Stack>
+
+      <EmployeeWorkOrderDetailDialog
+        open={detailOpen}
+        workOrderId={selectedWorkOrderId}
+        initialSection={detailSection}
+        onClose={() => {
+          setDetailOpen(false);
+          setDetailSection("");
+          setSelectedWorkOrderId(null);
+        }}
+      />
     </ManagementFrame>
   );
 };
