@@ -28,6 +28,7 @@ import Supercluster from "supercluster";
 import "leaflet/dist/leaflet.css";
 import ManagementFrame from "../../../components/ui/ManagementFrame";
 import FinanceMetricCard from "../../finance/components/FinanceMetricCard";
+import api from "../../../utils/api";
 import {
   createWorkOrderDispatchLink,
   getDispatchRoute,
@@ -265,6 +266,8 @@ export default function DispatchTrackingPanel() {
   const [settings, setSettings] = useState(null);
   const [filtersApplied, setFiltersApplied] = useState(null);
   const [filterOptions, setFilterOptions] = useState({ employees: [], departments: [], clients: [], work_orders: [] });
+  const [rosterEmployees, setRosterEmployees] = useState([]);
+  const [rosterDepartments, setRosterDepartments] = useState([]);
   const [activity, setActivity] = useState([]);
   const [selectedDispatchId, setSelectedDispatchId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -287,6 +290,71 @@ export default function DispatchTrackingPanel() {
     work_order_id: "",
     preset: "",
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRosterFilters = async () => {
+      try {
+        const [employeesRes, departmentsRes] = await Promise.all([
+          api.get("/manager/recruiters"),
+          api.get("/api/departments"),
+        ]);
+        if (cancelled) return;
+
+        const recruiterRows = Array.isArray(employeesRes?.data?.recruiters)
+          ? employeesRes.data.recruiters
+          : Array.isArray(employeesRes?.data)
+          ? employeesRes.data
+          : [];
+        const departmentRows = Array.isArray(departmentsRes?.data)
+          ? departmentsRes.data
+          : Array.isArray(departmentsRes?.data?.departments)
+          ? departmentsRes.data.departments
+          : [];
+
+        setRosterEmployees(
+          recruiterRows
+            .map((row) => {
+              const firstName = row?.first_name || row?.firstName || "";
+              const lastName = row?.last_name || row?.lastName || "";
+              const email = row?.email || row?.user_email || "";
+              const label =
+                row?.name ||
+                row?.full_name ||
+                `${firstName} ${lastName}`.trim() ||
+                email ||
+                (row?.id ? `#${row.id}` : "Team member");
+              return {
+                ...row,
+                id: row?.id,
+                label,
+                department_id: row?.department_id ?? row?.departmentId ?? "",
+              };
+            })
+            .filter((row) => row.id)
+        );
+
+        setRosterDepartments(
+          departmentRows
+            .map((row) => ({
+              id: row?.id,
+              label: row?.name || row?.label || (row?.id ? `Department #${row.id}` : ""),
+            }))
+            .filter((row) => row.id && row.label)
+        );
+      } catch (_err) {
+        if (cancelled) return;
+        setRosterEmployees([]);
+        setRosterDepartments([]);
+      }
+    };
+
+    loadRosterFilters();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -412,6 +480,29 @@ export default function DispatchTrackingPanel() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleDepartmentChange = (event) => {
+    const value = event.target.value;
+    setFilters((prev) => {
+      let nextEmployeeId = prev.employee_id;
+      if (
+        value &&
+        nextEmployeeId &&
+        !rosterEmployees.some(
+          (employee) =>
+            String(employee.id) === String(nextEmployeeId) &&
+            String(employee.department_id || "") === String(value)
+        )
+      ) {
+        nextEmployeeId = "";
+      }
+      return {
+        ...prev,
+        department_id: value,
+        employee_id: nextEmployeeId,
+      };
+    });
+  };
+
   const presetFilteredItems = useMemo(() => {
     if (filters.preset === "needs_attention") {
       return items.filter((row) => row.is_stale || (String(row.status || "").toLowerCase() === "on_my_way" && !row.location?.captured_at));
@@ -424,6 +515,13 @@ export default function DispatchTrackingPanel() {
     }
     return items;
   }, [filters.preset, items]);
+
+  const visibleEmployees = useMemo(() => {
+    if (!filters.department_id) return rosterEmployees;
+    return rosterEmployees.filter(
+      (employee) => String(employee.department_id || "") === String(filters.department_id)
+    );
+  }, [filters.department_id, rosterEmployees]);
 
   useEffect(() => {
     setSelectedDispatchId((prev) => (presetFilteredItems.some((row) => row.id === prev) ? prev : presetFilteredItems[0]?.id || null));
@@ -592,7 +690,7 @@ export default function DispatchTrackingPanel() {
                     sx={{ minWidth: { xs: "100%", md: 180 } }}
                   >
                     <MenuItem value="">All employees</MenuItem>
-                    {(filterOptions.employees || []).map((option) => (
+                    {visibleEmployees.map((option) => (
                       <MenuItem key={option.id} value={String(option.id)}>{option.label}</MenuItem>
                     ))}
                   </TextField>
@@ -601,11 +699,11 @@ export default function DispatchTrackingPanel() {
                     size="small"
                     label="Department"
                     value={filters.department_id}
-                    onChange={(event) => updateFilter("department_id", event.target.value)}
+                    onChange={handleDepartmentChange}
                     sx={{ minWidth: { xs: "100%", md: 180 } }}
                   >
                     <MenuItem value="">All departments</MenuItem>
-                    {(filterOptions.departments || []).map((option) => (
+                    {rosterDepartments.map((option) => (
                       <MenuItem key={option.id} value={String(option.id)}>{option.label}</MenuItem>
                     ))}
                   </TextField>
