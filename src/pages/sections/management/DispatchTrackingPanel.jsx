@@ -226,7 +226,7 @@ export default function DispatchTrackingPanel() {
   const [summary, setSummary] = useState(null);
   const [settings, setSettings] = useState(null);
   const [filtersApplied, setFiltersApplied] = useState(null);
-  const [filterOptions, setFilterOptions] = useState({ employees: [], clients: [], work_orders: [] });
+  const [filterOptions, setFilterOptions] = useState({ employees: [], departments: [], clients: [], work_orders: [] });
   const [activity, setActivity] = useState([]);
   const [selectedDispatchId, setSelectedDispatchId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -241,6 +241,7 @@ export default function DispatchTrackingPanel() {
     date_from: "",
     date_to: "",
     employee_id: "",
+    department_id: "",
     client_id: "",
     work_order_id: "",
     preset: "",
@@ -257,6 +258,7 @@ export default function DispatchTrackingPanel() {
         date_from: filters.date === "custom" ? filters.date_from || undefined : undefined,
         date_to: filters.date === "custom" ? filters.date_to || undefined : undefined,
         employee_id: filters.employee_id || undefined,
+        department_id: filters.department_id || undefined,
         client_id: filters.client_id || undefined,
         work_order_id: filters.work_order_id || undefined,
       };
@@ -266,7 +268,7 @@ export default function DispatchTrackingPanel() {
       setSummary(res?.summary || null);
       setSettings(res?.settings || null);
       setFiltersApplied(res?.filters_applied || null);
-      setFilterOptions(res?.filter_options || { employees: [], clients: [], work_orders: [] });
+      setFilterOptions(res?.filter_options || { employees: [], departments: [], clients: [], work_orders: [] });
       setSelectedDispatchId((prev) => (nextItems.some((row) => row.id === prev) ? prev : nextItems[0]?.id || null));
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to load dispatch trips.");
@@ -293,6 +295,7 @@ export default function DispatchTrackingPanel() {
         dispatch_state_id: selectedDispatchId || undefined,
         search: filters.search || undefined,
         employee_id: filters.employee_id || undefined,
+        department_id: filters.department_id || undefined,
         client_id: filters.client_id || undefined,
         work_order_id: filters.work_order_id || undefined,
         limit: 25,
@@ -303,15 +306,15 @@ export default function DispatchTrackingPanel() {
     } finally {
       setActivityLoading(false);
     }
-  }, [filters.search, filters.employee_id, filters.client_id, filters.work_order_id, selectedDispatchId]);
+  }, [filters.search, filters.employee_id, filters.department_id, filters.client_id, filters.work_order_id, selectedDispatchId]);
 
   useEffect(() => {
-    if (!selectedDispatchId && !filters.search && !filters.employee_id && !filters.client_id && !filters.work_order_id) {
+    if (!selectedDispatchId && !filters.search && !filters.employee_id && !filters.department_id && !filters.client_id && !filters.work_order_id) {
       setActivity([]);
       return;
     }
     loadActivity();
-  }, [loadActivity, selectedDispatchId, filters.search, filters.employee_id, filters.client_id, filters.work_order_id]);
+  }, [loadActivity, selectedDispatchId, filters.search, filters.employee_id, filters.department_id, filters.client_id, filters.work_order_id]);
 
   const handleCreateOrCopyLink = async (row) => {
     if (!row?.work_order_id || !row?.recruiter_id) return;
@@ -489,6 +492,19 @@ export default function DispatchTrackingPanel() {
                   <TextField
                     select
                     size="small"
+                    label="Department"
+                    value={filters.department_id}
+                    onChange={(event) => updateFilter("department_id", event.target.value)}
+                    sx={{ minWidth: { xs: "100%", md: 180 } }}
+                  >
+                    <MenuItem value="">All departments</MenuItem>
+                    {(filterOptions.departments || []).map((option) => (
+                      <MenuItem key={option.id} value={String(option.id)}>{option.label}</MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    size="small"
                     label="Client"
                     value={filters.client_id}
                     onChange={(event) => updateFilter("client_id", event.target.value)}
@@ -598,6 +614,11 @@ export default function DispatchTrackingPanel() {
                             <Typography variant="body2" color="text.secondary">
                               {[row.work_order_number, row.work_order_title, row.client_name].filter(Boolean).join(" • ")}
                             </Typography>
+                            {row.department_name ? (
+                              <Typography variant="caption" color="text.secondary">
+                                Department: {row.department_name}
+                              </Typography>
+                            ) : null}
                             <Typography variant="body2" color="text.secondary">
                               {row.destination || "No destination set"}
                             </Typography>
@@ -637,116 +658,124 @@ export default function DispatchTrackingPanel() {
 
               <Grid item xs={12} lg={8}>
                 <Stack spacing={2}>
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
-                      <Box>
-                        <Typography fontWeight={800}>Selected trip details</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {selectedRow ? "Use this panel to review the trip state, link status, and the last audit checkpoints." : "Select a trip from the list or map to focus dispatch details here."}
-                        </Typography>
-                      </Box>
-                      {selectedRow ? (
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          <Chip size="small" label={String(selectedRow.status || "").replaceAll("_", " ")} color={statusChipColor(selectedRow.status)} variant="outlined" />
-                          {selectedRow.is_stale ? <Chip size="small" label="Stale" color="warning" variant="outlined" /> : null}
-                          <Chip size="small" label={`Link: ${selectedLinkStatus}`} variant="outlined" />
-                        </Stack>
-                      ) : null}
-                    </Stack>
-                    {selectedRow ? (
-                      <Stack spacing={1.25} sx={{ mt: 1.75 }}>
-                        <Grid container spacing={1.5}>
-                          <Grid item xs={12} sm={6}>
-                            <Typography variant="caption" color="text.secondary">Employee</Typography>
-                            <Typography fontWeight={700}>{selectedRow.recruiter_name || "Assigned employee"}</Typography>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <Typography variant="caption" color="text.secondary">Client</Typography>
-                            <Typography fontWeight={700}>{selectedRow.client_name || "No client linked"}</Typography>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <Typography variant="caption" color="text.secondary">Work order</Typography>
-                            <Typography fontWeight={700}>{[selectedRow.work_order_number, selectedRow.work_order_title].filter(Boolean).join(" • ") || "—"}</Typography>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <Typography variant="caption" color="text.secondary">Destination</Typography>
-                            <Typography fontWeight={700}>{selectedRow.destination || "No destination set"}</Typography>
-                          </Grid>
-                        </Grid>
-                        <Divider flexItem />
-                        <Stack spacing={0.75}>
-                          {selectedAuditSummary.map((line) => (
-                            <Typography key={line} variant="body2" color="text.secondary">{line}</Typography>
-                          ))}
-                          {!selectedAuditSummary.length ? (
-                            <Typography variant="body2" color="text.secondary">No audit checkpoints have been recorded for this trip yet.</Typography>
+                  <Grid container spacing={2} alignItems="stretch">
+                    <Grid item xs={12} xl={5}>
+                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: "100%" }}>
+                        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                          <Box>
+                            <Typography fontWeight={800}>Selected trip details</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {selectedRow ? "Focused trip state, link status, and the latest dispatch checkpoints." : "Select a trip from the list or map to focus it here."}
+                            </Typography>
+                          </Box>
+                          {selectedRow ? (
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Chip size="small" label={String(selectedRow.status || "").replaceAll("_", " ")} color={statusChipColor(selectedRow.status)} variant="outlined" />
+                              {selectedRow.is_stale ? <Chip size="small" label="Stale" color="warning" variant="outlined" /> : null}
+                              <Chip size="small" label={`Link: ${selectedLinkStatus}`} variant="outlined" />
+                            </Stack>
                           ) : null}
                         </Stack>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          <Button size="small" variant="outlined" onClick={() => navigate("/manager/dashboard?view=finance-work-orders")}>
-                            Open work order
-                          </Button>
-                          {selectedRow.client_id ? (
-                            <Button size="small" variant="outlined" onClick={() => navigate(`/manager/clients/${selectedRow.client_id}`)}>
-                              Open client
-                            </Button>
-                          ) : null}
-                          {selectedRow.map_url ? (
-                            <Button size="small" variant="outlined" component="a" href={selectedRow.map_url} target="_blank" rel="noreferrer">
-                              Open map
-                            </Button>
-                          ) : null}
-                          <Button size="small" variant="outlined" startIcon={<ContentCopyOutlinedIcon />} onClick={() => handleCreateOrCopyLink(selectedRow)} disabled={Boolean(busyKey)}>
-                            {busyKey === `copy-${selectedRow.id}` ? "Working..." : selectedRow.public_url ? "Copy tracking link" : "Create tracking link"}
-                          </Button>
-                          <Button size="small" variant="outlined" startIcon={<MailOutlineOutlinedIcon />} onClick={() => handleSend(selectedRow)} disabled={Boolean(busyKey)}>
-                            {busyKey === `send-${selectedRow.id}` ? "Sending..." : "Send to client"}
-                          </Button>
-                          {selectedRow.public_url ? (
-                            <Button size="small" variant="outlined" startIcon={<OpenInNewOutlinedIcon />} component="a" href={selectedRow.public_url} target="_blank" rel="noreferrer">
-                              Open tracking page
-                            </Button>
-                          ) : null}
-                          {selectedRow.public_url ? (
-                            <Button size="small" color="warning" variant="text" startIcon={<LinkOffOutlinedIcon />} onClick={() => handleRevoke(selectedRow)} disabled={Boolean(busyKey)}>
-                              {busyKey === `revoke-${selectedRow.id}` ? "Revoking..." : "Revoke link"}
-                            </Button>
-                          ) : null}
-                        </Stack>
-                      </Stack>
-                    ) : null}
-                  </Paper>
+                        {selectedRow ? (
+                          <Stack spacing={1} sx={{ mt: 1.25 }}>
+                            <Grid container spacing={1.25}>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary">Employee</Typography>
+                                <Typography fontWeight={700}>{selectedRow.recruiter_name || "Assigned employee"}</Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary">Client</Typography>
+                                <Typography fontWeight={700}>{selectedRow.client_name || "No client linked"}</Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary">Work order</Typography>
+                                <Typography fontWeight={700}>{[selectedRow.work_order_number, selectedRow.work_order_title].filter(Boolean).join(" • ") || "—"}</Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="caption" color="text.secondary">Department</Typography>
+                                <Typography fontWeight={700}>{selectedRow.department_name || "Unassigned"}</Typography>
+                              </Grid>
+                            </Grid>
+                            <Stack spacing={0.5}>
+                              {selectedAuditSummary.map((line) => (
+                                <Typography key={line} variant="caption" color="text.secondary">{line}</Typography>
+                              ))}
+                              {!selectedAuditSummary.length ? (
+                                <Typography variant="caption" color="text.secondary">No audit checkpoints recorded yet.</Typography>
+                              ) : null}
+                            </Stack>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Button size="small" variant="outlined" onClick={() => navigate("/manager/dashboard?view=finance-work-orders")}>
+                                Open work order
+                              </Button>
+                              {selectedRow.client_id ? (
+                                <Button size="small" variant="outlined" onClick={() => navigate(`/manager/clients/${selectedRow.client_id}`)}>
+                                  Open client
+                                </Button>
+                              ) : null}
+                              {selectedRow.map_url ? (
+                                <Button size="small" variant="outlined" component="a" href={selectedRow.map_url} target="_blank" rel="noreferrer">
+                                  Open map
+                                </Button>
+                              ) : null}
+                            </Stack>
+                            <Divider flexItem />
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Button size="small" variant="outlined" startIcon={<ContentCopyOutlinedIcon />} onClick={() => handleCreateOrCopyLink(selectedRow)} disabled={Boolean(busyKey)}>
+                                {busyKey === `copy-${selectedRow.id}` ? "Working..." : selectedRow.public_url ? "Copy tracking link" : "Create link"}
+                              </Button>
+                              <Button size="small" variant="outlined" startIcon={<MailOutlineOutlinedIcon />} onClick={() => handleSend(selectedRow)} disabled={Boolean(busyKey)}>
+                                {busyKey === `send-${selectedRow.id}` ? "Sending..." : "Send to client"}
+                              </Button>
+                              {selectedRow.public_url ? (
+                                <Button size="small" variant="outlined" startIcon={<OpenInNewOutlinedIcon />} component="a" href={selectedRow.public_url} target="_blank" rel="noreferrer">
+                                  Open tracking page
+                                </Button>
+                              ) : null}
+                              {selectedRow.public_url ? (
+                                <Button size="small" color="warning" variant="text" startIcon={<LinkOffOutlinedIcon />} onClick={() => handleRevoke(selectedRow)} disabled={Boolean(busyKey)}>
+                                  {busyKey === `revoke-${selectedRow.id}` ? "Revoking..." : "Revoke link"}
+                                </Button>
+                              ) : null}
+                            </Stack>
+                          </Stack>
+                        ) : null}
+                      </Paper>
+                    </Grid>
 
-                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, height: 420, overflow: "hidden" }}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <RoomOutlinedIcon fontSize="small" />
-                      <Typography fontWeight={800}>Live trip map</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Nearby employees cluster automatically so the map stays readable when many trips are active.
-                      </Typography>
-                    </Stack>
-                    {mapPoints.length ? (
-                      <Box sx={{ height: 360, borderRadius: 2, overflow: "hidden" }}>
-                        <MapContainer center={[43.6532, -79.3832]} zoom={5} style={{ height: "100%", width: "100%" }}>
-                          <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          />
-                          <FitMapToPoints items={mapPoints} />
-                          <FocusSelectedTrip row={selectedRow} />
-                          <MapBoundsWatcher onChange={setMapState} />
-                          <DispatchMapMarkers
-                            clusters={clusters}
-                            clusterIndex={clusterIndex}
-                            selectedDispatchId={selectedDispatchId}
-                            onSelect={setSelectedDispatchId}
-                          />
-                        </MapContainer>
-                      </Box>
-                    ) : (
-                      <Alert severity="info">No live locations yet. The map will populate after employees tap On my way and the app sends a location ping.</Alert>
-                    )}
-                  </Paper>
+                    <Grid item xs={12} xl={7}>
+                      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, height: "100%", overflow: "hidden" }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                          <RoomOutlinedIcon fontSize="small" />
+                          <Typography fontWeight={800}>Live trip map</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Nearby employees cluster automatically so the map stays readable when many trips are active.
+                          </Typography>
+                        </Stack>
+                        {mapPoints.length ? (
+                          <Box sx={{ height: 360, borderRadius: 2, overflow: "hidden" }}>
+                            <MapContainer center={[43.6532, -79.3832]} zoom={5} style={{ height: "100%", width: "100%" }}>
+                              <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              />
+                              <FitMapToPoints items={mapPoints} />
+                              <FocusSelectedTrip row={selectedRow} />
+                              <MapBoundsWatcher onChange={setMapState} />
+                              <DispatchMapMarkers
+                                clusters={clusters}
+                                clusterIndex={clusterIndex}
+                                selectedDispatchId={selectedDispatchId}
+                                onSelect={setSelectedDispatchId}
+                              />
+                            </MapContainer>
+                          </Box>
+                        ) : (
+                          <Alert severity="info">No live locations yet. The map will populate after employees tap On my way and the app sends a location ping.</Alert>
+                        )}
+                      </Paper>
+                    </Grid>
+                  </Grid>
 
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
