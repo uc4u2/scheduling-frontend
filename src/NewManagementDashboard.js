@@ -191,6 +191,13 @@ const menuConfig = [
     icon: <RocketLaunchOutlined />,
     tooltip: "Guided shortcuts for setup, bookings, finance, products, and website actions.",
   },
+  {
+    label: "Dispatch",
+    navLabel: "Dispatch",
+    key: "dispatch-tracking",
+    icon: <History />,
+    tooltip: "Live On my way trips, clustered map visibility, and dispatch activity logs.",
+  },
 
   // Employee group (first)
   {
@@ -206,7 +213,6 @@ const menuConfig = [
       { labelKey: "manager.menu.training", key: "training", icon: <Assignment /> },
       { label: "Communications", key: "communications", icon: <Article /> },
       { label: "Field Photos", key: "field-photos", icon: <PhotoCameraIcon /> },
-      { label: "Dispatch", key: "dispatch-tracking", icon: <History /> },
     ],
   },
 
@@ -1763,6 +1769,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     if (canManageShifts || canManageOnboarding || canManagePayroll) allowedGroups.add("shifts-group");
     if (canManagePayroll) allowedGroups.add("payroll-group");
     if (canManagePayroll) allowedGroups.add("finance-group");
+    if (canManagePayroll || canManageShifts) allowedGroups.add("dispatch-tracking");
     const base = menuConfig
       .filter((item) => allowedGroups.has(item.key))
       .map((item) => {

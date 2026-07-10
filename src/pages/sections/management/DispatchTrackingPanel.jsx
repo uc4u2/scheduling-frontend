@@ -60,6 +60,13 @@ const statusMarkerColor = (row) => {
 
 const formatDateTime = (value, timezone) => (value ? formatDateTimeInTz(value, timezone, "LLL d, yyyy h:mm a") : "—");
 
+const neutralFilterChipSx = (selected) => ({
+  bgcolor: selected ? "rgba(37, 99, 235, 0.16)" : "transparent",
+  color: selected ? "#1d4ed8" : "text.primary",
+  borderColor: selected ? "rgba(37, 99, 235, 0.45)" : "divider",
+  fontWeight: selected ? 700 : 600,
+});
+
 function FitMapToPoints({ items }) {
   const map = useMap();
   useEffect(() => {
@@ -280,7 +287,7 @@ export default function DispatchTrackingPanel() {
               <Stack spacing={1.5}>
                 <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between">
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Chip label="Today" color={filters.date === "today" ? "primary" : "default"} variant={filters.date === "today" ? "filled" : "outlined"} onClick={() => updateFilter("date", "today")} />
+                    <Chip label="Today" variant={filters.date === "today" ? "filled" : "outlined"} sx={neutralFilterChipSx(filters.date === "today")} onClick={() => updateFilter("date", "today")} />
                     <Chip label="Tomorrow" color={filters.date === "tomorrow" ? "primary" : "default"} variant={filters.date === "tomorrow" ? "filled" : "outlined"} onClick={() => updateFilter("date", "tomorrow")} />
                     <Chip label="Custom" color={filters.date === "custom" ? "primary" : "default"} variant={filters.date === "custom" ? "filled" : "outlined"} onClick={() => updateFilter("date", "custom")} />
                     <Chip label="All dates" color={filters.date === "all" ? "primary" : "default"} variant={filters.date === "all" ? "filled" : "outlined"} onClick={() => updateFilter("date", "all")} />
@@ -296,7 +303,7 @@ export default function DispatchTrackingPanel() {
                     sx={{ minWidth: { xs: "100%", lg: 320 } }}
                   />
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-                    <Chip label="Active" color={filters.status === "active" ? "primary" : "default"} variant={filters.status === "active" ? "filled" : "outlined"} onClick={() => updateFilter("status", "active")} />
+                    <Chip label="Active" variant={filters.status === "active" ? "filled" : "outlined"} sx={neutralFilterChipSx(filters.status === "active")} onClick={() => updateFilter("status", "active")} />
                     <Chip label="On my way" color={filters.status === "on_my_way" ? "primary" : "default"} variant={filters.status === "on_my_way" ? "filled" : "outlined"} onClick={() => updateFilter("status", "on_my_way")} />
                     <Chip label="Arrived" color={filters.status === "arrived" ? "primary" : "default"} variant={filters.status === "arrived" ? "filled" : "outlined"} onClick={() => updateFilter("status", "arrived")} />
                     <Chip label="All statuses" color={filters.status === "all" ? "primary" : "default"} variant={filters.status === "all" ? "filled" : "outlined"} onClick={() => updateFilter("status", "all")} />
