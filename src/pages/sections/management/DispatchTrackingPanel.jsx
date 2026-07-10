@@ -69,6 +69,15 @@ const neutralFilterChipSx = (selected) => ({
   fontWeight: selected ? 700 : 600,
 });
 
+const stalePulseSx = {
+  animation: "dispatchStalePulse 1.8s ease-in-out infinite",
+  "@keyframes dispatchStalePulse": {
+    "0%": { boxShadow: "0 0 0 0 rgba(217, 119, 6, 0.18)" },
+    "70%": { boxShadow: "0 0 0 8px rgba(217, 119, 6, 0)" },
+    "100%": { boxShadow: "0 0 0 0 rgba(217, 119, 6, 0)" },
+  },
+};
+
 function FitMapToPoints({ items }) {
   const map = useMap();
   useEffect(() => {
@@ -232,6 +241,7 @@ export default function DispatchTrackingPanel() {
     employee_id: "",
     client_id: "",
     work_order_id: "",
+    preset: "",
   });
 
   const load = useCallback(async () => {
@@ -265,6 +275,13 @@ export default function DispatchTrackingPanel() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      load();
+    }, 30000);
+    return () => window.clearInterval(intervalId);
   }, [load]);
 
   const loadActivity = useCallback(async () => {
@@ -349,14 +366,31 @@ export default function DispatchTrackingPanel() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const presetFilteredItems = useMemo(() => {
+    if (filters.preset === "needs_attention") {
+      return items.filter((row) => row.is_stale || (String(row.status || "").toLowerCase() === "on_my_way" && !row.location?.captured_at));
+    }
+    if (filters.preset === "links_sent") {
+      return items.filter((row) => Boolean(row.last_client_email_sent_at));
+    }
+    if (filters.preset === "no_location") {
+      return items.filter((row) => !row.location?.captured_at);
+    }
+    return items;
+  }, [filters.preset, items]);
+
+  useEffect(() => {
+    setSelectedDispatchId((prev) => (presetFilteredItems.some((row) => row.id === prev) ? prev : presetFilteredItems[0]?.id || null));
+  }, [presetFilteredItems]);
+
   const selectedRow = useMemo(
-    () => items.find((row) => row.id === selectedDispatchId) || null,
-    [items, selectedDispatchId]
+    () => presetFilteredItems.find((row) => row.id === selectedDispatchId) || null,
+    [presetFilteredItems, selectedDispatchId]
   );
 
   const mapPoints = useMemo(
-    () => items.filter((row) => Number.isFinite(row?.location?.lat) && Number.isFinite(row?.location?.lng)),
-    [items]
+    () => presetFilteredItems.filter((row) => Number.isFinite(row?.location?.lat) && Number.isFinite(row?.location?.lng)),
+    [presetFilteredItems]
   );
 
   const geoPoints = useMemo(
@@ -483,6 +517,29 @@ export default function DispatchTrackingPanel() {
                     <Chip label="All statuses" color={filters.status === "all" ? "primary" : "default"} variant={filters.status === "all" ? "filled" : "outlined"} onClick={() => updateFilter("status", "all")} />
                   </Stack>
                 </Stack>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                  <Chip
+                    label="Needs attention"
+                    variant={filters.preset === "needs_attention" ? "filled" : "outlined"}
+                    color={filters.preset === "needs_attention" ? "warning" : "default"}
+                    onClick={() => updateFilter("preset", filters.preset === "needs_attention" ? "" : "needs_attention")}
+                  />
+                  <Chip
+                    label="Links sent"
+                    variant={filters.preset === "links_sent" ? "filled" : "outlined"}
+                    color={filters.preset === "links_sent" ? "success" : "default"}
+                    onClick={() => updateFilter("preset", filters.preset === "links_sent" ? "" : "links_sent")}
+                  />
+                  <Chip
+                    label="No location yet"
+                    variant={filters.preset === "no_location" ? "filled" : "outlined"}
+                    color={filters.preset === "no_location" ? "warning" : "default"}
+                    onClick={() => updateFilter("preset", filters.preset === "no_location" ? "" : "no_location")}
+                  />
+                  {filters.preset ? (
+                    <Chip label="Clear preset" variant="outlined" onClick={() => updateFilter("preset", "")} />
+                  ) : null}
+                </Stack>
                 {filters.date === "custom" ? (
                   <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
                     <TextField size="small" label="From" type="date" value={filters.date_from} onChange={(event) => updateFilter("date_from", event.target.value)} InputLabelProps={{ shrink: true }} />
@@ -491,7 +548,7 @@ export default function DispatchTrackingPanel() {
                 ) : null}
                 {filtersApplied ? (
                   <Typography variant="caption" color="text.secondary">
-                    Showing {summary?.matching_trips || 0} trip{Number(summary?.matching_trips || 0) === 1 ? "" : "s"} for {filtersApplied.date === "today" ? "today" : filtersApplied.date === "tomorrow" ? "tomorrow" : filtersApplied.date === "custom" ? "the selected dates" : "all dates"}.
+                    Showing {presetFilteredItems.length} trip{Number(presetFilteredItems.length || 0) === 1 ? "" : "s"} for {filtersApplied.date === "today" ? "today" : filtersApplied.date === "tomorrow" ? "tomorrow" : filtersApplied.date === "custom" ? "the selected dates" : "all dates"}{filters.preset ? " with the selected preset." : "."}
                   </Typography>
                 ) : null}
               </Stack>
@@ -512,10 +569,10 @@ export default function DispatchTrackingPanel() {
               </Grid>
             </Grid>
 
-            <Grid container spacing={2} alignItems="stretch">
-              <Grid item xs={12} lg={5}>
+            <Grid container spacing={2} alignItems="flex-start">
+              <Grid item xs={12} lg={4}>
                 <Stack spacing={1.5}>
-                  {items.length ? items.map((row) => (
+                  {presetFilteredItems.length ? presetFilteredItems.map((row) => (
                     <Paper
                       key={row.id}
                       variant="outlined"
@@ -524,6 +581,7 @@ export default function DispatchTrackingPanel() {
                         borderRadius: 2,
                         borderColor: row.id === selectedDispatchId ? "primary.main" : "divider",
                         cursor: "pointer",
+                        ...(row.is_stale ? stalePulseSx : null),
                       }}
                       onClick={() => setSelectedDispatchId(row.id)}
                     >
@@ -562,48 +620,20 @@ export default function DispatchTrackingPanel() {
                                 No location ping yet
                               </Typography>
                             )}
+                            <Button size="small" variant={row.id === selectedDispatchId ? "contained" : "outlined"} onClick={(event) => { event.stopPropagation(); setSelectedDispatchId(row.id); }}>
+                              {row.id === selectedDispatchId ? "Selected" : "Review trip"}
+                            </Button>
                           </Stack>
-                        </Stack>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                          <Button size="small" variant="outlined" onClick={(event) => { event.stopPropagation(); navigate("/manager/dashboard?view=finance-work-orders"); }}>
-                            Open work order
-                          </Button>
-                          {row.client_id ? (
-                            <Button size="small" variant="outlined" onClick={(event) => { event.stopPropagation(); navigate(`/manager/clients/${row.client_id}`); }}>
-                              Open client
-                            </Button>
-                          ) : null}
-                          {row.map_url ? (
-                            <Button size="small" variant="outlined" component="a" href={row.map_url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-                              Open map
-                            </Button>
-                          ) : null}
-                          <Button size="small" variant="outlined" startIcon={<ContentCopyOutlinedIcon />} onClick={(event) => { event.stopPropagation(); handleCreateOrCopyLink(row); }} disabled={Boolean(busyKey)}>
-                            {busyKey === `copy-${row.id}` ? "Working..." : row.public_url ? "Copy tracking link" : "Create tracking link"}
-                          </Button>
-                          <Button size="small" variant="outlined" startIcon={<MailOutlineOutlinedIcon />} onClick={(event) => { event.stopPropagation(); handleSend(row); }} disabled={Boolean(busyKey)}>
-                            {busyKey === `send-${row.id}` ? "Sending..." : "Send to client"}
-                          </Button>
-                          {row.public_url ? (
-                            <Button size="small" variant="outlined" startIcon={<OpenInNewOutlinedIcon />} component="a" href={row.public_url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
-                              Open tracking page
-                            </Button>
-                          ) : null}
-                          {row.public_url ? (
-                            <Button size="small" color="warning" variant="text" startIcon={<LinkOffOutlinedIcon />} onClick={(event) => { event.stopPropagation(); handleRevoke(row); }} disabled={Boolean(busyKey)}>
-                              {busyKey === `revoke-${row.id}` ? "Revoking..." : "Revoke link"}
-                            </Button>
-                          ) : null}
                         </Stack>
                       </Stack>
                     </Paper>
                   )) : (
-                    <Alert severity="info">No active On my way or Arrived trips yet.</Alert>
+                    <Alert severity="info">No dispatch trips match the current filters.</Alert>
                   )}
                 </Stack>
               </Grid>
 
-              <Grid item xs={12} lg={7}>
+              <Grid item xs={12} lg={8}>
                 <Stack spacing={2}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5}>
@@ -662,6 +692,22 @@ export default function DispatchTrackingPanel() {
                           {selectedRow.map_url ? (
                             <Button size="small" variant="outlined" component="a" href={selectedRow.map_url} target="_blank" rel="noreferrer">
                               Open map
+                            </Button>
+                          ) : null}
+                          <Button size="small" variant="outlined" startIcon={<ContentCopyOutlinedIcon />} onClick={() => handleCreateOrCopyLink(selectedRow)} disabled={Boolean(busyKey)}>
+                            {busyKey === `copy-${selectedRow.id}` ? "Working..." : selectedRow.public_url ? "Copy tracking link" : "Create tracking link"}
+                          </Button>
+                          <Button size="small" variant="outlined" startIcon={<MailOutlineOutlinedIcon />} onClick={() => handleSend(selectedRow)} disabled={Boolean(busyKey)}>
+                            {busyKey === `send-${selectedRow.id}` ? "Sending..." : "Send to client"}
+                          </Button>
+                          {selectedRow.public_url ? (
+                            <Button size="small" variant="outlined" startIcon={<OpenInNewOutlinedIcon />} component="a" href={selectedRow.public_url} target="_blank" rel="noreferrer">
+                              Open tracking page
+                            </Button>
+                          ) : null}
+                          {selectedRow.public_url ? (
+                            <Button size="small" color="warning" variant="text" startIcon={<LinkOffOutlinedIcon />} onClick={() => handleRevoke(selectedRow)} disabled={Boolean(busyKey)}>
+                              {busyKey === `revoke-${selectedRow.id}` ? "Revoking..." : "Revoke link"}
                             </Button>
                           ) : null}
                         </Stack>
