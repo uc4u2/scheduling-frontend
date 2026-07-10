@@ -22,7 +22,12 @@ export default function DocumentRequestUploadPage() {
   const { token } = useParams();
   const location = useLocation();
   const isClientRequest = location.pathname.startsWith("/client-document-request/");
-  const requestBasePath = isClientRequest ? "/api/client-document-requests" : "/api/document-requests";
+  const isEmployeeRequest = location.pathname.startsWith("/employee-document-request/");
+  const requestBasePath = isClientRequest
+    ? "/api/client-document-requests"
+    : isEmployeeRequest
+    ? "/api/employee-document-requests"
+    : "/api/document-requests";
   const [loading, setLoading] = useState(true);
   const [requestInfo, setRequestInfo] = useState(null);
   const [attachments, setAttachments] = useState([]);

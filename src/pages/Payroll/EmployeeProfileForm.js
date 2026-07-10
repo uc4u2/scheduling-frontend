@@ -30,6 +30,10 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -123,6 +127,25 @@ const normalizeApiUrl = (url) => {
   return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
+const getEmployeeDocumentRequestTemplate = (key) => {
+  if (key === "signed_agreement") {
+    return {
+      title: "Signed agreement",
+      category: "signed_document",
+      message: "Please review, sign, and upload the requested agreement so we can keep it with your employee profile.",
+      expiry_days: 7,
+      requestKind: "signed",
+    };
+  }
+  return {
+    title: "",
+    category: "other",
+    message: "",
+    expiry_days: 7,
+    requestKind: "general",
+  };
+};
+
 const formatProfileMoney = (value) => {
   const numeric = Number(value || 0);
   return Number.isFinite(numeric)
@@ -149,6 +172,16 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [docUploading, setDocUploading] = useState(false);
   const [docUploadError, setDocUploadError] = useState("");
   const [docUploadSuccess, setDocUploadSuccess] = useState(false);
+  const [documentRequests, setDocumentRequests] = useState([]);
+  const [docRequestsLoading, setDocRequestsLoading] = useState(false);
+  const [docRequestsError, setDocRequestsError] = useState("");
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestSaving, setRequestSaving] = useState(false);
+  const [requestDraft, setRequestDraft] = useState(getEmployeeDocumentRequestTemplate());
+  const [requestFiles, setRequestFiles] = useState([]);
+  const [cancellingRequestId, setCancellingRequestId] = useState(null);
+  const [deletingRequestId, setDeletingRequestId] = useState(null);
+  const [deletingRequestFileId, setDeletingRequestFileId] = useState(null);
   const [onboardingSending, setOnboardingSending] = useState(false);
   const [onboardingSendError, setOnboardingSendError] = useState("");
   const [onboardingSendSuccess, setOnboardingSendSuccess] = useState(false);
@@ -308,7 +341,7 @@ const FRONTEND_ORIGIN = (() => {
         loadRetirementPlan(flatData.country);
         loadRetirementElection(id, flatData.country);
       }
-      await fetchDocuments(id);
+      await Promise.all([fetchDocuments(id), fetchDocumentRequests(id)]);
     } catch (err) {
       console.error("Failed to fetch employee", err);
       setErrorKey("manager.employeeProfiles.messages.profileLoadFailed");
@@ -383,6 +416,21 @@ const FRONTEND_ORIGIN = (() => {
       setDocError("Unable to load documents for this employee.");
     } finally {
       setDocLoading(false);
+    }
+  };
+
+  const fetchDocumentRequests = async (empId) => {
+    if (!empId) return;
+    setDocRequestsLoading(true);
+    try {
+      const res = await api.get(`/manager/employees/${empId}/document-requests`);
+      setDocumentRequests(res.data?.requests || []);
+      setDocRequestsError("");
+    } catch (err) {
+      console.error("Failed to load employee document requests", err);
+      setDocRequestsError("Unable to load employee document requests.");
+    } finally {
+      setDocRequestsLoading(false);
     }
   };
 
@@ -462,6 +510,106 @@ const FRONTEND_ORIGIN = (() => {
       setOnboardingSendError(err?.response?.data?.error || "Failed to send onboarding event to Zapier.");
     } finally {
       setOnboardingSending(false);
+    }
+  };
+
+  const openEmployeeRequestDraft = (template = null) => {
+    setRequestDraft(template || getEmployeeDocumentRequestTemplate());
+    setRequestFiles([]);
+    setRequestDialogOpen(true);
+  };
+
+  const handleCreateEmployeeDocumentRequest = async () => {
+    if (!selectedId) return;
+    setRequestSaving(true);
+    setDocRequestsError("");
+    try {
+      const formData = new FormData();
+      if (String(requestDraft.title || "").trim()) formData.append("title", String(requestDraft.title).trim());
+      if (String(requestDraft.category || "").trim()) formData.append("category", String(requestDraft.category).trim());
+      if (String(requestDraft.message || "").trim()) formData.append("message", String(requestDraft.message).trim());
+      formData.append("expiry_days", String(Number(requestDraft.expiry_days || 7)));
+      Array.from(requestFiles || []).forEach((file) => formData.append("attachments", file));
+      await api.post(`/manager/employees/${selectedId}/document-requests`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setRequestDialogOpen(false);
+      setRequestFiles([]);
+      setRequestDraft(getEmployeeDocumentRequestTemplate());
+      await fetchDocumentRequests(selectedId);
+    } catch (err) {
+      console.error("Failed to create employee document request", err);
+      setDocRequestsError(err?.response?.data?.error || "Unable to create employee document request.");
+    } finally {
+      setRequestSaving(false);
+    }
+  };
+
+  const handleCopyEmployeeRequestLink = async (row) => {
+    if (!row?.token) return;
+    const origin =
+      (typeof window !== "undefined" && window.location.origin) ||
+      process.env.REACT_APP_FRONTEND_URL ||
+      "http://localhost:3000";
+    const link = `${origin.replace(/\/$/, "")}/employee-document-request/${row.token}`;
+    await navigator.clipboard.writeText(link);
+  };
+
+  const handleCancelEmployeeRequest = async (row) => {
+    if (!row?.id || !selectedId) return;
+    setCancellingRequestId(row.id);
+    try {
+      await api.post(`/manager/employees/${selectedId}/document-requests/${row.id}/cancel`, {});
+      await fetchDocumentRequests(selectedId);
+    } catch (err) {
+      console.error("Failed to cancel employee document request", err);
+      setDocRequestsError(err?.response?.data?.error || "Unable to cancel employee document request.");
+    } finally {
+      setCancellingRequestId(null);
+    }
+  };
+
+  const handleDeleteEmployeeRequest = async (row) => {
+    if (!row?.id || !selectedId) return;
+    if (!window.confirm("Delete this document request and all its attached files?")) return;
+    setDeletingRequestId(row.id);
+    try {
+      await api.delete(`/manager/employees/${selectedId}/document-requests/${row.id}`);
+      await fetchDocumentRequests(selectedId);
+    } catch (err) {
+      console.error("Failed to delete employee document request", err);
+      setDocRequestsError(err?.response?.data?.error || "Unable to delete employee document request.");
+    } finally {
+      setDeletingRequestId(null);
+    }
+  };
+
+  const handleDeleteEmployeeRequestFile = async (fileId) => {
+    if (!fileId) return;
+    if (!window.confirm("Delete this attached file?")) return;
+    setDeletingRequestFileId(fileId);
+    try {
+      await api.delete(`/manager/employee-document-files/${fileId}`);
+      await fetchDocumentRequests(selectedId);
+    } catch (err) {
+      console.error("Failed to delete employee request file", err);
+      setDocRequestsError(err?.response?.data?.error || "Unable to delete employee request file.");
+    } finally {
+      setDeletingRequestFileId(null);
+    }
+  };
+
+  const handleDownloadEmployeeRequestFile = async (file) => {
+    if (!file?.id) return;
+    try {
+      const res = await api.get(`/manager/employee-document-files/${file.id}/download`, { responseType: "blob" });
+      const contentType = res?.headers?.["content-type"] || file.content_type || "application/octet-stream";
+      const objectUrl = window.URL.createObjectURL(new Blob([res.data], { type: contentType }));
+      window.open(objectUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 30_000);
+    } catch (err) {
+      console.error("Failed to download employee request file", err);
+      setDocRequestsError(err?.response?.data?.error || "Unable to download the attached file.");
     }
   };
 
@@ -1381,7 +1529,7 @@ const FRONTEND_ORIGIN = (() => {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Chip size="small" label="Onboarding" color="primary" variant="outlined" />
                   <Typography variant="subtitle1" fontWeight={700}>
-                    Documents (Zapier / e-sign)
+                    Employee documents
                   </Typography>
                   <Tooltip title="How to wire this with Zapier and e-sign tools">
                     <IconButton size="small" onClick={() => setShowImageHelp((s) => !s)}>
@@ -1390,24 +1538,26 @@ const FRONTEND_ORIGIN = (() => {
                   </Tooltip>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  Signed contracts and onboarding files pushed via Zapier attach_document appear here.
+                  Send signed-document requests, collect uploads through a secure link, and keep returned files on this employee profile.
                 </Typography>
               </Stack>
-              <Stack direction="row" spacing={1}>
-                {isManager && (
-                  <Tooltip title="Triggers onboarding.started for this employee (Zapier can send contracts and start onboarding workflows)">
-                    <span>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        disabled={onboardingSending || !employee}
-                        onClick={handleSendOnboardingViaZapier}
-                      >
-                        {onboardingSending ? "Sending…" : "Send via Zapier"}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                )}
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={!employee}
+                  onClick={() => openEmployeeRequestDraft(getEmployeeDocumentRequestTemplate())}
+                >
+                  Send request
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={!employee}
+                  onClick={() => openEmployeeRequestDraft(getEmployeeDocumentRequestTemplate("signed_agreement"))}
+                >
+                  Request signed document
+                </Button>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1422,12 +1572,147 @@ const FRONTEND_ORIGIN = (() => {
                     onChange={(e) => e.target.files?.[0] && handleDocumentUpload(e.target.files[0])}
                   />
                 </Button>
-                <Button variant="outlined" size="small" onClick={() => fetchDocuments(selectedId)} disabled={docLoading}>
-                  {docLoading ? "Refreshing..." : "Refresh"}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    fetchDocuments(selectedId);
+                    fetchDocumentRequests(selectedId);
+                  }}
+                  disabled={docLoading || docRequestsLoading}
+                >
+                  {docLoading || docRequestsLoading ? "Refreshing..." : "Refresh"}
                 </Button>
               </Stack>
             </Stack>
             <Divider sx={{ mb: 2 }} />
+            <Stack spacing={2}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Request status
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Track sent, uploaded, cancelled, and expired requests.
+                  </Typography>
+                </Stack>
+                {docRequestsError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {docRequestsError}
+                  </Alert>
+                )}
+                {docRequestsLoading ? (
+                  <Stack alignItems="center" sx={{ py: 2 }}>
+                    <CircularProgress size={24} />
+                  </Stack>
+                ) : documentRequests.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No employee document requests yet.
+                  </Typography>
+                ) : (
+                  <Stack spacing={2}>
+                    {documentRequests.map((row) => (
+                      <Paper key={row.id} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+                          <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                              <Typography variant="body1" fontWeight={700}>
+                                {row.title || "Document request"}
+                              </Typography>
+                              <Chip size="small" variant="outlined" label={row.status || "pending"} />
+                              {row.expired ? <Chip size="small" color="warning" variant="outlined" label="Expired" /> : null}
+                            </Stack>
+                            {row.message ? (
+                              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap" }}>
+                                {row.message}
+                              </Typography>
+                            ) : null}
+                            <Typography variant="caption" color="text.secondary">
+                              Requested {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+                              {row.requested_by_name ? ` by ${row.requested_by_name}` : ""}
+                              {row.expires_at ? ` · Expires ${new Date(row.expires_at).toLocaleString()}` : ""}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+                            <Button size="small" variant="outlined" onClick={() => handleCopyEmployeeRequestLink(row)}>
+                              Copy link
+                            </Button>
+                            {(row.status || "").toLowerCase() === "pending" ? (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                disabled={cancellingRequestId === row.id}
+                                onClick={() => handleCancelEmployeeRequest(row)}
+                              >
+                                Cancel
+                              </Button>
+                            ) : null}
+                            <Button
+                              size="small"
+                              variant="text"
+                              color="error"
+                              disabled={deletingRequestId === row.id}
+                              onClick={() => handleDeleteEmployeeRequest(row)}
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
+                        </Stack>
+                        {Array.isArray(row.attachments) && row.attachments.length > 0 ? (
+                          <Box sx={{ mt: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Attached files
+                            </Typography>
+                            <Stack spacing={1} sx={{ mt: 0.75 }}>
+                              {row.attachments.map((file) => (
+                                <Stack key={file.id} direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+                                  <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {file.filename}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {file.uploaded_at ? new Date(file.uploaded_at).toLocaleString() : ""}
+                                    </Typography>
+                                  </Stack>
+                                  <Stack direction="row" spacing={1}>
+                                    <Button size="small" variant="text" onClick={() => handleDownloadEmployeeRequestFile(file)}>
+                                      Open
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="text"
+                                      color="error"
+                                      disabled={deletingRequestFileId === file.id}
+                                      onClick={() => handleDeleteEmployeeRequestFile(file.id)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </Stack>
+                                </Stack>
+                              ))}
+                            </Stack>
+                          </Box>
+                        ) : null}
+                        {row.uploaded_document ? (
+                          <Box sx={{ mt: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Returned file
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                              <Typography variant="body2" fontWeight={600}>
+                                {row.uploaded_document.name}
+                              </Typography>
+                              <Chip size="small" color="success" variant="outlined" label="Uploaded" />
+                            </Stack>
+                          </Box>
+                        ) : null}
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+            </Stack>
             {onboardingSendError && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {onboardingSendError}
@@ -1513,7 +1798,7 @@ const FRONTEND_ORIGIN = (() => {
               </Stack>
             ) : documents.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                No documents yet. Use the Zapier action attach_document after your e-sign tool finishes to store signed PDFs on this employee.
+                No stored documents yet. Returned employee files, manual uploads, and Zapier/e-sign files appear here.
               </Typography>
             ) : (
                 <List dense>
@@ -1572,7 +1857,109 @@ const FRONTEND_ORIGIN = (() => {
                   ))}
                 </List>
               )}
+            <Divider sx={{ my: 2 }} />
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+              <Stack spacing={0.25}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Advanced Zapier / e-sign
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Keep using your existing webhook + e-sign workflow if needed.
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={1}>
+                {isManager && (
+                  <Tooltip title="Triggers onboarding.started for this employee (Zapier can send contracts and start onboarding workflows)">
+                    <span>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={onboardingSending || !employee}
+                        onClick={handleSendOnboardingViaZapier}
+                      >
+                        {onboardingSending ? "Sending…" : "Send via Zapier"}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
+              </Stack>
+            </Stack>
           </Paper>
+          <Dialog open={requestDialogOpen} onClose={() => !requestSaving && setRequestDialogOpen(false)} fullWidth maxWidth="sm">
+            <DialogTitle>
+              {requestDraft.requestKind === "signed" ? "Request signed document" : "Send upload request"}
+            </DialogTitle>
+            <DialogContent dividers>
+              <Stack spacing={2} sx={{ pt: 0.5 }}>
+                <TextField
+                  label="Title"
+                  fullWidth
+                  value={requestDraft.title || ""}
+                  onChange={(event) => setRequestDraft((prev) => ({ ...prev, title: event.target.value }))}
+                />
+                <TextField
+                  select
+                  label="Category"
+                  fullWidth
+                  value={requestDraft.category || "other"}
+                  onChange={(event) => setRequestDraft((prev) => ({ ...prev, category: event.target.value }))}
+                >
+                  <MenuItem value="signed_document">Signed document</MenuItem>
+                  <MenuItem value="policy">Policy</MenuItem>
+                  <MenuItem value="id">ID / verification</MenuItem>
+                  <MenuItem value="payroll">Payroll form</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </TextField>
+                <TextField
+                  label="Message"
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  value={requestDraft.message || ""}
+                  onChange={(event) => setRequestDraft((prev) => ({ ...prev, message: event.target.value }))}
+                />
+                <TextField
+                  select
+                  label="Link expiry"
+                  fullWidth
+                  value={requestDraft.expiry_days || 7}
+                  onChange={(event) => setRequestDraft((prev) => ({ ...prev, expiry_days: Number(event.target.value || 7) }))}
+                >
+                  <MenuItem value={3}>3 days</MenuItem>
+                  <MenuItem value={7}>7 days</MenuItem>
+                  <MenuItem value={14}>14 days</MenuItem>
+                  <MenuItem value={30}>30 days</MenuItem>
+                </TextField>
+                <Button variant="outlined" component="label">
+                  Attach file(s)
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    accept="application/pdf,.doc,.docx,.csv,.xls,.xlsx,.png,.jpg,.jpeg"
+                    onChange={(e) => setRequestFiles(Array.from(e.target.files || []))}
+                  />
+                </Button>
+                {requestFiles.length ? (
+                  <Stack spacing={0.5}>
+                    {requestFiles.map((file) => (
+                      <Typography key={`${file.name}-${file.size}`} variant="body2" color="text.secondary">
+                        {file.name}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setRequestDialogOpen(false)} disabled={requestSaving}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateEmployeeDocumentRequest} variant="contained" disabled={requestSaving}>
+                {requestSaving ? "Sending…" : requestDraft.requestKind === "signed" ? "Send signed-document request" : "Send request"}
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {isManager && (
             <Accordion

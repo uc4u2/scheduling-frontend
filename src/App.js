@@ -488,7 +488,11 @@ const AppContent = ({ token, setToken }) => {
       matchPath({ path: "/public/:companySlug/jobs/:jobSlug" }, location.pathname)
   );
   const isCandidatePortalRoute = Boolean(matchPath({ path: "/candidate/*" }, location.pathname));
-  const isDocumentRequestRoute = Boolean(matchPath({ path: "/document-request/:token" }, location.pathname));
+  const isDocumentRequestRoute = Boolean(
+    matchPath({ path: "/document-request/:token" }, location.pathname) ||
+      matchPath({ path: "/client-document-request/:token" }, location.pathname) ||
+      matchPath({ path: "/employee-document-request/:token" }, location.pathname)
+  );
   const isMeetRoute = Boolean(matchPath({ path: "/:slug/meet/:token" }, location.pathname));
   const isKioskRoute = Boolean(matchPath({ path: "/kiosk/*" }, location.pathname));
   const isAuthRoute = Boolean(
@@ -852,6 +856,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/client-document-request/:token" element={<DocumentRequestUploadPage />} />
+          <Route path="/employee-document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/client-photos/:token" element={<ClientPhotoGalleryPage />} />
           <Route path="/track/:token" element={<WorkOrderTrackingPage />} />
           <Route path="/candidate/login/:token" element={<CandidateLoginCallbackPage />} />
