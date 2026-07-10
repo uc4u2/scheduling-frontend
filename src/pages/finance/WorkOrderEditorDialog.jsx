@@ -330,9 +330,6 @@ export default function WorkOrderEditorDialog({
     }
     const payload = {
       title: form.title,
-      client_id: form.client_id || null,
-      finance_estimate_id: form.finance_estimate_id || null,
-      invoice_id: form.invoice_id || null,
       location: form.location || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
@@ -340,9 +337,14 @@ export default function WorkOrderEditorDialog({
       notes: form.notes || null,
       manager_only_notes: form.manager_only_notes || null,
       employee_visible_notes: form.employee_visible_notes || null,
-      copy_materials_from_estimate: !!form.copy_materials_from_estimate,
       metadata: nextMetadata,
     };
+    if (!workOrder) {
+      payload.client_id = form.client_id || null;
+      payload.finance_estimate_id = form.finance_estimate_id || null;
+      payload.invoice_id = form.invoice_id || null;
+      payload.copy_materials_from_estimate = !!form.copy_materials_from_estimate;
+    }
     try {
       const res = workOrder
         ? await updateWorkOrder(workOrder.id, payload)
