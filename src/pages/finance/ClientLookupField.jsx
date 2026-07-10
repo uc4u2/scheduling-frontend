@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Autocomplete, CircularProgress, TextField } from "@mui/material";
+import { Autocomplete, Box, CircularProgress, TextField, Typography } from "@mui/material";
 import { getManagerClient, listManagerClients } from "./financeApi";
 import { getClientDisplayName } from "./clientUtils";
 
@@ -125,6 +125,26 @@ export default function ClientLookupField({
       getOptionLabel={(option) => getClientDisplayName(option, fallbackLabel)}
       isOptionEqualToValue={(option, current) => String(option?.id) === String(current?.id)}
       noOptionsText={inputValue ? "No matching clients" : "Start typing to search clients"}
+      renderOption={(props, option) => {
+        const { key, ...optionProps } = props;
+        return (
+          <Box
+            component="li"
+            {...optionProps}
+            key={`client-option-${String(option?.id || getClientDisplayName(option, fallbackLabel))}`}
+            sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", py: 0.75 }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              {getClientDisplayName(option, fallbackLabel)}
+            </Typography>
+            {option?.email || option?.phone ? (
+              <Typography variant="caption" color="text.secondary">
+                {[option?.email, option?.phone].filter(Boolean).join(" • ")}
+              </Typography>
+            ) : null}
+          </Box>
+        );
+      }}
       renderInput={(params) => (
         <TextField
           {...params}

@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Autocomplete,
   Alert,
   Box,
   Button,
+  CircularProgress,
   Checkbox,
   Dialog,
   DialogActions,
@@ -22,7 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getUserTimezone, normalizeTimezoneValue } from "../../utils/timezone";
-import { createManagerClient, createWorkOrder, previewWorkOrderDestination, updateWorkOrder } from "./financeApi";
+import { createManagerClient, createWorkOrder, listWorkOrderLocationSuggestions, previewWorkOrderDestination, updateWorkOrder } from "./financeApi";
 import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
 import ClientLookupField from "./ClientLookupField";
 import { buildClientCreatePayload } from "./clientUtils";
@@ -74,6 +76,19 @@ const buildBlankForm = (prefillEstimate) => {
   };
 };
 
+const buildTypedLocationFallback = (value) => {
+  const label = String(value || "").trim();
+  if (!label) return [];
+  return [
+    {
+      label,
+      primary_text: label,
+      secondary_text: "Use typed location",
+      place_id: `typed:${label.toLowerCase()}`,
+    },
+  ];
+};
+
 export default function WorkOrderEditorDialog({
   open,
   onClose,
@@ -99,6 +114,10 @@ export default function WorkOrderEditorDialog({
   const [destinationPreview, setDestinationPreview] = useState(null);
   const [destinationPreviewLoading, setDestinationPreviewLoading] = useState(false);
   const [destinationPreviewError, setDestinationPreviewError] = useState("");
+  const [destinationPreviewSeverity, setDestinationPreviewSeverity] = useState("warning");
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [locationSuggestionsLoading, setLocationSuggestionsLoading] = useState(false);
+  const [locationAutocompleteConfigured, setLocationAutocompleteConfigured] = useState(true);
 
   const selectedEstimate = useMemo(() => {
     const estimateId = Number(form.finance_estimate_id || 0);
@@ -150,6 +169,7 @@ export default function WorkOrderEditorDialog({
     if (!open || !location) {
       setDestinationPreview(null);
       setDestinationPreviewError("");
+      setDestinationPreviewSeverity("warning");
       setDestinationPreviewLoading(false);
       return undefined;
     }
@@ -163,14 +183,36 @@ export default function WorkOrderEditorDialog({
         if (res?.resolved && res?.destination) {
           setDestinationPreview(res.destination);
           setDestinationPreviewError("");
+          setDestinationPreviewSeverity("success");
+        } else if (res?.reason === "geocoding_unavailable") {
+          setDestinationPreview(null);
+          setDestinationPreviewSeverity("info");
+          setDestinationPreviewError(
+            tWorkOrders(
+              "fields.locationPreviewUnavailableLocal",
+              "Live destination preview is unavailable here. Schedulaa will still try to resolve this location when geocoding is configured."
+            )
+          );
         } else {
           setDestinationPreview(null);
-          setDestinationPreviewError(tWorkOrders("fields.locationPreviewUnavailable", "We could not confirm this destination yet. Routing will stay text-only until the location resolves."));
+          setDestinationPreviewSeverity("warning");
+          setDestinationPreviewError(
+            tWorkOrders(
+              "fields.locationPreviewUnavailable",
+              "We could not confirm this destination yet. Try a fuller address, postal code, or city-region combination."
+            )
+          );
         }
       } catch (_err) {
         if (cancelled) return;
         setDestinationPreview(null);
-        setDestinationPreviewError(tWorkOrders("fields.locationPreviewUnavailable", "We could not confirm this destination yet. Routing will stay text-only until the location resolves."));
+        setDestinationPreviewSeverity("info");
+        setDestinationPreviewError(
+          tWorkOrders(
+            "fields.locationPreviewRetryOnSave",
+            "Live destination preview is temporarily unavailable. Schedulaa will still try to resolve this location when you save the work order."
+          )
+        );
       } finally {
         if (!cancelled) setDestinationPreviewLoading(false);
       }
@@ -180,6 +222,53 @@ export default function WorkOrderEditorDialog({
       window.clearTimeout(timer);
     };
   }, [form.location, open, tWorkOrders]);
+
+  useEffect(() => {
+    const location = String(form.location || "").trim();
+    if (!open || !location) {
+      setLocationSuggestions([]);
+      setLocationSuggestionsLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLocationSuggestionsLoading(true);
+      setLocationSuggestions(buildTypedLocationFallback(location));
+      try {
+        const res = await listWorkOrderLocationSuggestions(location, 6);
+        if (cancelled) return;
+        const items = Array.isArray(res?.items) ? res.items : [];
+        setLocationSuggestions(items.length ? items : buildTypedLocationFallback(location));
+        setLocationAutocompleteConfigured(res?.configured !== false);
+      } catch (_err) {
+        if (cancelled) return;
+        setLocationSuggestions(buildTypedLocationFallback(location));
+      } finally {
+        if (!cancelled) setLocationSuggestionsLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [form.location, open]);
+
+  useEffect(() => {
+    if (!destinationPreview) return;
+    const previewLat = Number(destinationPreview.lat);
+    const previewLng = Number(destinationPreview.lng);
+    if (!Number.isFinite(previewLat) || !Number.isFinite(previewLng)) return;
+    setForm((current) => {
+      const currentLat = String(current.destination_lat ?? "").trim();
+      const currentLng = String(current.destination_lng ?? "").trim();
+      if (currentLat && currentLng) return current;
+      return {
+        ...current,
+        destination_lat: currentLat || String(previewLat),
+        destination_lng: currentLng || String(previewLng),
+      };
+    });
+  }, [destinationPreview]);
 
   const setField = (name, value) => {
     setForm((current) => ({ ...current, [name]: value }));
@@ -390,12 +479,72 @@ export default function WorkOrderEditorDialog({
             />
           ) : null}
 
-          <TextField
-            label={tWorkOrders("fields.location", "Location")}
-            value={form.location}
-            onChange={(e) => setField("location", e.target.value)}
+          <Autocomplete
+            freeSolo
             fullWidth
-            helperText={tWorkOrders("fields.locationHelp", "Service address or destination label shown to managers, employees, and clients.")}
+            openOnFocus
+            autoHighlight
+            options={locationSuggestions}
+            filterOptions={(x) => x}
+            getOptionLabel={(option) => (typeof option === "string" ? option : option?.label || "")}
+            inputValue={form.location}
+            onInputChange={(_event, nextValue, reason) => {
+              if (reason === "reset") return;
+              setField("location", nextValue);
+            }}
+            onChange={(_event, nextValue) => {
+              if (typeof nextValue === "string") {
+                setField("location", nextValue);
+                return;
+              }
+              setField("location", nextValue?.label || "");
+            }}
+            loading={locationSuggestionsLoading}
+            noOptionsText={
+              form.location
+                ? tWorkOrders("fields.locationSuggestionsNone", "No location suggestions yet")
+                : tWorkOrders("fields.locationSuggestionsStart", "Start typing an address, city, or postal code")
+            }
+            renderOption={(props, option) => {
+              const { key, ...optionProps } = props;
+              return (
+                <Box
+                  component="li"
+                  {...optionProps}
+                  key={`location-option-${option?.place_id || option?.label}`}
+                  sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", py: 0.75 }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {option?.primary_text || option?.label}
+                  </Typography>
+                  {option?.secondary_text ? (
+                    <Typography variant="caption" color="text.secondary">
+                      {option.secondary_text}
+                    </Typography>
+                  ) : null}
+                </Box>
+              );
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={tWorkOrders("fields.location", "Location")}
+                helperText={
+                  locationAutocompleteConfigured
+                    ? tWorkOrders("fields.locationHelpAutocomplete", "Type an address, city, region, or postal code and pick a suggestion when available.")
+                    : tWorkOrders("fields.locationHelp", "Service address or destination label shown to managers, employees, and clients.")
+                }
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {locationSuggestionsLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
           />
           {destinationPreviewLoading ? (
             <Typography variant="caption" color="text.secondary">
@@ -411,7 +560,7 @@ export default function WorkOrderEditorDialog({
             </Alert>
           ) : null}
           {!destinationPreviewLoading && !destinationPreview && destinationPreviewError ? (
-            <Alert severity="warning">{destinationPreviewError}</Alert>
+            <Alert severity={destinationPreviewSeverity}>{destinationPreviewError}</Alert>
           ) : null}
 
           <Stack spacing={1}>
