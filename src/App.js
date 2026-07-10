@@ -1003,6 +1003,14 @@ const AppContent = ({ token, setToken }) => {
               </RequireAuthRoute>
             }
           />
+          <Route
+            path="/manager/dispatch"
+            element={
+              <RequireAuthRoute>
+                <Navigate to="/manager/dashboard?view=dispatch-tracking" replace />
+              </RequireAuthRoute>
+            }
+          />
           <Route path="/manager/support-consent" element={<SupportConsentPage />} />
           <Route path="/manager/onboarding" element={<OnboardingPage />} />
           <Route
