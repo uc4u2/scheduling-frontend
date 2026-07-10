@@ -294,6 +294,15 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                   <Chip
                     color={dispatch?.status === "on_my_way" ? "warning" : dispatch?.status === "arrived" ? "success" : "default"}
                     label={DISPATCH_STATUS_LABELS[String(dispatch?.status || "not_started")] || "Not started"}
+                    sx={
+                      dispatch?.status === "on_my_way"
+                        ? {
+                            fontWeight: 800,
+                            color: "#0f172a",
+                            "& .MuiChip-label": { color: "#0f172a" },
+                          }
+                        : undefined
+                    }
                   />
                 </Stack>
                 {!dispatchSettings?.enabled ? (
