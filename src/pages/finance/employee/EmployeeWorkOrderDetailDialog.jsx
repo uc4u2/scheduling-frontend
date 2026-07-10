@@ -3,12 +3,14 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Paper,
   Stack,
   Table,
@@ -19,7 +21,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
+import { acceptEmployeeDispatchAcknowledgement, getEmployeeDispatchAcknowledgement, getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
 import { API_BASE_URL } from "../../../utils/api";
 import { getAuthedCompanyId } from "../../../utils/authedCompany";
@@ -47,6 +49,11 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const [dispatchSettings, setDispatchSettings] = useState(null);
   const [dispatchError, setDispatchError] = useState("");
   const [dispatchBusy, setDispatchBusy] = useState(false);
+  const [dispatchAckModalOpen, setDispatchAckModalOpen] = useState(false);
+  const [dispatchAckInfo, setDispatchAckInfo] = useState(null);
+  const [dispatchAckBusy, setDispatchAckBusy] = useState(false);
+  const [dispatchAckRemember, setDispatchAckRemember] = useState(true);
+  const [pendingDispatchStatus, setPendingDispatchStatus] = useState("");
   const watchIdRef = useRef(null);
   const lastPingAtRef = useRef(0);
   const dispatchSectionRef = useRef(null);
@@ -223,6 +230,19 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
 
   const handleDispatchStatus = async (nextStatus) => {
     if (!workOrder?.id || !dispatchSettings?.enabled) return;
+    if (nextStatus === "on_my_way") {
+      try {
+        const ack = await getEmployeeDispatchAcknowledgement();
+        setDispatchAckInfo(ack || null);
+        if (ack?.required) {
+          setPendingDispatchStatus(nextStatus);
+          setDispatchAckModalOpen(true);
+          return;
+        }
+      } catch (_err) {
+        // let the source-of-truth status route decide if ack is required
+      }
+    }
     setDispatchBusy(true);
     setDispatchError("");
     try {
@@ -232,9 +252,42 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
         stopDispatchTracking();
       }
     } catch (err) {
-      setDispatchError(err?.response?.data?.error || err?.message || "Unable to update trip status.");
+      if (err?.response?.data?.error === "dispatch_ack_required") {
+        setDispatchAckInfo({
+          required: true,
+          policy_version: err?.response?.data?.policy_version || dispatchSettings?.policy_version || "v1",
+          client_sharing_possible: Boolean(dispatchSettings?.auto_send_tracking_link),
+        });
+        setPendingDispatchStatus(nextStatus);
+        setDispatchAckModalOpen(true);
+      } else {
+        setDispatchError(err?.response?.data?.error || err?.message || "Unable to update trip status.");
+      }
     } finally {
       setDispatchBusy(false);
+    }
+  };
+
+  const handleAcceptDispatchAcknowledgement = async () => {
+    setDispatchAckBusy(true);
+    setDispatchError("");
+    try {
+      const response = await acceptEmployeeDispatchAcknowledgement({
+        accepted: true,
+        policy_version: dispatchAckInfo?.policy_version || dispatchSettings?.policy_version || "v1",
+        remember: dispatchAckRemember,
+      });
+      setDispatchAckInfo(response || null);
+      setDispatchAckModalOpen(false);
+      const nextStatus = pendingDispatchStatus;
+      setPendingDispatchStatus("");
+      if (nextStatus) {
+        await handleDispatchStatus(nextStatus);
+      }
+    } catch (err) {
+      setDispatchError(err?.response?.data?.error || err?.message || "Unable to save the trip-tracking acknowledgment.");
+    } finally {
+      setDispatchAckBusy(false);
     }
   };
 
@@ -307,6 +360,11 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                 </Stack>
                 {!dispatchSettings?.enabled ? (
                   <Alert severity="info">Dispatch tracking is disabled for this company.</Alert>
+                ) : null}
+                {dispatchSettings?.enabled && dispatchSettings?.ack_required ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Trip tracking requires a one-time employee acknowledgment before first use.
+                  </Typography>
                 ) : null}
                 {dispatchError ? <Alert severity="error">{dispatchError}</Alert> : null}
                 {dispatch?.public_url ? (
@@ -465,6 +523,37 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
         )}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
+      <Dialog open={dispatchAckModalOpen} onClose={() => !dispatchAckBusy && setDispatchAckModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Trip location sharing notice</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Typography variant="body2">
+              Your location will be shared only while you are traveling to an assigned job after tapping On my way.
+            </Typography>
+            <Typography variant="body2">
+              Your manager can view your trip status and last known trip location.
+            </Typography>
+            {dispatchAckInfo?.client_sharing_possible ? (
+              <Typography variant="body2">
+                If your company enables it, the client may receive a temporary tracking link for this trip.
+              </Typography>
+            ) : null}
+            <Typography variant="body2">
+              Tracking stops when you tap Arrived or when the trip is ended under your company settings.
+            </Typography>
+            <FormControlLabel
+              control={<Checkbox checked={dispatchAckRemember} onChange={(event) => setDispatchAckRemember(event.target.checked)} />}
+              label="Don’t show this again unless the policy changes"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDispatchAckModalOpen(false)} disabled={dispatchAckBusy}>Cancel</Button>
+          <Button variant="contained" onClick={handleAcceptDispatchAcknowledgement} disabled={dispatchAckBusy}>
+            {dispatchAckBusy ? "Saving..." : "I understand and continue"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }

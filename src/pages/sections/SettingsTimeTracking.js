@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Grid,
   MenuItem,
@@ -33,6 +34,8 @@ const SettingsTimeTracking = () => {
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
   const [error, setError] = useState("");
+  const [dispatchEmployerAck, setDispatchEmployerAck] = useState(false);
+  const [dispatchClientShareAck, setDispatchClientShareAck] = useState(false);
 
   const loadPolicy = async () => {
     setLoading(true);
@@ -53,6 +56,15 @@ const SettingsTimeTracking = () => {
         punch_location_mode: data.punch_location_mode || "off",
         enable_dispatch_tracking: data.enable_dispatch_tracking ?? false,
         auto_send_dispatch_link_to_client: data.auto_send_dispatch_link_to_client ?? false,
+        dispatch_tracking_policy_version: data.dispatch_tracking_policy_version || "v1",
+        dispatch_tracking_ack_required: data.dispatch_tracking_ack_required ?? true,
+        dispatch_tracking_employer_acknowledged_at: data.dispatch_tracking_employer_acknowledged_at || "",
+        dispatch_tracking_employer_acknowledged_by: data.dispatch_tracking_employer_acknowledged_by || "",
+        dispatch_tracking_client_share_acknowledged_at: data.dispatch_tracking_client_share_acknowledged_at || "",
+        dispatch_tracking_client_share_acknowledged_by: data.dispatch_tracking_client_share_acknowledged_by || "",
+        dispatch_tracking_retention_days: data.dispatch_tracking_retention_days ?? 30,
+        dispatch_tracking_link_expiry_mode: data.dispatch_tracking_link_expiry_mode || "arrived",
+        dispatch_tracking_auto_stop_on_arrived: data.dispatch_tracking_auto_stop_on_arrived ?? true,
       });
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to load time-tracking settings.");
@@ -80,9 +92,34 @@ const SettingsTimeTracking = () => {
 
   const save = async () => {
     if (!policy) return;
+    const requiresEmployerAck = policy.enable_dispatch_tracking && !policy.dispatch_tracking_employer_acknowledged_at;
+    const requiresClientAck = policy.auto_send_dispatch_link_to_client && !policy.dispatch_tracking_client_share_acknowledged_at;
+    if (requiresEmployerAck && !dispatchEmployerAck) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "You must confirm the employer dispatch-tracking acknowledgment before enabling this feature.",
+      });
+      return;
+    }
+    if (requiresClientAck && !dispatchClientShareAck) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "You must confirm the client-share acknowledgment before auto-sending tracking links.",
+      });
+      return;
+    }
     setSaving(true);
     try {
-      await timeTracking.saveSettings(policy);
+      await timeTracking.saveSettings({
+        ...policy,
+        dispatch_tracking_employer_ack: dispatchEmployerAck ? { accepted: true, policy_version: policy.dispatch_tracking_policy_version || "v1" } : undefined,
+        dispatch_tracking_client_share_ack: dispatchClientShareAck ? { accepted: true, policy_version: policy.dispatch_tracking_policy_version || "v1" } : undefined,
+      });
+      setDispatchEmployerAck(false);
+      setDispatchClientShareAck(false);
+      await loadPolicy();
       setSnackbar({
         open: true,
         severity: "success",
@@ -96,6 +133,25 @@ const SettingsTimeTracking = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const downloadDispatchTemplate = async () => {
+    try {
+      const payload = await timeTracking.getDispatchPolicyTemplate();
+      const blob = new Blob([payload?.content || ""], { type: "text/plain;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = payload?.filename || "schedulaa-dispatch-policy-template.txt";
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Unable to download the policy template.",
+      });
     }
   };
 
@@ -220,8 +276,80 @@ const SettingsTimeTracking = () => {
               )}
               label="Auto-send tracking link to client when employee taps On my way"
             />
+            <FormControlLabel
+              control={(
+                <Switch
+                  checked={Boolean(policy.dispatch_tracking_auto_stop_on_arrived)}
+                  onChange={handleToggle("dispatch_tracking_auto_stop_on_arrived")}
+                  disabled={!policy.enable_dispatch_tracking}
+                />
+              )}
+              label="Stop tracking automatically when employee marks Arrived"
+            />
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Trip location retention"
+                  value={policy.dispatch_tracking_retention_days}
+                  onChange={handleNumberChange("dispatch_tracking_retention_days")}
+                  disabled={!policy.enable_dispatch_tracking}
+                  helperText="How long trip-tracking records should remain available by default."
+                >
+                  <MenuItem value={7}>7 days</MenuItem>
+                  <MenuItem value={30}>30 days</MenuItem>
+                  <MenuItem value={90}>90 days</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Client tracking link expiry"
+                  value={policy.dispatch_tracking_link_expiry_mode || "arrived"}
+                  onChange={handleSelectChange("dispatch_tracking_link_expiry_mode")}
+                  disabled={!policy.enable_dispatch_tracking}
+                  helperText="When a client trip link should stop working."
+                >
+                  <MenuItem value="arrived">When employee arrives</MenuItem>
+                  <MenuItem value="two_hours">2 hours after link creation</MenuItem>
+                  <MenuItem value="manual">Only when manually revoked</MenuItem>
+                </TextField>
+              </Grid>
+            </Grid>
+            <Alert severity="warning" sx={{ py: 0.5 }}>
+              Do not enable this feature unless affected employees have been informed and your business is authorized to use trip-only location tracking.
+            </Alert>
+            {!policy.dispatch_tracking_employer_acknowledged_at ? (
+              <Stack spacing={0.5}>
+                <FormControlLabel
+                  control={<Checkbox checked={dispatchEmployerAck} onChange={(event) => setDispatchEmployerAck(event.target.checked)} />}
+                  label="I confirm my business has a lawful basis to use employee trip-location tracking and affected employees will receive written notice before this feature is used."
+                />
+              </Stack>
+            ) : (
+              <Alert severity="success" sx={{ py: 0.5 }}>
+                Employer tracking acknowledgment recorded.
+              </Alert>
+            )}
+            {!policy.dispatch_tracking_client_share_acknowledged_at ? (
+              <FormControlLabel
+                control={<Checkbox checked={dispatchClientShareAck} onChange={(event) => setDispatchClientShareAck(event.target.checked)} />}
+                label="I confirm clients may receive temporary live-trip links only for active assigned visits."
+              />
+            ) : (
+              <Alert severity="success" sx={{ py: 0.5 }}>
+                Client-share acknowledgment recorded.
+              </Alert>
+            )}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+              <Button variant="outlined" onClick={downloadDispatchTemplate}>
+                Download employee policy template
+              </Button>
+            </Stack>
             <Alert severity="info" sx={{ py: 0.5 }}>
-              Trip tracking is separate from punch-location evidence. It is meant for assigned work orders and client-facing technician updates.
+              Trip tracking is separate from punch-location evidence. It is meant for assigned work orders and client-facing technician updates, and only while the employee is On my way.
             </Alert>
           </Stack>
         </SectionCard>

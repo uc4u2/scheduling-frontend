@@ -179,6 +179,10 @@ export const listDispatchItems = (params = {}) =>
   unwrap(api.get("/finance/dispatch", { params }));
 export const listDispatchActivity = (params = {}) =>
   unwrap(api.get("/finance/dispatch/activity", { params }));
+export const getEmployeeDispatchAcknowledgement = () =>
+  unwrap(api.get("/finance/dispatch/employee-acknowledgement"));
+export const acceptEmployeeDispatchAcknowledgement = (payload) =>
+  unwrap(api.post("/finance/dispatch/employee-acknowledgement", payload));
 export const createWorkOrderDispatchLink = (workOrderId, recruiterId) =>
   unwrap(api.post(`/finance/work-orders/${workOrderId}/dispatch/${recruiterId}/tracking-link`));
 export const revokeWorkOrderDispatchLink = (workOrderId, recruiterId) =>
