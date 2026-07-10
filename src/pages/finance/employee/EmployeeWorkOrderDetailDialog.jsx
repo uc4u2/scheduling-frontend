@@ -27,6 +27,7 @@ import { API_BASE_URL } from "../../../utils/api";
 import { getAuthedCompanyId } from "../../../utils/authedCompany";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
+import { captureDispatchStatusLocation } from "./dispatchLocation";
 
 const DISPATCH_STATUS_LABELS = {
   not_started: "Not started",
@@ -246,7 +247,8 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
     setDispatchBusy(true);
     setDispatchError("");
     try {
-      const response = await updateMyWorkOrderDispatchStatus(workOrder.id, { status: nextStatus });
+      const location = await captureDispatchStatusLocation();
+      const response = await updateMyWorkOrderDispatchStatus(workOrder.id, { status: nextStatus, location });
       setDispatch(response?.dispatch || null);
       if (nextStatus === "arrived") {
         stopDispatchTracking();

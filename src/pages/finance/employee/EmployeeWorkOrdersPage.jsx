@@ -25,6 +25,7 @@ import FinancePagination from "../components/FinancePagination";
 import EmployeeFinanceEmptyState from "./EmployeeFinanceEmptyState";
 import EmployeeWorkOrderDetailDialog from "./EmployeeWorkOrderDetailDialog";
 import EmployeeFieldReportDialog from "./EmployeeFieldReportDialog";
+import { captureDispatchStatusLocation } from "./dispatchLocation";
 
 const assignmentPreview = (assignments = [], timezone = "") => {
   if (!assignments.length) return "No assignment details";
@@ -71,7 +72,8 @@ export default function EmployeeWorkOrdersPage() {
     if (!workOrder?.id) return;
     setDispatchBusyId(workOrder.id);
     try {
-      await updateMyWorkOrderDispatchStatus(workOrder.id, { status });
+      const location = await captureDispatchStatusLocation();
+      await updateMyWorkOrderDispatchStatus(workOrder.id, { status, location });
       await load();
       if (selectedWorkOrder?.id === workOrder.id) {
         setSelectedWorkOrder((prev) => ({ ...prev, dispatch: { ...(prev?.dispatch || {}), status } }));

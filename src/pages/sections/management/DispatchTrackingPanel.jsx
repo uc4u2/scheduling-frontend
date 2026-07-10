@@ -62,6 +62,14 @@ const statusMarkerColor = (row) => {
 
 const formatDateTime = (value, timezone) => (value ? formatDateTimeInTz(value, timezone, "LLL d, yyyy h:mm a") : "—");
 
+const formatApproxLocation = (snapshot) => {
+  const lat = Number(snapshot?.lat);
+  const lng = Number(snapshot?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  const accuracy = Number(snapshot?.accuracy_m);
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}${Number.isFinite(accuracy) ? ` • ~${Math.round(accuracy)}m` : ""}`;
+};
+
 const neutralFilterChipSx = (selected) => ({
   bgcolor: selected ? "rgba(37, 99, 235, 0.16)" : "transparent",
   color: selected ? "#1d4ed8" : "text.primary",
@@ -432,13 +440,22 @@ export default function DispatchTrackingPanel() {
 
   const selectedAuditSummary = useMemo(() => {
     if (!selectedRow) return [];
+    const latestByType = {};
+    for (const row of activity) {
+      const type = String(row?.event_type || "").toLowerCase();
+      if (!latestByType[type]) latestByType[type] = row;
+    }
+    const onMyWayEvent = latestByType.on_my_way;
+    const arrivedEvent = latestByType.arrived;
     return [
-      selectedRow.on_my_way_at ? `On my way: ${formatDateTime(selectedRow.on_my_way_at, timezone)}` : null,
-      selectedRow.arrived_at ? `Arrived: ${formatDateTime(selectedRow.arrived_at, timezone)}` : null,
+      onMyWayEvent?.created_at ? `On my way: ${formatDateTime(onMyWayEvent.created_at, timezone)}` : (selectedRow.on_my_way_at ? `On my way: ${formatDateTime(selectedRow.on_my_way_at, timezone)}` : null),
+      formatApproxLocation(onMyWayEvent?.location_snapshot) ? `Approx. On my way location: ${formatApproxLocation(onMyWayEvent?.location_snapshot)}` : null,
+      arrivedEvent?.created_at ? `Arrived: ${formatDateTime(arrivedEvent.created_at, timezone)}` : (selectedRow.arrived_at ? `Arrived: ${formatDateTime(selectedRow.arrived_at, timezone)}` : null),
+      formatApproxLocation(arrivedEvent?.location_snapshot) ? `Approx. Arrived location: ${formatApproxLocation(arrivedEvent?.location_snapshot)}` : null,
       selectedRow.last_client_email_sent_at ? `Last tracking email: ${formatDateTime(selectedRow.last_client_email_sent_at, timezone)}` : null,
       selectedRow.location?.captured_at ? `Last location ping: ${formatDateTime(selectedRow.location.captured_at, timezone)}` : null,
     ].filter(Boolean);
-  }, [selectedRow, timezone]);
+  }, [activity, selectedRow, timezone]);
 
   return (
     <ManagementFrame
@@ -786,50 +803,70 @@ export default function DispatchTrackingPanel() {
                         )}
                       </Paper>
                     </Grid>
-                  </Grid>
-
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <HistoryOutlinedIcon fontSize="small" />
-                      <Typography fontWeight={800}>Activity feed</Typography>
-                    </Stack>
-                    {selectedRow ? (
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                        Showing useful trip events for {selectedRow.recruiter_name || "the selected employee"}.
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                        Select a trip to focus the event feed.
-                      </Typography>
-                    )}
-                    {activityLoading ? (
-                      <Stack alignItems="center" sx={{ py: 3 }}><CircularProgress size={24} /></Stack>
-                    ) : activity.length ? (
-                      <Stack spacing={1.25}>
-                        {activity.map((row) => (
-                          <Stack key={row.id} spacing={0.25} sx={{ pb: 1.25, borderBottom: "1px solid", borderColor: "divider" }}>
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                              <Typography variant="body2" fontWeight={700}>{row.event_label}</Typography>
-                              <Chip size="small" variant="outlined" label={String(row.event_type || "event").replaceAll("_", " ")} sx={eventChipSx(row.event_type)} />
-                            </Stack>
-                            <Typography variant="caption" color="text.secondary">
-                              {[row.recruiter_name, row.work_order_number, row.client_name].filter(Boolean).join(" • ")}
-                            </Typography>
-                            {activityMetaSummary(row) ? (
-                              <Typography variant="caption" color="text.secondary">
-                                {activityMetaSummary(row)}
-                              </Typography>
-                            ) : null}
-                            <Typography variant="caption" color="text.secondary">
-                              {formatDateTime(row.created_at, timezone)}
-                            </Typography>
+                    <Grid item xs={12}>
+                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                          <HistoryOutlinedIcon fontSize="small" />
+                          <Typography fontWeight={800}>Activity feed</Typography>
+                        </Stack>
+                        {selectedRow ? (
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                            Showing useful trip events for {selectedRow.recruiter_name || "the selected employee"}.
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                            Select a trip to focus the event feed.
+                          </Typography>
+                        )}
+                        {activityLoading ? (
+                          <Stack alignItems="center" sx={{ py: 3 }}><CircularProgress size={24} /></Stack>
+                        ) : activity.length ? (
+                          <Stack spacing={1.25}>
+                            {activity.map((row) => (
+                              <Stack key={row.id} spacing={0.25} sx={{ pb: 1.25, borderBottom: "1px solid", borderColor: "divider" }}>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                  <Typography variant="body2" fontWeight={700}>{row.event_label}</Typography>
+                                  <Chip size="small" variant="outlined" label={String(row.event_type || "event").replaceAll("_", " ")} sx={eventChipSx(row.event_type)} />
+                                </Stack>
+                                <Typography variant="caption" color="text.secondary">
+                                  {[row.recruiter_name, row.work_order_number, row.client_name].filter(Boolean).join(" • ")}
+                                </Typography>
+                                {activityMetaSummary(row) ? (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {activityMetaSummary(row)}
+                                  </Typography>
+                                ) : null}
+                                {formatApproxLocation(row.location_snapshot) ? (
+                                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                                    <Typography variant="caption" color="text.secondary">
+                                      Approx. location: {formatApproxLocation(row.location_snapshot)}
+                                    </Typography>
+                                    {row.location_snapshot?.map_url ? (
+                                      <Typography
+                                        component="a"
+                                        href={row.location_snapshot.map_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        variant="caption"
+                                        sx={{ color: "primary.main", textDecoration: "none", fontWeight: 700 }}
+                                      >
+                                        Open map
+                                      </Typography>
+                                    ) : null}
+                                  </Stack>
+                                ) : null}
+                                <Typography variant="caption" color="text.secondary">
+                                  {formatDateTime(row.created_at, timezone)}
+                                </Typography>
+                              </Stack>
+                            ))}
                           </Stack>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Alert severity="info">No dispatch activity has been recorded yet for the current selection.</Alert>
-                    )}
-                  </Paper>
+                        ) : (
+                          <Alert severity="info">No dispatch activity has been recorded yet for the current selection.</Alert>
+                        )}
+                      </Paper>
+                    </Grid>
+                  </Grid>
                 </Stack>
               </Grid>
             </Grid>
