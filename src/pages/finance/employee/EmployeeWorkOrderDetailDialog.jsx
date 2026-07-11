@@ -192,9 +192,15 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       setDispatch(response?.dispatch || null);
       setDispatchError("");
     } catch (err) {
-      setDispatchError(err?.response?.data?.error || err?.message || "Unable to send trip location.");
+      const code = err?.response?.data?.error || "";
+      if (code === "dispatch_not_active") {
+        stopDispatchTracking();
+        setDispatchError("");
+        return;
+      }
+      setDispatchError(code || err?.message || "Unable to send trip location.");
     }
-  }, [workOrder?.id]);
+  }, [stopDispatchTracking, workOrder?.id]);
 
   const startDispatchTracking = useCallback(() => {
     if (watchIdRef.current !== null || typeof navigator === "undefined" || !navigator.geolocation?.watchPosition) return;
@@ -231,6 +237,9 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
 
   const handleDispatchStatus = async (nextStatus) => {
     if (!workOrder?.id || !dispatchSettings?.enabled) return;
+    if (nextStatus === "arrived") {
+      stopDispatchTracking();
+    }
     if (nextStatus === "on_my_way") {
       try {
         const ack = await getEmployeeDispatchAcknowledgement();
