@@ -306,6 +306,8 @@ export const listMyWorkOrders = (params = {}) => unwrap(api.get("/finance/my-wor
 export const getMyWorkOrder = (id) => unwrap(api.get(`/finance/my-work-orders/${id}`));
 export const getMyWorkOrderDispatch = (id) =>
   unwrap(api.get(`/finance/my-work-orders/${id}/dispatch`));
+export const previewMyWorkOrderDispatchRoute = (id, payload) =>
+  unwrap(api.post(`/finance/my-work-orders/${id}/dispatch/preview-route`, payload));
 export const updateMyWorkOrderDispatchStatus = (id, payload) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/dispatch/status`, payload));
 export const updateMyWorkOrderDispatchLocation = (id, payload) =>

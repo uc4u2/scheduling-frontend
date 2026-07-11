@@ -21,13 +21,18 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { acceptEmployeeDispatchAcknowledgement, getEmployeeDispatchAcknowledgement, getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
+import RoomOutlinedIcon from "@mui/icons-material/RoomOutlined";
+import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
+import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
+import { CircleMarker, MapContainer, Polyline, Popup, TileLayer } from "react-leaflet";
+import { acceptEmployeeDispatchAcknowledgement, getEmployeeDispatchAcknowledgement, getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, previewMyWorkOrderDispatchRoute, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
 import { API_BASE_URL } from "../../../utils/api";
 import { getAuthedCompanyId } from "../../../utils/authedCompany";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 import { captureDispatchStatusLocation } from "./dispatchLocation";
+import "leaflet/dist/leaflet.css";
 
 const DISPATCH_STATUS_LABELS = {
   not_started: "Not started",
@@ -48,8 +53,11 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [dispatch, setDispatch] = useState(null);
   const [dispatchSettings, setDispatchSettings] = useState(null);
+  const [dispatchRoute, setDispatchRoute] = useState(null);
+  const [dispatchDestination, setDispatchDestination] = useState(null);
   const [dispatchError, setDispatchError] = useState("");
   const [dispatchBusy, setDispatchBusy] = useState(false);
+  const [routePreviewBusy, setRoutePreviewBusy] = useState(false);
   const [dispatchAckModalOpen, setDispatchAckModalOpen] = useState(false);
   const [dispatchAckInfo, setDispatchAckInfo] = useState(null);
   const [dispatchAckBusy, setDispatchAckBusy] = useState(false);
@@ -77,6 +85,8 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
         setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
         setDispatch(dispatchRes?.dispatch || null);
         setDispatchSettings(dispatchRes?.settings || null);
+        setDispatchRoute(dispatchRes?.route || null);
+        setDispatchDestination(dispatchRes?.destination_meta || dispatchRes?.route?.destination || null);
         setDispatchError("");
       } catch (err) {
         if (!mounted) return;
@@ -190,6 +200,16 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
         captured_at: new Date(position.timestamp || now).toISOString(),
       });
       setDispatch(response?.dispatch || null);
+      setDispatchRoute((prev) => prev ? {
+        ...prev,
+        origin: {
+          ...(prev.origin || {}),
+          lat: coords.latitude,
+          lng: coords.longitude,
+          captured_at: new Date(position.timestamp || now).toISOString(),
+          map_url: `https://maps.google.com/?q=${coords.latitude},${coords.longitude}`,
+        },
+      } : prev);
       setDispatchError("");
     } catch (err) {
       const code = err?.response?.data?.error || "";
@@ -259,6 +279,13 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       const location = await captureDispatchStatusLocation();
       const response = await updateMyWorkOrderDispatchStatus(workOrder.id, { status: nextStatus, location });
       setDispatch(response?.dispatch || null);
+      if (response?.route) {
+        setDispatchRoute(response.route);
+      } else {
+        const dispatchRes = await getMyWorkOrderDispatch(workOrder.id);
+        setDispatchRoute(dispatchRes?.route || null);
+        setDispatchDestination(dispatchRes?.destination_meta || dispatchRes?.route?.destination || null);
+      }
       if (nextStatus === "arrived") {
         stopDispatchTracking();
       }
@@ -276,6 +303,26 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       }
     } finally {
       setDispatchBusy(false);
+    }
+  };
+
+  const handlePreviewRoute = async () => {
+    if (!workOrder?.id) return;
+    setRoutePreviewBusy(true);
+    setDispatchError("");
+    try {
+      const location = await captureDispatchStatusLocation();
+      if (!Number.isFinite(location?.lat) || !Number.isFinite(location?.lng)) {
+        setDispatchError("Location access is required to preview the route.");
+        return;
+      }
+      const response = await previewMyWorkOrderDispatchRoute(workOrder.id, location);
+      setDispatchRoute(response?.route || null);
+      setDispatchDestination(response?.destination_meta || response?.route?.destination || null);
+    } catch (err) {
+      setDispatchError(err?.response?.data?.error || err?.message || "Unable to preview the route.");
+    } finally {
+      setRoutePreviewBusy(false);
     }
   };
 
@@ -311,6 +358,32 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
     }, 120);
     return () => window.clearTimeout(timer);
   }, [initialSection, open, workOrder?.id]);
+
+  const routePoints = Array.isArray(dispatchRoute?.polyline) ? dispatchRoute.polyline : [];
+  const routeOrigin = dispatchRoute?.origin || null;
+  const routeDestination = dispatchRoute?.destination || dispatchDestination || null;
+  const hasRouteOrigin = Number.isFinite(routeOrigin?.lat) && Number.isFinite(routeOrigin?.lng);
+  const hasRouteDestination = Number.isFinite(routeDestination?.lat) && Number.isFinite(routeDestination?.lng);
+  const routeCenter = hasRouteOrigin
+    ? [routeOrigin.lat, routeOrigin.lng]
+    : hasRouteDestination
+    ? [routeDestination.lat, routeDestination.lng]
+    : [43.6532, -79.3832];
+
+  const routeReasonLabel = (() => {
+    switch (String(dispatchRoute?.reason || "").toLowerCase()) {
+      case "route_only_available_on_my_way":
+        return "Use Preview route now, or tap On my way to start live trip routing.";
+      case "missing_origin_location":
+        return "Location access is needed to preview the route.";
+      case "missing_destination_coordinates":
+        return "This work order destination has not been pinned yet.";
+      case "stale_origin_location":
+        return "Location has not refreshed recently. Showing the last route preview if available.";
+      default:
+        return "";
+    }
+  })();
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -399,11 +472,91 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                   >
                     {dispatchBusy && dispatch?.status === "on_my_way" ? "Working..." : "Arrived"}
                   </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AltRouteOutlinedIcon />}
+                    disabled={routePreviewBusy}
+                    onClick={handlePreviewRoute}
+                  >
+                    {routePreviewBusy ? "Loading..." : dispatch?.status === "on_my_way" ? "Refresh route" : "Preview route"}
+                  </Button>
                 </Stack>
                 {dispatch?.last_location_captured_at ? (
                   <Typography variant="caption" color="text.secondary">
                     Last trip location sent at {formatDateTimeInTz(dispatch.last_location_captured_at, workOrder?.timezone || viewerTimezone, "LLL d, yyyy h:mm:ss a")}.
                   </Typography>
+                ) : null}
+                {(hasRouteOrigin || hasRouteDestination) ? (
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5 }}>
+                    <Stack spacing={1}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <RoomOutlinedIcon fontSize="small" />
+                        <Typography fontWeight={800}>Trip route</Typography>
+                      </Stack>
+                      {dispatchRoute?.eta_seconds != null || dispatchRoute?.distance_meters != null ? (
+                        <Stack spacing={0.35}>
+                          {dispatchRoute?.eta_seconds != null ? (
+                            <Typography variant="caption" color="text.secondary">ETA: {Math.max(1, Math.round(dispatchRoute.eta_seconds / 60))} min</Typography>
+                          ) : null}
+                          {dispatchRoute?.distance_meters != null ? (
+                            <Typography variant="caption" color="text.secondary">
+                              Distance remaining: {dispatchRoute.distance_meters >= 1000 ? `${(dispatchRoute.distance_meters / 1000).toFixed(dispatchRoute.distance_meters >= 10000 ? 0 : 1)} km` : `${Math.round(dispatchRoute.distance_meters)} m`}
+                            </Typography>
+                          ) : null}
+                        </Stack>
+                      ) : null}
+                      <Box sx={{ height: 240, borderRadius: 1.5, overflow: "hidden", border: "1px solid", borderColor: "divider" }}>
+                        <MapContainer center={routeCenter} zoom={11} style={{ height: "100%", width: "100%" }}>
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          {routePoints.length >= 2 ? (
+                            <Polyline
+                              positions={routePoints}
+                              pathOptions={{
+                                color: "#2563eb",
+                                weight: 4,
+                                opacity: 0.82,
+                                dashArray: dispatchRoute?.provider === "google_directions" ? undefined : "8 8",
+                              }}
+                            />
+                          ) : null}
+                          {hasRouteOrigin ? (
+                            <CircleMarker
+                              center={[routeOrigin.lat, routeOrigin.lng]}
+                              radius={9}
+                              pathOptions={{ color: "#fff", weight: 2, fillColor: "#2563eb", fillOpacity: 0.9 }}
+                            >
+                              <Popup><Typography variant="body2">Your location</Typography></Popup>
+                            </CircleMarker>
+                          ) : null}
+                          {hasRouteDestination ? (
+                            <CircleMarker
+                              center={[routeDestination.lat, routeDestination.lng]}
+                              radius={8}
+                              pathOptions={{ color: "#fff", weight: 2, fillColor: "#dc2626", fillOpacity: 0.88 }}
+                            >
+                              <Popup><Typography variant="body2">{routeDestination?.label || workOrder.location || "Destination"}</Typography></Popup>
+                            </CircleMarker>
+                          ) : null}
+                        </MapContainer>
+                      </Box>
+                      {routeReasonLabel ? <Alert severity="info" icon={<AltRouteOutlinedIcon fontSize="inherit" />}>{routeReasonLabel}</Alert> : null}
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {routeOrigin?.map_url ? (
+                          <Button size="small" variant="outlined" startIcon={<OpenInNewOutlinedIcon />} component="a" href={routeOrigin.map_url} target="_blank" rel="noreferrer">
+                            Open my location
+                          </Button>
+                        ) : null}
+                        {routeDestination?.map_url ? (
+                          <Button size="small" variant="outlined" startIcon={<RoomOutlinedIcon />} component="a" href={routeDestination.map_url} target="_blank" rel="noreferrer">
+                            Open destination
+                          </Button>
+                        ) : null}
+                      </Stack>
+                    </Stack>
+                  </Paper>
                 ) : null}
               </Stack>
             </Paper>
