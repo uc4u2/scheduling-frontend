@@ -516,6 +516,36 @@ export default function DispatchTrackingPanel() {
     return items;
   }, [filters.preset, items]);
 
+  const queueItems = useMemo(() => {
+    const statusRank = (row) => {
+      const status = String(row?.status || "").toLowerCase();
+      if (row?.is_stale) return 0;
+      if (status === "on_my_way") return 1;
+      if (status === "arrived") return 2;
+      return 3;
+    };
+    const dateValue = (value) => {
+      const ts = value ? Date.parse(value) : NaN;
+      return Number.isFinite(ts) ? ts : 0;
+    };
+    return [...presetFilteredItems].sort((a, b) => {
+      const rankDiff = statusRank(a) - statusRank(b);
+      if (rankDiff !== 0) return rankDiff;
+      const aTime = Math.max(
+        dateValue(a?.location?.captured_at),
+        dateValue(a?.updated_at),
+        dateValue(a?.on_my_way_at),
+      );
+      const bTime = Math.max(
+        dateValue(b?.location?.captured_at),
+        dateValue(b?.updated_at),
+        dateValue(b?.on_my_way_at),
+      );
+      if (aTime !== bTime) return bTime - aTime;
+      return (b?.id || 0) - (a?.id || 0);
+    });
+  }, [presetFilteredItems]);
+
   const visibleEmployees = useMemo(() => {
     if (!filters.department_id) return rosterEmployees;
     return rosterEmployees.filter(
@@ -524,12 +554,12 @@ export default function DispatchTrackingPanel() {
   }, [filters.department_id, rosterEmployees]);
 
   useEffect(() => {
-    setSelectedDispatchId((prev) => (presetFilteredItems.some((row) => row.id === prev) ? prev : presetFilteredItems[0]?.id || null));
-  }, [presetFilteredItems]);
+    setSelectedDispatchId((prev) => (queueItems.some((row) => row.id === prev) ? prev : queueItems[0]?.id || null));
+  }, [queueItems]);
 
   const selectedRow = useMemo(
-    () => presetFilteredItems.find((row) => row.id === selectedDispatchId) || null,
-    [presetFilteredItems, selectedDispatchId]
+    () => queueItems.find((row) => row.id === selectedDispatchId) || null,
+    [queueItems, selectedDispatchId]
   );
 
   useEffect(() => {
@@ -803,15 +833,15 @@ export default function DispatchTrackingPanel() {
                         Review and select active trips before opening details, map focus, and activity.
                       </Typography>
                     </Box>
-                    <Chip size="small" variant="outlined" label={`${presetFilteredItems.length} shown`} />
+                    <Chip size="small" variant="outlined" label={`${queueItems.length} shown`} />
                   </Stack>
-                  <Stack spacing={1.5} sx={{ flex: 1, overflowY: "auto", pr: 0.5 }}>
-                    {presetFilteredItems.length ? presetFilteredItems.map((row) => (
+                  <Stack spacing={1} sx={{ flex: 1, maxHeight: 560, overflowY: "auto", pr: 0.5 }}>
+                    {queueItems.length ? queueItems.map((row) => (
                       <Paper
                         key={row.id}
                         variant="outlined"
                         sx={{
-                          p: 2,
+                          p: 1.25,
                           borderRadius: 2,
                           borderColor: row.id === selectedDispatchId ? "primary.main" : "divider",
                           cursor: "pointer",
@@ -819,51 +849,41 @@ export default function DispatchTrackingPanel() {
                         }}
                         onClick={() => setSelectedDispatchId(row.id)}
                       >
-                        <Stack spacing={1.25}>
-                          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-                            <Box>
-                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 0.75 }}>
+                        <Stack spacing={0.65}>
+                          <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+                            <Box sx={{ minWidth: 0 }}>
+                              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 0.25 }}>
                                 <Typography fontWeight={800}>{row.recruiter_name || "Assigned employee"}</Typography>
                                 <Chip size="small" label={String(row.status || "").replaceAll("_", " ")} color={statusChipColor(row.status)} variant="outlined" />
                                 {row.is_stale ? <Chip size="small" color="warning" variant="outlined" label="Stale" /> : null}
+                                {row.id === selectedDispatchId ? <Chip size="small" color="primary" label="Selected" /> : null}
                               </Stack>
-                              <Typography variant="body2" color="text.secondary">
-                                {[row.work_order_number, row.work_order_title, row.client_name].filter(Boolean).join(" • ")}
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {[row.work_order_number, row.work_order_title].filter(Boolean).join(" • ") || "Work order"}
                               </Typography>
-                              {row.department_name ? (
-                                <Typography variant="caption" color="text.secondary">
-                                  Department: {row.department_name}
-                                </Typography>
-                              ) : null}
-                              <Typography variant="body2" color="text.secondary">
-                                {row.destination || "No destination set"}
-                              </Typography>
-                              {row.assignment?.work_date ? (
-                                <Typography variant="caption" color="text.secondary">
-                                  Scheduled {row.assignment.work_date}
-                                  {row.assignment.start_time ? ` • ${row.assignment.start_time}` : ""}
-                                  {row.assignment.end_time ? ` to ${row.assignment.end_time}` : ""}
-                                </Typography>
-                              ) : null}
-                            </Box>
-                            <Stack alignItems={{ xs: "flex-start", md: "flex-end" }} spacing={0.5}>
                               <Typography variant="caption" color="text.secondary">
-                                Last update {formatDateTime(row.updated_at || row.last_location_captured_at, timezone)}
+                                {[row.client_name, row.department_name].filter(Boolean).join(" • ") || "No client linked"}
                               </Typography>
-                              {row.location?.captured_at ? (
-                                <Typography variant="caption" color="text.secondary">
-                                  Location captured {formatDateTime(row.location.captured_at, timezone)}
-                                </Typography>
-                              ) : (
-                                <Typography variant="caption" color="text.secondary">
-                                  No location ping yet
-                                </Typography>
-                              )}
-                              <Button size="small" variant={row.id === selectedDispatchId ? "contained" : "outlined"} onClick={(event) => { event.stopPropagation(); setSelectedDispatchId(row.id); }}>
-                                {row.id === selectedDispatchId ? "Selected" : "Review trip"}
-                              </Button>
+                            </Box>
+                            <Stack alignItems="flex-end" spacing={0.25}>
+                              <Typography variant="caption" color="text.secondary">
+                                {row.location?.captured_at ? `Ping ${formatDateTime(row.location.captured_at, timezone)}` : "No ping yet"}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Updated {formatDateTime(row.updated_at || row.last_location_captured_at, timezone)}
+                              </Typography>
                             </Stack>
                           </Stack>
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {row.destination || "No destination set"}
+                          </Typography>
+                          {row.assignment?.work_date ? (
+                            <Typography variant="caption" color="text.secondary">
+                              {row.assignment.work_date}
+                              {row.assignment.start_time ? ` • ${row.assignment.start_time}` : ""}
+                              {row.assignment.end_time ? ` to ${row.assignment.end_time}` : ""}
+                            </Typography>
+                          ) : null}
                         </Stack>
                       </Paper>
                     )) : (
