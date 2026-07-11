@@ -623,7 +623,7 @@ export default function DispatchTrackingPanel() {
   }, [activity, selectedRow, timezone]);
 
   const routeSummary = useMemo(() => {
-    if (!selectedRoute || selectedRoute.status !== "available") return [];
+    if (!selectedRoute || !Array.isArray(selectedRoute.polyline) || selectedRoute.polyline.length < 2) return [];
     return [
       selectedRoute.summary ? `Route: ${selectedRoute.summary}` : null,
       selectedRoute.eta_seconds != null ? `ETA: ${formatEta(selectedRoute.eta_seconds)}` : null,
@@ -640,7 +640,7 @@ export default function DispatchTrackingPanel() {
       case "missing_destination_coordinates":
         return "Destination coordinates are not available for this work order yet.";
       case "stale_origin_location":
-        return "Trip location is stale, so the route preview is paused.";
+        return "Trip location is stale. Showing the last route preview, but ETA may be outdated.";
       default:
         return routeError ? "Route preview is unavailable right now." : "";
     }
@@ -994,7 +994,7 @@ export default function DispatchTrackingPanel() {
                                 selectedDispatchId={selectedDispatchId}
                                 onSelect={setSelectedDispatchId}
                               />
-                              {selectedRoute?.status === "available" && Array.isArray(selectedRoute.polyline) && selectedRoute.polyline.length >= 2 ? (
+                              {Array.isArray(selectedRoute?.polyline) && selectedRoute.polyline.length >= 2 ? (
                                 <>
                                   <Polyline
                                     positions={selectedRoute.polyline}

@@ -15,6 +15,7 @@ import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer } from "react-leaflet";
 import { useParams } from "react-router-dom";
 import { getPublicWorkOrderTracking } from "../finance/financeApi";
+import { formatDateTimeInTz } from "../../utils/datetime";
 import "leaflet/dist/leaflet.css";
 
 const statusLabel = (status) => {
@@ -90,6 +91,7 @@ export default function WorkOrderTrackingPage() {
   }, [token]);
 
   const route = tracking?.route || null;
+  const timezone = tracking?.timezone || "UTC";
   const routePoints = Array.isArray(route?.polyline) ? route.polyline : [];
   const origin = route?.origin || tracking?.location || null;
   const destination = route?.destination || tracking?.destination_meta || null;
@@ -139,19 +141,23 @@ export default function WorkOrderTrackingPage() {
                 <Typography variant="body2" color="text.secondary">
                   Destination: {tracking.destination_meta?.label || tracking.destination || "Not provided"}
                 </Typography>
-                {route?.status === "available" ? (
+                {route && Array.isArray(route.polyline) && route.polyline.length >= 2 ? (
                   <>
-                    <Typography variant="body2" color="text.secondary">
-                      Estimated arrival: {formatEta(route.eta_seconds)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Distance remaining: {formatDistance(route.distance_meters)}
-                    </Typography>
+                    {route.eta_seconds != null ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Estimated arrival: {formatEta(route.eta_seconds)}
+                      </Typography>
+                    ) : null}
+                    {route.distance_meters != null ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Distance remaining: {formatDistance(route.distance_meters)}
+                      </Typography>
+                    ) : null}
                   </>
                 ) : null}
                 {tracking.updated_at ? (
                   <Typography variant="body2" color="text.secondary">
-                    Last updated: {new Date(tracking.updated_at).toLocaleString()}
+                    Last updated: {formatDateTimeInTz(tracking.updated_at, timezone, "LLL d, yyyy h:mm a")}
                   </Typography>
                 ) : null}
               </Stack>
@@ -163,7 +169,7 @@ export default function WorkOrderTrackingPage() {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    {route?.status === "available" && routePoints.length >= 2 ? (
+                    {routePoints.length >= 2 ? (
                       <Polyline
                         positions={routePoints}
                         pathOptions={{
