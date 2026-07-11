@@ -176,6 +176,12 @@ const RecruiterHomePage = () => {
   };
 
   useEffect(() => {
+    if (managerViewingEmployee) {
+      setPayrollOnboarding(null);
+      setPayrollOnboardingError("");
+      setPayrollOnboardingLoading(false);
+      return undefined;
+    }
     let mounted = true;
     const loadPayrollOnboarding = async () => {
       setPayrollOnboardingLoading(true);
@@ -196,9 +202,10 @@ const RecruiterHomePage = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [managerViewingEmployee]);
 
   const handlePayrollOnboardingStart = async () => {
+    if (managerViewingEmployee) return;
     setPayrollOnboardingActionLoading(true);
     try {
       await payrollSetupApi.startEmployeeCheckOnboarding();
@@ -234,6 +241,7 @@ const RecruiterHomePage = () => {
   }
 
   const showPayrollSetupCard = Boolean(
+    !managerViewingEmployee && (
     payrollOnboardingLoading ||
     payrollOnboardingError ||
     (
@@ -244,6 +252,7 @@ const RecruiterHomePage = () => {
         (payrollOnboarding.onboard_status && payrollOnboarding.onboard_status !== "not_started") ||
         payrollOnboarding.last_session_status
       )
+    )
     )
   );
 
