@@ -51,6 +51,7 @@ import {
   createBillingRecipient,
   createSimilarFinanceInvoice,
   createFinanceInvoicePaymentLink,
+  deleteManagerClient360Document,
   downloadFinanceInvoicePdf,
   getFinanceDocumentSettings,
   getFinanceInvoice,
@@ -368,6 +369,7 @@ export default function FinanceInvoiceDetailDialog({
   const [emailDocuments, setEmailDocuments] = useState([]);
   const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
   const [emailDocumentsError, setEmailDocumentsError] = useState("");
+  const [emailDocumentDeletingId, setEmailDocumentDeletingId] = useState("");
   const [emailDocumentIds, setEmailDocumentIds] = useState([]);
   const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState([]);
@@ -1080,6 +1082,27 @@ export default function FinanceInvoiceDetailDialog({
       );
     } finally {
       setEmailAttachmentUploading(false);
+    }
+  };
+
+  const handleDeleteEmailAttachment = async (row) => {
+    if (!clientId || !row?.id) return;
+    const value = String(row.id);
+    setEmailDocumentDeletingId(value);
+    try {
+      await deleteManagerClient360Document(clientId, row.id);
+      await loadEmailDocuments(clientId);
+      setEmailDocumentIds((prev) => prev.filter((item) => item !== value));
+      enqueueSnackbar(tDetail("snackbar.attachmentRemoved", "Attachment removed."), { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.removeAttachment", "Unable to remove the attachment."),
+        { variant: "error" }
+      );
+    } finally {
+      setEmailDocumentDeletingId("");
     }
   };
 
@@ -2201,6 +2224,8 @@ export default function FinanceInvoiceDetailDialog({
                 onSelectedIdsChange={setEmailDocumentIds}
                 uploading={emailAttachmentUploading}
                 onUpload={handleUploadEmailAttachment}
+                deletingDocumentId={emailDocumentDeletingId}
+                onDeleteDocument={handleDeleteEmailAttachment}
               />
             )}
           </Stack>

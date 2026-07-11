@@ -63,6 +63,7 @@ import {
   createEstimateTemplate,
   createEstimateShareLink,
   createFinanceInvoicePaymentLink,
+  deleteManagerClient360Document,
   deleteEstimateTemplate,
   duplicateEstimate,
   downloadFinanceEstimatePdf,
@@ -367,6 +368,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailDocuments, setEmailDocuments] = useState([]);
   const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
   const [emailDocumentsError, setEmailDocumentsError] = useState("");
+  const [emailDocumentDeletingId, setEmailDocumentDeletingId] = useState("");
   const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState([]);
   const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
@@ -755,6 +757,28 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       );
     } finally {
       setEmailAttachmentUploading(false);
+    }
+  };
+
+  const handleDeleteEmailAttachment = async (row) => {
+    if (!activeEmailClientId || !row?.id) return;
+    const value = String(row.id);
+    setEmailDocumentDeletingId(value);
+    try {
+      await deleteManagerClient360Document(activeEmailClientId, row.id);
+      await loadEmailDocuments(activeEmailClientId);
+      setEmailDocumentIds((prev) => prev.filter((item) => item !== value));
+      setInvoiceEmailDocumentIds((prev) => prev.filter((item) => item !== value));
+      enqueueSnackbar(tEstimate("snackbar.attachmentRemoved", "Attachment removed."), { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error ||
+          err?.message ||
+          tEstimate("errors.removeAttachment", "Unable to remove the attachment."),
+        { variant: "error" }
+      );
+    } finally {
+      setEmailDocumentDeletingId("");
     }
   };
 
@@ -2097,6 +2121,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 onSelectedIdsChange={setEmailDocumentIds}
                 uploading={emailAttachmentUploading}
                 onUpload={handleUploadEmailAttachment}
+                deletingDocumentId={emailDocumentDeletingId}
+                onDeleteDocument={handleDeleteEmailAttachment}
               />
             )}
           </Stack>
@@ -2155,6 +2181,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 onSelectedIdsChange={setInvoiceEmailDocumentIds}
                 uploading={emailAttachmentUploading}
                 onUpload={handleUploadEmailAttachment}
+                deletingDocumentId={emailDocumentDeletingId}
+                onDeleteDocument={handleDeleteEmailAttachment}
               />
             )}
           </Stack>

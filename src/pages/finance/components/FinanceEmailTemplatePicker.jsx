@@ -47,6 +47,22 @@ export default function FinanceEmailTemplatePicker({
               variant={value === template.key ? "filled" : "outlined"}
               color={value === template.key ? "primary" : "default"}
               onClick={() => onChange?.(template.key)}
+              sx={
+                value === template.key
+                  ? {
+                      fontWeight: 700,
+                      color: "#13315c",
+                      backgroundColor: "#dbe7ff",
+                      border: "1px solid #9db8ff",
+                      "& .MuiChip-label": {
+                        color: "#13315c",
+                      },
+                      "&:hover": {
+                        backgroundColor: "#cfe0ff",
+                      },
+                    }
+                  : undefined
+              }
             />
           ))}
         </Stack>

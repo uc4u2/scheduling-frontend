@@ -6,11 +6,13 @@ import {
   Chip,
   FormControlLabel,
   FormGroup,
+  IconButton,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 
 const chipSxByTone = {
   success: {
@@ -69,6 +71,8 @@ export default function ClientDocumentAttachmentPanel({
   onSelectedIdsChange,
   uploading = false,
   onUpload,
+  deletingDocumentId = "",
+  onDeleteDocument,
 }) {
   const attachableDocuments = useMemo(
     () => (documents || []).filter((row) => row?.is_email_attachable),
@@ -115,30 +119,46 @@ export default function ClientDocumentAttachmentPanel({
               const value = String(row.id);
               const checked = selectedIds.includes(value);
               return (
-                <FormControlLabel
+                <Stack
                   key={row.id}
-                  control={
-                    <Checkbox
-                      checked={checked}
-                      onChange={(event) =>
-                        onSelectedIdsChange?.(
-                          event.target.checked
-                            ? [...selectedIds, value]
-                            : selectedIds.filter((item) => item !== value)
-                        )
-                      }
-                    />
-                  }
-                  label={(
-                    <Stack spacing={0.2}>
-                      <Typography variant="body2">{row.original_filename || `Document #${row.id}`}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {categoryLabel(row.category)} • {formatDateTime(row.created_at)}
-                      </Typography>
-                    </Stack>
-                  )}
-                  sx={{ alignItems: "flex-start", m: 0 }}
-                />
+                  direction="row"
+                  spacing={0.5}
+                  alignItems="flex-start"
+                  justifyContent="space-between"
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={checked}
+                        onChange={(event) =>
+                          onSelectedIdsChange?.(
+                            event.target.checked
+                              ? [...selectedIds, value]
+                              : selectedIds.filter((item) => item !== value)
+                          )
+                        }
+                      />
+                    }
+                    label={(
+                      <Stack spacing={0.2}>
+                        <Typography variant="body2">{row.original_filename || `Document #${row.id}`}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {categoryLabel(row.category)} • {formatDateTime(row.created_at)}
+                        </Typography>
+                      </Stack>
+                    )}
+                    sx={{ alignItems: "flex-start", m: 0, flex: 1 }}
+                  />
+                  <IconButton
+                    size="small"
+                    color="warning"
+                    disabled={String(deletingDocumentId) === value}
+                    onClick={() => onDeleteDocument?.(row)}
+                    sx={{ mt: 0.5 }}
+                  >
+                    <DeleteOutlineOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
               );
             })}
           </FormGroup>
