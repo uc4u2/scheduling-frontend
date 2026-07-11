@@ -625,6 +625,7 @@ export default function DispatchTrackingPanel() {
   const routeSummary = useMemo(() => {
     if (!selectedRoute || selectedRoute.status !== "available") return [];
     return [
+      selectedRoute.summary ? `Route: ${selectedRoute.summary}` : null,
       selectedRoute.eta_seconds != null ? `ETA: ${formatEta(selectedRoute.eta_seconds)}` : null,
       selectedRoute.distance_meters != null ? `Distance remaining: ${formatDistance(selectedRoute.distance_meters)}` : null,
     ].filter(Boolean);
@@ -995,7 +996,15 @@ export default function DispatchTrackingPanel() {
                               />
                               {selectedRoute?.status === "available" && Array.isArray(selectedRoute.polyline) && selectedRoute.polyline.length >= 2 ? (
                                 <>
-                                  <Polyline positions={selectedRoute.polyline} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.75, dashArray: "8 8" }} />
+                                  <Polyline
+                                    positions={selectedRoute.polyline}
+                                    pathOptions={{
+                                      color: "#2563eb",
+                                      weight: 4,
+                                      opacity: 0.82,
+                                      dashArray: selectedRoute.provider === "google_directions" ? undefined : "8 8",
+                                    }}
+                                  />
                                   {Number.isFinite(selectedRoute.destination?.lat) && Number.isFinite(selectedRoute.destination?.lng) ? (
                                     <CircleMarker
                                       center={[selectedRoute.destination.lat, selectedRoute.destination.lng]}
