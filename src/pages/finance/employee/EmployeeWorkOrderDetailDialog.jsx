@@ -20,7 +20,9 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import RoomOutlinedIcon from "@mui/icons-material/RoomOutlined";
 import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
@@ -41,6 +43,8 @@ const DISPATCH_STATUS_LABELS = {
 };
 
 export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClose, onSubmitReport, onViewReports, initialSection = "" }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const viewerTimezone = getUserTimezone();
   const [workOrder, setWorkOrder] = useState(null);
   const [photos, setPhotos] = useState([]);
@@ -67,6 +71,9 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const lastPingAtRef = useRef(0);
   const dispatchSectionRef = useRef(null);
   const photoSectionRef = useRef(null);
+  const scheduleSectionRef = useRef(null);
+  const materialsSectionRef = useRef(null);
+  const instructionsSectionRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -351,13 +358,21 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
 
   useEffect(() => {
     if (!open || !initialSection) return;
-    const targetRef = initialSection === "photos" ? photoSectionRef : initialSection === "dispatch" ? dispatchSectionRef : null;
+    const targetRef = initialSection === "photos"
+      ? photoSectionRef
+      : initialSection === "dispatch"
+      ? dispatchSectionRef
+      : null;
     if (!targetRef?.current) return;
     const timer = window.setTimeout(() => {
       targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
     return () => window.clearTimeout(timer);
   }, [initialSection, open, workOrder?.id]);
+
+  const scrollToSection = (ref) => {
+    ref?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const routePoints = Array.isArray(dispatchRoute?.polyline) ? dispatchRoute.polyline : [];
   const routeOrigin = dispatchRoute?.origin || null;
@@ -386,7 +401,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   })();
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth fullScreen={isMobile}>
       <DialogTitle>My Work Order</DialogTitle>
       <DialogContent dividers>
         {loading ? (
@@ -404,7 +419,29 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               <FinanceStatusChip status={workOrder.status} />
             </Stack>
 
-            <Paper ref={dispatchSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+            {isMobile ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1,
+                  borderRadius: 1.5,
+                  position: "sticky",
+                  top: -1,
+                  zIndex: 2,
+                  bgcolor: "background.paper",
+                }}
+              >
+                <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 0.25 }} useFlexGap>
+                  <Chip label="Schedule" clickable onClick={() => scrollToSection(scheduleSectionRef)} />
+                  <Chip label="Trip" clickable onClick={() => scrollToSection(dispatchSectionRef)} />
+                  <Chip label="Photos" clickable onClick={() => scrollToSection(photoSectionRef)} />
+                  <Chip label="Notes" clickable onClick={() => scrollToSection(instructionsSectionRef)} />
+                  <Chip label="Materials" clickable onClick={() => scrollToSection(materialsSectionRef)} />
+                </Stack>
+              </Paper>
+            ) : null}
+
+            <Paper ref={scheduleSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Assigned date and time</Typography>
               {(workOrder.assignments || []).length ? (
                 <Stack spacing={1}>
@@ -419,13 +456,15 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               )}
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+            <Paper ref={dispatchSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Stack spacing={1.5}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ md: "center" }}>
                   <Box>
                     <Typography variant="h6" fontWeight={800}>Trip status</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Use On my way when you start traveling to this job. Location sharing only stays active while you are on the way.
+                      {isMobile
+                        ? "Tap On my way when you start traveling."
+                        : "Use On my way when you start traveling to this job. Location sharing only stays active while you are on the way."}
                     </Typography>
                   </Box>
                   <Chip
@@ -447,13 +486,13 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                 ) : null}
                 {dispatchSettings?.enabled && dispatchSettings?.ack_required ? (
                   <Typography variant="caption" color="text.secondary">
-                    Trip tracking requires a one-time employee acknowledgment before first use.
+                    {isMobile ? "One-time acknowledgment is required before first trip use." : "Trip tracking requires a one-time employee acknowledgment before first use."}
                   </Typography>
                 ) : null}
                 {dispatchError ? <Alert severity="error">{dispatchError}</Alert> : null}
                 {dispatch?.public_url ? (
                   <Typography variant="caption" color="text.secondary">
-                    The manager can share a live client tracking link for this trip.
+                    {isMobile ? "A client tracking link can be shared for this trip." : "The manager can share a live client tracking link for this trip."}
                   </Typography>
                 ) : null}
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
@@ -562,41 +601,14 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
             </Paper>
 
             <Paper ref={photoSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Instructions</Typography>
-              <Typography variant="body2" color="text.secondary">{workOrder.employee_visible_notes || "No employee instructions yet."}</Typography>
-            </Paper>
-
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Planned materials</Typography>
-              {(workOrder.planned_materials || []).length ? (
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Material</TableCell>
-                      <TableCell>Planned quantity</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {workOrder.planned_materials.map((row, index) => (
-                      <TableRow key={`planned-material-${index}`}>
-                        <TableCell>{row.title}</TableCell>
-                        <TableCell>{row.qty_planned}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <Typography variant="body2" color="text.secondary">No planned materials were shared for this job.</Typography>
-              )}
-            </Paper>
-
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Stack spacing={1.5}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ md: "center" }}>
                   <Box>
                     <Typography variant="h6" fontWeight={800}>Job photos</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Upload proof-of-work photos directly to this assigned job. These photos also appear for the manager and in Client 360 when the work order is client-linked.
+                      {isMobile
+                        ? "Upload job photos and notes for this work order."
+                        : "Upload proof-of-work photos directly to this assigned job. These photos also appear for the manager and in Client 360 when the work order is client-linked."}
                     </Typography>
                   </Box>
                   <Typography variant="body2" color="text.secondary">
@@ -616,7 +628,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                   </Button>
                   <TextField
                     size="small"
-                    label="Photo note"
+                    label={isMobile ? "Note" : "Photo note"}
                     value={photoNote}
                     onChange={(event) => setPhotoNote(event.target.value)}
                     sx={{ minWidth: { xs: "100%", md: 260 } }}
@@ -675,11 +687,44 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
               </Stack>
             </Paper>
 
-            <Alert severity="info">Submit a field report when work is done or when the manager needs an update from the field.</Alert>
+            <Paper ref={instructionsSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Instructions</Typography>
+              <Typography variant="body2" color="text.secondary">{workOrder.employee_visible_notes || "No employee instructions yet."}</Typography>
+            </Paper>
+
+            <Paper ref={materialsSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Planned materials</Typography>
+              {(workOrder.planned_materials || []).length ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Material</TableCell>
+                      <TableCell>Planned quantity</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {workOrder.planned_materials.map((row, index) => (
+                      <TableRow key={`planned-material-${index}`}>
+                        <TableCell>{row.title}</TableCell>
+                        <TableCell>{row.qty_planned}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">No planned materials were shared for this job.</Typography>
+              )}
+            </Paper>
+
+            <Alert severity="info">
+              {isMobile
+                ? "Submit a field report when the job is done."
+                : "Submit a field report when work is done or when the manager needs an update from the field."}
+            </Alert>
           </Stack>
         ) : null}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={isMobile ? { position: "sticky", bottom: 0, bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider", zIndex: 2 } : undefined}>
         {workOrder?.status === "completed" ? (
           <Button variant="outlined" onClick={onViewReports}>My Field Reports</Button>
         ) : (
