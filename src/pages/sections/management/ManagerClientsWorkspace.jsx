@@ -994,7 +994,7 @@ function QuickEmailDialog({
           />
           <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5, backgroundColor: "rgba(15,23,42,0.02)" }}>
             <Stack spacing={1}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
                 <Typography fontWeight={700}>Attachments</Typography>
                 <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                   <Chip
@@ -1003,34 +1003,33 @@ function QuickEmailDialog({
                     variant="outlined"
                     sx={readableChipSx(form.client_document_ids.length ? "info" : "default")}
                   />
-                  {attachableDocuments.length ? (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => setShowAvailableDocuments((prev) => !prev)}
-                    >
-                      {showAvailableDocuments
-                        ? "Hide client documents"
-                        : `Choose from client documents (${attachableDocuments.length})`}
-                    </Button>
-                  ) : null}
-                  <Button component="label" size="small" variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />} disabled={uploadingAttachment}>
-                    {uploadingAttachment ? "Uploading..." : "Upload from device"}
-                    <input
-                      hidden
-                      type="file"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        event.target.value = "";
-                        if (file && onUploadAttachment) onUploadAttachment(file);
-                      }}
-                    />
-                  </Button>
                 </Stack>
               </Stack>
-              <Typography variant="caption" color="text.secondary">
-                Nothing is attached unless you select it or upload it from this dialog.
-              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {attachableDocuments.length ? (
+                  <Button
+                    size="small"
+                    variant={showAvailableDocuments ? "contained" : "outlined"}
+                    onClick={() => setShowAvailableDocuments((prev) => !prev)}
+                  >
+                    {showAvailableDocuments
+                      ? "Hide existing files"
+                      : `Choose existing (${attachableDocuments.length})`}
+                  </Button>
+                ) : null}
+                <Button component="label" size="small" variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />} disabled={uploadingAttachment}>
+                  {uploadingAttachment ? "Uploading..." : "Upload file"}
+                  <input
+                    hidden
+                    type="file"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      event.target.value = "";
+                      if (file && onUploadAttachment) onUploadAttachment(file);
+                    }}
+                  />
+                </Button>
+              </Stack>
               {selectedAttachableDocuments.length ? (
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {selectedAttachableDocuments.map((row) => (
@@ -1052,9 +1051,6 @@ function QuickEmailDialog({
               ) : null}
               {showAvailableDocuments && attachableDocuments.length ? (
                 <>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    Available client documents
-                  </Typography>
                   <FormGroup>
                   {attachableDocuments.slice(0, 6).map((row) => {
                     const value = String(row.id);
@@ -1089,21 +1085,18 @@ function QuickEmailDialog({
                   })}
                   </FormGroup>
                 </>
-              ) : (
+              ) : showAvailableDocuments ? (
                 <Alert
                   severity="info"
                   action={onGoToDocuments ? <Button color="inherit" size="small" onClick={onGoToDocuments}>Go to Documents</Button> : null}
                 >
                   {documents.length
-                    ? "Some vault documents exist but cannot be attached because they are legacy URL-only files or not scan-ready."
-                    : "No vault documents are attachable yet. Upload a new vault document, then reopen this email to attach it."}
+                    ? "No client files are ready to attach yet."
+                    : "No saved client files yet."}
                 </Alert>
-              )}
+              ) : null}
             </Stack>
           </Paper>
-          <Alert severity="info">
-            This email is logged to the client history with sender and timestamp. SMS will be added later.
-          </Alert>
         </Stack>
       </DialogContent>
       <DialogActions>
