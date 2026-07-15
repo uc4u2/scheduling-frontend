@@ -833,6 +833,7 @@ function QuickEmailDialog({
   onSubmit,
 }) {
   const [form, setForm] = useState({ subject: "", body: "", client_document_ids: [], template_key: "" });
+  const [showAvailableDocuments, setShowAvailableDocuments] = useState(false);
   const attachableDocuments = useMemo(
     () => documents.filter((row) => row?.is_email_attachable),
     [documents]
@@ -853,6 +854,7 @@ function QuickEmailDialog({
         : [],
       template_key: initialForm?.template_key || "",
     });
+    setShowAvailableDocuments(false);
   }, [open, client, client?.id, client?.display_name, client?.client, initialForm]);
 
   const applyTemplate = (templateKey) => {
@@ -1001,6 +1003,17 @@ function QuickEmailDialog({
                     variant="outlined"
                     sx={readableChipSx(form.client_document_ids.length ? "info" : "default")}
                   />
+                  {attachableDocuments.length ? (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setShowAvailableDocuments((prev) => !prev)}
+                    >
+                      {showAvailableDocuments
+                        ? "Hide client documents"
+                        : `Choose from client documents (${attachableDocuments.length})`}
+                    </Button>
+                  ) : null}
                   <Button component="label" size="small" variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />} disabled={uploadingAttachment}>
                     {uploadingAttachment ? "Uploading..." : "Upload from device"}
                     <input
@@ -1016,7 +1029,7 @@ function QuickEmailDialog({
                 </Stack>
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                Available client documents are listed below. Nothing is attached unless you select it.
+                Nothing is attached unless you select it or upload it from this dialog.
               </Typography>
               {selectedAttachableDocuments.length ? (
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -1037,7 +1050,7 @@ function QuickEmailDialog({
                   ))}
                 </Stack>
               ) : null}
-              {attachableDocuments.length ? (
+              {showAvailableDocuments && attachableDocuments.length ? (
                 <>
                   <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Available client documents
