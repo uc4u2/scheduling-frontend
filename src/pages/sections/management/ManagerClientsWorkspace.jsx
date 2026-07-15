@@ -833,7 +833,8 @@ function QuickEmailDialog({
   onSubmit,
 }) {
   const [form, setForm] = useState({ subject: "", body: "", client_document_ids: [], template_key: "" });
-  const [showAvailableDocuments, setShowAvailableDocuments] = useState(false);
+  const [existingPickerOpen, setExistingPickerOpen] = useState(false);
+  const [existingSearch, setExistingSearch] = useState("");
   const attachableDocuments = useMemo(
     () => documents.filter((row) => row?.is_email_attachable),
     [documents]
@@ -842,6 +843,17 @@ function QuickEmailDialog({
     const selectedIds = new Set((form.client_document_ids || []).map((value) => String(value)));
     return attachableDocuments.filter((row) => selectedIds.has(String(row.id)));
   }, [attachableDocuments, form.client_document_ids]);
+  const filteredAttachableDocuments = useMemo(() => {
+    const query = String(existingSearch || "").trim().toLowerCase();
+    if (!query) return attachableDocuments.slice(0, 20);
+    return attachableDocuments
+      .filter((row) => {
+        const filename = String(row?.original_filename || "").toLowerCase();
+        const category = String(getClientDocumentCategoryLabel(row?.category) || "").toLowerCase();
+        return filename.includes(query) || category.includes(query);
+      })
+      .slice(0, 20);
+  }, [attachableDocuments, existingSearch]);
 
   useEffect(() => {
     if (!open) return;
@@ -854,7 +866,8 @@ function QuickEmailDialog({
         : [],
       template_key: initialForm?.template_key || "",
     });
-    setShowAvailableDocuments(false);
+    setExistingPickerOpen(false);
+    setExistingSearch("");
   }, [open, client, client?.id, client?.display_name, client?.client, initialForm]);
 
   const applyTemplate = (templateKey) => {
@@ -1006,15 +1019,13 @@ function QuickEmailDialog({
                 </Stack>
               </Stack>
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                {attachableDocuments.length ? (
+                {documents.length ? (
                   <Button
                     size="small"
-                    variant={showAvailableDocuments ? "contained" : "outlined"}
-                    onClick={() => setShowAvailableDocuments((prev) => !prev)}
+                    variant="outlined"
+                    onClick={() => setExistingPickerOpen(true)}
                   >
-                    {showAvailableDocuments
-                      ? "Hide existing files"
-                      : `Choose existing (${attachableDocuments.length})`}
+                    Add existing file
                   </Button>
                 ) : null}
                 <Button component="label" size="small" variant="outlined" startIcon={<UploadFileOutlinedIcon fontSize="small" />} disabled={uploadingAttachment}>
@@ -1049,15 +1060,41 @@ function QuickEmailDialog({
                   ))}
                 </Stack>
               ) : null}
-              {showAvailableDocuments && attachableDocuments.length ? (
-                <>
-                  <FormGroup>
-                  {attachableDocuments.slice(0, 6).map((row) => {
+            </Stack>
+          </Paper>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button
+          variant="contained"
+          startIcon={<MailOutlineOutlinedIcon fontSize="small" />}
+          onClick={() => onSubmit(form)}
+          disabled={saving || !form.subject.trim() || !form.body.trim()}
+        >
+          {saving ? "Sending..." : "Send email"}
+        </Button>
+      </DialogActions>
+      <Dialog open={existingPickerOpen} onClose={() => setExistingPickerOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add existing file</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            {attachableDocuments.length ? (
+              <>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Search files"
+                  value={existingSearch}
+                  onChange={(event) => setExistingSearch(event.target.value)}
+                />
+                <FormGroup>
+                  {filteredAttachableDocuments.map((row) => {
                     const value = String(row.id);
                     const checked = form.client_document_ids.includes(value);
                     return (
                       <FormControlLabel
-                        key={row.id}
+                        key={`picker-${row.id}`}
                         control={
                           <Checkbox
                             checked={checked}
@@ -1065,7 +1102,7 @@ function QuickEmailDialog({
                               setForm((prev) => ({
                                 ...prev,
                                 client_document_ids: event.target.checked
-                                  ? [...prev.client_document_ids, value]
+                                  ? [...new Set([...prev.client_document_ids, value])]
                                   : prev.client_document_ids.filter((item) => item !== value),
                               }))
                             }
@@ -1083,33 +1120,25 @@ function QuickEmailDialog({
                       />
                     );
                   })}
-                  </FormGroup>
-                </>
-              ) : showAvailableDocuments ? (
-                <Alert
-                  severity="info"
-                  action={onGoToDocuments ? <Button color="inherit" size="small" onClick={onGoToDocuments}>Go to Documents</Button> : null}
-                >
-                  {documents.length
-                    ? "No client files are ready to attach yet."
-                    : "No saved client files yet."}
-                </Alert>
-              ) : null}
-            </Stack>
-          </Paper>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button
-          variant="contained"
-          startIcon={<MailOutlineOutlinedIcon fontSize="small" />}
-          onClick={() => onSubmit(form)}
-          disabled={saving || !form.subject.trim() || !form.body.trim()}
-        >
-          {saving ? "Sending..." : "Send email"}
-        </Button>
-      </DialogActions>
+                </FormGroup>
+                {!filteredAttachableDocuments.length ? (
+                  <Alert severity="info">No files match this search.</Alert>
+                ) : null}
+              </>
+            ) : (
+              <Alert
+                severity="info"
+                action={onGoToDocuments ? <Button color="inherit" size="small" onClick={onGoToDocuments}>Go to Documents</Button> : null}
+              >
+                {documents.length ? "No saved client files are ready to attach yet." : "No saved client files yet."}
+              </Alert>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExistingPickerOpen(false)}>Done</Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }
