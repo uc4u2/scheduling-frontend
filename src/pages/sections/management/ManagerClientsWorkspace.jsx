@@ -331,6 +331,33 @@ const readableChipSx = (tone = "default") => {
   };
 };
 
+const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeReviewEmailDraftBody = (body = "", reviewUrl = "", ctaText = "Leave a Google review") => {
+  const normalizedBody = String(body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalizedUrl = String(reviewUrl || "").trim();
+  if (!normalizedUrl) return normalizedBody;
+  let sawUrl = false;
+  const lines = normalizedBody
+    .split("\n")
+    .filter((line) => {
+      if (line.trim() === normalizedUrl) {
+        sawUrl = true;
+        return false;
+      }
+      return true;
+    });
+  if (!sawUrl) return normalizedBody;
+  let joined = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const ctaLinePattern = new RegExp(`(^|\\n)${escapeRegExp(ctaText)}:\\s*(?=\\n|$)`, "g");
+  if (ctaLinePattern.test(joined)) {
+    joined = joined.replace(ctaLinePattern, "$1Use the Google review button in this email to share feedback.");
+  } else {
+    joined = `${joined}\n\nUse the Google review button in this email to share feedback.`;
+  }
+  return joined.trim();
+};
+
 const readinessTone = (state) => {
   const key = String(state || "").toLowerCase();
   if (key === "ready") return "success";
@@ -810,6 +837,10 @@ function QuickEmailDialog({
     () => documents.filter((row) => row?.is_email_attachable),
     [documents]
   );
+  const selectedAttachableDocuments = useMemo(() => {
+    const selectedIds = new Set((form.client_document_ids || []).map((value) => String(value)));
+    return attachableDocuments.filter((row) => selectedIds.has(String(row.id)));
+  }, [attachableDocuments, form.client_document_ids]);
 
   useEffect(() => {
     if (!open) return;
@@ -817,7 +848,9 @@ function QuickEmailDialog({
     setForm({
       subject: initialForm?.subject || `${displayName} follow-up`,
       body: initialForm?.body || "",
-      client_document_ids: Array.isArray(initialForm?.client_document_ids) ? initialForm.client_document_ids : [],
+      client_document_ids: Array.isArray(initialForm?.client_document_ids)
+        ? initialForm.client_document_ids.map((value) => String(value))
+        : [],
       template_key: initialForm?.template_key || "",
     });
   }, [open, client, client?.id, client?.display_name, client?.client, initialForm]);
@@ -872,8 +905,8 @@ function QuickEmailDialog({
                   key={template.key}
                   size="small"
                   label={template.label}
-                  variant={form.template_key === template.key ? "filled" : "outlined"}
-                  color={form.template_key === template.key ? "primary" : "default"}
+                  variant="outlined"
+                  sx={readableChipSx(form.template_key === template.key ? "primary" : "default")}
                   onClick={() => applyTemplate(template.key)}
                 />
               ))}
@@ -964,7 +997,7 @@ function QuickEmailDialog({
                 <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                   <Chip
                     size="small"
-                    label={form.client_document_ids.length ? `${form.client_document_ids.length} selected` : "No attachments"}
+                    label={form.client_document_ids.length ? `${form.client_document_ids.length} attached` : "No attachments selected"}
                     variant="outlined"
                     sx={readableChipSx(form.client_document_ids.length ? "info" : "default")}
                   />
@@ -982,8 +1015,34 @@ function QuickEmailDialog({
                   </Button>
                 </Stack>
               </Stack>
+              <Typography variant="caption" color="text.secondary">
+                Available client documents are listed below. Nothing is attached unless you select it.
+              </Typography>
+              {selectedAttachableDocuments.length ? (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {selectedAttachableDocuments.map((row) => (
+                    <Chip
+                      key={`selected-${row.id}`}
+                      size="small"
+                      label={row.original_filename || `Document #${row.id}`}
+                      onDelete={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          client_document_ids: prev.client_document_ids.filter((item) => String(item) !== String(row.id)),
+                        }))
+                      }
+                      variant="outlined"
+                      sx={readableChipSx("info")}
+                    />
+                  ))}
+                </Stack>
+              ) : null}
               {attachableDocuments.length ? (
-                <FormGroup>
+                <>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Available client documents
+                  </Typography>
+                  <FormGroup>
                   {attachableDocuments.slice(0, 6).map((row) => {
                     const value = String(row.id);
                     const checked = form.client_document_ids.includes(value);
@@ -1015,7 +1074,8 @@ function QuickEmailDialog({
                       />
                     );
                   })}
-                </FormGroup>
+                  </FormGroup>
+                </>
               ) : (
                 <Alert
                   severity="info"
@@ -2846,6 +2906,10 @@ export default function ManagerClientsWorkspace() {
         ? source.client_document_ids.map((value) => Number(value)).filter((value) => Number.isFinite(value))
         : [],
     };
+    if (source.template_key === "google_review_request" && reviewRequestTemplate?.review_url) {
+      payload.cta_url = reviewRequestTemplate.review_url;
+      payload.cta_label = reviewRequestTemplate.cta_text || "Leave a Google review";
+    }
     if (!payload.subject) {
       enqueueSnackbar("Email subject is required.", { variant: "warning" });
       return;
@@ -3447,10 +3511,13 @@ export default function ManagerClientsWorkspace() {
     const byKey = {
       google_review_request: {
         subject: reviewRequestTemplate?.subject || `${clientName} review request`,
-        body:
+        body: normalizeReviewEmailDraftBody(
           reviewRequestTemplate?.body ||
-          `Hi ${clientName},\n\nIf you have a moment, we would appreciate a Google review about your experience with ${companyName}.\n\n` +
-          `${reviewRequestTemplate?.cta_text || "Leave a Google review"}:\n${reviewRequestTemplate?.review_url || ""}\n\nBest,\n${companyName}`,
+            `Hi ${clientName},\n\nIf you have a moment, we would appreciate a Google review about your experience with ${companyName}.\n\n` +
+            `${reviewRequestTemplate?.cta_text || "Leave a Google review"}:\n${reviewRequestTemplate?.review_url || ""}\n\nBest,\n${companyName}`,
+          reviewRequestTemplate?.review_url || "",
+          reviewRequestTemplate?.cta_text || "Leave a Google review"
+        ),
       },
       payment_reminder: {
         subject: `${clientName} payment reminder`,
@@ -3592,10 +3659,12 @@ export default function ManagerClientsWorkspace() {
         enqueueSnackbar(payload?.status?.reason || "Google review request is not ready yet.", { variant: "warning" });
         return;
       }
+      const reviewUrl = payload?.draft?.review_url || "";
+      const ctaText = payload?.draft?.cta_text || "Leave a Google review";
       const draft = {
         template_key: payload?.draft?.template_key || "google_review_request",
         subject: payload?.draft?.subject || "",
-        body: payload?.draft?.body || "",
+        body: normalizeReviewEmailDraftBody(payload?.draft?.body || "", reviewUrl, ctaText),
       };
       setReviewRequestTemplate({
         key: "google_review_request",
@@ -3606,8 +3675,8 @@ export default function ManagerClientsWorkspace() {
         category: "google_review_request",
         is_custom: false,
         is_default: false,
-        review_url: payload?.draft?.review_url || null,
-        cta_text: payload?.draft?.cta_text || "Leave a Google review",
+        review_url: reviewUrl || null,
+        cta_text: ctaText,
       });
       openNotesComposer("email", draft);
     } catch (err) {
