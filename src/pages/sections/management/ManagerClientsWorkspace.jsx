@@ -98,6 +98,7 @@ import {
   deleteManagerClient360EmailTemplate,
   deleteManagerClient360Document,
   getManagerClient360,
+  getManagerClient360ReviewRequestDraft,
   getManagerClient360PhotoShareLink,
   listManagerClient360EmailTemplates,
   listManagerClient360Documents,
@@ -246,6 +247,7 @@ const SESSION_NOTE_TEMPLATES = [
 ];
 
 const CLIENT_EMAIL_TEMPLATE_DEFS = [
+  { key: "google_review_request", label: "Google review request" },
   { key: "payment_reminder", label: "Payment reminder" },
   { key: "document_reminder", label: "Document reminder" },
   { key: "appointment_follow_up", label: "Appointment follow-up" },
@@ -2311,6 +2313,7 @@ export default function ManagerClientsWorkspace() {
   const [detailQuickSessionOpen, setDetailQuickSessionOpen] = useState(false);
   const [detailQuickEmailOpen, setDetailQuickEmailOpen] = useState(false);
   const [detailEmailDraft, setDetailEmailDraft] = useState(null);
+  const [reviewRequestTemplate, setReviewRequestTemplate] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState([]);
@@ -2354,6 +2357,10 @@ export default function ManagerClientsWorkspace() {
   const [requestTemplateLabels, setRequestTemplateLabels] = useState({});
   const photosSectionRef = useRef(null);
   const documentsSectionRef = useRef(null);
+
+  useEffect(() => {
+    setReviewRequestTemplate(null);
+  }, [clientId]);
 
   const loadList = useCallback(async () => {
     setListLoading(true);
@@ -3438,6 +3445,13 @@ export default function ManagerClientsWorkspace() {
     const estimateTitle = detail?.finance?.estimates?.[0]?.title || detail?.finance?.estimates?.[0]?.estimate_number || "the estimate";
 
     const byKey = {
+      google_review_request: {
+        subject: reviewRequestTemplate?.subject || `${clientName} review request`,
+        body:
+          reviewRequestTemplate?.body ||
+          `Hi ${clientName},\n\nIf you have a moment, we would appreciate a Google review about your experience with ${companyName}.\n\n` +
+          `${reviewRequestTemplate?.cta_text || "Leave a Google review"}:\n${reviewRequestTemplate?.review_url || ""}\n\nBest,\n${companyName}`,
+      },
       payment_reminder: {
         subject: `${clientName} payment reminder`,
         body:
@@ -3504,6 +3518,7 @@ export default function ManagerClientsWorkspace() {
     detail?.finance?.estimates,
     pendingDocumentRequests,
     profile,
+    reviewRequestTemplate,
     summary,
     timezone,
   ]);
@@ -3564,6 +3579,41 @@ export default function ManagerClientsWorkspace() {
     if (entry?.quote_request_id) params.set("quoteRequestId", String(entry.quote_request_id));
     navigate(`/manager/finance-estimates?${params.toString()}`);
   }, [actionReadiness.create_estimate, explainActionState, navigate, profile?.id]);
+
+  const openGoogleReviewRequestAction = useCallback(async (entry = actionReadiness.request_google_review) => {
+    if (!profile?.id) return;
+    if (entry?.state === "blocked") {
+      explainActionState(entry, "Google review request is not ready yet.");
+      return;
+    }
+    try {
+      const payload = await getManagerClient360ReviewRequestDraft(profile.id);
+      if (!payload?.status?.ready) {
+        enqueueSnackbar(payload?.status?.reason || "Google review request is not ready yet.", { variant: "warning" });
+        return;
+      }
+      const draft = {
+        template_key: payload?.draft?.template_key || "google_review_request",
+        subject: payload?.draft?.subject || "",
+        body: payload?.draft?.body || "",
+      };
+      setReviewRequestTemplate({
+        key: "google_review_request",
+        label: "Google review request",
+        name: "Google review request",
+        subject: draft.subject,
+        body: draft.body,
+        category: "google_review_request",
+        is_custom: false,
+        is_default: false,
+        review_url: payload?.draft?.review_url || null,
+        cta_text: payload?.draft?.cta_text || "Leave a Google review",
+      });
+      openNotesComposer("email", draft);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to prepare the Google review request.", { variant: "error" });
+    }
+  }, [actionReadiness.request_google_review, enqueueSnackbar, explainActionState, openNotesComposer, profile?.id]);
 
   const openCreateInvoiceAction = useCallback((entry = actionReadiness.create_invoice) => {
     if (!profile?.id) return;
@@ -3855,6 +3905,14 @@ export default function ManagerClientsWorkspace() {
                       >
                         Send email
                       </Button>
+                      <Button
+                        variant="text"
+                        startIcon={<MailOutlineOutlinedIcon fontSize="small" />}
+                        onClick={() => openGoogleReviewRequestAction()}
+                        disabled={actionReadiness.request_google_review?.state === "blocked"}
+                      >
+                        Request Google review
+                      </Button>
                       <Button variant="text" startIcon={<SmsOutlinedIcon fontSize="small" />} disabled>
                         SMS (coming soon)
                       </Button>
@@ -3941,6 +3999,14 @@ export default function ManagerClientsWorkspace() {
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                         <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildEmailTemplate("rebooking_reminder"))}>
                           Send follow-up
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => openGoogleReviewRequestAction()}
+                          disabled={actionReadiness.request_google_review?.state === "blocked"}
+                        >
+                          Request Google review
                         </Button>
                         <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildEmailTemplate("payment_reminder"))}>
                           Send payment reminder
