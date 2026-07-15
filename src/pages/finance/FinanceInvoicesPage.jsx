@@ -117,19 +117,19 @@ const buildInvoiceEmailTemplateOptions = ({ row, tInvoice, customTemplates = [] 
       key: "payment_reminder",
       label: "Payment reminder",
       subject: `${clientName} payment reminder`,
-      body: `Hi ${clientName},\n\nThis is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingBalance}. If you need us to resend your payment details or help you complete payment, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      body: `This is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingBalance}. If you need us to resend your payment details or help you complete payment, reply to this email and ${companyName} will help.`,
     },
     {
       key: "invoice_follow_up",
       label: "Invoice follow-up",
       subject: `${clientName} invoice follow-up`,
-      body: `Hi ${clientName},\n\nWe are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      body: `We are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.`,
     },
     {
       key: "general_follow_up",
       label: "General follow-up",
       subject: `${clientName} follow-up`,
-      body: `Hi ${clientName},\n\nThis is a quick follow-up from ${companyName}. If you need anything related to your invoice or payment details, reply to this email and we will help.\n\nBest,\n${companyName}`,
+      body: `This is a quick follow-up from ${companyName}. If you need anything related to your invoice or payment details, reply to this email and we will help.`,
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])

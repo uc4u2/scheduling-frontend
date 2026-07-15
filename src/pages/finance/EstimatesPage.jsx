@@ -188,13 +188,13 @@ const buildEstimateEmailTemplateOptions = ({ item, customTemplates = [] }) => {
       key: "estimate_follow_up",
       label: "Estimate follow-up",
       subject: `${clientName} estimate follow-up`,
-      body: `Hi ${clientName},\n\nWe are following up on ${estimateTitle} for ${totalLabel}. If you would like us to walk through the estimate or next steps, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      body: `We are following up on ${estimateTitle} for ${totalLabel}. If you would like us to walk through the estimate or next steps, reply to this email and ${companyName} will help.`,
     },
     {
       key: "general_follow_up",
       label: "General follow-up",
       subject: `${clientName} follow-up`,
-      body: `Hi ${clientName},\n\nThis is a quick follow-up from ${companyName}. If you need anything related to your estimate, documents, or billing, reply to this email and we will help.\n\nBest,\n${companyName}`,
+      body: `This is a quick follow-up from ${companyName}. If you need anything related to your estimate, documents, or billing, reply to this email and we will help.`,
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])
@@ -219,19 +219,19 @@ const buildEstimateInvoiceEmailTemplateOptions = ({ item, customTemplates = [] }
       key: "payment_reminder",
       label: "Payment reminder",
       subject: `${clientName} payment reminder`,
-      body: `Hi ${clientName},\n\nThis is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingLabel}. If you need help with payment or a fresh payment link, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      body: `This is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingLabel}. If you need help with payment or a fresh payment link, reply to this email and ${companyName} will help.`,
     },
     {
       key: "invoice_follow_up",
       label: "Invoice follow-up",
       subject: `${clientName} invoice follow-up`,
-      body: `Hi ${clientName},\n\nWe are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.\n\nBest,\n${companyName}`,
+      body: `We are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.`,
     },
     {
       key: "general_follow_up",
       label: "General follow-up",
       subject: `${clientName} follow-up`,
-      body: `Hi ${clientName},\n\nThis is a quick follow-up from ${companyName}. If you need anything related to your invoice or estimate, reply to this email and we will help.\n\nBest,\n${companyName}`,
+      body: `This is a quick follow-up from ${companyName}. If you need anything related to your invoice or estimate, reply to this email and we will help.`,
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])
