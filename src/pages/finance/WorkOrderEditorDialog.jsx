@@ -115,6 +115,7 @@ export default function WorkOrderEditorDialog({
   const [destinationPreviewLoading, setDestinationPreviewLoading] = useState(false);
   const [destinationPreviewError, setDestinationPreviewError] = useState("");
   const [destinationPreviewSeverity, setDestinationPreviewSeverity] = useState("warning");
+  const [destinationOverrideDirty, setDestinationOverrideDirty] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [locationSuggestionsLoading, setLocationSuggestionsLoading] = useState(false);
   const [locationAutocompleteConfigured, setLocationAutocompleteConfigured] = useState(true);
@@ -129,6 +130,7 @@ export default function WorkOrderEditorDialog({
     if (workOrder) {
       const baseMetadata = workOrder.metadata && typeof workOrder.metadata === "object" ? workOrder.metadata : {};
       const destination = extractDispatchDestination(baseMetadata);
+      const existingDestinationSource = String(baseMetadata.destination_source || "").trim().toLowerCase();
       setForm({
         title: workOrder.title || "",
         client_id: workOrder.client_id || "",
@@ -146,10 +148,12 @@ export default function WorkOrderEditorDialog({
         destination_lng: destination.lng === "" ? "" : String(destination.lng),
         metadata: baseMetadata,
       });
+      setDestinationOverrideDirty(existingDestinationSource === "manual" && destination.lat !== "" && destination.lng !== "");
       setError("");
       return;
     }
     setForm(buildBlankForm(prefillEstimate));
+    setDestinationOverrideDirty(false);
     setError("");
   }, [open, workOrder, prefillEstimate]);
 
@@ -258,20 +262,35 @@ export default function WorkOrderEditorDialog({
     const previewLat = Number(destinationPreview.lat);
     const previewLng = Number(destinationPreview.lng);
     if (!Number.isFinite(previewLat) || !Number.isFinite(previewLng)) return;
+    if (destinationOverrideDirty) return;
     setForm((current) => {
       const currentLat = String(current.destination_lat ?? "").trim();
       const currentLng = String(current.destination_lng ?? "").trim();
-      if (currentLat && currentLng) return current;
+      if (currentLat === String(previewLat) && currentLng === String(previewLng)) return current;
       return {
         ...current,
-        destination_lat: currentLat || String(previewLat),
-        destination_lng: currentLng || String(previewLng),
+        destination_lat: String(previewLat),
+        destination_lng: String(previewLng),
       };
     });
-  }, [destinationPreview]);
+  }, [destinationOverrideDirty, destinationPreview]);
 
   const setField = (name, value) => {
+    if (name === "location") {
+      setDestinationOverrideDirty(false);
+    }
     setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const setDestinationField = (name, value) => {
+    const nextValue = String(value ?? "");
+    setForm((current) => {
+      const next = { ...current, [name]: nextValue };
+      const latValue = String(name === "destination_lat" ? nextValue : next.destination_lat ?? "").trim();
+      const lngValue = String(name === "destination_lng" ? nextValue : next.destination_lng ?? "").trim();
+      setDestinationOverrideDirty(Boolean(latValue || lngValue));
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -305,7 +324,9 @@ export default function WorkOrderEditorDialog({
       setError(tWorkOrders("errors.destinationPairRequired", "Add both destination latitude and longitude, or leave both blank."));
       return;
     }
-    if (Number.isFinite(destinationLat) && Number.isFinite(destinationLng)) {
+    const previewLat = Number(destinationPreview?.lat);
+    const previewLng = Number(destinationPreview?.lng);
+    if (destinationOverrideDirty && Number.isFinite(destinationLat) && Number.isFinite(destinationLng)) {
       nextMetadata.destination_lat = destinationLat;
       nextMetadata.destination_lng = destinationLng;
       nextMetadata.destination_source = "manual";
@@ -313,6 +334,16 @@ export default function WorkOrderEditorDialog({
         ...(nextMetadata.destination && typeof nextMetadata.destination === "object" ? nextMetadata.destination : {}),
         lat: destinationLat,
         lng: destinationLng,
+      };
+    } else if (Number.isFinite(previewLat) && Number.isFinite(previewLng)) {
+      nextMetadata.destination_lat = previewLat;
+      nextMetadata.destination_lng = previewLng;
+      nextMetadata.destination_source = "geocoded";
+      nextMetadata.destination = {
+        ...(nextMetadata.destination && typeof nextMetadata.destination === "object" ? nextMetadata.destination : {}),
+        lat: previewLat,
+        lng: previewLng,
+        label: destinationPreview?.label || form.location || null,
       };
     } else {
       delete nextMetadata.destination_lat;
@@ -576,14 +607,14 @@ export default function WorkOrderEditorDialog({
               <TextField
                 label={tWorkOrders("fields.destinationLatitude", "Destination latitude")}
                 value={form.destination_lat}
-                onChange={(e) => setField("destination_lat", e.target.value)}
+                onChange={(e) => setDestinationField("destination_lat", e.target.value)}
                 fullWidth
                 placeholder="44.1041"
               />
               <TextField
                 label={tWorkOrders("fields.destinationLongitude", "Destination longitude")}
                 value={form.destination_lng}
-                onChange={(e) => setField("destination_lng", e.target.value)}
+                onChange={(e) => setDestinationField("destination_lng", e.target.value)}
                 fullWidth
                 placeholder="-79.5644"
               />
