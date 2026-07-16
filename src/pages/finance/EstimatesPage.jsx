@@ -63,7 +63,9 @@ import {
   createEstimateTemplate,
   createEstimateShareLink,
   createFinanceInvoicePaymentLink,
+  createManagerClient360EmailTemplate,
   deleteManagerClient360Document,
+  deleteManagerClient360EmailTemplate,
   deleteEstimateTemplate,
   duplicateEstimate,
   downloadFinanceEstimatePdf,
@@ -79,8 +81,10 @@ import {
   sendFinanceInvoiceEmail,
   sendEstimate,
   sendEstimateEmail,
+  setManagerClient360EmailTemplateDefault,
   updateEstimateTemplate,
   updateEstimate,
+  updateManagerClient360EmailTemplate,
   uploadManagerClient360DocumentFromDevice,
 } from "./financeApi";
 import FinanceStatusChip from "./components/FinanceStatusChip";
@@ -89,6 +93,7 @@ import FinancePagination from "./components/FinancePagination";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import FinanceEmailTemplatePicker from "./components/FinanceEmailTemplatePicker";
+import FinanceEmailTemplateManagerDialog from "./components/FinanceEmailTemplateManagerDialog";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
@@ -187,12 +192,16 @@ const buildEstimateEmailTemplateOptions = ({ item, customTemplates = [] }) => {
     {
       key: "estimate_follow_up",
       label: "Estimate follow-up",
+      name: "Estimate follow-up",
+      category: "estimate_follow_up",
       subject: `${clientName} estimate follow-up`,
       body: `We are following up on ${estimateTitle} for ${totalLabel}. If you would like us to walk through the estimate or next steps, reply to this email and ${companyName} will help.`,
     },
     {
       key: "general_follow_up",
       label: "General follow-up",
+      name: "General follow-up",
+      category: "general_follow_up",
       subject: `${clientName} follow-up`,
       body: `This is a quick follow-up from ${companyName}. If you need anything related to your estimate, documents, or billing, reply to this email and we will help.`,
     },
@@ -202,8 +211,12 @@ const buildEstimateEmailTemplateOptions = ({ item, customTemplates = [] }) => {
     .map((row) => ({
       key: `custom:${row.id}`,
       label: `${row.name}${row.is_default ? " (Default)" : ""}`,
+      name: row.name || "",
       subject: row.subject || "",
       body: row.body || "",
+      template_id: row.id,
+      category: row.category || "custom",
+      is_default: Boolean(row.is_default),
       is_custom: true,
     }));
   return [...builtIns, ...customs];
@@ -218,18 +231,24 @@ const buildEstimateInvoiceEmailTemplateOptions = ({ item, customTemplates = [] }
     {
       key: "payment_reminder",
       label: "Payment reminder",
+      name: "Payment reminder",
+      category: "payment_reminder",
       subject: `${clientName} payment reminder`,
       body: `This is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingLabel}. If you need help with payment or a fresh payment link, reply to this email and ${companyName} will help.`,
     },
     {
       key: "invoice_follow_up",
       label: "Invoice follow-up",
+      name: "Invoice follow-up",
+      category: "invoice_follow_up",
       subject: `${clientName} invoice follow-up`,
       body: `We are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.`,
     },
     {
       key: "general_follow_up",
       label: "General follow-up",
+      name: "General follow-up",
+      category: "general_follow_up",
       subject: `${clientName} follow-up`,
       body: `This is a quick follow-up from ${companyName}. If you need anything related to your invoice or estimate, reply to this email and we will help.`,
     },
@@ -239,8 +258,12 @@ const buildEstimateInvoiceEmailTemplateOptions = ({ item, customTemplates = [] }
     .map((row) => ({
       key: `custom:${row.id}`,
       label: `${row.name}${row.is_default ? " (Default)" : ""}`,
+      name: row.name || "",
       subject: row.subject || "",
       body: row.body || "",
+      template_id: row.id,
+      category: row.category || "custom",
+      is_default: Boolean(row.is_default),
       is_custom: true,
     }));
   return [...builtIns, ...customs];
@@ -373,6 +396,11 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [emailTemplates, setEmailTemplates] = useState([]);
   const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
   const [emailTemplatesError, setEmailTemplatesError] = useState("");
+  const [emailTemplateDialogOpen, setEmailTemplateDialogOpen] = useState(false);
+  const [emailTemplateDialogMode, setEmailTemplateDialogMode] = useState("create");
+  const [emailTemplateDraft, setEmailTemplateDraft] = useState(null);
+  const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
+  const [emailTemplateScope, setEmailTemplateScope] = useState("estimate");
   const [expandedOpen, setExpandedOpen] = useState(false);
   const [postConvertInvoice, setPostConvertInvoice] = useState(null);
   const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
@@ -930,6 +958,113 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
       );
     } finally {
       setInvoiceEmailSending(false);
+    }
+  };
+
+  const activeTemplateKey = emailDialogOpen ? emailTemplateKey : invoiceEmailTemplateKey;
+  const activeTemplateOptions = emailDialogOpen ? emailTemplateOptions : invoiceEmailTemplateOptions;
+  const activeTemplateSubject = emailDialogOpen ? emailSubject : invoiceEmailSubject;
+  const activeTemplateBody = emailDialogOpen ? emailMessage : invoiceEmailMessage;
+  const selectedActiveEmailTemplate = useMemo(
+    () => activeTemplateOptions.find((entry) => entry.key === activeTemplateKey) || null,
+    [activeTemplateKey, activeTemplateOptions]
+  );
+  const customEmailTemplateCount = useMemo(
+    () => emailTemplates.filter((entry) => entry?.is_active).length,
+    [emailTemplates]
+  );
+
+  const handleOpenEmailTemplateManager = useCallback((mode = "create", template = null) => {
+    const scope = emailDialogOpen ? "estimate" : "invoice";
+    setEmailTemplateScope(scope);
+    if (mode === "delete" && template?.template_id) {
+      if (typeof window !== "undefined" && !window.confirm(`Archive template "${template.name || template.label || "this template"}"?`)) {
+        return;
+      }
+      setEmailTemplateSaving(true);
+      deleteManagerClient360EmailTemplate(template.template_id)
+        .then(async () => {
+          enqueueSnackbar("Email template archived.", { variant: "success" });
+          await loadEmailTemplates();
+          if (scope === "estimate" && emailTemplateKey === `custom:${template.template_id}`) setEmailTemplateKey("");
+          if (scope === "invoice" && invoiceEmailTemplateKey === `custom:${template.template_id}`) setInvoiceEmailTemplateKey("");
+        })
+        .catch((err) => {
+          enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to delete email template.", { variant: "error" });
+        })
+        .finally(() => setEmailTemplateSaving(false));
+      return;
+    }
+    if (mode === "default" && template?.template_id) {
+      setEmailTemplateSaving(true);
+      setManagerClient360EmailTemplateDefault(template.template_id)
+        .then(async (payload) => {
+          const saved = payload?.template;
+          enqueueSnackbar("Default email template updated.", { variant: "success" });
+          await loadEmailTemplates();
+          if (saved?.id) {
+            if (scope === "estimate") setEmailTemplateKey(`custom:${saved.id}`);
+            if (scope === "invoice") setInvoiceEmailTemplateKey(`custom:${saved.id}`);
+          }
+        })
+        .catch((err) => {
+          enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to set default template.", { variant: "error" });
+        })
+        .finally(() => setEmailTemplateSaving(false));
+      return;
+    }
+    setEmailTemplateDialogMode(mode);
+    setEmailTemplateDraft(
+      template || {
+        name: activeTemplateSubject || (scope === "estimate" ? "Estimate email" : "Payment link email"),
+        subject: activeTemplateSubject,
+        body: activeTemplateBody,
+        category: selectedActiveEmailTemplate?.category || "custom",
+        is_default: false,
+      }
+    );
+    setEmailTemplateDialogOpen(true);
+  }, [activeTemplateBody, activeTemplateSubject, emailDialogOpen, emailTemplateKey, enqueueSnackbar, invoiceEmailTemplateKey, loadEmailTemplates, selectedActiveEmailTemplate]);
+
+  const handleSaveEmailTemplate = async (overrideForm = null) => {
+    const source = overrideForm || emailTemplateDraft || {};
+    const payload = {
+      name: String(source.name || "").trim(),
+      subject: String(source.subject || "").trim(),
+      body: String(source.body || "").trim(),
+      category: String(source.category || selectedActiveEmailTemplate?.category || "custom").trim() || "custom",
+      is_default: Boolean(source.is_default),
+      is_active: true,
+    };
+    if (!payload.name || !payload.subject || !payload.body) {
+      enqueueSnackbar("Template name, subject, and body are required.", { variant: "warning" });
+      return;
+    }
+    setEmailTemplateSaving(true);
+    try {
+      const res = emailTemplateDialogMode === "edit" && emailTemplateDraft?.template_id
+        ? await updateManagerClient360EmailTemplate(emailTemplateDraft.template_id, payload)
+        : await createManagerClient360EmailTemplate(payload);
+      const saved = res?.template || null;
+      enqueueSnackbar(emailTemplateDialogMode === "edit" ? "Email template updated." : "Email template saved.", { variant: "success" });
+      setEmailTemplateDialogOpen(false);
+      setEmailTemplateDraft(null);
+      await loadEmailTemplates();
+      if (saved?.id) {
+        if (emailTemplateScope === "estimate") {
+          setEmailTemplateKey(`custom:${saved.id}`);
+          setEmailSubject(payload.subject);
+          setEmailMessage(payload.body);
+        } else {
+          setInvoiceEmailTemplateKey(`custom:${saved.id}`);
+          setInvoiceEmailSubject(payload.subject);
+          setInvoiceEmailMessage(payload.body);
+        }
+      }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to save email template.", { variant: "error" });
+    } finally {
+      setEmailTemplateSaving(false);
     }
   };
 
@@ -2078,6 +2213,17 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
           </Button>
         </DialogActions>
       </Dialog>
+      <FinanceEmailTemplateManagerDialog
+        open={emailTemplateDialogOpen}
+        mode={emailTemplateDialogMode}
+        saving={emailTemplateSaving}
+        initialValues={emailTemplateDraft}
+        onClose={() => {
+          setEmailTemplateDialogOpen(false);
+          setEmailTemplateDraft(null);
+        }}
+        onSubmit={handleSaveEmailTemplate}
+      />
       <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{tEstimate("emailDialog.title", "Send Estimate")}</DialogTitle>
         <DialogContent dividers>
@@ -2090,6 +2236,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 loading={emailTemplatesLoading}
                 error={emailTemplatesError}
                 onChange={applyEstimateEmailTemplate}
+                selectedTemplate={emailTemplateOptions.find((entry) => entry.key === emailTemplateKey) || null}
+                customTemplateCount={customEmailTemplateCount}
+                onOpenTemplateManager={handleOpenEmailTemplateManager}
               />
             ) : null}
             <TextField
@@ -2150,6 +2299,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 loading={emailTemplatesLoading}
                 error={emailTemplatesError}
                 onChange={applyInvoiceEmailTemplate}
+                selectedTemplate={invoiceEmailTemplateOptions.find((entry) => entry.key === invoiceEmailTemplateKey) || null}
+                customTemplateCount={customEmailTemplateCount}
+                onOpenTemplateManager={handleOpenEmailTemplateManager}
               />
             ) : null}
             <TextField

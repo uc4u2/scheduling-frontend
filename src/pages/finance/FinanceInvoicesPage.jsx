@@ -39,11 +39,14 @@ import FinancePagination from "./components/FinancePagination";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import FinanceEmailTemplatePicker from "./components/FinanceEmailTemplatePicker";
+import FinanceEmailTemplateManagerDialog from "./components/FinanceEmailTemplateManagerDialog";
 import FinanceInvoiceDetailDialog from "./FinanceInvoiceDetailDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 import {
   createFinanceInvoicePaymentLink,
+  createManagerClient360EmailTemplate,
   deleteManagerClient360Document,
+  deleteManagerClient360EmailTemplate,
   createSimilarFinanceInvoice,
   downloadFinanceInvoicePdf,
   getFinanceInvoicePrintHtml,
@@ -51,7 +54,9 @@ import {
   listManagerClient360EmailTemplates,
   listFinanceInvoices,
   sendFinanceInvoiceEmail,
+  setManagerClient360EmailTemplateDefault,
   uploadManagerClient360DocumentFromDevice,
+  updateManagerClient360EmailTemplate,
 } from "./financeApi";
 import { formatCurrency } from "../../utils/formatters";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
@@ -116,18 +121,24 @@ const buildInvoiceEmailTemplateOptions = ({ row, tInvoice, customTemplates = [] 
     {
       key: "payment_reminder",
       label: "Payment reminder",
+      name: "Payment reminder",
+      category: "payment_reminder",
       subject: `${clientName} payment reminder`,
       body: `This is a friendly reminder about ${invoiceNumber}. The remaining balance is ${remainingBalance}. If you need us to resend your payment details or help you complete payment, reply to this email and ${companyName} will help.`,
     },
     {
       key: "invoice_follow_up",
       label: "Invoice follow-up",
+      name: "Invoice follow-up",
+      category: "invoice_follow_up",
       subject: `${clientName} invoice follow-up`,
       body: `We are following up on ${invoiceNumber}. If you have any questions about the invoice or need help with payment, reply to this email and ${companyName} will help.`,
     },
     {
       key: "general_follow_up",
       label: "General follow-up",
+      name: "General follow-up",
+      category: "general_follow_up",
       subject: `${clientName} follow-up`,
       body: `This is a quick follow-up from ${companyName}. If you need anything related to your invoice or payment details, reply to this email and we will help.`,
     },
@@ -137,8 +148,12 @@ const buildInvoiceEmailTemplateOptions = ({ row, tInvoice, customTemplates = [] 
     .map((rowTemplate) => ({
       key: `custom:${rowTemplate.id}`,
       label: `${rowTemplate.name}${rowTemplate.is_default ? " (Default)" : ""}`,
+      name: rowTemplate.name || "",
       subject: rowTemplate.subject || "",
       body: rowTemplate.body || "",
+      template_id: rowTemplate.id,
+      category: rowTemplate.category || "custom",
+      is_default: Boolean(rowTemplate.is_default),
       is_custom: true,
     }));
   return [...builtIns, ...customs];
@@ -320,6 +335,10 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailTemplates, setEmailTemplates] = useState([]);
   const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
   const [emailTemplatesError, setEmailTemplatesError] = useState("");
+  const [emailTemplateDialogOpen, setEmailTemplateDialogOpen] = useState(false);
+  const [emailTemplateDialogMode, setEmailTemplateDialogMode] = useState("create");
+  const [emailTemplateDraft, setEmailTemplateDraft] = useState(null);
+  const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const requestedClientId = searchParams.get("clientId") || "";
@@ -592,6 +611,101 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       );
     } finally {
       setEmailSending(false);
+    }
+  };
+
+  const selectedEmailTemplate = useMemo(
+    () => emailTemplateOptions.find((entry) => entry.key === emailTemplateKey) || null,
+    [emailTemplateKey, emailTemplateOptions]
+  );
+  const customEmailTemplateCount = useMemo(
+    () => emailTemplates.filter((entry) => entry?.is_active).length,
+    [emailTemplates]
+  );
+
+  const handleOpenEmailTemplateManager = useCallback((mode = "create", template = null) => {
+    if (mode === "delete" && template?.template_id) {
+      if (typeof window !== "undefined" && !window.confirm(`Archive template "${template.name || template.label || "this template"}"?`)) {
+        return;
+      }
+      setEmailTemplateSaving(true);
+      deleteManagerClient360EmailTemplate(template.template_id)
+        .then(async () => {
+          enqueueSnackbar("Email template archived.", { variant: "success" });
+          await loadEmailTemplates();
+          if (emailTemplateKey === `custom:${template.template_id}`) {
+            setEmailTemplateKey("");
+          }
+        })
+        .catch((err) => {
+          enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to delete email template.", { variant: "error" });
+        })
+        .finally(() => setEmailTemplateSaving(false));
+      return;
+    }
+    if (mode === "default" && template?.template_id) {
+      setEmailTemplateSaving(true);
+      setManagerClient360EmailTemplateDefault(template.template_id)
+        .then(async (payload) => {
+          const saved = payload?.template;
+          enqueueSnackbar("Default email template updated.", { variant: "success" });
+          await loadEmailTemplates();
+          if (saved?.id) {
+            setEmailTemplateKey(`custom:${saved.id}`);
+          }
+        })
+        .catch((err) => {
+          enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to set default template.", { variant: "error" });
+        })
+        .finally(() => setEmailTemplateSaving(false));
+      return;
+    }
+    setEmailTemplateDialogMode(mode);
+    setEmailTemplateDraft(
+      template || {
+        name: emailSubject || "Payment link email",
+        subject: emailSubject,
+        body: emailMessage,
+        category: selectedEmailTemplate?.category || "custom",
+        is_default: false,
+      }
+    );
+    setEmailTemplateDialogOpen(true);
+  }, [emailMessage, emailSubject, emailTemplateKey, enqueueSnackbar, loadEmailTemplates, selectedEmailTemplate]);
+
+  const handleSaveEmailTemplate = async (overrideForm = null) => {
+    const source = overrideForm || emailTemplateDraft || {};
+    const payload = {
+      name: String(source.name || "").trim(),
+      subject: String(source.subject || "").trim(),
+      body: String(source.body || "").trim(),
+      category: String(source.category || selectedEmailTemplate?.category || "custom").trim() || "custom",
+      is_default: Boolean(source.is_default),
+      is_active: true,
+    };
+    if (!payload.name || !payload.subject || !payload.body) {
+      enqueueSnackbar("Template name, subject, and body are required.", { variant: "warning" });
+      return;
+    }
+    setEmailTemplateSaving(true);
+    try {
+      const res = emailTemplateDialogMode === "edit" && emailTemplateDraft?.template_id
+        ? await updateManagerClient360EmailTemplate(emailTemplateDraft.template_id, payload)
+        : await createManagerClient360EmailTemplate(payload);
+      const saved = res?.template || null;
+      enqueueSnackbar(emailTemplateDialogMode === "edit" ? "Email template updated." : "Email template saved.", { variant: "success" });
+      setEmailTemplateDialogOpen(false);
+      setEmailTemplateDraft(null);
+      await loadEmailTemplates();
+      if (saved?.id) {
+        setEmailTemplateKey(`custom:${saved.id}`);
+        setEmailSubject(payload.subject);
+        setEmailMessage(payload.body);
+      }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to save email template.", { variant: "error" });
+    } finally {
+      setEmailTemplateSaving(false);
     }
   };
 
@@ -987,6 +1101,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
                 loading={emailTemplatesLoading}
                 error={emailTemplatesError}
                 onChange={applyEmailTemplate}
+                selectedTemplate={selectedEmailTemplate}
+                customTemplateCount={customEmailTemplateCount}
+                onOpenTemplateManager={handleOpenEmailTemplateManager}
               />
             ) : null}
             <TextField
@@ -1039,6 +1156,17 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         entityType="invoice"
         title={tInvoice("audit.pageTitle", "Invoice activity")}
         emptyText={tInvoice("audit.pageEmpty", "No invoice audit records yet.")}
+      />
+      <FinanceEmailTemplateManagerDialog
+        open={emailTemplateDialogOpen}
+        mode={emailTemplateDialogMode}
+        saving={emailTemplateSaving}
+        initialValues={emailTemplateDraft}
+        onClose={() => {
+          setEmailTemplateDialogOpen(false);
+          setEmailTemplateDraft(null);
+        }}
+        onSubmit={handleSaveEmailTemplate}
       />
 
       <InvoiceWorkflowHelpDrawer

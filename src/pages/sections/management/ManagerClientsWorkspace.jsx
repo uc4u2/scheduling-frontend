@@ -3548,7 +3548,9 @@ export default function ManagerClientsWorkspace() {
         subject: reviewRequestTemplate?.subject || `${clientName} review request`,
         body: normalizeReviewEmailDraftBody(
           reviewRequestTemplate?.body ||
-            `If you have a moment, we would appreciate a Google review about your experience with ${companyName}.\n\n` +
+            `Hi ${detail?.client?.first_name || clientName},\n\n` +
+            `Thank you for your recent visit. If you have a moment, we would appreciate a Google review about your experience with ${companyName}.\n\n` +
+            `Thank you,\n${companyName}\n\n` +
             `${reviewRequestTemplate?.cta_text || "Leave a Google review"}:\n${reviewRequestTemplate?.review_url || ""}`,
           reviewRequestTemplate?.review_url || "",
           reviewRequestTemplate?.cta_text || "Leave a Google review"
