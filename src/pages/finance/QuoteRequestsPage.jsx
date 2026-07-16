@@ -435,7 +435,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
 
   const handleCreateEstimate = async (item) => {
     if (!item?.client_id) {
-      enqueueSnackbar(tQuote("errors.clientRequiredForEstimate", "Link or create a client before creating an estimate."), { variant: "warning" });
+      enqueueSnackbar(tQuote("errors.clientRequiredForEstimate", "Link or create the official client record before creating an estimate."), { variant: "warning" });
       openLinkClientDialog(item, true);
       return;
     }
@@ -495,8 +495,8 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                   </Stack>
                 </TableCell>
               ) : null}
-              <TableCell sx={{ minWidth: 220 }}>{tQuote("table.headers.requestContact", "Request Contact")}</TableCell>
-              <TableCell sx={{ minWidth: expanded ? 260 : 240 }}>{tQuote("table.headers.linkedClient", "Linked Client")}</TableCell>
+              <TableCell sx={{ minWidth: 220 }}>{tQuote("table.headers.requestContact", "Intake Contact")}</TableCell>
+              <TableCell sx={{ minWidth: expanded ? 260 : 240 }}>{tQuote("table.headers.linkedClient", "Official Client Record")}</TableCell>
               <TableCell sx={{ minWidth: 150 }}>{expanded ? tQuote("table.headers.timeline", "Timeline") : tQuote("table.headers.timelineCreated", "Timeline / Created")}</TableCell>
               {expanded ? <TableCell sx={{ minWidth: 176 }}>{tQuote("table.headers.created", "Created")}</TableCell> : null}
               <TableCell sx={{ minWidth: expanded ? 280 : 220 }}>{tQuote("table.headers.description", "Description")}</TableCell>
@@ -523,7 +523,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                 ? [{ key: "open-estimates", label: tQuote("actions.openEstimates", "Open Estimates"), icon: <DescriptionOutlinedIcon fontSize="small" />, onClick: () => onNavigate?.("finance-estimates"), variant: "contained" }]
                 : hasLinkedClient
                   ? [{ key: "create-estimate", label: tQuote("actions.createEstimate", "Create Estimate"), icon: <AddTaskOutlinedIcon fontSize="small" />, onClick: () => handleCreateEstimate(item), variant: "contained" }]
-                  : [{ key: "link-client", label: tQuote("actions.linkCreateClient", "Link / Create Client"), icon: <LinkIcon fontSize="small" />, onClick: () => openLinkClientDialog(item, true), variant: "contained" }];
+                  : [{ key: "link-client", label: tQuote("actions.linkCreateClient", "Link Official Client"), icon: <LinkIcon fontSize="small" />, onClick: () => openLinkClientDialog(item, true), variant: "contained" }];
               const visibleKeys = new Set(primaryActions.map((action) => action.key));
               const allMenuActions = [
                 {
@@ -649,14 +649,15 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                     <Stack spacing={0.75} sx={{ minWidth: 0 }}>
                       <Stack spacing={0.35} sx={{ minWidth: 0 }}>
                         <Typography variant="body2" fontWeight={700} noWrap>
-                          {item.client_name || tQuote("fallbacks.notLinked", "Not linked")}
+                          {item.client_name || tQuote("fallbacks.notLinked", "Not linked yet")}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" noWrap>
-                          {item.client_email || tQuote("fallbacks.noClientEmail", "No client email")}
+                          {item.client_email || tQuote("fallbacks.noClientEmail", "Estimate and invoice records will use this official client.")}
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                         <Chip size="small" variant="outlined" color={item.client_id ? "success" : "default"} label={item.client_id ? tQuote("chips.linked", "Linked") : tQuote("chips.notLinked", "Not linked")} sx={compactChipSx} />
+                        {!item.client_id ? <Chip size="small" variant="outlined" color="warning" label={tQuote("chips.requiredBeforeEstimate", "Required before estimate")} sx={compactChipSx} /> : null}
                         {hasEmailMismatch(item) ? <Chip size="small" variant="outlined" color="warning" label={tQuote("chips.contactDiffers", "Contact differs from client")} sx={compactChipSx} /> : null}
                         {hasNameMismatch(item) ? <Chip size="small" variant="outlined" color="warning" label={tQuote("chips.checkClientMatch", "Check client match")} sx={compactChipSx} /> : null}
                       </Stack>
@@ -875,9 +876,9 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
             <Divider />
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.requestContact", "Contact person")}</Typography>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.requestContact", "Intake contact")}</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactName", "Contact person")} placeholder={tQuote("dialog.fields.contactNamePlaceholder", "Sarah Lee")} value={form.contact_name} onChange={(e) => setForm((prev) => ({ ...prev, contact_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactName", "Intake contact")} placeholder={tQuote("dialog.fields.contactNamePlaceholder", "Sarah Lee")} value={form.contact_name} onChange={(e) => setForm((prev) => ({ ...prev, contact_name: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactEmail", "Contact email")} placeholder={tQuote("dialog.fields.contactEmailPlaceholder", "sarah@abcproperty.ca")} value={form.contact_email} onChange={(e) => setForm((prev) => ({ ...prev, contact_email: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField fullWidth label={tQuote("dialog.fields.contactPhone", "Contact phone")} placeholder={tQuote("dialog.fields.contactPhonePlaceholder", "(416) 555-0132")} value={form.contact_phone} onChange={(e) => setForm((prev) => ({ ...prev, contact_phone: e.target.value }))} /></Grid>
               </Grid>
@@ -886,9 +887,9 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
             <Divider />
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.linkedClient", "Client record")}</Typography>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>{tQuote("dialog.sections.linkedClient", "Official client record")}</Typography>
               <Typography variant="caption" color="text.secondary">
-                {tQuote("dialog.linkedClientHelp", "Contact person is who requested the work. Client record is the official customer used for estimates, invoices, and work orders.")}
+                {tQuote("dialog.linkedClientHelp", "Intake contact is who requested the work. The official client record is the customer used for estimates, invoices, and work orders.")}
               </Typography>
               <Paper variant="outlined" sx={{ mt: 1.25, p: 1.5, borderColor: theme.palette.divider }}>
                 {editing?.client_id || form.client_id ? (
@@ -907,9 +908,12 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                   </Stack>
                 ) : (
                   <Stack spacing={1.25}>
+                    <Alert severity="warning">
+                      {tQuote("dialog.officialClientRequired", "An official client record is required before this quote request can become an estimate, invoice, or work order.")}
+                    </Alert>
                     <FormControl fullWidth>
                       <ClientLookupField
-                        label={tQuote("dialog.fields.clientRecord", "Client record")}
+                        label={tQuote("dialog.fields.clientRecord", "Official client record")}
                         value={form.client_id || ""}
                         onChange={(nextId, selected) => {
                           setSelectedDialogClient(selected || null);
@@ -927,12 +931,12 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                         fallbackLabel={tQuote("linkDialog.clientFallback", "Client")}
                       />
                       <FormHelperText>
-                        {tQuote("dialog.clientRecordHelp", "Use an existing client or create the official customer record for this request.")}
+                        {tQuote("dialog.clientRecordHelp", "Link an existing client or create the official customer record before estimate creation.")}
                       </FormHelperText>
                     </FormControl>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                       <Button variant="outlined" onClick={() => { setClientForm(prefillClientFromContact(form)); setClientDialogOpen(true); }}>
-                        {tQuote("dialog.actions.createNewClient", "Create new client")}
+                        {tQuote("dialog.actions.createNewClient", "Create official client")}
                       </Button>
                     </Stack>
                   </Stack>
@@ -940,8 +944,13 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
               </Paper>
               {editing ? (
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.25 }}>
-                  <Button variant="outlined" onClick={() => openLinkClientDialog(editing, false)}>{tQuote("dialog.actions.linkExistingClient", "Link existing client")}</Button>
-                  <Button variant="outlined" onClick={() => openLinkClientDialog(editing, true)}>{tQuote("dialog.actions.createClientFromContact", "Create client from contact")}</Button>
+                  {!editing.client_id ? (
+                    <Alert severity="warning" sx={{ flex: 1 }}>
+                      {tQuote("dialog.editMissingClientWarning", "This request still needs an official client record before estimate creation.")}
+                    </Alert>
+                  ) : null}
+                  <Button variant="outlined" onClick={() => openLinkClientDialog(editing, false)}>{tQuote("dialog.actions.linkExistingClient", "Change official client")}</Button>
+                  <Button variant="outlined" onClick={() => openLinkClientDialog(editing, true)}>{tQuote("dialog.actions.createClientFromContact", "Create official client from intake")}</Button>
                 </Stack>
               ) : null}
             </Box>
@@ -964,12 +973,12 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       </Dialog>
 
       <Dialog open={Boolean(linkTarget)} onClose={() => setLinkTarget(null)} fullWidth maxWidth="sm">
-        <DialogTitle>{tQuote("linkDialog.title", "Link or Create Client")}</DialogTitle>
+        <DialogTitle>{tQuote("linkDialog.title", "Link or Create Official Client")}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
-            <Alert severity="info">{tQuote("linkDialog.info", "Link an existing client or create a client from the request contact.")}</Alert>
+            <Alert severity="warning">{tQuote("linkDialog.info", "Link an existing client or create the official client record from the intake contact before estimate creation.")}</Alert>
             <ClientLookupField
-              label={tQuote("linkDialog.existingClient", "Existing client")}
+              label={tQuote("linkDialog.existingClient", "Official client record")}
               value={linkClientId}
               onChange={(nextId) => setLinkClientId(nextId ? String(nextId) : "")}
               helperText={tQuote("linkDialog.existingClientHelp", "Search the official customer record by client name, email, or phone.")}
@@ -979,16 +988,16 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
             />
             {!linkClientId ? (
               <Grid container spacing={2}>
-                <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientName", "Client name")} value={newClient.name} onChange={(e) => setNewClient((prev) => ({ ...prev, name: e.target.value }))} /></Grid>
-                <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientEmail", "Client email")} value={newClient.email} onChange={(e) => setNewClient((prev) => ({ ...prev, email: e.target.value }))} /></Grid>
-                <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientPhone", "Client phone")} value={newClient.phone} onChange={(e) => setNewClient((prev) => ({ ...prev, phone: e.target.value }))} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientName", "Official client name")} value={newClient.name} onChange={(e) => setNewClient((prev) => ({ ...prev, name: e.target.value }))} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientEmail", "Official client email")} value={newClient.email} onChange={(e) => setNewClient((prev) => ({ ...prev, email: e.target.value }))} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label={tQuote("linkDialog.clientPhone", "Official client phone")} value={newClient.phone} onChange={(e) => setNewClient((prev) => ({ ...prev, phone: e.target.value }))} /></Grid>
               </Grid>
             ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setLinkTarget(null)}>{tQuote("common.cancel", "Cancel")}</Button>
-          <Button variant="contained" onClick={submitLinkClient}>{tQuote("linkDialog.linkClient", "Link client")}</Button>
+          <Button variant="contained" onClick={submitLinkClient}>{tQuote("linkDialog.linkClient", "Save official client")}</Button>
         </DialogActions>
       </Dialog>
 
@@ -1000,12 +1009,12 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
               {tQuote("confirmEstimate.description", "The request contact is different from the linked client. Continue using this client for the estimate?")}
             </Typography>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
-              <Typography variant="caption" color="text.secondary">{tQuote("confirmEstimate.requestContact", "Request contact")}</Typography>
+              <Typography variant="caption" color="text.secondary">{tQuote("confirmEstimate.requestContact", "Intake contact")}</Typography>
               <Typography variant="body2">{confirmEstimateTarget?.contact_name || "-"}</Typography>
               <Typography variant="body2" color="text.secondary">{confirmEstimateTarget?.contact_email || confirmEstimateTarget?.contact_phone || "-"}</Typography>
             </Paper>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
-              <Typography variant="caption" color="text.secondary">{tQuote("confirmEstimate.linkedClient", "Linked client")}</Typography>
+              <Typography variant="caption" color="text.secondary">{tQuote("confirmEstimate.linkedClient", "Official client record")}</Typography>
               <Typography variant="body2">{confirmEstimateTarget?.client_name || "-"}</Typography>
               <Typography variant="body2" color="text.secondary">{confirmEstimateTarget?.client_email || "-"}</Typography>
             </Paper>
