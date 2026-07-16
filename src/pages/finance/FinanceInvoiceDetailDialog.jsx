@@ -223,6 +223,12 @@ const getSendPaymentLinkDisabledReason = (invoice, remainingBalance, tDetail) =>
   return "";
 };
 
+const isInvoicePaymentLinkActionable = (invoice, remainingBalance) => {
+  const status = String(invoice?.payment_status || invoice?.status || "").trim().toLowerCase();
+  if (["paid", "void", "refunded", "partial_refund", "partially_refunded"].includes(status)) return false;
+  return Number(remainingBalance || 0) > 0;
+};
+
 const helpIconSx = {
   fontSize: 16,
   color: "text.secondary",
@@ -511,6 +517,10 @@ export default function FinanceInvoiceDetailDialog({
   const refundHistory = refundSummary?.refunds || [];
   const remainingRefundable = Number(refundSummary?.remaining_refundable_amount || 0);
   const remainingBalance = Number(paymentSummary?.remaining_balance || 0);
+  const canUsePaymentLink = useMemo(
+    () => isInvoicePaymentLinkActionable(invoice, remainingBalance),
+    [invoice, remainingBalance]
+  );
   const sendPaymentLinkDisabledReason = useMemo(
     () => getSendPaymentLinkDisabledReason(invoice, remainingBalance, tDetail),
     [invoice, remainingBalance, tDetail]
@@ -551,10 +561,11 @@ export default function FinanceInvoiceDetailDialog({
     return "warning";
   }, [invoiceStatusValue]);
   const paymentLinkTone = useMemo(() => {
+    if (!canUsePaymentLink) return "neutral";
     if (invoice?.payment_link_exists) return "info";
     if (invoice?.payment_link_ready) return "warning";
     return "neutral";
-  }, [invoice?.payment_link_exists, invoice?.payment_link_ready]);
+  }, [canUsePaymentLink, invoice?.payment_link_exists, invoice?.payment_link_ready]);
   const balanceTone = remainingBalance > 0 ? "warning" : "success";
   const paymentOriginTone = useMemo(() => {
     const normalized = String(paymentSummary?.payment_origin || "").toLowerCase();
@@ -593,12 +604,16 @@ export default function FinanceInvoiceDetailDialog({
       },
       {
         label: tDetail("summary.cards.paymentLink", "Payment link"),
-        value: invoice?.payment_link_exists
+        value: !canUsePaymentLink
+          ? tDetail("summary.cards.notNeeded", "Not needed")
+          : invoice?.payment_link_exists
           ? tDetail("summary.cards.ready", "Ready")
           : invoice?.payment_link_ready
             ? tDetail("summary.cards.canCreate", "Can create")
             : tDetail("summary.cards.unavailable", "Unavailable"),
-        badgeLabel: hasHostedLink
+        badgeLabel: !canUsePaymentLink
+          ? tDetail("header.paymentLinkNotNeeded", "Payment link not needed")
+          : hasHostedLink
           ? tDetail("header.paymentLinkReady", "Payment link ready")
           : invoice?.payment_link_ready
             ? tDetail("header.paymentLinkCreatable", "Payment link can be created")
@@ -622,6 +637,7 @@ export default function FinanceInvoiceDetailDialog({
       paymentSummary?.payment_origin,
       paymentSummary?.remaining_balance,
       paymentSummary?.total_recorded_paid_amount,
+      canUsePaymentLink,
       remainingBalance,
       t,
       tDetail,
@@ -1406,7 +1422,9 @@ export default function FinanceInvoiceDetailDialog({
                       <SummaryBadge label={invoice?.currency || tDetail("header.currencyFallback", "USD")} tone="neutral" />
                       <SummaryBadge
                         label={
-                          invoice?.payment_link_exists
+                          !canUsePaymentLink
+                            ? tDetail("header.paymentLinkNotNeeded", "Payment link not needed")
+                            : invoice?.payment_link_exists
                             ? tDetail("header.paymentLinkReady", "Payment link ready")
                             : invoice?.payment_link_ready
                               ? tDetail("header.paymentLinkCreatable", "Payment link can be created")
@@ -1476,7 +1494,7 @@ export default function FinanceInvoiceDetailDialog({
                       size="small"
                       startIcon={<PaymentOutlinedIcon />}
                       onClick={handleCopyPaymentLink}
-                      disabled={loading || saving || !invoice?.payment_link_ready}
+                      disabled={loading || saving || !invoice?.payment_link_ready || !canUsePaymentLink}
                     >
                       {invoice?.hosted_invoice_url
                         ? tDetail("actions.copyPaymentLink", "Copy payment link")
@@ -1487,7 +1505,7 @@ export default function FinanceInvoiceDetailDialog({
                       size="small"
                       startIcon={<LaunchIcon />}
                       onClick={handleOpenPaymentLink}
-                      disabled={loading || saving || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
+                      disabled={loading || saving || !canUsePaymentLink || (!invoice?.hosted_invoice_url && !invoice?.payment_link_ready)}
                     >
                       {tDetail("actions.openPaymentPage", "Open payment page")}
                     </Button>

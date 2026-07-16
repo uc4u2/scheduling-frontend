@@ -135,17 +135,25 @@ const captionClampSx = {
 
 const formatPaymentState = (item, tEstimate) => {
   const paymentStatus = String(item?.converted_invoice_payment_status || item?.converted_invoice_status || "").toLowerCase();
+  const remainingBalance = Number(item?.converted_invoice_remaining_balance ?? item?.remaining_balance ?? 0);
   if (paymentStatus === "paid") return tEstimate("paymentState.paid", "Payment paid");
   if (paymentStatus === "partial_refund" || paymentStatus === "partially_refunded") return tEstimate("paymentState.partialRefund", "Partially refunded");
   if (paymentStatus === "refunded") return tEstimate("paymentState.refunded", "Refunded");
-  if (item?.converted_invoice_hosted_invoice_url) return tEstimate("paymentState.linkReady", "Payment link ready");
+  if (remainingBalance > 0 && item?.converted_invoice_hosted_invoice_url) return tEstimate("paymentState.linkReady", "Payment link ready");
   if (item?.converted_invoice_number) return tEstimate("paymentState.noLinkYet", "No payment link yet");
   return tEstimate("paymentState.convertFirst", "Convert first");
 };
 
+const isEstimatePaymentLinkActionable = (item) => {
+  const status = String(item?.converted_invoice_payment_status || item?.converted_invoice_status || "").trim().toLowerCase();
+  const remainingBalance = Number(item?.converted_invoice_remaining_balance ?? item?.remaining_balance ?? 0);
+  if (["paid", "void", "refunded", "partial_refund", "partially_refunded"].includes(status)) return false;
+  return remainingBalance > 0;
+};
+
 const buildSupplementalFlags = (item, tEstimate) => {
   const flags = [];
-  if (item?.converted_invoice_hosted_invoice_url) {
+  if (isEstimatePaymentLinkActionable(item) && item?.converted_invoice_hosted_invoice_url) {
     flags.push({ label: tEstimate("flags.paymentLinkReady", "Payment link ready"), color: "secondary", variant: "outlined" });
   }
   if (item?.public_url) {
@@ -1180,6 +1188,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     const isConverted = item.status === "converted_to_invoice";
     const rowBusy = linkBusyId === item.id || paymentLinkBusyId === item.id || pdfBusyId === item.id;
     const hasPaymentLink = Boolean(item.converted_invoice_hosted_invoice_url);
+    const canUsePaymentLink = isEstimatePaymentLinkActionable(item);
     const hasClientResponse = Boolean(item.client_accepted_at || item.client_rejected_at);
     const sendPaymentLinkDisabledReason = getEstimateSendPaymentLinkDisabledReason(item, tEstimate);
 
@@ -1192,7 +1201,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
             onClick: () => handleOpenInvoice(item),
             variant: "contained",
           },
-          hasPaymentLink
+          hasPaymentLink && canUsePaymentLink
             ? {
                 key: "open-payment-link",
                 label: tEstimate("actions.openPaymentLink", "Open Payment Link"),
@@ -1207,7 +1216,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
                 icon: <PaymentOutlinedIcon fontSize="small" />,
                 onClick: () => handleCopyPaymentLink(item),
                 variant: "outlined",
-                disabled: rowBusy,
+                disabled: rowBusy || !canUsePaymentLink,
               },
           {
             key: "send-payment-link",
@@ -1342,7 +1351,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         help: tEstimate("actionHelp.copyPaymentLink", "Create or reuse the hosted Stripe invoice link for the converted invoice."),
         icon: <PaymentOutlinedIcon fontSize="small" />,
         onClick: () => handleCopyPaymentLink(item),
-        disabled: !item.converted_invoice_id || rowBusy,
+        disabled: !item.converted_invoice_id || rowBusy || !isEstimatePaymentLinkActionable(item),
       },
       {
         key: "open-payment-link",
@@ -1350,7 +1359,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         help: tEstimate("actionHelp.openPaymentLink", "Open the hosted Stripe invoice/payment page for this converted invoice."),
         icon: <LaunchIcon fontSize="small" />,
         onClick: () => handleOpenPaymentLink(item),
-        disabled: !item.converted_invoice_id || rowBusy,
+        disabled: !item.converted_invoice_id || rowBusy || !isEstimatePaymentLinkActionable(item),
       },
       {
         key: "send-payment-link",

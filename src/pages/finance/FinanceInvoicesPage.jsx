@@ -93,6 +93,13 @@ const isOverdue = (invoice) => {
 const getPreferredInvoiceRowEmail = (row) =>
   String(row?.billing_recipient?.email || row?.client_email || row?.client?.email || "").trim();
 
+const isInvoicePaymentLinkActionable = (row) => {
+  const status = String(row?.payment_status || row?.status || "").trim().toLowerCase();
+  const remainingBalance = Number(row?.remaining_balance || 0);
+  if (["paid", "void", "refunded", "partial_refund", "partially_refunded"].includes(status)) return false;
+  return remainingBalance > 0;
+};
+
 const getRowSendPaymentLinkDisabledReason = (row, tInvoice) => {
   const status = String(row?.payment_status || row?.status || "").trim().toLowerCase();
   const remainingBalance = Number(row?.remaining_balance || 0);
@@ -280,7 +287,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   );
   const paymentLinkLabel = useCallback(
     (row) =>
-      row?.payment_link_exists
+      isInvoicePaymentLinkActionable(row) && row?.payment_link_exists
         ? tInvoice("status.paymentLinkHas", "Has payment link")
         : tInvoice("status.paymentLinkMissing", "Missing payment link"),
     [tInvoice]
@@ -831,6 +838,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       {rows.map((row) => {
         const rowId = row.invoice_id || row.id;
         const sendPaymentLinkDisabledReason = getRowSendPaymentLinkDisabledReason(row, tInvoice);
+        const canUsePaymentLink = isInvoicePaymentLinkActionable(row);
         const paymentButtonBusy = paymentLinkBusyId === rowId;
         const printBusy = printBusyId === rowId;
         const downloadBusy = pdfBusyId === rowId;
@@ -843,7 +851,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
               : tInvoice("actions.createPaymentLink", "Create / copy payment link"),
             help: tInvoice("actionHelp.copyPaymentLink", "Create or reuse the hosted Stripe invoice link and copy it to the clipboard."),
             onClick: () => handleCopyPaymentLink(rowId),
-            disabled: paymentButtonBusy,
+            disabled: paymentButtonBusy || !canUsePaymentLink,
           },
           {
             key: "send-payment-link",
@@ -889,7 +897,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
                         </Typography>
                         <FinanceStatusChip status={row.payment_status || row.status} />
                         {isOverdue(row) ? <Chip size="small" color="error" label={tInvoice("status.overdue", "Overdue")} /> : null}
-                        <Chip size="small" variant="outlined" label={paymentLinkLabel(row)} />
+                        {canUsePaymentLink ? <Chip size="small" variant="outlined" label={paymentLinkLabel(row)} /> : null}
                       </Stack>
                       <Typography variant="subtitle1" fontWeight={800} sx={{ lineHeight: 1.3 }}>
                         {row.billing_display_name || row.client_name || tInvoice("labels.clientFallback", "Client")}
@@ -934,6 +942,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
                     size="small"
                     startIcon={<LaunchIcon />}
                     onClick={() => handleOpenPaymentLink(row)}
+                    disabled={!canUsePaymentLink}
                   >
                     {tInvoice("actions.openPaymentPage", "Open payment page")}
                   </Button>
