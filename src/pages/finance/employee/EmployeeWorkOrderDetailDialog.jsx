@@ -34,6 +34,7 @@ import { getAuthedCompanyId } from "../../../utils/authedCompany";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 import { captureDispatchStatusLocation } from "./dispatchLocation";
+import { formatAssignmentScheduleLabel, groupAssignmentRows } from "../assignmentGrouping";
 import "leaflet/dist/leaflet.css";
 
 const DISPATCH_STATUS_LABELS = {
@@ -74,6 +75,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const scheduleSectionRef = useRef(null);
   const materialsSectionRef = useRef(null);
   const instructionsSectionRef = useRef(null);
+  const assignmentGroups = groupAssignmentRows(workOrder?.assignments || []);
 
   useEffect(() => {
     let mounted = true;
@@ -443,11 +445,11 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
 
             <Paper ref={scheduleSectionRef} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 1.5 }}>Assigned date and time</Typography>
-              {(workOrder.assignments || []).length ? (
+              {assignmentGroups.length ? (
                 <Stack spacing={1}>
-                  {workOrder.assignments.map((row) => (
-                    <Typography key={row.assignment_id} variant="body2">
-                      {row.work_date || "No date"}{row.start_time ? ` • ${row.start_time}` : ""}{row.end_time ? ` to ${row.end_time}` : ""}{row.timezone ? ` • ${row.timezone}` : workOrder.timezone ? ` • ${workOrder.timezone}` : ""}
+                  {assignmentGroups.map((group, index) => (
+                    <Typography key={`${group.recruiter_id || "assignment"}-${group.start_date}-${index}`} variant="body2">
+                      {formatAssignmentScheduleLabel(group, workOrder.timezone)}
                     </Typography>
                   ))}
                 </Stack>

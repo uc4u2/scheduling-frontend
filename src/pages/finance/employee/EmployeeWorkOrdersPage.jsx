@@ -26,11 +26,15 @@ import EmployeeFinanceEmptyState from "./EmployeeFinanceEmptyState";
 import EmployeeWorkOrderDetailDialog from "./EmployeeWorkOrderDetailDialog";
 import EmployeeFieldReportDialog from "./EmployeeFieldReportDialog";
 import { captureDispatchStatusLocation } from "./dispatchLocation";
+import { formatAssignmentScheduleLabel, groupAssignmentRows } from "../assignmentGrouping";
 
 const assignmentPreview = (assignments = [], timezone = "") => {
   if (!assignments.length) return "No assignment details";
-  const first = assignments[0];
-  return `${first.work_date || "No date"}${first.start_time ? ` • ${first.start_time}` : ""}${first.end_time ? ` to ${first.end_time}` : ""}${first.timezone || timezone ? ` • ${first.timezone || timezone}` : ""}`;
+  const groups = groupAssignmentRows(assignments);
+  const first = groups[0];
+  if (!first) return "No assignment details";
+  const base = formatAssignmentScheduleLabel(first, timezone);
+  return groups.length > 1 ? `${base} + ${groups.length - 1} more` : base;
 };
 
 export default function EmployeeWorkOrdersPage() {

@@ -40,6 +40,7 @@ import {
   updateWorkOrderAssignment,
 } from "./financeApi";
 import FinanceEmptyState from "./components/FinanceEmptyState";
+import { formatAssignmentDateRange, groupAssignmentRows } from "./assignmentGrouping";
 
 const buildBlankForm = (timezone, workDate = "") => ({
   recruiter_id: "",
@@ -143,8 +144,10 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [bulkFailures, setBulkFailures] = useState([]);
   const [availabilityWarnings, setAvailabilityWarnings] = useState([]);
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   const items = useMemo(() => Array.isArray(workOrder?.assignments) ? workOrder.assignments : [], [workOrder]);
+  const groupedItems = useMemo(() => groupAssignmentRows(items), [items]);
   const departmentNameById = useMemo(() => buildDepartmentMap(departments), [departments]);
   const departmentOptions = useMemo(() => {
     const recruiterDepartmentIds = new Set(
@@ -397,6 +400,10 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || err?.message || tAssignments("errors.removeFailed", "Unable to remove assignment."), { variant: "error" });
     }
+  };
+
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups((current) => ({ ...current, [groupKey]: !current[groupKey] }));
   };
 
   return (
@@ -794,32 +801,77 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
                 <TableCell>{tAssignments("table.headers.plannedLabor", "Planned labor")}</TableCell>
                 <TableCell>{tAssignments("table.headers.timezone", "Timezone")}</TableCell>
                 <TableCell>{tAssignments("table.headers.notes", "Notes")}</TableCell>
+                <TableCell>{tAssignments("table.headers.days", "Days")}</TableCell>
                 <TableCell align="right">{tAssignments("table.headers.actions", "Actions")}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {items.map((row) => (
-                <TableRow key={row.id} hover>
-                  <TableCell>
-                    <Typography variant="body2">{row.recruiter_name || tAssignments("fallbacks.teamMemberId", "Team member #{{id}}", { id: row.recruiter_id })}</Typography>
-                    <Typography variant="body2" color="text.secondary">{row.recruiter_email || ""}</Typography>
-                  </TableCell>
-                  <TableCell>{row.work_date || "-"}</TableCell>
-                  <TableCell>
-                    {row.start_time && row.end_time ? `${row.start_time} - ${row.end_time}` : tAssignments("table.hoursOnly", "Hours only")}
-                  </TableCell>
-                  <TableCell>{row.planned_hours ?? 0}</TableCell>
-                  <TableCell>{row.planned_labor_cost ?? 0}</TableCell>
-                  <TableCell>{row.timezone || workOrder?.timezone || "-"}</TableCell>
-                  <TableCell>{row.notes || "-"}</TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <Tooltip title={tAssignments("table.editAssignment", "Edit assignment")}><IconButton onClick={() => openEdit(row)}><EditOutlinedIcon fontSize="small" /></IconButton></Tooltip>
-                      <Tooltip title={tAssignments("table.deleteAssignment", "Delete assignment")}><IconButton color="error" onClick={() => handleDelete(row)}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {groupedItems.map((group, index) => {
+                const groupKey = `${group.recruiter_id || "group"}-${group.start_date}-${group.end_date}-${index}`;
+                const isExpanded = !!expandedGroups[groupKey];
+                const firstRow = group.rows[0];
+                return (
+                  <React.Fragment key={groupKey}>
+                    <TableRow hover>
+                      <TableCell>
+                        <Typography variant="body2">{group.recruiter_name || tAssignments("fallbacks.teamMemberId", "Team member #{{id}}", { id: group.recruiter_id })}</Typography>
+                        <Typography variant="body2" color="text.secondary">{group.recruiter_email || ""}</Typography>
+                      </TableCell>
+                      <TableCell>{formatAssignmentDateRange(group)}</TableCell>
+                      <TableCell>
+                        {group.start_time && group.end_time ? `${group.start_time} - ${group.end_time}` : tAssignments("table.hoursOnly", "Hours only")}
+                      </TableCell>
+                      <TableCell>{group.planned_hours ?? 0}</TableCell>
+                      <TableCell>{group.planned_labor_cost ?? 0}</TableCell>
+                      <TableCell>{group.timezone || workOrder?.timezone || "-"}</TableCell>
+                      <TableCell>{group.notes || "-"}</TableCell>
+                      <TableCell>{group.count}</TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                          {group.count === 1 ? (
+                            <>
+                              <Tooltip title={tAssignments("table.editAssignment", "Edit assignment")}><IconButton onClick={() => openEdit(firstRow)}><EditOutlinedIcon fontSize="small" /></IconButton></Tooltip>
+                              <Tooltip title={tAssignments("table.deleteAssignment", "Delete assignment")}><IconButton color="error" onClick={() => handleDelete(firstRow)}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                            </>
+                          ) : (
+                            <Tooltip title={isExpanded ? tAssignments("table.hideRows", "Hide daily rows") : tAssignments("table.showRows", "Show daily rows")}>
+                              <IconButton onClick={() => toggleGroup(groupKey)}>
+                                {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                    {group.count > 1 && isExpanded
+                      ? group.rows.map((row) => (
+                          <TableRow key={row.id} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.025) }}>
+                            <TableCell sx={{ pl: 4 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                {row.recruiter_name || tAssignments("fallbacks.teamMemberId", "Team member #{{id}}", { id: row.recruiter_id })}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>{row.work_date || "-"}</TableCell>
+                            <TableCell>
+                              {row.start_time && row.end_time ? `${row.start_time} - ${row.end_time}` : tAssignments("table.hoursOnly", "Hours only")}
+                            </TableCell>
+                            <TableCell>{row.planned_hours ?? 0}</TableCell>
+                            <TableCell>{row.planned_labor_cost ?? 0}</TableCell>
+                            <TableCell>{row.timezone || workOrder?.timezone || "-"}</TableCell>
+                            <TableCell>{row.notes || "-"}</TableCell>
+                            <TableCell>1</TableCell>
+                            <TableCell align="right">
+                              <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                <Tooltip title={tAssignments("table.editAssignment", "Edit assignment")}><IconButton onClick={() => openEdit(row)}><EditOutlinedIcon fontSize="small" /></IconButton></Tooltip>
+                                <Tooltip title={tAssignments("table.deleteAssignment", "Delete assignment")}><IconButton color="error" onClick={() => handleDelete(row)}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      : null}
+                  </React.Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </Paper>
