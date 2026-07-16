@@ -61,6 +61,18 @@ const routeReasonLabel = (reason) => {
   }
 };
 
+const statusAlertCopy = (tracking) => {
+  const employeeName = tracking?.employee_name || "Your technician";
+  const status = String(tracking?.status || "").toLowerCase();
+  if (status === "arrived") {
+    return { severity: "success", message: `${employeeName} has arrived.` };
+  }
+  if (status === "on_my_way") {
+    return { severity: "info", message: `${employeeName} is on the way.` };
+  }
+  return { severity: "info", message: "The trip has not started yet." };
+};
+
 export default function WorkOrderTrackingPage() {
   const { token } = useParams();
   const [loading, setLoading] = useState(true);
@@ -92,6 +104,7 @@ export default function WorkOrderTrackingPage() {
 
   const route = tracking?.route || null;
   const timezone = tracking?.timezone || "UTC";
+  const statusAlert = tracking ? statusAlertCopy(tracking) : null;
   const routePoints = Array.isArray(route?.polyline) ? route.polyline : [];
   const origin = route?.origin || tracking?.location || null;
   const destination = route?.destination || tracking?.destination_meta || null;
@@ -131,11 +144,7 @@ export default function WorkOrderTrackingPage() {
                 </Typography>
               </Box>
 
-              <Alert severity={tracking.status === "arrived" ? "success" : "info"}>
-                {tracking.status === "arrived"
-                  ? `${tracking.employee_name || "Your technician"} has arrived.`
-                  : `${tracking.employee_name || "Your technician"} is on the way.`}
-              </Alert>
+              {statusAlert ? <Alert severity={statusAlert.severity}>{statusAlert.message}</Alert> : null}
 
               <Stack spacing={0.75}>
                 <Typography variant="body2" color="text.secondary">
