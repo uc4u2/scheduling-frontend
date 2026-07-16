@@ -210,6 +210,8 @@ export const getWorkOrdersSummary = () => unwrap(api.get("/finance/work-orders/s
 
 export const listWorkOrderAssignments = (workOrderId, params = {}) =>
   unwrap(api.get(`/finance/work-orders/${workOrderId}/assignments`, { params }));
+export const listAssignmentDepartments = () =>
+  unwrap(api.get("/api/departments"));
 export const createWorkOrderAssignment = (workOrderId, payload) =>
   unwrap(api.post(`/finance/work-orders/${workOrderId}/assignments`, payload));
 export const getWorkOrderAssignment = (id) => unwrap(api.get(`/finance/work-order-assignments/${id}`));
@@ -663,6 +665,12 @@ export const createBillingRecipient = async (payload) => {
 };
 
 export const listRecruitersForAssignment = async () => {
-  const res = await api.get("/manager/recruiters");
+  const res = await api.get("/manager/recruiters", {
+    params: {
+      active: true,
+      per_page: 500,
+      page: 1,
+    },
+  });
   return pickArray(res.data, ["recruiters", "items", "data"]).map(normalizeRecruiterRow);
 };

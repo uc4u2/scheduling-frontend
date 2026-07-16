@@ -35,6 +35,7 @@ import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDate
 import {
   createWorkOrderAssignment,
   deleteWorkOrderAssignment,
+  listAssignmentDepartments,
   listRecruitersForAssignment,
   updateWorkOrderAssignment,
 } from "./financeApi";
@@ -44,6 +45,8 @@ const buildBlankForm = (timezone, workDate = "") => ({
   recruiter_id: "",
   recruiter_ids: [],
   work_date: workDate,
+  range_start: workDate,
+  range_end: workDate,
   start_time: "",
   end_time: "",
   planned_hours: "",
@@ -84,6 +87,39 @@ const derivePlannedHours = (startTime, endTime) => {
   return ((endTotalMinutes - startTotalMinutes) / 60).toFixed(2);
 };
 
+const buildDepartmentMap = (departments = []) => {
+  const map = new Map();
+  (departments || []).forEach((department) => {
+    if (!department?.id) return;
+    map.set(String(department.id), department.name || `Department #${department.id}`);
+  });
+  return map;
+};
+
+const expandDateRange = (startValue, endValue) => {
+  if (!startValue || !endValue) return [];
+  const start = new Date(`${startValue}T00:00:00`);
+  const end = new Date(`${endValue}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+  const values = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const year = cursor.getFullYear();
+    const month = String(cursor.getMonth() + 1).padStart(2, "0");
+    const day = String(cursor.getDate()).padStart(2, "0");
+    values.push(`${year}-${month}-${day}`);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return values;
+};
+
+const buildAssignmentDates = (form, scheduleMode) => {
+  if (scheduleMode === "date_range") {
+    return expandDateRange(form.range_start, form.range_end);
+  }
+  return form.work_date ? [form.work_date] : [];
+};
+
 export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -93,6 +129,7 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     [t]
   );
   const [recruiters, setRecruiters] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [recruitersError, setRecruitersError] = useState("");
   const [loadingRecruiters, setLoadingRecruiters] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -102,19 +139,49 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const [error, setError] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mode, setMode] = useState("single");
+  const [scheduleMode, setScheduleMode] = useState("single_day");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [bulkFailures, setBulkFailures] = useState([]);
+  const [availabilityWarnings, setAvailabilityWarnings] = useState([]);
 
   const items = useMemo(() => Array.isArray(workOrder?.assignments) ? workOrder.assignments : [], [workOrder]);
+  const departmentNameById = useMemo(() => buildDepartmentMap(departments), [departments]);
+  const departmentOptions = useMemo(() => {
+    const recruiterDepartmentIds = new Set(
+      recruiters
+        .map((row) => row?.department_id)
+        .filter((value) => value !== null && value !== undefined && value !== "")
+        .map((value) => String(value))
+    );
+    return departments.filter((department) => recruiterDepartmentIds.has(String(department.id)));
+  }, [departments, recruiters]);
+  const filteredRecruiters = useMemo(() => {
+    if (departmentFilter === "all") return recruiters;
+    return recruiters.filter((row) => String(row.department_id || "") === String(departmentFilter));
+  }, [departmentFilter, recruiters]);
+  const assignmentDates = useMemo(() => buildAssignmentDates(form, scheduleMode), [form, scheduleMode]);
+  const selectedRecruiterCount = useMemo(() => {
+    if (mode === "single") return form.recruiter_id ? 1 : 0;
+    return Array.from(new Set((form.recruiter_ids || []).filter(Boolean))).length;
+  }, [form.recruiter_id, form.recruiter_ids, mode]);
+  const previewAssignmentCount = useMemo(
+    () => selectedRecruiterCount * assignmentDates.length,
+    [assignmentDates.length, selectedRecruiterCount]
+  );
 
   useEffect(() => {
     let mounted = true;
-    const loadRecruiters = async () => {
+    const loadDirectory = async () => {
       setLoadingRecruiters(true);
       setRecruitersError("");
       try {
-        const rows = await listRecruitersForAssignment();
+        const [rows, deptRows] = await Promise.all([
+          listRecruitersForAssignment(),
+          listAssignmentDepartments(),
+        ]);
         if (!mounted) return;
         setRecruiters(rows.filter((row) => !row.archived_at));
+        setDepartments(Array.isArray(deptRows) ? deptRows : []);
       } catch (err) {
         if (!mounted) return;
         setRecruitersError(err?.response?.data?.error || err?.message || tAssignments("errors.loadTeamMembersFailed", "Unable to load team members."));
@@ -122,7 +189,7 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
         if (mounted) setLoadingRecruiters(false);
       }
     };
-    loadRecruiters();
+    loadDirectory();
     return () => {
       mounted = false;
     };
@@ -149,21 +216,31 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     setEditingId(null);
     setError("");
     setBulkFailures([]);
+    setAvailabilityWarnings([]);
     setMode("single");
+    setScheduleMode("single_day");
+    setDepartmentFilter("all");
     setShowAdvanced(false);
     setForm(buildBlankForm(workOrder?.timezone, workOrder?.start_date || ""));
     setFormOpen(true);
   };
 
   const openEdit = (row) => {
+    const recruiter = recruiters.find((entry) => String(entry.id) === String(row.recruiter_id));
     setEditingId(row.id);
     setError("");
     setBulkFailures([]);
+    setAvailabilityWarnings([]);
     setMode("single");
+    setScheduleMode("single_day");
+    setDepartmentFilter(recruiter?.department_id ? String(recruiter.department_id) : "all");
     setShowAdvanced(Boolean(row.can_submit_report || row.can_report_materials || row.can_upload_files || row.is_lead_reporter));
     setForm({
       recruiter_id: row.recruiter_id || "",
+      recruiter_ids: [],
       work_date: row.work_date || "",
+      range_start: row.work_date || "",
+      range_end: row.work_date || "",
       start_time: row.start_time || "",
       end_time: row.end_time || "",
       planned_hours: row.planned_hours ?? "",
@@ -180,7 +257,10 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
   const validate = () => {
     if (mode === "single" && !form.recruiter_id) return tAssignments("errors.chooseTeamMember", "Choose a team member.");
     if (mode === "bulk" && !(Array.isArray(form.recruiter_ids) && form.recruiter_ids.length)) return tAssignments("errors.chooseAtLeastOne", "Choose at least one team member.");
-    if (!form.work_date) return tAssignments("errors.chooseWorkDate", "Choose a work date.");
+    if (scheduleMode === "single_day" && !form.work_date) return tAssignments("errors.chooseWorkDate", "Choose a work date.");
+    if (scheduleMode === "date_range" && !form.range_start) return tAssignments("errors.chooseRangeStart", "Choose a start date.");
+    if (scheduleMode === "date_range" && !form.range_end) return tAssignments("errors.chooseRangeEnd", "Choose an end date.");
+    if (scheduleMode === "date_range" && form.range_end < form.range_start) return tAssignments("errors.rangeEndAfterStart", "End date must be on or after the start date.");
     if (!form.start_time && !form.end_time && !form.planned_hours) return tAssignments("errors.enterHoursOrTime", "Enter planned hours or choose a start and end time.");
     if ((form.start_time && !form.end_time) || (!form.start_time && form.end_time)) return tAssignments("errors.chooseBothTimes", "Choose both a start time and an end time.");
     if (form.start_time && form.end_time && form.end_time <= form.start_time) return tAssignments("errors.endAfterStart", "End time must be after start time.");
@@ -197,8 +277,8 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     setSaving(true);
     setError("");
     setBulkFailures([]);
+    setAvailabilityWarnings([]);
     const payload = {
-      work_date: form.work_date,
       start_time: form.start_time || null,
       end_time: form.end_time || null,
       planned_hours: form.planned_hours || null,
@@ -211,44 +291,94 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
     };
     try {
       if (editingId) {
-        await updateWorkOrderAssignment(editingId, payload);
+        const response = await updateWorkOrderAssignment(editingId, {
+          ...payload,
+          work_date: form.work_date,
+        });
+        const warnings = Array.isArray(response?.warnings) ? response.warnings : [];
+        setAvailabilityWarnings(warnings);
         enqueueSnackbar(tAssignments("snackbar.assignmentUpdated", "Assignment updated."), { variant: "success" });
+        if (warnings.length) {
+          enqueueSnackbar(
+            tAssignments("warnings.updatedWithWarnings", "Assignment saved with scheduling warnings."),
+            { variant: "warning" }
+          );
+        }
+        setFormOpen(false);
+        await onChanged?.();
       } else if (mode === "bulk") {
         const uniqueRecruiterIds = Array.from(new Set((form.recruiter_ids || []).filter(Boolean)));
+        const plannedDates = assignmentDates;
         let successCount = 0;
         const failures = [];
+        const warnings = [];
         for (const recruiterId of uniqueRecruiterIds) {
-          try {
-            await createWorkOrderAssignment(workOrder.id, {
-              ...payload,
-              recruiter_id: recruiterId,
-              planned_hours: payload.planned_hours || null,
-            });
-            successCount += 1;
-          } catch (err) {
-            const recruiter = recruiters.find((row) => String(row.id) === String(recruiterId));
+          for (const workDate of plannedDates) {
+            try {
+              const response = await createWorkOrderAssignment(workOrder.id, {
+                ...payload,
+                recruiter_id: recruiterId,
+                work_date: workDate,
+                planned_hours: payload.planned_hours || null,
+              });
+              successCount += 1;
+              if (Array.isArray(response?.warnings) && response.warnings.length) {
+                const recruiter = recruiters.find((row) => String(row.id) === String(recruiterId));
+                response.warnings.forEach((warning) => {
+                  warnings.push({
+                    recruiterId,
+                    name: recruiter?.name || recruiter?.email || tAssignments("fallbacks.teamMemberId", "Team member #{{id}}", { id: recruiterId }),
+                    workDate,
+                    message: warning?.message || tAssignments("warnings.generic", "Scheduling warning."),
+                  });
+                });
+              }
+            } catch (err) {
+              const recruiter = recruiters.find((row) => String(row.id) === String(recruiterId));
               failures.push({
                 recruiterId,
+                workDate,
                 name: recruiter?.name || recruiter?.email || tAssignments("fallbacks.teamMemberId", "Team member #{{id}}", { id: recruiterId }),
                 message: mapAssignmentError(err, tAssignments),
               });
             }
+          }
         }
         setBulkFailures(failures);
+        setAvailabilityWarnings(warnings);
         if (successCount > 0 && failures.length === 0) {
-          enqueueSnackbar(tAssignments(successCount === 1 ? "snackbar.addedOne" : "snackbar.addedMany", successCount === 1 ? "Added {{count}} team member." : "Added {{count}} team members.", { count: successCount }), { variant: "success" });
+          enqueueSnackbar(tAssignments(successCount === 1 ? "snackbar.addedOne" : "snackbar.addedMany", successCount === 1 ? "Added {{count}} assignment row." : "Added {{count}} assignment rows.", { count: successCount }), { variant: "success" });
         } else if (successCount > 0) {
-          enqueueSnackbar(tAssignments("snackbar.addedWithFailures", "Added {{successCount}} team members. {{failureCount}} could not be added.", { successCount, failureCount: failures.length }), { variant: "warning" });
+          enqueueSnackbar(tAssignments("snackbar.addedWithFailures", "Added {{successCount}} assignment rows. {{failureCount}} could not be added.", { successCount, failureCount: failures.length }), { variant: "warning" });
         } else {
           setError(tAssignments("errors.noneAdded", "No team members could be added."));
+        }
+        if (warnings.length) {
+          enqueueSnackbar(
+            tAssignments("warnings.bulkCreatedWithWarnings", "{{count}} assignment rows were created with scheduling warnings.", { count: warnings.length }),
+            { variant: "warning" }
+          );
         }
         if (successCount > 0) {
           setFormOpen(false);
           await onChanged?.();
         }
       } else {
-        await createWorkOrderAssignment(workOrder.id, { ...payload, recruiter_id: form.recruiter_id });
+        const warnings = [];
+        for (const workDate of assignmentDates) {
+          const response = await createWorkOrderAssignment(workOrder.id, { ...payload, recruiter_id: form.recruiter_id, work_date: workDate });
+          if (Array.isArray(response?.warnings) && response.warnings.length) {
+            warnings.push(...response.warnings);
+          }
+        }
+        setAvailabilityWarnings(warnings);
         enqueueSnackbar(tAssignments("snackbar.teamMemberAssigned", "Team member assigned."), { variant: "success" });
+        if (warnings.length) {
+          enqueueSnackbar(
+            tAssignments("warnings.createdWithWarnings", "Assignment created with scheduling warnings."),
+            { variant: "warning" }
+          );
+        }
         setFormOpen(false);
         await onChanged?.();
       }
@@ -304,6 +434,7 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
                     setBulkFailures([]);
                     setForm((current) => ({ ...current, recruiter_ids: [] }));
                   }}
+                  disabled={Boolean(editingId)}
                 >
                   {tAssignments("mode.single", "One team member")}
                 </Button>
@@ -315,11 +446,68 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
                     setBulkFailures([]);
                     setForm((current) => ({ ...current, recruiter_id: "" }));
                   }}
+                  disabled={Boolean(editingId)}
                 >
                   {tAssignments("mode.bulk", "Multiple team members")}
                 </Button>
               </Stack>
             </Stack>
+
+            {!editingId ? (
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                <FormControl fullWidth>
+                  <InputLabel>{tAssignments("filters.department", "Department")}</InputLabel>
+                  <Select
+                    label={tAssignments("filters.department", "Department")}
+                    value={departmentFilter}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setDepartmentFilter(nextValue);
+                      setForm((current) => ({
+                        ...current,
+                        recruiter_id:
+                          mode === "single" && nextValue !== "all" && String(filteredRecruiters.find((row) => String(row.id) === String(current.recruiter_id))?.department_id || "") !== String(nextValue)
+                            ? ""
+                            : current.recruiter_id,
+                        recruiter_ids:
+                          mode === "bulk"
+                            ? (current.recruiter_ids || []).filter((id) => {
+                                const recruiter = recruiters.find((row) => String(row.id) === String(id));
+                                return nextValue === "all" || String(recruiter?.department_id || "") === String(nextValue);
+                              })
+                            : current.recruiter_ids,
+                      }));
+                    }}
+                  >
+                    <MenuItem value="all">{tAssignments("filters.allDepartments", "All departments")}</MenuItem>
+                    {departmentOptions.map((department) => (
+                      <MenuItem key={department.id} value={String(department.id)}>
+                        {department.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: { md: 260 } }}>
+                  <Typography variant="subtitle2" fontWeight={700}>{tAssignments("schedule.title", "Schedule")}</Typography>
+                  <Button
+                    size="small"
+                    variant={scheduleMode === "single_day" ? "contained" : "outlined"}
+                    onClick={() => setScheduleMode("single_day")}
+                    disabled={saving}
+                  >
+                    {tAssignments("schedule.singleDay", "Single day")}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={scheduleMode === "date_range" ? "contained" : "outlined"}
+                    onClick={() => setScheduleMode("date_range")}
+                    disabled={saving}
+                  >
+                    {tAssignments("schedule.dateRange", "Date range")}
+                  </Button>
+                </Stack>
+              </Stack>
+            ) : null}
 
             {mode === "bulk" ? (
               <Alert severity="info">{tAssignments("bulkInfo", "Use bulk assignment when several team members share the same date and time.")}</Alert>
@@ -329,10 +517,28 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
               <Alert severity="warning">
                 <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>{tAssignments("bulkFailuresTitle", "Could not add:")}</Typography>
                 {bulkFailures.map((failure) => (
-                  <Typography key={`${failure.recruiterId}-${failure.name}`} variant="body2">
-                    - {failure.name}: {failure.message}
+                  <Typography key={`${failure.recruiterId}-${failure.workDate || "single"}-${failure.name}`} variant="body2">
+                    - {failure.name}{failure.workDate ? ` • ${failure.workDate}` : ""}: {failure.message}
                   </Typography>
                 ))}
+              </Alert>
+            ) : null}
+
+            {availabilityWarnings.length ? (
+              <Alert severity="warning">
+                <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                  {tAssignments("warnings.title", "Scheduling warnings")}
+                </Typography>
+                {availabilityWarnings.slice(0, 8).map((warning, index) => (
+                  <Typography key={`${warning.name || "assignment"}-${warning.workDate || "single"}-${index}`} variant="body2">
+                    - {warning.name ? `${warning.name}${warning.workDate ? ` • ${warning.workDate}` : ""}: ` : ""}{warning.message}
+                  </Typography>
+                ))}
+                {availabilityWarnings.length > 8 ? (
+                  <Typography variant="body2">
+                    {tAssignments("warnings.more", "And {{count}} more warning(s).", { count: availabilityWarnings.length - 8 })}
+                  </Typography>
+                ) : null}
               </Alert>
             ) : null}
 
@@ -347,47 +553,128 @@ export default function WorkOrderAssignmentsPanel({ workOrder, onChanged }) {
                     disabled={loadingRecruiters || saving}
                   >
                     <MenuItem value="">{tAssignments("fields.selectTeamMember", "Select team member")}</MenuItem>
-                    {recruiters.map((row) => (
+                    {filteredRecruiters.map((row) => (
                       <MenuItem key={row.id} value={row.id}>
-                        {row.name}{row.hourly_rate != null ? ` • ${row.hourly_rate}/hr` : ""}
+                        {row.name}
+                        {row.hourly_rate != null ? ` • ${row.hourly_rate}/hr` : ""}
+                        {row.department_id ? ` • ${departmentNameById.get(String(row.department_id)) || tAssignments("filters.unknownDepartment", "Department #{{id}}", { id: row.department_id })}` : ""}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-                <ThemedDateField
-                  label={tAssignments("fields.workDate", "Work date")}
-                  name="work_date"
-                  value={form.work_date}
-                  onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
-                  fullWidth
-                />
+                {scheduleMode === "date_range" && !editingId ? (
+                  <>
+                    <ThemedDateField
+                      label={tAssignments("fields.fromDate", "From")}
+                      name="range_start"
+                      value={form.range_start}
+                      onChange={(e) => setForm((current) => ({ ...current, range_start: e.target.value }))}
+                      fullWidth
+                    />
+                    <ThemedDateField
+                      label={tAssignments("fields.toDate", "To")}
+                      name="range_end"
+                      value={form.range_end}
+                      onChange={(e) => setForm((current) => ({ ...current, range_end: e.target.value }))}
+                      fullWidth
+                    />
+                  </>
+                ) : (
+                  <ThemedDateField
+                    label={tAssignments("fields.workDate", "Work date")}
+                    name="work_date"
+                    value={form.work_date}
+                    onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
+                    fullWidth
+                  />
+                )}
               </Stack>
             ) : (
               <Stack spacing={2}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }} justifyContent="space-between">
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      {tAssignments("bulk.visibleCount", "{{count}} visible team members", { count: filteredRecruiters.length })}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {tAssignments("bulk.selectedCount", "{{count}} selected", { count: (form.recruiter_ids || []).length })}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setForm((current) => ({
+                          ...current,
+                          recruiter_ids: Array.from(new Set(filteredRecruiters.map((row) => row.id))),
+                        }));
+                      }}
+                      disabled={loadingRecruiters || saving || filteredRecruiters.length === 0}
+                    >
+                      {tAssignments("bulk.selectAllVisible", "Select all visible")}
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => setForm((current) => ({ ...current, recruiter_ids: [] }))}
+                      disabled={saving || !(form.recruiter_ids || []).length}
+                    >
+                      {tAssignments("bulk.clearSelection", "Clear selection")}
+                    </Button>
+                  </Stack>
+                </Stack>
                 <Autocomplete
                   multiple
-                  options={recruiters}
-                  value={recruiters.filter((row) => (form.recruiter_ids || []).includes(row.id))}
+                  options={filteredRecruiters}
+                  value={filteredRecruiters.filter((row) => (form.recruiter_ids || []).includes(row.id))}
                   onChange={(_, value) => {
                     setForm((current) => ({
                       ...current,
                       recruiter_ids: Array.from(new Set(value.map((row) => row.id))),
                     }));
                   }}
-                  getOptionLabel={(option) => option?.email ? `${option.name}${option.hourly_rate != null ? ` • ${option.hourly_rate}/hr` : ""} • ${option.email}` : option?.name || ""}
+                  getOptionLabel={(option) => option?.email ? `${option.name}${option.hourly_rate != null ? ` • ${option.hourly_rate}/hr` : ""}${option.department_id ? ` • ${departmentNameById.get(String(option.department_id)) || tAssignments("filters.unknownDepartment", "Department #{{id}}", { id: option.department_id })}` : ""} • ${option.email}` : option?.name || ""}
                   isOptionEqualToValue={(option, value) => option.id === value.id}
                   renderInput={(params) => <TextField {...params} label={tAssignments("fields.teamMembers", "Team members")} placeholder={tAssignments("fields.selectTeamMembers", "Select team members")} />}
                   disabled={loadingRecruiters || saving}
                 />
-                <ThemedDateField
-                  label={tAssignments("fields.workDate", "Work date")}
-                  name="work_date"
-                  value={form.work_date}
-                  onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
-                  fullWidth
-                />
+                {scheduleMode === "date_range" ? (
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <ThemedDateField
+                      label={tAssignments("fields.fromDate", "From")}
+                      name="range_start"
+                      value={form.range_start}
+                      onChange={(e) => setForm((current) => ({ ...current, range_start: e.target.value }))}
+                      fullWidth
+                    />
+                    <ThemedDateField
+                      label={tAssignments("fields.toDate", "To")}
+                      name="range_end"
+                      value={form.range_end}
+                      onChange={(e) => setForm((current) => ({ ...current, range_end: e.target.value }))}
+                      fullWidth
+                    />
+                  </Stack>
+                ) : (
+                  <ThemedDateField
+                    label={tAssignments("fields.workDate", "Work date")}
+                    name="work_date"
+                    value={form.work_date}
+                    onChange={(e) => setForm((current) => ({ ...current, work_date: e.target.value }))}
+                    fullWidth
+                  />
+                )}
               </Stack>
             )}
+
+            {!editingId && previewAssignmentCount > 0 ? (
+              <Alert severity="info">
+                {tAssignments(
+                  "schedule.previewRows",
+                  "{{count}} assignment rows will be created.",
+                  { count: previewAssignmentCount }
+                )}
+              </Alert>
+            ) : null}
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <ThemedTimeField
