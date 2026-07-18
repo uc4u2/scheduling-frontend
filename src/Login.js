@@ -554,13 +554,15 @@ const Login = ({ setToken, slugOverride = "" }) => {
                     size="small"
                     variant="text"
                     sx={{ px: 0.5, minHeight: 28 }}
-                    onClick={() =>
-                      navigate(
-                        siteForRedirect()
-                          ? `/forgot-password?site=${encodeURIComponent(siteForRedirect())}`
-                          : "/forgot-password"
-                      )
-                    }
+                    onClick={() => {
+                      const search = new URLSearchParams();
+                      const site = siteForRedirect();
+                      const forgotRole = getRoleMeta(selectedRole).apiValue;
+                      if (site) search.set("site", site);
+                      if (forgotRole) search.set("role", forgotRole);
+                      const qs = search.toString();
+                      navigate(qs ? `/forgot-password?${qs}` : "/forgot-password");
+                    }}
                   >
                     Forgot password?
                   </Button>

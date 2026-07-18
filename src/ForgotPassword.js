@@ -15,6 +15,7 @@ const ForgotPassword = ({ slugOverride = "" }) => {
   const params = useParams();
   const search = new URLSearchParams(location.search || "");
   const querySite = (search.get("site") || "").trim();
+  const queryRole = (search.get("role") || "").trim().toLowerCase();
   const storedSite =
     typeof localStorage !== "undefined" ? (localStorage.getItem("site") || "").trim() : "";
   const tenantSite =
@@ -22,6 +23,7 @@ const ForgotPassword = ({ slugOverride = "" }) => {
     String(params.slug || "").trim() ||
     querySite ||
     storedSite;
+  const forgotRole = queryRole || "client";
 
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
@@ -33,7 +35,7 @@ const ForgotPassword = ({ slugOverride = "" }) => {
     try {
       const response = await api.post(
         "/forgot-password",
-        { email, company_slug: tenantSite || undefined },
+        { email, company_slug: tenantSite || undefined, role: forgotRole },
         { noAuth: true, noCompanyHeader: true }
       );
       setMessage(response.data.message);
