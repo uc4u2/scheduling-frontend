@@ -194,6 +194,108 @@ function extractCampaignContent(params = {}) {
   }, {});
 }
 
+function formatCampaignStatusLabel(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (!value) return "Draft";
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function inferManagedMarketingMode({ provider, campaigns = [] }) {
+  if (provider?.status === "active") return false;
+  return (campaigns || []).some((row) => String(row?.delivery_mode || "").toLowerCase() === "platform_managed");
+}
+
+function summarizeAudiencePreview(previewMeta = null, rows = []) {
+  const meta = previewMeta || {};
+  const results = Array.isArray(rows) ? rows : [];
+  const scanned = Number(meta.scanned ?? meta.total_clients ?? results.length ?? 0) || 0;
+  const eligible = Number(meta.eligible ?? results.length ?? 0) || 0;
+  const suppressed = Number(
+    meta.excluded_suppressed
+      ?? meta.excluded_unsubscribed
+      ?? meta.suppressed
+      ?? 0
+  ) || 0;
+  const missingOrInvalid = Number(
+    meta.excluded_no_email
+      ?? meta.excluded_invalid_email
+      ?? meta.excluded_unmailable
+      ?? 0
+  ) || 0;
+  return {
+    totalClients: Math.max(scanned, eligible + suppressed + missingOrInvalid),
+    eligible,
+    suppressed,
+    missingOrInvalid,
+  };
+}
+
+async function sha256Hex(value) {
+  const buffer = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(buffer)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function buildManagedAudienceSnapshotHash({ companyId, campaignType, rows }) {
+  const seen = new Set();
+  const normalizedRecipients = [...(rows || [])]
+    .map((row) => ({
+      client_id: Number(row.client_id),
+      email_normalized: String(row.email || "").trim().toLowerCase(),
+    }))
+    .filter((row) => Number.isFinite(row.client_id) && row.client_id > 0 && row.email_normalized)
+    .filter((row) => {
+      const key = `${row.client_id}:${row.email_normalized}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => {
+      if (left.client_id !== right.client_id) return left.client_id - right.client_id;
+      return left.email_normalized.localeCompare(right.email_normalized);
+    });
+  const snapshot = {
+    resolver_version: "client_ids_v1",
+    company_id: Number(companyId),
+    campaign_type: String(campaignType || "").trim().toLowerCase(),
+    audience_definition: {
+      resolver: "client_ids",
+      client_ids: normalizedRecipients.map((row) => row.client_id),
+    },
+    client_ids: normalizedRecipients.map((row) => row.client_id),
+    resolved_recipients: normalizedRecipients,
+  };
+  return {
+    audience_definition_json: snapshot.audience_definition,
+    audience_snapshot_hash: await sha256Hex(stableStringify(snapshot)),
+  };
+}
+
+function resolveCurrentUserCompanyName(userInfo) {
+  return (
+    userInfo?.company_name ||
+    userInfo?.company?.name ||
+    userInfo?.profile?.company_name ||
+    userInfo?.profile?.name ||
+    ""
+  );
+}
+
 const CONTENT_PRESET_OPTIONS = [
   {
     key: "announcement",
@@ -273,6 +375,11 @@ function CampaignCard({
   providerStatus = "missing",
   onCampaignSent,
   composerSeed = null,
+  managedMode = false,
+  companyId = null,
+  companyName = "",
+  managerReplyTo = "",
+  managedCredits = null,
 }) {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -381,6 +488,7 @@ function CampaignCard({
       const payload = {
         campaign_type: campaignType,
         name: composerSeed?.campaignName || `${title} draft`,
+        delivery_mode: managedMode ? "platform_managed" : "bring_your_own",
         filters_json: params,
         content_json: extractCampaignContent(params),
         dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: rows.length } : {},
@@ -402,6 +510,12 @@ function CampaignCard({
 
   const filterSummary = useMemo(() => summarizeCampaignFilters(fieldDefs, params), [fieldDefs, params]);
   const previewCount = Number(previewMeta?.eligible ?? rows.length ?? 0);
+  const audienceSummary = useMemo(() => summarizeAudiencePreview(previewMeta, rows), [previewMeta, rows]);
+  const reviewFromName = managedMode
+    ? (companyName ? `${companyName} via Schedulaa` : "Schedulaa")
+    : "Configured provider sender";
+  const reviewReplyTo = managedMode ? (managerReplyTo || "Resolved by Schedulaa") : null;
+  const requiredCredits = audienceSummary.eligible;
 
   const toggleSelect = (key) => {
     setSelected(s => ({ ...s, [key]: !s[key] }));
@@ -417,10 +531,14 @@ function CampaignCard({
   const send = async (mode /* "selected" | "all" */) => {
     setErr(""); setInfo(""); setSendSummary(null); setSending(true);
     try {
-      let payload = { dry_run: !!dryRun };
+      let payload = {
+        dry_run: !!dryRun,
+        delivery_mode: managedMode ? "platform_managed" : "bring_your_own",
+      };
+      const selectedRows = rows.filter(r => selected[mapRowKey(r)]);
+      const audienceRows = mode === "selected" ? selectedRows : rows;
       if (mode === "selected") {
-        const targets = rows
-          .filter(r => selected[mapRowKey(r)])
+        const targets = audienceRows
           .map(r => ({
             client_id: r.client_id ?? null,
             email: r.email,
@@ -433,17 +551,39 @@ function CampaignCard({
           setSending(false);
           return;
         }
-        payload.targets = targets;
+        if (!managedMode) payload.targets = targets;
       }
       if (mode === "all") {
         if (!rows.length) { setInfo(t("campaigns.noPreviewRows")); setSending(false); return; }
-        payload.targets = rows.map(r => ({
+        if (!managedMode) payload.targets = rows.map(r => ({
           client_id: r.client_id ?? null,
           email: r.email,
           subject: r.subject,
           html: r.html,
           text: r.text || "",
         }));
+      }
+      if (managedMode) {
+        const resolvedRows = audienceRows.filter((row) => Number(row?.client_id) > 0 && String(row?.email || "").trim());
+        if (!resolvedRows.length) {
+          setErr("No eligible recipients were available for managed delivery.");
+          setSending(false);
+          return;
+        }
+        const managedAudience = await buildManagedAudienceSnapshotHash({
+          companyId,
+          campaignType,
+          rows: resolvedRows,
+        });
+        payload = {
+          ...payload,
+          ...managedAudience,
+          campaign_name: composerSeed?.campaignName || `${title} campaign`,
+          filters_json: params,
+          content_json: extractCampaignContent(params),
+          dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: rows.length } : {},
+          send_batch_size: 10,
+        };
       }
       const { data } = await api.post(`${sendPath}`, payload, auth);
       if (data?.dry_run) {
@@ -461,7 +601,11 @@ function CampaignCard({
           suppressed: data?.counts?.suppressed ?? 0,
           provider: data?.provider?.name || "SendGrid",
         });
-        setInfo(data?.message || "Campaign queued. Schedulaa will send gradually using your SendGrid limits.");
+        setInfo(
+          managedMode
+            ? "Campaign queued successfully. Sending continues in the background."
+            : (data?.message || "Campaign queued. Schedulaa will send gradually using your SendGrid limits.")
+        );
         if (onCampaignSent) onCampaignSent();
       }
     } catch (e) {
@@ -476,7 +620,7 @@ function CampaignCard({
       <CardHeader title={title} subheader={subtitle} />
       <CardContent>
         {helpText && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{helpText}</Typography>}
-        {!providerReady && (
+        {!providerReady && !managedMode && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             {providerStatus === "draft" && "SendGrid is connected and testable, but live campaigns stay disabled until you click Activate."}
             {providerStatus === "paused" && "Your SendGrid connection is paused. Reactivate it before sending live campaigns."}
@@ -657,9 +801,41 @@ function CampaignCard({
             Preview ready. Eligible recipients: <strong>{previewCount}</strong>
           </Alert>
         )}
+        {previewMeta ? (
+          <Grid container spacing={2} sx={{ my: 1 }}>
+            <Grid item xs={12} md={3}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Total clients</Typography><Typography variant="h6">{audienceSummary.totalClients}</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Eligible recipients</Typography><Typography variant="h6">{audienceSummary.eligible}</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Unsubscribed / suppressed</Typography><Typography variant="h6">{audienceSummary.suppressed}</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Missing / invalid email</Typography><Typography variant="h6">{audienceSummary.missingOrInvalid}</Typography></CardContent></Card>
+            </Grid>
+          </Grid>
+        ) : null}
+        {previewMeta ? (
+          <Card variant="outlined" sx={{ my: 2 }}>
+            <CardHeader title="Review before send" subheader="Confirm recipients and sender details before queueing the campaign." />
+            <CardContent>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}><Typography variant="body2"><strong>Campaign name:</strong> {composerSeed?.campaignName || `${title} campaign`}</Typography></Grid>
+                <Grid item xs={12} md={4}><Typography variant="body2"><strong>Subject:</strong> {params.subject || "Use campaign default"}</Typography></Grid>
+                <Grid item xs={12} md={4}><Typography variant="body2"><strong>Eligible recipients:</strong> {audienceSummary.eligible}</Typography></Grid>
+                <Grid item xs={12} md={4}><Typography variant="body2"><strong>Required credits:</strong> {requiredCredits}</Typography></Grid>
+                <Grid item xs={12} md={4}><Typography variant="body2"><strong>Available credits:</strong> {managedMode ? (managedCredits?.available ?? "—") : "Tenant SendGrid limits apply"}</Typography></Grid>
+                <Grid item xs={12} md={4}><Typography variant="body2"><strong>From Name:</strong> {reviewFromName}</Typography></Grid>
+                <Grid item xs={12} md={6}><Typography variant="body2"><strong>Reply-To:</strong> {managedMode ? reviewReplyTo : "Configured provider reply-to"}</Typography></Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        ) : null}
         {sendSummary && (
           <Alert severity="info" sx={{ my: 2 }}>
-            Campaign #{sendSummary.campaignId} via {sendSummary.provider}: queued {sendSummary.queued}, sent {sendSummary.sent}, skipped {sendSummary.skipped}, suppressed {sendSummary.suppressed}, failed {sendSummary.failed}. Status: {sendSummary.status}.
+            Campaign #{sendSummary.campaignId} via {sendSummary.provider}: queued {sendSummary.queued}, sent {sendSummary.sent}, skipped {sendSummary.skipped}, suppressed {sendSummary.suppressed}, failed {sendSummary.failed}. Status: {formatCampaignStatusLabel(sendSummary.status)}.
           </Alert>
         )}
 
@@ -794,7 +970,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
   );
 }
 
-function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
+function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCampaignsLoaded }) {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState(false);
@@ -809,10 +985,13 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
     setLoading(true);
     try {
       const { data } = await api.get(`/api/manager/marketing/campaigns?page=${page + 1}&page_size=${rowsPerPage}`, auth);
-      setCampaigns(Array.isArray(data?.campaigns) ? data.campaigns : []);
+      const nextCampaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
+      setCampaigns(nextCampaigns);
+      if (onCampaignsLoaded) onCampaignsLoaded(nextCampaigns);
       setTotal(Number(data?.total || 0));
     } catch {
       setCampaigns([]);
+      if (onCampaignsLoaded) onCampaignsLoaded([]);
       setTotal(0);
     } finally {
       setLoading(false);
@@ -881,13 +1060,14 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
                 <TableRow>
                   <TableCell>Name</TableCell>
                   <TableCell>Type</TableCell>
+                  <TableCell>Delivery</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell align="right">Progress</TableCell>
-                  <TableCell align="right">Queued</TableCell>
+                  <TableCell align="right">Recipients</TableCell>
                   <TableCell align="right">Sent</TableCell>
+                  <TableCell align="right">Delivered</TableCell>
+                  <TableCell align="right">Bounced</TableCell>
                   <TableCell align="right">Failed</TableCell>
-                  <TableCell align="right">Suppressed</TableCell>
-                  <TableCell>Compliance</TableCell>
+                  <TableCell align="right">Unsubscribed</TableCell>
                   <TableCell>Last processed</TableCell>
                   <TableCell>Provider</TableCell>
                   <TableCell />
@@ -898,15 +1078,14 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
                   <TableRow key={row.id}>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.campaign_type}</TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell align="right">{row?.progress?.progress_percent ?? 0}%</TableCell>
-                    <TableCell align="right">{row?.progress?.queued ?? row?.counts?.queued ?? 0}</TableCell>
+                    <TableCell>{row.delivery_mode === "platform_managed" ? "Managed" : "BYO"}</TableCell>
+                    <TableCell>{formatCampaignStatusLabel(row.status)}</TableCell>
+                    <TableCell align="right">{row?.counts?.total ?? 0}</TableCell>
                     <TableCell align="right">{row?.progress?.sent ?? row?.counts?.sent_total ?? row?.counts?.sent ?? 0}</TableCell>
+                    <TableCell align="right">{row?.compliance_summary?.delivered ?? 0}</TableCell>
+                    <TableCell align="right">{row?.compliance_summary?.bounced ?? 0}</TableCell>
                     <TableCell align="right">{row?.counts?.failed ?? 0}</TableCell>
-                    <TableCell align="right">{row?.progress?.suppressed ?? row?.counts?.suppressed ?? 0}</TableCell>
-                    <TableCell>
-                      {`Delivered ${row?.compliance_summary?.delivered ?? 0} | Bounced ${row?.compliance_summary?.bounced ?? 0} | Unsubscribed ${row?.compliance_summary?.unsubscribed ?? 0}`}
-                    </TableCell>
+                    <TableCell align="right">{row?.compliance_summary?.unsubscribed ?? 0}</TableCell>
                     <TableCell>{row?.progress?.last_processed_at || "-"}</TableCell>
                     <TableCell>{row.provider_name || "SendGrid"}</TableCell>
                     <TableCell align="right">
@@ -961,7 +1140,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign }) {
   );
 }
 
-function DeliverabilityOverview({ auth, refreshKey = 0 }) {
+function DeliverabilityOverview({ auth, refreshKey = 0, onSummaryLoaded }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -972,8 +1151,10 @@ function DeliverabilityOverview({ auth, refreshKey = 0 }) {
     try {
       const { data } = await api.get("/api/manager/marketing/dashboard", auth);
       setSummary(data || null);
+      if (onSummaryLoaded) onSummaryLoaded(data || null);
     } catch (e) {
       setSummary(null);
+      if (onSummaryLoaded) onSummaryLoaded(null);
       setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to load deliverability summary.");
     } finally {
       setLoading(false);
@@ -1371,7 +1552,7 @@ function MarketingSuppressionsCard({ auth, refreshKey = 0 }) {
   );
 }
 
-function MarketingProviderCard({ auth, onProviderChange }) {
+function MarketingProviderCard({ auth, onProviderChange, managedMode = false, managedCredits = null, companyName = "", managerReplyTo = "" }) {
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1490,6 +1671,35 @@ function MarketingProviderCard({ auth, onProviderChange }) {
   const showDraftActivationHint = provider?.id && provider?.status === "draft";
   const showPausedHint = provider?.id && provider?.status === "paused";
   const showErrorHint = provider?.id && provider?.status === "error";
+
+  if (managedMode) {
+    return (
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardHeader
+          title="Email delivery"
+          subheader="Managed by Schedulaa"
+        />
+        <CardContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Available email credits</Typography><Typography variant="h5">{managedCredits?.available ?? "—"}</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Used email credits</Typography><Typography variant="h5">{managedCredits?.used ?? 0}</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined"><CardContent><Typography variant="overline">Reply-To</Typography><Typography variant="body1">{managerReplyTo || "Resolved by Schedulaa"}</Typography></CardContent></Card>
+            </Grid>
+            <Grid item xs={12}>
+              <Alert severity="info">
+                From Name will be sent as <strong>{companyName ? `${companyName} via Schedulaa` : "Schedulaa"}</strong>. Schedulaa chooses the managed delivery path automatically for this company.
+              </Alert>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
@@ -1627,9 +1837,29 @@ export default function MarketingCampaignsTab() {
   const [guideOpen, setGuideOpen] = useState(false);
   const { auth } = useAuth();
   const [provider, setProvider] = useState(null);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [campaignRows, setCampaignRows] = useState([]);
+  const [currentUserInfo, setCurrentUserInfo] = useState(null);
   const [campaignRefreshKey, setCampaignRefreshKey] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerSeed, setComposerSeed] = useState(null);
+  const companyName = resolveCurrentUserCompanyName(currentUserInfo);
+  const managerReplyTo = currentUserInfo?.email || provider?.reply_to_email || "";
+  const managedMode = useMemo(() => inferManagedMarketingMode({ provider, campaigns: campaignRows }), [provider, campaignRows]);
+  const latestManagedCampaign = useMemo(
+    () => [...campaignRows].find((row) => String(row?.delivery_mode || "").toLowerCase() === "platform_managed") || null,
+    [campaignRows]
+  );
+  const managedCredits = useMemo(() => {
+    if (!latestManagedCampaign) return null;
+    const latestSnapshot = latestManagedCampaign?.quota_snapshot_json || {};
+    const reservedFromCreation = Number(latestManagedCampaign?.counts?.total || 0);
+    const available = Math.max(0, Number(latestSnapshot.available_quota ?? 0) - reservedFromCreation);
+    return {
+      available,
+      used: Number(dashboardSummary?.rate_cards?.sent ?? 0),
+    };
+  }, [dashboardSummary, latestManagedCampaign]);
 
   const handleCampaignSent = () => setCampaignRefreshKey((v) => v + 1);
   const handleApplyComposer = ({ anchorId, params, type }) => {
@@ -1661,6 +1891,19 @@ export default function MarketingCampaignsTab() {
     })();
     return () => { alive = false; };
   }, [auth]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await api.get("/auth/me");
+        if (alive) setCurrentUserInfo(data || null);
+      } catch {
+        if (alive) setCurrentUserInfo(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   if (!canAccess) {
     return (
@@ -1711,10 +1954,10 @@ export default function MarketingCampaignsTab() {
       <Alert severity="info" sx={{ mb: 2 }}>
         Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically, and campaigns are sent gradually to protect deliverability.
       </Alert>
-      <DeliverabilityOverview auth={auth} refreshKey={campaignRefreshKey} />
+      <DeliverabilityOverview auth={auth} refreshKey={campaignRefreshKey} onSummaryLoaded={setDashboardSummary} />
       {/* Export: company clients (scoped) */}
-      <MarketingProviderCard auth={auth} onProviderChange={setProvider} />
-      <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} />
+      <MarketingProviderCard auth={auth} onProviderChange={setProvider} managedMode={managedMode} managedCredits={managedCredits} companyName={companyName} managerReplyTo={managerReplyTo} />
+      <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} onCampaignsLoaded={setCampaignRows} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
 
@@ -1748,10 +1991,15 @@ export default function MarketingCampaignsTab() {
         ]}
         mapRowKey={(r)=>`broadcast_${r.client_id}`}
         enableCopyOverrides={false}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "broadcast" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 1) Win-Back */}
@@ -1784,10 +2032,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_expiry", label: columnLabel("expiry") },
         ]}
         mapRowKey={(r)=>`winback_${r.client_id}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "winback" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 2) Skipped Rebook */}
@@ -1815,10 +2068,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`skipped_${r.client_id}_${r.last_service_date}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "skipped_rebook" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 3) VIP Loyalty */}
@@ -1847,10 +2105,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`vip_${r.client_id}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "vip" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 4) Anniversary */}
@@ -1879,10 +2142,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`anniv_${r.client_id}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "anniversary" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 5) New Service Launch (optional) */}
@@ -1911,10 +2179,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`newsvc_${r.client_id}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "new_service" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 6) No-Show Recovery (optional) */}
@@ -1944,10 +2217,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`nsr_${r.client_id}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "no_show_recovery" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
       {/* 7) Add-on Upsell (optional) */}
@@ -1977,10 +2255,15 @@ export default function MarketingCampaignsTab() {
           { key: "suggested_coupon", label: columnLabel("coupon") },
         ]}
         mapRowKey={(r)=>`upsell_${r.client_id}`}
-        providerReady={provider?.status === "active"}
+        providerReady={managedMode || provider?.status === "active"}
         providerStatus={provider?.status || "missing"}
         onCampaignSent={handleCampaignSent}
         composerSeed={composerSeed?.type === "addon_upsell" ? composerSeed.params : null}
+        managedMode={managedMode}
+        companyId={currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id")}
+        companyName={companyName}
+        managerReplyTo={managerReplyTo}
+        managedCredits={managedCredits}
       />
 
     </Box>
