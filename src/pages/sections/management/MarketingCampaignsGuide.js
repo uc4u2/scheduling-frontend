@@ -248,6 +248,29 @@ export default function MarketingCampaignsGuide({ onClose }) {
         Recommended SendGrid setup: authenticate your sender domain in SendGrid before large campaigns so Gmail, Yahoo, and Outlook are less likely to spam your emails. Managed-delivery tenants do not need to enter a SendGrid API key in the campaign page.
       </Typography>
 
+      <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Managed by Schedulaa</Typography>
+      <Typography variant="body2" gutterBottom>
+        When your company uses <strong>Managed by Schedulaa</strong>, you do not need to connect your own SendGrid account. Schedulaa manages the sending path, shows your available email credits, and calculates the required credits before you confirm the campaign.
+      </Typography>
+      <Typography variant="body2" gutterBottom>
+        Normal workflow: choose the campaign, review the audience, buy credits if needed, confirm the send once, then leave the page. Sending continues gradually in the background and campaign progress updates over time.
+      </Typography>
+      <ul>
+        <li><Typography variant="body2">Large audiences are reviewed in pages of recipients instead of loading every client at once.</Typography></li>
+        <li><Typography variant="body2">All eligible recipients are selected by default, and you can exclude specific clients before sending.</Typography></li>
+        <li><Typography variant="body2">Credits are reserved when the campaign is queued, consumed after provider acceptance, and released for recipients that are cancelled or rejected before sending.</Typography></li>
+        <li><Typography variant="body2">If a payment is refunded or disputed, the purchase is placed under review instead of silently removing already-used credits.</Typography></li>
+        <li><Typography variant="body2">You can pause, resume, or cancel remaining unsent emails later. Emails already sent cannot be recalled.</Typography></li>
+      </ul>
+      <Typography variant="body2" sx={{ mb: 2 }}>
+        Statuses are manager-friendly: <strong>Queued</strong>, <strong>Sending</strong>, <strong>Temporarily deferred</strong>, <strong>Paused</strong>, <strong>Completed</strong>, <strong>Failed</strong>, and <strong>Cancelled</strong>. Deferred sending simply means Schedulaa is pacing the campaign to protect delivery quality.
+      </Typography>
+
+      <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Your own SendGrid connection</Typography>
+      <Typography variant="body2" gutterBottom>
+        If your company uses its own SendGrid connection, keep following the provider setup steps below. Your business pays SendGrid directly, and Schedulaa uses your configured sender identity and limits for campaign delivery.
+      </Typography>
+
       <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>{t("help.marketing.quickStartTitle")}</Typography>
       <ol>
         {quickStartSteps.map((step, idx) => (<li key={idx}>{step}</li>))}

@@ -206,11 +206,12 @@ function formatCampaignStatusLabel(status) {
     processing: "Sending",
     in_progress: "Sending",
     active: "Sending",
+    deferred: "Temporarily deferred",
     completed: "Completed",
     paused: "Paused",
     failed: "Failed",
-    cancelled: "Failed",
-    canceled: "Failed",
+    cancelled: "Cancelled",
+    canceled: "Cancelled",
     error: "Failed",
   };
   if (normalized[value]) return normalized[value];
@@ -218,6 +219,41 @@ function formatCampaignStatusLabel(status) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatCreditPurchaseStatusLabel(status) {
+  const value = String(status || "").trim().toLowerCase();
+  return {
+    pending: "Payment processing",
+    paid: "Payment processing",
+    granted: "Credits added",
+    failed: "Payment failed",
+    refund_review: "Under review",
+    dispute_review: "Under review",
+  }[value] || "Payment processing";
+}
+
+function campaignActionDialogCopy(action, campaignName, selectedRecipients) {
+  const safeName = campaignName || "this campaign";
+  if (action === "pause") {
+    return {
+      title: "Pause campaign",
+      body: `Pause ${safeName}?`,
+      confirm: "Pause campaign",
+    };
+  }
+  if (action === "resume") {
+    return {
+      title: "Resume campaign",
+      body: `Resume sending ${safeName}?`,
+      confirm: "Resume sending",
+    };
+  }
+  return {
+    title: "Cancel remaining emails",
+    body: `Cancel all remaining unsent emails for ${safeName}? Emails already sent cannot be recalled.${selectedRecipients ? ` ${selectedRecipients} selected recipients were originally queued for this campaign.` : ""}`,
+    confirm: "Cancel remaining",
+  };
 }
 
 function inferManagedMarketingMode(managedDelivery = null) {
@@ -242,26 +278,44 @@ function formatPriceAmount(unitAmount, currency) {
 function summarizeAudiencePreview(previewMeta = null, rows = []) {
   const meta = previewMeta || {};
   const results = Array.isArray(rows) ? rows : [];
-  const scanned = Number(meta.scanned ?? meta.total_clients ?? results.length ?? 0) || 0;
-  const eligible = Number(meta.eligible ?? results.length ?? 0) || 0;
+  const scanned = Number(meta.total_client_count ?? meta.scanned ?? meta.total_clients ?? results.length ?? 0) || 0;
+  const eligible = Number(meta.eligible_recipient_count ?? meta.eligible ?? results.length ?? 0) || 0;
   const suppressed = Number(
-    meta.excluded_suppressed
+    meta.suppressed_count
+      ?? meta.excluded_suppressed
       ?? meta.excluded_unsubscribed
       ?? meta.suppressed
       ?? 0
   ) || 0;
   const missingOrInvalid = Number(
-    meta.excluded_no_email
+    meta.invalid_or_missing_count
+      ?? meta.excluded_no_email
       ?? meta.excluded_invalid_email
       ?? meta.excluded_unmailable
       ?? 0
   ) || 0;
+  const duplicates = Number(meta.duplicate_count ?? 0) || 0;
   return {
-    totalClients: Math.max(scanned, eligible + suppressed + missingOrInvalid),
+    totalClients: Math.max(scanned, eligible + suppressed + missingOrInvalid + duplicates),
     eligible,
     suppressed,
     missingOrInvalid,
+    duplicates,
   };
+}
+
+function estimateManagedDurationText(count) {
+  const total = Math.max(0, Number(count || 0));
+  if (!total) return "";
+  const perMinute = 20;
+  const perHour = 300;
+  const minutesByMinute = Math.ceil(total / perMinute);
+  const minutesByHour = Math.ceil(total / perHour) * 60;
+  const baseline = Math.max(minutesByMinute, minutesByHour);
+  const lowHours = Math.max(1, Math.floor(baseline / 60));
+  const highHours = Math.max(lowHours, Math.ceil((baseline * 1.25) / 60));
+  if (baseline < 60) return `Sending will continue safely in the background and may take approximately ${baseline}-${Math.max(baseline, Math.ceil(baseline * 1.25))} minutes.`;
+  return `Sending will continue safely in the background and may take approximately ${lowHours}-${highHours} hours.`;
 }
 
 async function sha256Hex(value) {
@@ -375,6 +429,12 @@ function mapMarketingErrorMessage(error, { managedMode = false } = {}) {
     managed_delivery_disabled: "Managed sending is not available right now. You can still save drafts.",
     company_on_abuse_hold: "Managed sending is temporarily paused for review. You can still save drafts.",
     insufficient_quota: "You do not have enough email credits to send this campaign.",
+    preview_expired: "This campaign preview expired. Please review it again.",
+    preview_not_found: "This campaign preview is no longer available. Please review it again.",
+    preview_selection_empty: "Select at least one recipient before sending this campaign.",
+    invalid_preview_recipient_ids: "Some selected recipients are no longer available in this preview. Please review the campaign again.",
+    campaign_recipient_limit_exceeded: "This campaign exceeds the sending limit for your managed email account.",
+    pilot_recipient_limit_exceeded: "This managed email account is not approved for a campaign of this size yet.",
     audience_snapshot_hash_mismatch: "Your audience preview changed. Review the campaign again before sending.",
     platform_managed_targets_not_allowed: "Managed delivery only sends to the reviewed recipients shown in this campaign.",
     marketing_send_failed: managedMode ? "The campaign could not be queued right now. Please try again in a moment." : "The campaign could not be queued right now. Please try again.",
@@ -496,7 +556,9 @@ function CampaignCard({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState({});
+  const [selectionMode, setSelectionMode] = useState("all_eligible");
+  const [includedRecipientIds, setIncludedRecipientIds] = useState({});
+  const [excludedRecipientIds, setExcludedRecipientIds] = useState({});
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState("");
   const [sendSummary, setSendSummary] = useState(null);
@@ -508,6 +570,11 @@ function CampaignCard({
   const [serviceOptions, setServiceOptions] = useState([]);
   const [svcLoading, setSvcLoading] = useState(false);
   const [serviceSelections, setServiceSelections] = useState({});
+  const [previewPage, setPreviewPage] = useState(0);
+  const [previewRowsPerPage, setPreviewRowsPerPage] = useState(50);
+  const [previewSearch, setPreviewSearch] = useState("");
+  const [previewSearchDraft, setPreviewSearchDraft] = useState("");
+  const previewSearchTimer = useRef(null);
 
   const fetchServices = async (q = "") => {
     setSvcLoading(true);
@@ -545,7 +612,9 @@ function CampaignCard({
     if (!composerSeed) return;
     setParams((prev) => ({ ...prev, ...composerSeed }));
     setRows([]);
-    setSelected({});
+    setSelectionMode("all_eligible");
+    setIncludedRecipientIds({});
+    setExcludedRecipientIds({});
     setErr("");
     setInfo("");
     setSendSummary(null);
@@ -557,9 +626,27 @@ function CampaignCard({
   const onChangeParam = (name, value) => {
     setParams((p) => ({ ...p, [name]: value }));
     setRows([]);
-    setSelected({});
+    setSelectionMode("all_eligible");
+    setIncludedRecipientIds({});
+    setExcludedRecipientIds({});
     setPreviewMeta(null);
     setReviewMode(false);
+  };
+
+  const rowKey = (row) => row?.preview_recipient_id ?? mapRowKey(row);
+
+  const loadPreviewPage = async (previewId, options = {}) => {
+    const nextPage = Number(options.page ?? previewPage);
+    const nextPageSize = Number(options.pageSize ?? previewRowsPerPage);
+    const nextSearch = String(options.search ?? previewSearch);
+    const { data } = await api.get(
+      `/api/manager/marketing/previews/${previewId}?page=${nextPage + 1}&page_size=${nextPageSize}&q=${encodeURIComponent(nextSearch)}&sort_key=name&sort_direction=asc`,
+      auth,
+    );
+    setRows(Array.isArray(data?.rows) ? data.rows : []);
+    setPreviewMeta(data || null);
+    setPreviewPage(Math.max(0, Number(data?.pagination?.page || 1) - 1));
+    setPreviewRowsPerPage(Number(data?.pagination?.page_size || nextPageSize));
   };
 
   const renderField = (fd) => (
@@ -633,16 +720,23 @@ function CampaignCard({
     setInfo("");
     setLoading(true);
     try {
-      const qs = new URLSearchParams(params).toString();
-      const { data } = await api.get(`${previewPath}?${qs}`, auth);
-      const nextRows = Array.isArray(data?.results) ? data.results : [];
-      const nextSelected = {};
-      nextRows.forEach((row) => { nextSelected[mapRowKey(row)] = true; });
-      setRows(nextRows);
-      setSelected(nextSelected);
-      setPreviewMeta(data?.meta || null);
+      const { data } = await api.post("/api/manager/marketing/previews", {
+        campaign_type: campaignType,
+        params,
+        page_size: previewRowsPerPage,
+        sort_key: "name",
+        sort_direction: "asc",
+      }, auth);
+      setRows(Array.isArray(data?.rows) ? data.rows : []);
+      setPreviewMeta(data || null);
+      setSelectionMode("all_eligible");
+      setIncludedRecipientIds({});
+      setExcludedRecipientIds({});
+      setPreviewPage(0);
+      setPreviewSearch("");
+      setPreviewSearchDraft("");
       setReviewMode(true);
-      setInfo(`Preview generated for ${nextRows.length} recipients. No emails were sent.`);
+      setInfo(`Preview generated for ${Number(data?.eligible_recipient_count || 0)} recipients. No emails were sent.`);
     } catch (e) {
       setErr(mapMarketingErrorMessage(e, { managedMode: resolvedManagedMode }));
     } finally {
@@ -661,8 +755,9 @@ function CampaignCard({
         delivery_mode: resolvedManagedMode ? "platform_managed" : "bring_your_own",
         filters_json: params,
         content_json: extractCampaignContent(params),
-        dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: rows.length } : {},
+        dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: Number(previewMeta?.eligible_recipient_count || 0) } : {},
         send_batch_size: 10,
+        audience_preview_id: previewMeta?.preview_id || null,
       };
       const response = draftId
         ? await api.patch(`/api/manager/marketing/campaigns/${draftId}/draft`, payload, auth)
@@ -680,24 +775,60 @@ function CampaignCard({
 
   const filterSummary = useMemo(() => summarizeCampaignFilters(fieldDefs, params), [fieldDefs, params]);
   const audienceSummary = useMemo(() => summarizeAudiencePreview(previewMeta, rows), [previewMeta, rows]);
-  const selectedRows = useMemo(() => rows.filter((row) => selected[mapRowKey(row)]), [rows, selected, mapRowKey]);
-  const selectedCount = selectedRows.length;
+  const selectedCount = useMemo(() => {
+    if (selectionMode === "all_eligible") {
+      return Math.max(0, Number(previewMeta?.eligible_recipient_count || 0) - Object.keys(excludedRecipientIds).length);
+    }
+    return Object.keys(includedRecipientIds).length;
+  }, [selectionMode, previewMeta, includedRecipientIds, excludedRecipientIds]);
   const requiredCredits = selectedCount;
   const insufficientCredits = resolvedManagedMode && requiredCredits > availableCredits;
   const sendDisabled = sending || loading || selectedCount <= 0 || !canSendLive || insufficientCredits;
 
+  const isRowSelected = (row) => {
+    const key = rowKey(row);
+    return selectionMode === "all_eligible" ? !excludedRecipientIds[key] : !!includedRecipientIds[key];
+  };
+
   const toggleSelect = (key) => {
-    setSelected((s) => ({ ...s, [key]: !s[key] }));
+    if (selectionMode === "all_eligible") {
+      setExcludedRecipientIds((prev) => {
+        const next = { ...prev };
+        if (next[key]) delete next[key];
+        else next[key] = true;
+        return next;
+      });
+      return;
+    }
+    setIncludedRecipientIds((prev) => {
+      const next = { ...prev };
+      if (next[key]) delete next[key];
+      else next[key] = true;
+      return next;
+    });
   };
 
   const selectAll = (checked) => {
-    if (!checked) {
-      setSelected({});
+    const pageIds = rows.map((row) => rowKey(row));
+    if (selectionMode === "all_eligible") {
+      setExcludedRecipientIds((prev) => {
+        const next = { ...prev };
+        pageIds.forEach((id) => {
+          if (checked) delete next[id];
+          else next[id] = true;
+        });
+        return next;
+      });
       return;
     }
-    const next = {};
-    rows.forEach((r) => { next[mapRowKey(r)] = true; });
-    setSelected(next);
+    setIncludedRecipientIds((prev) => {
+      const next = { ...prev };
+      pageIds.forEach((id) => {
+        if (checked) next[id] = true;
+        else delete next[id];
+      });
+      return next;
+    });
   };
 
   const send = async () => {
@@ -706,39 +837,26 @@ function CampaignCard({
     setSendSummary(null);
     setSending(true);
     try {
-      const audienceRows = selectedRows;
       const payload = {
         dry_run: false,
         delivery_mode: resolvedManagedMode ? "platform_managed" : "bring_your_own",
+        audience_preview_id: previewMeta?.preview_id,
+        selection_mode: selectionMode,
+        included_recipient_ids: selectionMode === "selected_only" ? Object.keys(includedRecipientIds).map(Number) : [],
+        excluded_recipient_ids: selectionMode === "all_eligible" ? Object.keys(excludedRecipientIds).map(Number) : [],
       };
-      const targets = audienceRows.map((r) => ({
-        client_id: r.client_id ?? null,
-        email: r.email,
-        subject: r.subject,
-        html: r.html,
-        text: r.text || "",
-      }));
-      if (!targets.length) {
+      if (!payload.audience_preview_id) {
         setErr("Select at least one recipient before sending.");
         setSending(false);
         return;
       }
-      if (!resolvedManagedMode) payload.targets = targets;
-      if (resolvedManagedMode) {
-        const resolvedRows = audienceRows.filter((row) => Number(row?.client_id) > 0 && String(row?.email || "").trim());
-        const managedAudience = await buildManagedAudienceSnapshotHash({
-          companyId: resolvedCompanyId,
-          campaignType,
-          rows: resolvedRows,
-        });
-        Object.assign(payload, managedAudience, {
-          campaign_name: composerSeed?.campaignName || `${title} campaign`,
-          filters_json: params,
-          content_json: extractCampaignContent(params),
-          dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: rows.length } : {},
-          send_batch_size: 10,
-        });
-      }
+      Object.assign(payload, {
+        campaign_name: composerSeed?.campaignName || `${title} campaign`,
+        filters_json: params,
+        content_json: extractCampaignContent(params),
+        dry_run_last_result_json: previewMeta ? { preview_meta: previewMeta, preview_count: Number(previewMeta?.eligible_recipient_count || 0) } : {},
+        send_batch_size: 10,
+      });
       const { data } = await api.post(sendPath, payload, auth);
       setSendSummary({
         campaignId: data?.campaign_id,
@@ -757,6 +875,10 @@ function CampaignCard({
       setSending(false);
     }
   };
+
+  useEffect(() => () => {
+    if (previewSearchTimer.current) window.clearTimeout(previewSearchTimer.current);
+  }, []);
 
   return (
     <Card id={sectionId} variant="outlined" sx={{ mb: 3, scrollMarginTop: 96 }}>
@@ -837,6 +959,11 @@ function CampaignCard({
               <Grid item xs={12} md={3}><Card variant="outlined"><CardContent><Typography variant="overline">Unsubscribed / suppressed</Typography><Typography variant="h6">{audienceSummary.suppressed}</Typography></CardContent></Card></Grid>
               <Grid item xs={12} md={3}><Card variant="outlined"><CardContent><Typography variant="overline">Missing / invalid email</Typography><Typography variant="h6">{audienceSummary.missingOrInvalid}</Typography></CardContent></Card></Grid>
             </Grid>
+            <Grid container spacing={2} sx={{ mb: 1 }}>
+              <Grid item xs={12} md={4}><Card variant="outlined"><CardContent><Typography variant="overline">Duplicate recipients</Typography><Typography variant="h6">{audienceSummary.duplicates}</Typography></CardContent></Card></Grid>
+              <Grid item xs={12} md={4}><Card variant="outlined"><CardContent><Typography variant="overline">Selected recipients</Typography><Typography variant="h6">{selectedCount}</Typography></CardContent></Card></Grid>
+              <Grid item xs={12} md={4}><Card variant="outlined"><CardContent><Typography variant="overline">Required credits</Typography><Typography variant="h6">{requiredCredits}</Typography></CardContent></Card></Grid>
+            </Grid>
 
             <Card variant="outlined" sx={{ my: 2 }}>
               <CardHeader title="Review campaign" subheader="Confirm recipients, credits, and sender details before queueing the campaign." />
@@ -850,6 +977,13 @@ function CampaignCard({
                   <Grid item xs={12} md={4}><Typography variant="body2"><strong>Delivery method:</strong> {deliveryLabel}</Typography></Grid>
                   <Grid item xs={12} md={6}><Typography variant="body2"><strong>From:</strong> {reviewFromName}</Typography></Grid>
                   <Grid item xs={12} md={6}><Typography variant="body2"><strong>Reply-To:</strong> {reviewReplyTo}</Typography></Grid>
+                  {resolvedManagedMode ? (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">
+                        This campaign contains {selectedCount} recipients. {estimateManagedDurationText(selectedCount)}
+                      </Typography>
+                    </Grid>
+                  ) : null}
                 </Grid>
                 {insufficientCredits ? (
                   <Alert severity="warning" sx={{ mt: 2 }}>
@@ -872,9 +1006,60 @@ function CampaignCard({
               </Alert>
             ) : null}
 
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              {selectedCount} recipients selected
-            </Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} sx={{ mb: 1 }}>
+              <Box>
+                {selectionMode === "all_eligible" ? (
+                  <>
+                    <Typography variant="subtitle2">All {Number(previewMeta?.eligible_recipient_count || 0)} eligible clients selected</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {Object.keys(excludedRecipientIds).length} clients excluded
+                      {" · "}
+                      {selectedCount} clients will receive this campaign
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="subtitle2">Select only specific clients</Typography>
+                    <Typography variant="body2" color="text.secondary">{selectedCount} recipients selected</Typography>
+                  </>
+                )}
+              </Box>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button variant={selectionMode === "all_eligible" ? "contained" : "outlined"} onClick={() => { setSelectionMode("all_eligible"); setIncludedRecipientIds({}); }}>
+                  Select all eligible
+                </Button>
+                <Button variant={selectionMode === "selected_only" ? "contained" : "outlined"} onClick={() => { setSelectionMode("selected_only"); setExcludedRecipientIds({}); }}>
+                  Select only specific clients
+                </Button>
+              </Stack>
+            </Stack>
+
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 2 }}>
+              <TextField
+                label="Search recipients"
+                value={previewSearchDraft}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setPreviewSearchDraft(nextValue);
+                  if (previewSearchTimer.current) window.clearTimeout(previewSearchTimer.current);
+                  previewSearchTimer.current = window.setTimeout(async () => {
+                    setPreviewSearch(nextValue);
+                    if (previewMeta?.preview_id) {
+                      try {
+                        setLoading(true);
+                        await loadPreviewPage(previewMeta.preview_id, { page: 0, search: nextValue });
+                      } catch (e2) {
+                        setErr(mapMarketingErrorMessage(e2, { managedMode: resolvedManagedMode }));
+                      } finally {
+                        setLoading(false);
+                      }
+                    }
+                  }, 250);
+                }}
+                fullWidth
+                helperText="Search the currently reviewed audience by client name or email."
+              />
+            </Stack>
 
             <Box sx={{ overflowX: "auto", pb: 10 }}>
               <Table size="small">
@@ -882,8 +1067,8 @@ function CampaignCard({
                   <TableRow>
                     <TableCell padding="checkbox">
                       <Checkbox
-                        checked={rows.length > 0 && rows.every((r) => selected[mapRowKey(r)])}
-                        indeterminate={rows.some((r) => selected[mapRowKey(r)]) && !rows.every((r) => selected[mapRowKey(r)])}
+                        checked={rows.length > 0 && rows.every((r) => isRowSelected(r))}
+                        indeterminate={rows.some((r) => isRowSelected(r)) && !rows.every((r) => isRowSelected(r))}
                         onChange={(e) => selectAll(e.target.checked)}
                       />
                     </TableCell>
@@ -894,9 +1079,9 @@ function CampaignCard({
                 </TableHead>
                 <TableBody>
                   {rows.map((r) => (
-                    <TableRow key={mapRowKey(r)}>
+                    <TableRow key={rowKey(r)}>
                       <TableCell padding="checkbox">
-                        <Checkbox checked={!!selected[mapRowKey(r)]} onChange={() => toggleSelect(mapRowKey(r))} />
+                        <Checkbox checked={isRowSelected(r)} onChange={() => toggleSelect(rowKey(r))} />
                       </TableCell>
                       {columns.map((col) => {
                         let v = r[col.key];
@@ -909,6 +1094,37 @@ function CampaignCard({
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={Number(previewMeta?.pagination?.total_rows || 0)}
+                page={previewPage}
+                onPageChange={async (_, nextPage) => {
+                  if (!previewMeta?.preview_id) return;
+                  setLoading(true);
+                  try {
+                    await loadPreviewPage(previewMeta.preview_id, { page: nextPage });
+                  } catch (e) {
+                    setErr(mapMarketingErrorMessage(e, { managedMode: resolvedManagedMode }));
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                rowsPerPage={previewRowsPerPage}
+                onRowsPerPageChange={async (event) => {
+                  const nextValue = parseInt(event.target.value, 10);
+                  setPreviewRowsPerPage(nextValue);
+                  if (!previewMeta?.preview_id) return;
+                  setLoading(true);
+                  try {
+                    await loadPreviewPage(previewMeta.preview_id, { page: 0, pageSize: nextValue });
+                  } catch (e) {
+                    setErr(mapMarketingErrorMessage(e, { managedMode: resolvedManagedMode }));
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                rowsPerPageOptions={[25, 50, 100]}
+              />
             </Box>
 
             <Box
@@ -1037,6 +1253,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
@@ -1062,6 +1279,17 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
     loadCampaigns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, refreshKey, page, rowsPerPage]);
+
+  useEffect(() => {
+    if (!campaigns.some((row) => ["queued", "sending", "processing", "deferred", "paused"].includes(String(row?.status || "").toLowerCase()))) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      loadCampaigns();
+    }, 30000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaigns]);
 
   const runAction = async (campaignId, action) => {
     setActionBusy(true);
@@ -1099,6 +1327,12 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
     }
   };
 
+  const confirmCampaignAction = async () => {
+    if (!pendingAction?.campaignId || !pendingAction?.action) return;
+    await runAction(pendingAction.campaignId, pendingAction.action);
+    setPendingAction(null);
+  };
+
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardHeader
@@ -1123,13 +1357,18 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
                   <TableCell>Delivery</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Recipients</TableCell>
+                  <TableCell align="right">Queued</TableCell>
                   <TableCell align="right">Sent</TableCell>
                   <TableCell align="right">Delivered</TableCell>
+                  <TableCell align="right">Deferred</TableCell>
                   <TableCell align="right">Bounced</TableCell>
                   <TableCell align="right">Failed</TableCell>
                   <TableCell align="right">Unsubscribed</TableCell>
-                  <TableCell>Last processed</TableCell>
-                  <TableCell>Provider</TableCell>
+                  <TableCell align="right">Cancelled</TableCell>
+                  <TableCell align="right">Remaining</TableCell>
+                  <TableCell align="right">Credits reserved</TableCell>
+                  <TableCell align="right">Credits consumed</TableCell>
+                  <TableCell>Estimated completion</TableCell>
                   <TableCell />
                 </TableRow>
               </TableHead>
@@ -1140,14 +1379,19 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
                     <TableCell>{row.campaign_type}</TableCell>
                     <TableCell>{row.delivery_mode === "platform_managed" ? "Managed" : "BYO"}</TableCell>
                     <TableCell>{formatCampaignStatusLabel(row.status)}</TableCell>
-                    <TableCell align="right">{row?.counts?.total ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.selected_recipients ?? row?.counts?.total ?? 0}</TableCell>
+                    <TableCell align="right">{row?.counts?.queued ?? 0}</TableCell>
                     <TableCell align="right">{row?.progress?.sent ?? row?.counts?.sent_total ?? row?.counts?.sent ?? 0}</TableCell>
                     <TableCell align="right">{row?.compliance_summary?.delivered ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.deferred ?? 0}</TableCell>
                     <TableCell align="right">{row?.compliance_summary?.bounced ?? 0}</TableCell>
                     <TableCell align="right">{row?.counts?.failed ?? 0}</TableCell>
                     <TableCell align="right">{row?.compliance_summary?.unsubscribed ?? 0}</TableCell>
-                    <TableCell>{row?.progress?.last_processed_at || "-"}</TableCell>
-                    <TableCell>{row.provider_name || "SendGrid"}</TableCell>
+                    <TableCell align="right">{row?.counts?.cancelled ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.remaining ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.credits_reserved ?? 0}</TableCell>
+                    <TableCell align="right">{row?.progress?.credits_consumed ?? 0}</TableCell>
+                    <TableCell>{row?.progress?.estimated_duration || "—"}</TableCell>
                     <TableCell align="right">
                       <Box display="flex" gap={1} justifyContent="flex-end" flexWrap="wrap">
                         <Button size="small" onClick={() => setSelectedCampaign(row)}>
@@ -1162,13 +1406,26 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
                             Duplicate
                           </Button>
                         )}
-                        <Button size="small" onClick={() => runAction(row.id, "pause")} disabled={actionBusy || ["draft", "paused", "cancelled", "completed"].includes(row.status)}>
+                        <Button
+                          size="small"
+                          onClick={() => setPendingAction({ action: "pause", campaignId: row.id, campaignName: row.name, selectedRecipients: row?.progress?.selected_recipients ?? 0 })}
+                          disabled={actionBusy || ["draft", "paused", "cancelled", "completed"].includes(row.status)}
+                        >
                           Pause
                         </Button>
-                        <Button size="small" onClick={() => runAction(row.id, "resume")} disabled={actionBusy || row.status !== "paused"}>
+                        <Button
+                          size="small"
+                          onClick={() => setPendingAction({ action: "resume", campaignId: row.id, campaignName: row.name, selectedRecipients: row?.progress?.selected_recipients ?? 0 })}
+                          disabled={actionBusy || row.status !== "paused"}
+                        >
                           Resume
                         </Button>
-                        <Button size="small" color="error" onClick={() => runAction(row.id, "cancel")} disabled={actionBusy || ["cancelled", "completed"].includes(row.status)}>
+                        <Button
+                          size="small"
+                          color="error"
+                          onClick={() => setPendingAction({ action: "cancel", campaignId: row.id, campaignName: row.name, selectedRecipients: row?.progress?.selected_recipients ?? 0 })}
+                          disabled={actionBusy || ["cancelled", "completed"].includes(row.status)}
+                        >
                           Cancel
                         </Button>
                       </Box>
@@ -1192,7 +1449,38 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
           rowsPerPageOptions={PAGE_SIZE_OPTIONS}
         />
       </CardContent>
-  <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
+      <Dialog
+        open={Boolean(pendingAction)}
+        onClose={() => !actionBusy && setPendingAction(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{campaignActionDialogCopy(pendingAction?.action, pendingAction?.campaignName, pendingAction?.selectedRecipients).title}</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            {campaignActionDialogCopy(pendingAction?.action, pendingAction?.campaignName, pendingAction?.selectedRecipients).body}
+          </Typography>
+          {pendingAction?.action === "pause" ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+              Sending is continuing gradually to protect email delivery quality. Pausing will stop new unsent recipients from processing.
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingAction(null)} disabled={actionBusy}>Cancel</Button>
+          <Button
+            variant="contained"
+            color={pendingAction?.action === "cancel" ? "error" : "primary"}
+            onClick={confirmCampaignAction}
+            disabled={actionBusy}
+          >
+            {actionBusy
+              ? "Updating..."
+              : campaignActionDialogCopy(pendingAction?.action, pendingAction?.campaignName, pendingAction?.selectedRecipients).confirm}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
     </Card>
   );
 }
@@ -1731,6 +2019,7 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
 
   if (managedMode) {
     const buyCreditsVisible = Boolean(managedDelivery?.credit_purchase_enabled) && Array.isArray(managedDelivery?.credit_packs) && managedDelivery.credit_packs.length > 0;
+    const recentPurchases = Array.isArray(managedDelivery?.recent_credit_purchases) ? managedDelivery.recent_credit_purchases : [];
     return (
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardHeader
@@ -1768,6 +2057,36 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
               <Alert severity="info">
                 From Name will be sent as <strong>{managedDelivery?.from_name || (companyName ? `${companyName} via Schedulaa` : "Schedulaa")}</strong>. Schedulaa chooses the managed delivery path automatically for this company.
               </Alert>
+            </Grid>
+            <Grid item xs={12}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="overline">Recent credit purchases</Typography>
+                  {recentPurchases.length ? (
+                    <Stack spacing={1.25} sx={{ mt: 1 }}>
+                      {recentPurchases.map((row) => (
+                        <Box key={row.purchase_id} sx={{ display: "flex", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>{Number(row.credit_pack_size || 0).toLocaleString()} email credits</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {row.unit_amount != null && row.currency
+                                ? `${formatPriceAmount(row.unit_amount, row.currency)}`
+                                : "Stripe price configured"}
+                              {" · "}
+                              {row.granted_at || row.paid_at || row.created_at || "Pending"}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2">{formatCreditPurchaseStatusLabel(row.status_key || row.status)}</Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      No credit purchases yet.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
             </Grid>
           </Grid>
         </CardContent>
