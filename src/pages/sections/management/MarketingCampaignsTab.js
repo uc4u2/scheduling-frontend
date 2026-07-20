@@ -263,6 +263,19 @@ function inferManagedMarketingMode(managedDelivery = null) {
     || Boolean(managedDelivery?.managed_delivery_available);
 }
 
+function mergeManagedDeliverySummary(currentValue = null, nextValue = null) {
+  if (!nextValue || typeof nextValue !== "object") return currentValue;
+  if (!currentValue || typeof currentValue !== "object") return nextValue;
+  return {
+    ...currentValue,
+    ...nextValue,
+    credit_packs: Array.isArray(nextValue?.credit_packs) ? nextValue.credit_packs : (currentValue?.credit_packs || []),
+    recent_credit_purchases: Array.isArray(nextValue?.recent_credit_purchases)
+      ? nextValue.recent_credit_purchases
+      : (currentValue?.recent_credit_purchases || []),
+  };
+}
+
 function formatPriceAmount(unitAmount, currency) {
   if (unitAmount === null || unitAmount === undefined || !currency) return null;
   try {
@@ -1886,7 +1899,11 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
           <CardContent>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="h6">Managed by Schedulaa</Typography>
-              <Chip size="small" color={managedMode ? "primary" : "default"} label={managedMode ? "Active" : "Available"} />
+              <Chip
+                size="small"
+                label={managedMode ? "Active" : "Available"}
+                sx={managedMode ? { bgcolor: "primary.main", color: "primary.contrastText", fontWeight: 700 } : undefined}
+              />
               <Chip size="small" variant="outlined" label="Recommended" />
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -1916,7 +1933,11 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
           <CardContent>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="h6">Use my own SendGrid</Typography>
-              <Chip size="small" color={!managedMode ? "primary" : "default"} label={!managedMode ? "Active" : "Inactive"} />
+              <Chip
+                size="small"
+                label={!managedMode ? "Active" : "Inactive"}
+                sx={!managedMode ? { bgcolor: "primary.main", color: "primary.contrastText", fontWeight: 700 } : undefined}
+              />
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
               Connect and pay for your own SendGrid account. Schedulaa credits are not used in this delivery path.
@@ -2428,11 +2449,15 @@ export default function MarketingCampaignsTab() {
   }), [deliverySettings, provider, managedMode, creditPurchaseEnabled]);
   const handleProviderChange = (nextProvider, nextManagedDelivery = null) => {
     setProvider(nextProvider);
-    if (nextManagedDelivery) setManagedDelivery(nextManagedDelivery);
+    if (nextManagedDelivery) {
+      setManagedDelivery((currentValue) => mergeManagedDeliverySummary(currentValue, nextManagedDelivery));
+    }
   };
   const handleSummaryLoaded = (data) => {
     setDashboardSummary(data || null);
-    if (data?.managed_delivery) setManagedDelivery(data.managed_delivery);
+    if (data?.managed_delivery) {
+      setManagedDelivery((currentValue) => mergeManagedDeliverySummary(currentValue, data.managed_delivery));
+    }
   };
   const openComposer = ({ type = CAMPAIGN_TYPE_OPTIONS[0].key, seed = null } = {}) => {
     setComposerCampaignType(type);
@@ -2451,12 +2476,11 @@ export default function MarketingCampaignsTab() {
         const { data } = await api.get("/api/manager/marketing/provider", auth);
         if (alive) {
           setProvider(data?.provider || null);
-          setManagedDelivery(data?.managed_delivery || null);
+          setManagedDelivery((currentValue) => mergeManagedDeliverySummary(currentValue, data?.managed_delivery || null));
         }
       } catch {
         if (alive) {
           setProvider(null);
-          setManagedDelivery(null);
         }
       }
     })();
