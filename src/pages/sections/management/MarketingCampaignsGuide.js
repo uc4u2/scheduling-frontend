@@ -201,10 +201,15 @@ export default function MarketingCampaignsGuide({ onClose }) {
 
       <Divider sx={{ my: 2 }} />
 
-      <Typography variant="h6" gutterBottom>SendGrid setup for live campaigns</Typography>
+      <Typography variant="h6" gutterBottom>Email delivery setup</Typography>
       <Typography variant="body2" gutterBottom>
-        Marketing campaigns only send live email after you connect your own SendGrid account and activate it.
-        Transactional Schedulaa emails are separate and stay on shared app mail.
+        Schedulaa supports two marketing delivery modes. Some internal pilot companies use managed delivery through Schedulaa. Other companies keep using their own SendGrid connection. Transactional Schedulaa emails remain separate from campaign delivery.
+      </Typography>
+      <Typography variant="body2" gutterBottom>
+        If your page shows <strong>Managed by Schedulaa</strong>, the platform chooses the delivery path automatically and shows the available credits, From name, and Reply-To in the campaign review step.
+      </Typography>
+      <Typography variant="body2" gutterBottom>
+        If your page shows the SendGrid provider setup card instead, follow the steps below to enable live campaign sending with your own SendGrid account.
       </Typography>
       <ol>
         <li>
@@ -240,7 +245,7 @@ export default function MarketingCampaignsGuide({ onClose }) {
         </li>
       </ol>
       <Typography variant="body2" sx={{ mb: 2 }}>
-        Recommended SendGrid setup: authenticate your sender domain in SendGrid before large campaigns so Gmail, Yahoo, and Outlook are less likely to spam your emails.
+        Recommended SendGrid setup: authenticate your sender domain in SendGrid before large campaigns so Gmail, Yahoo, and Outlook are less likely to spam your emails. Managed-delivery tenants do not need to enter a SendGrid API key in the campaign page.
       </Typography>
 
       <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>{t("help.marketing.quickStartTitle")}</Typography>

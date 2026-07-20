@@ -183,13 +183,14 @@
       "quickStartTitle": "Quick start (under a minute)",
       "quickStartSteps": [
         "Pick a campaign card.",
-        "Set your fields (discount, coupon, dates, links).",
-        "Click Preview to see eligible clients and the exact email per row.",
-        "Select rows or use Send All.",
-        "Turn Dry-run OFF to actually send.",
-        "Click Send Selected or Send All."
+        "Set your message and audience fields.",
+        "Click Review campaign to preview eligible recipients.",
+        "Review the selected-recipient count, credits, From name, and Reply-To.",
+        "Adjust the checked recipients if needed.",
+        "Click Send campaign, then Confirm and send.",
+        "The campaign is queued and continues sending in the background."
       ],
-      "quickStartTip": "Tip: If you change any fields, previews are cleared. Click Preview again before sending.",
+      "quickStartTip": "Tip: If you change campaign fields after reviewing recipients, generate the review again before sending.",
       "customize": {
         "title": "Customize email text",
         "description": "Each campaign (except Broadcast, which already collects full copy) includes a \"Customize email text (optional)\" accordion. You can override the template copy without touching HTML.",
@@ -324,19 +325,19 @@
         }
       },
       "preview": {
-        "title": "Preview & Sending",
+        "title": "Review & Sending",
         "items": {
           "preview": {
-            "label": "Preview",
-            "description": "Fetches eligible clients and renders the final email per row. Change any setting? Preview again."
+            "label": "Review campaign",
+            "description": "Generates the current audience preview, shows how many recipients are eligible, and confirms sender details. No emails are sent at this step."
           },
           "dryRun": {
-            "label": "Dry-run",
-            "description": "When <strong>ON</strong>, nothing is sent; we log a \"would send\" count. Turn <strong>OFF</strong> to send."
+            "label": "Selected recipients & credits",
+            "description": "The checked rows are the only recipients submitted when you confirm send. For managed delivery, required credits update immediately as checkboxes change."
           },
           "send": {
-            "label": "Send Selected / Send All",
-            "description": "Uses the rows from your most recent preview. \"Selected\" sends only the checked rows; \"All\" sends every previewed row."
+            "label": "Send campaign",
+            "description": "Queues the checked rows from your most recent review. You must confirm the final send in the confirmation dialog before any email is queued."
           }
         }
       },
@@ -360,11 +361,11 @@
             ]
           },
           "sentZero": {
-            "label": "\"Sent: 0 - dry_run=on/off\"",
-            "description": "Interpret the dry-run indicator and selection state.",
+            "label": "Preview says no emails were sent",
+            "description": "This is expected when you are still in review mode.",
             "list": [
-              "<strong>on</strong> - Dry-run is ON; no emails sent by design.",
-              "<strong>off</strong> - Likely no rows selected (re-preview and select rows) or the server suppressed exact duplicates within that send."
+              "Review campaign only generates the audience preview and sender summary.",
+              "Emails are queued only after you click <strong>Send campaign</strong> and then <strong>Confirm and send</strong>."
             ]
           },
           "duplicates": {
