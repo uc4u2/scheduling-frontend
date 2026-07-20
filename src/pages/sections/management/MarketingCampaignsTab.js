@@ -442,69 +442,6 @@ function mapMarketingErrorMessage(error, { managedMode = false } = {}) {
   return friendly[code] || raw;
 }
 
-const CONTENT_PRESET_OPTIONS = [
-  {
-    key: "announcement",
-    label: "Simple announcement",
-    values: {
-      subject: "Update from our team",
-      heading: "A quick note from the studio",
-      intro: "We're sharing an update with our clients.",
-      subtext: "Thanks for being part of our community.",
-      cta_text: "View details",
-      cta_url: "?page=services-classic",
-    },
-  },
-  {
-    key: "offer",
-    label: "Offer / promotion",
-    values: {
-      subject: "A special offer for you",
-      heading: "A limited-time offer",
-      intro: "We put together a special offer for our clients.",
-      subtext: "Take a look before it expires.",
-      cta_text: "Claim offer",
-      cta_url: "?page=services-classic",
-    },
-  },
-  {
-    key: "reminder",
-    label: "Reminder / rebook",
-    values: {
-      subject: "Time to book your next visit",
-      heading: "Ready for your next appointment?",
-      intro: "If you're due for another visit, we're ready when you are.",
-      subtext: "Book now to secure your preferred time.",
-      cta_text: "Book now",
-      cta_url: "?page=services-classic",
-    },
-  },
-  {
-    key: "vip",
-    label: "VIP invite",
-    values: {
-      subject: "A VIP invite for you",
-      heading: "You're on our VIP list",
-      intro: "We wanted to share something special with you first.",
-      subtext: "Thanks for being one of our valued clients.",
-      cta_text: "See VIP offer",
-      cta_url: "/vip",
-    },
-  },
-  {
-    key: "thankyou",
-    label: "Thank-you",
-    values: {
-      subject: "Thank you from our team",
-      heading: "We appreciate you",
-      intro: "Thank you for choosing us.",
-      subtext: "We're grateful for your support.",
-      cta_text: "Visit us again",
-      cta_url: "?page=services-classic",
-    },
-  },
-];
-
 function CampaignCard({
   sectionId,
   campaignType,
@@ -529,6 +466,7 @@ function CampaignCard({
   provider = null,
   creditPurchaseEnabled = false,
   onBuyCredits = null,
+  cardSx = null,
 }) {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -881,7 +819,7 @@ function CampaignCard({
   }, []);
 
   return (
-    <Card id={sectionId} variant="outlined" sx={{ mb: 3, scrollMarginTop: 96 }}>
+    <Card id={sectionId} variant="outlined" sx={{ mb: 3, scrollMarginTop: 96, ...(cardSx || {}) }}>
       <CardHeader title={title} subheader={subtitle} />
       <CardContent>
         {helpText && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{helpText}</Typography>}
@@ -1248,7 +1186,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
 
 function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCampaignsLoaded }) {
   const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -1257,6 +1195,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
   const loadCampaigns = async () => {
     setLoading(true);
@@ -1276,11 +1215,13 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
   };
 
   useEffect(() => {
+    if (!expanded) return;
     loadCampaigns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, refreshKey, page, rowsPerPage]);
+  }, [auth, refreshKey, page, rowsPerPage, expanded]);
 
   useEffect(() => {
+    if (!expanded) return undefined;
     if (!campaigns.some((row) => ["queued", "sending", "processing", "deferred", "paused"].includes(String(row?.status || "").toLowerCase()))) {
       return undefined;
     }
@@ -1334,16 +1275,25 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
   };
 
   return (
-    <Card variant="outlined" sx={{ mb: 3 }}>
-      <CardHeader
-        title="Recent marketing campaigns"
-        subheader="Campaigns are sent gradually to protect deliverability."
-      />
-      <CardContent>
+    <Accordion
+      variant="outlined"
+      expanded={expanded}
+      onChange={(_, nextExpanded) => setExpanded(nextExpanded)}
+      sx={{ mb: 3 }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Box>
+          <Typography variant="h6">Recent marketing campaigns</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Campaigns are sent gradually to protect deliverability.
+          </Typography>
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails>
         {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
         {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
         {info ? <Alert severity="info" sx={{ mb: 2 }}>{info}</Alert> : null}
-        {!loading && campaigns.length === 0 ? (
+        {!expanded ? null : !loading && campaigns.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No campaign history yet.
           </Typography>
@@ -1448,7 +1398,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
           }}
           rowsPerPageOptions={PAGE_SIZE_OPTIONS}
         />
-      </CardContent>
+      </AccordionDetails>
       <Dialog
         open={Boolean(pendingAction)}
         onClose={() => !actionBusy && setPendingAction(null)}
@@ -1481,7 +1431,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
         </DialogActions>
       </Dialog>
       <CampaignRecipientsDrawer auth={auth} campaign={selectedCampaign} open={Boolean(selectedCampaign)} onClose={() => setSelectedCampaign(null)} />
-    </Card>
+    </Accordion>
   );
 }
 
@@ -1603,60 +1553,37 @@ function DeliverabilityOverview({ auth, refreshKey = 0, onSummaryLoaded }) {
   );
 }
 
-function CreateCampaignDialog({ open, onClose, onApply }) {
+function CreateCampaignDialog({
+  open,
+  onClose,
+  campaignDefinitions = [],
+  campaignCardSharedProps = {},
+  initialCampaignType = "broadcast",
+  initialComposerSeed = null,
+}) {
   const [step, setStep] = useState(0);
-  const [campaignType, setCampaignType] = useState(CAMPAIGN_TYPE_OPTIONS[0].key);
-  const [presetKey, setPresetKey] = useState(CONTENT_PRESET_OPTIONS[0].key);
-  const [content, setContent] = useState({ ...CONTENT_PRESET_OPTIONS[0].values });
+  const [campaignType, setCampaignType] = useState(initialCampaignType);
 
   const selectedType = useMemo(
-    () => CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === campaignType) || CAMPAIGN_TYPE_OPTIONS[0],
-    [campaignType]
+    () => campaignDefinitions.find((item) => item.campaignType === campaignType) || campaignDefinitions[0] || null,
+    [campaignDefinitions, campaignType]
   );
 
   useEffect(() => {
     if (!open) return;
-    setStep(0);
-    setCampaignType(CAMPAIGN_TYPE_OPTIONS[0].key);
-    setPresetKey(CONTENT_PRESET_OPTIONS[0].key);
-    setContent({ ...CONTENT_PRESET_OPTIONS[0].values });
-  }, [open]);
-
-  const applyPreset = (nextPresetKey) => {
-    const preset = CONTENT_PRESET_OPTIONS.find((item) => item.key === nextPresetKey) || CONTENT_PRESET_OPTIONS[0];
-    setPresetKey(preset.key);
-    setContent((prev) => ({ ...prev, ...preset.values }));
-  };
-
-  const handleContinue = () => {
-    if (step === 0) {
-      setContent((prev) => ({
-        ...selectedType.presetParams,
-        ...prev,
-      }));
-      setStep(1);
-      return;
-    }
-    onApply?.({
-      type: selectedType.key,
-      anchorId: selectedType.anchorId,
-      params: {
-        ...selectedType.presetParams,
-        ...content,
-      },
-    });
-    onClose?.();
-  };
+    setCampaignType(initialCampaignType || campaignDefinitions[0]?.campaignType || "broadcast");
+    setStep(initialComposerSeed ? 1 : 0);
+  }, [open, initialCampaignType, initialComposerSeed, campaignDefinitions]);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{step === 0 ? "Create campaign" : `Compose ${selectedType.title}`}</DialogTitle>
-      <DialogContent dividers>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
+      <DialogTitle>{step === 0 ? "Create campaign" : selectedType?.title || "Create campaign"}</DialogTitle>
+      <DialogContent dividers sx={step === 1 ? { p: 2 } : undefined}>
         {step === 0 ? (
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Choose the campaign type you want to launch. Schedulaa will open the matching campaign section with suggested defaults.
+                Choose the campaign type you want to launch. You will stay in this guided flow to edit the message, review recipients, and confirm sending.
               </Typography>
             </Grid>
             <Grid item xs={12}>
@@ -1667,110 +1594,36 @@ function CreateCampaignDialog({ open, onClose, onApply }) {
                 value={campaignType}
                 onChange={(e) => setCampaignType(e.target.value)}
               >
-                {CAMPAIGN_TYPE_OPTIONS.map((option) => (
-                  <MenuItem key={option.key} value={option.key}>
+                {campaignDefinitions.map((option) => (
+                  <MenuItem key={option.campaignType} value={option.campaignType}>
                     {option.title}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
             <Grid item xs={12}>
-              <Alert severity="info">{selectedType.description}</Alert>
-            </Grid>
-          </Grid>
-        ) : (
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                label="Content preset"
-                value={presetKey}
-                onChange={(e) => applyPreset(e.target.value)}
-              >
-                {CONTENT_PRESET_OPTIONS.map((option) => (
-                  <MenuItem key={option.key} value={option.key}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} md={8}>
               <Alert severity="info">
-                This flow pre-fills the email body and jumps you to the {selectedType.title} section, where you can preview recipients and queue the campaign.
+                {selectedType?.subtitle || selectedType?.helpText || "Choose the campaign that best matches the audience you want to reach."}
               </Alert>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Subject"
-                value={content.subject || ""}
-                onChange={(e) => setContent((prev) => ({ ...prev, subject: e.target.value }))}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Heading"
-                value={content.heading || ""}
-                onChange={(e) => setContent((prev) => ({ ...prev, heading: e.target.value }))}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Main message"
-                value={content.intro || ""}
-                onChange={(e) => setContent((prev) => ({ ...prev, intro: e.target.value }))}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                label="Supporting text"
-                value={content.subtext || ""}
-                onChange={(e) => setContent((prev) => ({ ...prev, subtext: e.target.value }))}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="CTA text"
-                value={content.cta_text || ""}
-                onChange={(e) => setContent((prev) => ({ ...prev, cta_text: e.target.value }))}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="CTA link"
-                value={content.cta_url || content.rebook_link || content.anniv_link || content.launch_link || content.deep_link || content.vip_link || "/book"}
-                onChange={(e) =>
-                  setContent((prev) => ({
-                    ...prev,
-                    cta_url: e.target.value,
-                    rebook_link: e.target.value,
-                    anniv_link: e.target.value,
-                    launch_link: e.target.value,
-                    deep_link: e.target.value,
-                    vip_link: e.target.value,
-                  }))
-                }
-              />
-            </Grid>
           </Grid>
-        )}
+        ) : selectedType ? (
+          <CampaignCard
+            {...selectedType}
+            {...campaignCardSharedProps}
+            composerSeed={initialComposerSeed?.type === selectedType.campaignType ? initialComposerSeed.params : selectedType.defaultComposerSeed}
+            cardSx={{ mb: 0 }}
+          />
+        ) : null}
       </DialogContent>
       <DialogActions>
         {step === 1 ? <Button onClick={() => setStep(0)}>Back</Button> : null}
         <Button onClick={onClose}>Close</Button>
-        <Button variant="contained" onClick={handleContinue}>
-          {step === 0 ? "Continue" : "Open campaign section"}
-        </Button>
+        {step === 0 ? (
+          <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedType}>
+            Continue
+          </Button>
+        ) : null}
       </DialogActions>
     </Dialog>
   );
@@ -2237,6 +2090,7 @@ export default function MarketingCampaignsTab() {
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
   const [campaignRefreshKey, setCampaignRefreshKey] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerCampaignType, setComposerCampaignType] = useState(CAMPAIGN_TYPE_OPTIONS[0].key);
   const [composerSeed, setComposerSeed] = useState(null);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
   const [checkoutBusyPackKey, setCheckoutBusyPackKey] = useState("");
@@ -2266,6 +2120,233 @@ export default function MarketingCampaignsTab() {
     creditPacks,
   }), [managedMode, managedDelivery, companyName, managerReplyTo, provider, currentUserInfo, creditPurchaseEnabled, creditPacks]);
 
+  const campaignDefinitions = useMemo(() => ([
+    {
+      sectionId: "campaign-card-broadcast",
+      campaignType: "broadcast",
+      title: t("campaigns.cards.broadcast.title"),
+      subtitle: t("campaigns.cards.broadcast.subtitle"),
+      helpText: t("campaigns.cards.broadcast.help"),
+      previewPath: "/api/manager/campaigns/broadcast/preview",
+      sendPath: "/api/manager/campaigns/broadcast/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "broadcast")?.presetParams || null,
+      fieldDefs: [
+        { name: "subject", label: fieldLabel("subject"), default: t("campaigns.defaults.broadcast.subject"), helperText: fieldHelper("subject") },
+        { name: "heading", label: fieldLabel("heading"), default: t("campaigns.defaults.broadcast.heading"), helperText: fieldHelper("heading") },
+        { name: "intro", label: fieldLabel("intro"), default: t("campaigns.defaults.broadcast.intro"), multiline: true, rows: 3, helperText: fieldHelper("intro") },
+        { name: "subtext", label: fieldLabel("subtext"), default: t("campaigns.defaults.broadcast.subtext"), multiline: true, rows: 2, helperText: fieldHelper("subtext") },
+        { name: "cta_text", label: fieldLabel("ctaText"), default: t("campaigns.defaults.broadcast.ctaText"), helperText: fieldHelper("ctaText") },
+        { name: "cta_url", label: fieldLabel("ctaUrl"), default: "?page=services-classic", helperText: fieldHelper("ctaUrl") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
+        { name: "segment", label: fieldLabel("segment"), default: "all", select: segmentOptions, helperText: fieldHelper("segment") },
+        { name: "since_days", label: fieldLabel("sinceDays"), type: "number", default: "", helperText: fieldHelper("sinceDays") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 500, helperText: fieldHelper("limit") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "subject", label: columnLabel("subject") },
+      ],
+      mapRowKey: (r) => `broadcast_${r.client_id}`,
+    },
+    {
+      sectionId: "campaign-card-winback",
+      campaignType: "winback",
+      title: t("campaigns.cards.winback.title"),
+      subtitle: t("campaigns.cards.winback.subtitle"),
+      helpText: t("campaigns.cards.winback.help"),
+      previewPath: "/api/manager/campaigns/winback/preview",
+      sendPath: "/api/manager/campaigns/winback/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "winback")?.presetParams || null,
+      fieldDefs: [
+        { name: "overdue_multiplier", label: fieldLabel("overdueMultiplier"), type: "number", default: 1.5, helperText: fieldHelper("overdueMultiplier") },
+        { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 15, helperText: fieldHelper("discountPercent") },
+        { name: "valid_days", label: fieldLabel("validDays"), type: "number", default: 7, helperText: fieldHelper("validDays") },
+        { name: "expires", label: fieldLabel("expiresOverride"), type: "date", default: defaultWinbackExpiry, helperText: fieldHelper("expiresOverride") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 50, helperText: fieldHelper("limit") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "WINBACK", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "rebook_link", label: fieldLabel("rebookLink"), default: "/book", helperText: fieldHelper("rebookLink") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "days_since_last", label: columnLabel("daysSince"), align: "right" },
+        { key: "expected_gap_days", label: columnLabel("expectedGap"), align: "right" },
+        { key: "overdue_ratio", label: columnLabel("overdueRatio"), align: "right" },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+        { key: "suggested_expiry", label: columnLabel("expiry") },
+      ],
+      mapRowKey: (r) => `winback_${r.client_id}`,
+    },
+    {
+      sectionId: "campaign-card-skipped_rebook",
+      campaignType: "skipped_rebook",
+      title: t("campaigns.cards.skippedRebook.title"),
+      subtitle: t("campaigns.cards.skippedRebook.subtitle"),
+      helpText: t("campaigns.cards.skippedRebook.help"),
+      previewPath: "/api/manager/campaigns/skipped_rebook/preview",
+      sendPath: "/api/manager/campaigns/skipped_rebook/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "skipped_rebook")?.presetParams || null,
+      fieldDefs: [
+        { name: "lookback_days", label: fieldLabel("lookbackDays"), type: "number", default: 3, helperText: fieldHelper("lookbackDays") },
+        { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 0, helperText: fieldHelper("discountPercentZero") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "REBOOK", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
+        { name: "deep_link", label: fieldLabel("deepLink"), default: "/rebook", helperText: fieldHelper("deepLink") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "last_service_date", label: columnLabel("lastService") },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+      ],
+      mapRowKey: (r) => `skipped_${r.client_id}_${r.last_service_date}`,
+    },
+    {
+      sectionId: "campaign-card-vip",
+      campaignType: "vip",
+      title: t("campaigns.cards.vip.title"),
+      subtitle: t("campaigns.cards.vip.subtitle"),
+      helpText: t("campaigns.cards.vip.help"),
+      previewPath: "/api/manager/campaigns/vip/preview",
+      sendPath: "/api/manager/campaigns/vip/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "vip")?.presetParams || null,
+      fieldDefs: [
+        { name: "vip_pct", label: fieldLabel("vipPct"), type: "number", default: 10, helperText: fieldHelper("vipPct") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 50, helperText: fieldHelper("limit") },
+        { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 20, helperText: fieldHelper("discountPercent") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "VIP", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "vip_link", label: fieldLabel("vipLink"), default: "/vip", helperText: fieldHelper("vipLink") },
+        { name: "expires", label: fieldLabel("expiresOverride"), type: "date", default: defaultVipExpiry, helperText: fieldHelper("expiresOverride") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "ltv", label: columnLabel("ltv"), align: "right" },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+      ],
+      mapRowKey: (r) => `vip_${r.client_id}`,
+    },
+    {
+      sectionId: "campaign-card-anniversary",
+      campaignType: "anniversary",
+      title: t("campaigns.cards.anniversary.title"),
+      subtitle: t("campaigns.cards.anniversary.subtitle"),
+      helpText: t("campaigns.cards.anniversary.help"),
+      previewPath: "/api/manager/campaigns/anniversary/preview",
+      sendPath: "/api/manager/campaigns/anniversary/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "anniversary")?.presetParams || null,
+      fieldDefs: [
+        { name: "month", label: fieldLabel("month"), default: String(currentMonth), select: monthOptions, helperText: fieldHelper("month") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 50, helperText: fieldHelper("limit") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "ANNIV", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "anniv_link", label: fieldLabel("annivLink"), default: "/book", helperText: fieldHelper("annivLink") },
+        { name: "expires", label: fieldLabel("expiresOverride"), type: "date", default: defaultAnnivExpiry, helperText: fieldHelper("expiresOverride") },
+        { name: "require_email", label: fieldLabel("requireEmail"), select: booleanOptions, default: "true", helperText: fieldHelper("requireEmail") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "first_visit", label: columnLabel("firstVisit") },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+      ],
+      mapRowKey: (r) => `anniv_${r.client_id}`,
+    },
+    {
+      sectionId: "campaign-card-new_service",
+      campaignType: "new_service",
+      title: t("campaigns.cards.newService.title"),
+      subtitle: t("campaigns.cards.newService.subtitle"),
+      helpText: t("campaigns.cards.newService.help"),
+      previewPath: "/api/manager/campaigns/new_service/preview",
+      sendPath: "/api/manager/campaigns/new_service/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "new_service")?.presetParams || null,
+      fieldDefs: [
+        { name: "service_id", label: fieldLabel("serviceId"), type: "service", default: "", helperText: fieldHelper("serviceId") },
+        { name: "lookback_months", label: fieldLabel("lookbackMonths"), type: "number", default: 12, helperText: fieldHelper("lookbackMonths") },
+        { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 0, helperText: fieldHelper("discountPercentZero") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "NEW", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "launch_link", label: fieldLabel("launchLink"), default: "?page=services-classic", helperText: fieldHelper("launchLink") },
+        { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 200, helperText: fieldHelper("limit") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+      ],
+      mapRowKey: (r) => `newsvc_${r.client_id}`,
+    },
+    {
+      sectionId: "campaign-card-no_show_recovery",
+      campaignType: "no_show_recovery",
+      title: t("campaigns.cards.noShow.title"),
+      subtitle: t("campaigns.cards.noShow.subtitle"),
+      helpText: t("campaigns.cards.noShow.help"),
+      previewPath: "/api/manager/campaigns/no_show_recovery/preview",
+      sendPath: "/api/manager/campaigns/no_show_recovery/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "no_show_recovery")?.presetParams || null,
+      fieldDefs: [
+        { name: "lookback_days", label: fieldLabel("lookbackDays"), type: "number", default: 30, helperText: fieldHelper("lookbackDays") },
+        { name: "require_no_future", label: fieldLabel("requireNoFuture"), select: booleanOptions, default: "true", helperText: fieldHelper("requireNoFuture") },
+        { name: "require_fee", label: fieldLabel("requireFee"), select: booleanOptions, default: "false", helperText: fieldHelper("requireFee") },
+        { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 0, helperText: fieldHelper("discountPercentZero") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "RECOVER", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "rebook_link", label: fieldLabel("landingLink"), default: "/", helperText: fieldHelper("landingLink") },
+        { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 200, helperText: fieldHelper("limit") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+      ],
+      mapRowKey: (r) => `nsr_${r.client_id}`,
+    },
+    {
+      sectionId: "campaign-card-addon_upsell",
+      campaignType: "addon_upsell",
+      title: t("campaigns.cards.addonUpsell.title"),
+      subtitle: t("campaigns.cards.addonUpsell.subtitle"),
+      helpText: t("campaigns.cards.addonUpsell.help"),
+      previewPath: "/api/manager/campaigns/addon_upsell/preview",
+      sendPath: "/api/manager/campaigns/addon_upsell/send",
+      defaultComposerSeed: CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === "addon_upsell")?.presetParams || null,
+      fieldDefs: [
+        { name: "base_service_id", label: fieldLabel("baseServiceId"), type: "service", default: "", helperText: fieldHelper("baseServiceId") },
+        { name: "addon_name", label: fieldLabel("addonName"), default: "", helperText: fieldHelper("addonName") },
+        { name: "lookback_days", label: fieldLabel("lookbackDays"), type: "number", default: 45, helperText: fieldHelper("lookbackDays") },
+        { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 10, helperText: fieldHelper("discountPercent") },
+        { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "ADDON", helperText: fieldHelper("couponPrefix") },
+        { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
+        { name: "deep_link", label: fieldLabel("deepLink"), default: "?page=services-classic", helperText: fieldHelper("deepLink") },
+        { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
+        { name: "limit", label: fieldLabel("limit"), type: "number", default: 200, helperText: fieldHelper("limit") },
+      ],
+      columns: [
+        { key: "client_id", label: columnLabel("clientId") },
+        { key: "name", label: columnLabel("name") },
+        { key: "email", label: columnLabel("email") },
+        { key: "suggested_coupon", label: columnLabel("coupon") },
+      ],
+      mapRowKey: (r) => `upsell_${r.client_id}`,
+    },
+  ]), [t, fieldLabel, fieldHelper, columnLabel, segmentOptions, defaultWinbackExpiry, defaultVipExpiry, currentMonth, monthOptions, defaultAnnivExpiry, booleanOptions]);
+
   const handleCampaignSent = () => setCampaignRefreshKey((v) => v + 1);
   const campaignCardSharedProps = useMemo(() => ({
     deliverySettings,
@@ -2284,21 +2365,14 @@ export default function MarketingCampaignsTab() {
     setDashboardSummary(data || null);
     if (data?.managed_delivery) setManagedDelivery(data.managed_delivery);
   };
-  const handleApplyComposer = ({ anchorId, params, type }) => {
-    setComposerSeed({ type, params, appliedAt: Date.now() });
-    window.setTimeout(() => {
-      const target = document.getElementById(anchorId);
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+  const openComposer = ({ type = CAMPAIGN_TYPE_OPTIONS[0].key, seed = null } = {}) => {
+    setComposerCampaignType(type);
+    setComposerSeed(seed);
+    setComposerOpen(true);
   };
   const handleOpenSavedCampaign = (campaign) => {
     if (!campaign?.campaign_type) return;
-    const selectedType = CAMPAIGN_TYPE_OPTIONS.find((item) => item.key === campaign.campaign_type);
-    setComposerSeed(buildCampaignSeed(campaign));
-    window.setTimeout(() => {
-      const target = document.getElementById(selectedType?.anchorId);
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    openComposer({ type: campaign.campaign_type, seed: buildCampaignSeed(campaign) });
   };
 
   useEffect(() => {
@@ -2418,7 +2492,7 @@ export default function MarketingCampaignsTab() {
       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h4">{t("titles.marketingCampaigns")}</Typography>
         <Box display="flex" alignItems="center" gap={1}>
-          <Button variant="contained" onClick={() => setComposerOpen(true)}>
+          <Button variant="contained" onClick={() => openComposer()}>
             Create campaign
           </Button>
           <Tooltip title={t("tooltips.marketingGuide")}>
@@ -2431,7 +2505,10 @@ export default function MarketingCampaignsTab() {
       <CreateCampaignDialog
         open={composerOpen}
         onClose={() => setComposerOpen(false)}
-        onApply={handleApplyComposer}
+        campaignDefinitions={campaignDefinitions}
+        campaignCardSharedProps={campaignCardSharedProps}
+        initialCampaignType={composerCampaignType}
+        initialComposerSeed={composerSeed}
       />
 
       {/* Guide Drawer (content imported to keep this file lean) */}
@@ -2458,255 +2535,13 @@ export default function MarketingCampaignsTab() {
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} onCampaignsLoaded={setCampaignRows} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
-
-      {/* 0) Broadcast (Simple Announcement) */}
-      <CampaignCard
-        sectionId="campaign-card-broadcast"
-        campaignType="broadcast"
-        title={t("campaigns.cards.broadcast.title")}
-        subtitle={t("campaigns.cards.broadcast.subtitle")}
-        helpText={t("campaigns.cards.broadcast.help")}
-        previewPath="/api/manager/campaigns/broadcast/preview"
-        sendPath="/api/manager/campaigns/broadcast/send"
-        fieldDefs={[
-          { name: "subject", label: fieldLabel("subject"), default: t("campaigns.defaults.broadcast.subject"), helperText: fieldHelper("subject") },
-          { name: "heading", label: fieldLabel("heading"), default: t("campaigns.defaults.broadcast.heading"), helperText: fieldHelper("heading") },
-          { name: "intro", label: fieldLabel("intro"), default: t("campaigns.defaults.broadcast.intro"), multiline: true, rows: 3, helperText: fieldHelper("intro") },
-          { name: "subtext", label: fieldLabel("subtext"), default: t("campaigns.defaults.broadcast.subtext"), multiline: true, rows: 2, helperText: fieldHelper("subtext") },
-          { name: "cta_text", label: fieldLabel("ctaText"), default: t("campaigns.defaults.broadcast.ctaText"), helperText: fieldHelper("ctaText") },
-          { name: "cta_url", label: fieldLabel("ctaUrl"), default: "?page=services-classic", helperText: fieldHelper("ctaUrl") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
-          { name: "segment", label: fieldLabel("segment"), default: "all", select: segmentOptions, helperText: fieldHelper("segment") },
-          { name: "since_days", label: fieldLabel("sinceDays"), type: "number", default: "", helperText: fieldHelper("sinceDays") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 500, helperText: fieldHelper("limit") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "subject", label: columnLabel("subject") },
-        ]}
-        mapRowKey={(r)=>`broadcast_${r.client_id}`}
-        enableCopyOverrides={false}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "broadcast" ? composerSeed.params : null}
-      />
-
-      {/* 1) Win-Back */}
-      <CampaignCard
-        sectionId="campaign-card-winback"
-        campaignType="winback"
-        title={t("campaigns.cards.winback.title")}
-        subtitle={t("campaigns.cards.winback.subtitle")}
-        helpText={t("campaigns.cards.winback.help")}
-        previewPath="/api/manager/campaigns/winback/preview"
-        sendPath="/api/manager/campaigns/winback/send"
-        fieldDefs={[
-          { name: "overdue_multiplier", label: fieldLabel("overdueMultiplier"), type: "number", default: 1.5, helperText: fieldHelper("overdueMultiplier") },
-          { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 15, helperText: fieldHelper("discountPercent") },
-          { name: "valid_days", label: fieldLabel("validDays"), type: "number", default: 7, helperText: fieldHelper("validDays") },
-          { name: "expires", label: fieldLabel("expiresOverride"), type: "date", default: defaultWinbackExpiry, helperText: fieldHelper("expiresOverride") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 50, helperText: fieldHelper("limit") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "WINBACK", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "rebook_link", label: fieldLabel("rebookLink"), default: "/book", helperText: fieldHelper("rebookLink") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "days_since_last", label: columnLabel("daysSince"), align: "right" },
-          { key: "expected_gap_days", label: columnLabel("expectedGap"), align: "right" },
-          { key: "overdue_ratio", label: columnLabel("overdueRatio"), align: "right" },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-          { key: "suggested_expiry", label: columnLabel("expiry") },
-        ]}
-        mapRowKey={(r)=>`winback_${r.client_id}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "winback" ? composerSeed.params : null}
-      />
-
-      {/* 2) Skipped Rebook */}
-      <CampaignCard
-        sectionId="campaign-card-skipped_rebook"
-        campaignType="skipped_rebook"
-        title={t("campaigns.cards.skippedRebook.title")}
-        subtitle={t("campaigns.cards.skippedRebook.subtitle")}
-        helpText={t("campaigns.cards.skippedRebook.help")}
-        previewPath="/api/manager/campaigns/skipped_rebook/preview"
-        sendPath="/api/manager/campaigns/skipped_rebook/send"
-        fieldDefs={[
-          { name: "lookback_days", label: fieldLabel("lookbackDays"), type: "number", default: 3, helperText: fieldHelper("lookbackDays") },
-          { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 0, helperText: fieldHelper("discountPercentZero") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "REBOOK", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
-          { name: "deep_link", label: fieldLabel("deepLink"), default: "/rebook", helperText: fieldHelper("deepLink") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "last_service_date", label: columnLabel("lastService") },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-        ]}
-        mapRowKey={(r)=>`skipped_${r.client_id}_${r.last_service_date}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "skipped_rebook" ? composerSeed.params : null}
-      />
-
-      {/* 3) VIP Loyalty */}
-      <CampaignCard
-        sectionId="campaign-card-vip"
-        campaignType="vip"
-        title={t("campaigns.cards.vip.title")}
-        subtitle={t("campaigns.cards.vip.subtitle")}
-        helpText={t("campaigns.cards.vip.help")}
-        previewPath="/api/manager/campaigns/vip/preview"
-        sendPath="/api/manager/campaigns/vip/send"
-        fieldDefs={[
-          { name: "vip_pct", label: fieldLabel("vipPct"), type: "number", default: 10, helperText: fieldHelper("vipPct") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 50, helperText: fieldHelper("limit") },
-          { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 20, helperText: fieldHelper("discountPercent") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "VIP", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "vip_link", label: fieldLabel("vipLink"), default: "/vip", helperText: fieldHelper("vipLink") },
-          { name: "expires", label: fieldLabel("expiresOverride"), type: "date", default: defaultVipExpiry, helperText: fieldHelper("expiresOverride") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "ltv", label: columnLabel("ltv"), align: "right" },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-        ]}
-        mapRowKey={(r)=>`vip_${r.client_id}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "vip" ? composerSeed.params : null}
-      />
-
-      {/* 4) Anniversary */}
-      <CampaignCard
-        sectionId="campaign-card-anniversary"
-        campaignType="anniversary"
-        title={t("campaigns.cards.anniversary.title")}
-        subtitle={t("campaigns.cards.anniversary.subtitle")}
-        helpText={t("campaigns.cards.anniversary.help")}
-        previewPath="/api/manager/campaigns/anniversary/preview"
-        sendPath="/api/manager/campaigns/anniversary/send"
-        fieldDefs={[
-          { name: "month", label: fieldLabel("month"), default: String(currentMonth), select: monthOptions, helperText: fieldHelper("month") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 50, helperText: fieldHelper("limit") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "ANNIV", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "anniv_link", label: fieldLabel("annivLink"), default: "/book", helperText: fieldHelper("annivLink") },
-          { name: "expires", label: fieldLabel("expiresOverride"), type: "date", default: defaultAnnivExpiry, helperText: fieldHelper("expiresOverride") },
-          { name: "require_email", label: fieldLabel("requireEmail"), select: booleanOptions, default: "true", helperText: fieldHelper("requireEmail") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "first_visit", label: columnLabel("firstVisit") },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-        ]}
-        mapRowKey={(r)=>`anniv_${r.client_id}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "anniversary" ? composerSeed.params : null}
-      />
-
-      {/* 5) New Service Launch (optional) */}
-      <CampaignCard
-        sectionId="campaign-card-new_service"
-        campaignType="new_service"
-        title={t("campaigns.cards.newService.title")}
-        subtitle={t("campaigns.cards.newService.subtitle")}
-        helpText={t("campaigns.cards.newService.help")}
-        previewPath="/api/manager/campaigns/new_service/preview"
-        sendPath="/api/manager/campaigns/new_service/send"
-        fieldDefs={[
-          { name: "service_id", label: fieldLabel("serviceId"), type: "service", default: "", helperText: fieldHelper("serviceId") },
-          { name: "lookback_months", label: fieldLabel("lookbackMonths"), type: "number", default: 12, helperText: fieldHelper("lookbackMonths") },
-          { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 0, helperText: fieldHelper("discountPercentZero") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "NEW", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "launch_link", label: fieldLabel("launchLink"), default: "?page=services-classic", helperText: fieldHelper("launchLink") },
-          { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 200, helperText: fieldHelper("limit") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-        ]}
-        mapRowKey={(r)=>`newsvc_${r.client_id}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "new_service" ? composerSeed.params : null}
-      />
-
-      {/* 6) No-Show Recovery (optional) */}
-      <CampaignCard
-        sectionId="campaign-card-no_show_recovery"
-        campaignType="no_show_recovery"
-        title={t("campaigns.cards.noShow.title")}
-        subtitle={t("campaigns.cards.noShow.subtitle")}
-        helpText={t("campaigns.cards.noShow.help")}
-        previewPath="/api/manager/campaigns/no_show_recovery/preview"
-        sendPath="/api/manager/campaigns/no_show_recovery/send"
-        fieldDefs={[
-          { name: "lookback_days", label: fieldLabel("lookbackDays"), type: "number", default: 30, helperText: fieldHelper("lookbackDays") },
-          { name: "require_no_future", label: fieldLabel("requireNoFuture"), select: booleanOptions, default: "true", helperText: fieldHelper("requireNoFuture") },
-          { name: "require_fee", label: fieldLabel("requireFee"), select: booleanOptions, default: "false", helperText: fieldHelper("requireFee") },
-          { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 0, helperText: fieldHelper("discountPercentZero") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "RECOVER", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "rebook_link", label: fieldLabel("landingLink"), default: "/", helperText: fieldHelper("landingLink") },
-          { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 200, helperText: fieldHelper("limit") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-        ]}
-        mapRowKey={(r)=>`nsr_${r.client_id}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "no_show_recovery" ? composerSeed.params : null}
-      />
-
-      {/* 7) Add-on Upsell (optional) */}
-      <CampaignCard
-        sectionId="campaign-card-addon_upsell"
-        campaignType="addon_upsell"
-        title={t("campaigns.cards.addonUpsell.title")}
-        subtitle={t("campaigns.cards.addonUpsell.subtitle")}
-        helpText={t("campaigns.cards.addonUpsell.help")}
-        previewPath="/api/manager/campaigns/addon_upsell/preview"
-        sendPath="/api/manager/campaigns/addon_upsell/send"
-        fieldDefs={[
-          { name: "base_service_id", label: fieldLabel("baseServiceId"), type: "service", default: "", helperText: fieldHelper("baseServiceId") },
-          { name: "addon_name", label: fieldLabel("addonName"), default: "", helperText: fieldHelper("addonName") },
-          { name: "lookback_days", label: fieldLabel("lookbackDays"), type: "number", default: 45, helperText: fieldHelper("lookbackDays") },
-          { name: "discount_percent", label: fieldLabel("discountPercent"), type: "number", default: 10, helperText: fieldHelper("discountPercent") },
-          { name: "coupon_prefix", label: fieldLabel("couponPrefix"), default: "ADDON", helperText: fieldHelper("couponPrefix") },
-          { name: "coupon_code", label: fieldLabel("couponOverride"), default: "", helperText: fieldHelper("couponOverride") },
-          { name: "deep_link", label: fieldLabel("deepLink"), default: "?page=services-classic", helperText: fieldHelper("deepLink") },
-          { name: "expires", label: fieldLabel("expiresOptional"), type: "date", default: "", helperText: fieldHelper("expiresOptional") },
-          { name: "limit", label: fieldLabel("limit"), type: "number", default: 200, helperText: fieldHelper("limit") },
-        ]}
-        columns={[
-          { key: "client_id", label: columnLabel("clientId") },
-          { key: "name", label: columnLabel("name") },
-          { key: "email", label: columnLabel("email") },
-          { key: "suggested_coupon", label: columnLabel("coupon") },
-        ]}
-        mapRowKey={(r)=>`upsell_${r.client_id}`}
-        {...campaignCardSharedProps}
-        composerSeed={composerSeed?.type === "addon_upsell" ? composerSeed.params : null}
-      />
+      {campaignDefinitions.map((definition) => (
+        <CampaignCard
+          key={definition.campaignType}
+          {...definition}
+          {...campaignCardSharedProps}
+        />
+      ))}
 
       <Dialog open={buyCreditsOpen} onClose={() => !checkoutBusyPackKey && setBuyCreditsOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Buy email credits</DialogTitle>
