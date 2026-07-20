@@ -1869,17 +1869,81 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
   const showDraftActivationHint = provider?.id && provider?.status === "draft";
   const showPausedHint = provider?.id && provider?.status === "paused";
   const showErrorHint = provider?.id && provider?.status === "error";
+  const buyCreditsVisible = Boolean(managedDelivery?.credit_purchase_enabled) && Array.isArray(managedDelivery?.credit_packs) && managedDelivery.credit_packs.length > 0;
+  const recentPurchases = Array.isArray(managedDelivery?.recent_credit_purchases) ? managedDelivery.recent_credit_purchases : [];
+
+  const deliveryChoiceCards = (
+    <Grid container spacing={2} sx={{ mb: 2 }}>
+      <Grid item xs={12} md={6}>
+        <Card
+          variant="outlined"
+          sx={{
+            height: "100%",
+            borderColor: managedMode ? "primary.main" : "divider",
+            boxShadow: managedMode ? 2 : 0,
+          }}
+        >
+          <CardContent>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+              <Typography variant="h6">Managed by Schedulaa</Typography>
+              <Chip size="small" color={managedMode ? "primary" : "default"} label={managedMode ? "Active" : "Available"} />
+              <Chip size="small" variant="outlined" label="Recommended" />
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              No SendGrid setup required. Purchase email credits and let Schedulaa handle delivery in the background.
+            </Typography>
+            <Typography variant="body2"><strong>Available credits:</strong> {managedCredits?.available ?? 0}</Typography>
+            <Typography variant="body2"><strong>Used credits:</strong> {managedCredits?.used ?? 0}</Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}><strong>From:</strong> {managedDelivery?.from_name || (companyName ? `${companyName} via Schedulaa` : "Schedulaa")}</Typography>
+            <Typography variant="body2"><strong>Reply-To:</strong> {managedDelivery?.reply_to_email || managerReplyTo || "Resolved by Schedulaa"}</Typography>
+            {buyCreditsVisible && typeof onBuyCredits === "function" ? (
+              <Button size="small" variant="contained" sx={{ mt: 1.5 }} onClick={onBuyCredits}>
+                Buy credits
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Card
+          variant="outlined"
+          sx={{
+            height: "100%",
+            borderColor: !managedMode ? "primary.main" : "divider",
+            boxShadow: !managedMode ? 2 : 0,
+          }}
+        >
+          <CardContent>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+              <Typography variant="h6">Use my own SendGrid</Typography>
+              <Chip size="small" color={!managedMode ? "primary" : "default"} label={!managedMode ? "Active" : "Inactive"} />
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Connect and pay for your own SendGrid account. Schedulaa credits are not used in this delivery path.
+            </Typography>
+            <Typography variant="body2"><strong>What you manage:</strong> API key, sender, reply-to, test connection, and activation.</Typography>
+            {!managedMode ? (
+              <Typography variant="body2" sx={{ mt: 1 }}><strong>Status:</strong> {statusLabel}</Typography>
+            ) : (
+              <Typography variant="body2" sx={{ mt: 1 }} color="text.secondary">
+                This path is not needed while your company uses Schedulaa-managed delivery.
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
 
   if (managedMode) {
-    const buyCreditsVisible = Boolean(managedDelivery?.credit_purchase_enabled) && Array.isArray(managedDelivery?.credit_packs) && managedDelivery.credit_packs.length > 0;
-    const recentPurchases = Array.isArray(managedDelivery?.recent_credit_purchases) ? managedDelivery.recent_credit_purchases : [];
     return (
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardHeader
-          title="Email delivery"
-          subheader="Managed by Schedulaa"
+          title="Email delivery path"
+          subheader="Your company is using Schedulaa-managed campaign delivery."
         />
         <CardContent>
+          {deliveryChoiceCards}
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
               <Card variant="outlined">
@@ -1950,12 +2014,16 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardHeader
-        title="Marketing Email Provider"
-        subheader="Use your own SendGrid account for marketing campaigns. Transactional Schedulaa emails stay on shared app mail."
+        title="Email delivery path"
+        subheader="Your company is currently using its own SendGrid account for campaign delivery."
       />
       <CardContent>
+        {deliveryChoiceCards}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {info && <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert>}
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+          SendGrid connection settings
+        </Typography>
         {showDraftActivationHint && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Your SendGrid connection saved successfully. Test it first, then click <strong>Activate</strong> to enable live marketing sends.
@@ -2092,6 +2160,7 @@ export default function MarketingCampaignsTab() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerCampaignType, setComposerCampaignType] = useState(CAMPAIGN_TYPE_OPTIONS[0].key);
   const [composerSeed, setComposerSeed] = useState(null);
+  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
   const [checkoutBusyPackKey, setCheckoutBusyPackKey] = useState("");
   const [checkoutStatusMessage, setCheckoutStatusMessage] = useState("");
@@ -2535,13 +2604,30 @@ export default function MarketingCampaignsTab() {
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} onCampaignsLoaded={setCampaignRows} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
-      {campaignDefinitions.map((definition) => (
-        <CampaignCard
-          key={definition.campaignType}
-          {...definition}
-          {...campaignCardSharedProps}
-        />
-      ))}
+      <Accordion
+        variant="outlined"
+        expanded={templateLibraryOpen}
+        onChange={(_, nextExpanded) => setTemplateLibraryOpen(nextExpanded)}
+        sx={{ mb: 3 }}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box>
+            <Typography variant="h6">Campaign templates</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use Create campaign for the guided flow. Expand this only if you want direct access to a specific template.
+            </Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          {campaignDefinitions.map((definition) => (
+            <CampaignCard
+              key={definition.campaignType}
+              {...definition}
+              {...campaignCardSharedProps}
+            />
+          ))}
+        </AccordionDetails>
+      </Accordion>
 
       <Dialog open={buyCreditsOpen} onClose={() => !checkoutBusyPackKey && setBuyCreditsOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Buy email credits</DialogTitle>
