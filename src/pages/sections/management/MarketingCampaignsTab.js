@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import api from "../../../utils/api";
 import {
   Alert, Box, Button, Card, CardContent, CardHeader, Checkbox, Divider,
@@ -18,6 +18,7 @@ import ExportClientsCard from "./ExportClientsCard";
 import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
 import useBillingStatus from "../../../components/billing/useBillingStatus";
 import ThemedDateField from "../../../components/ui/ThemedDateField";
+import { useLocation } from "react-router-dom";
 function useAuth() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth  = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -224,6 +225,18 @@ function inferManagedMarketingMode(managedDelivery = null) {
   return String(managedDelivery?.delivery_mode || "").toLowerCase() === "platform_managed"
     || Boolean(managedDelivery?.managed_sending_enabled)
     || Boolean(managedDelivery?.managed_delivery_available);
+}
+
+function formatPriceAmount(unitAmount, currency) {
+  if (unitAmount === null || unitAmount === undefined || !currency) return null;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: String(currency).toUpperCase(),
+    }).format(Number(unitAmount || 0) / 100);
+  } catch {
+    return null;
+  }
 }
 
 function summarizeAudiencePreview(previewMeta = null, rows = []) {
@@ -454,6 +467,8 @@ function CampaignCard({
   managerReplyTo = "",
   managedCredits = null,
   provider = null,
+  creditPurchaseEnabled = false,
+  onBuyCredits = null,
 }) {
   const { t } = useTranslation();
   const { auth } = useAuth();
@@ -839,6 +854,13 @@ function CampaignCard({
                 {insufficientCredits ? (
                   <Alert severity="warning" sx={{ mt: 2 }}>
                     You need {requiredCredits} email credits, but only {availableCredits} are available.
+                    {creditPurchaseEnabled && typeof onBuyCredits === "function" ? (
+                      <Box sx={{ mt: 1.5 }}>
+                        <Button size="small" variant="contained" onClick={onBuyCredits}>
+                          Buy credits
+                        </Button>
+                      </Box>
+                    ) : null}
                   </Alert>
                 ) : null}
               </CardContent>
@@ -1587,7 +1609,7 @@ function MarketingSuppressionsCard({ auth, refreshKey = 0 }) {
   );
 }
 
-function MarketingProviderCard({ auth, onProviderChange, managedMode = false, managedCredits = null, companyName = "", managerReplyTo = "", managedDelivery = null }) {
+function MarketingProviderCard({ auth, onProviderChange, managedMode = false, managedCredits = null, companyName = "", managerReplyTo = "", managedDelivery = null, onBuyCredits = null }) {
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1708,6 +1730,7 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
   const showErrorHint = provider?.id && provider?.status === "error";
 
   if (managedMode) {
+    const buyCreditsVisible = Boolean(managedDelivery?.credit_purchase_enabled) && Array.isArray(managedDelivery?.credit_packs) && managedDelivery.credit_packs.length > 0;
     return (
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardHeader
@@ -1717,7 +1740,17 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
-              <Card variant="outlined"><CardContent><Typography variant="overline">Available email credits</Typography><Typography variant="h5">{managedCredits?.available ?? "—"}</Typography></CardContent></Card>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="overline">Available email credits</Typography>
+                  <Typography variant="h5">{managedCredits?.available ?? "—"}</Typography>
+                  {buyCreditsVisible && typeof onBuyCredits === "function" ? (
+                    <Button size="small" sx={{ mt: 1 }} onClick={onBuyCredits}>
+                      Buy credits
+                    </Button>
+                  ) : null}
+                </CardContent>
+              </Card>
             </Grid>
             <Grid item xs={12} md={4}>
               <Card variant="outlined"><CardContent><Typography variant="overline">Used email credits</Typography><Typography variant="h5">{managedCredits?.used ?? 0}</Typography></CardContent></Card>
@@ -1835,6 +1868,7 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
 export default function MarketingCampaignsTab() {
   const { t, i18n } = useTranslation();
   const { status: billingStatus } = useBillingStatus();
+  const location = useLocation();
   const planKey = (billingStatus?.plan_key || "starter").toLowerCase();
   const isActive = ["active", "trialing"].includes(billingStatus?.status || "");
   const canAccess = (planKey === "pro" || planKey === "business") && isActive;
@@ -1885,6 +1919,11 @@ export default function MarketingCampaignsTab() {
   const [campaignRefreshKey, setCampaignRefreshKey] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerSeed, setComposerSeed] = useState(null);
+  const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
+  const [checkoutBusyPackKey, setCheckoutBusyPackKey] = useState("");
+  const [checkoutStatusMessage, setCheckoutStatusMessage] = useState("");
+  const [checkoutStatusTone, setCheckoutStatusTone] = useState("info");
+  const checkoutHandledSidRef = useRef("");
   const companyName = resolveCurrentUserCompanyName(currentUserInfo);
   const managerReplyTo = managedDelivery?.reply_to_email || currentUserInfo?.email || provider?.reply_to_email || "";
   const managedMode = useMemo(() => inferManagedMarketingMode(managedDelivery), [managedDelivery]);
@@ -1892,6 +1931,8 @@ export default function MarketingCampaignsTab() {
     available: Number(managedDelivery?.available_quota ?? 0),
     used: Number(managedDelivery?.consumed_quota ?? 0),
   }), [managedDelivery]);
+  const creditPacks = useMemo(() => Array.isArray(managedDelivery?.credit_packs) ? managedDelivery.credit_packs : [], [managedDelivery]);
+  const creditPurchaseEnabled = Boolean(managedDelivery?.credit_purchase_enabled);
   const deliverySettings = useMemo(() => ({
     managedMode,
     managedDeliveryAvailable: Boolean(managedDelivery?.managed_delivery_available && managedDelivery?.managed_sending_enabled),
@@ -1902,7 +1943,9 @@ export default function MarketingCampaignsTab() {
     providerFromName: provider?.from_name || "",
     providerReplyToEmail: provider?.reply_to_email || "",
     companyId: currentUserInfo?.company_id || currentUserInfo?.company?.id || localStorage.getItem("company_id"),
-  }), [managedMode, managedDelivery, companyName, managerReplyTo, provider, currentUserInfo]);
+    creditPurchaseEnabled,
+    creditPacks,
+  }), [managedMode, managedDelivery, companyName, managerReplyTo, provider, currentUserInfo, creditPurchaseEnabled, creditPacks]);
 
   const handleCampaignSent = () => setCampaignRefreshKey((v) => v + 1);
   const campaignCardSharedProps = useMemo(() => ({
@@ -1911,7 +1954,9 @@ export default function MarketingCampaignsTab() {
     providerReady: managedMode ? Boolean(deliverySettings.managedDeliveryAvailable) : provider?.status === "active",
     providerStatus: provider?.status || "missing",
     onCampaignSent: handleCampaignSent,
-  }), [deliverySettings, provider, managedMode]);
+    creditPurchaseEnabled,
+    onBuyCredits: () => setBuyCreditsOpen(true),
+  }), [deliverySettings, provider, managedMode, creditPurchaseEnabled]);
   const handleProviderChange = (nextProvider, nextManagedDelivery = null) => {
     setProvider(nextProvider);
     if (nextManagedDelivery) setManagedDelivery(nextManagedDelivery);
@@ -1954,7 +1999,72 @@ export default function MarketingCampaignsTab() {
       }
     })();
     return () => { alive = false; };
-  }, [auth]);
+  }, [auth, campaignRefreshKey]);
+
+  useEffect(() => {
+    const search = new URLSearchParams(location.search || "");
+    const sid = (search.get("sid") || "").trim();
+    const checkoutFlag = (search.get("credits_checkout") || "").trim().toLowerCase();
+    if (!sid || checkoutFlag !== "success" || checkoutHandledSidRef.current === sid) return undefined;
+    checkoutHandledSidRef.current = sid;
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        const { data } = await api.get(`/billing/checkout-status?sid=${encodeURIComponent(sid)}`, auth);
+        if (cancelled) return;
+        const status = String(data?.status || "").toLowerCase();
+        if (status === "granted") {
+          setCheckoutStatusTone("success");
+          setCheckoutStatusMessage("Payment completed. Your email credits are now available.");
+          setCampaignRefreshKey((v) => v + 1);
+          return;
+        }
+        if (status === "refund_review" || status === "dispute_review" || status === "failed") {
+          setCheckoutStatusTone("warning");
+          setCheckoutStatusMessage("Payment was recorded, but the credit grant needs review before credits are added.");
+          setCampaignRefreshKey((v) => v + 1);
+          return;
+        }
+        setCheckoutStatusTone("info");
+        setCheckoutStatusMessage("Payment received. We’re confirming your email credits.");
+        attempts += 1;
+        if (attempts < 10) {
+          window.setTimeout(poll, 2000);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setCheckoutStatusTone("info");
+        setCheckoutStatusMessage("Payment is processing. Refresh this page in a moment if your credits do not update yet.");
+      }
+    };
+
+    poll();
+    return () => { cancelled = true; };
+  }, [auth, location.search]);
+
+  const startCreditCheckout = async (pack) => {
+    if (!pack?.pack_key || checkoutBusyPackKey) return;
+    setCheckoutBusyPackKey(pack.pack_key);
+    setCheckoutStatusMessage("");
+    try {
+      const { data } = await api.post("/api/manager/marketing/credits/checkout", {
+        pack_key: pack.pack_key,
+        idempotency_key: `tenant_marketing_credit_pack:${pack.pack_key}`,
+      }, auth);
+      const url = data?.url;
+      if (!url) throw new Error("Checkout URL missing.");
+      window.location.href = url;
+    } catch (e) {
+      setCheckoutStatusTone("error");
+      setCheckoutStatusMessage(
+        e?.response?.data?.message || e?.response?.data?.error || e?.message || "Unable to start secure checkout."
+      );
+    } finally {
+      setCheckoutBusyPackKey("");
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -2018,9 +2128,14 @@ export default function MarketingCampaignsTab() {
       <Alert severity="info" sx={{ mb: 2 }}>
         Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically, and campaigns are sent gradually to protect deliverability.
       </Alert>
+      {checkoutStatusMessage ? (
+        <Alert severity={checkoutStatusTone} sx={{ mb: 2 }}>
+          {checkoutStatusMessage}
+        </Alert>
+      ) : null}
       <DeliverabilityOverview auth={auth} refreshKey={campaignRefreshKey} onSummaryLoaded={handleSummaryLoaded} />
       {/* Export: company clients (scoped) */}
-      <MarketingProviderCard auth={auth} onProviderChange={handleProviderChange} managedMode={managedMode} managedCredits={managedCredits} companyName={companyName} managerReplyTo={managerReplyTo} managedDelivery={managedDelivery} />
+      <MarketingProviderCard auth={auth} onProviderChange={handleProviderChange} managedMode={managedMode} managedCredits={managedCredits} companyName={companyName} managerReplyTo={managerReplyTo} managedDelivery={managedDelivery} onBuyCredits={() => setBuyCreditsOpen(true)} />
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} onCampaignsLoaded={setCampaignRows} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
@@ -2273,6 +2388,46 @@ export default function MarketingCampaignsTab() {
         {...campaignCardSharedProps}
         composerSeed={composerSeed?.type === "addon_upsell" ? composerSeed.params : null}
       />
+
+      <Dialog open={buyCreditsOpen} onClose={() => !checkoutBusyPackKey && setBuyCreditsOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Buy email credits</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              Purchase prepaid credits for Schedulaa-managed campaign delivery. Credits are added only after Stripe confirms payment.
+            </Typography>
+            {creditPacks.length ? creditPacks.map((pack) => {
+              const displayPrice = formatPriceAmount(pack.unit_amount, pack.currency);
+              return (
+                <Card key={pack.pack_key} variant="outlined">
+                  <CardContent>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h6">{pack.label || `${pack.credits} email credits`}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {displayPrice ? `${displayPrice}${pack.currency ? ` ${String(pack.currency).toUpperCase()}` : ""}` : "Price configured in Stripe"}
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        onClick={() => startCreditCheckout(pack)}
+                        disabled={!creditPurchaseEnabled || checkoutBusyPackKey === pack.pack_key}
+                      >
+                        {checkoutBusyPackKey === pack.pack_key ? "Opening checkout..." : "Continue to secure checkout"}
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              );
+            }) : <Alert severity="info">No credit packs are configured yet.</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBuyCreditsOpen(false)} disabled={Boolean(checkoutBusyPackKey)}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );
