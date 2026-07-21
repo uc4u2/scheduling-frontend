@@ -5,6 +5,7 @@ import {
   Grid, LinearProgress, MenuItem, Chip, Stack,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
   Tooltip, IconButton, Drawer, Accordion, AccordionSummary, AccordionDetails,
+  FormControlLabel,
   Dialog, DialogTitle, DialogContent, DialogActions, TablePagination
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -2276,6 +2277,204 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
   );
 }
 
+function EmailBrandingCard({ auth, refreshKey = 0 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [branding, setBranding] = useState(null);
+  const [form, setForm] = useState({
+    show_logo: true,
+    marketing_tagline: "",
+    footer_style: "compact",
+    support_email_override: "",
+    show_business_number: false,
+  });
+
+  const loadBranding = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get("/api/manager/marketing/branding", auth);
+      const payload = data?.branding || null;
+      setBranding(payload);
+      const settings = payload?.settings || {};
+      setForm({
+        show_logo: Boolean(settings.show_logo ?? true),
+        marketing_tagline: settings.marketing_tagline || "",
+        footer_style: settings.footer_style || "compact",
+        support_email_override: settings.support_email_override || "",
+        show_business_number: Boolean(settings.show_business_number),
+      });
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Failed to load email branding settings.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBranding();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
+  const source = branding?.source || {};
+  const businessNumberAvailable = Boolean(source.business_number_available);
+  const resolvedSupportEmail = branding?.resolved?.support_email || source.contact_email || "";
+  const logoSourceText = source.logo_url ? "Company Profile logo available" : "No Company Profile logo saved";
+
+  const saveBranding = async () => {
+    setSaving(true);
+    setError("");
+    setInfo("");
+    try {
+      const payload = {
+        show_logo: Boolean(form.show_logo),
+        marketing_tagline: form.marketing_tagline || "",
+        footer_style: form.footer_style || "compact",
+        support_email_override: form.support_email_override || "",
+        show_business_number: Boolean(form.show_business_number),
+      };
+      const { data } = await api.patch("/api/manager/marketing/branding", payload, auth);
+      const nextBranding = data?.branding || null;
+      setBranding(nextBranding);
+      const settings = nextBranding?.settings || payload;
+      setForm({
+        show_logo: Boolean(settings.show_logo ?? true),
+        marketing_tagline: settings.marketing_tagline || "",
+        footer_style: settings.footer_style || "compact",
+        support_email_override: settings.support_email_override || "",
+        show_business_number: Boolean(settings.show_business_number),
+      });
+      setInfo("Email branding saved. Review campaign again to refresh the preview.");
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Unable to save email branding.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setField = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
+
+  return (
+    <Accordion
+      variant="outlined"
+      expanded={expanded}
+      onChange={(_, nextExpanded) => setExpanded(nextExpanded)}
+      sx={{ mb: 3 }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Box>
+          <Typography variant="h6">Email branding</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Save your campaign logo, tagline, and footer style once for all marketing emails.
+          </Typography>
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails>
+        {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+        {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        {info ? <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert> : null}
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Company name, logo, address, phone, website, and brand color come from your Company Profile.
+        </Alert>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="overline">Company Profile branding</Typography>
+                <Stack spacing={0.75} sx={{ mt: 1 }}>
+                  <Typography variant="body2"><strong>Company name:</strong> {source.company_name || "Not set"}</Typography>
+                  <Typography variant="body2"><strong>Logo:</strong> {logoSourceText}</Typography>
+                  <Typography variant="body2"><strong>Address:</strong> {source.address || "Not set"}</Typography>
+                  <Typography variant="body2"><strong>Phone:</strong> {source.phone || "Not set"}</Typography>
+                  <Typography variant="body2"><strong>Website:</strong> {source.website || "Not set"}</Typography>
+                  <Typography variant="body2"><strong>Contact email:</strong> {source.contact_email || "Not set"}</Typography>
+                  <Typography variant="body2"><strong>Brand color:</strong> {source.primary_color || "#8a5a44"}</Typography>
+                </Stack>
+                <Button
+                  size="small"
+                  sx={{ mt: 1.5 }}
+                  href="/manager/dashboard?view=CompanyProfile"
+                >
+                  Edit Company Profile
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="overline">Saved email branding settings</Typography>
+                <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_logo)}
+                        onChange={(e) => setField("show_logo", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label="Show company logo"
+                  />
+                  <TextField
+                    label="Short tagline"
+                    value={form.marketing_tagline}
+                    onChange={(e) => setField("marketing_tagline", e.target.value)}
+                    helperText="Optional short text shown near your logo or company name."
+                    fullWidth
+                    disabled={saving}
+                  />
+                  <TextField
+                    select
+                    label="Footer style"
+                    value={form.footer_style}
+                    onChange={(e) => setField("footer_style", e.target.value)}
+                    fullWidth
+                    disabled={saving}
+                  >
+                    <MenuItem value="compact">Compact</MenuItem>
+                    <MenuItem value="full">Full contact details</MenuItem>
+                  </TextField>
+                  <TextField
+                    label="Support email override"
+                    value={form.support_email_override}
+                    onChange={(e) => setField("support_email_override", e.target.value)}
+                    helperText={`Leave blank to use ${source.contact_email || "your Company Profile contact email"}.`}
+                    fullWidth
+                    disabled={saving}
+                  />
+                  {businessNumberAvailable ? (
+                    <FormControlLabel
+                      control={(
+                        <Checkbox
+                          checked={Boolean(form.show_business_number)}
+                          onChange={(e) => setField("show_business_number", e.target.checked)}
+                          disabled={saving}
+                        />
+                      )}
+                      label={`Show business number (${source.business_number})`}
+                    />
+                  ) : null}
+                  <Typography variant="body2" color="text.secondary">
+                    Current support email: {resolvedSupportEmail || "Not set"}
+                  </Typography>
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    <Button variant="contained" onClick={saveBranding} disabled={saving || loading}>
+                      {saving ? "Saving..." : "Save branding"}
+                    </Button>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 export default function MarketingCampaignsTab() {
   const { t, i18n } = useTranslation();
   const { status: billingStatus } = useBillingStatus();
@@ -2825,6 +3024,7 @@ export default function MarketingCampaignsTab() {
       <DeliverabilityOverview auth={auth} refreshKey={campaignRefreshKey} onSummaryLoaded={handleSummaryLoaded} />
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={handleProviderChange} managedMode={managedMode} managedCredits={managedCredits} companyName={companyName} managerReplyTo={managerReplyTo} managedDelivery={managedDelivery} onBuyCredits={() => setBuyCreditsOpen(true)} />
+      <EmailBrandingCard auth={auth} refreshKey={campaignRefreshKey} />
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} onCampaignsLoaded={setCampaignRows} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />

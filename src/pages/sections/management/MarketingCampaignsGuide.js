@@ -269,6 +269,17 @@ export default function MarketingCampaignsGuide({ onClose }) {
         Statuses are manager-friendly: <strong>Queued</strong>, <strong>Sending</strong>, <strong>Temporarily deferred</strong>, <strong>Paused</strong>, <strong>Completed</strong>, <strong>Failed</strong>, and <strong>Cancelled</strong>. Deferred sending simply means Schedulaa is pacing the campaign to protect delivery quality. Buying credits later does not automatically resume a paused campaign; a manager must review and resume the remaining emails explicitly.
       </Typography>
 
+      <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Email branding</Typography>
+      <Typography variant="body2" gutterBottom>
+        Campaign emails reuse your saved Company Profile details instead of asking you to re-enter them each time. Schedulaa pulls the company name, logo, address, phone, website, contact email, and brand color from the same profile your public site already uses.
+      </Typography>
+      <ul>
+        <li><Typography variant="body2">Use the <strong>Email branding</strong> section in Campaigns to choose whether the company logo appears, add a short tagline, and pick a compact or full footer style.</Typography></li>
+        <li><Typography variant="body2">Support email can be overridden for campaign footers. If you leave it blank, Schedulaa falls back to the contact email saved in Company Profile.</Typography></li>
+        <li><Typography variant="body2">If a profile value is missing, the email hides that field cleanly. You will not see blank phone, website, address, or business-number placeholders.</Typography></li>
+        <li><Typography variant="body2">Some email clients hide images by default. When that happens, the email still shows the company name, and the plain-text fallback remains available.</Typography></li>
+      </ul>
+
       <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Your own SendGrid connection</Typography>
       <Typography variant="body2" gutterBottom>
         If your company uses its own SendGrid connection, keep following the provider setup steps below. Your business pays SendGrid directly, and Schedulaa uses your configured sender identity and limits for campaign delivery.
