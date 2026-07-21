@@ -329,15 +329,15 @@
         "items": {
           "preview": {
             "label": "Review campaign",
-            "description": "Generates the current audience preview, shows how many recipients are eligible, and confirms sender details. No emails are sent at this step."
+            "description": "Generates the current audience preview, shows how many recipients are eligible, confirms sender details, and calculates whether the full campaign is covered by available credits. No emails are sent at this step."
           },
           "dryRun": {
             "label": "Selected recipients & credits",
-            "description": "The checked rows are the only recipients submitted when you confirm send. For managed delivery, required credits update immediately as checkboxes change."
+            "description": "The checked rows are the only recipients submitted when you confirm send. For managed delivery, the review step shows available credits, credits already reserved by active campaigns, the credits needed for this campaign, and any missing amount before send is enabled."
           },
           "send": {
             "label": "Send campaign",
-            "description": "Queues the checked rows from your most recent review. You must confirm the final send in the confirmation dialog before any email is queued."
+            "description": "Queues the checked rows from your most recent review only after you confirm the send. Managed campaigns must have enough credits for the full selected audience before any recipient is queued."
           }
         }
       },
@@ -365,7 +365,8 @@
             "description": "This is expected when you are still in review mode.",
             "list": [
               "Review campaign only generates the audience preview and sender summary.",
-              "Emails are queued only after you click <strong>Send campaign</strong> and then <strong>Confirm and send</strong>."
+              "Emails are queued only after you click <strong>Send campaign</strong> and then <strong>Confirm and send</strong>.",
+              "If managed credits are short, Buy email credits first. Returning from Stripe does not send the campaign automatically."
             ]
           },
           "duplicates": {

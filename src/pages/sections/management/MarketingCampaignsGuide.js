@@ -258,12 +258,15 @@ export default function MarketingCampaignsGuide({ onClose }) {
       <ul>
         <li><Typography variant="body2">Large audiences are reviewed in pages of recipients instead of loading every client at once.</Typography></li>
         <li><Typography variant="body2">All eligible recipients are selected by default, and you can exclude specific clients before sending.</Typography></li>
+        <li><Typography variant="body2">The review step shows available credits, credits already reserved by active campaigns, the credits needed for the current campaign, and any missing amount before you can send.</Typography></li>
+        <li><Typography variant="body2">A managed campaign must be fully covered before it can start. If you need more credits, Buy email credits first, then return to the review step and confirm the send.</Typography></li>
         <li><Typography variant="body2">Credits are reserved when the campaign is queued, consumed after provider acceptance, and released for recipients that are cancelled or rejected before sending.</Typography></li>
+        <li><Typography variant="body2">If you return from Stripe, the campaign review stays in place, shows payment processing until the webhook confirms the grant, and never sends automatically.</Typography></li>
         <li><Typography variant="body2">If a payment is refunded or disputed, the purchase is placed under review instead of silently removing already-used credits.</Typography></li>
         <li><Typography variant="body2">You can pause, resume, or cancel remaining unsent emails later. Emails already sent cannot be recalled.</Typography></li>
       </ul>
       <Typography variant="body2" sx={{ mb: 2 }}>
-        Statuses are manager-friendly: <strong>Queued</strong>, <strong>Sending</strong>, <strong>Temporarily deferred</strong>, <strong>Paused</strong>, <strong>Completed</strong>, <strong>Failed</strong>, and <strong>Cancelled</strong>. Deferred sending simply means Schedulaa is pacing the campaign to protect delivery quality.
+        Statuses are manager-friendly: <strong>Queued</strong>, <strong>Sending</strong>, <strong>Temporarily deferred</strong>, <strong>Paused</strong>, <strong>Completed</strong>, <strong>Failed</strong>, and <strong>Cancelled</strong>. Deferred sending simply means Schedulaa is pacing the campaign to protect delivery quality. Buying credits later does not automatically resume a paused campaign; a manager must review and resume the remaining emails explicitly.
       </Typography>
 
       <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Your own SendGrid connection</Typography>
