@@ -2288,6 +2288,10 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
     show_logo: true,
     marketing_tagline: "",
     footer_style: "compact",
+    show_address: true,
+    show_phone: true,
+    show_website: true,
+    show_support_email: true,
     support_email_override: "",
     show_business_number: false,
   });
@@ -2304,6 +2308,10 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
         show_logo: Boolean(settings.show_logo ?? true),
         marketing_tagline: settings.marketing_tagline || "",
         footer_style: settings.footer_style || "compact",
+        show_address: Boolean(settings.show_address ?? true),
+        show_phone: Boolean(settings.show_phone ?? true),
+        show_website: Boolean(settings.show_website ?? true),
+        show_support_email: Boolean(settings.show_support_email ?? true),
         support_email_override: settings.support_email_override || "",
         show_business_number: Boolean(settings.show_business_number),
       });
@@ -2322,7 +2330,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
   const source = branding?.source || {};
   const businessNumberAvailable = Boolean(source.business_number_available);
   const resolvedSupportEmail = branding?.resolved?.support_email || source.contact_email || "";
-  const logoSourceText = source.logo_url ? "Company Profile logo available" : "No Company Profile logo saved";
+  const logoSourceText = source.logo_url ? "Saved logo available" : "No saved logo found in Company Profile or website header";
 
   const saveBranding = async () => {
     setSaving(true);
@@ -2333,6 +2341,10 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
         show_logo: Boolean(form.show_logo),
         marketing_tagline: form.marketing_tagline || "",
         footer_style: form.footer_style || "compact",
+        show_address: Boolean(form.show_address),
+        show_phone: Boolean(form.show_phone),
+        show_website: Boolean(form.show_website),
+        show_support_email: Boolean(form.show_support_email),
         support_email_override: form.support_email_override || "",
         show_business_number: Boolean(form.show_business_number),
       };
@@ -2344,6 +2356,10 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
         show_logo: Boolean(settings.show_logo ?? true),
         marketing_tagline: settings.marketing_tagline || "",
         footer_style: settings.footer_style || "compact",
+        show_address: Boolean(settings.show_address ?? true),
+        show_phone: Boolean(settings.show_phone ?? true),
+        show_website: Boolean(settings.show_website ?? true),
+        show_support_email: Boolean(settings.show_support_email ?? true),
         support_email_override: settings.support_email_override || "",
         show_business_number: Boolean(settings.show_business_number),
       });
@@ -2437,6 +2453,46 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                     <MenuItem value="compact">Compact</MenuItem>
                     <MenuItem value="full">Full contact details</MenuItem>
                   </TextField>
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_address)}
+                        onChange={(e) => setField("show_address", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label="Show company address"
+                  />
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_phone)}
+                        onChange={(e) => setField("show_phone", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label="Show company phone"
+                  />
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_website)}
+                        onChange={(e) => setField("show_website", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label="Show company website"
+                  />
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_support_email)}
+                        onChange={(e) => setField("show_support_email", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label="Show support email"
+                  />
                   <TextField
                     label="Support email override"
                     value={form.support_email_override}
