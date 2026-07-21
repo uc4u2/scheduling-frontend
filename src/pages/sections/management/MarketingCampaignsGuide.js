@@ -265,7 +265,7 @@ export default function MarketingCampaignsGuide({ onClose }) {
     },
     {
       question: "Can I send myself a test first?",
-      answer: "Yes. Use Send test to myself in Campaign Review. The test sends only one email to your manager email and does not send the full campaign.",
+      answer: "Yes. Use Send test to myself in Campaign Review. The test sends only one email to your manager email, does not send the full campaign, and does not use a real client unsubscribe link.",
     },
     {
       question: "Can I reuse a previous campaign?",
