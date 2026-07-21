@@ -348,14 +348,14 @@ function summarizeAudiencePreview(previewMeta = null, rows = []) {
 function estimateManagedDurationText(count) {
   const total = Math.max(0, Number(count || 0));
   if (!total) return "";
+  if (total <= 20) return "Sending will continue safely in the background and should finish within a few minutes.";
+  if (total <= 100) return "Sending will continue safely in the background and may take approximately 5-15 minutes.";
+  if (total <= 300) return "Sending will continue safely in the background and may take up to approximately 1 hour.";
   const perMinute = 20;
   const perHour = 300;
-  const minutesByMinute = Math.ceil(total / perMinute);
-  const minutesByHour = Math.ceil(total / perHour) * 60;
-  const baseline = Math.max(minutesByMinute, minutesByHour);
-  const lowHours = Math.max(1, Math.floor(baseline / 60));
-  const highHours = Math.max(lowHours, Math.ceil((baseline * 1.25) / 60));
-  if (baseline < 60) return `Sending will continue safely in the background and may take approximately ${baseline}-${Math.max(baseline, Math.ceil(baseline * 1.25))} minutes.`;
+  const baselineMinutes = Math.max(Math.ceil(total / perMinute), Math.ceil(total / perHour) * 60);
+  const lowHours = Math.max(1, Math.floor(baselineMinutes / 60));
+  const highHours = Math.max(lowHours, Math.ceil((baselineMinutes * 1.2) / 60));
   return `Sending will continue safely in the background and may take approximately ${lowHours}-${highHours} hours.`;
 }
 
@@ -1056,6 +1056,16 @@ function CampaignCard({
                     ) : null}
                   </Alert>
                 ) : null}
+                {resolvedManagedMode && selectedCount <= 0 ? (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    Select at least one recipient before sending this campaign.
+                  </Alert>
+                ) : null}
+                {resolvedManagedMode && !insufficientCredits && selectedCount > 0 && estimatedBalanceAfterSending === 0 ? (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    This campaign will use all remaining credits.
+                  </Alert>
+                ) : null}
                 {!insufficientCredits && lowCreditWarning ? (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     Your email credit balance is running low.
@@ -1590,19 +1600,32 @@ function DeliverabilityOverview({ auth, refreshKey = 0, onSummaryLoaded }) {
 
   const rateCards = summary?.rate_cards || {};
   const providerHealth = summary?.provider_health || {};
+  const managedDelivery = summary?.managed_delivery || {};
+  const tracking = summary?.tracking || {};
+  const reportingPeriod = summary?.reporting_period || {};
   const suppressionInsights = summary?.suppression_insights || {};
+  const managedMode = managedDelivery?.delivery_mode === "platform_managed";
+  const managedSafetyStatus = managedDelivery?.abuse_hold
+    ? "Under review"
+    : managedDelivery?.managed_sending_enabled && managedDelivery?.managed_delivery_available
+      ? "Ready"
+      : (managedDelivery?.status || "Unavailable");
   const cards = [
     { label: "Delivery rate", value: `${rateCards.delivery_rate ?? 0}%`, helper: `${rateCards.delivered ?? 0} delivered / ${rateCards.sent ?? 0} sent` },
-    { label: "Open rate", value: `${rateCards.open_rate ?? 0}%`, helper: `${rateCards.opened ?? 0} opens tracked` },
-    { label: "Click rate", value: `${rateCards.click_rate ?? 0}%`, helper: `${rateCards.clicked ?? 0} clicks tracked` },
+    tracking.open_enabled
+      ? { label: "Open rate", value: `${rateCards.open_rate ?? 0}%`, helper: `${rateCards.opened ?? 0} opens tracked` }
+      : { label: "Open tracking", value: "Disabled", helper: "Open tracking is currently disabled." },
+    tracking.click_enabled
+      ? { label: "Click rate", value: `${rateCards.click_rate ?? 0}%`, helper: `${rateCards.clicked ?? 0} clicks tracked` }
+      : { label: "Click tracking", value: "Disabled", helper: "Click tracking is currently disabled." },
     { label: "Bounce rate", value: `${rateCards.bounce_rate ?? 0}%`, helper: `${rateCards.bounced ?? 0} bounced` },
   ];
 
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardHeader
-        title="Deliverability overview"
-        subheader="Lightweight health metrics for your recent tenant marketing activity."
+        title="Recent marketing activity"
+        subheader={`${reportingPeriod.label || "All recorded campaigns to date"}. ${reportingPeriod.includes || "Totals include recent campaigns recorded for your company."}`}
       />
       <CardContent>
         {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
@@ -1624,20 +1647,33 @@ function DeliverabilityOverview({ auth, refreshKey = 0, onSummaryLoaded }) {
           <Grid item xs={12} md={6}>
             <Card variant="outlined" sx={{ height: "100%" }}>
               <CardHeader
-                title="Provider health summary"
-                subheader="Current SendGrid connection status and remaining capacity."
+                title={managedMode ? "Managed delivery summary" : "Provider health summary"}
+                subheader={managedMode ? "Current managed delivery status, available credits, and remaining company capacity." : "Current SendGrid connection status and remaining capacity."}
               />
               <CardContent>
                 <Stack spacing={1}>
-                  <Typography variant="body2"><strong>Status:</strong> {providerHealth.status || "missing"}</Typography>
-                  <Typography variant="body2"><strong>Connection:</strong> {providerHealth.name || "Not connected"}</Typography>
-                  <Typography variant="body2"><strong>From email:</strong> {providerHealth.from_email || "—"}</Typography>
-                  <Typography variant="body2"><strong>Used today:</strong> {providerHealth.daily_used ?? 0} / {providerHealth.daily_limit ?? 0}</Typography>
-                  <Typography variant="body2"><strong>Remaining today:</strong> {providerHealth.daily_remaining ?? 0}</Typography>
-                  <Typography variant="body2"><strong>Used this hour:</strong> {providerHealth.hourly_used ?? 0} / {providerHealth.hourly_limit ?? 0}</Typography>
-                  <Typography variant="body2"><strong>Remaining this hour:</strong> {providerHealth.hourly_remaining ?? 0}</Typography>
-                  <Typography variant="body2"><strong>Last test send:</strong> {providerHealth.last_test_send_at || "Never"}</Typography>
-                  <Typography variant="body2"><strong>Last error:</strong> {providerHealth.last_error || "None"}</Typography>
+                  {managedMode ? (
+                    <>
+                      <Typography variant="body2"><strong>Managed delivery status:</strong> {managedDelivery?.managed_sending_enabled ? "Active" : "Paused"}</Typography>
+                      <Typography variant="body2"><strong>Emails accepted today:</strong> {providerHealth.daily_used ?? 0}</Typography>
+                      <Typography variant="body2"><strong>Remaining sending capacity today:</strong> {providerHealth.daily_remaining ?? 0}</Typography>
+                      <Typography variant="body2"><strong>Available credits:</strong> {formatCreditCount(managedDelivery?.available_quota ?? 0)}</Typography>
+                      <Typography variant="body2"><strong>Reserved credits:</strong> {formatCreditCount(managedDelivery?.reserved_quota ?? 0)}</Typography>
+                      <Typography variant="body2"><strong>Safety status:</strong> {managedSafetyStatus}</Typography>
+                    </>
+                  ) : (
+                    <>
+                      <Typography variant="body2"><strong>Status:</strong> {providerHealth.status || "missing"}</Typography>
+                      <Typography variant="body2"><strong>Connection:</strong> {providerHealth.name || "Not connected"}</Typography>
+                      <Typography variant="body2"><strong>From email:</strong> {providerHealth.from_email || "—"}</Typography>
+                      <Typography variant="body2"><strong>Used today:</strong> {providerHealth.daily_used ?? 0} / {providerHealth.daily_limit ?? 0}</Typography>
+                      <Typography variant="body2"><strong>Remaining today:</strong> {providerHealth.daily_remaining ?? 0}</Typography>
+                      <Typography variant="body2"><strong>Used this hour:</strong> {providerHealth.hourly_used ?? 0} / {providerHealth.hourly_limit ?? 0}</Typography>
+                      <Typography variant="body2"><strong>Remaining this hour:</strong> {providerHealth.hourly_remaining ?? 0}</Typography>
+                      <Typography variant="body2"><strong>Last test send:</strong> {providerHealth.last_test_send_at || "Never"}</Typography>
+                      <Typography variant="body2"><strong>Last error:</strong> {providerHealth.last_error || "None"}</Typography>
+                    </>
+                  )}
                 </Stack>
               </CardContent>
             </Card>
