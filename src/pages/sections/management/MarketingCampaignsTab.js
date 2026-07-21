@@ -295,6 +295,34 @@ function formatCreditCount(value) {
   return new Intl.NumberFormat().format(Math.max(0, Number(value || 0)));
 }
 
+function formatCampaignDrawerValue(value, fallback = "-") {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || fallback;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => formatCampaignDrawerValue(item, ""))
+      .filter(Boolean);
+    return parts.length ? parts.join(", ") : fallback;
+  }
+  if (typeof value === "object") {
+    if (typeof value.label === "string" && value.label.trim()) return value.label.trim();
+    if (typeof value.name === "string" && value.name.trim()) return value.name.trim();
+    if (typeof value.value === "string" && value.value.trim()) return value.value.trim();
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(value);
+}
+
 function readStoredReviewState() {
   try {
     const raw = window.sessionStorage.getItem(TENANT_MARKETING_REVIEW_STATE_KEY);
@@ -1304,7 +1332,7 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
         Campaign recipients
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {campaign ? `${campaign.name} · ${campaign.campaign_type}` : ""}
+        {campaign ? `${formatCampaignDrawerValue(campaign.name, "Campaign")} · ${formatCampaignDrawerValue(campaign.campaign_type, "Marketing")}` : ""}
       </Typography>
       {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
@@ -1322,11 +1350,11 @@ function CampaignRecipientsDrawer({ auth, campaign, open, onClose }) {
               <TableBody>
               {recipients.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell>{row.email || "-"}</TableCell>
-                  <TableCell>{formatCampaignStatusLabel(row.status)}</TableCell>
-                  <TableCell>{row.sent_at || "-"}</TableCell>
-                  <TableCell>{row.delivered_at || "-"}</TableCell>
-                  <TableCell>{row.bounced_at || "-"}</TableCell>
+                  <TableCell>{formatCampaignDrawerValue(row.email)}</TableCell>
+                  <TableCell>{formatCampaignStatusLabel(formatCampaignDrawerValue(row.status, ""))}</TableCell>
+                  <TableCell>{formatCampaignDrawerValue(row.sent_at)}</TableCell>
+                  <TableCell>{formatCampaignDrawerValue(row.delivered_at)}</TableCell>
+                  <TableCell>{formatCampaignDrawerValue(row.bounced_at)}</TableCell>
                 </TableRow>
               ))}
           </TableBody>
