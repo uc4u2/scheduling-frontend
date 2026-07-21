@@ -577,6 +577,7 @@ function CampaignCard({
   const [sending, setSending] = useState(false);
   const [info, setInfo] = useState("");
   const [sendSummary, setSendSummary] = useState(null);
+  const [testSending, setTestSending] = useState(false);
   const [previewMeta, setPreviewMeta] = useState(null);
   const [draftBusy, setDraftBusy] = useState(false);
   const [draftId, setDraftId] = useState(null);
@@ -830,6 +831,7 @@ function CampaignCard({
     || (lowBalanceThreshold > 0 && availableCredits < lowBalanceThreshold)
   );
   const sendDisabled = sending || loading || selectedCount <= 0 || !canSendLive || insufficientCredits;
+  const testSendPath = useMemo(() => String(sendPath || "").replace(/\/send$/, "/test-send"), [sendPath]);
 
   const reviewStateSnapshot = useMemo(() => ({
     type: campaignType,
@@ -957,6 +959,31 @@ function CampaignCard({
       setErr(mapMarketingErrorMessage(e, { managedMode: resolvedManagedMode }));
     } finally {
       setSending(false);
+    }
+  };
+
+  const sendTestToMyself = async () => {
+    setErr("");
+    setInfo("");
+    setTestSending(true);
+    try {
+      const payload = {
+        delivery_mode: resolvedManagedMode ? "platform_managed" : "bring_your_own",
+        audience_preview_id: previewMeta?.preview_id,
+        selection_mode: selectionMode,
+        included_recipient_ids: selectionMode === "selected_only" ? Object.keys(includedRecipientIds).map(Number) : [],
+        excluded_recipient_ids: selectionMode === "all_eligible" ? Object.keys(excludedRecipientIds).map(Number) : [],
+      };
+      if (!payload.audience_preview_id) {
+        setErr("Review the campaign before sending a test email.");
+        return;
+      }
+      const { data } = await api.post(testSendPath, payload, auth);
+      setInfo(data?.message || "Test email sent.");
+    } catch (e) {
+      setErr(mapMarketingErrorMessage(e, { managedMode: resolvedManagedMode }));
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -1114,6 +1141,15 @@ function CampaignCard({
                     Your email credit balance is running low.
                   </Alert>
                 ) : null}
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={sendTestToMyself}
+                    disabled={testSending || loading || sending || !previewMeta?.preview_id || selectedCount <= 0}
+                  >
+                    {testSending ? "Sending test..." : "Send test to myself"}
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
 
@@ -1266,6 +1302,9 @@ function CampaignCard({
                 </Stack>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <Button variant="outlined" onClick={() => setReviewMode(false)} disabled={sending}>Back to edit</Button>
+                  <Button variant="outlined" onClick={sendTestToMyself} disabled={testSending || loading || sending || !previewMeta?.preview_id || selectedCount <= 0}>
+                    {testSending ? "Sending test..." : "Send test to myself"}
+                  </Button>
                   <Button variant="contained" onClick={() => setConfirmOpen(true)} disabled={sendDisabled}>
                     {sending ? "Sending..." : "Send campaign"}
                   </Button>
@@ -1376,11 +1415,20 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filterOptions = [
+    { value: "all", label: "All" },
+    { value: "active", label: "Active" },
+    { value: "drafts", label: "Drafts" },
+    { value: "completed", label: "Completed" },
+    { value: "failed", label: "Failed" },
+  ];
 
   const loadCampaigns = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/api/manager/marketing/campaigns?page=${page + 1}&page_size=${rowsPerPage}`, auth);
+      const { data } = await api.get(`/api/manager/marketing/campaigns?page=${page + 1}&page_size=${rowsPerPage}&status_filter=${encodeURIComponent(statusFilter)}`, auth);
       const nextCampaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
       setCampaigns(nextCampaigns);
       if (onCampaignsLoaded) onCampaignsLoaded(nextCampaigns);
@@ -1398,7 +1446,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
     if (!expanded) return;
     loadCampaigns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, refreshKey, page, rowsPerPage, expanded]);
+  }, [auth, refreshKey, page, rowsPerPage, expanded, statusFilter]);
 
   useEffect(() => {
     if (!expanded) return undefined;
@@ -1473,6 +1521,20 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
         {loading ? <LinearProgress sx={{ mb: 2 }} /> : null}
         {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
         {info ? <Alert severity="info" sx={{ mb: 2 }}>{info}</Alert> : null}
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2 }}>
+          {filterOptions.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              color={statusFilter === option.value ? "primary" : "default"}
+              variant={statusFilter === option.value ? "filled" : "outlined"}
+              onClick={() => {
+                setStatusFilter(option.value);
+                setPage(0);
+              }}
+            />
+          ))}
+        </Stack>
         {!expanded ? null : !loading && campaigns.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No campaign history yet.
@@ -1496,8 +1558,7 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
                   <TableCell align="right">Unsubscribed</TableCell>
                   <TableCell align="right">Cancelled</TableCell>
                   <TableCell align="right">Remaining</TableCell>
-                  <TableCell align="right">Credits reserved</TableCell>
-                  <TableCell align="right">Credits consumed</TableCell>
+                  <TableCell>Credit summary</TableCell>
                   <TableCell>Estimated completion</TableCell>
                   <TableCell />
                 </TableRow>
@@ -1519,8 +1580,11 @@ function RecentMarketingCampaigns({ auth, refreshKey = 0, onOpenCampaign, onCamp
                     <TableCell align="right">{row?.compliance_summary?.unsubscribed ?? 0}</TableCell>
                     <TableCell align="right">{row?.counts?.cancelled ?? 0}</TableCell>
                     <TableCell align="right">{row?.progress?.remaining ?? 0}</TableCell>
-                    <TableCell align="right">{row?.progress?.credits_reserved ?? 0}</TableCell>
-                    <TableCell align="right">{row?.progress?.credits_consumed ?? 0}</TableCell>
+                    <TableCell>
+                      {row?.delivery_mode === "platform_managed"
+                        ? `${row?.credit_summary?.consumed ?? 0} consumed · ${row?.credit_summary?.released ?? 0} released · ${row?.credit_summary?.reserved ?? 0} reserved`
+                        : "—"}
+                    </TableCell>
                     <TableCell>{row?.progress?.estimated_duration || "—"}</TableCell>
                     <TableCell align="right">
                       <Box display="flex" gap={1} justifyContent="flex-end" flexWrap="wrap">
