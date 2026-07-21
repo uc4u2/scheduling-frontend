@@ -1644,7 +1644,6 @@ function DeliverabilityOverview({ auth, refreshKey = 0, onSummaryLoaded }) {
   const rateCards = summary?.rate_cards || {};
   const providerHealth = summary?.provider_health || {};
   const managedDelivery = summary?.managed_delivery || {};
-  const tracking = summary?.tracking || {};
   const reportingPeriod = summary?.reporting_period || {};
   const suppressionInsights = summary?.suppression_insights || {};
   const managedMode = managedDelivery?.delivery_mode === "platform_managed";
@@ -1655,12 +1654,12 @@ function DeliverabilityOverview({ auth, refreshKey = 0, onSummaryLoaded }) {
       : (managedDelivery?.status || "Unavailable");
   const cards = [
     { label: "Delivery rate", value: `${rateCards.delivery_rate ?? 0}%`, helper: `${rateCards.delivered ?? 0} delivered / ${rateCards.sent ?? 0} sent` },
-    tracking.open_enabled
-      ? { label: "Open rate", value: `${rateCards.open_rate ?? 0}%`, helper: `${rateCards.opened ?? 0} opens tracked` }
-      : { label: "Open tracking", value: "Disabled", helper: "Open tracking is currently disabled." },
-    tracking.click_enabled
-      ? { label: "Click rate", value: `${rateCards.click_rate ?? 0}%`, helper: `${rateCards.clicked ?? 0} clicks tracked` }
-      : { label: "Click tracking", value: "Disabled", helper: "Click tracking is currently disabled." },
+    ...(summary?.tracking?.open_enabled
+      ? [{ label: "Open rate", value: `${rateCards.open_rate ?? 0}%`, helper: `${rateCards.opened ?? 0} opens tracked` }]
+      : []),
+    ...(summary?.tracking?.click_enabled
+      ? [{ label: "Click rate", value: `${rateCards.click_rate ?? 0}%`, helper: `${rateCards.clicked ?? 0} clicks tracked` }]
+      : []),
     { label: "Bounce rate", value: `${rateCards.bounce_rate ?? 0}%`, helper: `${rateCards.bounced ?? 0} bounced` },
   ];
 
