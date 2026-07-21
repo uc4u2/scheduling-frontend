@@ -288,6 +288,34 @@ function formatPriceAmount(unitAmount, currency) {
   }
 }
 
+const TENANT_MARKETING_REVIEW_STATE_KEY = "tenant_marketing_review_state_v1";
+
+function formatCreditCount(value) {
+  return new Intl.NumberFormat().format(Math.max(0, Number(value || 0)));
+}
+
+function readStoredReviewState() {
+  try {
+    const raw = window.sessionStorage.getItem(TENANT_MARKETING_REVIEW_STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredReviewState(payload) {
+  try {
+    if (!payload) {
+      window.sessionStorage.removeItem(TENANT_MARKETING_REVIEW_STATE_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(TENANT_MARKETING_REVIEW_STATE_KEY, JSON.stringify(payload));
+  } catch {
+    // best-effort only
+  }
+}
+
 function summarizeAudiencePreview(previewMeta = null, rows = []) {
   const meta = previewMeta || {};
   const results = Array.isArray(rows) ? rows : [];
@@ -441,7 +469,7 @@ function mapMarketingErrorMessage(error, { managedMode = false } = {}) {
     managed_sending_not_enabled: "Managed sending is currently paused for this company. You can still save drafts.",
     managed_delivery_disabled: "Managed sending is not available right now. You can still save drafts.",
     company_on_abuse_hold: "Managed sending is temporarily paused for review. You can still save drafts.",
-    insufficient_quota: "You do not have enough email credits to send this campaign.",
+    insufficient_quota: "Your credit balance changed. Please review the updated total.",
     preview_expired: "This campaign preview expired. Please review it again.",
     preview_not_found: "This campaign preview is no longer available. Please review it again.",
     preview_selection_empty: "Select at least one recipient before sending this campaign.",
@@ -479,6 +507,7 @@ function CampaignCard({
   provider = null,
   creditPurchaseEnabled = false,
   onBuyCredits = null,
+  onManagedSummaryRefresh = null,
   cardSx = null,
 }) {
   const { t } = useTranslation();
@@ -488,6 +517,8 @@ function CampaignCard({
   const deliveryLabel = resolvedManagedMode ? "Managed by Schedulaa" : "Your SendGrid connection";
   const canSendLive = resolvedManagedMode ? Boolean(deliverySettings?.managedDeliveryAvailable ?? providerReady) : providerReady;
   const availableCredits = Number(deliverySettings?.availableQuota ?? managedCredits?.available ?? 0);
+  const reservedCredits = Number(deliverySettings?.reservedQuota ?? 0);
+  const lowBalanceThreshold = Number(deliverySettings?.lowBalanceThreshold ?? 0);
   const reviewFromName = resolvedManagedMode
     ? (deliverySettings?.fromName || (companyName ? `${companyName} via Schedulaa` : "Schedulaa"))
     : (deliverySettings?.providerFromName || provider?.from_name || "Configured provider sender");
@@ -561,7 +592,12 @@ function CampaignCard({
 
   useEffect(() => {
     if (!composerSeed) return;
-    setParams((prev) => ({ ...prev, ...composerSeed }));
+    const nextParams = composerSeed?.__reviewState?.params
+      || composerSeed?.params
+      || Object.fromEntries(
+        Object.entries(composerSeed).filter(([key]) => !["campaignId", "campaignName", "type", "__reviewState"].includes(key))
+      );
+    setParams((prev) => ({ ...prev, ...nextParams }));
     setRows([]);
     setSelectionMode("all_eligible");
     setIncludedRecipientIds({});
@@ -572,6 +608,26 @@ function CampaignCard({
     setPreviewMeta(null);
     setDraftId(composerSeed?.campaignId || null);
     setReviewMode(false);
+  }, [composerSeed]);
+
+  useEffect(() => {
+    const reviewState = composerSeed?.__reviewState;
+    if (!reviewState) return;
+    setParams(reviewState.params || initialParams);
+    setRows(Array.isArray(reviewState.rows) ? reviewState.rows : []);
+    setSelectionMode(reviewState.selectionMode || "all_eligible");
+    setIncludedRecipientIds(reviewState.includedRecipientIds || {});
+    setExcludedRecipientIds(reviewState.excludedRecipientIds || {});
+    setPreviewMeta(reviewState.previewMeta || null);
+    setDraftId(reviewState.draftId || composerSeed?.campaignId || null);
+    setReviewMode(Boolean(reviewState.reviewMode));
+    setPreviewPage(Number(reviewState.previewPage || 0));
+    setPreviewRowsPerPage(Number(reviewState.previewRowsPerPage || 50));
+    setPreviewSearch(String(reviewState.previewSearch || ""));
+    setPreviewSearchDraft(String(reviewState.previewSearch || ""));
+    setErr("");
+    setInfo("");
+    setSendSummary(null);
   }, [composerSeed]);
 
   const onChangeParam = (name, value) => {
@@ -733,8 +789,48 @@ function CampaignCard({
     return Object.keys(includedRecipientIds).length;
   }, [selectionMode, previewMeta, includedRecipientIds, excludedRecipientIds]);
   const requiredCredits = selectedCount;
+  const missingCredits = Math.max(0, requiredCredits - availableCredits);
+  const estimatedBalanceAfterSending = Math.max(0, availableCredits - requiredCredits);
   const insufficientCredits = resolvedManagedMode && requiredCredits > availableCredits;
+  const lowCreditWarning = resolvedManagedMode && (
+    insufficientCredits
+    || (lowBalanceThreshold > 0 && availableCredits < lowBalanceThreshold)
+  );
   const sendDisabled = sending || loading || selectedCount <= 0 || !canSendLive || insufficientCredits;
+
+  const reviewStateSnapshot = useMemo(() => ({
+    type: campaignType,
+    campaignName: composerSeed?.campaignName || `${title} campaign`,
+    campaignId: draftId || composerSeed?.campaignId || null,
+    __reviewState: {
+      params,
+      rows,
+      selectionMode,
+      includedRecipientIds,
+      excludedRecipientIds,
+      previewMeta,
+      reviewMode,
+      draftId,
+      previewPage,
+      previewRowsPerPage,
+      previewSearch,
+    },
+  }), [
+    campaignType,
+    composerSeed,
+    draftId,
+    excludedRecipientIds,
+    includedRecipientIds,
+    params,
+    previewMeta,
+    previewPage,
+    previewRowsPerPage,
+    previewSearch,
+    reviewMode,
+    rows,
+    selectionMode,
+    title,
+  ]);
 
   const isRowSelected = (row) => {
     const key = rowKey(row);
@@ -819,8 +915,12 @@ function CampaignCard({
       });
       setInfo("Campaign queued successfully. Sending continues in the background.");
       setConfirmOpen(false);
+      writeStoredReviewState(null);
       if (onCampaignSent) onCampaignSent();
     } catch (e) {
+      if (String(e?.response?.data?.error || "").trim() === "insufficient_quota" && typeof onManagedSummaryRefresh === "function") {
+        onManagedSummaryRefresh();
+      }
       setErr(mapMarketingErrorMessage(e, { managedMode: resolvedManagedMode }));
     } finally {
       setSending(false);
@@ -923,8 +1023,16 @@ function CampaignCard({
                   <Grid item xs={12} md={4}><Typography variant="body2"><strong>Campaign name:</strong> {composerSeed?.campaignName || `${title} campaign`}</Typography></Grid>
                   <Grid item xs={12} md={4}><Typography variant="body2"><strong>Subject:</strong> {params.subject || "Use campaign default"}</Typography></Grid>
                   <Grid item xs={12} md={4}><Typography variant="body2"><strong>Selected recipients:</strong> {selectedCount}</Typography></Grid>
-                  <Grid item xs={12} md={4}><Typography variant="body2"><strong>Required credits:</strong> {requiredCredits}</Typography></Grid>
-                  <Grid item xs={12} md={4}><Typography variant="body2"><strong>Available credits:</strong> {resolvedManagedMode ? availableCredits : "Not applicable"}</Typography></Grid>
+                  <Grid item xs={12} md={4}><Typography variant="body2"><strong>Credits needed for this campaign:</strong> {formatCreditCount(requiredCredits)}</Typography></Grid>
+                  <Grid item xs={12} md={4}><Typography variant="body2"><strong>Available credits:</strong> {resolvedManagedMode ? formatCreditCount(availableCredits) : "Not applicable"}</Typography></Grid>
+                  {resolvedManagedMode ? (
+                    <Grid item xs={12} md={4}><Typography variant="body2"><strong>Credits reserved by active campaigns:</strong> {formatCreditCount(reservedCredits)}</Typography></Grid>
+                  ) : null}
+                  {resolvedManagedMode ? (
+                    missingCredits > 0
+                      ? <Grid item xs={12} md={4}><Typography variant="body2"><strong>Missing credits:</strong> {formatCreditCount(missingCredits)}</Typography></Grid>
+                      : <Grid item xs={12} md={4}><Typography variant="body2"><strong>Estimated balance after sending:</strong> {formatCreditCount(estimatedBalanceAfterSending)} credits</Typography></Grid>
+                  ) : null}
                   <Grid item xs={12} md={4}><Typography variant="body2"><strong>Delivery method:</strong> {deliveryLabel}</Typography></Grid>
                   <Grid item xs={12} md={6}><Typography variant="body2"><strong>From:</strong> {reviewFromName}</Typography></Grid>
                   <Grid item xs={12} md={6}><Typography variant="body2"><strong>Reply-To:</strong> {reviewReplyTo}</Typography></Grid>
@@ -938,14 +1046,19 @@ function CampaignCard({
                 </Grid>
                 {insufficientCredits ? (
                   <Alert severity="warning" sx={{ mt: 2 }}>
-                    You need {requiredCredits} email credits, but only {availableCredits} are available.
+                    You need {formatCreditCount(missingCredits)} more email credits to send this campaign.
                     {creditPurchaseEnabled && typeof onBuyCredits === "function" ? (
                       <Box sx={{ mt: 1.5 }}>
-                        <Button size="small" variant="contained" onClick={onBuyCredits}>
-                          Buy credits
+                        <Button size="small" variant="contained" onClick={() => onBuyCredits(reviewStateSnapshot)}>
+                          Buy email credits
                         </Button>
                       </Box>
                     ) : null}
+                  </Alert>
+                ) : null}
+                {!insufficientCredits && lowCreditWarning ? (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    Your email credit balance is running low.
                   </Alert>
                 ) : null}
               </CardContent>
@@ -1095,7 +1208,8 @@ function CampaignCard({
               <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                   <Typography variant="body2"><strong>{selectedCount}</strong> recipients selected</Typography>
-                  <Typography variant="body2"><strong>Required credits:</strong> {requiredCredits}</Typography>
+                  <Typography variant="body2"><strong>Credits needed:</strong> {formatCreditCount(requiredCredits)}</Typography>
+                  {resolvedManagedMode ? <Typography variant="body2"><strong>Missing credits:</strong> {formatCreditCount(missingCredits)}</Typography> : null}
                 </Stack>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <Button variant="outlined" onClick={() => setReviewMode(false)} disabled={sending}>Back to edit</Button>
@@ -2183,6 +2297,7 @@ export default function MarketingCampaignsTab() {
   const [composerSeed, setComposerSeed] = useState(null);
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
+  const [creditPurchaseContext, setCreditPurchaseContext] = useState(null);
   const [checkoutBusyPackKey, setCheckoutBusyPackKey] = useState("");
   const [checkoutStatusMessage, setCheckoutStatusMessage] = useState("");
   const [checkoutStatusTone, setCheckoutStatusTone] = useState("info");
@@ -2200,7 +2315,9 @@ export default function MarketingCampaignsTab() {
     managedMode,
     managedDeliveryAvailable: Boolean(managedDelivery?.managed_delivery_available && managedDelivery?.managed_sending_enabled),
     availableQuota: Number(managedDelivery?.available_quota ?? 0),
+    reservedQuota: Number(managedDelivery?.reserved_quota ?? 0),
     consumedQuota: Number(managedDelivery?.consumed_quota ?? 0),
+    lowBalanceThreshold: Number(managedDelivery?.low_balance_threshold ?? 0),
     fromName: managedDelivery?.from_name || (companyName ? `${companyName} via Schedulaa` : "Schedulaa"),
     replyToEmail: managedDelivery?.reply_to_email || managerReplyTo,
     providerFromName: provider?.from_name || "",
@@ -2445,7 +2562,11 @@ export default function MarketingCampaignsTab() {
     providerStatus: provider?.status || "missing",
     onCampaignSent: handleCampaignSent,
     creditPurchaseEnabled,
-    onBuyCredits: () => setBuyCreditsOpen(true),
+    onBuyCredits: (context = null) => {
+      setCreditPurchaseContext(context);
+      setBuyCreditsOpen(true);
+    },
+    onManagedSummaryRefresh: () => setCampaignRefreshKey((v) => v + 1),
   }), [deliverySettings, provider, managedMode, creditPurchaseEnabled]);
   const handleProviderChange = (nextProvider, nextManagedDelivery = null) => {
     setProvider(nextProvider);
@@ -2489,45 +2610,55 @@ export default function MarketingCampaignsTab() {
 
   useEffect(() => {
     const search = new URLSearchParams(location.search || "");
+    const checkoutFlag = (search.get("credits_checkout") || "").trim().toLowerCase();
+    if (checkoutFlag !== "success" && checkoutFlag !== "cancel") return;
+    const stored = readStoredReviewState();
+    if (!stored?.type || !stored?.__reviewState) return;
+    setCreditPurchaseContext(stored);
+    openComposer({ type: stored.type, seed: stored });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
+  const refreshCheckoutStatus = async (sid, { pollAttempt = 0 } = {}) => {
+    try {
+      const { data } = await api.get(`/billing/checkout-status?sid=${encodeURIComponent(sid)}`, auth);
+      const status = String(data?.status || "").toLowerCase();
+      if (status === "granted") {
+        setCheckoutStatusTone("success");
+        setCheckoutStatusMessage("Credits added successfully. You can now send your campaign.");
+        setCampaignRefreshKey((v) => v + 1);
+        return { done: true };
+      }
+      if (status === "refund_review" || status === "dispute_review" || status === "failed") {
+        setCheckoutStatusTone("warning");
+        setCheckoutStatusMessage("Payment was recorded, but the credit grant needs review before credits are added.");
+        setCampaignRefreshKey((v) => v + 1);
+        return { done: true };
+      }
+      setCheckoutStatusTone("info");
+      setCheckoutStatusMessage("Payment received. Your credits are being added.");
+      if (pollAttempt < 9) {
+        window.setTimeout(() => {
+          refreshCheckoutStatus(sid, { pollAttempt: pollAttempt + 1 });
+        }, 2000);
+      }
+      return { done: false };
+    } catch {
+      setCheckoutStatusTone("info");
+      setCheckoutStatusMessage("Payment processing is still in progress. Use Refresh status if your credits do not update yet.");
+      return { done: false };
+    }
+  };
+
+  useEffect(() => {
+    const search = new URLSearchParams(location.search || "");
     const sid = (search.get("sid") || "").trim();
     const checkoutFlag = (search.get("credits_checkout") || "").trim().toLowerCase();
     if (!sid || checkoutFlag !== "success" || checkoutHandledSidRef.current === sid) return undefined;
     checkoutHandledSidRef.current = sid;
-    let cancelled = false;
-    let attempts = 0;
-
-    const poll = async () => {
-      try {
-        const { data } = await api.get(`/billing/checkout-status?sid=${encodeURIComponent(sid)}`, auth);
-        if (cancelled) return;
-        const status = String(data?.status || "").toLowerCase();
-        if (status === "granted") {
-          setCheckoutStatusTone("success");
-          setCheckoutStatusMessage("Payment completed. Your email credits are now available.");
-          setCampaignRefreshKey((v) => v + 1);
-          return;
-        }
-        if (status === "refund_review" || status === "dispute_review" || status === "failed") {
-          setCheckoutStatusTone("warning");
-          setCheckoutStatusMessage("Payment was recorded, but the credit grant needs review before credits are added.");
-          setCampaignRefreshKey((v) => v + 1);
-          return;
-        }
-        setCheckoutStatusTone("info");
-        setCheckoutStatusMessage("Payment received. We’re confirming your email credits.");
-        attempts += 1;
-        if (attempts < 10) {
-          window.setTimeout(poll, 2000);
-        }
-      } catch (e) {
-        if (cancelled) return;
-        setCheckoutStatusTone("info");
-        setCheckoutStatusMessage("Payment is processing. Refresh this page in a moment if your credits do not update yet.");
-      }
-    };
-
-    poll();
-    return () => { cancelled = true; };
+    refreshCheckoutStatus(sid, { pollAttempt: 0 });
+    return undefined;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, location.search]);
 
   const startCreditCheckout = async (pack) => {
@@ -2535,6 +2666,7 @@ export default function MarketingCampaignsTab() {
     setCheckoutBusyPackKey(pack.pack_key);
     setCheckoutStatusMessage("");
     try {
+      if (creditPurchaseContext) writeStoredReviewState(creditPurchaseContext);
       const { data } = await api.post("/api/manager/marketing/credits/checkout", {
         pack_key: pack.pack_key,
         idempotency_key: `tenant_marketing_credit_pack:${pack.pack_key}`,
@@ -2551,6 +2683,30 @@ export default function MarketingCampaignsTab() {
       setCheckoutBusyPackKey("");
     }
   };
+
+  const purchaseRequiredCredits = Math.max(0, Number(creditPurchaseContext?.__reviewState ? (
+    creditPurchaseContext.__reviewState.selectionMode === "all_eligible"
+      ? Math.max(
+        0,
+        Number(creditPurchaseContext.__reviewState.previewMeta?.eligible_recipient_count || 0)
+        - Object.keys(creditPurchaseContext.__reviewState.excludedRecipientIds || {}).length,
+      )
+      : Object.keys(creditPurchaseContext.__reviewState.includedRecipientIds || {}).length
+  ) : 0));
+  const purchaseAvailableCredits = Number(managedDelivery?.available_quota ?? 0);
+  const purchaseMissingCredits = Math.max(0, purchaseRequiredCredits - purchaseAvailableCredits);
+  const checkoutSessionId = useMemo(() => {
+    const search = new URLSearchParams(location.search || "");
+    return (search.get("sid") || "").trim();
+  }, [location.search]);
+  const recommendedPackKey = useMemo(() => {
+    if (!purchaseMissingCredits || !creditPacks.length) return "";
+    const coveringPack = creditPacks
+      .slice()
+      .sort((a, b) => Number(a.credits || 0) - Number(b.credits || 0))
+      .find((row) => Number(row.credits || 0) >= purchaseMissingCredits);
+    return coveringPack?.pack_key || "";
+  }, [creditPacks, purchaseMissingCredits]);
 
   useEffect(() => {
     let alive = true;
@@ -2618,7 +2774,15 @@ export default function MarketingCampaignsTab() {
         Every marketing email includes an unsubscribe link. Suppressed emails are skipped automatically, and campaigns are sent gradually to protect deliverability.
       </Alert>
       {checkoutStatusMessage ? (
-        <Alert severity={checkoutStatusTone} sx={{ mb: 2 }}>
+        <Alert
+          severity={checkoutStatusTone}
+          sx={{ mb: 2 }}
+          action={checkoutSessionId ? (
+            <Button color="inherit" size="small" onClick={() => refreshCheckoutStatus(checkoutSessionId, { pollAttempt: 0 })}>
+              Refresh status
+            </Button>
+          ) : null}
+        >
           {checkoutStatusMessage}
         </Alert>
       ) : null}
@@ -2660,17 +2824,40 @@ export default function MarketingCampaignsTab() {
             <Typography variant="body2" color="text.secondary">
               Purchase prepaid credits for Schedulaa-managed campaign delivery. Credits are added only after Stripe confirms payment.
             </Typography>
+            {purchaseMissingCredits > 0 ? (
+              <Alert severity="warning">
+                You need {formatCreditCount(purchaseMissingCredits)} more email credits to send this campaign.
+              </Alert>
+            ) : null}
             {creditPacks.length ? creditPacks.map((pack) => {
               const displayPrice = formatPriceAmount(pack.unit_amount, pack.currency);
+              const packCredits = Number(pack.credits || 0);
+              const estimatedAfterPurchase = purchaseAvailableCredits + packCredits;
+              const estimatedAfterCampaign = Math.max(0, estimatedAfterPurchase - purchaseRequiredCredits);
+              const isRecommended = Boolean(recommendedPackKey) && recommendedPackKey === pack.pack_key;
               return (
                 <Card key={pack.pack_key} variant="outlined">
                   <CardContent>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
                       <Box>
-                        <Typography variant="h6">{pack.label || `${pack.credits} email credits`}</Typography>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                          <Typography variant="h6">{pack.label || `${pack.credits} email credits`}</Typography>
+                          {isRecommended ? <Chip size="small" color="primary" label="Recommended" /> : null}
+                        </Stack>
                         <Typography variant="body2" color="text.secondary">
                           {displayPrice ? `${displayPrice}${pack.currency ? ` ${String(pack.currency).toUpperCase()}` : ""}` : "Price configured in Stripe"}
                         </Typography>
+                        {purchaseRequiredCredits > 0 ? (
+                          <Stack spacing={0.25} sx={{ mt: 1 }}>
+                            {isRecommended ? <Typography variant="body2">Covers this campaign</Typography> : null}
+                            <Typography variant="body2" color="text.secondary">
+                              Estimated balance after purchase: {formatCreditCount(estimatedAfterPurchase)} credits
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Estimated balance after sending this campaign: {formatCreditCount(estimatedAfterCampaign)} credits
+                            </Typography>
+                          </Stack>
+                        ) : null}
                       </Box>
                       <Button
                         variant="contained"
