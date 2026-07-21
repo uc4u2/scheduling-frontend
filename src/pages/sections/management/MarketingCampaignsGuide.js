@@ -274,10 +274,13 @@ export default function MarketingCampaignsGuide({ onClose }) {
         Campaign emails reuse your saved Company Profile details instead of asking you to re-enter them each time. Schedulaa pulls the company name, logo, address, phone, website, contact email, and brand color from the same profile your public site already uses.
       </Typography>
       <ul>
-        <li><Typography variant="body2">Use the <strong>Email branding</strong> section in Campaigns to choose whether the company logo appears, add a short tagline, and pick a compact or full footer style.</Typography></li>
+        <li><Typography variant="body2">Use the <strong>Email branding</strong> section in Campaigns to choose independently whether the company name, logo, tagline, address, phone, website, support email, and business number appear in marketing emails.</Typography></li>
+        <li><Typography variant="body2">Hiding a detail in Campaigns does not delete it from Company Profile. Company Profile remains the source of truth.</Typography></li>
         <li><Typography variant="body2">Support email can be overridden for campaign footers. If you leave it blank, Schedulaa falls back to the contact email saved in Company Profile.</Typography></li>
+        <li><Typography variant="body2">Schedulaa may show a reminder when key sender details are hidden, but it does not force optional profile information into the email layout.</Typography></li>
         <li><Typography variant="body2">If a profile value is missing, the email hides that field cleanly. You will not see blank phone, website, address, or business-number placeholders.</Typography></li>
-        <li><Typography variant="body2">Some email clients hide images by default. When that happens, the email still shows the company name, and the plain-text fallback remains available.</Typography></li>
+        <li><Typography variant="body2">The unsubscribe link remains included automatically, and the plain-text fallback remains available.</Typography></li>
+        <li><Typography variant="body2">Some email clients hide images by default. When that happens, the email still renders cleanly without a broken logo block.</Typography></li>
       </ul>
 
       <Typography variant="h6" sx={{ mt: 2 }} gutterBottom>Your own SendGrid connection</Typography>

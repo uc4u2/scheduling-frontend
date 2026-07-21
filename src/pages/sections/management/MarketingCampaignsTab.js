@@ -479,6 +479,8 @@ function mapMarketingErrorMessage(error, { managedMode = false } = {}) {
     pilot_recipient_limit_exceeded: "This managed email account is not approved for a campaign of this size yet.",
     audience_snapshot_hash_mismatch: "Your audience preview changed. Review the campaign again before sending.",
     platform_managed_targets_not_allowed: "Managed delivery only sends to the reviewed recipients shown in this campaign.",
+    mailing_address_required: "Add a valid mailing address in Company Profile before sending marketing emails.",
+    contact_method_required: "Keep at least one contact method visible in marketing emails.",
     marketing_send_failed: managedMode ? "The campaign could not be queued right now. Please try again in a moment." : "The campaign could not be queued right now. Please try again.",
   };
   return friendly[code] || raw;
@@ -516,6 +518,8 @@ function CampaignCard({
   const resolvedManagedMode = deliverySettings ? Boolean(deliverySettings?.managedMode) : Boolean(managedMode);
   const resolvedCompanyId = deliverySettings?.companyId ?? companyId;
   const deliveryLabel = resolvedManagedMode ? "Managed by Schedulaa" : "Your SendGrid connection";
+  const brandingWarning = resolvedManagedMode ? Boolean(deliverySettings?.brandingWarningRequired ?? false) : false;
+  const brandingWarningMessage = resolvedManagedMode ? String(deliverySettings?.brandingWarningMessage || "").trim() : "";
   const canSendLive = resolvedManagedMode ? Boolean(deliverySettings?.managedDeliveryAvailable ?? providerReady) : providerReady;
   const availableCredits = Number(deliverySettings?.availableQuota ?? managedCredits?.available ?? 0);
   const reservedCredits = Number(deliverySettings?.reservedQuota ?? 0);
@@ -950,6 +954,11 @@ function CampaignCard({
             Managed sending is currently unavailable for this company. You can still save drafts and review recipients.
           </Alert>
         ) : null}
+        {resolvedManagedMode && brandingWarning ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {brandingWarningMessage || "Some sender details are hidden. Marketing laws in some regions may require business identification, a mailing address, and contact information. Review your local requirements before sending."}
+          </Alert>
+        ) : null}
 
         <Grid container spacing={2} sx={{ mb: 1 }}>
           <Grid item xs={12}>
@@ -1045,6 +1054,11 @@ function CampaignCard({
                     </Grid>
                   ) : null}
                 </Grid>
+                {resolvedManagedMode && brandingWarning ? (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    {brandingWarningMessage || "Some sender details are hidden. Marketing laws in some regions may require business identification, a mailing address, and contact information. Review your local requirements before sending."}
+                  </Alert>
+                ) : null}
                 {insufficientCredits ? (
                   <Alert severity="warning" sx={{ mt: 2 }}>
                     You need {formatCreditCount(missingCredits)} more email credits to send this campaign.
@@ -2277,7 +2291,7 @@ function MarketingProviderCard({ auth, onProviderChange, managedMode = false, ma
   );
 }
 
-function EmailBrandingCard({ auth, refreshKey = 0 }) {
+function EmailBrandingCard({ auth, refreshKey = 0, onBrandingSaved = null }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -2285,9 +2299,11 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
   const [info, setInfo] = useState("");
   const [branding, setBranding] = useState(null);
   const [form, setForm] = useState({
+    show_company_name: true,
     show_logo: true,
+    show_tagline: true,
     marketing_tagline: "",
-    footer_style: "compact",
+    footer_style: "full",
     show_address: true,
     show_phone: true,
     show_website: true,
@@ -2305,9 +2321,11 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
       setBranding(payload);
       const settings = payload?.settings || {};
       setForm({
+        show_company_name: Boolean(settings.show_company_name ?? true),
         show_logo: Boolean(settings.show_logo ?? true),
+        show_tagline: Boolean(settings.show_tagline ?? true),
         marketing_tagline: settings.marketing_tagline || "",
-        footer_style: settings.footer_style || "compact",
+        footer_style: settings.footer_style || "full",
         show_address: Boolean(settings.show_address ?? true),
         show_phone: Boolean(settings.show_phone ?? true),
         show_website: Boolean(settings.show_website ?? true),
@@ -2328,9 +2346,19 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
   }, [refreshKey]);
 
   const source = branding?.source || {};
+  const compliance = branding?.compliance || {};
   const businessNumberAvailable = Boolean(source.business_number_available);
   const resolvedSupportEmail = branding?.resolved?.support_email || source.contact_email || "";
   const logoSourceText = source.logo_url ? "Saved logo available" : "No saved logo found in Company Profile or website header";
+  const emailOnlyHint = "Affects marketing emails only. It does not remove information from Company Profile.";
+  const controlLabel = (label) => (
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+      <span>{label}</span>
+      <Tooltip title={emailOnlyHint}>
+        <HelpOutline sx={{ fontSize: 16, color: "text.secondary" }} />
+      </Tooltip>
+    </Box>
+  );
 
   const saveBranding = async () => {
     setSaving(true);
@@ -2338,9 +2366,11 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
     setInfo("");
     try {
       const payload = {
+        show_company_name: Boolean(form.show_company_name),
         show_logo: Boolean(form.show_logo),
+        show_tagline: Boolean(form.show_tagline),
         marketing_tagline: form.marketing_tagline || "",
-        footer_style: form.footer_style || "compact",
+        footer_style: form.footer_style || "full",
         show_address: Boolean(form.show_address),
         show_phone: Boolean(form.show_phone),
         show_website: Boolean(form.show_website),
@@ -2353,9 +2383,11 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
       setBranding(nextBranding);
       const settings = nextBranding?.settings || payload;
       setForm({
+        show_company_name: Boolean(settings.show_company_name ?? true),
         show_logo: Boolean(settings.show_logo ?? true),
+        show_tagline: Boolean(settings.show_tagline ?? true),
         marketing_tagline: settings.marketing_tagline || "",
-        footer_style: settings.footer_style || "compact",
+        footer_style: settings.footer_style || "full",
         show_address: Boolean(settings.show_address ?? true),
         show_phone: Boolean(settings.show_phone ?? true),
         show_website: Boolean(settings.show_website ?? true),
@@ -2364,6 +2396,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
         show_business_number: Boolean(settings.show_business_number),
       });
       setInfo("Email branding saved. Review campaign again to refresh the preview.");
+      if (typeof onBrandingSaved === "function") onBrandingSaved();
     } catch (e) {
       setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || "Unable to save email branding.");
     } finally {
@@ -2384,7 +2417,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
         <Box>
           <Typography variant="h6">Email branding</Typography>
           <Typography variant="body2" color="text.secondary">
-            Save your campaign logo, tagline, and footer style once for all marketing emails.
+            Save your campaign logo, tagline, and footer preferences once for all marketing emails.
           </Typography>
         </Box>
       </AccordionSummary>
@@ -2393,7 +2426,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
         {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
         {info ? <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert> : null}
         <Alert severity="info" sx={{ mb: 2 }}>
-          Company name, logo, address, phone, website, and brand color come from your Company Profile.
+          Company name, logo, address, phone, website, and brand color come from your Company Profile. These visibility settings affect marketing emails only.
         </Alert>
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
@@ -2424,6 +2457,17 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
               <CardContent>
                 <Typography variant="overline">Saved email branding settings</Typography>
                 <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                  <Typography variant="subtitle2">Brand appearance</Typography>
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_company_name)}
+                        onChange={(e) => setField("show_company_name", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label={controlLabel("Show company name")}
+                  />
                   <FormControlLabel
                     control={(
                       <Checkbox
@@ -2432,7 +2476,17 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                         disabled={saving}
                       />
                     )}
-                    label="Show company logo"
+                    label={controlLabel("Show company logo")}
+                  />
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        checked={Boolean(form.show_tagline)}
+                        onChange={(e) => setField("show_tagline", e.target.checked)}
+                        disabled={saving}
+                      />
+                    )}
+                    label={controlLabel("Show tagline")}
                   />
                   <TextField
                     label="Short tagline"
@@ -2453,6 +2507,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                     <MenuItem value="compact">Compact</MenuItem>
                     <MenuItem value="full">Full contact details</MenuItem>
                   </TextField>
+                  <Typography variant="subtitle2" sx={{ pt: 0.5 }}>Contact details shown in emails</Typography>
                   <FormControlLabel
                     control={(
                       <Checkbox
@@ -2461,7 +2516,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                         disabled={saving}
                       />
                     )}
-                    label="Show company address"
+                    label={controlLabel("Show address")}
                   />
                   <FormControlLabel
                     control={(
@@ -2471,7 +2526,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                         disabled={saving}
                       />
                     )}
-                    label="Show company phone"
+                    label={controlLabel("Show phone")}
                   />
                   <FormControlLabel
                     control={(
@@ -2481,7 +2536,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                         disabled={saving}
                       />
                     )}
-                    label="Show company website"
+                    label={controlLabel("Show website")}
                   />
                   <FormControlLabel
                     control={(
@@ -2491,7 +2546,7 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                         disabled={saving}
                       />
                     )}
-                    label="Show support email"
+                    label={controlLabel("Show support email")}
                   />
                   <TextField
                     label="Support email override"
@@ -2510,12 +2565,15 @@ function EmailBrandingCard({ auth, refreshKey = 0 }) {
                           disabled={saving}
                         />
                       )}
-                      label={`Show business number (${source.business_number})`}
+                      label={controlLabel(`Show business number (${source.business_number})`)}
                     />
                   ) : null}
                   <Typography variant="body2" color="text.secondary">
                     Current support email: {resolvedSupportEmail || "Not set"}
                   </Typography>
+                  <Alert severity={compliance?.warning_required ? "warning" : "info"}>
+                    {compliance?.message || "Hide or show sender details for marketing emails without changing your saved Company Profile information. The unsubscribe link remains included automatically."}
+                  </Alert>
                   <Box display="flex" gap={1} flexWrap="wrap">
                     <Button variant="contained" onClick={saveBranding} disabled={saving || loading}>
                       {saving ? "Saving..." : "Save branding"}
@@ -2605,6 +2663,8 @@ export default function MarketingCampaignsTab() {
   const deliverySettings = useMemo(() => ({
     managedMode,
     managedDeliveryAvailable: Boolean(managedDelivery?.managed_delivery_available && managedDelivery?.managed_sending_enabled),
+    brandingWarningRequired: Boolean(managedDelivery?.branding_warning_required ?? false),
+    brandingWarningMessage: managedDelivery?.branding_warning_message || "",
     availableQuota: Number(managedDelivery?.available_quota ?? 0),
     reservedQuota: Number(managedDelivery?.reserved_quota ?? 0),
     consumedQuota: Number(managedDelivery?.consumed_quota ?? 0),
@@ -3080,7 +3140,7 @@ export default function MarketingCampaignsTab() {
       <DeliverabilityOverview auth={auth} refreshKey={campaignRefreshKey} onSummaryLoaded={handleSummaryLoaded} />
       {/* Export: company clients (scoped) */}
       <MarketingProviderCard auth={auth} onProviderChange={handleProviderChange} managedMode={managedMode} managedCredits={managedCredits} companyName={companyName} managerReplyTo={managerReplyTo} managedDelivery={managedDelivery} onBuyCredits={() => setBuyCreditsOpen(true)} />
-      <EmailBrandingCard auth={auth} refreshKey={campaignRefreshKey} />
+      <EmailBrandingCard auth={auth} refreshKey={campaignRefreshKey} onBrandingSaved={() => setCampaignRefreshKey((v) => v + 1)} />
       <RecentMarketingCampaigns auth={auth} refreshKey={campaignRefreshKey} onOpenCampaign={handleOpenSavedCampaign} onCampaignsLoaded={setCampaignRows} />
       <MarketingSuppressionsCard auth={auth} refreshKey={campaignRefreshKey} />
       <ExportClientsCard />
