@@ -1920,6 +1920,12 @@ function SectionAccordion({ title, description, icon, expanded, onChange, childr
 
 function FinanceRecordActions({ row, enqueueSnackbar }) {
   const recordType = inferFinanceRecordType(row);
+  const invoiceRowId = row?.invoice_id || row?.id;
+  const invoiceSendHref = `/manager/finance-invoices?${new URLSearchParams({
+    ...(row?.client_id ? { clientId: String(row.client_id) } : {}),
+    invoiceId: String(invoiceRowId),
+    action: "send-email",
+  }).toString()}`;
 
   return (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -1948,14 +1954,21 @@ function FinanceRecordActions({ row, enqueueSnackbar }) {
           </Button>
         </>
       ) : null}
-      {recordType === "invoice" && row.hosted_invoice_url ? (
+      {recordType === "invoice" ? (
         <>
-          <Button size="small" onClick={() => window.open(row.hosted_invoice_url, "_blank", "noopener,noreferrer")}>
-            View payment
+          <Button size="small" component={RouterLink} to={invoiceSendHref}>
+            Send invoice
           </Button>
-          <Button size="small" startIcon={<ContentCopyOutlinedIcon fontSize="small" />} onClick={() => copyText(row.hosted_invoice_url, enqueueSnackbar, "Payment link copied.")}>
-            Copy
-          </Button>
+          {row.hosted_invoice_url ? (
+            <>
+              <Button size="small" onClick={() => window.open(row.hosted_invoice_url, "_blank", "noopener,noreferrer")}>
+                View payment
+              </Button>
+              <Button size="small" startIcon={<ContentCopyOutlinedIcon fontSize="small" />} onClick={() => copyText(row.hosted_invoice_url, enqueueSnackbar, "Payment link copied.")}>
+                Copy
+              </Button>
+            </>
+          ) : null}
         </>
       ) : null}
     </Stack>
@@ -3763,13 +3776,12 @@ export default function ManagerClientsWorkspace() {
 
   const handleSmartPaymentLink = useCallback((entry = actionReadiness.send_payment_link) => {
     if (!profile?.id) return;
-    if (entry?.state === "ready" && entry?.payment_url) {
-      window.open(entry.payment_url, "_blank", "noopener,noreferrer");
+    if (entry?.invoice_id) {
+      navigate(`/manager/finance-invoices?clientId=${profile.id}&invoiceId=${entry.invoice_id}&action=send-email`);
       return;
     }
-    if (entry?.invoice_id) {
-      explainActionState(entry, "Open the invoice to review payment-link readiness.");
-      navigate(`/manager/finance-invoices?clientId=${profile.id}&invoiceId=${entry.invoice_id}&action=payment-link`);
+    if (entry?.state === "ready" && entry?.payment_url) {
+      window.open(entry.payment_url, "_blank", "noopener,noreferrer");
       return;
     }
     if (entry?.estimate_id) {
@@ -3998,7 +4010,7 @@ export default function ManagerClientsWorkspace() {
                         variant="text"
                         onClick={() => handleSmartPaymentLink()}
                       >
-                        Send payment link
+                        Send invoice
                       </Button>
                       <Button variant="text" onClick={() => openMarkPaidOfflineAction()}>
                         Mark paid offline

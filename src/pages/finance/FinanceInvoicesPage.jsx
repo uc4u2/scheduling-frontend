@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Alert,
@@ -350,6 +350,8 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const requestedClientId = searchParams.get("clientId") || "";
   const requestedAction = searchParams.get("action") || "";
+  const requestedInvoiceId = searchParams.get("invoiceId") || "";
+  const initialEmailActionRef = useRef("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -464,7 +466,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     }
   };
 
-  const openSendEmailDialog = (row) => {
+  const openSendEmailDialog = useCallback((row) => {
     setEmailTarget(row);
     setEmailTo(getPreferredInvoiceRowEmail(row));
     const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
@@ -480,7 +482,19 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     }
     setEmailDocumentIds([]);
     setEmailDialogOpen(true);
-  };
+  }, [emailTemplates, tInvoice]);
+
+  useEffect(() => {
+    const normalizedAction = String(requestedAction || "").trim().toLowerCase();
+    if (!requestedInvoiceId || !normalizedAction) return;
+    if (!["send-email", "send-invoice"].includes(normalizedAction)) return;
+    const row = (items || []).find((entry) => String(entry?.invoice_id || entry?.id || "") === String(requestedInvoiceId));
+    if (!row) return;
+    const requestKey = `${normalizedAction}:${requestedInvoiceId}`;
+    if (initialEmailActionRef.current === requestKey) return;
+    initialEmailActionRef.current = requestKey;
+    openSendEmailDialog(row);
+  }, [items, openSendEmailDialog, requestedAction, requestedInvoiceId]);
 
   const emailClientId = emailTarget?.client?.id || emailTarget?.client_id || null;
 
@@ -603,7 +617,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         message: String(emailMessage || "").trim() || undefined,
         client_document_ids: emailDocumentIds,
       });
-      enqueueSnackbar(tInvoice("snackbar.paymentLinkEmailSent", "Payment link email sent."), {
+      enqueueSnackbar(tInvoice("snackbar.invoiceEmailSent", "Invoice email sent."), {
         variant: "success",
       });
       setEmailDialogOpen(false);
@@ -614,7 +628,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          tInvoice("errors.sendPaymentLinkEmail", "Unable to send the payment link email.")
+          tInvoice("errors.sendInvoiceEmail", "Unable to send the invoice email.")
       );
     } finally {
       setEmailSending(false);
@@ -855,8 +869,8 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           },
           {
             key: "send-payment-link",
-            label: tInvoice("actions.sendPaymentLink", "Send payment link"),
-            help: sendPaymentLinkDisabledReason || tInvoice("actionHelp.sendPaymentLink", "Email the hosted Stripe invoice link to the client."),
+            label: tInvoice("actions.sendInvoice", "Send invoice"),
+            help: sendPaymentLinkDisabledReason || tInvoice("actionHelp.sendInvoice", "Email the invoice to the client with the hosted Stripe payment link."),
             onClick: () => openSendEmailDialog(row),
             disabled: Boolean(sendPaymentLinkDisabledReason),
           },
@@ -1095,7 +1109,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         }}
       />
       <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>{tInvoice("emailDialog.title", "Send Payment Link")}</DialogTitle>
+        <DialogTitle>{tInvoice("emailDialog.titleSendInvoice", "Send invoice")}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
             <TextField

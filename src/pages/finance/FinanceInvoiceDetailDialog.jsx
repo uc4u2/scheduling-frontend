@@ -1161,7 +1161,7 @@ export default function FinanceInvoiceDetailDialog({
       if (nextInvoice) {
         setInvoice(nextInvoice);
       }
-      enqueueSnackbar(tDetail("snackbar.paymentLinkEmailSent", "Payment link email sent."), {
+      enqueueSnackbar(tDetail("snackbar.invoiceEmailSent", "Invoice email sent."), {
         variant: "success",
       });
       setSendEmailOpen(false);
@@ -1171,7 +1171,7 @@ export default function FinanceInvoiceDetailDialog({
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          tDetail("errors.sendPaymentLinkEmail", "Unable to send the payment link email.")
+          tDetail("errors.sendInvoiceEmail", "Unable to send the invoice email.")
       );
     } finally {
       setSendingEmail(false);
@@ -1518,7 +1518,7 @@ export default function FinanceInvoiceDetailDialog({
                           onClick={openSendPaymentLinkDialog}
                           disabled={loading || saving || Boolean(sendPaymentLinkDisabledReason)}
                         >
-                          {tDetail("actions.sendPaymentLink", "Send payment link")}
+                          {tDetail("actions.sendInvoice", "Send invoice")}
                         </Button>
                       </span>
                     </Tooltip>
@@ -2307,7 +2307,7 @@ export default function FinanceInvoiceDetailDialog({
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>{tDetail("emailDialog.title", "Send Payment Link")}</DialogTitle>
+        <DialogTitle>{tDetail("emailDialog.titleSendInvoice", "Send invoice")}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
             <TextField
