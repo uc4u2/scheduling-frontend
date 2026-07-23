@@ -62,6 +62,7 @@ import { formatCurrency } from "../../utils/formatters";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import ThemedDateField from "../../components/ui/ThemedDateField";
+import { getDefaultInvoiceDeliveryOptions, isInvoicePaymentLinkActionable } from "./invoiceDeliveryOptions";
 
 const downloadBlob = (response, fallbackName) => {
   const blob =
@@ -92,32 +93,6 @@ const isOverdue = (invoice) => {
 
 const getPreferredInvoiceRowEmail = (row) =>
   String(row?.billing_recipient?.email || row?.client_email || row?.client?.email || "").trim();
-
-const isInvoicePaymentLinkActionable = (row) => {
-  const status = String(row?.payment_status || row?.status || "").trim().toLowerCase();
-  const remainingBalance = Number(row?.remaining_balance || 0);
-  if (["paid", "void", "refunded", "partial_refund", "partially_refunded"].includes(status)) return false;
-  return remainingBalance > 0;
-};
-
-const getRowSendPaymentLinkDisabledReason = (row, tInvoice) => {
-  const status = String(row?.payment_status || row?.status || "").trim().toLowerCase();
-  const remainingBalance = Number(row?.remaining_balance || 0);
-  const recipientEmail = getPreferredInvoiceRowEmail(row);
-  if (!recipientEmail) {
-    return tInvoice("tooltips.sendPaymentLinkMissingEmail", "Add a client or billing email before sending the payment link.");
-  }
-  if (status === "void") {
-    return tInvoice("tooltips.sendPaymentLinkVoid", "This invoice is void. Payment link sending is unavailable.");
-  }
-  if (status === "refunded" || status === "partial_refund" || status === "partially_refunded") {
-    return tInvoice("tooltips.sendPaymentLinkRefunded", "This invoice has been refunded. Do not send a payment link.");
-  }
-  if (!(remainingBalance > 0)) {
-    return tInvoice("tooltips.sendPaymentLinkPaid", "This invoice is already paid. A payment link is no longer needed.");
-  }
-  return "";
-};
 
 const buildInvoiceEmailTemplateOptions = ({ row, tInvoice, customTemplates = [] }) => {
   const clientName = String(row?.client_name || row?.client?.name || row?.client?.display_name || "").trim() || "there";
@@ -287,7 +262,10 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   );
   const paymentLinkLabel = useCallback(
     (row) =>
-      isInvoicePaymentLinkActionable(row) && row?.payment_link_exists
+      isInvoicePaymentLinkActionable({
+        status: row?.payment_status || row?.status,
+        remainingBalance: row?.remaining_balance,
+      }) && row?.payment_link_exists
         ? tInvoice("status.paymentLinkHas", "Has payment link")
         : tInvoice("status.paymentLinkMissing", "Missing payment link"),
     [tInvoice]
@@ -339,6 +317,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailDocumentDeletingId, setEmailDocumentDeletingId] = useState("");
   const [emailDocumentIds, setEmailDocumentIds] = useState([]);
   const [emailAttachmentUploading, setEmailAttachmentUploading] = useState(false);
+  const [emailAttachInvoicePdf, setEmailAttachInvoicePdf] = useState(true);
+  const [emailIncludePaymentLink, setEmailIncludePaymentLink] = useState(true);
+  const [emailPaymentLinkDisabledReason, setEmailPaymentLinkDisabledReason] = useState("");
   const [emailTemplates, setEmailTemplates] = useState([]);
   const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
   const [emailTemplatesError, setEmailTemplatesError] = useState("");
@@ -468,7 +449,18 @@ export default function FinanceInvoicesPage({ onNavigate }) {
 
   const openSendEmailDialog = useCallback((row) => {
     setEmailTarget(row);
-    setEmailTo(getPreferredInvoiceRowEmail(row));
+    const recipientEmail = getPreferredInvoiceRowEmail(row);
+    setEmailTo(recipientEmail);
+    const deliveryDefaults = getDefaultInvoiceDeliveryOptions({
+      status: row?.payment_status || row?.status,
+      remainingBalance: row?.remaining_balance,
+      recipientEmail,
+      invoiceId: row?.invoice_id || row?.id,
+      t: tInvoice,
+    });
+    setEmailAttachInvoicePdf(deliveryDefaults.attachInvoicePdf);
+    setEmailIncludePaymentLink(deliveryDefaults.includePaymentLink);
+    setEmailPaymentLinkDisabledReason(deliveryDefaults.paymentLinkDisabledReason);
     const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
     if (defaultCustom) {
       setEmailTemplateKey(`custom:${defaultCustom.id}`);
@@ -615,9 +607,11 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         email: String(emailTo || "").trim(),
         subject: String(emailSubject || "").trim() || undefined,
         message: String(emailMessage || "").trim() || undefined,
+        attach_invoice_pdf: emailAttachInvoicePdf,
+        include_payment_link: emailIncludePaymentLink,
         client_document_ids: emailDocumentIds,
       });
-      enqueueSnackbar(tInvoice("snackbar.invoiceEmailSent", "Invoice email sent."), {
+      enqueueSnackbar(tInvoice("snackbar.invoiceEmailQueued", "Invoice email queued."), {
         variant: "success",
       });
       setEmailDialogOpen(false);
@@ -851,8 +845,10 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     <Stack spacing={1.25}>
       {rows.map((row) => {
         const rowId = row.invoice_id || row.id;
-        const sendPaymentLinkDisabledReason = getRowSendPaymentLinkDisabledReason(row, tInvoice);
-        const canUsePaymentLink = isInvoicePaymentLinkActionable(row);
+        const canUsePaymentLink = isInvoicePaymentLinkActionable({
+          status: row?.payment_status || row?.status,
+          remainingBalance: row?.remaining_balance,
+        });
         const paymentButtonBusy = paymentLinkBusyId === rowId;
         const printBusy = printBusyId === rowId;
         const downloadBusy = pdfBusyId === rowId;
@@ -870,9 +866,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           {
             key: "send-payment-link",
             label: tInvoice("actions.sendInvoice", "Send invoice"),
-            help: sendPaymentLinkDisabledReason || tInvoice("actionHelp.sendInvoice", "Email the invoice to the client with the hosted Stripe payment link."),
+            help: tInvoice("actionHelp.sendInvoice", "Email the invoice to the client with an optional PDF attachment and optional payment link."),
             onClick: () => openSendEmailDialog(row),
-            disabled: Boolean(sendPaymentLinkDisabledReason),
+            disabled: false,
           },
           { type: "divider" },
           {
@@ -1140,8 +1136,41 @@ export default function FinanceInvoicesPage({ onNavigate }) {
               minRows={4}
               value={emailMessage}
               onChange={(event) => setEmailMessage(event.target.value)}
-              helperText={tInvoice("emailDialog.helperText", "The payment link and invoice total will be added automatically.")}
+              helperText={tInvoice("emailDialog.helperText", "The invoice summary is added automatically. Delivery options below control the PDF attachment and online payment link.")}
             />
+            <Stack spacing={1} sx={{ pt: 0.5 }}>
+              <Typography variant="subtitle2">
+                {tInvoice("emailDialog.deliveryOptionsTitle", "Delivery options")}
+              </Typography>
+              <Box>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={emailAttachInvoicePdf}
+                    onChange={(event) => setEmailAttachInvoicePdf(event.target.checked)}
+                  />
+                  <span>{tInvoice("emailDialog.attachPdfLabel", "Attach invoice PDF")}</span>
+                </label>
+                <Typography variant="caption" color="text.secondary">
+                  {tInvoice("emailDialog.attachPdfHelp", "Attach a formal PDF copy for the client’s records.")}
+                </Typography>
+              </Box>
+              <Box>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={emailIncludePaymentLink}
+                    disabled={Boolean(emailPaymentLinkDisabledReason)}
+                    onChange={(event) => setEmailIncludePaymentLink(event.target.checked)}
+                  />
+                  <span>{tInvoice("emailDialog.paymentLinkLabel", "Include online payment link")}</span>
+                </label>
+                <Typography variant="caption" color="text.secondary">
+                  {emailPaymentLinkDisabledReason ||
+                    tInvoice("emailDialog.paymentLinkHelp", "Let the client pay the outstanding balance online.")}
+                </Typography>
+              </Box>
+            </Stack>
             {emailDocumentsError ? <Alert severity="warning">{emailDocumentsError}</Alert> : null}
             {emailDocumentsLoading ? (
               <Stack direction="row" spacing={1} alignItems="center">
