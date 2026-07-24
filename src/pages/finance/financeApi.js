@@ -127,6 +127,8 @@ export const createFinanceInvoicePaymentLink = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-payment-link`));
 export const sendFinanceInvoiceEmail = (id, payload) =>
   unwrap(api.post(`/finance/invoices/${id}/send-email`, payload));
+export const getFinanceInvoiceDeliveryCapabilities = (id) =>
+  unwrap(api.get(`/finance/invoices/${id}/delivery-capabilities`));
 export const createSimilarFinanceInvoice = (id) =>
   unwrap(api.post(`/finance/invoices/${id}/create-similar`));
 export const listFinanceInvoices = (params = {}) =>

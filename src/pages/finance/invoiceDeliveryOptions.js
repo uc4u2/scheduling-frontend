@@ -55,3 +55,16 @@ export const getDefaultInvoiceDeliveryOptions = ({
     paymentLinkDisabledReason,
   };
 };
+
+export const getInvoiceReviewCtaHelperText = (capability) => {
+  if (!capability) {
+    return "Checking invoice review request availability...";
+  }
+  if (capability.eligible) {
+    return (
+      capability.help_text ||
+      "Adds a secondary Google review button to this invoice email. It does not send a separate review email."
+    );
+  }
+  return capability.help_text || "Invoice review request is unavailable for this send.";
+};

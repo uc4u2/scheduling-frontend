@@ -1,5 +1,6 @@
 import {
   getDefaultInvoiceDeliveryOptions,
+  getInvoiceReviewCtaHelperText,
   isInvoicePaymentLinkActionable,
 } from "../invoiceDeliveryOptions";
 
@@ -57,5 +58,21 @@ describe("invoiceDeliveryOptions", () => {
         t,
       }).paymentLinkDisabledReason
     ).toMatch(/already paid/i);
+  });
+
+  test("maps backend review capability helper text safely", () => {
+    expect(getInvoiceReviewCtaHelperText(null)).toMatch(/Checking invoice review request availability/i);
+    expect(
+      getInvoiceReviewCtaHelperText({
+        eligible: false,
+        help_text: "Enable invoice review requests in Settings > Reviews & Tips.",
+      })
+    ).toMatch(/Enable invoice review requests/i);
+    expect(
+      getInvoiceReviewCtaHelperText({
+        eligible: true,
+        help_text: "Adds a secondary Google review button to this invoice email. It does not send a separate review email.",
+      })
+    ).toMatch(/secondary Google review button/i);
   });
 });

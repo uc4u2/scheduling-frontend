@@ -49,6 +49,7 @@ import {
   deleteManagerClient360EmailTemplate,
   createSimilarFinanceInvoice,
   downloadFinanceInvoicePdf,
+  getFinanceInvoiceDeliveryCapabilities,
   getFinanceInvoicePrintHtml,
   listManagerClient360Documents,
   listManagerClient360EmailTemplates,
@@ -62,7 +63,11 @@ import { formatCurrency } from "../../utils/formatters";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import ThemedDateField from "../../components/ui/ThemedDateField";
-import { getDefaultInvoiceDeliveryOptions, isInvoicePaymentLinkActionable } from "./invoiceDeliveryOptions";
+import {
+  getDefaultInvoiceDeliveryOptions,
+  getInvoiceReviewCtaHelperText,
+  isInvoicePaymentLinkActionable,
+} from "./invoiceDeliveryOptions";
 
 const downloadBlob = (response, fallbackName) => {
   const blob =
@@ -320,6 +325,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailAttachInvoicePdf, setEmailAttachInvoicePdf] = useState(true);
   const [emailIncludePaymentLink, setEmailIncludePaymentLink] = useState(true);
   const [emailPaymentLinkDisabledReason, setEmailPaymentLinkDisabledReason] = useState("");
+  const [emailIncludeReviewCta, setEmailIncludeReviewCta] = useState(false);
+  const [emailReviewCapability, setEmailReviewCapability] = useState(null);
+  const [emailReviewCapabilityLoading, setEmailReviewCapabilityLoading] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState([]);
   const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
   const [emailTemplatesError, setEmailTemplatesError] = useState("");
@@ -461,6 +469,9 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     setEmailAttachInvoicePdf(deliveryDefaults.attachInvoicePdf);
     setEmailIncludePaymentLink(deliveryDefaults.includePaymentLink);
     setEmailPaymentLinkDisabledReason(deliveryDefaults.paymentLinkDisabledReason);
+    setEmailIncludeReviewCta(false);
+    setEmailReviewCapability(null);
+    setEmailReviewCapabilityLoading(true);
     const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
     if (defaultCustom) {
       setEmailTemplateKey(`custom:${defaultCustom.id}`);
@@ -474,6 +485,20 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     }
     setEmailDocumentIds([]);
     setEmailDialogOpen(true);
+    getFinanceInvoiceDeliveryCapabilities(row?.invoice_id || row?.id)
+      .then((payload) => {
+        setEmailReviewCapability(payload?.review_cta || null);
+      })
+      .catch((err) => {
+        setEmailReviewCapability({
+          eligible: false,
+          help_text:
+            err?.response?.data?.error ||
+            err?.message ||
+            tInvoice("errors.reviewCapabilityLoad", "Unable to load invoice review request availability."),
+        });
+      })
+      .finally(() => setEmailReviewCapabilityLoading(false));
   }, [emailTemplates, tInvoice]);
 
   useEffect(() => {
@@ -609,6 +634,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         message: String(emailMessage || "").trim() || undefined,
         attach_invoice_pdf: emailAttachInvoicePdf,
         include_payment_link: emailIncludePaymentLink,
+        include_review_cta: emailIncludeReviewCta,
         client_document_ids: emailDocumentIds,
       });
       enqueueSnackbar(tInvoice("snackbar.invoiceEmailQueued", "Invoice email queued."), {
@@ -1168,6 +1194,24 @@ export default function FinanceInvoicesPage({ onNavigate }) {
                 <Typography variant="caption" color="text.secondary">
                   {emailPaymentLinkDisabledReason ||
                     tInvoice("emailDialog.paymentLinkHelp", "Let the client pay the outstanding balance online.")}
+                </Typography>
+              </Box>
+              <Box>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={emailIncludeReviewCta}
+                    disabled={emailReviewCapabilityLoading || !emailReviewCapability?.eligible}
+                    onChange={(event) => setEmailIncludeReviewCta(event.target.checked)}
+                  />
+                  <span>{tInvoice("emailDialog.reviewCtaLabel", "Include Google review request")}</span>
+                </label>
+                <Typography variant="caption" color="text.secondary">
+                  {getInvoiceReviewCtaHelperText(
+                    emailReviewCapabilityLoading
+                      ? null
+                      : emailReviewCapability
+                  )}
                 </Typography>
               </Box>
             </Stack>

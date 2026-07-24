@@ -8,6 +8,7 @@ const mockSendFinanceInvoiceEmail = jest.fn();
 const mockListFinanceInvoices = jest.fn();
 const mockListManagerClient360Documents = jest.fn();
 const mockListManagerClient360EmailTemplates = jest.fn();
+const mockGetFinanceInvoiceDeliveryCapabilities = jest.fn();
 let mockLocationSearch = "?invoiceId=43&action=send-email";
 
 jest.mock("react-i18next", () => ({
@@ -33,6 +34,7 @@ jest.mock("../financeApi", () => ({
   deleteManagerClient360EmailTemplate: jest.fn(),
   createSimilarFinanceInvoice: jest.fn(),
   downloadFinanceInvoicePdf: jest.fn(),
+  getFinanceInvoiceDeliveryCapabilities: (...args) => mockGetFinanceInvoiceDeliveryCapabilities(...args),
   getFinanceInvoicePrintHtml: jest.fn(),
   listManagerClient360Documents: (...args) => mockListManagerClient360Documents(...args),
   listManagerClient360EmailTemplates: (...args) => mockListManagerClient360EmailTemplates(...args),
@@ -65,6 +67,7 @@ describe("FinanceInvoicesPage", () => {
     mockListFinanceInvoices.mockReset();
     mockListManagerClient360Documents.mockReset();
     mockListManagerClient360EmailTemplates.mockReset();
+    mockGetFinanceInvoiceDeliveryCapabilities.mockReset();
     mockListFinanceInvoices.mockResolvedValue({
       items: [
         {
@@ -88,6 +91,12 @@ describe("FinanceInvoicesPage", () => {
     });
     mockListManagerClient360Documents.mockResolvedValue({ documents: [] });
     mockListManagerClient360EmailTemplates.mockResolvedValue({ templates: [] });
+    mockGetFinanceInvoiceDeliveryCapabilities.mockResolvedValue({
+      review_cta: {
+        eligible: true,
+        help_text: "Adds a secondary Google review button to this invoice email. It does not send a separate review email.",
+      },
+    });
     mockSendFinanceInvoiceEmail.mockResolvedValue({
       invoice: { id: 43 },
       email_delivery: { delivery_status: "queued", queued: true, reused: false },
@@ -152,5 +161,45 @@ describe("FinanceInvoicesPage", () => {
     expect(includePayment).not.toBeChecked();
     expect(includePayment).toBeDisabled();
     expect(await screen.findByText(/already paid/i)).toBeInTheDocument();
+  });
+
+  test("review checkbox defaults off, loads capability, and sends include_review_cta without exposing raw URL", async () => {
+    render(<FinanceInvoicesPage />);
+
+    await screen.findByText("Send invoice");
+    await waitFor(() => expect(mockGetFinanceInvoiceDeliveryCapabilities).toHaveBeenCalledWith(43));
+
+    const reviewCheckbox = await screen.findByLabelText("Include Google review request");
+    expect(reviewCheckbox).not.toBeChecked();
+    expect(reviewCheckbox).toBeEnabled();
+
+    await userEvent.click(reviewCheckbox);
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(mockSendFinanceInvoiceEmail).toHaveBeenCalledTimes(1));
+    expect(mockSendFinanceInvoiceEmail).toHaveBeenCalledWith(
+      43,
+      expect.objectContaining({
+        include_review_cta: true,
+      })
+    );
+    expect(mockSendFinanceInvoiceEmail.mock.calls[0][1].review_url).toBeUndefined();
+  });
+
+  test("review checkbox stays disabled with backend blocked reason", async () => {
+    mockGetFinanceInvoiceDeliveryCapabilities.mockResolvedValueOnce({
+      review_cta: {
+        eligible: false,
+        blocked_reason: "invoice_not_paid_or_completed",
+        help_text: "Available after the invoice is paid or the linked work is completed.",
+      },
+    });
+
+    render(<FinanceInvoicesPage />);
+
+    await screen.findByText("Send invoice");
+    const reviewCheckbox = await screen.findByLabelText("Include Google review request");
+    expect(reviewCheckbox).toBeDisabled();
+    expect(await screen.findByText(/Available after the invoice is paid or the linked work is completed/i)).toBeInTheDocument();
   });
 });

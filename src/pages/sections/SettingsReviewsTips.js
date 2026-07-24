@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Box, Card, CardHeader, CardContent, Divider, Grid, Stack,
   Typography, TextField, Switch, FormControlLabel, Button,
-  Snackbar, Alert, Tooltip, IconButton, Chip
+  Snackbar, Alert, Tooltip, IconButton, Chip, FormControl, InputLabel, Select, MenuItem
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -33,6 +33,8 @@ export default function SettingsReviewsTips() {
   const [googleReviewCtaEnabled, setGoogleReviewCtaEnabled] = useState(false);
   const [googleReviewPageCtaEnabled, setGoogleReviewPageCtaEnabled] = useState(true);
   const [googleReviewCtaText, setGoogleReviewCtaText] = useState("Leave a Google review");
+  const [invoiceReviewCtaEnabled, setInvoiceReviewCtaEnabled] = useState(false);
+  const [invoiceReviewCtaEligibility, setInvoiceReviewCtaEligibility] = useState("paid_or_completed");
 
   // Optional email subject/body overrides
   const [emailSubject, setEmailSubject] = useState("");
@@ -64,6 +66,8 @@ export default function SettingsReviewsTips() {
         setGoogleReviewCtaEnabled(!!data.google_review_cta_enabled);
         setGoogleReviewPageCtaEnabled(data.google_review_page_cta_enabled !== false);
         setGoogleReviewCtaText(data.google_review_cta_text || "Leave a Google review");
+        setInvoiceReviewCtaEnabled(!!data.invoice_review_cta_enabled);
+        setInvoiceReviewCtaEligibility(data.invoice_review_cta_eligibility || "paid_or_completed");
         setEmailSubject(data.email_subject_template || "");
         setEmailHtml(data.email_body_template || "");
 
@@ -107,6 +111,8 @@ export default function SettingsReviewsTips() {
         google_review_cta_enabled: !!googleReviewCtaEnabled,
         google_review_page_cta_enabled: !!googleReviewPageCtaEnabled,
         google_review_cta_text: (googleReviewCtaText || "Leave a Google review").trim(),
+        invoice_review_cta_enabled: !!invoiceReviewCtaEnabled,
+        invoice_review_cta_eligibility: invoiceReviewCtaEligibility || "paid_or_completed",
         email_subject_template: emailSubject || null,
         email_body_template: emailHtml || null,
 
@@ -129,6 +135,12 @@ export default function SettingsReviewsTips() {
       }
       if (Object.prototype.hasOwnProperty.call(savedSettings, "google_review_cta_text")) {
         setGoogleReviewCtaText(savedSettings.google_review_cta_text || "Leave a Google review");
+      }
+      if (Object.prototype.hasOwnProperty.call(savedSettings, "invoice_review_cta_enabled")) {
+        setInvoiceReviewCtaEnabled(!!savedSettings.invoice_review_cta_enabled);
+      }
+      if (Object.prototype.hasOwnProperty.call(savedSettings, "invoice_review_cta_eligibility")) {
+        setInvoiceReviewCtaEligibility(savedSettings.invoice_review_cta_eligibility || "paid_or_completed");
       }
 
       setMsg(t("settings.reviews.saveSuccess"));
@@ -362,6 +374,36 @@ export default function SettingsReviewsTips() {
               onChange={(e) => setGoogleReviewCtaText(e.target.value)}
               inputProps={{ maxLength: 80 }}
             />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+            <Stack spacing={1}>
+              <Typography variant="subtitle1" fontWeight={800}>Invoice review requests</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Invoice emails remain primarily financial. This only makes a Google review CTA available as an optional per-send checkbox. It does not replace or trigger the separate automatic review follow-up flow.
+              </Typography>
+            </Stack>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControlLabel
+              control={<Switch checked={invoiceReviewCtaEnabled} onChange={(e) => setInvoiceReviewCtaEnabled(e.target.checked)} />}
+              label="Allow Google review CTA in invoice emails"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth disabled={!invoiceReviewCtaEnabled}>
+              <InputLabel id="invoice-review-cta-eligibility-label">When can it be included?</InputLabel>
+              <Select
+                labelId="invoice-review-cta-eligibility-label"
+                label="When can it be included?"
+                value={invoiceReviewCtaEligibility}
+                onChange={(event) => setInvoiceReviewCtaEligibility(event.target.value)}
+              >
+                <MenuItem value="paid_or_completed">After payment or completed work — Recommended</MenuItem>
+                <MenuItem value="always">Any invoice — Advanced</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
 
           {/* Email overrides */}
