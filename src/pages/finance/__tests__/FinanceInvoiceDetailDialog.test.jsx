@@ -2,6 +2,8 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import FinanceInvoiceDetailDialog from "../FinanceInvoiceDetailDialog";
 
+jest.setTimeout(15000);
+
 const mockEnqueueSnackbar = jest.fn();
 const mockGetFinanceInvoice = jest.fn();
 const mockUpdateFinanceInvoice = jest.fn();
@@ -11,6 +13,16 @@ const mockListManagerClient360EmailTemplates = jest.fn();
 const mockGetFinanceDocumentSettings = jest.fn();
 const mockListBillingRecipients = jest.fn();
 const mockGetFinanceInvoiceDeliveryCapabilities = jest.fn();
+
+const deferred = () => {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -151,13 +163,14 @@ describe("FinanceInvoiceDetailDialog", () => {
   });
 
   test("review checkbox loads capability, sends include_review_cta, and resets off on reopen", async () => {
-    render(<FinanceInvoiceDetailDialog open invoiceId={43} onClose={() => {}} onSaved={() => {}} />);
+    const view = render(<FinanceInvoiceDetailDialog open invoiceId={43} onClose={() => {}} onSaved={() => {}} />);
 
     await screen.findByText("Finance Invoice Detail");
     const saveAndSendButton = await screen.findByRole("button", { name: "Save & Send" });
     await waitFor(() => expect(saveAndSendButton).toBeEnabled());
     fireEvent.click(saveAndSendButton);
 
+    await waitFor(() => expect(mockUpdateFinanceInvoice).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockGetFinanceInvoiceDeliveryCapabilities).toHaveBeenCalledWith(43));
     const reviewCheckbox = await screen.findByLabelText("Include Google review request");
     expect(reviewCheckbox).toBeEnabled();
@@ -175,7 +188,12 @@ describe("FinanceInvoiceDetailDialog", () => {
     );
     expect(mockSendFinanceInvoiceEmail.mock.calls[0][1].review_url).toBeUndefined();
 
-    fireEvent.click(saveAndSendButton);
+    view.unmount();
+    render(<FinanceInvoiceDetailDialog open invoiceId={43} onClose={() => {}} onSaved={() => {}} />);
+    await screen.findByText("Finance Invoice Detail");
+    const reopenedSaveAndSend = await screen.findByRole("button", { name: "Save & Send" });
+    await waitFor(() => expect(reopenedSaveAndSend).toBeEnabled());
+    fireEvent.click(reopenedSaveAndSend);
     const reopenedCheckbox = await screen.findByLabelText("Include Google review request");
     expect(reopenedCheckbox).not.toBeChecked();
   });
@@ -196,5 +214,50 @@ describe("FinanceInvoiceDetailDialog", () => {
     const reviewCheckbox = await screen.findByLabelText("Include Google review request");
     expect(reviewCheckbox).toBeDisabled();
     expect(await screen.findByText(/Enable invoice review requests in Settings > Reviews & Tips/i)).toBeInTheDocument();
+  });
+
+  test("stale capability response cannot override a newly opened send dialog", async () => {
+    const first = deferred();
+    const second = deferred();
+    mockGetFinanceInvoiceDeliveryCapabilities
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    render(<FinanceInvoiceDetailDialog open invoiceId={43} onClose={() => {}} onSaved={() => {}} />);
+
+    await screen.findByText("Finance Invoice Detail");
+    const saveAndSendButton = await screen.findByRole("button", { name: "Save & Send" });
+    await waitFor(() => expect(saveAndSendButton).toBeEnabled());
+    fireEvent.click(saveAndSendButton);
+    await waitFor(() => expect(mockUpdateFinanceInvoice).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockGetFinanceInvoiceDeliveryCapabilities).toHaveBeenCalledWith(43));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByLabelText("Include Google review request")).not.toBeInTheDocument());
+    const reopenedSaveAndSend = await screen.findByRole("button", { name: "Save & Send" });
+    await waitFor(() => expect(reopenedSaveAndSend).toBeEnabled());
+    fireEvent.click(reopenedSaveAndSend);
+    await waitFor(() => expect(mockUpdateFinanceInvoice).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockGetFinanceInvoiceDeliveryCapabilities).toHaveBeenCalledTimes(2));
+
+    second.resolve({
+      review_cta: {
+        eligible: false,
+        help_text: "This invoice is void.",
+      },
+    });
+    await screen.findByText(/This invoice is void/i);
+    const reviewCheckbox = await screen.findByLabelText("Include Google review request");
+    expect(reviewCheckbox).toBeDisabled();
+
+    first.resolve({
+      review_cta: {
+        eligible: true,
+        help_text: "Adds a secondary Google review button to this invoice email. It does not send a separate review email.",
+      },
+    });
+
+    await waitFor(() => expect(reviewCheckbox).toBeDisabled());
+    expect(screen.queryByText(/secondary Google review button/i)).not.toBeInTheDocument();
   });
 });

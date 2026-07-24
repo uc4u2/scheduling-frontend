@@ -11,6 +11,16 @@ const mockListManagerClient360EmailTemplates = jest.fn();
 const mockGetFinanceInvoiceDeliveryCapabilities = jest.fn();
 let mockLocationSearch = "?invoiceId=43&action=send-email";
 
+const deferred = () => {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (_key, options) => options?.defaultValue || _key,
@@ -85,6 +95,22 @@ describe("FinanceInvoicesPage", () => {
           payment_link_exists: true,
           hosted_invoice_url: "https://example.com/pay/43",
           client: { id: 49, email: "vaje33.3@gmail.com" },
+        },
+        {
+          id: 44,
+          invoice_id: 44,
+          invoice_number: "INV-000015",
+          payment_status: "pending",
+          status: "pending",
+          remaining_balance: 4,
+          total: 4,
+          currency: "CAD",
+          client_name: "Second Client",
+          client_email: "second@example.com",
+          billing_recipient: { email: "second@example.com" },
+          payment_link_exists: true,
+          hosted_invoice_url: "https://example.com/pay/44",
+          client: { id: 50, email: "second@example.com" },
         },
       ],
       pagination: null,
@@ -201,5 +227,43 @@ describe("FinanceInvoicesPage", () => {
     const reviewCheckbox = await screen.findByLabelText("Include Google review request");
     expect(reviewCheckbox).toBeDisabled();
     expect(await screen.findByText(/Available after the invoice is paid or the linked work is completed/i)).toBeInTheDocument();
+  });
+
+  test("stale capability response cannot re-enable checkbox for a newly opened invoice", async () => {
+    const first = deferred();
+    const second = deferred();
+    mockGetFinanceInvoiceDeliveryCapabilities
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    const { rerender } = render(<FinanceInvoicesPage />);
+
+    await screen.findByText("Send invoice");
+    await waitFor(() => expect(mockGetFinanceInvoiceDeliveryCapabilities).toHaveBeenCalledWith(43));
+
+    mockLocationSearch = "?invoiceId=44&action=send-email";
+    rerender(<FinanceInvoicesPage />);
+
+    await waitFor(() => expect(mockGetFinanceInvoiceDeliveryCapabilities).toHaveBeenCalledWith(44));
+
+    second.resolve({
+      review_cta: {
+        eligible: false,
+        help_text: "Available after the invoice is paid or the linked work is completed.",
+      },
+    });
+    await screen.findByText(/Available after the invoice is paid or the linked work is completed/i);
+    const reviewCheckbox = await screen.findByLabelText("Include Google review request");
+    expect(reviewCheckbox).toBeDisabled();
+
+    first.resolve({
+      review_cta: {
+        eligible: true,
+        help_text: "Adds a secondary Google review button to this invoice email. It does not send a separate review email.",
+      },
+    });
+
+    await waitFor(() => expect(reviewCheckbox).toBeDisabled());
+    expect(screen.queryByText(/secondary Google review button/i)).not.toBeInTheDocument();
   });
 });

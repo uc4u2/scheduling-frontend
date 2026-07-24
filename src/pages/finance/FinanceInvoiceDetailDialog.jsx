@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -386,6 +386,7 @@ export default function FinanceInvoiceDetailDialog({
   const [emailTemplateDraft, setEmailTemplateDraft] = useState(null);
   const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
   const [saveAndSendPending, setSaveAndSendPending] = useState(false);
+  const sendEmailCapabilityRequestRef = useRef(0);
 
   useEffect(() => {
     if (!open || !invoiceId) return;
@@ -1015,6 +1016,8 @@ export default function FinanceInvoiceDetailDialog({
   };
 
   const openSendPaymentLinkDialog = (sourceInvoice = invoice) => {
+    const capabilityRequestId = sendEmailCapabilityRequestRef.current + 1;
+    sendEmailCapabilityRequestRef.current = capabilityRequestId;
     const recipientEmail = getPreferredInvoiceRecipientEmail(sourceInvoice);
     setSendEmailTo(recipientEmail);
     const deliveryDefaults = getDefaultInvoiceDeliveryOptions({
@@ -1047,9 +1050,11 @@ export default function FinanceInvoiceDetailDialog({
     setSendEmailOpen(true);
     getFinanceInvoiceDeliveryCapabilities(sourceInvoice?.id || invoiceId)
       .then((payload) => {
+        if (sendEmailCapabilityRequestRef.current !== capabilityRequestId) return;
         setSendEmailReviewCapability(payload?.review_cta || null);
       })
       .catch((err) => {
+        if (sendEmailCapabilityRequestRef.current !== capabilityRequestId) return;
         setSendEmailReviewCapability({
           eligible: false,
           help_text:
@@ -1058,8 +1063,17 @@ export default function FinanceInvoiceDetailDialog({
             tDetail("errors.reviewCapabilityLoad", "Unable to load invoice review request availability."),
         });
       })
-      .finally(() => setSendEmailReviewCapabilityLoading(false));
+      .finally(() => {
+        if (sendEmailCapabilityRequestRef.current !== capabilityRequestId) return;
+        setSendEmailReviewCapabilityLoading(false);
+      });
   };
+
+  const closeSendEmailDialog = useCallback(() => {
+    sendEmailCapabilityRequestRef.current += 1;
+    setSendEmailOpen(false);
+    setSendEmailReviewCapabilityLoading(false);
+  }, []);
 
   const emailTemplateOptions = useMemo(
     () => buildInvoiceDetailEmailTemplateOptions({ invoice, tDetail, customTemplates: emailTemplates }),
@@ -1202,7 +1216,7 @@ export default function FinanceInvoiceDetailDialog({
       enqueueSnackbar(tDetail("snackbar.invoiceEmailQueued", "Invoice email queued."), {
         variant: "success",
       });
-      setSendEmailOpen(false);
+      closeSendEmailDialog();
       setEmailDocumentIds([]);
       onSaved?.(nextInvoice || invoice);
     } catch (err) {
@@ -2348,7 +2362,7 @@ export default function FinanceInvoiceDetailDialog({
       />
       <Dialog
         open={sendEmailOpen}
-        onClose={sendingEmail ? undefined : () => setSendEmailOpen(false)}
+        onClose={sendingEmail ? undefined : closeSendEmailDialog}
         fullWidth
         maxWidth="sm"
       >
@@ -2460,7 +2474,7 @@ export default function FinanceInvoiceDetailDialog({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSendEmailOpen(false)} disabled={sendingEmail}>
+          <Button onClick={closeSendEmailDialog} disabled={sendingEmail}>
             {tDetail("common.cancel", "Cancel")}
           </Button>
           <Button variant="contained" onClick={handleSendPaymentLinkEmail} disabled={sendingEmail}>

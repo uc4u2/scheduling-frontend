@@ -335,6 +335,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailTemplateDialogMode, setEmailTemplateDialogMode] = useState("create");
   const [emailTemplateDraft, setEmailTemplateDraft] = useState(null);
   const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
+  const emailCapabilityRequestRef = useRef(0);
   const featuredTutorial = BUSINESS_FINANCE_TUTORIAL_GROUP.featured;
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const requestedClientId = searchParams.get("clientId") || "";
@@ -456,6 +457,8 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   };
 
   const openSendEmailDialog = useCallback((row) => {
+    const capabilityRequestId = emailCapabilityRequestRef.current + 1;
+    emailCapabilityRequestRef.current = capabilityRequestId;
     setEmailTarget(row);
     const recipientEmail = getPreferredInvoiceRowEmail(row);
     setEmailTo(recipientEmail);
@@ -487,9 +490,11 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     setEmailDialogOpen(true);
     getFinanceInvoiceDeliveryCapabilities(row?.invoice_id || row?.id)
       .then((payload) => {
+        if (emailCapabilityRequestRef.current !== capabilityRequestId) return;
         setEmailReviewCapability(payload?.review_cta || null);
       })
       .catch((err) => {
+        if (emailCapabilityRequestRef.current !== capabilityRequestId) return;
         setEmailReviewCapability({
           eligible: false,
           help_text:
@@ -498,8 +503,17 @@ export default function FinanceInvoicesPage({ onNavigate }) {
             tInvoice("errors.reviewCapabilityLoad", "Unable to load invoice review request availability."),
         });
       })
-      .finally(() => setEmailReviewCapabilityLoading(false));
+      .finally(() => {
+        if (emailCapabilityRequestRef.current !== capabilityRequestId) return;
+        setEmailReviewCapabilityLoading(false);
+      });
   }, [emailTemplates, tInvoice]);
+
+  const closeSendEmailDialog = useCallback(() => {
+    emailCapabilityRequestRef.current += 1;
+    setEmailDialogOpen(false);
+    setEmailReviewCapabilityLoading(false);
+  }, []);
 
   useEffect(() => {
     const normalizedAction = String(requestedAction || "").trim().toLowerCase();
@@ -640,7 +654,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
       enqueueSnackbar(tInvoice("snackbar.invoiceEmailQueued", "Invoice email queued."), {
         variant: "success",
       });
-      setEmailDialogOpen(false);
+      closeSendEmailDialog();
       setEmailTarget(null);
       setEmailDocumentIds([]);
       await load();
@@ -1130,7 +1144,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           load();
         }}
       />
-      <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : () => setEmailDialogOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={emailDialogOpen} onClose={emailSending ? undefined : closeSendEmailDialog} fullWidth maxWidth="sm">
         <DialogTitle>{tInvoice("emailDialog.titleSendInvoice", "Send invoice")}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 0.5 }}>
@@ -1238,7 +1252,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEmailDialogOpen(false)} disabled={emailSending}>
+          <Button onClick={closeSendEmailDialog} disabled={emailSending}>
             {tInvoice("common.cancel", "Cancel")}
           </Button>
           <Button variant="contained" onClick={handleSendEmail} disabled={emailSending}>
