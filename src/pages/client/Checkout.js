@@ -539,7 +539,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
 }
 
 /* ------------------------------------------------------------------ */
-function CheckoutFormCore({
+export function CheckoutFormCore({
   companySlug,
   slugOverride,
   onRequestAddService,
@@ -1134,7 +1134,16 @@ function CheckoutFormCore({
 
   const removeItem = (id) => {
     const newCart = cart.filter((c) => c.id !== id);
+    const hasRemainingServices = newCart.some((item) => !isProduct(item) && !isPackage(item));
+    setLoading(false);
+    setErr("");
     persist(newCart);
+    if (!hasRemainingServices && slugLocal) {
+      releasePendingCheckout({ slug: slugLocal }).catch(() => {});
+    }
+    if (newCart.length === 0) {
+      onRequestAddService?.();
+    }
   };
 
   const updatePackageQuantity = (id, nextQuantity) => {
