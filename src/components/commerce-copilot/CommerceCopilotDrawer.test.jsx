@@ -305,4 +305,74 @@ describe("CommerceCopilotDrawer", () => {
     expect(await screen.findAllByText(/applying changes is currently disabled/i)).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /apply approved changes/i })).not.toBeInTheDocument();
   });
+
+  test("accepts package bundle input and keeps the guided flow single-column", async () => {
+    const packageSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I need your package details next.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Product weight is the item itself. Package weight is the empty box, envelope, and packing material.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box or mailer customers receive.",
+                defaults: {
+                  package_name: "",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: packageSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/sess_1/messages") {
+        expect(body.answers[0]).toEqual(
+          expect.objectContaining({
+            question_id: "package_profile_bundle",
+            fact_key: "package_profile_bundle",
+            value: expect.objectContaining({
+              package_profile_name: "Small Jewelry Box",
+              dimensions_input: "5 x 4 x 3 cm",
+              package_tare_weight_input: "15 grams",
+            }),
+          })
+        );
+        return Promise.resolve({ data: packageSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer();
+    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    fireEvent.change(await screen.findByLabelText(/package name/i), { target: { value: "Small Jewelry Box" } });
+    fireEvent.change(screen.getByLabelText(/^length$/i), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText(/^width$/i), { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText(/^height$/i), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText(/empty package weight/i), { target: { value: "15" } });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions/sess_1/messages",
+      expect.objectContaining({ answers: expect.any(Array) }),
+      expect.any(Object)
+    ));
+    expect(screen.queryByText(/horizontal/i)).not.toBeInTheDocument();
+  });
 });

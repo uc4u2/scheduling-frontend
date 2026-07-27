@@ -94,6 +94,9 @@ const HUMAN_LABELS = {
   package_width_mm: "Package width",
   package_height_mm: "Package height",
   package_tare_weight_grams: "Package empty weight",
+  package_dimensions: "Package dimensions",
+  package_profile_name: "Package name",
+  package_set_as_default: "Use as default package",
   product_name: "Product name",
   product_title_candidate: "Product type/name suggestion",
 };
@@ -132,6 +135,123 @@ const flattenActionValues = (values) => {
     flattened[key] = value;
   });
   return flattened;
+};
+
+const newPackageBundleValue = (defaults = {}) => ({
+  package_profile_name: defaults.package_name || "",
+  length: defaults.length || "",
+  width: defaults.width || "",
+  height: defaults.height || "",
+  length_unit: defaults.length_unit || "cm",
+  package_tare_weight_input: defaults.tare_weight || "",
+  weight_unit: defaults.weight_unit || "g",
+  package_set_as_default: defaults.set_as_default !== false,
+});
+
+const PackageBundleControl = ({ question, value, onChange, onShowHelp, onSaveIncomplete, disabled }) => {
+  const bundle = value && typeof value === "object" ? value : newPackageBundleValue(question?.defaults || {});
+
+  const updateBundle = (key, nextValue) => onChange({ ...bundle, [key]: nextValue });
+
+  return (
+    <Stack spacing={1.25}>
+      <TextField
+        fullWidth
+        size="small"
+        label="Package name"
+        value={bundle.package_profile_name || ""}
+        onChange={(event) => updateBundle("package_profile_name", event.target.value)}
+        disabled={disabled}
+      />
+      <Typography variant="body2" sx={{ fontWeight: 700 }}>Package dimensions</Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ minWidth: 0 }}>
+        <TextField
+          fullWidth
+          size="small"
+          label="Length"
+          value={bundle.length || ""}
+          onChange={(event) => updateBundle("length", event.target.value)}
+          disabled={disabled}
+        />
+        <TextField
+          fullWidth
+          size="small"
+          label="Width"
+          value={bundle.width || ""}
+          onChange={(event) => updateBundle("width", event.target.value)}
+          disabled={disabled}
+        />
+        <TextField
+          fullWidth
+          size="small"
+          label="Height"
+          value={bundle.height || ""}
+          onChange={(event) => updateBundle("height", event.target.value)}
+          disabled={disabled}
+        />
+        <FormControl fullWidth size="small">
+          <InputLabel id={`${question.question_id}-length-unit-label`}>Size unit</InputLabel>
+          <Select
+            labelId={`${question.question_id}-length-unit-label`}
+            value={bundle.length_unit || "cm"}
+            label="Size unit"
+            onChange={(event) => updateBundle("length_unit", event.target.value)}
+            disabled={disabled}
+          >
+            <MenuItem value="mm">mm</MenuItem>
+            <MenuItem value="cm">cm</MenuItem>
+            <MenuItem value="in">in</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
+      <Typography variant="body2" sx={{ fontWeight: 700 }}>Empty package weight</Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ minWidth: 0 }}>
+        <TextField
+          fullWidth
+          size="small"
+          label="Empty package weight"
+          placeholder="Example: 15"
+          value={bundle.package_tare_weight_input || ""}
+          onChange={(event) => updateBundle("package_tare_weight_input", event.target.value)}
+          disabled={disabled}
+        />
+        <FormControl fullWidth size="small">
+          <InputLabel id={`${question.question_id}-weight-unit-label`}>Weight unit</InputLabel>
+          <Select
+            labelId={`${question.question_id}-weight-unit-label`}
+            value={bundle.weight_unit || "g"}
+            label="Weight unit"
+            onChange={(event) => updateBundle("weight_unit", event.target.value)}
+            disabled={disabled}
+          >
+            <MenuItem value="g">g</MenuItem>
+            <MenuItem value="oz">oz</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
+      <Typography variant="caption" color="text.secondary">
+        Measure the box or mailer customers will receive. Empty package weight means the box, envelope and packing material without the product.
+      </Typography>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={Boolean(bundle.package_set_as_default)}
+            onChange={(event) => updateBundle("package_set_as_default", event.target.checked)}
+            disabled={disabled}
+          />
+        }
+        label="Use this package as the default"
+      />
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Button size="small" variant="text" onClick={onShowHelp} disabled={disabled}>
+          Help me find or measure this
+        </Button>
+        <Button size="small" variant="text" onClick={onSaveIncomplete} disabled={disabled}>
+          I don't know - save incomplete for now
+        </Button>
+      </Stack>
+    </Stack>
+  );
 };
 
 const FieldEditor = ({ sectionTitle, values, onChange, readOnly = false }) => {
@@ -178,6 +298,19 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
       ) : null}
     </Stack>
   );
+
+  if (inputType === "package_bundle") {
+    return (
+      <PackageBundleControl
+        question={question}
+        value={value}
+        onChange={onChange}
+        onShowHelp={onShowHelp}
+        onSaveIncomplete={onSaveIncomplete}
+        disabled={disabled}
+      />
+    );
+  }
 
   if (inputType === "choice" && choices.length) {
     return (
@@ -334,6 +467,7 @@ const CommerceCopilotDrawer = ({
   const [busy, setBusy] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [questionAnswers, setQuestionAnswers] = useState({});
+  const [recentSessions, setRecentSessions] = useState([]);
   const [sessionData, setSessionData] = useState(null);
   const [draftEdits, setDraftEdits] = useState({});
   const [selectedActions, setSelectedActions] = useState({});
@@ -375,6 +509,7 @@ const CommerceCopilotDrawer = ({
     setSessionData(null);
     setMessageText("");
     setQuestionAnswers({});
+    setRecentSessions([]);
     setDraftEdits({});
     setSelectedActions({});
     setActionValueEdits({});
@@ -400,6 +535,15 @@ const CommerceCopilotDrawer = ({
       setCapabilities(null);
     } finally {
       setLoadingCapabilities(false);
+    }
+  }, [auth]);
+
+  const loadRecentSessions = useCallback(async () => {
+    try {
+      const { data } = await api.get("/inventory/commerce-copilot/sessions?page=1&page_size=6", auth);
+      setRecentSessions(Array.isArray(data?.items) ? data.items : []);
+    } catch (error) {
+      setRecentSessions([]);
     }
   }, [auth]);
 
@@ -477,7 +621,8 @@ const CommerceCopilotDrawer = ({
       return;
     }
     loadCapabilities();
-  }, [open, loadCapabilities, resetState]);
+    loadRecentSessions();
+  }, [open, loadCapabilities, loadRecentSessions, resetState]);
 
   useEffect(() => {
     if (!open || !capabilities || !quickStartWorkflow || sessionData || !availability.chat_available) return;
@@ -517,6 +662,21 @@ const CommerceCopilotDrawer = ({
     await pushSessionTurn(session.public_id, questionDetailsOpen ? messageText : "", answers);
     if (questionDetailsOpen) setMessageText("");
   };
+
+  const loadSessionDetail = useCallback(async (publicId) => {
+    if (!publicId) return;
+    setBusy(true);
+    try {
+      const { data } = await api.get(`/inventory/commerce-copilot/sessions/${publicId}`, auth);
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to resume this draft." });
+    } finally {
+      setBusy(false);
+    }
+  }, [auth]);
 
   const saveIncomplete = async () => {
     if (!session?.public_id) {
@@ -815,6 +975,32 @@ const CommerceCopilotDrawer = ({
                 </Stack>
               </CardContent>
             </Card>
+            {recentSessions.length ? (
+              <Card variant="outlined">
+                <CardContent>
+                  <Stack spacing={1.25}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Resume recent draft</Typography>
+                    {recentSessions.map((item) => (
+                      <Button
+                        key={item.public_id}
+                        variant="text"
+                        sx={{ justifyContent: "space-between", textAlign: "left", px: 0 }}
+                        onClick={() => loadSessionDetail(item.public_id)}
+                        disabled={busy}
+                      >
+                        <Stack spacing={0.25} sx={{ alignItems: "flex-start" }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.title || workflowLabel(item.workflow)}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {workflowLabel(item.workflow)} · {item.progress_percent ?? 0}% · {humanizeStatus(item.status, "draft")}
+                          </Typography>
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">Resume</Typography>
+                      </Button>
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : null}
           </Stack>
         ) : null}
 
@@ -972,6 +1158,22 @@ const CommerceCopilotDrawer = ({
                       <DraftSection
                         title="Confirmed"
                         rows={draftPresentation.sections?.confirmed || []}
+                        editingKey={editingDraftFact?.fact_key}
+                        editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
+                        onEdit={(row) => {
+                          setEditingDraftFact(row);
+                          setDraftEdits((prev) => ({ ...prev, [row.fact_key]: row.raw_value ?? "" }));
+                        }}
+                        onChange={(value) => editingDraftFact && setDraftEdits((prev) => ({ ...prev, [editingDraftFact.fact_key]: value }))}
+                        onSave={saveDraftEdits}
+                        onCancel={() => {
+                          setEditingDraftFact(null);
+                          setDraftEdits({});
+                        }}
+                      />
+                      <DraftSection
+                        title="Package"
+                        rows={draftPresentation.sections?.package || []}
                         editingKey={editingDraftFact?.fact_key}
                         editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
                         onEdit={(row) => {
@@ -1173,6 +1375,26 @@ const CommerceCopilotDrawer = ({
                         ) : null}
                       </Alert>
                     ))}
+                  </Stack>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.5 }}>
+                    <Button variant="contained" onClick={() => session?.public_id && loadSessionDetail(session.public_id)} disabled={busy}>
+                      Help me finish setup
+                    </Button>
+                    {execution.summary?.actions?.find((row) => row.result_summary_json?.deep_link)?.result_summary_json?.deep_link ? (
+                      <Button
+                        variant="outlined"
+                        component="a"
+                        href={execution.summary.actions.find((row) => row.result_summary_json?.deep_link)?.result_summary_json?.deep_link}
+                      >
+                        Open Product
+                      </Button>
+                    ) : null}
+                    <Button variant="text" component="a" href="/manager/advanced-management?tab=delivery">
+                      Open Delivery Setup
+                    </Button>
+                    <Button variant="text" onClick={onClose}>
+                      Finish later
+                    </Button>
                   </Stack>
                 </CardContent>
               </Card>
