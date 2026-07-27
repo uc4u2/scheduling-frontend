@@ -88,8 +88,41 @@ const labelWithHint = (label, hint) => (
   <Stack direction="row" spacing={0.5} alignItems="center">
     <span>{label}</span>
     <Tooltip title={hint} arrow placement="top">
-      <HelpOutlineIcon sx={{ fontSize: 14, color: "text.secondary", cursor: "help" }} />
+      <IconButton
+        size="small"
+        aria-label={`${label} help`}
+        sx={{ p: 0, color: "text.secondary" }}
+      >
+        <HelpOutlineIcon sx={{ fontSize: 14 }} />
+      </IconButton>
     </Tooltip>
+  </Stack>
+);
+
+const hintedTextField = ({ label, hint, inputProps, ...props }) => (
+  <Stack spacing={0.5}>
+    <Stack direction="row" spacing={0.5} alignItems="center">
+      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+        {label}
+      </Typography>
+      <Tooltip title={hint} arrow placement="top">
+        <IconButton
+          size="small"
+          aria-label={`${label} help`}
+          sx={{ p: 0, color: "text.secondary" }}
+        >
+          <HelpOutlineIcon sx={{ fontSize: 14 }} />
+        </IconButton>
+      </Tooltip>
+    </Stack>
+    <TextField
+      {...props}
+      label={undefined}
+      inputProps={{
+        ...(inputProps || {}),
+        "aria-label": label,
+      }}
+    />
   </Stack>
 );
 
@@ -451,12 +484,37 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     size="small"
                     color={settings.easypost_connected ? "success" : "default"}
                     label={settings.easypost_connected ? "Connected" : "Not connected"}
+                    sx={
+                      settings.easypost_connected
+                        ? {
+                            fontWeight: 700,
+                            color: "#ffffff",
+                          }
+                        : {
+                            fontWeight: 700,
+                            color: "text.primary",
+                            bgcolor: "grey.100",
+                          }
+                    }
                   />
                   <Chip
                     size="small"
                     color={settings.address_verification_enabled !== false ? "info" : "default"}
                     variant={settings.address_verification_enabled !== false ? "filled" : "outlined"}
                     label={settings.address_verification_enabled !== false ? "Address verification enabled" : "Address verification disabled"}
+                    sx={
+                      settings.address_verification_enabled !== false
+                        ? {
+                            bgcolor: "info.main",
+                            color: "#ffffff",
+                            fontWeight: 700,
+                          }
+                        : {
+                            fontWeight: 700,
+                            color: "text.primary",
+                            borderColor: "divider",
+                          }
+                    }
                   />
                   {settings.easypost_has_api_key && (
                     <Chip size="small" variant="outlined" label={`Key ••••${settings.easypost_api_key_last4 || ""}`} />
@@ -492,15 +550,16 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     />
                   </Grid>
                   <Grid item xs={12} md={8}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label={labelWithHint("EasyPost API key", "Paste your EasyPost API key. It is stored encrypted. Enter a new key to rotate the existing one.")}
-                      placeholder={settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
-                      value={apiKeyInput}
-                      onChange={(e) => setApiKeyInput(e.target.value)}
-                      disabled={!isEasyPostMode}
-                    />
+                    {hintedTextField({
+                      fullWidth: true,
+                      size: "small",
+                      label: "EasyPost API key",
+                      hint: "Paste your EasyPost API key. It is stored encrypted. Enter a new key to rotate the existing one.",
+                      placeholder: settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key",
+                      value: apiKeyInput,
+                      onChange: (e) => setApiKeyInput(e.target.value),
+                      disabled: !isEasyPostMode,
+                    })}
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing || !isEasyPostMode}>
@@ -509,14 +568,14 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin name", "Sender/business name used as shipment origin. Example: your store name.")} value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin phone", "Contact phone for origin/sender address. Include country code where possible.")} value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin address 1", "Primary street address EasyPost uses as shipment origin.")} value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin address 2", "Optional apartment/suite/unit line for origin address.")} value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin city", "City of the shipment origin address.")} value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin region", "State/Province/Region code. Example: ON, CA, NY.")} value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin postal code", "ZIP/Postal code for origin address.")} value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin country", "2-letter country code (ISO-2). Example: US, CA.")} value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin name", hint: "Sender/business name used as shipment origin. Example: your store name.", value: settings.origin_name, onChange: (e) => updateField("origin_name", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin phone", hint: "Contact phone for origin/sender address. Include country code where possible.", value: settings.origin_phone, onChange: (e) => updateField("origin_phone", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin address 1", hint: "Primary street address EasyPost uses as shipment origin.", value: settings.origin_address1, onChange: (e) => updateField("origin_address1", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin address 2", hint: "Optional apartment/suite/unit line for origin address.", value: settings.origin_address2, onChange: (e) => updateField("origin_address2", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin city", hint: "City of the shipment origin address.", value: settings.origin_city, onChange: (e) => updateField("origin_city", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin region", hint: "State/Province/Region code. Example: ON, CA, NY.", value: settings.origin_region, onChange: (e) => updateField("origin_region", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin postal code", hint: "ZIP/Postal code for origin address.", value: settings.origin_postal_code, onChange: (e) => updateField("origin_postal_code", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin country", hint: "2-letter country code (ISO-2). Example: US, CA.", value: settings.origin_country, onChange: (e) => updateField("origin_country", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>
                     <TextField
                       select

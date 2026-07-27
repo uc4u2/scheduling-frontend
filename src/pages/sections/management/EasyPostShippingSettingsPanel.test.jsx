@@ -96,6 +96,17 @@ describe("EasyPostShippingSettingsPanel", () => {
     expect(screen.getByText(/address verification enabled/i)).toBeInTheDocument();
   });
 
+  test("shows non-empty help tooltip text for origin fields", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+    const automationTab = await screen.findByRole("tab", { name: /easypost automation/i });
+    fireEvent.click(automationTab);
+
+    const helpButton = await screen.findByRole("button", { name: /origin name help/i });
+    fireEvent.mouseOver(helpButton);
+
+    expect(await screen.findByText(/sender\/business name used as shipment origin/i)).toBeInTheDocument();
+  });
+
   test("supports editing and archiving package profiles", async () => {
     mockApiGet.mockResolvedValue({
       data: {
