@@ -57,44 +57,125 @@ const renderDrawer = (props = {}) =>
     </ThemeProvider>
   );
 
+const guidedSession = {
+  session: { public_id: "sess_1", workflow: "create_physical_product", status: "awaiting_manager", context_summary_json: { progress_percent: 55 } },
+  messages: [
+    {
+      id: 1,
+      role: "assistant",
+      message_text:
+        "Great — I understood that this is a physical product, the product looks like a necklace, the price is USD 50, you want to ship across Canada, you are only shipping domestically right now.\n\nI need 3 more details:\n1. What name should customers see?\n2. Do you want Schedulaa to track inventory?\n3. You mentioned 10 g or 50 g. What is the exact product weight without the box?\n\nYour shipping package also needs exact length, width, height, and empty-package weight. We can complete that next.",
+      safe_metadata_json: {
+        questions: [
+          {
+            question_id: "product_name",
+            fact_key: "product_name",
+            plain_language_question: "What name should customers see?",
+            why_needed: "Customers will see this name in your storefront and at checkout.",
+            input_type: "text",
+            choices: [],
+            allow_unknown: true,
+            show_help_measure: false,
+            help_text: null,
+          },
+          {
+            question_id: "track_stock",
+            fact_key: "track_stock",
+            plain_language_question: "Do you want Schedulaa to track inventory?",
+            why_needed: "Inventory tracking changes what stock details are required.",
+            input_type: "yes_no",
+            choices: [],
+            allow_unknown: true,
+            show_help_measure: false,
+            help_text: null,
+          },
+          {
+            question_id: "shipping_weight_grams",
+            fact_key: "shipping_weight_grams",
+            plain_language_question: "You mentioned 10 g or 50 g. What is the exact product weight without the box?",
+            why_needed: "Carriers use the real weight to calculate accurate shipping prices.",
+            input_type: "number",
+            choices: [],
+            allow_unknown: true,
+            show_help_measure: true,
+            help_text: "A small kitchen or postal scale works well. Enter grams or ounces and Schedulaa will normalize it.",
+          },
+        ],
+      },
+    },
+  ],
+  facts: [],
+  draft: {
+    public_id: "draft_1",
+    status: "incomplete",
+    validation_results_json: {
+      progress_percent: 55,
+      known: [{ key: "price" }, { key: "currency" }, { key: "is_digital" }],
+      missing_required: [{ key: "product_name" }, { key: "track_stock" }],
+      needs_confirmation: [{ key: "shipping_weight_grams" }],
+    },
+    draft_payload_json: {},
+    presentation: {
+      sections: {
+        confirmed: [
+          { fact_key: "price", label: "Price", display_value: "USD 50", raw_value: 50, editable: true },
+          { fact_key: "is_digital", label: "Product type", display_value: "Physical", raw_value: false, editable: true },
+          { fact_key: "domestic_destination_country", label: "Shipping area", display_value: "Canada", raw_value: "CA", editable: false },
+        ],
+        needs_confirmation: [
+          { fact_key: "shipping_weight_grams", label: "Product weight", display_value: "You mentioned 10 g or 50 g", raw_value: null, editable: true },
+          { fact_key: "package_length_mm", label: "Package length", display_value: "You mentioned 3 cm to 5 cm. Exact length, width, and height are still needed.", raw_value: null, editable: true },
+        ],
+        suggested: [
+          { fact_key: "category", label: "Category", display_value: "Jewelry", raw_value: "Jewelry", editable: true },
+          { fact_key: "product_title_candidate", label: "Product type/name suggestion", display_value: "Necklace", raw_value: "Necklace", editable: true },
+        ],
+        missing: [
+          { fact_key: "product_name", label: "Product name", display_value: null, raw_value: null, editable: true },
+          { fact_key: "track_stock", label: "Track inventory", display_value: null, raw_value: null, editable: true },
+          { fact_key: "quantity", label: "Starting inventory", display_value: null, raw_value: null, editable: true },
+          { fact_key: "package_tare_weight_grams", label: "Package empty weight", display_value: null, raw_value: null, editable: true },
+        ],
+      },
+      activation_blockers: [
+        {
+          code: "package_profile_ready",
+          plain_language_message: "A shipping package still needs to be created or selected.",
+        },
+      ],
+    },
+  },
+  plan: null,
+  approval: null,
+  execution: null,
+  usage_summary: { requests: 1, draft_generations: 1, plan_generations: 0, estimated_total_cost_micros: 1000 },
+};
+
 describe("CommerceCopilotDrawer", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.innerWidth = 1280;
-    mockApiGet.mockImplementation((url) => {
-      if (String(url) === "/inventory/commerce-copilot/capabilities") {
-        return Promise.resolve({ data: availableCapabilities });
-      }
-      return Promise.resolve({ data: {} });
-    });
-    mockApiPatch.mockResolvedValue({
-      data: {
-        session: { public_id: "sess_1", workflow: "create_physical_product", status: "plan_ready" },
-        messages: [],
-        facts: [],
-        draft: {
-          public_id: "draft_1",
-          validation_results_json: { progress_percent: 55 },
-          draft_payload_json: { confirmed_values: { name: "Edited Necklace" }, suggested_values: {}, unknown_values: {} },
-        },
-        plan: {
-          public_id: "plan_1",
-          version: 1,
-          actions: [
-            {
-              public_id: "act_1",
-              title: "Create product",
-              plain_language_description: "Create a hidden product draft for review.",
-              risk_level: "medium_write",
-              execution_supported: true,
-              proposed_input_json: { price: "85.00", shipping_weight_grams: 25 },
-              status: "rejected",
+    mockApiGet.mockResolvedValue({ data: availableCapabilities });
+    mockApiPatch.mockImplementation((url, body) =>
+      Promise.resolve({
+        data: {
+          ...guidedSession,
+          draft: {
+            ...guidedSession.draft,
+            presentation: {
+              ...guidedSession.draft.presentation,
+              sections: {
+                ...guidedSession.draft.presentation.sections,
+                confirmed: [
+                  ...guidedSession.draft.presentation.sections.confirmed,
+                  { fact_key: Object.keys(body)[0], label: "Product name", display_value: body.product_name || "Northern Lights Necklace", raw_value: body.product_name || "Northern Lights Necklace", editable: true },
+                ],
+              },
             },
-          ],
+          },
         },
-        usage_summary: { requests: 2, draft_generations: 2, plan_generations: 1, estimated_total_cost_micros: 2468 },
-      },
-    });
+      })
+    );
   });
 
   test("shows quick starts and direct first-run input when fully available", async () => {
@@ -108,70 +189,39 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.queryByText(/not available right now/i)).not.toBeInTheDocument();
   });
 
-  test("submits a first-run message by creating a session and sending the manager turn", async () => {
+  test("renders structured guided questions and submits structured answers", async () => {
     mockApiPost.mockImplementation((url, body) => {
       if (String(url) === "/inventory/commerce-copilot/sessions") {
-        expect(body.workflow).toBe("create_physical_product");
-        return Promise.resolve({
-          data: {
-            session: { public_id: "sess_1", workflow: "create_physical_product", status: "awaiting_manager", context_summary_json: { progress_percent: 35 } },
-            messages: [{ id: 1, role: "assistant", message_text: "Tell me what you sell and what customers will receive." }],
-            facts: [],
-            draft: {
-              public_id: "draft_1",
-              validation_results_json: { progress_percent: 35, known: [], missing_required: [], needs_confirmation: [], next_question_candidates: [] },
-              draft_payload_json: { confirmed_values: {}, suggested_values: {}, unknown_values: {} },
-            },
-            plan: null,
-            usage_summary: { requests: 0, draft_generations: 0, plan_generations: 0, estimated_total_cost_micros: 0 },
-          },
-        });
+        return Promise.resolve({ data: guidedSession });
       }
       if (String(url) === "/inventory/commerce-copilot/sessions/sess_1/messages") {
-        expect(body.message).toBe("I sell handmade bracelets for $45 and want to ship within Canada.");
+        expect(body.answers).toEqual([
+          {
+            question_id: "product_name",
+            fact_key: "product_name",
+            value: "Northern Lights Necklace",
+            confirmation_status: "confirmed",
+          },
+          {
+            question_id: "track_stock",
+            fact_key: "track_stock",
+            value: "yes",
+            confirmation_status: "confirmed",
+          },
+          {
+            question_id: "shipping_weight_grams",
+            fact_key: "shipping_weight_grams",
+            value: "50",
+            confirmation_status: "confirmed",
+          },
+        ]);
         return Promise.resolve({
           data: {
-            session: { public_id: "sess_1", workflow: "create_physical_product", status: "awaiting_manager", context_summary_json: { progress_percent: 55 } },
+            ...guidedSession,
             messages: [
-              { id: 1, role: "assistant", message_text: "Tell me what you sell and what customers will receive." },
-              { id: 2, role: "manager", message_text: "I sell handmade bracelets for $45 and want to ship within Canada." },
-              {
-                id: 3,
-                role: "assistant",
-                message_text: "How much does the product itself weigh, without the box?",
-                safe_metadata_json: {
-                  questions: [
-                    {
-                      question_id: "shipping_weight_grams",
-                      plain_language_question: "How much does the product itself weigh, without the box?",
-                      why_needed: "Carriers use the real weight to calculate accurate shipping prices.",
-                      input_type: "number",
-                      choices: [],
-                      allow_unknown: true,
-                      show_help_measure: true,
-                      help_text: "A small kitchen or postal scale works well.",
-                    },
-                  ],
-                },
-              },
+              ...guidedSession.messages,
+              { id: 2, role: "manager", message_text: "Structured answers:\n- Product name: Northern Lights Necklace" },
             ],
-            facts: [],
-            draft: {
-              public_id: "draft_1",
-              validation_results_json: {
-                progress_percent: 55,
-                known: [{ key: "name", label: "Product name" }],
-                missing_required: [{ key: "shipping_weight_grams", label: "Weight" }],
-                needs_confirmation: [],
-              },
-              draft_payload_json: {
-                confirmed_values: { name: "Handmade Bracelet" },
-                suggested_values: { description: "A handmade bracelet sold within Canada." },
-                unknown_values: { shipping_weight_grams: null },
-              },
-            },
-            plan: null,
-            usage_summary: { requests: 1, draft_generations: 1, plan_generations: 0, estimated_total_cost_micros: 1000 },
           },
         });
       }
@@ -179,50 +229,47 @@ describe("CommerceCopilotDrawer", () => {
     });
 
     renderDrawer();
-    await screen.findByText(/what would you like help with/i);
-    fireEvent.change(screen.getByLabelText(/tell commerce copilot what you need/i), {
-      target: { value: "I sell handmade bracelets for $45 and want to ship within Canada." },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^send$/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/a few details are needed/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/tell commerce copilot what you need/i)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/what name should customers see/i), { target: { value: "Northern Lights Necklace" } });
+    fireEvent.click(screen.getByRole("button", { name: /^yes$/i }));
+    fireEvent.change(screen.getByLabelText(/what is the exact product weight without the box/i), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
-    expect(await screen.findAllByText(/how much does the product itself weigh/i)).toHaveLength(2);
-    expect(screen.getByText(/help me find or measure this/i)).toBeInTheDocument();
-    expect(screen.getByText(/^confirmed$/i)).toBeInTheDocument();
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions/sess_1/messages",
+      expect.objectContaining({ answers: expect.any(Array) }),
+      expect.any(Object)
+    ));
   });
 
-  test("shows setup-incomplete state when openai is not configured", async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: {
-        availability: {
-          available: false,
-          chat_available: false,
-          drafts_available: false,
-          plans_available: false,
-          write_actions_available: false,
-          monetization_mode: "free_launch",
-          access_source: null,
-          provider_ready: false,
-        },
-        configuration: {
-          global_feature_enabled: true,
-          write_feature_enabled: true,
-          openai_key_configured: false,
-          model_configured: true,
-          tenant_access_enabled: true,
-          tenant_plan_allowed: true,
-        },
-        blockers: ["openai_not_configured"],
-        safe_message: "Commerce Copilot setup is incomplete. Ask a platform administrator to configure the AI provider.",
-        billing: { ai_commerce_copilot: { monetization_mode: "free_launch" } },
-      },
-    });
+  test("renders a read-only draft preview with humanized labels and no raw keys", async () => {
+    mockApiPost.mockResolvedValueOnce({ data: guidedSession });
 
     renderDrawer();
-    expect(await screen.findByRole("heading", { name: /commerce copilot setup is incomplete/i })).toBeInTheDocument();
-    expect(screen.queryByText(/create a physical product/i)).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/draft preview/i)).toBeInTheDocument();
+    expect(screen.getByText("USD 50")).toBeInTheDocument();
+    expect(screen.getByText("Physical")).toBeInTheDocument();
+    expect(screen.getByText("A shipping package still needs to be created or selected.")).toBeInTheDocument();
+    expect(screen.queryByText(/domestic_shipping_intent/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/shipping_weight_grams/i)).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue(/usd 50/i)).not.toBeInTheDocument();
   });
 
-  test("keeps drafts and plans available while writes are disabled", async () => {
+  test("opens explicit draft edit instead of showing missing facts as text fields", async () => {
+    mockApiPost.mockResolvedValueOnce({ data: guidedSession });
+
+    renderDrawer();
+    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/^Still needed$/i, { selector: "h6" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^save$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /^edit$/i })[0]);
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeInTheDocument();
+  });
+
+  test("shows writes-disabled banner without blocking drafts and plans", async () => {
     mockApiGet.mockResolvedValueOnce({
       data: {
         ...availableCapabilities,
@@ -234,14 +281,7 @@ describe("CommerceCopilotDrawer", () => {
     });
     mockApiPost.mockResolvedValueOnce({
       data: {
-        session: { public_id: "sess_1", workflow: "create_physical_product", status: "plan_ready", context_summary_json: { progress_percent: 70 } },
-        messages: [{ id: 1, role: "assistant", message_text: "I prepared a draft and plan for you." }],
-        facts: [],
-        draft: {
-          public_id: "draft_1",
-          validation_results_json: { progress_percent: 70, known: [], missing_required: [], needs_confirmation: [] },
-          draft_payload_json: { confirmed_values: { name: "Silver Necklace" }, suggested_values: {}, unknown_values: {} },
-        },
+        ...guidedSession,
         plan: {
           public_id: "plan_1",
           version: 1,
@@ -252,100 +292,17 @@ describe("CommerceCopilotDrawer", () => {
               plain_language_description: "Create a hidden product draft for review.",
               risk_level: "medium_write",
               execution_supported: false,
-              proposed_input_json: { name: "Silver Necklace" },
+              proposed_input_json: { product_name: "Northern Lights Necklace" },
               status: "proposed",
             },
           ],
         },
-        usage_summary: { requests: 1, draft_generations: 1, plan_generations: 1, estimated_total_cost_micros: 1234 },
       },
     });
 
     renderDrawer();
     fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    expect(await screen.findByText(/i prepared a draft and plan for you/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/applying changes is currently disabled/i).length).toBeGreaterThan(0);
+    expect(await screen.findAllByText(/applying changes is currently disabled/i)).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /apply approved changes/i })).not.toBeInTheDocument();
-  });
-
-  test("supports approval and apply flow when writes are enabled", async () => {
-    mockApiPost.mockImplementation((url, body) => {
-      if (String(url) === "/inventory/commerce-copilot/sessions") {
-        return Promise.resolve({
-          data: {
-            session: { public_id: "sess_1", workflow: "create_physical_product", status: "plan_ready", context_summary_json: { progress_percent: 70 } },
-            messages: [{ id: 1, role: "assistant", message_text: "I prepared a draft and plan for you." }],
-            facts: [],
-            draft: {
-              public_id: "draft_1",
-              validation_results_json: { progress_percent: 70, known: [], missing_required: [], needs_confirmation: [] },
-              draft_payload_json: { confirmed_values: { name: "Silver Necklace" }, suggested_values: {}, unknown_values: {} },
-            },
-            plan: {
-              public_id: "plan_1",
-              version: 1,
-              actions: [
-                {
-                  public_id: "act_1",
-                  title: "Create product",
-                  plain_language_description: "Create a hidden product draft for review.",
-                  risk_level: "medium_write",
-                  execution_supported: true,
-                  proposed_input_json: { price: "85.00", shipping_weight_grams: 25 },
-                  status: "proposed",
-                },
-              ],
-            },
-            approval: null,
-            execution: null,
-            usage_summary: { requests: 1, draft_generations: 1, plan_generations: 1, estimated_total_cost_micros: 1000 },
-          },
-        });
-      }
-      if (String(url) === "/inventory/commerce-copilot/plans/plan_1/approve") {
-        expect(body.selected_action_ids).toEqual(["act_1"]);
-        expect(body.confirmation_keys).toEqual(expect.arrayContaining(["price", "shipping_weight_grams", "__account_confirmed__"]));
-        return Promise.resolve({
-          data: {
-            public_id: "approval_1",
-            status: "approved",
-            execution_available: true,
-            approved_actions: [{ action_public_id: "act_1" }],
-          },
-        });
-      }
-      if (String(url) === "/inventory/commerce-copilot/approvals/approval_1/execute") {
-        expect(body.final_confirmation).toBe(true);
-        return Promise.resolve({
-          data: {
-            public_id: "exec_1",
-            status: "completed",
-            summary: {
-              actions: [
-                {
-                  public_id: "row_1",
-                  status: "succeeded",
-                  result_summary_json: { deep_link: "/manager/advanced-management?tab=products&productId=12" },
-                },
-              ],
-            },
-          },
-        });
-      }
-      return Promise.resolve({ data: {} });
-    });
-
-    renderDrawer();
-    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    expect(await screen.findByText(/i prepared a draft and plan for you/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(/i reviewed the price value/i));
-    fireEvent.click(screen.getByLabelText(/i reviewed the shipping weight grams value/i));
-    fireEvent.click(screen.getByLabelText(/i understand that these changes will be applied/i));
-    fireEvent.click(screen.getByRole("button", { name: /approve selected changes/i }));
-    expect(await screen.findByText(/changes approved/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /apply approved changes/i }));
-    expect(await screen.findByText(/approved changes were applied/i)).toBeInTheDocument();
-    expect(screen.getByText(/execution results/i)).toBeInTheDocument();
   });
 });

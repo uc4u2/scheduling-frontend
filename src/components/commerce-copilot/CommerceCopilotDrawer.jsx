@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -8,14 +8,15 @@ import {
   CardContent,
   Checkbox,
   Chip,
+  Collapse,
   CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
   Drawer,
+  Divider,
   FormControl,
   FormControlLabel,
-  Grid,
   InputLabel,
   MenuItem,
   Select,
@@ -65,23 +66,37 @@ const COPILOT_OVERLAY_Z_INDEX = (theme) => theme.zIndex.modal + 3000;
 const FACT_CONFIRMATION_KEYS = new Set([
   "price",
   "cost",
-  "qty_on_hand",
+  "quantity",
   "shipping_weight_grams",
-  "shipping_length_mm",
-  "shipping_width_mm",
-  "shipping_height_mm",
+  "package_length_mm",
+  "package_width_mm",
+  "package_height_mm",
   "shipping_country_of_origin",
   "shipping_hs_code",
   "shipping_declared_value_cents",
   "shipping_declared_value_currency",
-  "length_mm",
-  "width_mm",
-  "height_mm",
-  "tare_weight_grams",
+  "package_tare_weight_grams",
   "destination_countries",
   "digital_access_days",
   "digital_max_downloads",
 ]);
+
+const HUMAN_LABELS = {
+  domestic_shipping_intent: "Shipping within your home country",
+  domestic_destination_country: "Shipping area",
+  is_digital: "Product type",
+  shipping_weight_grams: "Product weight",
+  track_stock: "Track inventory",
+  quantity: "Starting inventory",
+  qty_on_hand: "Starting inventory",
+  package_profile_ready: "Shipping package",
+  package_length_mm: "Package length",
+  package_width_mm: "Package width",
+  package_height_mm: "Package height",
+  package_tare_weight_grams: "Package empty weight",
+  product_name: "Product name",
+  product_title_candidate: "Product type/name suggestion",
+};
 
 const STATUS_LABELS = {
   global_feature_disabled: "Commerce Copilot is currently disabled.",
@@ -102,6 +117,8 @@ const workflowLabel = (workflow) => {
 
 const humanizeStatus = (value, fallback = "draft") => String(value || fallback).replace(/_/g, " ");
 
+const humanizeFactKey = (value) => HUMAN_LABELS[value] || String(value || "").replace(/_/g, " ");
+
 const flattenActionValues = (values) => {
   if (!values || typeof values !== "object" || Array.isArray(values)) return {};
   const flattened = {};
@@ -117,7 +134,7 @@ const flattenActionValues = (values) => {
   return flattened;
 };
 
-const FieldEditor = ({ sectionTitle, values, onChange }) => {
+const FieldEditor = ({ sectionTitle, values, onChange, readOnly = false }) => {
   const entries = Object.entries(values || {});
   if (!entries.length) return null;
   return (
@@ -126,11 +143,12 @@ const FieldEditor = ({ sectionTitle, values, onChange }) => {
       {entries.map(([key, value]) => (
         <TextField
           key={key}
-          label={key.replace(/_/g, " ")}
+          label={humanizeFactKey(key)}
           value={value == null ? "" : String(value)}
-          onChange={(event) => onChange(key, event.target.value)}
+          onChange={(event) => onChange?.(key, event.target.value)}
           fullWidth
           size="small"
+          InputProps={readOnly ? { readOnly: true } : undefined}
         />
       ))}
     </Stack>
@@ -161,15 +179,17 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
     </Stack>
   );
 
-  if (inputType === "choice") {
+  if (inputType === "choice" && choices.length) {
     return (
       <Stack spacing={1}>
         <FormControl fullWidth size="small">
-          <InputLabel id={`${question.question_id}-label`}>Choose an option</InputLabel>
+          <InputLabel id={`${question.question_id}-label`}>
+            {question?.plain_language_question || "Choose an option"}
+          </InputLabel>
           <Select
             labelId={`${question.question_id}-label`}
             value={value ?? ""}
-            label="Choose an option"
+            label={question?.plain_language_question || "Choose an option"}
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled}
           >
@@ -178,6 +198,25 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
             ))}
           </Select>
         </FormControl>
+        {sharedActions}
+      </Stack>
+    );
+  }
+
+  if (inputType === "choice" && !choices.length) {
+    return (
+      <Stack spacing={1}>
+        <Alert severity="warning" sx={{ py: 0 }}>
+          This question arrived without choices. Enter the value directly instead.
+        </Alert>
+        <TextField
+          fullWidth
+          size="small"
+          label={question?.plain_language_question || "Your answer"}
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+        />
         {sharedActions}
       </Stack>
     );
@@ -208,13 +247,61 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
         fullWidth
         size="small"
         type={typeMap[inputType] || "text"}
-        label={inputType === "currency" ? "Amount" : "Your answer"}
+        label={question?.plain_language_question || (inputType === "currency" ? "Amount" : "Your answer")}
         placeholder={inputType === "country" ? "Example: Canada" : ""}
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
       />
       {sharedActions}
+    </Stack>
+  );
+};
+
+const DraftSection = ({ title, rows, editingKey, editValue, onEdit, onChange, onSave, onCancel }) => {
+  if (!Array.isArray(rows) || !rows.length) return null;
+  return (
+    <Stack spacing={1}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{title}</Typography>
+      {rows.map((row) => {
+        const isEditing = editingKey === row.fact_key;
+        return (
+          <Card key={`${title}-${row.fact_key}`} variant="outlined">
+            <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="flex-start" sx={{ minWidth: 0 }}>
+                  <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.label}</Typography>
+                    <Typography variant="body2" color={row.display_value ? "text.primary" : "text.secondary"} sx={{ wordBreak: "break-word" }}>
+                      {row.display_value || "Still needed"}
+                    </Typography>
+                  </Stack>
+                  {row.editable ? (
+                    <Button size="small" variant="text" onClick={() => onEdit(row)}>
+                      Edit
+                    </Button>
+                  ) : null}
+                </Stack>
+                {isEditing ? (
+                  <Stack spacing={1}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label={row.label}
+                      value={editValue ?? ""}
+                      onChange={(event) => onChange(event.target.value)}
+                    />
+                    <Stack direction="row" spacing={1}>
+                      <Button size="small" variant="contained" onClick={onSave}>Save</Button>
+                      <Button size="small" variant="text" onClick={onCancel}>Cancel</Button>
+                    </Stack>
+                  </Stack>
+                ) : null}
+              </Stack>
+            </CardContent>
+          </Card>
+        );
+      })}
     </Stack>
   );
 };
@@ -231,17 +318,6 @@ const inferWorkflowFromText = (message, { targetProductId, targetProductOrderId 
   return null;
 };
 
-const buildQuestionReply = (questions, answers) => {
-  const lines = questions
-    .map((question) => {
-      const value = answers[question.question_id];
-      if (value == null || value === "") return null;
-      return `- ${question.plain_language_question} ${value}`;
-    })
-    .filter(Boolean);
-  return lines.length ? `Here are my answers:\n${lines.join("\n")}` : "";
-};
-
 const CommerceCopilotDrawer = ({
   open,
   onClose,
@@ -256,7 +332,6 @@ const CommerceCopilotDrawer = ({
   const [capabilities, setCapabilities] = useState(null);
   const [capabilityError, setCapabilityError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [bootMessage, setBootMessage] = useState("");
   const [messageText, setMessageText] = useState("");
   const [questionAnswers, setQuestionAnswers] = useState({});
   const [sessionData, setSessionData] = useState(null);
@@ -267,6 +342,9 @@ const CommerceCopilotDrawer = ({
   const [approval, setApproval] = useState(null);
   const [execution, setExecution] = useState(null);
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
+  const [questionDetailsOpen, setQuestionDetailsOpen] = useState(false);
+  const [editingDraftFact, setEditingDraftFact] = useState(null);
+  const questionCardRef = useRef(null);
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
@@ -274,18 +352,14 @@ const CommerceCopilotDrawer = ({
   const usageSummary = sessionData?.usage_summary || {};
   const messages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
   const availability = capabilities?.availability || {};
-  const configuration = capabilities?.configuration || {};
   const blockers = Array.isArray(capabilities?.blockers) ? capabilities.blockers : [];
   const copilotBilling = capabilities?.billing?.ai_commerce_copilot || capabilities?.copilot || {};
   const progress = draft?.validation_results_json?.progress_percent ?? session?.context_summary_json?.progress_percent ?? 0;
   const quickStartWorkflow = initialWorkflow || "";
   const monetizationMode = availability?.monetization_mode || copilotBilling?.monetization_mode || "free_launch";
-  const accessSource = availability?.access_source || copilotBilling?.access_source || null;
   const writeActionsAvailable = Boolean(availability?.write_actions_available);
   const chatAvailable = Boolean(availability?.chat_available);
   const draftsAvailable = Boolean(availability?.drafts_available);
-  const plansAvailable = Boolean(availability?.plans_available);
-  const providerReady = Boolean(availability?.provider_ready);
   const overallAvailable = Boolean(availability?.available);
   const addonActive = Boolean(copilotBilling?.addon_active);
   const activationAvailable = Boolean(copilotBilling?.activation_available);
@@ -308,6 +382,8 @@ const CommerceCopilotDrawer = ({
     setApproval(null);
     setExecution(null);
     setStatusMessage({ type: "", text: "" });
+    setQuestionDetailsOpen(false);
+    setEditingDraftFact(null);
   }, []);
 
   const loadCapabilities = useCallback(async () => {
@@ -352,15 +428,20 @@ const CommerceCopilotDrawer = ({
     }
   }, [auth, targetProductId, targetProductOrderId]);
 
-  const pushSessionTurn = useCallback(async (sessionPublicId, text) => {
+  const pushSessionTurn = useCallback(async (sessionPublicId, text, answers = []) => {
     setBusy(true);
     setStatusMessage({ type: "", text: "" });
     try {
-      const { data } = await api.post(`/inventory/commerce-copilot/sessions/${sessionPublicId}/messages`, { message: text }, auth);
+      const { data } = await api.post(
+        `/inventory/commerce-copilot/sessions/${sessionPublicId}/messages`,
+        { message: text, answers },
+        auth
+      );
       setSessionData(data);
       setApproval(data?.approval || null);
       setExecution(data?.execution || null);
       setQuestionAnswers({});
+      setQuestionDetailsOpen(false);
       return true;
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "AI is temporarily unavailable. Try again." });
@@ -403,14 +484,6 @@ const CommerceCopilotDrawer = ({
     createSession(quickStartWorkflow);
   }, [open, capabilities, quickStartWorkflow, sessionData, availability.chat_available, createSession]);
 
-  useEffect(() => {
-    const bits = [];
-    if (availability.available === false && capabilities?.safe_message) bits.push(capabilities.safe_message);
-    if (capabilities?.safe_message && availability.available) bits.push(capabilities.safe_message);
-    if (capabilities?.copilot?.warning) bits.push(capabilities.copilot.warning);
-    setBootMessage(bits.filter(Boolean).join(" "));
-  }, [capabilities, availability.available]);
-
   const submitMessage = async () => {
     if (session?.public_id && String(messageText || "").trim()) {
       const next = String(messageText || "").trim();
@@ -425,12 +498,24 @@ const CommerceCopilotDrawer = ({
 
   const submitQuestionAnswers = async () => {
     if (!session?.public_id || !currentQuestions.length) return;
-    const reply = buildQuestionReply(currentQuestions, questionAnswers);
-    if (!reply.trim()) {
+    const answers = currentQuestions
+      .map((question) => {
+        const value = questionAnswers[question.question_id];
+        if (value == null || value === "") return null;
+        return {
+          question_id: question.question_id,
+          fact_key: question.fact_key || question.question_id,
+          value,
+          confirmation_status: "confirmed",
+        };
+      })
+      .filter(Boolean);
+    if (!answers.length) {
       setStatusMessage({ type: "warning", text: "Answer at least one question before sending." });
       return;
     }
-    await pushSessionTurn(session.public_id, reply);
+    await pushSessionTurn(session.public_id, questionDetailsOpen ? messageText : "", answers);
+    if (questionDetailsOpen) setMessageText("");
   };
 
   const saveIncomplete = async () => {
@@ -480,6 +565,7 @@ const CommerceCopilotDrawer = ({
       setApproval(data?.approval || null);
       setExecution(data?.execution || null);
       setDraftEdits({});
+      setEditingDraftFact(null);
       setStatusMessage({ type: "success", text: "Draft changes saved for review." });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to save draft edits." });
@@ -506,6 +592,11 @@ const CommerceCopilotDrawer = ({
 
   const updateDraftEditField = (key, value) => setDraftEdits((prev) => ({ ...prev, [key]: value }));
 
+  useEffect(() => {
+    if (!currentQuestions.length || !questionCardRef.current || typeof questionCardRef.current.scrollIntoView !== "function") return;
+    questionCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentQuestions.length, latestAssistantMessage?.id]);
+
   const updatePlanActionStatus = async (publicId, status) => {
     if (!plan?.public_id) return;
     setBusy(true);
@@ -522,10 +613,13 @@ const CommerceCopilotDrawer = ({
   };
 
   const draftPayload = draft?.draft_payload_json || {};
-  const confirmedValues = draftPayload.confirmed_values || {};
-  const suggestedValues = draftPayload.suggested_values || {};
-  const unknownValues = draftPayload.unknown_values || {};
+  const draftPresentation = draft?.presentation || draftPayload.presentation || { sections: {} };
   const planActions = Array.isArray(plan?.actions) ? plan.actions.slice(0, 5) : [];
+  const progressKnown = Array.isArray(draft?.validation_results_json?.known) ? draft.validation_results_json.known : [];
+  const progressMissing = Array.isArray(draft?.validation_results_json?.missing_required) ? draft.validation_results_json.missing_required : [];
+  const progressNeedsConfirmation = Array.isArray(draft?.validation_results_json?.needs_confirmation)
+    ? draft.validation_results_json.needs_confirmation
+    : [];
 
   useEffect(() => {
     if (!planActions.length) {
@@ -672,9 +766,15 @@ const CommerceCopilotDrawer = ({
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>What would you like help with?</Typography>
               <Typography variant="body2" color="text.secondary">Pick a workflow or describe what you need in plain language.</Typography>
             </Box>
-            <Grid container spacing={1.5}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                gap: 1.5,
+              }}
+            >
               {QUICK_STARTS.map((card) => (
-                <Grid item xs={12} sm={6} key={card.workflow}>
+                <Box key={card.workflow}>
                   <Card variant="outlined">
                     <CardActionArea onClick={() => (chatAvailable ? createSession(card.workflow) : null)}>
                       <Box sx={{ pointerEvents: chatAvailable ? "auto" : "none", opacity: chatAvailable ? 1 : 0.65 }}>
@@ -690,9 +790,9 @@ const CommerceCopilotDrawer = ({
                       </Box>
                     </CardActionArea>
                   </Card>
-                </Grid>
+                </Box>
               ))}
-            </Grid>
+            </Box>
             <Card variant="outlined">
               <CardContent>
                 <Stack spacing={1.25}>
@@ -738,56 +838,92 @@ const CommerceCopilotDrawer = ({
               {monetizationMode === "paid_addon_required" ? <Chip label={`Actions remaining: ${allowanceRemaining ?? 0}`} variant="outlined" /> : null}
             </Stack>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+            <Stack spacing={2} sx={{ minWidth: 0, overflowX: "hidden" }}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Conversation summary</Typography>
+                  <Stack spacing={1.25} sx={{ maxHeight: 280, overflowY: "auto", pr: 0.5, minWidth: 0 }}>
+                    {messages.map((row) => (
+                      <Box
+                        key={row.id}
+                        sx={{
+                          p: 1.25,
+                          borderRadius: 1.5,
+                          bgcolor: row.role === "manager" ? "action.selected" : row.role === "assistant" ? "background.default" : "action.hover",
+                          border: (theme) => `1px solid ${theme.palette.divider}`,
+                          minWidth: 0,
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.25 }}>
+                          {row.role === "manager" ? "You" : row.role === "assistant" ? "Copilot" : "System"}
+                        </Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-line", wordBreak: "break-word" }}>
+                          {row.message_text}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {currentQuestions.length ? (
+                <Card variant="outlined" ref={questionCardRef}>
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>A few details are needed</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Answer these and Commerce Copilot will continue the draft.
+                        </Typography>
+                      </Box>
+                      {currentQuestions.map((question) => (
+                        <Stack key={question.question_id} spacing={0.75}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{question.plain_language_question}</Typography>
+                          <Typography variant="caption" color="text.secondary">{question.why_needed}</Typography>
+                          <QuestionControl
+                            question={question}
+                            value={questionAnswers[question.question_id] ?? ""}
+                            onChange={(value) => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: value }))}
+                            onUseSuggestion={() => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: "Ask AI for a suggestion" }))}
+                            onShowHelp={() => setStatusMessage({ type: "info", text: question.help_text || "Use a simple measurement or product reference and Schedulaa will normalize it." })}
+                            onSaveIncomplete={saveIncomplete}
+                            disabled={busy || generationLocked}
+                          />
+                          <Divider />
+                        </Stack>
+                      ))}
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button variant="contained" onClick={submitQuestionAnswers} disabled={busy || generationLocked}>
+                          Continue
+                        </Button>
+                        <Button variant="text" onClick={() => setQuestionDetailsOpen((prev) => !prev)} disabled={busy || generationLocked}>
+                          {questionDetailsOpen ? "Hide extra details" : "Add more details instead"}
+                        </Button>
+                        <Button variant="outlined" onClick={saveIncomplete} disabled={busy}>
+                          Save incomplete draft
+                        </Button>
+                      </Stack>
+                      <Collapse in={questionDetailsOpen}>
+                        <Stack spacing={1} sx={{ pt: 1 }}>
+                          <TextField
+                            multiline
+                            minRows={3}
+                            label="Additional details"
+                            value={messageText}
+                            onChange={(event) => setMessageText(event.target.value)}
+                            placeholder="Add anything else Commerce Copilot should consider."
+                            fullWidth
+                            disabled={busy || generationLocked}
+                          />
+                        </Stack>
+                      </Collapse>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : (
                 <Card variant="outlined">
                   <CardContent>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Conversation</Typography>
-                    <Stack spacing={1.25} sx={{ maxHeight: 300, overflowY: "auto", pr: 0.5 }}>
-                      {messages.map((row) => (
-                        <Box
-                          key={row.id}
-                          sx={{
-                            p: 1.25,
-                            borderRadius: 1.5,
-                            bgcolor: row.role === "manager" ? "action.selected" : row.role === "assistant" ? "background.default" : "action.hover",
-                            border: (theme) => `1px solid ${theme.palette.divider}`,
-                          }}
-                        >
-                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.25 }}>
-                            {row.role === "manager" ? "You" : row.role === "assistant" ? "Copilot" : "System"}
-                          </Typography>
-                          <Typography variant="body2">{row.message_text}</Typography>
-                        </Box>
-                      ))}
-                    </Stack>
-                    {currentQuestions.length ? (
-                      <Card variant="outlined" sx={{ mt: 1.5 }}>
-                        <CardContent>
-                          <Stack spacing={1.5}>
-                            {currentQuestions.map((question) => (
-                              <Stack key={question.question_id} spacing={0.75}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{question.plain_language_question}</Typography>
-                                <Typography variant="caption" color="text.secondary">{question.why_needed}</Typography>
-                                <QuestionControl
-                                  question={question}
-                                  value={questionAnswers[question.question_id] ?? ""}
-                                  onChange={(value) => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: value }))}
-                                  onUseSuggestion={() => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: "Please suggest one." }))}
-                                  onShowHelp={() => setStatusMessage({ type: "info", text: question.help_text || "Use a simple measurement or product reference and Commerce Copilot will normalize it for you." })}
-                                  onSaveIncomplete={saveIncomplete}
-                                  disabled={busy || generationLocked}
-                                />
-                              </Stack>
-                            ))}
-                            <Button variant="outlined" onClick={submitQuestionAnswers} disabled={busy || generationLocked}>
-                              Send answers
-                            </Button>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    ) : null}
-                    <Stack spacing={1} sx={{ mt: 1.5 }}>
+                    <Stack spacing={1}>
                       <TextField
                         multiline
                         minRows={3}
@@ -812,50 +948,105 @@ const CommerceCopilotDrawer = ({
                     </Stack>
                   </CardContent>
                 </Card>
-              </Grid>
+              )}
 
-              <Grid item xs={12} md={6}>
-                <Stack spacing={2}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Progress</Typography>
-                      <Stack spacing={1}>
-                        <Typography variant="body2"><strong>Known:</strong> {(draft?.validation_results_json?.known || []).length}</Typography>
-                        <Typography variant="body2"><strong>Still needed:</strong> {(draft?.validation_results_json?.missing_required || []).length}</Typography>
-                        <Typography variant="body2"><strong>Needs your confirmation:</strong> {(draft?.validation_results_json?.needs_confirmation || []).length}</Typography>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Progress</Typography>
+                  <Stack spacing={0.75}>
+                    <Typography variant="body2"><strong>Known:</strong> {progressKnown.length}</Typography>
+                    <Typography variant="body2"><strong>Still needed:</strong> {progressMissing.length}</Typography>
+                    <Typography variant="body2"><strong>Needs confirmation:</strong> {progressNeedsConfirmation.length}</Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {draft ? (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Draft preview</Typography>
+                      <Chip label={humanizeStatus(draft.status, "draft")} variant="outlined" />
+                    </Stack>
+                    <Stack spacing={1.5}>
+                      <DraftSection
+                        title="Confirmed"
+                        rows={draftPresentation.sections?.confirmed || []}
+                        editingKey={editingDraftFact?.fact_key}
+                        editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
+                        onEdit={(row) => {
+                          setEditingDraftFact(row);
+                          setDraftEdits((prev) => ({ ...prev, [row.fact_key]: row.raw_value ?? "" }));
+                        }}
+                        onChange={(value) => editingDraftFact && setDraftEdits((prev) => ({ ...prev, [editingDraftFact.fact_key]: value }))}
+                        onSave={saveDraftEdits}
+                        onCancel={() => {
+                          setEditingDraftFact(null);
+                          setDraftEdits({});
+                        }}
+                      />
+                      <DraftSection
+                        title="Needs confirmation"
+                        rows={draftPresentation.sections?.needs_confirmation || []}
+                        editingKey={editingDraftFact?.fact_key}
+                        editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
+                        onEdit={(row) => {
+                          setEditingDraftFact(row);
+                          setDraftEdits((prev) => ({ ...prev, [row.fact_key]: row.raw_value ?? "" }));
+                        }}
+                        onChange={(value) => editingDraftFact && setDraftEdits((prev) => ({ ...prev, [editingDraftFact.fact_key]: value }))}
+                        onSave={saveDraftEdits}
+                        onCancel={() => {
+                          setEditingDraftFact(null);
+                          setDraftEdits({});
+                        }}
+                      />
+                      <DraftSection
+                        title="Suggested"
+                        rows={draftPresentation.sections?.suggested || []}
+                        editingKey={editingDraftFact?.fact_key}
+                        editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
+                        onEdit={(row) => {
+                          setEditingDraftFact(row);
+                          setDraftEdits((prev) => ({ ...prev, [row.fact_key]: row.raw_value ?? "" }));
+                        }}
+                        onChange={(value) => editingDraftFact && setDraftEdits((prev) => ({ ...prev, [editingDraftFact.fact_key]: value }))}
+                        onSave={saveDraftEdits}
+                        onCancel={() => {
+                          setEditingDraftFact(null);
+                          setDraftEdits({});
+                        }}
+                      />
+                      <DraftSection
+                        title="Still needed"
+                        rows={draftPresentation.sections?.missing || []}
+                        editingKey={editingDraftFact?.fact_key}
+                        editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
+                        onEdit={(row) => {
+                          setEditingDraftFact(row);
+                          setDraftEdits((prev) => ({ ...prev, [row.fact_key]: "" }));
+                        }}
+                        onChange={(value) => editingDraftFact && setDraftEdits((prev) => ({ ...prev, [editingDraftFact.fact_key]: value }))}
+                        onSave={saveDraftEdits}
+                        onCancel={() => {
+                          setEditingDraftFact(null);
+                          setDraftEdits({});
+                        }}
+                      />
+                      {(draftPresentation.activation_blockers || []).length > 0 ? (
+                        <Alert severity="warning">
+                          {(draftPresentation.activation_blockers || []).map((blocker) => blocker.plain_language_message).join(" ")}
+                        </Alert>
+                      ) : null}
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button variant="outlined" onClick={validateDraft} disabled={busy || !draftsAvailable}>
+                          Validate draft
+                        </Button>
                       </Stack>
-                    </CardContent>
-                  </Card>
-
-                  {draft ? (
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Draft preview</Typography>
-                          <Chip label={humanizeStatus(draft.status, "draft")} variant="outlined" />
-                        </Stack>
-                        <Stack spacing={1.5}>
-                          <FieldEditor sectionTitle="Confirmed" values={confirmedValues} onChange={updateDraftEditField} />
-                          <FieldEditor sectionTitle="Suggested" values={suggestedValues} onChange={updateDraftEditField} />
-                          <FieldEditor sectionTitle="Missing" values={unknownValues} onChange={updateDraftEditField} />
-                          {(draftPayload.activation_blockers || []).length > 0 ? (
-                            <Alert severity="warning">Activation blockers: {(draftPayload.activation_blockers || []).join(", ")}</Alert>
-                          ) : null}
-                          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                            <Button variant="outlined" onClick={saveDraftEdits} disabled={busy || !Object.keys(draftEdits).length}>
-                              Save draft edits
-                            </Button>
-                            <Button variant="outlined" onClick={validateDraft} disabled={busy || !draftsAvailable}>
-                              Validate draft
-                            </Button>
-                          </Stack>
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  ) : null}
-                </Stack>
-              </Grid>
-            </Grid>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : null}
 
             {plan ? (
               <Card variant="outlined">
@@ -928,7 +1119,7 @@ const CommerceCopilotDrawer = ({
                         <FormControlLabel
                           key={key}
                           control={<Checkbox checked={Boolean(confirmationKeys[key])} onChange={(event) => toggleConfirmationKey(key, event.target.checked)} disabled={busy} />}
-                          label={`I reviewed the ${key.replace(/_/g, " ")} value.`}
+                          label={`I reviewed the ${humanizeFactKey(key)} value.`}
                         />
                       ))}
                       <FormControlLabel
@@ -986,6 +1177,7 @@ const CommerceCopilotDrawer = ({
                 </CardContent>
               </Card>
             ) : null}
+            </Stack>
           </>
         ) : null}
       </Stack>
