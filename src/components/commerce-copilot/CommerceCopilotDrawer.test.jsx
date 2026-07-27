@@ -322,6 +322,92 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.queryByRole("button", { name: /apply approved changes/i })).not.toBeInTheDocument();
   });
 
+  test("uses backend confirmation requirements and hides raw qty_on_hand labels", async () => {
+    mockApiPost.mockResolvedValueOnce({
+      data: {
+        ...guidedSession,
+        session: { ...guidedSession.session, status: "plan_ready" },
+        messages: [],
+        draft: {
+          ...guidedSession.draft,
+          status: "ready_for_review",
+          presentation: {
+            ...guidedSession.draft.presentation,
+            sections: {
+              ...guidedSession.draft.presentation.sections,
+              confirmed: [
+                ...guidedSession.draft.presentation.sections.confirmed,
+                { fact_key: "quantity", label: "Starting inventory", display_value: "2", raw_value: 2, editable: true },
+                { fact_key: "shipping_weight_grams", label: "Product weight", display_value: "50 g", raw_value: 50, editable: true },
+              ],
+              missing: [],
+              needs_confirmation: [],
+            },
+          },
+        },
+        plan: {
+          public_id: "plan_approval_1",
+          version: 1,
+          actions: [
+            {
+              public_id: "act_1",
+              title: "Create hidden product",
+              plain_language_description: "Create this product as hidden so you can review it before publishing.",
+              risk_level: "medium_write",
+              execution_supported: true,
+              proposed_input_json: {
+                product_payload: {
+                  name: "Smoky-Lemon Quartz Necklace",
+                  category: "Jewelry",
+                  price: "50.00",
+                  track_stock: true,
+                  qty_on_hand: 2,
+                  shipping_weight_grams: 50,
+                  allow_international_shipping: false,
+                  is_active: false,
+                },
+              },
+              status: "proposed",
+            },
+          ],
+          confirmation_requirements: [
+            {
+              requirement_id: "act_1:quantity",
+              action_public_id: "act_1",
+              fact_key: "quantity",
+              payload_key: "qty_on_hand",
+              label: "Starting inventory",
+              display_value: "2",
+              confirmation_source: "manager_confirmed",
+              already_confirmed: true,
+              requires_checkbox: false,
+            },
+            {
+              requirement_id: "act_1:shipping_weight_grams",
+              action_public_id: "act_1",
+              fact_key: "shipping_weight_grams",
+              payload_key: "shipping_weight_grams",
+              label: "Product weight",
+              display_value: "50 g",
+              confirmation_source: "review_required",
+              already_confirmed: false,
+              requires_checkbox: true,
+            },
+          ],
+        },
+      },
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+
+    expect(await screen.findByText(/review selected changes/i)).toBeInTheDocument();
+    expect(screen.getByText(/confirmed by you: starting inventory - 2/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/review and confirm product weight: 50 g\./i)).toBeInTheDocument();
+    expect(screen.queryByText(/qty_on_hand/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/review and confirm cost/i)).not.toBeInTheDocument();
+  });
+
   test("accepts package bundle input and keeps the guided flow single-column", async () => {
     const packageSession = {
       ...guidedSession,

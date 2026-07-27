@@ -63,24 +63,6 @@ const QUICK_STARTS = [
 ];
 
 const COPILOT_OVERLAY_Z_INDEX = (theme) => theme.zIndex.modal + 3000;
-const FACT_CONFIRMATION_KEYS = new Set([
-  "price",
-  "cost",
-  "quantity",
-  "shipping_weight_grams",
-  "package_length_mm",
-  "package_width_mm",
-  "package_height_mm",
-  "shipping_country_of_origin",
-  "shipping_hs_code",
-  "shipping_declared_value_cents",
-  "shipping_declared_value_currency",
-  "package_tare_weight_grams",
-  "destination_countries",
-  "digital_access_days",
-  "digital_max_downloads",
-]);
-
 const HUMAN_LABELS = {
   domestic_shipping_intent: "Shipping within your home country",
   domestic_destination_country: "Shipping area",
@@ -223,54 +205,48 @@ const copyText = async (text) => {
   }
 };
 
-const flattenActionValues = (values) => {
-  if (!values || typeof values !== "object" || Array.isArray(values)) return {};
-  const flattened = {};
-  Object.entries(values).forEach(([key, value]) => {
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      Object.entries(value).forEach(([nestedKey, nestedValue]) => {
-        flattened[`${key}.${nestedKey}`] = nestedValue;
-      });
-      return;
-    }
-    flattened[key] = value;
-  });
-  return flattened;
-};
-
-const planSummarySections = (action) => {
+const planSummarySections = (action, draftPresentation = {}) => {
   const values = action?.proposed_input_json || {};
   const sections = [];
   const productPayload = values.product_payload || {};
   const packagePayload = values.package_profile_payload || {};
   const settingsPayload = values.settings_payload || {};
+  const confirmedRows = Array.isArray(draftPresentation?.sections?.confirmed) ? draftPresentation.sections.confirmed : [];
+  const suggestedRows = Array.isArray(draftPresentation?.sections?.suggested) ? draftPresentation.sections.suggested : [];
+  const displayFor = (factKey) => {
+    const row = [...confirmedRows, ...suggestedRows].find((item) => item.fact_key === factKey);
+    return row?.display_value || null;
+  };
 
   if (Object.keys(productPayload).length) {
     sections.push({
-      title: "Product",
+      title: "Product details",
       rows: [
         ["Name", productPayload.name],
-        ["Price", productPayload.price != null ? `${productPayload.price}` : null],
-        ["Inventory", productPayload.track_stock ? `Tracked${productPayload.qty_on_hand != null ? ` (${productPayload.qty_on_hand})` : ""}` : "Not tracked"],
-        ["Product weight", productPayload.shipping_weight_grams != null ? `${productPayload.shipping_weight_grams} g` : null],
-        ["Visibility", productPayload.is_active ? "Visible" : "Hidden"],
+        ["Category", productPayload.category || displayFor("category")],
+        ["Price", displayFor("price") || (productPayload.price != null ? `${productPayload.price}` : null)],
+        ["Track inventory", productPayload.track_stock ? "Yes" : "No"],
+        ["Starting inventory", productPayload.track_stock && productPayload.qty_on_hand != null ? `${productPayload.qty_on_hand}` : null],
+        ["Product weight", displayFor("shipping_weight_grams") || (productPayload.shipping_weight_grams != null ? `${productPayload.shipping_weight_grams} g` : null)],
+        ["International selling", productPayload.allow_international_shipping ? "Yes" : "No"],
+        ["Visibility after creation", productPayload.is_active ? "Visible" : "Hidden"],
       ].filter(([, value]) => value !== null && value !== undefined && value !== ""),
     });
   }
 
   if (Object.keys(packagePayload).length) {
     sections.push({
-      title: "Package",
+      title: "Shipping package",
       rows: [
         ["Name", packagePayload.name],
         [
           "Dimensions",
           packagePayload.length_mm && packagePayload.width_mm && packagePayload.height_mm
-            ? `${packagePayload.length_mm} x ${packagePayload.width_mm} x ${packagePayload.height_mm} mm`
+            ? `${packagePayload.length_mm / 10} × ${packagePayload.width_mm / 10} × ${packagePayload.height_mm / 10} cm`
             : null,
         ],
         ["Empty weight", packagePayload.tare_weight_grams != null ? `${packagePayload.tare_weight_grams} g` : null],
-        ["Default status", packagePayload.is_default ? "Set as default" : "Not set as default"],
+        ["Default status", packagePayload.is_default ? "Yes" : "No"],
       ].filter(([, value]) => value !== null && value !== undefined && value !== ""),
     });
   }
@@ -980,6 +956,7 @@ const CommerceCopilotDrawer = ({
   const draftPayload = draft?.draft_payload_json || {};
   const draftPresentation = draft?.presentation || draftPayload.presentation || { sections: {} };
   const planActions = Array.isArray(plan?.actions) ? plan.actions.slice(0, 5) : [];
+  const confirmationRequirements = Array.isArray(plan?.confirmation_requirements) ? plan.confirmation_requirements : [];
   const progressKnown = Array.isArray(draft?.validation_results_json?.known) ? draft.validation_results_json.known : [];
   const progressMissing = Array.isArray(draft?.validation_results_json?.missing_required) ? draft.validation_results_json.missing_required : [];
   const progressNeedsConfirmation = Array.isArray(draft?.validation_results_json?.needs_confirmation)
@@ -1007,16 +984,22 @@ const CommerceCopilotDrawer = ({
     setActionValueEdits((prev) => ({ ...prev, [publicId]: { ...(prev[publicId] || {}), [key]: value } }));
   const toggleConfirmationKey = (key, checked) => setConfirmationKeys((prev) => ({ ...prev, [key]: checked }));
 
-  const confirmableKeys = useMemo(() => {
-    const keys = new Set();
-    planActions.forEach((action) => {
-      Object.keys(flattenActionValues(action?.proposed_input_json)).forEach((key) => {
-        const rawKey = key.includes(".") ? key.split(".").slice(-1)[0] : key;
-        if (FACT_CONFIRMATION_KEYS.has(rawKey) || FACT_CONFIRMATION_KEYS.has(key)) keys.add(rawKey);
-      });
-    });
-    return Array.from(keys);
-  }, [planActions]);
+  const selectedActionIds = useMemo(
+    () => planActions.filter((action) => selectedActions[action.public_id]).map((action) => action.public_id),
+    [planActions, selectedActions]
+  );
+  const selectedConfirmationRequirements = useMemo(
+    () => confirmationRequirements.filter((row) => selectedActionIds.includes(row.action_public_id)),
+    [confirmationRequirements, selectedActionIds]
+  );
+  const checkboxRequirements = useMemo(
+    () => selectedConfirmationRequirements.filter((row) => row.requires_checkbox),
+    [selectedConfirmationRequirements]
+  );
+  const alreadyConfirmedRequirements = useMemo(
+    () => selectedConfirmationRequirements.filter((row) => !row.requires_checkbox),
+    [selectedConfirmationRequirements]
+  );
 
   const approveSelectedChanges = async () => {
     if (!plan?.public_id) return;
@@ -1553,7 +1536,7 @@ const CommerceCopilotDrawer = ({
                             </Stack>
                             <Typography variant="body2">{action.plain_language_description}</Typography>
                             <Stack spacing={1}>
-                              {planSummarySections(action).map((section) => (
+                              {planSummarySections(action, draftPresentation).map((section) => (
                                 <Box key={`${action.public_id}-${section.title}`}>
                                   <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                                     {section.title}
@@ -1588,13 +1571,29 @@ const CommerceCopilotDrawer = ({
                       <Typography variant="body2" color="text.secondary">
                         Selected actions: {planActions.filter((action) => selectedActions[action.public_id]).length}
                       </Typography>
-                      {confirmableKeys.map((key) => (
+                      {alreadyConfirmedRequirements.map((requirement) => (
+                        <Alert key={requirement.requirement_id} severity="success" sx={{ py: 0 }}>
+                          Confirmed by you: {requirement.label}{requirement.display_value ? ` - ${requirement.display_value}` : ""}
+                        </Alert>
+                      ))}
+                      {checkboxRequirements.map((requirement) => (
                         <FormControlLabel
-                          key={key}
-                          control={<Checkbox checked={Boolean(confirmationKeys[key])} onChange={(event) => toggleConfirmationKey(key, event.target.checked)} disabled={busy} />}
-                          label={`I reviewed the ${humanizeFactKey(key)} value.`}
+                          key={requirement.requirement_id}
+                          control={
+                            <Checkbox
+                              checked={Boolean(confirmationKeys[requirement.requirement_id] || confirmationKeys[requirement.fact_key] || confirmationKeys[requirement.payload_key])}
+                              onChange={(event) => toggleConfirmationKey(requirement.requirement_id, event.target.checked)}
+                              disabled={busy}
+                            />
+                          }
+                          label={`Review and confirm ${requirement.label}${requirement.display_value ? `: ${requirement.display_value}` : ""}.`}
                         />
                       ))}
+                      {!checkboxRequirements.length ? (
+                        <Alert severity="info" sx={{ py: 0 }}>
+                          I reviewed these changes and want to apply them to my Schedulaa account.
+                        </Alert>
+                      ) : null}
                       <FormControlLabel
                         control={<Checkbox checked={Boolean(confirmationKeys.__account_confirmed__)} onChange={(event) => toggleConfirmationKey("__account_confirmed__", event.target.checked)} disabled={busy} />}
                         label="I understand that these changes will be applied to my Schedulaa account."
