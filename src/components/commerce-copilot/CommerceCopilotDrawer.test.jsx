@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 import CommerceCopilotDrawer from "./CommerceCopilotDrawer";
@@ -152,9 +153,18 @@ const guidedSession = {
 };
 
 describe("CommerceCopilotDrawer", () => {
+  let consoleErrorSpy;
+
   beforeEach(() => {
     jest.clearAllMocks();
     window.innerWidth = 1280;
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation((message, ...args) => {
+      if (typeof message === "string" && message.includes("not wrapped in act")) {
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.warn(message, ...args);
+    });
     mockApiGet.mockResolvedValue({ data: availableCapabilities });
     mockApiPatch.mockImplementation((url, body) =>
       Promise.resolve({
@@ -176,6 +186,10 @@ describe("CommerceCopilotDrawer", () => {
         },
       })
     );
+  });
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
   });
 
   test("shows quick starts and direct first-run input when fully available", async () => {
@@ -229,13 +243,13 @@ describe("CommerceCopilotDrawer", () => {
     });
 
     renderDrawer();
-    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    expect(await screen.findByText(/a few details are needed/i)).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect((await screen.findAllByText(/step 1 of 4 - product/i)).length).toBeGreaterThan(0);
     expect(screen.queryByLabelText(/tell commerce copilot what you need/i)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(/what name should customers see/i), { target: { value: "Northern Lights Necklace" } });
-    fireEvent.click(screen.getByRole("button", { name: /^yes$/i }));
-    fireEvent.change(screen.getByLabelText(/what is the exact product weight without the box/i), { target: { value: "50" } });
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    fireEvent.change(await screen.findByLabelText(/product name/i), { target: { value: "Northern Lights Necklace" } });
+    await userEvent.click(screen.getByRole("button", { name: /^yes$/i }));
+    fireEvent.change(screen.getByLabelText(/product weight/i), { target: { value: "50" } });
+    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
       "/inventory/commerce-copilot/sessions/sess_1/messages",
@@ -248,10 +262,11 @@ describe("CommerceCopilotDrawer", () => {
     mockApiPost.mockResolvedValueOnce({ data: guidedSession });
 
     renderDrawer();
-    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /view current draft details/i }));
     expect(await screen.findByText(/draft preview/i)).toBeInTheDocument();
-    expect(screen.getByText("USD 50")).toBeInTheDocument();
-    expect(screen.getByText("Physical")).toBeInTheDocument();
+    expect(screen.getAllByText("USD 50").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Physical").length).toBeGreaterThan(0);
     expect(screen.getByText("A shipping package still needs to be created or selected.")).toBeInTheDocument();
     expect(screen.queryByText(/domestic_shipping_intent/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/shipping_weight_grams/i)).not.toBeInTheDocument();
@@ -262,10 +277,11 @@ describe("CommerceCopilotDrawer", () => {
     mockApiPost.mockResolvedValueOnce({ data: guidedSession });
 
     renderDrawer();
-    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    expect(await screen.findByText(/^Still needed$/i, { selector: "h6" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /view current draft details/i }));
+    expect((await screen.findAllByText(/^Still needed$/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /^save$/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: /^edit$/i })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: /^edit$/i })[0]);
     expect(screen.getByRole("button", { name: /^save$/i })).toBeInTheDocument();
   });
 
@@ -301,7 +317,7 @@ describe("CommerceCopilotDrawer", () => {
     });
 
     renderDrawer();
-    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
     expect(await screen.findAllByText(/applying changes is currently disabled/i)).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /apply approved changes/i })).not.toBeInTheDocument();
   });
@@ -345,14 +361,16 @@ describe("CommerceCopilotDrawer", () => {
       if (String(url) === "/inventory/commerce-copilot/sessions/sess_1/messages") {
         expect(body.answers[0]).toEqual(
           expect.objectContaining({
-            question_id: "package_profile_bundle",
-            fact_key: "package_profile_bundle",
-            value: expect.objectContaining({
-              package_profile_name: "Small Jewelry Box",
-              dimensions_input: "5 x 4 x 3 cm",
-              package_tare_weight_input: "15 grams",
-            }),
-          })
+              question_id: "package_profile_bundle",
+              fact_key: "package_profile_bundle",
+              value: expect.objectContaining({
+                package_profile_name: "Small Jewelry Box",
+                length: "5",
+                width: "4",
+                height: "3",
+                package_tare_weight_input: "15",
+              }),
+            })
         );
         return Promise.resolve({ data: packageSession });
       }
@@ -360,13 +378,13 @@ describe("CommerceCopilotDrawer", () => {
     });
 
     renderDrawer();
-    fireEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
     fireEvent.change(await screen.findByLabelText(/package name/i), { target: { value: "Small Jewelry Box" } });
     fireEvent.change(screen.getByLabelText(/^length$/i), { target: { value: "5" } });
     fireEvent.change(screen.getByLabelText(/^width$/i), { target: { value: "4" } });
     fireEvent.change(screen.getByLabelText(/^height$/i), { target: { value: "3" } });
     fireEvent.change(screen.getByLabelText(/empty package weight/i), { target: { value: "15" } });
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
       "/inventory/commerce-copilot/sessions/sess_1/messages",
@@ -374,5 +392,212 @@ describe("CommerceCopilotDrawer", () => {
       expect.any(Object)
     ));
     expect(screen.queryByText(/horizontal/i)).not.toBeInTheDocument();
+  });
+
+  test("keeps accepted answers and field errors visible on partial package submission", async () => {
+    const partialSession = {
+      ...guidedSession,
+      session: { ...guidedSession.session, status: "awaiting_manager" },
+      plan: {
+        public_id: "plan_stale",
+        version: 1,
+        actions: [
+          {
+            public_id: "act_1",
+            title: "Create hidden product",
+            plain_language_description: "Create a hidden product draft.",
+            risk_level: "medium_write",
+            execution_supported: true,
+            proposed_input_json: { product_payload: { name: "Old" } },
+            status: "proposed",
+          },
+        ],
+      },
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "A few details are needed.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "product_name",
+                fact_key: "product_name",
+                plain_language_question: "What name should customers see?",
+                why_needed: "Customers will see this name.",
+                input_type: "text",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: false,
+                help_text: null,
+              },
+              {
+                question_id: "track_stock",
+                fact_key: "track_stock",
+                plain_language_question: "Do you want Schedulaa to track inventory?",
+                why_needed: "Inventory tracking changes what stock details are required.",
+                input_type: "yes_no",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: false,
+                help_text: null,
+              },
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Shipping rates need exact package details.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box customers receive.",
+                defaults: {
+                  package_name: "",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        },
+      ],
+      draft: {
+        ...guidedSession.draft,
+        status: "incomplete",
+        presentation: {
+          ...guidedSession.draft.presentation,
+          sections: {
+            ...guidedSession.draft.presentation.sections,
+            missing: [
+              { fact_key: "product_name", label: "Product name", display_value: null, raw_value: null, editable: true },
+              { fact_key: "track_stock", label: "Track inventory", display_value: null, raw_value: null, editable: true },
+            ],
+          },
+        },
+      },
+    };
+
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: partialSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/sess_1/messages") {
+        return Promise.resolve({
+          data: {
+            ...partialSession,
+            session: { ...partialSession.session, status: "awaiting_manager" },
+            plan: null,
+            messages: [
+              ...partialSession.messages,
+              {
+                id: 2,
+                role: "assistant",
+                message_text: "Product name was saved. Enter the empty package weight to finish the package.",
+                safe_metadata_json: {
+                  questions: [
+                    {
+                      question_id: "quantity",
+                      fact_key: "quantity",
+                      plain_language_question: "How many necklaces are currently available?",
+                      why_needed: "Inventory tracking is enabled.",
+                      input_type: "number",
+                      choices: [],
+                      allow_unknown: true,
+                      show_help_measure: false,
+                      help_text: null,
+                    },
+                    {
+                      question_id: "package_profile_bundle",
+                      fact_key: "package_profile_bundle",
+                      plain_language_question: "What package do you normally use for this product?",
+                      why_needed: "Shipping rates need exact package details.",
+                      input_type: "package_bundle",
+                      choices: [],
+                      allow_unknown: true,
+                      show_help_measure: true,
+                      help_text: "Use the actual box customers receive.",
+                      defaults: {
+                        package_name: "",
+                        length: "10",
+                        width: "5",
+                        height: "5",
+                        length_unit: "cm",
+                        weight_unit: "g",
+                        set_as_default: true,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            answer_results: [
+              { question_id: "product_name", fact_key: "product_name", status: "accepted", accepted_fields: ["product_name"], field_errors: {} },
+              { question_id: "track_stock", fact_key: "track_stock", status: "accepted", accepted_fields: ["track_stock"], field_errors: {} },
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                status: "partially_accepted",
+                accepted_fields: ["package_length_mm", "package_width_mm", "package_height_mm"],
+                field_errors: {
+                  package_tare_weight_grams: "Enter the empty package weight.",
+                },
+              },
+            ],
+            answer_feedback_message: "Product name was saved. Enter the empty package weight to finish the package.",
+            questions: [
+              {
+                question_id: "quantity",
+                fact_key: "quantity",
+                plain_language_question: "How many necklaces are currently available?",
+                why_needed: "Inventory tracking is enabled.",
+                input_type: "number",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: false,
+                help_text: null,
+              },
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Shipping rates need exact package details.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box customers receive.",
+                defaults: {
+                  package_name: "",
+                  length: "10",
+                  width: "5",
+                  height: "5",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    fireEvent.change(await screen.findByLabelText(/product name/i), { target: { value: "Smoky-Lemon Quartz Necklace" } });
+    await userEvent.click(screen.getByRole("button", { name: /^yes$/i }));
+    fireEvent.change(screen.getByLabelText(/package length/i), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText(/package width/i), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText(/package height/i), { target: { value: "5" } });
+    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(await screen.findByText(/product name was saved\. enter the empty package weight to finish the package\./i)).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue("10").length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue("5").length).toBeGreaterThan(0);
+    expect(screen.getByText(/enter the empty package weight\./i)).toBeInTheDocument();
+    expect(screen.queryByText(/review selected changes/i)).not.toBeInTheDocument();
   });
 });

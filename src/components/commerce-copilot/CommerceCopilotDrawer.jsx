@@ -121,6 +121,107 @@ const workflowLabel = (workflow) => {
 const humanizeStatus = (value, fallback = "draft") => String(value || fallback).replace(/_/g, " ");
 
 const humanizeFactKey = (value) => HUMAN_LABELS[value] || String(value || "").replace(/_/g, " ");
+const factKeyFromQuestion = (question) => String(question?.fact_key || question?.question_id || "");
+
+const questionFieldLabel = (question) => {
+  const key = String(question?.fact_key || question?.question_id || "");
+  if (key === "product_name") return "Product name";
+  if (key === "quantity") return "Starting inventory";
+  if (key === "shipping_weight_grams") return "Product weight";
+  if (key === "currency") return "Currency";
+  return humanizeFactKey(key) || "Your answer";
+};
+
+const questionPlaceholder = (question) => {
+  const key = String(question?.fact_key || question?.question_id || "");
+  if (key === "product_name") return "Example: Smoky-Lemon Quartz Necklace";
+  if (key === "quantity") return "Example: 20";
+  if (key === "shipping_weight_grams") return "Example: 50 g";
+  return "";
+};
+
+const summarizeAnswerFeedback = (answerResults = []) => {
+  const accepted = answerResults.filter((row) => row.status === "accepted");
+  const partial = answerResults.filter((row) => row.status === "partially_accepted");
+  const rejected = answerResults.filter((row) => row.status === "rejected");
+  if (partial.length) {
+    const fieldErrors = partial[0].field_errors || {};
+    const firstError = Object.values(fieldErrors)[0];
+    if (accepted.length) {
+      return `${humanizeFactKey(accepted[0].fact_key)} was saved. ${firstError}`;
+    }
+    return firstError || "One answer still needs attention.";
+  }
+  if (rejected.length && accepted.length) {
+    const firstError = Object.values(rejected[0].field_errors || {})[0];
+    return `${humanizeFactKey(accepted[0].fact_key)} was saved. ${firstError || "Another answer still needs attention."}`;
+  }
+  if (rejected.length) {
+    return Object.values(rejected[0].field_errors || {})[0] || "One answer still needs attention.";
+  }
+  return "";
+};
+
+const summarizeDraftForCopy = (presentation = {}) => {
+  const sections = presentation.sections || {};
+  const lines = [];
+  ["confirmed", "package", "needs_confirmation", "suggested", "missing"].forEach((sectionKey) => {
+    const rows = Array.isArray(sections[sectionKey]) ? sections[sectionKey] : [];
+    if (!rows.length) return;
+    lines.push(sectionKey.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()));
+    rows.forEach((row) => {
+      lines.push(`- ${row.label}: ${row.display_value || "Still needed"}`);
+    });
+    lines.push("");
+  });
+  return lines.join("\n").trim();
+};
+
+const summarizeConversationForCopy = (messages = []) =>
+  messages
+    .map((row) => `${row.role === "manager" ? "You" : row.role === "assistant" ? "Copilot" : "System"}: ${row.message_text || ""}`)
+    .join("\n\n")
+    .trim();
+
+const wizardStepForState = ({ currentQuestions, plan, execution }) => {
+  if (execution) return { number: 4, label: "Create" };
+  if (plan) return { number: 4, label: "Create" };
+  if (Array.isArray(currentQuestions) && currentQuestions.some((question) => {
+    const key = String(question.fact_key || "");
+    return ["package_profile_bundle", "package_length_mm", "package_width_mm", "package_height_mm", "package_tare_weight_grams", "quantity"].includes(key);
+  })) {
+    return { number: 2, label: "Package" };
+  }
+  if (Array.isArray(currentQuestions) && currentQuestions.length) return { number: 1, label: "Product" };
+  return { number: 3, label: "Review" };
+};
+
+const copyText = async (text) => {
+  const rendered = String(text || "").trim();
+  if (!rendered) return false;
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(rendered);
+      return true;
+    }
+  } catch (error) {
+    // fall through to fallback
+  }
+  try {
+    const element = document.createElement("textarea");
+    element.value = rendered;
+    element.setAttribute("readonly", "");
+    element.style.position = "absolute";
+    element.style.left = "-9999px";
+    document.body.appendChild(element);
+    element.select();
+    document.execCommand("copy");
+    document.body.removeChild(element);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
 
 const flattenActionValues = (values) => {
   if (!values || typeof values !== "object" || Array.isArray(values)) return {};
@@ -137,6 +238,55 @@ const flattenActionValues = (values) => {
   return flattened;
 };
 
+const planSummarySections = (action) => {
+  const values = action?.proposed_input_json || {};
+  const sections = [];
+  const productPayload = values.product_payload || {};
+  const packagePayload = values.package_profile_payload || {};
+  const settingsPayload = values.settings_payload || {};
+
+  if (Object.keys(productPayload).length) {
+    sections.push({
+      title: "Product",
+      rows: [
+        ["Name", productPayload.name],
+        ["Price", productPayload.price != null ? `${productPayload.price}` : null],
+        ["Inventory", productPayload.track_stock ? `Tracked${productPayload.qty_on_hand != null ? ` (${productPayload.qty_on_hand})` : ""}` : "Not tracked"],
+        ["Product weight", productPayload.shipping_weight_grams != null ? `${productPayload.shipping_weight_grams} g` : null],
+        ["Visibility", productPayload.is_active ? "Visible" : "Hidden"],
+      ].filter(([, value]) => value !== null && value !== undefined && value !== ""),
+    });
+  }
+
+  if (Object.keys(packagePayload).length) {
+    sections.push({
+      title: "Package",
+      rows: [
+        ["Name", packagePayload.name],
+        [
+          "Dimensions",
+          packagePayload.length_mm && packagePayload.width_mm && packagePayload.height_mm
+            ? `${packagePayload.length_mm} x ${packagePayload.width_mm} x ${packagePayload.height_mm} mm`
+            : null,
+        ],
+        ["Empty weight", packagePayload.tare_weight_grams != null ? `${packagePayload.tare_weight_grams} g` : null],
+        ["Default status", packagePayload.is_default ? "Set as default" : "Not set as default"],
+      ].filter(([, value]) => value !== null && value !== undefined && value !== ""),
+    });
+  }
+
+  if (Object.keys(settingsPayload).length || values.package_profile_id) {
+    sections.push({
+      title: "Shipping",
+      rows: [
+        ["Destination policy", settingsPayload.destination_policy_mode ? humanizeStatus(settingsPayload.destination_policy_mode, "policy") : null],
+        ["Package selection", values.package_profile_id ? `Use package #${values.package_profile_id}` : null],
+      ].filter(([, value]) => value !== null && value !== undefined && value !== ""),
+    });
+  }
+  return sections;
+};
+
 const newPackageBundleValue = (defaults = {}) => ({
   package_profile_name: defaults.package_name || "",
   length: defaults.length || "",
@@ -148,7 +298,7 @@ const newPackageBundleValue = (defaults = {}) => ({
   package_set_as_default: defaults.set_as_default !== false,
 });
 
-const PackageBundleControl = ({ question, value, onChange, onShowHelp, onSaveIncomplete, disabled }) => {
+const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onShowHelp, onSaveIncomplete, disabled }) => {
   const bundle = value && typeof value === "object" ? value : newPackageBundleValue(question?.defaults || {});
 
   const updateBundle = (key, nextValue) => onChange({ ...bundle, [key]: nextValue });
@@ -169,25 +319,37 @@ const PackageBundleControl = ({ question, value, onChange, onShowHelp, onSaveInc
           fullWidth
           size="small"
           label="Length"
+          placeholder="10"
           value={bundle.length || ""}
           onChange={(event) => updateBundle("length", event.target.value)}
           disabled={disabled}
+          error={Boolean(fieldErrors.package_length_mm)}
+          helperText={fieldErrors.package_length_mm || ""}
+          inputProps={{ "aria-label": "Package length" }}
         />
         <TextField
           fullWidth
           size="small"
           label="Width"
+          placeholder="5"
           value={bundle.width || ""}
           onChange={(event) => updateBundle("width", event.target.value)}
           disabled={disabled}
+          error={Boolean(fieldErrors.package_width_mm)}
+          helperText={fieldErrors.package_width_mm || ""}
+          inputProps={{ "aria-label": "Package width" }}
         />
         <TextField
           fullWidth
           size="small"
           label="Height"
+          placeholder="5"
           value={bundle.height || ""}
           onChange={(event) => updateBundle("height", event.target.value)}
           disabled={disabled}
+          error={Boolean(fieldErrors.package_height_mm)}
+          helperText={fieldErrors.package_height_mm || ""}
+          inputProps={{ "aria-label": "Package height" }}
         />
         <FormControl fullWidth size="small">
           <InputLabel id={`${question.question_id}-length-unit-label`}>Size unit</InputLabel>
@@ -209,11 +371,14 @@ const PackageBundleControl = ({ question, value, onChange, onShowHelp, onSaveInc
         <TextField
           fullWidth
           size="small"
-          label="Empty package weight"
+          label="Weight"
           placeholder="Example: 15"
           value={bundle.package_tare_weight_input || ""}
           onChange={(event) => updateBundle("package_tare_weight_input", event.target.value)}
           disabled={disabled}
+          error={Boolean(fieldErrors.package_tare_weight_grams)}
+          helperText={fieldErrors.package_tare_weight_grams || ""}
+          inputProps={{ "aria-label": "Empty package weight" }}
         />
         <FormControl fullWidth size="small">
           <InputLabel id={`${question.question_id}-weight-unit-label`}>Weight unit</InputLabel>
@@ -275,7 +440,7 @@ const FieldEditor = ({ sectionTitle, values, onChange, readOnly = false }) => {
   );
 };
 
-const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHelp, onSaveIncomplete, disabled }) => {
+const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSuggestion, onShowHelp, onSaveIncomplete, disabled }) => {
   const inputType = String(question?.input_type || "text").toLowerCase();
   const choices = Array.isArray(question?.choices) ? question.choices : [];
 
@@ -301,13 +466,14 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
 
   if (inputType === "package_bundle") {
     return (
-      <PackageBundleControl
-        question={question}
-        value={value}
-        onChange={onChange}
-        onShowHelp={onShowHelp}
-        onSaveIncomplete={onSaveIncomplete}
-        disabled={disabled}
+        <PackageBundleControl
+          question={question}
+          value={value}
+          fieldErrors={fieldErrors}
+          onChange={onChange}
+          onShowHelp={onShowHelp}
+          onSaveIncomplete={onSaveIncomplete}
+          disabled={disabled}
       />
     );
   }
@@ -317,12 +483,12 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
       <Stack spacing={1}>
         <FormControl fullWidth size="small">
           <InputLabel id={`${question.question_id}-label`}>
-            {question?.plain_language_question || "Choose an option"}
+            {questionFieldLabel(question)}
           </InputLabel>
           <Select
             labelId={`${question.question_id}-label`}
             value={value ?? ""}
-            label={question?.plain_language_question || "Choose an option"}
+            label={questionFieldLabel(question)}
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled}
           >
@@ -345,10 +511,14 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
         <TextField
           fullWidth
           size="small"
-          label={question?.plain_language_question || "Your answer"}
+          label={questionFieldLabel(question)}
+          placeholder={questionPlaceholder(question)}
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
+          error={Boolean(fieldErrors[factKeyFromQuestion(question)])}
+          helperText={fieldErrors[factKeyFromQuestion(question)] || ""}
+          inputProps={{ "aria-label": questionFieldLabel(question) }}
         />
         {sharedActions}
       </Stack>
@@ -380,11 +550,14 @@ const QuestionControl = ({ question, value, onChange, onUseSuggestion, onShowHel
         fullWidth
         size="small"
         type={typeMap[inputType] || "text"}
-        label={question?.plain_language_question || (inputType === "currency" ? "Amount" : "Your answer")}
-        placeholder={inputType === "country" ? "Example: Canada" : ""}
+        label={questionFieldLabel(question)}
+        placeholder={questionPlaceholder(question) || (inputType === "country" ? "Example: Canada" : "")}
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
+        error={Boolean(fieldErrors[factKeyFromQuestion(question)])}
+        helperText={fieldErrors[factKeyFromQuestion(question)] || ""}
+        inputProps={{ "aria-label": questionFieldLabel(question) }}
       />
       {sharedActions}
     </Stack>
@@ -478,6 +651,9 @@ const CommerceCopilotDrawer = ({
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const [questionDetailsOpen, setQuestionDetailsOpen] = useState(false);
   const [editingDraftFact, setEditingDraftFact] = useState(null);
+  const [answerFieldErrors, setAnswerFieldErrors] = useState({});
+  const [conversationOpen, setConversationOpen] = useState(false);
+  const [draftDetailsOpen, setDraftDetailsOpen] = useState(false);
   const questionCardRef = useRef(null);
 
   const session = sessionData?.session || null;
@@ -504,6 +680,7 @@ const CommerceCopilotDrawer = ({
   const currentQuestions = Array.isArray(latestAssistantMessage?.safe_metadata_json?.questions)
     ? latestAssistantMessage.safe_metadata_json.questions.slice(0, 3)
     : [];
+  const wizardStep = wizardStepForState({ currentQuestions, plan, execution });
 
   const resetState = useCallback(() => {
     setSessionData(null);
@@ -519,6 +696,9 @@ const CommerceCopilotDrawer = ({
     setStatusMessage({ type: "", text: "" });
     setQuestionDetailsOpen(false);
     setEditingDraftFact(null);
+    setAnswerFieldErrors({});
+    setConversationOpen(false);
+    setDraftDetailsOpen(false);
   }, []);
 
   const loadCapabilities = useCallback(async () => {
@@ -584,8 +764,33 @@ const CommerceCopilotDrawer = ({
       setSessionData(data);
       setApproval(data?.approval || null);
       setExecution(data?.execution || null);
-      setQuestionAnswers({});
+      const nextQuestions = Array.isArray(data?.questions)
+        ? data.questions
+        : Array.isArray(data?.messages)
+          ? (([...data.messages].reverse().find((row) => row.role === "assistant")?.safe_metadata_json?.questions) || [])
+          : [];
+      const fieldErrors = {};
+      const answerResults = Array.isArray(data?.answer_results) ? data.answer_results : [];
+      answerResults.forEach((result) => {
+        const errors = result?.field_errors || {};
+        if (Object.keys(errors).length) {
+          fieldErrors[result.question_id] = errors;
+        }
+      });
+      setAnswerFieldErrors(fieldErrors);
+      setQuestionAnswers((prev) => {
+        const next = {};
+        nextQuestions.forEach((question) => {
+          if (prev[question.question_id] !== undefined) {
+            next[question.question_id] = prev[question.question_id];
+          }
+        });
+        return next;
+      });
       setQuestionDetailsOpen(false);
+      if (data?.answer_feedback_message) {
+        setStatusMessage({ type: Object.keys(fieldErrors).length ? "warning" : "success", text: data.answer_feedback_message });
+      }
       return true;
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "AI is temporarily unavailable. Try again." });
@@ -1019,45 +1224,100 @@ const CommerceCopilotDrawer = ({
           <>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
               <Chip label={`Status: ${humanizeStatus(session.status, "active")}`} color="primary" variant="outlined" />
+              <Chip label={`Step ${wizardStep.number} of 4 - ${wizardStep.label}`} variant="outlined" />
               <Chip label={`Progress: ${progress}%`} variant="outlined" />
               <Chip label={`Turns: ${usageSummary.requests || 0} AI request${(usageSummary.requests || 0) === 1 ? "" : "s"}`} variant="outlined" />
               {monetizationMode === "paid_addon_required" ? <Chip label={`Actions remaining: ${allowanceRemaining ?? 0}`} variant="outlined" /> : null}
             </Stack>
 
             <Stack spacing={2} sx={{ minWidth: 0, overflowX: "hidden" }}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Conversation summary</Typography>
-                  <Stack spacing={1.25} sx={{ maxHeight: 280, overflowY: "auto", pr: 0.5, minWidth: 0 }}>
-                    {messages.map((row) => (
-                      <Box
-                        key={row.id}
-                        sx={{
-                          p: 1.25,
-                          borderRadius: 1.5,
-                          bgcolor: row.role === "manager" ? "action.selected" : row.role === "assistant" ? "background.default" : "action.hover",
-                          border: (theme) => `1px solid ${theme.palette.divider}`,
-                          minWidth: 0,
-                        }}
-                      >
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.25 }}>
-                          {row.role === "manager" ? "You" : row.role === "assistant" ? "Copilot" : "System"}
-                        </Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-line", wordBreak: "break-word" }}>
-                          {row.message_text}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
+              {currentQuestions.length ? (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>What Schedulaa understood</Typography>
+                      <Stack spacing={0.75} sx={{ userSelect: "text", WebkitUserSelect: "text" }}>
+                        {(draftPresentation.sections?.confirmed || []).slice(0, 4).map((row) => (
+                          <Typography key={row.fact_key} variant="body2">
+                            <strong>{row.label}:</strong> {row.display_value}
+                          </Typography>
+                        ))}
+                        {(draftPresentation.sections?.suggested || []).slice(0, 2).map((row) => (
+                          <Typography key={row.fact_key} variant="body2" color="text.secondary">
+                            <strong>{row.label}:</strong> {row.display_value}
+                          </Typography>
+                        ))}
+                      </Stack>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button size="small" variant="text" onClick={() => setConversationOpen((prev) => !prev)}>
+                          {conversationOpen ? "Hide conversation" : "View conversation"}
+                        </Button>
+                        <Button size="small" variant="text" onClick={() => setDraftDetailsOpen((prev) => !prev)}>
+                          {draftDetailsOpen ? "Hide draft details" : "View current draft details"}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={async () => {
+                            const copied = await copyText(summarizeConversationForCopy(messages));
+                            setStatusMessage({ type: copied ? "success" : "warning", text: copied ? "Conversation summary copied." : "Unable to copy conversation summary." });
+                          }}
+                        >
+                          Copy conversation summary
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={async () => {
+                            const copied = await copyText(summarizeDraftForCopy(draftPresentation));
+                            setStatusMessage({ type: copied ? "success" : "warning", text: copied ? "Product draft summary copied." : "Unable to copy product draft summary." });
+                          }}
+                        >
+                          Copy product draft summary
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {(!currentQuestions.length || conversationOpen) ? (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Conversation summary</Typography>
+                    <Stack spacing={1.25} sx={{ maxHeight: 280, overflowY: "auto", pr: 0.5, minWidth: 0 }}>
+                      {messages.map((row) => (
+                        <Box
+                          key={row.id}
+                          sx={{
+                            p: 1.25,
+                            borderRadius: 1.5,
+                            bgcolor: row.role === "manager" ? "action.selected" : row.role === "assistant" ? "background.default" : "action.hover",
+                            border: (theme) => `1px solid ${theme.palette.divider}`,
+                            minWidth: 0,
+                            userSelect: "text",
+                            WebkitUserSelect: "text",
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.25 }}>
+                            {row.role === "manager" ? "You" : row.role === "assistant" ? "Copilot" : "System"}
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: "pre-line", wordBreak: "break-word", userSelect: "text", WebkitUserSelect: "text" }}>
+                            {row.message_text}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : null}
 
               {currentQuestions.length ? (
                 <Card variant="outlined" ref={questionCardRef}>
                   <CardContent>
                     <Stack spacing={1.5}>
                       <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>A few details are needed</Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Step {wizardStep.number} of 4 - {wizardStep.label}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           Answer these and Commerce Copilot will continue the draft.
                         </Typography>
@@ -1069,6 +1329,7 @@ const CommerceCopilotDrawer = ({
                           <QuestionControl
                             question={question}
                             value={questionAnswers[question.question_id] ?? ""}
+                            fieldErrors={answerFieldErrors[question.question_id] || {}}
                             onChange={(value) => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: value }))}
                             onUseSuggestion={() => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: "Ask AI for a suggestion" }))}
                             onShowHelp={() => setStatusMessage({ type: "info", text: question.help_text || "Use a simple measurement or product reference and Schedulaa will normalize it." })}
@@ -1136,6 +1397,7 @@ const CommerceCopilotDrawer = ({
                 </Card>
               )}
 
+              {!currentQuestions.length ? (
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Progress</Typography>
@@ -1146,8 +1408,9 @@ const CommerceCopilotDrawer = ({
                   </Stack>
                 </CardContent>
               </Card>
+              ) : null}
 
-              {draft ? (
+              {draft && (!currentQuestions.length || draftDetailsOpen) ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -1250,7 +1513,7 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-            {plan ? (
+            {!currentQuestions.length && plan ? (
               <Card variant="outlined">
                 <CardContent>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mb: 1 }}>
@@ -1289,14 +1552,22 @@ const CommerceCopilotDrawer = ({
                               </Stack>
                             </Stack>
                             <Typography variant="body2">{action.plain_language_description}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {Object.keys(flattenActionValues(action.proposed_input_json)).length} value field{Object.keys(flattenActionValues(action.proposed_input_json)).length === 1 ? "" : "s"} prepared
-                            </Typography>
-                            <FieldEditor
-                              sectionTitle="Proposed values"
-                              values={flattenActionValues(action.proposed_input_json)}
-                              onChange={(key, value) => setActionFieldEdit(action.public_id, key, value)}
-                            />
+                            <Stack spacing={1}>
+                              {planSummarySections(action).map((section) => (
+                                <Box key={`${action.public_id}-${section.title}`}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                                    {section.title}
+                                  </Typography>
+                                  <Stack spacing={0.5}>
+                                    {section.rows.map(([label, value]) => (
+                                      <Typography key={`${section.title}-${label}`} variant="body2">
+                                        <strong>{label}:</strong> {value}
+                                      </Typography>
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              ))}
+                            </Stack>
                             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                               <Button size="small" variant="outlined" onClick={() => updatePlanActionStatus(action.public_id, "rejected")} disabled={busy}>
                                 Reject
