@@ -595,6 +595,25 @@ const ProductListBase = ({
                           }}
                         />
                       )}
+                      {!product.is_digital && (
+                        <Chip
+                          label={
+                            product.allow_international_shipping
+                              ? "International shipping available"
+                              : "Domestic shipping only"
+                          }
+                          size="small"
+                          sx={{
+                            ...catalogBadgeSx,
+                            bgcolor: product.allow_international_shipping
+                              ? "rgba(249,115,22,0.12)"
+                              : "rgba(15,23,42,0.08)",
+                            color: product.allow_international_shipping
+                              ? "rgba(154,52,18,0.95)"
+                              : "rgba(51,65,85,0.82)",
+                          }}
+                        />
+                      )}
                     </Stack>
                     <Typography
                       variant="body2"
@@ -611,6 +630,11 @@ const ProductListBase = ({
                     >
                       {product.description || ""}
                     </Typography>
+                    {!product.is_digital && product.allow_international_shipping && (
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>
+                        Import duties or taxes may apply depending on destination.
+                      </Typography>
+                    )}
 
                     {Array.isArray(product.tags) && product.tags.length > 0 && (
                       <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", rowGap: 0.75, mt: 1 }}>

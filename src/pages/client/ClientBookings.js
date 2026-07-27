@@ -861,6 +861,24 @@ export default function ClientBookings() {
                             Track package
                           </Button>
                         ) : null}
+                        {selectedOrder?.is_cross_border ? (
+                          <Box sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5, backgroundColor: "rgba(249, 115, 22, 0.06)" }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              Shipping paid: {money((selectedOrder.customer_shipping_amount_cents || 0) / 100, selectedOrder.customer_shipping_currency || selectedOrder.currency)}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Duties included: No
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Import charges may be collected separately.
+                            </Typography>
+                            {selectedOrder?.import_charges_notice_snapshot?.standard_notice ? (
+                              <Typography variant="caption" color="text.secondary">
+                                {selectedOrder.import_charges_notice_snapshot.standard_notice}
+                              </Typography>
+                            ) : null}
+                          </Box>
+                        ) : null}
                       </Stack>
                     );
                   })()}

@@ -52,8 +52,11 @@ const SettingsBillingSubscription = () => {
   const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
   const [fieldPhotosModal, setFieldPhotosModal] = useState(null);
   const [fieldPhotosNotice, setFieldPhotosNotice] = useState("");
+  const [aiCommerceBusy, setAiCommerceBusy] = useState(false);
+  const [aiCommerceNotice, setAiCommerceNotice] = useState("");
   const mobileComplianceMode = isMobileComplianceMode();
   const fieldPhotos = status?.field_photos || {};
+  const aiCommerce = status?.ai_commerce_copilot || {};
 
   const handleAddSeats = () => {
     if (mobileComplianceMode) {
@@ -105,6 +108,33 @@ const SettingsBillingSubscription = () => {
       await refetch();
     } catch (err) {
       // The billing action already succeeded; avoid replacing the success state with a refresh warning.
+    }
+  };
+
+  const handleActivateAiCommerce = async () => {
+    if (mobileComplianceMode) {
+      setPortalError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
+    setAiCommerceBusy(true);
+    setAiCommerceNotice("");
+    try {
+      const preview = await api.get("/billing/ai-commerce-copilot/preview");
+      const label = preview?.data?.amount_formatted || "the configured recurring price";
+      const confirmed = window.confirm(
+        `Activate AI Commerce Copilot for ${label} and include ${preview?.data?.monthly_action_allowance || 0} successful AI actions per billing period?`
+      );
+      if (!confirmed) {
+        setAiCommerceBusy(false);
+        return;
+      }
+      await api.post("/billing/ai-commerce-copilot/activate");
+      await refetch();
+      setAiCommerceNotice("AI Commerce Copilot add-on activated.");
+    } catch (err) {
+      setAiCommerceNotice(err?.response?.data?.message || err?.response?.data?.error || "Unable to activate AI Commerce Copilot.");
+    } finally {
+      setAiCommerceBusy(false);
     }
   };
 
@@ -264,6 +294,59 @@ const SettingsBillingSubscription = () => {
             </Stack>
             <Divider sx={{ my: 1 }} />
             <Stack spacing={1}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>AI Commerce Copilot</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Guided product creation, shipping setup, and manager-approved safe actions.
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.addon_active && aiCommerce.activation_available ? (
+                    <Button size="small" variant="contained" onClick={handleActivateAiCommerce} disabled={aiCommerceBusy}>
+                      {aiCommerceBusy ? "Activating..." : "Activate"}
+                    </Button>
+                  ) : null}
+                  <Button size="small" variant="outlined" onClick={handleManageBilling}>
+                    Manage billing
+                  </Button>
+                </Stack>
+              </Stack>
+              {aiCommerceNotice && (
+                <Alert severity={String(aiCommerceNotice || "").toLowerCase().includes("unable") ? "error" : "success"}>
+                  {aiCommerceNotice}
+                </Alert>
+              )}
+              {aiCommerce.monetization_mode === "free_launch" && (
+                <Alert severity="info">Included during free launch. Usage is recorded, but no additional charge currently applies.</Alert>
+              )}
+              {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.access_allowed && aiCommerce.current_plan === "starter" && (
+                <Alert severity="warning">Pro or Business is required before the Commerce Copilot add-on can be activated.</Alert>
+              )}
+              {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.addon_active && aiCommerce.activation_available && (
+                <Alert severity="warning">AI Commerce Copilot add-on required. Activate it to continue creating new Copilot sessions or applying approved changes.</Alert>
+              )}
+              {aiCommerce.warning && <Alert severity="warning">{aiCommerce.warning}</Alert>}
+              <Stack direction="row" spacing={3} flexWrap="wrap">
+                <Typography variant="body2">
+                  <strong>Status:</strong> {aiCommerce.addon_active ? "Active" : aiCommerce.monetization_mode === "free_launch" ? "Included during free launch" : "Inactive"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Used:</strong> {Number(aiCommerce.successful_actions_used || 0)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Remaining:</strong> {aiCommerce.successful_actions_remaining ?? "n/a"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Allowance:</strong> {Number(aiCommerce.monthly_action_allowance || 0)}
+                </Typography>
+              </Stack>
+              {aiCommerce.grace_ends_at && (
+                <Typography variant="body2">
+                  <strong>Grace ends:</strong> {formatDate(aiCommerce.grace_ends_at, t)}
+                </Typography>
+              )}
+
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Field Photos</Typography>

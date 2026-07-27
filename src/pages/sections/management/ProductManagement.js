@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
+  Grid,
   MenuItem,
   TextField,
   Typography,
@@ -49,6 +50,8 @@ import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
+import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
+import { COUNTRIES } from "../../../constants/jobMetadata";
 
 const emptyForm = {
   sku: "",
@@ -70,6 +73,19 @@ const emptyForm = {
   delivery_allow_pickup: false,
   delivery_allow_shipping: false,
   delivery_allow_local_delivery: false,
+  shipping_weight_grams: "",
+  shipping_length_mm: "",
+  shipping_width_mm: "",
+  shipping_height_mm: "",
+  shipping_ships_separately: false,
+  allow_international_shipping: false,
+  shipping_customs_description: "",
+  shipping_country_of_origin: "",
+  shipping_hs_code: "",
+  shipping_declared_value_cents: "",
+  shipping_declared_value_currency: "CAD",
+  shipping_customs_manufacturer: "",
+  shipping_customs_eccn: "",
   digital_asset_id: "",
   is_active: true,
   adjustment_note: "",
@@ -138,7 +154,7 @@ const productChipSuccessSx = {
 };
 
 const ProductManagement = ({ token }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const [products, setProducts] = useState([]);
   const [productCategories, setProductCategories] = useState([]);
@@ -165,6 +181,9 @@ const ProductManagement = ({ token }) => {
   const [movementTarget, setMovementTarget] = useState(null);
   const [globalMovementOpen, setGlobalMovementOpen] = useState(false);
   const [deliverySetupOpen, setDeliverySetupOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [copilotWorkflow, setCopilotWorkflow] = useState("");
+  const [copilotProductId, setCopilotProductId] = useState(null);
   const [globalDeliveryPolicy, setGlobalDeliveryPolicy] = useState({
     allow_pickup: false,
     allow_shipping: true,
@@ -187,6 +206,12 @@ const ProductManagement = ({ token }) => {
 
   const notify = useCallback((message) => {
     setSnk({ open: true, message });
+  }, []);
+
+  const openCopilot = useCallback((workflow = "create_physical_product", productId = null) => {
+    setCopilotWorkflow(workflow);
+    setCopilotProductId(productId);
+    setCopilotOpen(true);
   }, []);
 
   const load = useCallback(async () => {
@@ -296,6 +321,19 @@ const ProductManagement = ({ token }) => {
         delivery_allow_pickup: !!row.delivery_allow_pickup,
         delivery_allow_shipping: !!row.delivery_allow_shipping,
         delivery_allow_local_delivery: !!row.delivery_allow_local_delivery,
+        shipping_weight_grams: row.shipping_weight_grams != null ? String(row.shipping_weight_grams) : "",
+        shipping_length_mm: row.shipping_length_mm != null ? String(row.shipping_length_mm) : "",
+        shipping_width_mm: row.shipping_width_mm != null ? String(row.shipping_width_mm) : "",
+        shipping_height_mm: row.shipping_height_mm != null ? String(row.shipping_height_mm) : "",
+        shipping_ships_separately: !!row.shipping_ships_separately,
+        allow_international_shipping: !!row.allow_international_shipping,
+        shipping_customs_description: row.shipping_customs_description || "",
+        shipping_country_of_origin: row.shipping_country_of_origin || "",
+        shipping_hs_code: row.shipping_hs_code || "",
+        shipping_declared_value_cents: row.shipping_declared_value_cents != null ? String(row.shipping_declared_value_cents) : "",
+        shipping_declared_value_currency: row.shipping_declared_value_currency || "CAD",
+        shipping_customs_manufacturer: row.shipping_customs_manufacturer || "",
+        shipping_customs_eccn: row.shipping_customs_eccn || "",
         digital_asset_id: row.digital_asset_id != null ? String(row.digital_asset_id) : "",
         is_active: !!row.is_active,
         adjustment_note: "",
@@ -321,7 +359,9 @@ const ProductManagement = ({ token }) => {
         field === "delivery_methods_override_enabled" ||
         field === "delivery_allow_pickup" ||
         field === "delivery_allow_shipping" ||
-        field === "delivery_allow_local_delivery"
+        field === "delivery_allow_local_delivery" ||
+        field === "shipping_ships_separately" ||
+        field === "allow_international_shipping"
           ? event.target.checked
           : event.target.value;
       setForm((prev) => {
@@ -377,6 +417,18 @@ const ProductManagement = ({ token }) => {
       cost: form.cost === "" ? null : form.cost,
       qty_on_hand: Number(form.qty_on_hand || 0),
       low_stock_threshold: form.low_stock_threshold === "" ? null : Number(form.low_stock_threshold),
+      shipping_weight_grams: form.shipping_weight_grams === "" ? null : Number(form.shipping_weight_grams),
+      shipping_length_mm: form.shipping_length_mm === "" ? null : Number(form.shipping_length_mm),
+      shipping_width_mm: form.shipping_width_mm === "" ? null : Number(form.shipping_width_mm),
+      shipping_height_mm: form.shipping_height_mm === "" ? null : Number(form.shipping_height_mm),
+      allow_international_shipping: Boolean(form.allow_international_shipping),
+      shipping_customs_description: form.shipping_customs_description || null,
+      shipping_country_of_origin: form.shipping_country_of_origin || null,
+      shipping_hs_code: form.shipping_hs_code || null,
+      shipping_declared_value_cents: form.shipping_declared_value_cents === "" ? null : Number(form.shipping_declared_value_cents),
+      shipping_declared_value_currency: form.shipping_declared_value_currency || null,
+      shipping_customs_manufacturer: form.shipping_customs_manufacturer || null,
+      shipping_customs_eccn: form.shipping_customs_eccn || null,
       digital_asset_id: form.digital_asset_id === "" ? null : Number(form.digital_asset_id),
       linked_inventory_item_id:
         form.is_digital || !form.track_stock || !form.link_inventory_enabled ? null : (form.linked_inventory_item_id || null),
@@ -590,6 +642,9 @@ const ProductManagement = ({ token }) => {
             <IconButton onClick={() => handleOpen(params.row)}>
               <Edit />
             </IconButton>
+            <Button size="small" variant="text" onClick={() => openCopilot("repair_product", params.row.id)}>
+              Fix with AI
+            </Button>
             <IconButton
               color={params.row.is_active ? "primary" : "default"}
               onClick={() => openImages(params.row)}
@@ -609,7 +664,7 @@ const ProductManagement = ({ token }) => {
         ),
       },
     ],
-    [handleDelete, handleOpen, openImages, t, i18n.language]
+    [handleDelete, handleOpen, openCopilot, openImages, t]
   );
 
   useEffect(() => {
@@ -706,7 +761,7 @@ const ProductManagement = ({ token }) => {
       noRowsLabel: t("manager.product.table.noRows"),
       footerRowPerPage: t("common.rowsPerPage"),
     }),
-    [i18n.language, t]
+    [t]
   );
 
   const filteredProducts = useMemo(() => {
@@ -800,6 +855,14 @@ const ProductManagement = ({ token }) => {
       >
         <Button startIcon={<Add />} variant="contained" onClick={() => handleOpen()}>
           {t("manager.product.buttonAdd")}
+        </Button>
+        <Button
+          startIcon={<CloudUpload />}
+          variant="outlined"
+          color="inherit"
+          onClick={() => openCopilot("create_physical_product")}
+        >
+          Create with AI
         </Button>
         <Tooltip title="Configure checkout delivery methods (manual policy) and EasyPost automation in one place." arrow>
           <Button
@@ -1319,6 +1382,169 @@ const ProductManagement = ({ token }) => {
                   2. <strong>Delivery override</strong> controls checkout delivery choices for this product only.
                 </Alert>
               )}
+              <Divider sx={{ my: 1 }} />
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Physical shipping
+                  </Typography>
+                  {!form.is_digital && editing?.shipping_readiness?.required && (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color={editing?.shipping_readiness?.ready ? "success" : "warning"}
+                      label={editing?.shipping_readiness?.ready ? "Shipping ready" : "Shipping data incomplete"}
+                    />
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Use grams and millimetres. Digital products can leave these fields blank.
+                </Typography>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Weight (g)"
+                      value={form.shipping_weight_grams}
+                      onChange={handleChange("shipping_weight_grams")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Length (mm)"
+                      value={form.shipping_length_mm}
+                      onChange={handleChange("shipping_length_mm")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Width (mm)"
+                      value={form.shipping_width_mm}
+                      onChange={handleChange("shipping_width_mm")}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Height (mm)"
+                      value={form.shipping_height_mm}
+                      onChange={handleChange("shipping_height_mm")}
+                    />
+                  </Grid>
+                </Grid>
+                <FormControlLabel
+                  control={(
+                    <Checkbox
+                      id="shipping_ships_separately"
+                      checked={form.shipping_ships_separately}
+                      onChange={handleChange("shipping_ships_separately")}
+                    />
+                  )}
+                  label="Ships separately"
+                />
+                {!form.is_digital && (
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        id="allow_international_shipping"
+                        checked={form.allow_international_shipping}
+                        onChange={handleChange("allow_international_shipping")}
+                      />
+                    )}
+                    label="Allow international shipping"
+                  />
+                )}
+              </Stack>
+              <Divider sx={{ my: 1 }} />
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    International customs
+                  </Typography>
+                  {!form.is_digital && (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color={
+                        !form.allow_international_shipping
+                          ? "default"
+                          : editing?.customs_readiness?.ready
+                            ? "success"
+                            : "warning"
+                      }
+                      label={
+                        !form.allow_international_shipping
+                          ? "Domestic only"
+                          : editing?.customs_readiness?.ready
+                            ? "International ready"
+                            : "International setup incomplete"
+                      }
+                    />
+                  )}
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Country of origin means where the product was manufactured or assembled. Verify the correct customs classification for your product.
+                </Typography>
+                {!form.is_digital && form.allow_international_shipping && Array.isArray(editing?.customs_readiness?.missing) && editing.customs_readiness.missing.length > 0 && (
+                  <Alert severity="warning">
+                    Missing fields: {editing.customs_readiness.missing.join(", ")}
+                  </Alert>
+                )}
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={6}>
+                    <TextField fullWidth size="small" label="Customs description" value={form.shipping_customs_description} onChange={handleChange("shipping_customs_description")} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Autocomplete
+                      options={COUNTRIES}
+                      value={COUNTRIES.find((option) => option.code === form.shipping_country_of_origin) || null}
+                      onChange={(_, option) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          shipping_country_of_origin: option?.code || "",
+                        }))
+                      }
+                      getOptionLabel={(option) => `${option.label} (${option.code})`}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          size="small"
+                          label="Country of origin"
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField fullWidth size="small" label="HS / tariff code" value={form.shipping_hs_code} onChange={handleChange("shipping_hs_code")} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField fullWidth size="small" type="number" label="Declared value (cents)" value={form.shipping_declared_value_cents} onChange={handleChange("shipping_declared_value_cents")} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField select fullWidth size="small" label="Declared-value currency" value={form.shipping_declared_value_currency} onChange={handleChange("shipping_declared_value_currency")}>
+                      <MenuItem value="CAD">CAD</MenuItem>
+                      <MenuItem value="USD">USD</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField fullWidth size="small" label="Manufacturer (optional)" value={form.shipping_customs_manufacturer} onChange={handleChange("shipping_customs_manufacturer")} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField fullWidth size="small" label="ECCN (optional)" value={form.shipping_customs_eccn} onChange={handleChange("shipping_customs_eccn")} />
+                  </Grid>
+                </Grid>
+              </Stack>
               <FormControlLabel
                 control={(
                   <Checkbox
@@ -1515,6 +1741,13 @@ const ProductManagement = ({ token }) => {
           <EasyPostShippingSettingsPanel token={token} compact />
         </Stack>
       </Drawer>
+      <CommerceCopilotDrawer
+        open={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        token={token}
+        initialWorkflow={copilotWorkflow}
+        targetProductId={copilotProductId}
+      />
 
       <Drawer
         anchor="right"

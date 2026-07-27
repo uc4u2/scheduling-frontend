@@ -298,7 +298,7 @@ api.interceptors.response.use(
     if (
       !skipBillingModal &&
       status === 402 &&
-      data?.error === "subscription_required" &&
+      (data?.error === "subscription_required" || data?.error === "addon_required") &&
       !isNativeRuntime()
     ) {
       if (typeof window !== "undefined") {
@@ -308,6 +308,7 @@ api.interceptors.response.use(
             new CustomEvent("billing:upgrade-required", {
               detail: {
                 requiredPlan: data?.required_plan || null,
+                addonKey: data?.addon_key || null,
                 message: data?.message || "",
                 action: data?.action || "",
                 audience,

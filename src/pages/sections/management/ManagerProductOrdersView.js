@@ -50,11 +50,13 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PrintIcon from "@mui/icons-material/Print";
 import { DataGrid } from "@mui/x-data-grid";
+import { alpha } from "@mui/material/styles";
 import { formatCurrencyWithCode, formatCurrencyFromCents } from "../../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../../utils/currency";
 import { getUserTimezone } from "../../../utils/timezone";
 import { isMobileComplianceMode } from "../../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../../components/mobile/MobileWebOnlyNotice";
+import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
 const fulfillmentOptions = [
   { value: "all", label: "All statuses" },
   { value: "pending", label: "Pending" },
@@ -123,10 +125,66 @@ const statusColor = (status) => {
       return "default";
   }
 };
+
+const readableChipSx = (color = "default") => (theme) => {
+  const palette = {
+    success: {
+      color: theme.palette.success.dark,
+      backgroundColor: alpha(theme.palette.success.main, 0.12),
+      borderColor: alpha(theme.palette.success.main, 0.34),
+    },
+    info: {
+      color: theme.palette.info.dark,
+      backgroundColor: alpha(theme.palette.info.main, 0.12),
+      borderColor: alpha(theme.palette.info.main, 0.34),
+    },
+    warning: {
+      color: theme.palette.warning.dark,
+      backgroundColor: alpha(theme.palette.warning.main, 0.14),
+      borderColor: alpha(theme.palette.warning.main, 0.36),
+    },
+    error: {
+      color: theme.palette.error.dark,
+      backgroundColor: alpha(theme.palette.error.main, 0.12),
+      borderColor: alpha(theme.palette.error.main, 0.34),
+    },
+    primary: {
+      color: theme.palette.primary.dark,
+      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+      borderColor: alpha(theme.palette.primary.main, 0.34),
+    },
+    default: {
+      color: theme.palette.text.primary,
+      backgroundColor: alpha(theme.palette.text.primary, 0.04),
+      borderColor: alpha(theme.palette.text.primary, 0.14),
+    },
+  };
+  const tone = palette[color] || palette.default;
+  return {
+    fontWeight: 600,
+    color: tone.color,
+    backgroundColor: tone.backgroundColor,
+    borderColor: tone.borderColor,
+    "& .MuiChip-label": {
+      color: "inherit",
+      fontWeight: 600,
+    },
+  };
+};
 const titleCase = (value) => {
   if (!value) return "";
   return value
     .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+const humanizeEventType = (value) => {
+  if (!value) return "";
+  return String(value)
+    .replace(/[._]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 };
@@ -158,6 +216,27 @@ const trackingStatusColor = (value) => {
   if (["in_transit", "out_for_delivery", "pre_transit", "label_created"].includes(normalized)) return "info";
   if (["failure", "issue", "return_to_sender", "returning", "cancelled"].includes(normalized)) return "warning";
   return "default";
+};
+
+const shippingVerificationLevelLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  const labels = {
+    provider_verified: "Provider verified",
+    provider_corrected: "Provider corrected",
+    customer_confirmed_unverified: "Customer confirmed — not provider verified",
+    format_validated_only: "Basic validation only",
+  };
+  return labels[normalized] || titleCase(normalized);
+};
+
+const isSafeExternalUrl = (value) => {
+  try {
+    const parsed = new URL(String(value || ""));
+    return ["http:", "https:"].includes(parsed.protocol) && Boolean(parsed.host);
+  } catch (error) {
+    return false;
+  }
 };
 
 const recommendedFulfillmentAction = (order = {}) => {
@@ -286,6 +365,38 @@ const normalizeProductOrderRecord = (order = {}) => {
   };
 };
 
+const normalizeManagerShippingSettings = (data = {}) => ({
+  mode: data?.mode || "manual",
+  enabled: Boolean(data?.enabled),
+  easypost_enabled: Boolean(data?.easypost_enabled),
+  easypost_has_api_key: Boolean(data?.easypost_has_api_key),
+  easypost_api_key_last4: data?.easypost_api_key_last4 || "",
+  easypost_connected: Boolean(data?.easypost_connected),
+  easypost_connected_at: data?.easypost_connected_at || null,
+  easypost_last_tested_at: data?.easypost_last_tested_at || null,
+  easypost_last_test_status: data?.easypost_last_test_status || "",
+  easypost_last_test_message: data?.easypost_last_test_message || "",
+  allow_pickup: Boolean(data?.allow_pickup),
+  allow_shipping: data?.allow_shipping !== false,
+  allow_local_delivery: Boolean(data?.allow_local_delivery),
+  origin_name: data?.origin_name || "",
+  origin_phone: data?.origin_phone || "",
+  origin_address1: data?.origin_address1 || "",
+  origin_address2: data?.origin_address2 || "",
+  origin_city: data?.origin_city || "",
+  origin_region: data?.origin_region || "",
+  origin_postal_code: data?.origin_postal_code || "",
+  origin_country: data?.origin_country || "",
+  default_package_profile_id: data?.default_package_profile_id || null,
+  destination_policy_preset: data?.destination_policy_preset || "domestic_only",
+  allowed_destination_countries: Array.isArray(data?.allowed_destination_countries) ? data.allowed_destination_countries : [],
+  package_profiles: Array.isArray(data?.package_profiles) ? data.package_profiles : [],
+  readiness: data?.readiness || { ready: false, checklist: [] },
+  shipping_label_pickup: data?.shipping_label_pickup || "",
+  shipping_label_shipping: data?.shipping_label_shipping || "",
+  shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
+});
+
 const formatPaymentStatusLabel = (status) =>
   (status || "pending")
     .split("_")
@@ -379,6 +490,55 @@ const timelineIcon = (eventType) => {
   if (type.startsWith("refund")) return <MonetizationOnIcon fontSize="small" color="error" />;
   return <NoteAddIcon fontSize="small" color="action" />;
 };
+
+const summarizeTimelineData = (data, currency = "USD") => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return [];
+  const rows = [];
+  const push = (label, value) => {
+    if (value == null || value === "") return;
+    rows.push({ label, value: String(value) });
+  };
+  if (Object.prototype.hasOwnProperty.call(data, "allow_unpaid")) {
+    push("Allow unpaid", data.allow_unpaid ? "Yes" : "No");
+  }
+  if (typeof data.delivery_method === "string") {
+    push("Delivery", titleCase(data.delivery_method));
+  }
+  if (typeof data.status === "string") {
+    push("Status", humanizeEventType(data.status));
+  }
+  if (typeof data.subtotal_cents === "number") {
+    push("Subtotal", formatCurrencyFromCents(data.subtotal_cents, currency));
+  }
+  if (typeof data.tax_cents === "number") {
+    push("Tax", formatCurrencyFromCents(data.tax_cents, currency));
+  }
+  if (typeof data.total_cents === "number") {
+    push("Total", formatCurrencyFromCents(data.total_cents, currency));
+  }
+  if (typeof data.refunded_cents === "number" && data.refunded_cents > 0) {
+    push("Refunded", formatCurrencyFromCents(data.refunded_cents, currency));
+  }
+  if (typeof data.tracking_number === "string") {
+    push("Tracking #", data.tracking_number);
+  }
+  if (typeof data.tracking_company === "string") {
+    push("Carrier", data.tracking_company);
+  }
+  if (typeof data.setup_intent_id === "string" && data.setup_intent_id) {
+    push("Setup intent", data.setup_intent_id);
+  }
+  if (data.cart_snapshot && typeof data.cart_snapshot === "object") {
+    const items = Array.isArray(data.cart_snapshot.items) ? data.cart_snapshot.items : [];
+    push("Cart items", `${items.length} item(s)`);
+  }
+  if (data.shipping && typeof data.shipping === "object") {
+    if (data.shipping.country) push("Country", data.shipping.country);
+    if (data.shipping.city) push("City", data.shipping.city);
+    if (data.shipping.postal_code) push("Postal code", data.shipping.postal_code);
+  }
+  return rows;
+};
 const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const mobileComplianceMode = isMobileComplianceMode();
   const token = tokenProp || (typeof window !== "undefined" ? localStorage.getItem("token") : "");
@@ -444,9 +604,24 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [orderShippingRatesLoading, setOrderShippingRatesLoading] = useState(false);
   const [orderShippingBuyLoading, setOrderShippingBuyLoading] = useState(false);
   const [orderShippingRates, setOrderShippingRates] = useState([]);
+  const [orderShippingCustomerQuote, setOrderShippingCustomerQuote] = useState(null);
   const [orderShippingShipmentId, setOrderShippingShipmentId] = useState("");
   const [orderShippingSelectedRateId, setOrderShippingSelectedRateId] = useState("");
   const [orderShippingWarning, setOrderShippingWarning] = useState("");
+  const [shippingOverrideDialogOpen, setShippingOverrideDialogOpen] = useState(false);
+  const [shippingOverrideForm, setShippingOverrideForm] = useState({
+    reason: "",
+    businessAbsorbsDifference: false,
+  });
+  const [orderShippingParcelMode, setOrderShippingParcelMode] = useState("package_profile");
+  const [orderShippingParcelForm, setOrderShippingParcelForm] = useState({
+    package_profile_id: "",
+    name: "Order package",
+    length_mm: "",
+    width_mm: "",
+    height_mm: "",
+    weight_grams: "",
+  });
 
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
   const formatTimestamp = useCallback((value, sourceTz, pattern = "MMM d, yyyy h:mm a") => {
@@ -505,6 +680,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [importing, setImporting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [detailHelpOpen, setDetailHelpOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const importInputRef = useRef(null);
   const showMessage = useCallback((message, severity = "info") => {
     setSnackbar({ open: true, message, severity });
@@ -541,6 +717,53 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     () => formatCurrencyWithCode(outstandingAmount, detailCurrency),
     [outstandingAmount, detailCurrency]
   );
+  const packageProfiles = useMemo(
+    () => (Array.isArray(shippingSettings?.package_profiles) ? shippingSettings.package_profiles : []),
+    [shippingSettings]
+  );
+  const orderNeedsParcelSnapshot = useMemo(
+    () => Boolean(isShippingAutomationEligible(orderDetail) && !orderDetail?.parcel_snapshot),
+    [orderDetail]
+  );
+  useEffect(() => {
+    if (!shippingSettings) return;
+    setOrderShippingParcelForm((prev) => {
+      if (String(prev.package_profile_id || "").trim()) {
+        return prev;
+      }
+      const defaultProfileId = shippingSettings.default_package_profile_id;
+      return {
+        ...prev,
+        package_profile_id: defaultProfileId ? String(defaultProfileId) : "",
+      };
+    });
+  }, [shippingSettings]);
+  useEffect(() => {
+    if (!orderDetail) return;
+    setOrderShippingParcelMode(orderDetail?.parcel_snapshot ? "existing" : "package_profile");
+  }, [orderDetail]);
+
+  const buildOrderShippingParcelPayload = useCallback(() => {
+    if (!orderNeedsParcelSnapshot) {
+      return {};
+    }
+    if (orderShippingParcelMode === "one_time") {
+      return {
+        one_time_parcel: {
+          name: orderShippingParcelForm.name || "Order package",
+          length_mm: Number(orderShippingParcelForm.length_mm || 0),
+          width_mm: Number(orderShippingParcelForm.width_mm || 0),
+          height_mm: Number(orderShippingParcelForm.height_mm || 0),
+          weight_grams: Number(orderShippingParcelForm.weight_grams || 0),
+        },
+      };
+    }
+    const selectedPackageId = Number(orderShippingParcelForm.package_profile_id || 0);
+    if (selectedPackageId > 0) {
+      return { package_profile_id: selectedPackageId };
+    }
+    return {};
+  }, [orderNeedsParcelSnapshot, orderShippingParcelForm, orderShippingParcelMode]);
   const inventoryActionRequired = useMemo(
     () => Boolean(orderDetail?.inventory_action_required),
     [orderDetail]
@@ -553,6 +776,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     const shipment = orderDetail?.latest_shipment;
     return shipment && typeof shipment === "object" ? shipment : null;
   }, [orderDetail]);
+  const latestShipmentCustomsForms = useMemo(() => {
+    const rows = Array.isArray(latestShipment?.customs_forms_json) ? latestShipment.customs_forms_json : [];
+    return rows.filter((row) => isSafeExternalUrl(row?.form_url));
+  }, [latestShipment]);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -599,32 +826,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     setShippingSettingsLoading(true);
     try {
       const { data } = await api.get("/inventory/shipping-settings", { headers });
-      setShippingSettings({
-        mode: data?.mode || "manual",
-        enabled: Boolean(data?.enabled),
-        easypost_enabled: Boolean(data?.easypost_enabled),
-        easypost_has_api_key: Boolean(data?.easypost_has_api_key),
-        easypost_api_key_last4: data?.easypost_api_key_last4 || "",
-        easypost_connected: Boolean(data?.easypost_connected),
-        easypost_connected_at: data?.easypost_connected_at || null,
-        easypost_last_tested_at: data?.easypost_last_tested_at || null,
-        easypost_last_test_status: data?.easypost_last_test_status || "",
-        easypost_last_test_message: data?.easypost_last_test_message || "",
-        allow_pickup: Boolean(data?.allow_pickup),
-        allow_shipping: data?.allow_shipping !== false,
-        allow_local_delivery: Boolean(data?.allow_local_delivery),
-        origin_name: data?.origin_name || "",
-        origin_phone: data?.origin_phone || "",
-        origin_address1: data?.origin_address1 || "",
-        origin_address2: data?.origin_address2 || "",
-        origin_city: data?.origin_city || "",
-        origin_region: data?.origin_region || "",
-        origin_postal_code: data?.origin_postal_code || "",
-        origin_country: data?.origin_country || "",
-        shipping_label_pickup: data?.shipping_label_pickup || "",
-        shipping_label_shipping: data?.shipping_label_shipping || "",
-        shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
-      });
+      setShippingSettings(normalizeManagerShippingSettings(data));
       setEasypostApiKeyInput("");
       setClearEasypostApiKey(false);
     } catch (error) {
@@ -808,7 +1010,13 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       headerName: "Delivery",
       width: 140,
       renderCell: (params) => (
-        <Chip label={params.row?.delivery_method_label || titleCase(params.value)} color="default" size="small" />
+        <Chip
+          label={params.row?.delivery_method_label || titleCase(params.value)}
+          color="default"
+          size="small"
+          variant="outlined"
+          sx={readableChipSx("default")}
+        />
       ),
     },
     {
@@ -816,7 +1024,13 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       headerName: "Fulfillment",
       width: 160,
       renderCell: (params) => (
-        <Chip label={params.row?.fulfillment_status_label || titleCase(params.value)} color={statusColor(params.value)} size="small" />
+        <Chip
+          label={params.row?.fulfillment_status_label || titleCase(params.value)}
+          color={statusColor(params.value)}
+          size="small"
+          variant="outlined"
+          sx={readableChipSx(statusColor(params.value))}
+        />
       ),
     },
     {
@@ -824,7 +1038,13 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       headerName: "Payment",
       width: 150,
       renderCell: (params) => (
-        <Chip label={params.row?.payment_status_label || formatPaymentStatusLabel(params.value)} color={statusColor(params.value)} size="small" />
+        <Chip
+          label={params.row?.payment_status_label || formatPaymentStatusLabel(params.value)}
+          color={statusColor(params.value)}
+          size="small"
+          variant="outlined"
+          sx={readableChipSx(statusColor(params.value))}
+        />
       ),
     },
     {
@@ -873,12 +1093,17 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     setOrderShippingRatesLoading(true);
     setOrderShippingWarning("");
     try {
-      const { data } = await api.post(`/inventory/product-orders/${orderDetail.id}/shipping/rates`, {}, { headers });
+      const { data } = await api.post(
+        `/inventory/product-orders/${orderDetail.id}/shipping/rates`,
+        buildOrderShippingParcelPayload(),
+        { headers }
+      );
       const rates = Array.isArray(data?.rates) ? data.rates : [];
       const defaultRateId = String(
         data?.default_rate_id || rates[0]?.rate_id || rates[0]?.id || ""
       );
       setOrderShippingRates(rates);
+      setOrderShippingCustomerQuote(data?.customer_selected_shipping || null);
       setOrderShippingShipmentId(String(data?.shipment_id || ""));
       setOrderShippingSelectedRateId(defaultRateId);
       if (!rates.length) {
@@ -892,30 +1117,36 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         error?.message ||
         "Unable to load shipping rates.";
       setOrderShippingRates([]);
+      setOrderShippingCustomerQuote(null);
       setOrderShippingShipmentId("");
       setOrderShippingSelectedRateId("");
       setOrderShippingWarning(message);
       if (code === "migration_required") {
         showMessage("Shipping automation requires latest backend migration.", "warning");
+      } else if (code === "parcel_snapshot_required") {
+        showMessage("Select a package profile or enter a one-time package to continue.", "warning");
       } else {
         showMessage(message, "error");
       }
     } finally {
       setOrderShippingRatesLoading(false);
     }
-  }, [orderDetail, headers, showMessage]);
-  const handleBuyOrderShippingLabel = useCallback(async () => {
+  }, [orderDetail, headers, showMessage, buildOrderShippingParcelPayload]);
+  const selectedOrderShippingRate = useMemo(
+    () => orderShippingRates.find((rate) => String(rate?.rate_id || rate?.id || "") === String(orderShippingSelectedRateId || "")) || null,
+    [orderShippingRates, orderShippingSelectedRateId]
+  );
+  const executeOrderShippingLabelPurchase = useCallback(async (overridePayload = {}) => {
     if (!orderDetail || !isShippingAutomationEligible(orderDetail)) return;
-    if (!orderShippingSelectedRateId) {
-      setOrderShippingWarning("Select a shipping rate first.");
-      return;
-    }
     setOrderShippingBuyLoading(true);
     setOrderShippingWarning("");
     try {
       const payload = {
         shipment_id: orderShippingShipmentId || undefined,
         rate_id: orderShippingSelectedRateId,
+        purchase_idempotency_key: window.crypto?.randomUUID?.() || `${Date.now()}`,
+        ...buildOrderShippingParcelPayload(),
+        ...overridePayload,
       };
       const { data } = await api.post(
         `/inventory/product-orders/${orderDetail.id}/shipping/buy`,
@@ -932,6 +1163,11 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       }));
       await loadOrders();
       showMessage("Shipping label purchased successfully.", "success");
+      setShippingOverrideDialogOpen(false);
+      setShippingOverrideForm({
+        reason: "",
+        businessAbsorbsDifference: false,
+      });
     } catch (error) {
       const code = error?.response?.data?.error;
       const message =
@@ -941,6 +1177,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         "Unable to purchase label.";
       if (code === "rate_not_available") {
         setOrderShippingWarning("Selected rate is stale/unavailable. Refresh rates and choose again.");
+      } else if (code === "parcel_snapshot_required") {
+        setOrderShippingWarning("Select a package profile or enter a one-time package to continue.");
       } else {
         setOrderShippingWarning(message);
       }
@@ -955,7 +1193,33 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     headers,
     loadOrders,
     showMessage,
+    buildOrderShippingParcelPayload,
   ]);
+  const handleBuyOrderShippingLabel = useCallback(async () => {
+    if (!orderDetail || !isShippingAutomationEligible(orderDetail)) return;
+    if (!orderShippingSelectedRateId) {
+      setOrderShippingWarning("Select a shipping rate first.");
+      return;
+    }
+    if (selectedOrderShippingRate?.override_required) {
+      setShippingOverrideDialogOpen(true);
+      return;
+    }
+    return executeOrderShippingLabelPurchase();
+  }, [
+    orderDetail,
+    orderShippingSelectedRateId,
+    selectedOrderShippingRate,
+    executeOrderShippingLabelPurchase,
+  ]);
+  const handleConfirmOrderShippingOverride = useCallback(async () => {
+    if (!selectedOrderShippingRate?.override_required) return;
+    return executeOrderShippingLabelPurchase({
+      confirm_override: true,
+      override_reason: shippingOverrideForm.reason,
+      business_absorbs_difference: shippingOverrideForm.businessAbsorbsDifference,
+    });
+  }, [selectedOrderShippingRate, executeOrderShippingLabelPurchase, shippingOverrideForm]);
   const openShipmentLabel = useCallback((url, shouldPrint = false) => {
     const link = String(url || "").trim();
     if (!link) return;
@@ -1079,32 +1343,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         payload.clear_easypost_api_key = true;
       }
       const { data } = await api.patch("/inventory/shipping-settings", payload, { headers });
-      setShippingSettings({
-        mode: data?.mode || "manual",
-        enabled: Boolean(data?.enabled),
-        easypost_enabled: Boolean(data?.easypost_enabled),
-        easypost_has_api_key: Boolean(data?.easypost_has_api_key),
-        easypost_api_key_last4: data?.easypost_api_key_last4 || "",
-        easypost_connected: Boolean(data?.easypost_connected),
-        easypost_connected_at: data?.easypost_connected_at || null,
-        easypost_last_tested_at: data?.easypost_last_tested_at || null,
-        easypost_last_test_status: data?.easypost_last_test_status || "",
-        easypost_last_test_message: data?.easypost_last_test_message || "",
-        allow_pickup: Boolean(data?.allow_pickup),
-        allow_shipping: data?.allow_shipping !== false,
-        allow_local_delivery: Boolean(data?.allow_local_delivery),
-        origin_name: data?.origin_name || "",
-        origin_phone: data?.origin_phone || "",
-        origin_address1: data?.origin_address1 || "",
-        origin_address2: data?.origin_address2 || "",
-        origin_city: data?.origin_city || "",
-        origin_region: data?.origin_region || "",
-        origin_postal_code: data?.origin_postal_code || "",
-        origin_country: data?.origin_country || "",
-        shipping_label_pickup: data?.shipping_label_pickup || "",
-        shipping_label_shipping: data?.shipping_label_shipping || "",
-        shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
-      });
+      setShippingSettings(normalizeManagerShippingSettings(data));
       setEasypostApiKeyInput("");
       setClearEasypostApiKey(false);
       showMessage("Shipping settings updated", "success");
@@ -1125,32 +1364,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       if (trimmedEasyPostKey) payload.easypost_api_key = trimmedEasyPostKey;
       const { data } = await api.post("/inventory/shipping-settings/test-connection", payload, { headers });
       if (data?.settings) {
-        setShippingSettings({
-          mode: data?.settings?.mode || "manual",
-          enabled: Boolean(data?.settings?.enabled),
-          easypost_enabled: Boolean(data?.settings?.easypost_enabled),
-          easypost_has_api_key: Boolean(data?.settings?.easypost_has_api_key),
-          easypost_api_key_last4: data?.settings?.easypost_api_key_last4 || "",
-          easypost_connected: Boolean(data?.settings?.easypost_connected),
-          easypost_connected_at: data?.settings?.easypost_connected_at || null,
-          easypost_last_tested_at: data?.settings?.easypost_last_tested_at || null,
-          easypost_last_test_status: data?.settings?.easypost_last_test_status || "",
-          easypost_last_test_message: data?.settings?.easypost_last_test_message || "",
-          allow_pickup: Boolean(data?.settings?.allow_pickup),
-          allow_shipping: data?.settings?.allow_shipping !== false,
-          allow_local_delivery: Boolean(data?.settings?.allow_local_delivery),
-          origin_name: data?.settings?.origin_name || "",
-          origin_phone: data?.settings?.origin_phone || "",
-          origin_address1: data?.settings?.origin_address1 || "",
-          origin_address2: data?.settings?.origin_address2 || "",
-          origin_city: data?.settings?.origin_city || "",
-          origin_region: data?.settings?.origin_region || "",
-          origin_postal_code: data?.settings?.origin_postal_code || "",
-          origin_country: data?.settings?.origin_country || "",
-          shipping_label_pickup: data?.settings?.shipping_label_pickup || "",
-          shipping_label_shipping: data?.settings?.shipping_label_shipping || "",
-          shipping_label_local_delivery: data?.settings?.shipping_label_local_delivery || "",
-        });
+        setShippingSettings(normalizeManagerShippingSettings(data?.settings));
       }
       showMessage(data?.message || "EasyPost connection successful", "success");
     } catch (error) {
@@ -1709,7 +1923,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       </Stack>
       <Dialog open={detailOpen} onClose={closeDetail} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Typography variant="h6" fontWeight={700}>
+          <Typography component="div" variant="h6" fontWeight={700}>
             Order #{orderDetail?.id}
           </Typography>
           <IconButton onClick={closeDetail}>
@@ -1748,21 +1962,52 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     </Typography>
                   </Stack>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <Chip label={`Delivery: ${orderDetail.delivery_method_label || titleCase(orderDetail.delivery_method)}`} />
-                    <Chip label={`Fulfillment: ${orderDetail.fulfillment_status_label || titleCase(orderDetail.fulfillment_status)}`} color={statusColor(orderDetail.fulfillment_status)} />
-                    <Chip label={`Payment: ${orderDetail.payment_status_label || formatPaymentStatusLabel(orderDetail.payment_status)}`} color={statusColor(orderDetail.payment_status)} />
-                    <Chip label={`Customer status: ${orderDetail.status_label || "Processing"}`} color="default" variant="outlined" />
-                    <Chip label={`Total ${formatCurrencyWithCode(orderDetail.total_amount, detailCurrency)}`} color="primary" variant="outlined" />
-                    <Chip label={`Refunded ${formatCurrencyFromCents(orderDetail.refunded_cents, detailCurrency)}`} color={orderDetail.refunded_cents ? "warning" : "default"} variant="outlined" />
+                    <Chip
+                      label={`Delivery: ${orderDetail.delivery_method_label || titleCase(orderDetail.delivery_method)}`}
+                      variant="outlined"
+                      sx={readableChipSx("default")}
+                    />
+                    <Chip
+                      label={`Fulfillment: ${orderDetail.fulfillment_status_label || titleCase(orderDetail.fulfillment_status)}`}
+                      color={statusColor(orderDetail.fulfillment_status)}
+                      variant="outlined"
+                      sx={readableChipSx(statusColor(orderDetail.fulfillment_status))}
+                    />
+                    <Chip
+                      label={`Payment: ${orderDetail.payment_status_label || formatPaymentStatusLabel(orderDetail.payment_status)}`}
+                      color={statusColor(orderDetail.payment_status)}
+                      variant="outlined"
+                      sx={readableChipSx(statusColor(orderDetail.payment_status))}
+                    />
+                    <Chip
+                      label={`Customer status: ${orderDetail.status_label || "Processing"}`}
+                      color="default"
+                      variant="outlined"
+                      sx={readableChipSx("default")}
+                    />
+                    <Chip
+                      label={`Total ${formatCurrencyWithCode(orderDetail.total_amount, detailCurrency)}`}
+                      color="primary"
+                      variant="outlined"
+                      sx={readableChipSx("primary")}
+                    />
+                    <Chip
+                      label={`Refunded ${formatCurrencyFromCents(orderDetail.refunded_cents, detailCurrency)}`}
+                      color={orderDetail.refunded_cents ? "warning" : "default"}
+                      variant="outlined"
+                      sx={readableChipSx(orderDetail.refunded_cents ? "warning" : "default")}
+                    />
                   </Stack>
                 </Stack>
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
                   <Chip
                     size="small"
-                    color={orderDetail.inventory_committed ? "success" : "default"}
-                    label={
-                      orderDetail.inventory_committed
-                        ? `Inventory committed${orderDetail.inventory_committed_at ? ` • ${formatTimestamp(orderDetail.inventory_committed_at, orderDetail?.company?.timezone)}` : ""}`
+                      color={orderDetail.inventory_committed ? "success" : "default"}
+                      variant="outlined"
+                      sx={readableChipSx(orderDetail.inventory_committed ? "success" : "default")}
+                      label={
+                        orderDetail.inventory_committed
+                          ? `Inventory committed${orderDetail.inventory_committed_at ? ` • ${formatTimestamp(orderDetail.inventory_committed_at, orderDetail?.company?.timezone)}` : ""}`
                         : "Inventory not yet committed"
                     }
                   />
@@ -1770,6 +2015,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     <Chip
                       size="small"
                       color={Number(orderDetail.product_order_restock_total_units || 0) > 0 ? "info" : "default"}
+                      variant="outlined"
+                      sx={readableChipSx(Number(orderDetail.product_order_restock_total_units || 0) > 0 ? "info" : "default")}
                       label={
                         Number(orderDetail.product_order_restock_total_units || 0) > 0
                           ? `Restocked ${Number(orderDetail.product_order_restock_total_units || 0)} unit(s)`
@@ -1782,6 +2029,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       size="small"
                       color={trackingStatusColor(orderDetail.tracking_status)}
                       variant="outlined"
+                      sx={readableChipSx(trackingStatusColor(orderDetail.tracking_status))}
                       label={`Tracking: ${trackingStatusLabel(orderDetail.tracking_status)}`}
                     />
                   )}
@@ -1809,14 +2057,23 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                 <Tab label="Actions" />
               </Tabs>
               <Stack direction="row" justifyContent="flex-end">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<HelpOutlineIcon />}
-                  onClick={() => setDetailHelpOpen(true)}
-                >
-                  Order Help
-                </Button>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setCopilotOpen(true)}
+                  >
+                    Explain this order
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<HelpOutlineIcon />}
+                    onClick={() => setDetailHelpOpen(true)}
+                  >
+                    Order Help
+                  </Button>
+                </Stack>
               </Stack>
               {detailTab === 0 && (
                 <Stack spacing={2}>
@@ -1859,6 +2116,56 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       {orderDetail.notes ? `Customer note: ${orderDetail.notes}` : "No customer notes provided."}
                     </Typography>
                   </Paper>
+                  {orderDetail.is_cross_border ? (
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                        International order
+                      </Typography>
+                      <Stack spacing={1}>
+                        {orderDetail.shipping_origin_snapshot?.country ? (
+                          <Typography variant="body2">
+                            Origin country: {orderDetail.shipping_origin_snapshot.country}
+                          </Typography>
+                        ) : null}
+                        {orderDetail.shipping_country ? (
+                          <Typography variant="body2">
+                            Destination country: {orderDetail.shipping_country}
+                          </Typography>
+                        ) : null}
+                        {orderDetail.shipping_address_verification_level ? (
+                          <Typography variant="body2">
+                            Address verification level: {shippingVerificationLevelLabel(orderDetail.shipping_address_verification_level)}
+                          </Typography>
+                        ) : null}
+                        {orderDetail.shipping_address_customer_confirmed ? (
+                          <Alert severity="warning">
+                            This address was confirmed by the customer but was not automatically verified.
+                          </Alert>
+                        ) : null}
+                        <Typography variant="body2">Duties policy: Buyer may pay import charges</Typography>
+                        <Typography variant="body2">Duties included: {orderDetail.duties_included ? "Yes" : "No"}</Typography>
+                        <Typography variant="body2">Customer acknowledged: {orderDetail.import_charges_acknowledged ? "Yes" : "No"}</Typography>
+                        {orderDetail.import_charges_acknowledged_at ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Acknowledged: {formatTimestamp(orderDetail.import_charges_acknowledged_at, orderDetail?.company?.timezone)}
+                          </Typography>
+                        ) : null}
+                        {orderDetail.import_charges_notice_version ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Notice version: {orderDetail.import_charges_notice_version}
+                          </Typography>
+                        ) : null}
+                        {orderDetail.import_charges_notice_snapshot?.additional_note ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Tenant note: {orderDetail.import_charges_notice_snapshot.additional_note}
+                          </Typography>
+                        ) : null}
+                        {orderDetail.import_charges_notice_snapshot?.standard_notice ? (
+                          <Alert severity="info">{orderDetail.import_charges_notice_snapshot.standard_notice}</Alert>
+                        ) : null}
+                      </Stack>
+                    </Paper>
+                  ) : null}
                 </Stack>
               )}
               {detailTab === 1 && (
@@ -1945,7 +2252,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                             primary={
                               <Stack direction="row" spacing={1} alignItems="center">
                                 {timelineIcon(event.event_type)}
-                                <Typography fontWeight={600}>{titleCase(event.event_type)}</Typography>
+                                <Typography fontWeight={600}>{humanizeEventType(event.event_type)}</Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {formatTimestamp(event.created_at, orderDetail?.company?.timezone)}
                                 </Typography>
@@ -1959,11 +2266,28 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                     {event.actor_name} {event.actor_email ? `(${event.actor_email})` : ""}
                                   </Typography>
                                 )}
-                                {event.data && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    {JSON.stringify(event.data)}
-                                  </Typography>
-                                )}
+                                {(() => {
+                                  const metadataRows = summarizeTimelineData(event.data, detailCurrency);
+                                  if (!metadataRows.length) return null;
+                                  return (
+                                    <Paper
+                                      variant="outlined"
+                                      sx={{
+                                        mt: 0.5,
+                                        p: 1,
+                                        bgcolor: "background.default",
+                                      }}
+                                    >
+                                      <Stack spacing={0.5}>
+                                        {metadataRows.map((row) => (
+                                          <Typography key={`${event.id}-${row.label}`} variant="caption" color="text.secondary">
+                                            <strong>{row.label}:</strong> {row.value}
+                                          </Typography>
+                                        ))}
+                                      </Stack>
+                                    </Paper>
+                                  );
+                                })()}
                               </Stack>
                             }
                           />
@@ -2009,12 +2333,150 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                         <Typography variant="caption" color="text.secondary">
                           Workspace delivery policy and EasyPost defaults are managed in Products -> Delivery setup.
                         </Typography>
+                        {orderShippingCustomerQuote ? (
+                          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+                            <Stack spacing={0.75}>
+                              <Typography variant="subtitle2" fontWeight={700}>
+                                Customer-selected shipping
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {orderShippingCustomerQuote.source === "legacy_snapshot"
+                                  ? "Legacy order — original shipping quote was not server-verified."
+                                  : "Customer selected and paid this shipping option at checkout."}
+                              </Typography>
+                              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap">
+                                <Chip size="small" variant="outlined" label={`Carrier: ${orderShippingCustomerQuote.carrier || "Unknown"}`} sx={readableChipSx("default")} />
+                                <Chip size="small" variant="outlined" label={`Service: ${orderShippingCustomerQuote.service || "Unknown"}`} sx={readableChipSx("default")} />
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  label={`Shipping paid: ${formatCurrencyFromCents(orderShippingCustomerQuote.amount_cents || 0, (normalizeCurrency(orderShippingCustomerQuote.currency) || detailCurrency || "USD").toUpperCase())}`}
+                                  sx={readableChipSx("primary")}
+                                />
+                                <Chip size="small" variant="outlined" label={`Quote: ${orderShippingCustomerQuote.quote_state === "expired" ? "Expired" : "Current"}`} sx={readableChipSx(orderShippingCustomerQuote.quote_state === "expired" ? "warning" : "success")} />
+                              </Stack>
+                            </Stack>
+                          </Paper>
+                        ) : null}
+                        {orderNeedsParcelSnapshot ? (
+                          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+                            <Stack spacing={1.5}>
+                              <Alert severity="info">
+                                This order was created before accurate parcel snapshots were stored. Choose the tenant default package or enter the actual parcel once before refreshing rates or buying a label.
+                              </Alert>
+                              <FormControl size="small">
+                                <FormLabel>Parcel source</FormLabel>
+                                <Select
+                                  value={orderShippingParcelMode}
+                                  onChange={(event) => setOrderShippingParcelMode(String(event.target.value || "package_profile"))}
+                                >
+                                  <MenuItem value="package_profile">Use package profile</MenuItem>
+                                  <MenuItem value="one_time">Enter one-time actual package</MenuItem>
+                                </Select>
+                              </FormControl>
+                              {orderShippingParcelMode === "package_profile" ? (
+                                <TextField
+                                  select
+                                  fullWidth
+                                  size="small"
+                                  label="Package profile"
+                                  value={orderShippingParcelForm.package_profile_id}
+                                  onChange={(event) =>
+                                    setOrderShippingParcelForm((prev) => ({
+                                      ...prev,
+                                      package_profile_id: String(event.target.value || ""),
+                                    }))
+                                  }
+                                  helperText={
+                                    packageProfiles.length
+                                      ? "The selected package profile will become this order's immutable parcel snapshot."
+                                      : "No package profiles exist yet. Create one in Products -> Delivery setup or enter a one-time actual package."
+                                  }
+                                >
+                                  <MenuItem value="" disabled>
+                                    Select package profile
+                                  </MenuItem>
+                                  {packageProfiles.map((profile) => (
+                                    <MenuItem key={profile.id} value={String(profile.id)}>
+                                      {profile.name}
+                                      {profile.is_default ? " (Default)" : ""}
+                                    </MenuItem>
+                                  ))}
+                                </TextField>
+                              ) : (
+                                <Grid container spacing={1.5}>
+                                  <Grid item xs={12} md={4}>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      label="Package name"
+                                      value={orderShippingParcelForm.name}
+                                      onChange={(event) =>
+                                        setOrderShippingParcelForm((prev) => ({ ...prev, name: event.target.value }))
+                                      }
+                                    />
+                                  </Grid>
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      type="number"
+                                      label="Length (mm)"
+                                      value={orderShippingParcelForm.length_mm}
+                                      onChange={(event) =>
+                                        setOrderShippingParcelForm((prev) => ({ ...prev, length_mm: event.target.value }))
+                                      }
+                                    />
+                                  </Grid>
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      type="number"
+                                      label="Width (mm)"
+                                      value={orderShippingParcelForm.width_mm}
+                                      onChange={(event) =>
+                                        setOrderShippingParcelForm((prev) => ({ ...prev, width_mm: event.target.value }))
+                                      }
+                                    />
+                                  </Grid>
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      type="number"
+                                      label="Height (mm)"
+                                      value={orderShippingParcelForm.height_mm}
+                                      onChange={(event) =>
+                                        setOrderShippingParcelForm((prev) => ({ ...prev, height_mm: event.target.value }))
+                                      }
+                                    />
+                                  </Grid>
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      type="number"
+                                      label="Weight (g)"
+                                      value={orderShippingParcelForm.weight_grams}
+                                      onChange={(event) =>
+                                        setOrderShippingParcelForm((prev) => ({ ...prev, weight_grams: event.target.value }))
+                                      }
+                                    />
+                                  </Grid>
+                                </Grid>
+                              )}
+                            </Stack>
+                          </Paper>
+                        ) : null}
                         {orderShippingWarning ? (
                           <Alert severity="warning">{orderShippingWarning}</Alert>
                         ) : null}
                         {orderShippingRates.length > 0 ? (
                           <FormControl fullWidth size="small">
-                            <FormLabel shrink>Rate options</FormLabel>
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.75 }}>
+                              Rate options
+                            </Typography>
                             <Select
                               value={orderShippingSelectedRateId}
                               onChange={(event) => setOrderShippingSelectedRateId(String(event.target.value || ""))}
@@ -2040,6 +2502,20 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                 );
                               })}
                             </Select>
+                            {selectedOrderShippingRate ? (
+                              <Alert
+                                severity={
+                                  selectedOrderShippingRate.blocking_reason
+                                    ? "error"
+                                    : selectedOrderShippingRate.override_required
+                                      ? "warning"
+                                      : "info"
+                                }
+                                sx={{ mt: 1 }}
+                              >
+                                {selectedOrderShippingRate.comparison_message}
+                              </Alert>
+                            ) : null}
                           </FormControl>
                         ) : (
                           <Typography variant="body2" color="text.secondary">
@@ -2097,6 +2573,31 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                     Print label
                                   </Button>
                                 </Stack>
+                              ) : null}
+                              {latestShipmentCustomsForms.length > 0 ? (
+                                <Stack spacing={1}>
+                                  <Typography variant="body2" fontWeight={600}>
+                                    Customs documents
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                    {latestShipmentCustomsForms.map((form, index) => (
+                                      <Button
+                                        key={`${form.form_type || "customs"}-${index}`}
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<OpenInNewIcon fontSize="small" />}
+                                        onClick={() => window.open(form.form_url, "_blank", "noopener,noreferrer")}
+                                      >
+                                        {`Open ${form.form_type || "customs document"}`}
+                                      </Button>
+                                    ))}
+                                  </Stack>
+                                </Stack>
+                              ) : null}
+                              {orderDetail?.is_cross_border && latestShipment?.easypost_customs_info_id && latestShipmentCustomsForms.length === 0 ? (
+                                <Alert severity="info" sx={{ mt: 0.5 }}>
+                                  This carrier did not return a separate customs document link. Customs paperwork may be integrated into the shipping label.
+                                </Alert>
                               ) : null}
                               {(latestShipment.tracking_url || orderDetail?.tracking_url_public) ? (
                                 <Button
@@ -2201,7 +2702,14 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       <Grid item xs={12} md={4}>
                         <FormControl fullWidth size="small">
                           <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
-                            <FormLabel shrink>Next action</FormLabel>
+                            <Typography
+                              component="div"
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ mb: 0.75, fontWeight: 600 }}
+                            >
+                              Next action
+                            </Typography>
                             <Tooltip
                               title={
                                 ["shipping", "local_delivery"].includes(String(orderDetail?.delivery_method || "").toLowerCase())
@@ -2315,7 +2823,14 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={4}>
                         <FormControl fullWidth size="small">
-                          <FormLabel shrink>Event type</FormLabel>
+                          <Typography
+                            component="div"
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ mb: 0.75, fontWeight: 600 }}
+                          >
+                            Event type
+                          </Typography>
                           <Select
                             value={eventForm.type}
                             onChange={(event) => setEventForm((prev) => ({ ...prev, type: event.target.value }))}
@@ -2601,6 +3116,51 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={shippingOverrideDialogOpen} onClose={() => setShippingOverrideDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm shipping override</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant="body2">
+              {selectedOrderShippingRate?.comparison_message || "This label differs from the customer-paid shipping option."}
+            </Typography>
+            <Typography variant="body2">
+              Customer paid: {formatCurrencyFromCents(orderShippingCustomerQuote?.amount_cents || 0, (normalizeCurrency(orderShippingCustomerQuote?.currency) || detailCurrency || "USD").toUpperCase())}
+            </Typography>
+            <Typography variant="body2">
+              Current label cost: {selectedOrderShippingRate ? formatCurrencyFromCents(selectedOrderShippingRate.label_cost_cents || 0, (normalizeCurrency(selectedOrderShippingRate.currency) || detailCurrency || "USD").toUpperCase()) : ""}
+            </Typography>
+            <TextField
+              fullWidth
+              label="Override reason"
+              multiline
+              minRows={2}
+              value={shippingOverrideForm.reason}
+              onChange={(event) => setShippingOverrideForm((prev) => ({ ...prev, reason: event.target.value }))}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={shippingOverrideForm.businessAbsorbsDifference}
+                  onChange={(event) =>
+                    setShippingOverrideForm((prev) => ({
+                      ...prev,
+                      businessAbsorbsDifference: event.target.checked,
+                    }))
+                  }
+                />
+              }
+              label="Business will absorb the difference"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShippingOverrideDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirmOrderShippingOverride} disabled={orderShippingBuyLoading}>
+            {orderShippingBuyLoading ? <CircularProgress size={16} /> : "Confirm label purchase"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Drawer
         anchor="right"
         open={detailHelpOpen}
@@ -2762,6 +3322,13 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           </Typography>
         </Stack>
       </Drawer>
+      <CommerceCopilotDrawer
+        open={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        token={token}
+        initialWorkflow="explain_order"
+        targetProductOrderId={orderDetail?.id || null}
+      />
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

@@ -5,6 +5,7 @@ import SeatsRequiredModal from "./SeatsRequiredModal";
 const BillingUpgradeController = () => {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [requiredPlan, setRequiredPlan] = useState(null);
+  const [addonKey, setAddonKey] = useState(null);
   const [upgradeMessage, setUpgradeMessage] = useState("");
   const [upgradeAction, setUpgradeAction] = useState("");
   const [upgradeAudience, setUpgradeAudience] = useState("manager");
@@ -14,6 +15,7 @@ const BillingUpgradeController = () => {
   useEffect(() => {
     const onUpgrade = (event) => {
       setRequiredPlan(event?.detail?.requiredPlan || null);
+      setAddonKey(event?.detail?.addonKey || null);
       setUpgradeMessage(event?.detail?.message || "");
       setUpgradeAction(event?.detail?.action || "");
       setUpgradeAudience(event?.detail?.audience || "manager");
@@ -40,6 +42,7 @@ const BillingUpgradeController = () => {
         <UpgradeRequiredModal
           open={upgradeOpen}
           requiredPlan={requiredPlan}
+          addonKey={addonKey}
           message={upgradeMessage}
           action={upgradeAction}
           onClose={() => setUpgradeOpen(false)}

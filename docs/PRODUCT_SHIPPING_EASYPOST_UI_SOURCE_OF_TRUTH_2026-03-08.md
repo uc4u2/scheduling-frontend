@@ -1,7 +1,32 @@
 # Product + Shipping + EasyPost UI Source Of Truth
 
-Updated: 2026-03-08
+Updated: 2026-07-27
 Scope: manager product workspace, delivery setup, order actions, checkout/client behavior.
+
+## Commerce Copilot Note
+
+As of Monday, July 27, 2026, the manager UI includes Schedulaa Commerce Copilot entry points, safe-write approval flow, and free-launch or paid-add-on billing states.
+
+Entry points:
+- `ProductManagement.js`
+  - `Create with AI`
+  - `Fix with AI`
+- `EasyPostShippingSettingsPanel.js`
+  - `Configure shipping with AI`
+- `DigitalProductsWorkspace.js`
+  - `Create digital product with AI`
+- `ManagerProductOrdersView.js`
+  - `Explain this order`
+
+Phase 3 UX rules:
+- text-only
+- no audio controls
+- plain-language questions
+- separate draft, approval, and execution panels
+- explicit `Approve selected changes` and `Apply approved changes` buttons
+- free launch shows `Included during free launch`
+- paid mode may show add-on activation, grace warning, or allowance exhaustion states
+- existing billing upgrade handling remains the gating UX when access is unavailable
 
 ## 1) Manager UI Ownership Map
 
@@ -13,12 +38,31 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
   - Product stock history access
   - Delivery setup entrypoint (drawer/panel)
   - Product-level delivery override controls (exception-only)
+  - Physical shipping fields:
+    - weight in grams
+    - optional dimensions in millimetres
+    - `ships separately`
+  - Cross-border customs fields:
+    - `Allow international shipping`
+    - customs description
+    - country of origin
+    - HS/tariff code
+    - declared customs value + currency
+    - optional manufacturer / ECCN
+  - shipping readiness badge from backend serializer
+  - customs readiness badge from backend serializer
 
 ### Delivery setup panel
 - File: `frontend/src/pages/sections/management/EasyPostShippingSettingsPanel.js`
 - Responsibilities:
   - Tab 1 `Delivery Methods`: checkout policy controls (`allow_pickup`, `allow_shipping`, `allow_local_delivery`, labels)
-  - Tab 2 `EasyPost Automation`: API key, enable toggle, test connection, origin settings
+  - Tab 2 `EasyPost Automation`: API key, enable toggle, test connection, origin settings, destination policy, package profiles, shipping-readiness checklist, address-verification toggle/status, selected-country allowlist, international verification mode, cross-border customs defaults, and US export filing controls when origin is US
+  - International duties notice/policy controls:
+    - `Domestic shipping only`
+    - `Sell to international customers — buyer may pay import charges`
+    - optional additional note
+    - optional terms URL
+    - `Require import-charge acknowledgement`
   - Auto-load settings on mount
   - Help drawer for this panel
 
@@ -28,6 +72,9 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
   - Orders table + detail drawer/modal
   - Fulfillment actions/timeline
   - EasyPost order-level actions (rates, buy label, shipment summary)
+  - Pinned customer-paid shipping block
+  - Rate comparison badges/messages
+  - Override dialog for protected label-purchase cases
   - Label open/print when `label_url` exists
 
 ## 2) Client/Public UI Ownership Map
@@ -36,9 +83,33 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
 - File: `frontend/src/pages/client/Checkout.js`
 - Responsibilities:
   - Reads delivery policy from `GET /public/<slug>/delivery-methods`
+  - Reads allowed destination countries from the same backend payload
+  - Reads the server-owned country catalog / destination options from the same backend payload
+  - Reads origin country from the same backend payload
   - Renders allowed delivery methods only
+  - Uses backend destination countries for checkout country choices instead of hardcoded CA/US
+  - When shipping address verification is enabled, requires explicit `Verify address & view shipping options` before live rates are requested
+  - For corrected addresses, renders a correction choice UI:
+    - `Use suggested address`
+    - `Use original address`
+    - `Edit address`
+  - For non-CA/US destinations, can render a separate customer-confirmation step when automatic verification is unavailable:
+    - `I confirm that this international delivery address is complete and correct.`
+  - Clears verification token/result and shipping rates when any shipping address field changes
+  - Stores the opaque `shipping_rate_quote_token`
+  - Stores the selected `rate_id` separately from display-only rate text
+  - Clears quote token, selected rate, rate list, and displayed shipping total when address/cart/delivery state changes invalidate the quote
+  - Sends the accepted verification token with:
+    - live rate requests
+    - hosted checkout
+    - direct product checkout
+  - Shows an international-shipping notice when the accepted shipping country differs from tenant origin country
+  - For cross-border rates, labels each option with `Import charges not included`
+  - Requires import-charge acknowledgement before hosted/direct order creation when configured
+  - Keeps address confirmation and import-charge acknowledgement as separate facts
   - If allowed methods are intentionally empty, shows message and no method options
-  - If policy API fails (real failure), fallback-safe behavior can still apply
+  - Blocking destination/policy/readiness failures show a safe shipping-unavailable message and no rates
+  - Manual fallback is reserved for genuine provider/no-usable-rate failures when tenant shipping policy already allows it
 
 ### Client Orders (My Bookings)
 - File: `frontend/src/pages/client/ClientBookings.js`
@@ -67,6 +138,7 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
 
 ### A) Delivery setup opens but empty values shown initially
 - Check that settings panel auto-load effect is present in `EasyPostShippingSettingsPanel.js`.
+- Confirm package profiles and readiness checklist are returned by `/inventory/shipping-settings`.
 
 ### B) Browser says CORS blocked on shipping settings
 - Confirm frontend calls `/inventory/shipping-settings` (not `/company/shipping-settings`).
@@ -75,9 +147,21 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
 - Check returned payload from `/public/<slug>/delivery-methods`.
 - If API returns empty intentionally, checkout should show no options (and warning message), not re-enable all.
 
+### E) Shipping rates do not appear after address entry
+- Confirm whether address verification is enabled in Delivery setup.
+- If enabled, checkout will not request rates while the user is typing.
+- Customer must click `Verify address & view shipping options`.
+- If the address is corrected, the customer must accept either:
+  - suggested address, or
+  - original address
+- Editing the address clears the verification state and current rates.
+
 ### D) Manager cannot use rates/buy label actions
 - Confirm order `delivery_method` and EasyPost settings/key status.
 - Check ManagerProductOrdersView action warnings for stale rate / disabled / missing key paths.
+- Historical orders created before Accurate Parcel V2 may require:
+  - package profile selection, or
+  - one-time actual parcel entry
 
 ## 5) Primary UI Validation Checklist
 
@@ -85,19 +169,61 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
 1. Open Products workspace.
 2. Open Delivery setup.
 3. Confirm Delivery Methods and EasyPost Automation are separated.
-4. Save policy and refresh panel; values persist.
-5. Open Product modal and verify override helper text matches global-vs-exception behavior.
+4. Confirm destination policy shows the intended preset:
+   - `Domestic only`, or
+   - `Canada and United States`, or
+   - `Selected countries`
+5. Confirm package profile CRUD/default package render.
+6. Save policy and refresh panel; values persist.
+7. When `Canada and United States` is selected, confirm customs defaults and US export filing controls appear only when origin is `US`.
+8. Open Product modal and verify override helper text matches global-vs-exception behavior.
+9. Verify physical shipping fields plus customs readiness badge render.
 
 ### Checkout
 1. With shipping-only policy, only shipping appears.
-2. With all methods disabled, method selector is effectively unavailable and warning is shown.
-3. With API failure (simulated), fallback remains safe and does not crash checkout.
+2. Checkout country list comes from backend allowed destinations and is rendered with a searchable selector.
+3. With verification enabled, rates are not requested during typing.
+4. Customer must use `Verify address & view shipping options` before rates appear.
+5. A corrected address prompts:
+   - suggested address
+   - original address
+   - edit address
+6. With domestic-only tenant, foreign country is unavailable.
+7. With `Selected countries`, checkout shows only tenant-enabled destinations.
+8. When best-effort or disabled international verification is configured, customer confirmation of the address is required before live rates are requested.
+9. Cross-border totals include `Import duties and taxes: Not included`.
+10. If acknowledgement is required, checkout blocks payment until the checkbox is selected.
+11. With all methods disabled, method selector is effectively unavailable and warning is shown.
+12. With provider outage (simulated), retry messaging is shown and checkout does not crash.
 
 ### Product Orders
 1. Open order detail.
 2. In EasyPost-related actions, refresh rates works when eligible/configured.
-3. Buy label updates shipment summary and label actions.
-4. Manual fulfillment/tracking remains usable.
+3. Historical orders without parcel snapshots require explicit package selection or one-time parcel entry.
+4. Customer-paid shipping card remains pinned after rerating.
+5. Higher-cost / different-service / different-carrier choices require explicit override confirmation and reason.
+6. Buy label updates shipment summary and label actions.
+7. International labels may expose safe customs document links when the carrier returns separate customs forms.
+7. Manual fulfillment/tracking remains usable.
+8. Delivery setup shows five lifecycle email toggles:
+   - Email customer when order ships
+   - Email customer when order is delivered
+   - Email customer about delivery problems
+   - Email managers about delivery problems
+   - Email customer when pickup is ready
+9. Timeline entries such as `Customer shipped email queued` remain human-readable and do not expose raw notification keys.
+
+## 6A) Current UI Non-Goals
+
+Not in scope yet:
+
+- SMS
+- multi-parcel runtime UI
+- duties collection / landed-cost calculation
+- automatic currency conversion
+- manager address changes after payment
+- returns / return labels
+- destination countries beyond the tenant-enabled selected-country allowlist
 
 ### Client My Bookings
 1. Orders tab lists order status fields.

@@ -23,6 +23,7 @@ import ArchiveIcon from "@mui/icons-material/Archive";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import api from "../../../utils/api";
+import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
 
 const DELIVERY_MODE_OPTIONS = [
   { value: "none", label: "None" },
@@ -96,6 +97,7 @@ const DigitalProductsWorkspace = ({ token }) => {
     page_size: 10,
   });
   const [helpOpen, setHelpOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   const selectedProduct = useMemo(
     () => products.find((row) => String(row.id) === String(selectedProductId)) || null,
@@ -403,6 +405,13 @@ const DigitalProductsWorkspace = ({ token }) => {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={() => setCopilotOpen(true)}
+          >
+            Create digital product with AI
+          </Button>
           <Tooltip title="Open full manager guide for Digital Products." arrow>
             <Button
               startIcon={<HelpOutlineIcon />}
@@ -1086,6 +1095,13 @@ const DigitalProductsWorkspace = ({ token }) => {
           </Stack>
         </Stack>
       </Drawer>
+      <CommerceCopilotDrawer
+        open={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        token={token}
+        initialWorkflow="create_digital_product"
+        targetProductId={selectedProductId ? Number(selectedProductId) : null}
+      />
     </Box>
   );
 };

@@ -4,6 +4,13 @@ Last updated: 2026-02-04
 
 This document is the canonical reference for the Platform Admin Command Center, Sales Rep portal, and related backend/DB/frontend changes.
 
+Commerce Copilot note as of Monday, July 27, 2026:
+- Platform Admin now includes `AI Commerce Copilot Monetization`
+- route: `/admin/ai-commerce-copilot/monetization`
+- this panel controls Free Launch Mode versus Paid Add-on Mode
+- it shows trusted Stripe configuration readiness, allowance, tenant impact counts, and last toggle metadata
+- enabling paid enforcement does not automatically subscribe or charge tenants
+
 ---
 
 ## 1) High-level architecture

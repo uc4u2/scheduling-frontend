@@ -28,6 +28,7 @@ const navItems = [
   { label: "Sales Ledger", to: "/admin/sales/ledger" },
   { label: "Sales Payouts", to: "/admin/sales/payouts" },
   { label: "Team", to: "/admin/team" },
+  { label: "Copilot Billing", to: "/admin/ai-commerce-copilot/monetization" },
   { label: "Audit Logs", to: "/admin/audit-logs" },
 ];
 

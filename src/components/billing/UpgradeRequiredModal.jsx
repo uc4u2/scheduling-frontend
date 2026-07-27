@@ -10,7 +10,7 @@ const PLAN_LABELS = {
   business: "Business",
 };
 
-const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) => {
+const UpgradeRequiredModal = ({ open, requiredPlan, addonKey, message, action, onClose }) => {
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const planLabel = PLAN_LABELS[requiredPlan] || "Pro";
@@ -47,6 +47,11 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
     window.location.href = BILLING_SETTINGS_URL;
   };
 
+  const handleOpenBilling = () => {
+    if (onClose) onClose();
+    window.location.href = BILLING_SETTINGS_URL;
+  };
+
   const handleViewPlans = () => {
     if (onClose) onClose();
     window.location.href = MARKETING_PRICING_URL;
@@ -61,9 +66,11 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
             {detail}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {action === "start_plan"
-              ? "Start a plan to unlock this feature."
-              : "Upgrade your subscription to unlock this feature."}
+            {action === "activate_ai_commerce_copilot"
+              ? "Activate the Commerce Copilot add-on from Billing & Subscription."
+              : action === "start_plan"
+                ? "Start a plan to unlock this feature."
+                : "Upgrade your subscription to unlock this feature."}
           </Typography>
         </Stack>
       </DialogContent>
@@ -74,9 +81,15 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
         </Button>
         <Button
           variant="contained"
-          onClick={action === "start_plan" ? handleStartPlan : handlePortal}
+          onClick={
+            action === "activate_ai_commerce_copilot"
+              ? handleOpenBilling
+              : action === "start_plan"
+                ? handleStartPlan
+                : handlePortal
+          }
         >
-          {action === "start_plan" ? "Start plan" : "Upgrade"}
+          {action === "activate_ai_commerce_copilot" ? "Open billing" : action === "start_plan" ? "Start plan" : "Upgrade"}
         </Button>
       </DialogActions>
     </Dialog>

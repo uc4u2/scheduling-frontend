@@ -306,6 +306,21 @@ const ProductDetails = ({ slugOverride }) => {
             {product.is_digital && (
               <Chip label="Digital product" color="info" size="small" sx={{ alignSelf: "flex-start" }} />
             )}
+            {!product.is_digital && (
+              <>
+                <Chip
+                  label={product.allow_international_shipping ? "International shipping available" : "Domestic shipping only"}
+                  variant="outlined"
+                  size="small"
+                  sx={{ alignSelf: "flex-start" }}
+                />
+                {product.allow_international_shipping ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Import duties or taxes may apply depending on destination.
+                  </Typography>
+                ) : null}
+              </>
+            )}
             {Array.isArray(product.tags) && product.tags.length > 0 && (
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
                 {product.tags.slice(0, 6).map((tag, index) => (

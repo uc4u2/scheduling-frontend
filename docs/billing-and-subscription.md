@@ -17,6 +17,8 @@ This opens: Manager Portal → Settings → Billing & Subscription
 - View subscription status and renewal dates.
 - Open the billing portal to update payment methods.
 - Review seat counts and included staff limits.
+- Review AI Commerce Copilot free-launch or paid-add-on status.
+- Activate the AI Commerce Copilot add-on when paid enforcement is enabled and the tenant is eligible.
 
 ## Step-by-step
 
@@ -41,6 +43,12 @@ If Stripe says the payment needs attention (past due/unpaid/incomplete), you’l
 
 - **I paid but I still see inactive**  
   Open Billing & Subscription and click **Sync from Stripe**. If it’s still inactive, click **Manage Billing** and check Stripe for payment issues.
+
+- **Why does AI Commerce Copilot say “Included during free launch”?**
+  The platform is still in Free Launch Mode. No separate Copilot add-on purchase is required in that mode.
+
+- **Why does AI Commerce Copilot ask me to activate an add-on?**
+  The platform admin has enabled Paid Add-on Mode. Pro and Business tenants must activate the recurring Copilot add-on before creating new Copilot sessions or applying approved changes.
 
 - **Why did the dashboard say “Confirming billing…”?**  
   This is normal immediately after checkout. It disappears once your subscription is active or trialing.

@@ -1,5 +1,5 @@
 // src/pages/client/Checkout.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getActiveCurrency } from "../../utils/currency";
@@ -9,6 +9,7 @@ import { CartTypes, loadCart, saveCart, clearCart } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
 
 import {
+  Autocomplete,
   Box,
   Typography,
   Alert,
@@ -31,7 +32,6 @@ import {
   Checkbox,
   FormControlLabel,
   FormControl,
-  FormLabel,
   Select,
   ListItemIcon,
   Chip,
@@ -82,10 +82,10 @@ const normalizeProductOrder = (payload) => {
   return payload;
 };
 
-const DELIVERY_COUNTRY_OPTIONS = [
-  { code: "CA", label: "Canada" },
-  { code: "US", label: "United States" },
-];
+const FALLBACK_COUNTRY_LABELS = {
+  CA: "Canada",
+  US: "United States",
+};
 
 const CHECKOUT_SELECT_MENU_PROPS = {
   PaperProps: {
@@ -108,6 +108,44 @@ const normalizeDeliveryCountryCode = (value) => {
   if (token === "US" || token === "USA" || token === "UNITED STATES" || token === "UNITED STATES OF AMERICA") return "US";
   if (token.length === 2 && /^[A-Z]{2}$/.test(token)) return token;
   return "";
+};
+
+const EMPTY_SHIPPING_RATES = {
+  loading: false,
+  available: false,
+  fallbackManual: false,
+  message: "",
+  rates: [],
+  selectedRateId: "",
+  quoteToken: "",
+  quoteExpiresAt: "",
+  dutiesIncluded: false,
+  importChargesNoticeVersion: "",
+  importChargesNoticeSnapshot: null,
+  requireImportChargesAcknowledgement: false,
+  incompatibleItems: [],
+};
+
+const EMPTY_ADDRESS_VERIFICATION = {
+  loading: false,
+  status: "idle",
+  token: "",
+  acceptedAddress: null,
+  originalAddress: null,
+  suggestedAddress: null,
+  differences: [],
+  messages: [],
+  retryable: false,
+  residential: null,
+  verificationLevel: "",
+};
+
+const emptyImportNoticeConfig = {
+  internationalDutiesPolicy: "",
+  dutiesIncluded: false,
+  importChargesNoticeVersion: "",
+  importChargesNoticeSnapshot: null,
+  requireImportChargesAcknowledgement: false,
 };
 
 
@@ -682,19 +720,22 @@ export function CheckoutFormCore({
       instructions: "",
     },
   });
-  const [shippingRates, setShippingRates] = useState({
-    loading: false,
-    available: false,
-    fallbackManual: false,
-    message: "",
-    rates: [],
-    selectedRateId: "",
-  });
+  const [shippingRates, setShippingRates] = useState({ ...EMPTY_SHIPPING_RATES });
+  const [addressVerification, setAddressVerification] = useState({ ...EMPTY_ADDRESS_VERIFICATION });
+  const [addressConfirmationChecked, setAddressConfirmationChecked] = useState(false);
   const [deliveryMethodPolicy, setDeliveryMethodPolicy] = useState({
     loading: false,
     source: "default",
     allowedMethods: ["pickup", "shipping", "local_delivery"],
+    allowedDestinationCountries: [],
+    allowedDestinationCountryOptions: [],
+    countryCatalog: [],
+    addressVerificationEnabled: false,
+    internationalAddressVerificationMode: "best_effort",
+    originCountry: "",
+    ...emptyImportNoticeConfig,
   });
+  const [importChargesAcknowledged, setImportChargesAcknowledged] = useState(false);
   const [cart, setCart] = useState([]);
   const [clientPackages, setClientPackages] = useState([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
@@ -713,6 +754,7 @@ export function CheckoutFormCore({
   const [couponError, setCouponError] = useState("");
   const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
   const [publicUpgradeMessage, setPublicUpgradeMessage] = useState("");
+  const lastAckDependencyRef = useRef("");
 
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
@@ -977,6 +1019,13 @@ export function CheckoutFormCore({
         loading: false,
         source: "default",
         allowedMethods: ["pickup", "shipping", "local_delivery"],
+        allowedDestinationCountries: [],
+        allowedDestinationCountryOptions: [],
+        countryCatalog: [],
+        addressVerificationEnabled: false,
+        internationalAddressVerificationMode: "best_effort",
+        originCountry: "",
+        ...emptyImportNoticeConfig,
       });
       return;
     }
@@ -989,10 +1038,47 @@ export function CheckoutFormCore({
         const allowedMethods = Array.isArray(data?.allowed_methods)
           ? data.allowed_methods.filter((m) => ["pickup", "shipping", "local_delivery"].includes(String(m)))
           : [];
+        const allowedDestinationCountries = Array.isArray(data?.allowed_destination_countries)
+          ? data.allowed_destination_countries
+              .map((country) => normalizeDeliveryCountryCode(country))
+              .filter(Boolean)
+          : [];
+        const allowedDestinationCountryOptions = Array.isArray(data?.allowed_destination_country_options)
+          ? data.allowed_destination_country_options
+              .filter((row) => row && row.code)
+              .map((row) => ({
+                code: normalizeDeliveryCountryCode(row.code),
+                label: row.label || normalizeDeliveryCountryCode(row.code),
+              }))
+              .filter((row) => row.code)
+          : [];
+        const countryCatalog = Array.isArray(data?.country_catalog)
+          ? data.country_catalog
+              .filter((row) => row && row.code)
+              .map((row) => ({
+                code: normalizeDeliveryCountryCode(row.code),
+                label: row.label || normalizeDeliveryCountryCode(row.code),
+              }))
+              .filter((row) => row.code)
+          : [];
         setDeliveryMethodPolicy({
           loading: false,
           source: "api",
           allowedMethods,
+          allowedDestinationCountries,
+          allowedDestinationCountryOptions,
+          countryCatalog,
+          addressVerificationEnabled: Boolean(data?.address_verification_enabled),
+          internationalAddressVerificationMode: String(data?.international_address_verification_mode || "best_effort"),
+          originCountry: normalizeDeliveryCountryCode(data?.origin_country || ""),
+          internationalDutiesPolicy: String(data?.international_duties_policy || "").trim(),
+          dutiesIncluded: Boolean(data?.duties_included),
+          importChargesNoticeVersion: String(data?.import_charges_notice_version || "").trim(),
+          importChargesNoticeSnapshot:
+            data?.import_charges_notice_snapshot && typeof data.import_charges_notice_snapshot === "object"
+              ? data.import_charges_notice_snapshot
+              : null,
+          requireImportChargesAcknowledgement: Boolean(data?.require_import_charges_acknowledgement),
         });
       })
       .catch(() => {
@@ -1001,6 +1087,13 @@ export function CheckoutFormCore({
           loading: false,
           source: "fallback",
           allowedMethods: ["pickup", "shipping", "local_delivery"],
+          allowedDestinationCountries: [],
+          allowedDestinationCountryOptions: [],
+          countryCatalog: [],
+          addressVerificationEnabled: false,
+          internationalAddressVerificationMode: "best_effort",
+          originCountry: "",
+          ...emptyImportNoticeConfig,
         });
       });
     return () => {
@@ -1132,6 +1225,15 @@ export function CheckoutFormCore({
     setCart(newCart);
   };
 
+  const resetShippingVerificationState = () => {
+    setAddressVerification({ ...EMPTY_ADDRESS_VERIFICATION });
+    setAddressConfirmationChecked(false);
+  };
+
+  const clearShippingRatesState = () => {
+    setShippingRates({ ...EMPTY_SHIPPING_RATES });
+  };
+
   const removeItem = (id) => {
     const newCart = cart.filter((c) => c.id !== id);
     const hasRemainingServices = newCart.some((item) => !isProduct(item) && !isPackage(item));
@@ -1196,10 +1298,23 @@ export function CheckoutFormCore({
     const fallback = deliveryMethodOptions[0]?.[0] || productDelivery.delivery_method || "pickup";
     setProductDelivery((prev) => ({ ...prev, delivery_method: fallback }));
   }, [productItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
+
   const requiresShippingAddress =
     productItems.length > 0 &&
     allowedDeliveryMethods.length > 0 &&
     ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "pickup").toLowerCase());
+  const currentShippingCountry = normalizeDeliveryCountryCode(productDelivery.shipping?.country || "");
+  const isDomesticVerificationCountry = ["CA", "US"].includes(currentShippingCountry);
+  const shippingRegionRequired = currentShippingCountry === "CA" || currentShippingCountry === "US";
+  const shippingPostalRequired = currentShippingCountry === "CA" || currentShippingCountry === "US";
+  const verificationEnabled =
+    requiresShippingAddress &&
+    (productDelivery.delivery_method || "pickup").toLowerCase() === "shipping" &&
+    (
+      (isDomesticVerificationCountry && Boolean(deliveryMethodPolicy.addressVerificationEnabled)) ||
+      (!isDomesticVerificationCountry && ["best_effort", "required", "disabled"].includes(String(deliveryMethodPolicy.internationalAddressVerificationMode || "")))
+    );
+  const hasAcceptedShippingVerification = !verificationEnabled || addressVerification.status === "verified";
   const deliveryErrors = useMemo(() => {
     if (productItems.length === 0) return [];
     const errors = [];
@@ -1209,20 +1324,28 @@ export function CheckoutFormCore({
     }
     const shipping = productDelivery.shipping || {};
     if (requiresShippingAddress) {
+      const countryCode = normalizeDeliveryCountryCode(shipping.country);
       const required = [
         ["name", "Full name"],
         ["phone", "Phone"],
         ["address1", "Address line 1"],
         ["city", "City"],
-        ["region", "State/Province/Region"],
-        ["postal_code", "Postal/ZIP code"],
         ["country", "Country"],
       ];
+      if (countryCode === "CA" || countryCode === "US") {
+        required.push(["region", "State/Province/Region"]);
+        required.push(["postal_code", "Postal/ZIP code"]);
+      }
       required.forEach(([field, label]) => {
         if (!String(shipping[field] || "").trim()) errors.push(`${label} is required for shipping.`);
       });
-      const countryCode = normalizeDeliveryCountryCode(shipping.country);
       const postalCode = String(shipping.postal_code || "").trim();
+      const allowedDestinationCountries = Array.isArray(deliveryMethodPolicy.allowedDestinationCountries)
+        ? deliveryMethodPolicy.allowedDestinationCountries
+        : [];
+      if (countryCode && allowedDestinationCountries.length > 0 && !allowedDestinationCountries.includes(countryCode)) {
+        errors.push("Shipping is not currently available to this destination.");
+      }
       if (countryCode === "CA" && postalCode && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(postalCode)) {
         errors.push("Enter a valid Canadian postal code.");
       }
@@ -1231,20 +1354,117 @@ export function CheckoutFormCore({
       }
     }
     return errors;
-  }, [productItems.length, productDelivery, requiresShippingAddress, allowedDeliveryMethods]);
+  }, [productItems.length, productDelivery, requiresShippingAddress, allowedDeliveryMethods, deliveryMethodPolicy.allowedDestinationCountries]);
+
+  const deliveryCountryOptions = useMemo(() => {
+    const countries = Array.isArray(deliveryMethodPolicy.allowedDestinationCountryOptions) &&
+      deliveryMethodPolicy.allowedDestinationCountryOptions.length > 0
+      ? deliveryMethodPolicy.allowedDestinationCountryOptions
+      : Array.isArray(deliveryMethodPolicy.allowedDestinationCountries)
+        ? deliveryMethodPolicy.allowedDestinationCountries.map((code) => ({
+            code,
+            label: FALLBACK_COUNTRY_LABELS[code] || code,
+          }))
+        : [];
+    return countries.map((country) => ({
+      code: normalizeDeliveryCountryCode(country.code),
+      label: country.label || FALLBACK_COUNTRY_LABELS[country.code] || country.code,
+    })).filter((country) => country.code);
+  }, [deliveryMethodPolicy.allowedDestinationCountries, deliveryMethodPolicy.allowedDestinationCountryOptions]);
+  const isCrossBorderShipping = useMemo(() => {
+    if (!requiresShippingAddress) return false;
+    const origin = normalizeDeliveryCountryCode(deliveryMethodPolicy.originCountry || "");
+    const destination = currentShippingCountry;
+    if (!origin || !destination) return false;
+    return origin !== destination;
+  }, [requiresShippingAddress, deliveryMethodPolicy.originCountry, currentShippingCountry]);
+  const currentImportChargesNotice = useMemo(
+    () => shippingRates.importChargesNoticeSnapshot || deliveryMethodPolicy.importChargesNoticeSnapshot || null,
+    [shippingRates.importChargesNoticeSnapshot, deliveryMethodPolicy.importChargesNoticeSnapshot]
+  );
+  const requireImportChargesAcknowledgement = Boolean(
+    isCrossBorderShipping &&
+      (shippingRates.requireImportChargesAcknowledgement ||
+        deliveryMethodPolicy.requireImportChargesAcknowledgement)
+  );
+  const importChargesNoticeVersion = String(
+    shippingRates.importChargesNoticeVersion ||
+      deliveryMethodPolicy.importChargesNoticeVersion ||
+      currentImportChargesNotice?.version ||
+      ""
+  ).trim();
+  const importChargesAcknowledgementQuotePublicId = String(
+    selectedShippingRateSnapshot?.quote_public_id || ""
+  ).trim();
+  const importChargesAcknowledgementCustomsHash = String(
+    selectedShippingRateSnapshot?.customs_snapshot_hash || ""
+  ).trim();
+  const productCartFingerprintValue = useMemo(() => {
+    const rows = productItems
+      .map((item) => ({
+        product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
+        quantity: getQuantity(item),
+      }))
+      .filter((row) => Number.isFinite(row.product_id) && row.product_id > 0 && row.quantity > 0)
+      .sort((a, b) => (a.product_id - b.product_id) || (a.quantity - b.quantity));
+    return JSON.stringify(rows);
+  }, [productItems]);
+  const currentDeliveryCountryValue = useMemo(() => {
+    const current = normalizeDeliveryCountryCode(productDelivery.shipping?.country);
+    if (!current) return "";
+    if (!deliveryCountryOptions.length) return "";
+    return deliveryCountryOptions.some((country) => country.code === current) ? current : "";
+  }, [deliveryCountryOptions, productDelivery.shipping?.country]);
+  useEffect(() => {
+    if (!requiresShippingAddress) return;
+    if (!deliveryCountryOptions.length) return;
+    const current = normalizeDeliveryCountryCode(productDelivery.shipping?.country);
+    if (current && deliveryCountryOptions.some((country) => country.code === current)) return;
+    const fallback = deliveryCountryOptions[0]?.code || "";
+    if (!fallback) return;
+    setProductDelivery((prev) => ({
+      ...prev,
+      shipping: {
+        ...(prev.shipping || {}),
+        country: fallback,
+      },
+    }));
+  }, [requiresShippingAddress, deliveryCountryOptions, productDelivery.shipping?.country]);
   const deliveryOk = deliveryErrors.length === 0;
 
   useEffect(() => {
-    if (productItems.length === 0 || !requiresShippingAddress || !deliveryOk || !slugLocal) {
-      setShippingRates((prev) => ({
-        ...prev,
-        loading: false,
-        available: false,
-        fallbackManual: false,
-        message: "",
-        rates: [],
-        selectedRateId: "",
-      }));
+    const dependency = [
+      currentShippingCountry,
+      productCartFingerprintValue,
+      shippingRates.quoteToken || "",
+      importChargesAcknowledgementCustomsHash,
+    ].join("|");
+    if (!lastAckDependencyRef.current) {
+      lastAckDependencyRef.current = dependency;
+      return;
+    }
+    if (lastAckDependencyRef.current !== dependency) {
+      lastAckDependencyRef.current = dependency;
+      setImportChargesAcknowledged(false);
+    }
+  }, [
+    currentShippingCountry,
+    productCartFingerprintValue,
+    shippingRates.quoteToken,
+    importChargesAcknowledgementCustomsHash,
+  ]);
+
+  useEffect(() => {
+    if (
+      productItems.length === 0 ||
+      deliveryMethodPolicy.loading ||
+      deliveryMethodPolicy.source === "default" ||
+      !requiresShippingAddress ||
+      !deliveryOk ||
+      !slugLocal ||
+      (verificationEnabled && !hasAcceptedShippingVerification)
+    ) {
+      setShippingRates((prev) => ({ ...EMPTY_SHIPPING_RATES, selectedRateId: prev?.selectedRateId || "" }));
       return undefined;
     }
 
@@ -1270,6 +1490,9 @@ export function CheckoutFormCore({
             quantity: getQuantity(item),
           })),
         };
+        if (verificationEnabled && hasAcceptedShippingVerification && addressVerification.token) {
+          payload.shipping_address_verification_token = addressVerification.token;
+        }
         const { data } = await apiClient.post(`/public/${slugLocal}/shipping/rates`, payload);
         if (cancelled) return;
         const rates = Array.isArray(data?.rates) ? data.rates : [];
@@ -1285,6 +1508,16 @@ export function CheckoutFormCore({
             message: data?.message || "",
             rates,
             selectedRateId: stillExists ? priorSelected : String(defaultRateId || ""),
+            quoteToken: data?.shipping_rate_quote_token || "",
+            quoteExpiresAt: data?.quote_expires_at || "",
+            dutiesIncluded: Boolean(data?.duties_included),
+            importChargesNoticeVersion: String(data?.import_charges_notice_version || "").trim(),
+            importChargesNoticeSnapshot:
+              data?.import_charges_notice_snapshot && typeof data.import_charges_notice_snapshot === "object"
+                ? data.import_charges_notice_snapshot
+                : null,
+            requireImportChargesAcknowledgement: Boolean(data?.require_import_charges_acknowledgement),
+            incompatibleItems: Array.isArray(data?.incompatible_items) ? data.incompatible_items : [],
           };
         });
       } catch (error) {
@@ -1293,10 +1526,19 @@ export function CheckoutFormCore({
         setShippingRates({
           loading: false,
           available: false,
-          fallbackManual: true,
+          fallbackManual: Boolean(error?.response?.data?.fallback_manual),
           message,
           rates: [],
           selectedRateId: "",
+          quoteToken: "",
+          quoteExpiresAt: "",
+          dutiesIncluded: false,
+          importChargesNoticeVersion: "",
+          importChargesNoticeSnapshot: null,
+          requireImportChargesAcknowledgement: false,
+          incompatibleItems: Array.isArray(error?.response?.data?.incompatible_items)
+            ? error.response.data.incompatible_items
+            : [],
         });
       }
     }, 350);
@@ -1307,6 +1549,8 @@ export function CheckoutFormCore({
     };
   }, [
     productItems,
+    deliveryMethodPolicy.loading,
+    deliveryMethodPolicy.source,
     requiresShippingAddress,
     deliveryOk,
     slugLocal,
@@ -1320,6 +1564,9 @@ export function CheckoutFormCore({
     productDelivery.shipping?.postal_code,
     productDelivery.shipping?.country,
     productDelivery.shipping?.instructions,
+    verificationEnabled,
+    hasAcceptedShippingVerification,
+    addressVerification.token,
   ]);
 
   const persistDeliveryPrefill = () => {
@@ -1345,12 +1592,37 @@ export function CheckoutFormCore({
     }
     if (
       requiresShippingAddress &&
+      verificationEnabled &&
+      !hasAcceptedShippingVerification
+    ) {
+      setErr("Verify the delivery address before continuing.");
+      return false;
+    }
+    if (
+      requiresShippingAddress &&
       shippingRates.available &&
       Array.isArray(shippingRates.rates) &&
       shippingRates.rates.length > 0 &&
       !shippingRates.selectedRateId
     ) {
       setErr("Please select a shipping option.");
+      return false;
+    }
+    if (
+      requiresShippingAddress &&
+      shippingRates.quoteExpiresAt &&
+      new Date(shippingRates.quoteExpiresAt).getTime() <= Date.now()
+    ) {
+      setErr("Your shipping quote expired. Refresh rates and select a current shipping option.");
+      return false;
+    }
+    if (
+      requiresShippingAddress &&
+      isCrossBorderShipping &&
+      requireImportChargesAcknowledgement &&
+      !importChargesAcknowledged
+    ) {
+      setErr("Please acknowledge that import charges may be collected separately before continuing.");
       return false;
     }
     return true;
@@ -1364,7 +1636,9 @@ export function CheckoutFormCore({
         ? value
         : (deliveryMethodOptions[0]?.[0] || "pickup"),
     }));
-    setShippingRates((prev) => ({ ...prev, selectedRateId: "", rates: [] }));
+    clearShippingRatesState();
+    resetShippingVerificationState();
+    setImportChargesAcknowledged(false);
   };
 
   const handleShippingField = (field) => (event) => {
@@ -1378,7 +1652,156 @@ export function CheckoutFormCore({
         [field]: value,
       },
     }));
-    setShippingRates((prev) => ({ ...prev, selectedRateId: "" }));
+    clearShippingRatesState();
+    resetShippingVerificationState();
+    setImportChargesAcknowledged(false);
+  };
+
+  const verifyAddressForShipping = async () => {
+    if (!slugLocal || !verificationEnabled || addressVerification.loading) return;
+    const shippingPayload = {
+      address1: productDelivery.shipping?.address1 || "",
+      address2: productDelivery.shipping?.address2 || "",
+      city: productDelivery.shipping?.city || "",
+      region: productDelivery.shipping?.region || "",
+      postal_code: productDelivery.shipping?.postal_code || "",
+      country: normalizeDeliveryCountryCode(productDelivery.shipping?.country || ""),
+    };
+    setErr("");
+    clearShippingRatesState();
+    setAddressVerification((prev) => ({ ...prev, loading: true, messages: [] }));
+    try {
+      const { data } = await apiClient.post(`/public/${slugLocal}/shipping/verify-address`, {
+        shipping: shippingPayload,
+      });
+      const status = String(data?.status || "idle");
+      if (status === "verified") {
+        const acceptedAddress = data?.accepted_address || shippingPayload;
+        setProductDelivery((prev) => ({
+          ...prev,
+          shipping: {
+            ...prev.shipping,
+            ...acceptedAddress,
+          },
+        }));
+        setAddressVerification({
+          loading: false,
+          status,
+          token: data?.verification_token || "",
+          acceptedAddress,
+          originalAddress: null,
+          suggestedAddress: null,
+          differences: [],
+          messages: Array.isArray(data?.messages) ? data.messages : [],
+          retryable: false,
+          residential: data?.residential ?? null,
+          verificationLevel: String(data?.verification_level || "provider_verified"),
+        });
+        return;
+      }
+      if (status === "corrected") {
+        setAddressVerification({
+          loading: false,
+          status,
+          token: data?.verification_token || "",
+          acceptedAddress: null,
+          originalAddress: data?.original_address || shippingPayload,
+          suggestedAddress: data?.suggested_address || null,
+          differences: Array.isArray(data?.differences) ? data.differences : [],
+          messages: Array.isArray(data?.messages) ? data.messages : [],
+          retryable: false,
+          residential: data?.residential ?? null,
+          verificationLevel: String(data?.verification_level || "provider_corrected"),
+        });
+        return;
+      }
+      if (status === "customer_confirmation_required") {
+        const acceptedAddress = data?.accepted_address || shippingPayload;
+        setAddressVerification({
+          loading: false,
+          status,
+          token: data?.verification_token || "",
+          acceptedAddress,
+          originalAddress: acceptedAddress,
+          suggestedAddress: null,
+          differences: [],
+          messages: Array.isArray(data?.messages) ? data.messages : [],
+          retryable: false,
+          residential: data?.residential ?? null,
+          verificationLevel: String(data?.verification_level || ""),
+        });
+        return;
+      }
+      setAddressVerification({
+        loading: false,
+        status,
+        token: "",
+        acceptedAddress: null,
+        originalAddress: data?.original_address || null,
+        suggestedAddress: data?.suggested_address || null,
+        differences: [],
+        messages: Array.isArray(data?.messages) ? data.messages : [],
+        retryable: Boolean(data?.retryable),
+        residential: data?.residential ?? null,
+        verificationLevel: "",
+      });
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.response?.data?.error || "Address verification is temporarily unavailable. Please try again.";
+      setAddressVerification({
+        loading: false,
+        status: "provider_unavailable",
+        token: "",
+        acceptedAddress: null,
+        originalAddress: null,
+        suggestedAddress: null,
+        differences: [],
+        messages: [message],
+        retryable: true,
+        residential: null,
+        verificationLevel: "",
+      });
+    }
+  };
+
+  const acceptVerifiedAddress = async (choice) => {
+    if (!slugLocal || !addressVerification.token || addressVerification.loading) return;
+    setErr("");
+    clearShippingRatesState();
+    setAddressVerification((prev) => ({ ...prev, loading: true }));
+    try {
+      const { data } = await apiClient.post(`/public/${slugLocal}/shipping/accept-address`, {
+        verification_token: addressVerification.token,
+        choice,
+      });
+      const acceptedAddress = data?.accepted_address || {};
+      setProductDelivery((prev) => ({
+        ...prev,
+        shipping: {
+          ...prev.shipping,
+          ...acceptedAddress,
+        },
+      }));
+      setAddressVerification({
+        loading: false,
+        status: "verified",
+        token: data?.verification_token || "",
+        acceptedAddress,
+        originalAddress: null,
+        suggestedAddress: null,
+        differences: [],
+        messages: Array.isArray(data?.messages) ? data.messages : [],
+        retryable: false,
+        residential: data?.residential ?? null,
+        verificationLevel: String(data?.verification_level || addressVerification.verificationLevel || ""),
+      });
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.response?.data?.error || "Unable to accept the verified address.";
+      setAddressVerification((prev) => ({
+        ...prev,
+        loading: false,
+        messages: [message],
+      }));
+    }
   };
 
   const handleGuest = (e) => setGuest({ ...guest, [e.target.name]: e.target.value });
@@ -1734,7 +2157,30 @@ export function CheckoutFormCore({
       delivery_method: productDelivery.delivery_method || "pickup",
       pickup_instructions: productDelivery.pickup_instructions || "",
       shipping: shippingPayload,
+      selected_rate_id: shippingRates.selectedRateId || undefined,
+      shipping_rate_quote_token: shippingRates.quoteToken || undefined,
       selected_shipping_rate_snapshot: selectedShippingRateSnapshot || undefined,
+      shipping_address_verification_token: addressVerification.token || undefined,
+      import_charges_acknowledged:
+        requireImportChargesAcknowledgement && isCrossBorderShipping
+          ? importChargesAcknowledged
+          : undefined,
+      import_charges_notice_version:
+        requireImportChargesAcknowledgement && isCrossBorderShipping
+          ? importChargesNoticeVersion || undefined
+          : undefined,
+      import_charges_acknowledgement_quote_public_id:
+        requireImportChargesAcknowledgement && isCrossBorderShipping
+          ? importChargesAcknowledgementQuotePublicId || undefined
+          : undefined,
+      import_charges_acknowledgement_destination_country:
+        requireImportChargesAcknowledgement && isCrossBorderShipping
+          ? currentShippingCountry || undefined
+          : undefined,
+      import_charges_acknowledgement_customs_hash:
+        requireImportChargesAcknowledgement && isCrossBorderShipping
+          ? importChargesAcknowledgementCustomsHash || undefined
+          : undefined,
     };
 
     try {
@@ -1882,6 +2328,29 @@ export function CheckoutFormCore({
         clientPhone: client?.phone || productDelivery.shipping?.phone || "",
         productDelivery,
         selectedShippingRateSnapshot,
+        selectedRateId: shippingRates.selectedRateId || undefined,
+        shippingRateQuoteToken: shippingRates.quoteToken || undefined,
+        shippingAddressVerificationToken: addressVerification.token || undefined,
+        importChargesAcknowledged:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesAcknowledged
+            : undefined,
+        importChargesNoticeVersion:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesNoticeVersion || undefined
+            : undefined,
+        importChargesAcknowledgementQuotePublicId:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesAcknowledgementQuotePublicId || undefined
+            : undefined,
+        importChargesAcknowledgementDestinationCountry:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? currentShippingCountry || undefined
+            : undefined,
+        importChargesAcknowledgementCustomsHash:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesAcknowledgementCustomsHash || undefined
+            : undefined,
         metadata: { source: "checkout", flow: policyMode },
       });
 
@@ -1947,6 +2416,29 @@ export function CheckoutFormCore({
         clientPhone: client?.phone || productDelivery.shipping?.phone || "",
         productDelivery,
         selectedShippingRateSnapshot,
+        selectedRateId: shippingRates.selectedRateId || undefined,
+        shippingRateQuoteToken: shippingRates.quoteToken || undefined,
+        shippingAddressVerificationToken: addressVerification.token || undefined,
+        importChargesAcknowledged:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesAcknowledged
+            : undefined,
+        importChargesNoticeVersion:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesNoticeVersion || undefined
+            : undefined,
+        importChargesAcknowledgementQuotePublicId:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesAcknowledgementQuotePublicId || undefined
+            : undefined,
+        importChargesAcknowledgementDestinationCountry:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? currentShippingCountry || undefined
+            : undefined,
+        importChargesAcknowledgementCustomsHash:
+          requireImportChargesAcknowledgement && isCrossBorderShipping
+            ? importChargesAcknowledgementCustomsHash || undefined
+            : undefined,
         metadata: { source: "checkout", flow: "capture" },
       });
 
@@ -2139,8 +2631,37 @@ export function CheckoutFormCore({
                     </Typography>
                   </Stack>
                 )}
+                {Boolean(productOrder?.is_cross_border) && (
+                  <>
+                    {productOrder?.customer_shipping_amount_cents != null ? (
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography color="text.secondary">Shipping paid</Typography>
+                        <Typography fontWeight={600}>
+                          {formatCurrency(
+                            Number(productOrder.customer_shipping_amount_cents || 0) / 100,
+                            (productOrder.customer_shipping_currency || displayCurrency || "USD").toUpperCase()
+                          )}
+                        </Typography>
+                      </Stack>
+                    ) : null}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography color="text.secondary">Duties included</Typography>
+                      <Typography fontWeight={600}>No</Typography>
+                    </Stack>
+                    <Typography color="text.secondary">
+                      Import charges may be collected separately.
+                    </Typography>
+                    {productOrder?.import_charges_notice_snapshot?.standard_notice ? (
+                      <Typography color="text.secondary">
+                        {productOrder.import_charges_notice_snapshot.standard_notice}
+                      </Typography>
+                    ) : null}
+                  </>
+                )}
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography color="text.secondary">Total</Typography>
+                  <Typography color="text.secondary">
+                    {productOrder?.is_cross_border ? "Total charged now" : "Total"}
+                  </Typography>
                   <Typography variant="h6" fontWeight={800}>
                     {formatCurrency(productTotal, displayCurrency)}
                   </Typography>
@@ -2208,10 +2729,10 @@ export function CheckoutFormCore({
       >
         <Stack spacing={3}>
         <Typography
-          variant={{ xs: "h5", md: "h4" }}
+          variant="h5"
           gutterBottom
           fontWeight={800}
-          sx={{ color: checkoutHeadingColor }}
+          sx={{ color: checkoutHeadingColor, typography: { xs: "h5", md: "h4" } }}
         >
           Checkout
         </Typography>
@@ -2622,6 +3143,11 @@ export function CheckoutFormCore({
             <Typography variant="h6">Shipping: {formatCurrency(shippingRateTotal, currencyCode)}</Typography>
           </ListItem>
         )}
+        {isCrossBorderShipping && shippingRateTotal > 0 && (
+          <ListItem>
+            <Typography variant="h6">Import duties and taxes: Not included</Typography>
+          </ListItem>
+        )}
         {paymentsEnabled && (
           <ListItem>
             <Typography variant="body2" color="text.secondary">
@@ -2630,9 +3156,32 @@ export function CheckoutFormCore({
           </ListItem>
         )}
       <ListItem>
-          <Typography variant="h6">Total: {formatCurrency(finalTotal, currencyCode)}</Typography>
+          <Typography variant="h6">
+            {isCrossBorderShipping && shippingRateTotal > 0 ? "Total charged now" : "Total"}: {formatCurrency(finalTotal, currencyCode)}
+          </Typography>
         </ListItem>
       </List>
+
+      {isCrossBorderShipping && shippingRateTotal > 0 && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={1.25}>
+            <Typography variant="body2">
+              The carrier or customs authority may collect import duties, taxes, brokerage charges, or other fees separately before or at delivery.
+            </Typography>
+            {requireImportChargesAcknowledgement && (
+              <FormControlLabel
+                control={(
+                  <Checkbox
+                    checked={importChargesAcknowledged}
+                    onChange={(event) => setImportChargesAcknowledged(Boolean(event.target.checked))}
+                  />
+                )}
+                label="I understand that import duties, taxes, brokerage charges, or carrier fees may be collected separately."
+              />
+            )}
+          </Stack>
+        </Paper>
+      )}
 
       {productItems.length > 0 && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -2707,7 +3256,7 @@ export function CheckoutFormCore({
                 />
                 <TextField
                   fullWidth
-                  required
+                  required={shippingRegionRequired}
                   label="State / Province / Region"
                   value={productDelivery.shipping?.region || ""}
                   onChange={handleShippingField("region")}
@@ -2716,7 +3265,7 @@ export function CheckoutFormCore({
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 <TextField
                   fullWidth
-                  required
+                  required={shippingPostalRequired}
                   label="Postal / ZIP code"
                   value={productDelivery.shipping?.postal_code || ""}
                   onChange={handleShippingField("postal_code")}
@@ -2728,31 +3277,175 @@ export function CheckoutFormCore({
                         : ""
                   }
                 />
-                <TextField
-                  select
-                  fullWidth
-                  required
-                  label="Country"
-                  value={normalizeDeliveryCountryCode(productDelivery.shipping?.country) || ""}
-                  onChange={handleShippingField("country")}
-                  SelectProps={{ MenuProps: CHECKOUT_SELECT_MENU_PROPS }}
-                >
-                  <MenuItem value="" disabled>
-                    Select country
-                  </MenuItem>
-                  {DELIVERY_COUNTRY_OPTIONS.map((country) => (
-                    <MenuItem key={country.code} value={country.code}>
-                      {country.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Autocomplete
+                  options={deliveryCountryOptions}
+                  value={deliveryCountryOptions.find((country) => country.code === currentDeliveryCountryValue) || null}
+                  onChange={(_event, value) =>
+                    handleShippingField("country")({ target: { value: value?.code || "" } })
+                  }
+                  isOptionEqualToValue={(option, value) => option.code === value.code}
+                  getOptionLabel={(option) => option?.label || option?.code || ""}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      fullWidth
+                      required
+                      label="Country"
+                      helperText="Available destinations are shown here based on the business shipping policy."
+                    />
+                  )}
+                />
               </Stack>
+              {verificationEnabled && (
+                <Stack spacing={1}>
+                  <Button
+                    variant="contained"
+                    onClick={verifyAddressForShipping}
+                    disabled={addressVerification.loading || !deliveryOk}
+                  >
+                    {addressVerification.loading ? "Verifying address..." : "Verify address & view shipping options"}
+                  </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    Address verification checks deliverability and may suggest corrections before shipping rates are shown.
+                  </Typography>
+                </Stack>
+              )}
+              {verificationEnabled && addressVerification.status === "verified" && (
+                <Alert severity="success">
+                  {addressVerification.messages[0] || "Address verified. Shipping options are ready."}
+                </Alert>
+              )}
+              {verificationEnabled && addressVerification.status === "corrected" && (
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Alert severity="info">
+                      {addressVerification.messages[0] || "We found a suggested version of your address."}
+                    </Alert>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                      <Box flex={1}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                          Suggested address
+                        </Typography>
+                        <Typography variant="body2">{addressVerification.suggestedAddress?.address1}</Typography>
+                        {addressVerification.suggestedAddress?.address2 ? (
+                          <Typography variant="body2">{addressVerification.suggestedAddress.address2}</Typography>
+                        ) : null}
+                        <Typography variant="body2">
+                          {[addressVerification.suggestedAddress?.city, addressVerification.suggestedAddress?.region, addressVerification.suggestedAddress?.postal_code].filter(Boolean).join(", ")}
+                        </Typography>
+                        <Typography variant="body2">{addressVerification.suggestedAddress?.country}</Typography>
+                      </Box>
+                      <Box flex={1}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                          Original address
+                        </Typography>
+                        <Typography variant="body2">{addressVerification.originalAddress?.address1}</Typography>
+                        {addressVerification.originalAddress?.address2 ? (
+                          <Typography variant="body2">{addressVerification.originalAddress.address2}</Typography>
+                        ) : null}
+                        <Typography variant="body2">
+                          {[addressVerification.originalAddress?.city, addressVerification.originalAddress?.region, addressVerification.originalAddress?.postal_code].filter(Boolean).join(", ")}
+                        </Typography>
+                        <Typography variant="body2">{addressVerification.originalAddress?.country}</Typography>
+                      </Box>
+                    </Stack>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button variant="contained" onClick={() => acceptVerifiedAddress("suggested")} disabled={addressVerification.loading}>
+                        Use suggested address
+                      </Button>
+                      <Button variant="outlined" onClick={() => acceptVerifiedAddress("original")} disabled={addressVerification.loading}>
+                        Use original address
+                      </Button>
+                      <Button
+                        variant="text"
+                        onClick={() => {
+                          resetShippingVerificationState();
+                          clearShippingRatesState();
+                        }}
+                        disabled={addressVerification.loading}
+                      >
+                        Edit address
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              )}
+              {verificationEnabled && addressVerification.status === "customer_confirmation_required" && (
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Alert severity="warning">
+                      {addressVerification.messages[0] ||
+                        "We could not automatically verify this international address. Please check it carefully before continuing."}
+                    </Alert>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                        Address to confirm
+                      </Typography>
+                      <Typography variant="body2">{addressVerification.acceptedAddress?.address1}</Typography>
+                      {addressVerification.acceptedAddress?.address2 ? (
+                        <Typography variant="body2">{addressVerification.acceptedAddress.address2}</Typography>
+                      ) : null}
+                      <Typography variant="body2">
+                        {[addressVerification.acceptedAddress?.city, addressVerification.acceptedAddress?.region, addressVerification.acceptedAddress?.postal_code].filter(Boolean).join(", ")}
+                      </Typography>
+                      <Typography variant="body2">{addressVerification.acceptedAddress?.country}</Typography>
+                    </Box>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={addressConfirmationChecked}
+                          onChange={(event) => setAddressConfirmationChecked(event.target.checked)}
+                        />
+                      }
+                      label="I confirm that this international delivery address is complete and correct."
+                    />
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button
+                        variant="contained"
+                        onClick={() => acceptVerifiedAddress("confirm")}
+                        disabled={addressVerification.loading || !addressConfirmationChecked}
+                      >
+                        Confirm address & view shipping options
+                      </Button>
+                      <Button
+                        variant="text"
+                        onClick={() => {
+                          resetShippingVerificationState();
+                          clearShippingRatesState();
+                        }}
+                        disabled={addressVerification.loading}
+                      >
+                        Edit address
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              )}
+              {verificationEnabled && ["undeliverable", "provider_unavailable"].includes(addressVerification.status) && addressVerification.messages.length > 0 && (
+                <Alert severity={addressVerification.status === "provider_unavailable" ? "warning" : "error"}>
+                  {addressVerification.messages[0]}
+                </Alert>
+              )}
+              {isCrossBorderShipping && (
+                <Alert severity="info">
+                  {currentImportChargesNotice?.standard_notice ||
+                    "International shipping may be subject to import duties, taxes, brokerage charges, or other fees collected separately by the carrier or destination authorities."}
+                  {currentImportChargesNotice?.additional_note ? ` ${currentImportChargesNotice.additional_note}` : ""}
+                </Alert>
+              )}
               {shippingRates.loading && (
                 <Alert severity="info">Fetching live shipping rates...</Alert>
               )}
               {shippingRates.available && shippingRates.rates.length > 0 && (
                 <FormControl fullWidth>
-                  <FormLabel shrink>Shipping option</FormLabel>
+                  <Typography
+                    component="div"
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mb: 0.75, fontWeight: 600 }}
+                  >
+                    Shipping option
+                  </Typography>
                   <Select
                     value={shippingRates.selectedRateId || ""}
                     onChange={(event) =>
@@ -2766,18 +3459,37 @@ export function CheckoutFormCore({
                       const rateId = String(rate?.rate_id || rate?.id || "");
                       const amount = Number(rate?.amount || 0);
                       const currency = String(rate?.currency || currencyCode || "USD").toUpperCase();
-                      const eta = rate?.delivery_days != null ? ` · ${rate.delivery_days} day(s)` : "";
+                      const eta = rate?.delivery_days != null ? ` · ${rate.delivery_days} day(s) transit estimate` : "";
                       return (
                         <MenuItem key={rateId} value={rateId}>
-                          {(rate?.carrier || "Carrier")} {(rate?.service || "Service")} · {formatCurrency(amount, currency)}{eta}
+                          {(rate?.carrier || "Carrier")} {(rate?.service || "Service")} · {formatCurrency(amount, currency)}
+                          {isCrossBorderShipping ? " · Import charges not included" : ""}
+                          {eta}
                         </MenuItem>
                       );
                     })}
                   </Select>
+                  {isCrossBorderShipping ? (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>
+                      {currentImportChargesNotice?.transit_estimate_note ||
+                        "Estimated carrier transit time does not include possible customs-processing delays."}
+                    </Typography>
+                  ) : null}
                 </FormControl>
               )}
-              {shippingRates.fallbackManual && shippingRates.message && (
-                <Alert severity="info">{shippingRates.message}</Alert>
+              {!shippingRates.available && shippingRates.message && (
+                <Alert severity={shippingRates.fallbackManual ? "info" : "warning"}>
+                  {shippingRates.message}
+                  {Array.isArray(shippingRates.incompatibleItems) && shippingRates.incompatibleItems.length > 0 ? (
+                    <>
+                      {" "}
+                      {shippingRates.incompatibleItems
+                        .map((item) => item?.name)
+                        .filter(Boolean)
+                        .join(", ")}
+                    </>
+                  ) : null}
+                </Alert>
               )}
               <TextField
                 fullWidth

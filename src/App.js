@@ -76,6 +76,7 @@ import AuditLogsPage from "./admin/pages/AuditLogsPage";
 import SalesPayoutsPage from "./admin/pages/SalesPayoutsPage";
 import SalesPayoutDetailPage from "./admin/pages/SalesPayoutDetailPage";
 import SalesCommissionRulesPage from "./admin/pages/SalesCommissionRulesPage";
+import AICommerceCopilotMonetizationPage from "./admin/pages/AICommerceCopilotMonetizationPage";
 import AdminTeamPage from "./admin/pages/AdminTeamPage";
 import AdminTicketsPage from "./admin/pages/AdminTicketsPage";
 import AdminTicketDetailPage from "./admin/pages/AdminTicketDetailPage";
@@ -688,6 +689,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="sales/payouts" element={<SalesPayoutsPage />} />
             <Route path="sales/payouts/:batchId" element={<SalesPayoutDetailPage />} />
             <Route path="team" element={<AdminTeamPage />} />
+            <Route path="ai-commerce-copilot/monetization" element={<AICommerceCopilotMonetizationPage />} />
             <Route path="tickets" element={<AdminTicketsPage />} />
             <Route path="tickets/:id" element={<AdminTicketDetailPage />} />
             <Route path="audit-logs" element={<AuditLogsPage />} />

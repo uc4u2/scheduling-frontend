@@ -66,6 +66,15 @@ export const buildHostedCheckoutPayload = ({
   clientPhone,
   productDelivery,
   selectedShippingRateSnapshot,
+  selectedRateId,
+  shippingRateQuoteToken,
+  shippingAddressVerificationToken,
+  importChargesAcknowledged,
+  importChargesNoticeVersion,
+  importChargesAcknowledgementQuotePublicId,
+  importChargesAcknowledgementDestinationCountry,
+  importChargesAcknowledgementCartFingerprint,
+  importChargesAcknowledgementCustomsHash,
   metadata,
 }) => {
   const itemsPayload = [];
@@ -246,6 +255,39 @@ export const buildHostedCheckoutPayload = ({
             ? Number(selectedShippingRateSnapshot.delivery_days)
             : undefined,
       };
+    }
+  }
+
+  if (productCount > 0 && selectedRateId) {
+    payload.selected_rate_id = String(selectedRateId).trim();
+  }
+
+  if (productCount > 0 && shippingRateQuoteToken) {
+    payload.shipping_rate_quote_token = String(shippingRateQuoteToken).trim();
+  }
+
+  if (productCount > 0 && shippingAddressVerificationToken) {
+    payload.shipping_address_verification_token = String(shippingAddressVerificationToken).trim();
+  }
+
+  if (productCount > 0) {
+    if (importChargesAcknowledged === true) {
+      payload.import_charges_acknowledged = true;
+    }
+    if (importChargesNoticeVersion) {
+      payload.import_charges_notice_version = String(importChargesNoticeVersion).trim();
+    }
+    if (importChargesAcknowledgementQuotePublicId) {
+      payload.import_charges_acknowledgement_quote_public_id = String(importChargesAcknowledgementQuotePublicId).trim();
+    }
+    if (importChargesAcknowledgementDestinationCountry) {
+      payload.import_charges_acknowledgement_destination_country = normalizeCountryCode(importChargesAcknowledgementDestinationCountry);
+    }
+    if (importChargesAcknowledgementCartFingerprint) {
+      payload.import_charges_acknowledgement_cart_fingerprint = String(importChargesAcknowledgementCartFingerprint).trim();
+    }
+    if (importChargesAcknowledgementCustomsHash) {
+      payload.import_charges_acknowledgement_customs_hash = String(importChargesAcknowledgementCustomsHash).trim();
     }
   }
 
