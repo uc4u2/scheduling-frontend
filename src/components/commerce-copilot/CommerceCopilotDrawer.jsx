@@ -278,6 +278,16 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
   const bundle = value && typeof value === "object" ? value : newPackageBundleValue(question?.defaults || {});
 
   const updateBundle = (key, nextValue) => onChange({ ...bundle, [key]: nextValue });
+  const sharedInputProps = {
+    autoComplete: "off",
+    spellCheck: false,
+    sx: {
+      "& input": {
+        userSelect: "text",
+        WebkitUserSelect: "text",
+      },
+    },
+  };
 
   return (
     <Stack spacing={1.25}>
@@ -288,6 +298,8 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
         value={bundle.package_profile_name || ""}
         onChange={(event) => updateBundle("package_profile_name", event.target.value)}
         disabled={disabled}
+        {...sharedInputProps}
+        inputProps={{ "aria-label": "Package name" }}
       />
       <Typography variant="body2" sx={{ fontWeight: 700 }}>Package dimensions</Typography>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ minWidth: 0 }}>
@@ -301,7 +313,8 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
           disabled={disabled}
           error={Boolean(fieldErrors.package_length_mm)}
           helperText={fieldErrors.package_length_mm || ""}
-          inputProps={{ "aria-label": "Package length" }}
+          {...sharedInputProps}
+          inputProps={{ "aria-label": "Package length", inputMode: "decimal" }}
         />
         <TextField
           fullWidth
@@ -313,7 +326,8 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
           disabled={disabled}
           error={Boolean(fieldErrors.package_width_mm)}
           helperText={fieldErrors.package_width_mm || ""}
-          inputProps={{ "aria-label": "Package width" }}
+          {...sharedInputProps}
+          inputProps={{ "aria-label": "Package width", inputMode: "decimal" }}
         />
         <TextField
           fullWidth
@@ -325,7 +339,8 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
           disabled={disabled}
           error={Boolean(fieldErrors.package_height_mm)}
           helperText={fieldErrors.package_height_mm || ""}
-          inputProps={{ "aria-label": "Package height" }}
+          {...sharedInputProps}
+          inputProps={{ "aria-label": "Package height", inputMode: "decimal" }}
         />
         <FormControl fullWidth size="small">
           <InputLabel id={`${question.question_id}-length-unit-label`}>Size unit</InputLabel>
@@ -354,7 +369,8 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
           disabled={disabled}
           error={Boolean(fieldErrors.package_tare_weight_grams)}
           helperText={fieldErrors.package_tare_weight_grams || ""}
-          inputProps={{ "aria-label": "Empty package weight" }}
+          {...sharedInputProps}
+          inputProps={{ "aria-label": "Empty package weight", inputMode: "decimal" }}
         />
         <FormControl fullWidth size="small">
           <InputLabel id={`${question.question_id}-weight-unit-label`}>Weight unit</InputLabel>

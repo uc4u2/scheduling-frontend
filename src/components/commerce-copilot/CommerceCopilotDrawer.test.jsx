@@ -465,11 +465,11 @@ describe("CommerceCopilotDrawer", () => {
 
     renderDrawer();
     await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    fireEvent.change(await screen.findByLabelText(/package name/i), { target: { value: "Small Jewelry Box" } });
-    fireEvent.change(screen.getByLabelText(/^length$/i), { target: { value: "5" } });
-    fireEvent.change(screen.getByLabelText(/^width$/i), { target: { value: "4" } });
-    fireEvent.change(screen.getByLabelText(/^height$/i), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText(/empty package weight/i), { target: { value: "15" } });
+    await userEvent.type(await screen.findByLabelText(/package name/i), "Small Jewelry Box");
+    await userEvent.type(screen.getByLabelText(/^length$/i), "5");
+    await userEvent.type(screen.getByLabelText(/^width$/i), "4");
+    await userEvent.type(screen.getByLabelText(/^height$/i), "3");
+    await userEvent.type(screen.getByLabelText(/empty package weight/i), "15");
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
@@ -478,6 +478,57 @@ describe("CommerceCopilotDrawer", () => {
       expect.any(Object)
     ));
     expect(screen.queryByText(/horizontal/i)).not.toBeInTheDocument();
+  });
+
+  test("keeps package inputs editable with real typing", async () => {
+    const packageSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I need your package details next.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Shipping rates need exact package details.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box customers receive.",
+                defaults: {
+                  package_name: "",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockApiPost.mockResolvedValueOnce({ data: packageSession });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+
+    const packageNameInput = await screen.findByLabelText(/package name/i);
+    const lengthInput = screen.getByLabelText(/^length$/i);
+    const tareInput = screen.getByLabelText(/empty package weight/i);
+
+    await userEvent.type(packageNameInput, "Small Jewelry Box");
+    await userEvent.type(lengthInput, "10");
+    await userEvent.type(tareInput, "15");
+
+    expect(packageNameInput).toHaveValue("Small Jewelry Box");
+    expect(lengthInput).toHaveValue("10");
+    expect(tareInput).toHaveValue("15");
   });
 
   test("keeps accepted answers and field errors visible on partial package submission", async () => {
