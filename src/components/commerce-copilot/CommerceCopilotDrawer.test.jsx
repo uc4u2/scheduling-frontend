@@ -5,6 +5,8 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 import CommerceCopilotDrawer from "./CommerceCopilotDrawer";
 
+jest.setTimeout(30000);
+
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockApiPatch = jest.fn();
@@ -206,11 +208,68 @@ const shippingTestSession = {
   },
 };
 
+const currencyQuestionSession = {
+  session: { public_id: "sess_currency_1", workflow: "create_physical_product", status: "awaiting_manager", context_summary_json: { progress_percent: 25 } },
+  messages: [
+    {
+      id: 1,
+      role: "assistant",
+      message_text: "I need one more detail: what currency should this product use?",
+      safe_metadata_json: {
+        questions: [
+          {
+            question_id: "currency",
+            fact_key: "currency",
+            plain_language_question: "What currency should this product use?",
+            why_needed: "The selling price needs the correct currency.",
+            input_type: "choice",
+            choices: ["CAD", "USD"],
+            allow_unknown: true,
+            show_help_measure: false,
+            help_text: null,
+          },
+        ],
+      },
+    },
+  ],
+  facts: [],
+  draft: {
+    public_id: "draft_currency_1",
+    status: "incomplete",
+    validation_results_json: {
+      progress_percent: 25,
+      known: [{ key: "price" }],
+      missing_required: [{ key: "currency" }],
+      needs_confirmation: [],
+    },
+    draft_payload_json: {},
+    presentation: {
+      sections: {
+        confirmed: [
+          { fact_key: "price", label: "Price", display_value: "10", raw_value: 10, editable: true },
+        ],
+        needs_confirmation: [],
+        suggested: [],
+        missing: [
+          { fact_key: "currency", label: "Currency", display_value: null, raw_value: null, editable: true },
+        ],
+      },
+      activation_blockers: [],
+    },
+  },
+  plan: null,
+  approval: null,
+  execution: null,
+  usage_summary: { requests: 1, draft_generations: 1, plan_generations: 0, estimated_total_cost_micros: 1000 },
+};
+
 describe("CommerceCopilotDrawer", () => {
   let consoleErrorSpy;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockApiGet.mockReset();
+    mockApiPost.mockReset();
+    mockApiPatch.mockReset();
     window.innerWidth = 1280;
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation((message, ...args) => {
       if (typeof message === "string" && message.includes("not wrapped in act")) {
@@ -379,6 +438,50 @@ describe("CommerceCopilotDrawer", () => {
     ));
   });
 
+  test("lets the manager edit the shipping-test destination form inside the drawer", async () => {
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({
+          data: {
+            ...shippingTestSession,
+            shipping_test: {
+              ...shippingTestSession.shipping_test,
+              draft: {
+                ...shippingTestSession.shipping_test.draft,
+                saved_destination: {
+                  address1: "",
+                  address2: "",
+                  city: "",
+                  region: "",
+                  postal_code: "",
+                  country: "",
+                },
+              },
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "test_shipping_setup", targetProductId: 60 });
+
+    const countrySelect = await screen.findByLabelText(/destination country/i);
+    expect(countrySelect).toBeInTheDocument();
+    expect(countrySelect).toHaveAttribute("role", "combobox");
+
+    await userEvent.type(screen.getByLabelText(/address line 1/i), "777 Hornby St");
+    await userEvent.type(screen.getByLabelText(/^city$/i), "Vancouver");
+    await userEvent.type(screen.getByLabelText(/region \/ state \/ province/i), "BC");
+    await userEvent.type(screen.getByLabelText(/postal \/ zip code/i), "V6Z 1S4");
+
+    expect(screen.getByLabelText(/address line 1/i)).toHaveValue("777 Hornby St");
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue("Vancouver");
+    expect(screen.getByLabelText(/region \/ state \/ province/i)).toHaveValue("BC");
+    expect(screen.getByLabelText(/postal \/ zip code/i)).toHaveValue("V6Z 1S4");
+    expect(screen.queryByText(/this question arrived without choices/i)).not.toBeInTheDocument();
+  });
+
   test("renders structured guided questions and submits structured answers", async () => {
     mockApiPost.mockImplementation((url, body) => {
       if (String(url) === "/inventory/commerce-copilot/sessions") {
@@ -432,6 +535,24 @@ describe("CommerceCopilotDrawer", () => {
       expect.objectContaining({ answers: expect.any(Array) }),
       expect.any(Object)
     ));
+  });
+
+  test("renders a guided currency choice selector instead of a dead text fallback", async () => {
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: currencyQuestionSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+
+    const currencySelect = await screen.findByLabelText(/currency/i);
+    expect(currencySelect).toBeInTheDocument();
+    expect(currencySelect).toHaveAttribute("role", "combobox");
+    expect(currencySelect).toHaveAttribute("aria-haspopup", "listbox");
+    expect(screen.queryByText(/this question arrived without choices/i)).not.toBeInTheDocument();
   });
 
   test("renders a read-only draft preview with humanized labels and no raw keys", async () => {

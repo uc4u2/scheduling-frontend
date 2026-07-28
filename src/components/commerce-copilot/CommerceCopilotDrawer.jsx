@@ -77,6 +77,14 @@ const QUICK_STARTS = [
 ];
 
 const COPILOT_OVERLAY_Z_INDEX = (theme) => theme.zIndex.modal + 3000;
+const DRAWER_MENU_PROPS = {
+  disablePortal: true,
+  PaperProps: {
+    sx: {
+      zIndex: COPILOT_OVERLAY_Z_INDEX,
+    },
+  },
+};
 const HUMAN_LABELS = {
   domestic_shipping_intent: "Shipping within your home country",
   domestic_destination_country: "Shipping area",
@@ -515,6 +523,7 @@ const PackageFieldsEditor = ({
             label="Size unit"
             onChange={(event) => updateBundle("length_unit", event.target.value)}
             disabled={disabled}
+            MenuProps={DRAWER_MENU_PROPS}
           >
             <MenuItem value="mm">mm</MenuItem>
             <MenuItem value="cm">cm</MenuItem>
@@ -542,6 +551,7 @@ const PackageFieldsEditor = ({
             label="Weight unit"
             onChange={(event) => updateBundle("weight_unit", event.target.value)}
             disabled={disabled}
+            MenuProps={DRAWER_MENU_PROPS}
           >
             <MenuItem value="g">g</MenuItem>
             <MenuItem value="oz">oz</MenuItem>
@@ -665,6 +675,7 @@ const PackageChoiceControl = ({ question, value, fieldErrors = {}, onChange, dis
               });
             }}
             disabled={disabled}
+            MenuProps={DRAWER_MENU_PROPS}
           >
             {matches.map((match) => (
               <MenuItem key={match.public_reference} value={match.public_reference}>
@@ -766,6 +777,7 @@ const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSug
             label={questionFieldLabel(question)}
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled}
+            MenuProps={DRAWER_MENU_PROPS}
           >
             {choices.map((choice) => (
               <MenuItem key={choice} value={choice}>{choice}</MenuItem>
@@ -1916,13 +1928,14 @@ const CommerceCopilotDrawer = ({
                 <CardContent>
                   <Stack spacing={1.25}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Select a product to improve</Typography>
-                    <TextField
-                      select
-                      fullWidth
-                      label="Product"
-                      value={contentProductId}
-                      onChange={(event) => setContentProductId(event.target.value)}
-                    >
+                            <TextField
+                              select
+                              fullWidth
+                              label="Product"
+                              value={contentProductId}
+                              onChange={(event) => setContentProductId(event.target.value)}
+                              SelectProps={{ MenuProps: DRAWER_MENU_PROPS }}
+                            >
                       <MenuItem value="">Choose a product</MenuItem>
                       {contentProducts.map((product) => (
                         <MenuItem key={product.id} value={product.id}>
@@ -2124,6 +2137,7 @@ const CommerceCopilotDrawer = ({
                               label="Product"
                               value={shippingTestForm.product_id}
                               onChange={(event) => setShippingTestForm((prev) => ({ ...prev, product_id: event.target.value }))}
+                              SelectProps={{ MenuProps: DRAWER_MENU_PROPS }}
                             >
                               <MenuItem value="">Choose a product</MenuItem>
                               {shippingTestProductOptions.map((product) => (
@@ -2153,6 +2167,7 @@ const CommerceCopilotDrawer = ({
                               label="Package used for this test"
                               value={shippingTestForm.package_profile_id}
                               onChange={(event) => setShippingTestForm((prev) => ({ ...prev, package_profile_id: event.target.value }))}
+                              SelectProps={{ MenuProps: DRAWER_MENU_PROPS }}
                             >
                               <MenuItem value="">Choose a package</MenuItem>
                               {shippingTestPackageOptions.map((pkg) => (
@@ -2212,6 +2227,7 @@ const CommerceCopilotDrawer = ({
                                 label="Destination country"
                                 value={shippingTestForm.destination.country}
                                 onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, country: event.target.value } }))}
+                                SelectProps={{ MenuProps: DRAWER_MENU_PROPS }}
                               >
                                 <MenuItem value="">Choose a country</MenuItem>
                                 {(shippingTest.country_catalog || []).map((row) => (
