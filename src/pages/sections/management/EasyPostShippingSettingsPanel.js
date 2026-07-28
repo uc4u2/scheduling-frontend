@@ -143,6 +143,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [helpOpen, setHelpOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("delivery_methods");
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const [copilotWorkflow, setCopilotWorkflow] = useState("review_shipping_setup");
   const [packageProfileForm, setPackageProfileForm] = useState({
     name: "",
     length_mm: "",
@@ -358,9 +359,22 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
             <Button
               size="small"
               variant="outlined"
-              onClick={() => setCopilotOpen(true)}
+              onClick={() => {
+                setCopilotWorkflow("review_shipping_setup");
+                setCopilotOpen(true);
+              }}
             >
               Configure shipping with AI
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setCopilotWorkflow("test_shipping_setup");
+                setCopilotOpen(true);
+              }}
+            >
+              Test shipping setup
             </Button>
             <Button
               size="small"
@@ -1041,7 +1055,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         open={copilotOpen}
         onClose={() => setCopilotOpen(false)}
         token={token}
-        initialWorkflow="review_shipping_setup"
+        initialWorkflow={copilotWorkflow}
       />
     </Box>
   );

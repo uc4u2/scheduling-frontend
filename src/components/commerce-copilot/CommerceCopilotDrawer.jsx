@@ -65,6 +65,11 @@ const QUICK_STARTS = [
     description: "Explain what is configured and what is still missing for shipping.",
   },
   {
+    workflow: "test_shipping_setup",
+    title: "Test my shipping setup",
+    description: "Request live carrier test rates for a product, package, and destination without buying a label.",
+  },
+  {
     workflow: "explain_order",
     title: "Explain a product order",
     description: "Read the order state and explain the safest next manual step.",
@@ -118,6 +123,38 @@ const workflowLabel = (workflow) => {
 };
 
 const humanizeStatus = (value, fallback = "draft") => String(value || fallback).replace(/_/g, " ");
+const emptyShippingTestDestination = () => ({
+  address1: "",
+  address2: "",
+  city: "",
+  region: "",
+  postal_code: "",
+  country: "",
+});
+
+const buildShippingTestForm = (view, fallbackProductId = null) => {
+  const draft = view?.draft || {};
+  const destination = draft.saved_destination && Object.keys(draft.saved_destination).length
+    ? draft.saved_destination
+    : view?.result?.destination_address || view?.address_review?.original_address || {};
+  return {
+    product_id: String(draft.product_id || view?.selected_product_id || fallbackProductId || ""),
+    package_profile_id: String(draft.package_profile_id || view?.selected_package_profile_id || ""),
+    quantity: String(draft.quantity || 1),
+    save_destination: Boolean(draft.save_destination),
+    destination: {
+      ...emptyShippingTestDestination(),
+      ...(destination || {}),
+    },
+  };
+};
+
+const shippingTestStatusTone = (status) => {
+  if (status === "passed") return "success";
+  if (status === "provider_unavailable") return "warning";
+  if (status === "no_rates") return "info";
+  return "warning";
+};
 
 const humanizeFactKey = (value) => HUMAN_LABELS[value] || String(value || "").replace(/_/g, " ");
 const factKeyFromQuestion = (question) => String(question?.fact_key || question?.question_id || "");
@@ -234,6 +271,12 @@ const summarizeConversationForCopy = (messages = []) =>
     .trim();
 
 const wizardStepForState = ({ currentQuestions, plan, execution, session }) => {
+  if (session?.workflow === "test_shipping_setup") {
+    if (session?.current_step === "shipping_test_results") return { number: 4, label: "Results" };
+    if (session?.current_step === "shipping_test_destination") return { number: 3, label: "Destination" };
+    if (session?.current_step === "shipping_test_setup") return { number: 2, label: "Package" };
+    return { number: 1, label: "Product" };
+  }
   if (session?.current_step === "published") return { number: 4, label: "Published" };
   if (session?.current_step === "publish_review") return { number: 4, label: "Publish review" };
   if (session?.current_step === "publish") return { number: 4, label: "Publish" };
@@ -907,6 +950,7 @@ const inferWorkflowFromText = (message, { targetProductId, targetProductOrderId 
   if (targetProductOrderId || /\border\b|\btracking\b|\bpickup\b|\blabel\b/.test(text)) return "explain_order";
   if (/\bpdf\b|\bdownload\b|\bdigital\b|\bebook\b|\bguide\b|\blicense\b|\bfile\b/.test(text)) return "create_digital_product";
   if (targetProductId && /\brepair\b|\bfix\b|\bmissing\b|\bready to ship\b/.test(text)) return "repair_product";
+  if (/\btest shipping\b|\brate test\b|\bcarrier rate\b|\bshipping quote\b/.test(text)) return "test_shipping_setup";
   if (/\bshipping setup\b|\bdelivery setup\b|\beasypost\b|\bshipping policy\b/.test(text)) return "review_shipping_setup";
   if (targetProductId && /\binternational\b|\bcustoms\b|\bworldwide\b|\bunited states\b|\boutside canada\b/.test(text)) return "prepare_international_shipping";
   if (/\bsell\b|\bproduct\b|\bship\b|\bcanada\b|\bunited states\b|\bprice\b/.test(text)) return "create_physical_product";
@@ -952,15 +996,19 @@ const CommerceCopilotDrawer = ({
   const [contentFieldSelections, setContentFieldSelections] = useState({});
   const [contentFieldEdits, setContentFieldEdits] = useState({});
   const [editingContentField, setEditingContentField] = useState(null);
+  const [shippingTestForm, setShippingTestForm] = useState(buildShippingTestForm(null, targetProductId));
   const questionCardRef = useRef(null);
   const questionSeedRef = useRef({});
+  const shippingTestSeedRef = useRef("");
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
   const plan = sessionData?.plan || null;
   const completion = sessionData?.completion || null;
+  const shippingTest = sessionData?.shipping_test || null;
   const contentPack = draft?.draft_payload_json?.content_pack || null;
   const isContentWorkflow = session?.workflow === "improve_product_content";
+  const isShippingTestWorkflow = session?.workflow === "test_shipping_setup";
   const usageSummary = sessionData?.usage_summary || {};
   const messages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
   const availability = capabilities?.availability || {};
@@ -1003,8 +1051,8 @@ const CommerceCopilotDrawer = ({
     }, {});
   }, [sessionData?.facts]);
   const wizardStep = wizardStepForState({ currentQuestions, plan, execution, session });
-  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review" && !isContentWorkflow;
-  const showPlanSection = Boolean(!isContentWorkflow && !currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
+  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review" && !isContentWorkflow && !isShippingTestWorkflow;
+  const showPlanSection = Boolean(!isContentWorkflow && !isShippingTestWorkflow && !currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
   const completionHeading = session?.current_step === "published"
     ? "Product is live"
     : completion?.available_actions?.prepare_publish
@@ -1054,6 +1102,25 @@ const CommerceCopilotDrawer = ({
     });
   }, [currentQuestionSeedSignature, currentQuestions]);
 
+  useEffect(() => {
+    if (!isShippingTestWorkflow) return;
+    const signature = JSON.stringify({
+      session_public_id: session?.public_id || "",
+      selected_product_id: shippingTest?.selected_product_id || null,
+      selected_package_profile_id: shippingTest?.selected_package_profile_id || null,
+      draft: shippingTest?.draft || {},
+      address_review: shippingTest?.address_review || null,
+    });
+    if (shippingTestSeedRef.current === signature) return;
+    shippingTestSeedRef.current = signature;
+    setShippingTestForm(buildShippingTestForm(shippingTest, targetProductId));
+  }, [
+    isShippingTestWorkflow,
+    session?.public_id,
+    shippingTest,
+    targetProductId,
+  ]);
+
   const resetState = useCallback(() => {
     setSessionData(null);
     setMessageText("");
@@ -1080,7 +1147,9 @@ const CommerceCopilotDrawer = ({
     setContentFieldSelections({});
     setContentFieldEdits({});
     setEditingContentField(null);
+    setShippingTestForm(buildShippingTestForm(null, targetProductId));
     questionSeedRef.current = {};
+    shippingTestSeedRef.current = "";
   }, [targetProductId]);
 
   const loadCapabilities = useCallback(async () => {
@@ -1118,7 +1187,9 @@ const CommerceCopilotDrawer = ({
     }
   }, [auth]);
 
-  const createSession = useCallback(async (workflow) => {
+  const createSession = useCallback(async (workflow, options = {}) => {
+    const effectiveProductId = options.productId ?? targetProductId;
+    const effectiveProductOrderId = options.productOrderId ?? targetProductOrderId;
     setBusy(true);
     try {
       const { data } = await api.post(
@@ -1126,8 +1197,8 @@ const CommerceCopilotDrawer = ({
         {
           workflow,
           mode: workflow === "explain_order" ? "guide" : "draft",
-          target_product_id: targetProductId,
-          target_product_order_id: targetProductOrderId,
+          target_product_id: effectiveProductId,
+          target_product_order_id: effectiveProductOrderId,
         },
         auth
       );
@@ -1526,6 +1597,37 @@ const CommerceCopilotDrawer = ({
     () => (Array.isArray(contentPack?.supported_fields) ? contentPack.supported_fields : []),
     [contentPack?.supported_fields]
   );
+  const shippingTestProductOptions = useMemo(
+    () => (Array.isArray(shippingTest?.product_options) ? shippingTest.product_options : []),
+    [shippingTest?.product_options]
+  );
+  const shippingTestPackageOptions = useMemo(
+    () => (Array.isArray(shippingTest?.package_options) ? shippingTest.package_options : []),
+    [shippingTest?.package_options]
+  );
+  const selectedShippingTestProduct = useMemo(
+    () => shippingTestProductOptions.find((row) => String(row.id) === String(shippingTestForm.product_id || "")) || null,
+    [shippingTestForm.product_id, shippingTestProductOptions]
+  );
+  const selectedShippingTestPackage = useMemo(
+    () => shippingTestPackageOptions.find((row) => String(row.id) === String(shippingTestForm.package_profile_id || "")) || null,
+    [shippingTestForm.package_profile_id, shippingTestPackageOptions]
+  );
+  const shippingTestQuantity = useMemo(() => {
+    const parsed = Number(shippingTestForm.quantity || 0);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [shippingTestForm.quantity]);
+  const shippingTestPreview = useMemo(() => {
+    if (!selectedShippingTestProduct || !selectedShippingTestPackage || !shippingTestQuantity) return null;
+    const productWeight = Number(selectedShippingTestProduct.shipping_weight_grams || 0);
+    const tareWeight = Number(selectedShippingTestPackage.tare_weight_grams || 0);
+    const totalWeight = tareWeight + (productWeight * shippingTestQuantity);
+    return {
+      product_weight_display: `${productWeight} g × ${shippingTestQuantity}`,
+      tare_weight_display: `${tareWeight} g`,
+      total_weight_display: `${totalWeight} g`,
+    };
+  }, [selectedShippingTestPackage, selectedShippingTestProduct, shippingTestQuantity]);
 
   const buildSelectedContentPayload = useCallback(() => {
     const productPayload = {};
@@ -1658,6 +1760,38 @@ const CommerceCopilotDrawer = ({
       setStatusMessage({ type: "success", text: "Publish review is ready. Approve the activation change to continue." });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Finish setup before publishing." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestShippingTest = async (options = {}) => {
+    if (!session?.public_id) return;
+    const payload = {
+      product_id: Number(shippingTestForm.product_id || 0) || null,
+      package_profile_id: Number(shippingTestForm.package_profile_id || 0) || null,
+      quantity: Number(shippingTestForm.quantity || 0) || 0,
+      destination: shippingTestForm.destination,
+      save_destination: Boolean(shippingTestForm.save_destination),
+      ...(options.verificationChoice ? { verification_choice: options.verificationChoice } : {}),
+    };
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/inventory/commerce-copilot/sessions/${session.public_id}/test-shipping`, payload, auth);
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      const resultStatus = data?.shipping_test?.result?.status;
+      setStatusMessage({
+        type: resultStatus === "passed" ? "success" : "info",
+        text: resultStatus === "passed"
+          ? "Shipping test rates were returned."
+          : "Shipping setup was checked. Review the result below.",
+      });
+      return data;
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to request shipping test rates." });
+      return null;
     } finally {
       setBusy(false);
     }
@@ -1961,7 +2095,321 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-              {isContentWorkflow && contentPack ? (
+              {isShippingTestWorkflow && shippingTest ? (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Test shipping setup</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Request live carrier test rates for this product setup without purchasing a label.
+                        </Typography>
+                      </Box>
+                      <Alert severity="info" sx={{ py: 0 }}>
+                        {shippingTest.workspace_scope_note}
+                      </Alert>
+                      {shippingTest.result_stale ? (
+                        <Alert severity="warning" sx={{ py: 0 }}>
+                          {shippingTest.stale_message}
+                        </Alert>
+                      ) : null}
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Step 1 of 4 - Product</Typography>
+                            <TextField
+                              select
+                              fullWidth
+                              size="small"
+                              label="Product"
+                              value={shippingTestForm.product_id}
+                              onChange={(event) => setShippingTestForm((prev) => ({ ...prev, product_id: event.target.value }))}
+                            >
+                              <MenuItem value="">Choose a product</MenuItem>
+                              {shippingTestProductOptions.map((product) => (
+                                <MenuItem key={product.id} value={String(product.id)}>
+                                  {product.name} {product.sku ? `(${product.sku})` : ""}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                            {selectedShippingTestProduct ? (
+                              <Alert severity={selectedShippingTestProduct.is_digital ? "warning" : "info"} sx={{ py: 0 }}>
+                                {selectedShippingTestProduct.is_digital
+                                  ? "Digital products do not use carrier shipping tests. Choose a physical product instead."
+                                  : `${selectedShippingTestProduct.name} · Product weight ${selectedShippingTestProduct.shipping_weight_grams || 0} g`}
+                              </Alert>
+                            ) : null}
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Step 2 of 4 - Package</Typography>
+                            <TextField
+                              select
+                              fullWidth
+                              size="small"
+                              label="Package used for this test"
+                              value={shippingTestForm.package_profile_id}
+                              onChange={(event) => setShippingTestForm((prev) => ({ ...prev, package_profile_id: event.target.value }))}
+                            >
+                              <MenuItem value="">Choose a package</MenuItem>
+                              {shippingTestPackageOptions.map((pkg) => (
+                                <MenuItem key={pkg.id} value={String(pkg.id)}>
+                                  {pkg.name} · {pkg.display_dimensions} · {pkg.tare_weight_display}{pkg.is_default ? " · Default" : ""}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                            {selectedShippingTestPackage ? (
+                              <Alert severity="info" sx={{ py: 0 }}>
+                                {selectedShippingTestPackage.name} · {selectedShippingTestPackage.display_dimensions} · Empty-package weight {selectedShippingTestPackage.tare_weight_display} · Workspace default: {selectedShippingTestPackage.is_default ? "Yes" : "No"}
+                              </Alert>
+                            ) : null}
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Test quantity"
+                              value={shippingTestForm.quantity}
+                              onChange={(event) => setShippingTestForm((prev) => ({ ...prev, quantity: event.target.value }))}
+                              inputProps={{ min: 1, max: 99, step: 1 }}
+                            />
+                            {shippingTestPreview ? (
+                              <Alert severity="info" sx={{ py: 0 }}>
+                                Product weight: {shippingTestPreview.product_weight_display} · Empty package: {shippingTestPreview.tare_weight_display} · Total: {shippingTestPreview.total_weight_display}
+                              </Alert>
+                            ) : null}
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                              {shippingTest.links?.delivery_setup ? (
+                                <Button variant="text" component="a" href={shippingTest.links.delivery_setup}>
+                                  Open Delivery Setup
+                                </Button>
+                              ) : null}
+                              {shippingTest.links?.product ? (
+                                <Button variant="text" component="a" href={shippingTest.links.product}>
+                                  Open Product
+                                </Button>
+                              ) : null}
+                            </Stack>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Step 3 of 4 - Destination</Typography>
+                            <Box
+                              sx={{
+                                display: "grid",
+                                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                                gap: 1,
+                              }}
+                            >
+                              <TextField
+                                select
+                                size="small"
+                                label="Destination country"
+                                value={shippingTestForm.destination.country}
+                                onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, country: event.target.value } }))}
+                              >
+                                <MenuItem value="">Choose a country</MenuItem>
+                                {(shippingTest.country_catalog || []).map((row) => (
+                                  <MenuItem key={row.code} value={row.code}>{row.label}</MenuItem>
+                                ))}
+                              </TextField>
+                              <TextField
+                                size="small"
+                                label="Address line 1"
+                                value={shippingTestForm.destination.address1}
+                                onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, address1: event.target.value } }))}
+                              />
+                              <TextField
+                                size="small"
+                                label="Address line 2"
+                                value={shippingTestForm.destination.address2}
+                                onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, address2: event.target.value } }))}
+                              />
+                              <TextField
+                                size="small"
+                                label="City"
+                                value={shippingTestForm.destination.city}
+                                onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, city: event.target.value } }))}
+                              />
+                              <TextField
+                                size="small"
+                                label="Region / state / province"
+                                value={shippingTestForm.destination.region}
+                                onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, region: event.target.value } }))}
+                              />
+                              <TextField
+                                size="small"
+                                label="Postal / ZIP code"
+                                value={shippingTestForm.destination.postal_code}
+                                onChange={(event) => setShippingTestForm((prev) => ({ ...prev, destination: { ...prev.destination, postal_code: event.target.value } }))}
+                              />
+                            </Box>
+                            <FormControlLabel
+                              control={(
+                                <Checkbox
+                                  checked={Boolean(shippingTestForm.save_destination)}
+                                  onChange={(event) => setShippingTestForm((prev) => ({ ...prev, save_destination: event.target.checked }))}
+                                />
+                              )}
+                              label="Save this test destination for this Commerce Copilot session"
+                            />
+                            {shippingTest.address_review ? (
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Stack spacing={1}>
+                                    <Alert severity="warning" sx={{ py: 0 }}>
+                                      {shippingTest.address_review.status === "customer_confirmation_required"
+                                        ? "Please confirm that this international delivery address is complete and correct."
+                                        : "Please review the suggested address before requesting test rates."}
+                                    </Alert>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Original: {[
+                                        shippingTest.address_review.original_address?.address1,
+                                        shippingTest.address_review.original_address?.city,
+                                        shippingTest.address_review.original_address?.region,
+                                        shippingTest.address_review.original_address?.postal_code,
+                                        shippingTest.address_review.original_address?.country,
+                                      ].filter(Boolean).join(", ")}
+                                    </Typography>
+                                    {shippingTest.address_review.suggested_address ? (
+                                      <Typography variant="caption" color="text.secondary">
+                                        Suggested: {[
+                                          shippingTest.address_review.suggested_address?.address1,
+                                          shippingTest.address_review.suggested_address?.city,
+                                          shippingTest.address_review.suggested_address?.region,
+                                          shippingTest.address_review.suggested_address?.postal_code,
+                                          shippingTest.address_review.suggested_address?.country,
+                                        ].filter(Boolean).join(", ")}
+                                      </Typography>
+                                    ) : null}
+                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                      {shippingTest.address_review.status === "customer_confirmation_required" ? (
+                                        <>
+                                          <Button variant="contained" onClick={() => requestShippingTest({ verificationChoice: "confirm" })} disabled={busy}>
+                                            Confirm address
+                                          </Button>
+                                          <Button variant="outlined" onClick={() => requestShippingTest({ verificationChoice: "confirmed_unverified" })} disabled={busy}>
+                                            Continue without provider verification
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Button variant="contained" onClick={() => requestShippingTest({ verificationChoice: "suggested" })} disabled={busy}>
+                                            Use suggested address
+                                          </Button>
+                                          <Button variant="outlined" onClick={() => requestShippingTest({ verificationChoice: "original" })} disabled={busy}>
+                                            Keep entered address
+                                          </Button>
+                                        </>
+                                      )}
+                                    </Stack>
+                                  </Stack>
+                                </CardContent>
+                              </Card>
+                            ) : null}
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button
+                          variant="contained"
+                          onClick={() => requestShippingTest()}
+                          disabled={busy || !shippingTestForm.product_id || !shippingTestForm.package_profile_id || !shippingTestForm.destination.country || Boolean(selectedShippingTestProduct?.is_digital)}
+                        >
+                          Request test rates
+                        </Button>
+                        {shippingTest.result ? (
+                          <Button variant="outlined" onClick={() => requestShippingTest()} disabled={busy}>
+                            Retry test
+                          </Button>
+                        ) : null}
+                      </Stack>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Step 4 of 4 - Results</Typography>
+                            {shippingTest.result ? (
+                              <>
+                                <Alert severity={shippingTestStatusTone(shippingTest.result.status)} sx={{ py: 0 }}>
+                                  {shippingTest.result.status === "passed" ? "Shipping test passed" : shippingTest.result.failure_message || "Shipping setup needs attention"}
+                                </Alert>
+                                {shippingTest.result.product ? (
+                                  <Typography variant="body2">Product: {shippingTest.result.product.name}</Typography>
+                                ) : null}
+                                {shippingTest.result.product?.quantity ? (
+                                  <Typography variant="body2">Quantity tested: {shippingTest.result.product.quantity}</Typography>
+                                ) : null}
+                                {shippingTest.result.package ? (
+                                  <Typography variant="body2">Package: {shippingTest.result.package.name} · {shippingTest.result.package.display_dimensions} · {shippingTest.result.package.total_test_weight}</Typography>
+                                ) : null}
+                                {shippingTest.result.destination ? (
+                                  <Typography variant="body2">
+                                    Destination: {[shippingTest.result.destination.city, shippingTest.result.destination.region, shippingTest.result.destination.country].filter(Boolean).join(", ")}
+                                  </Typography>
+                                ) : null}
+                                {(shippingTest.result.readiness?.items || []).map((item) => (
+                                  <Alert key={item.code} severity={item.status === "ready" ? "success" : "warning"} sx={{ py: 0 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                                  </Alert>
+                                ))}
+                                {shippingTest.result.summary?.rate_count ? (
+                                  <>
+                                    <Typography variant="body2">Carrier services returned: {shippingTest.result.summary.rate_count}</Typography>
+                                    {shippingTest.result.summary.lowest_rate ? (
+                                      <Typography variant="body2">
+                                        Lowest test rate: {shippingTest.result.summary.lowest_rate.currency} {shippingTest.result.summary.lowest_rate.amount}
+                                      </Typography>
+                                    ) : null}
+                                    {shippingTest.result.summary.fastest_rate?.delivery_days != null ? (
+                                      <Typography variant="body2">
+                                        Fastest estimated transit: {shippingTest.result.summary.fastest_rate.delivery_days} business day{shippingTest.result.summary.fastest_rate.delivery_days === 1 ? "" : "s"}
+                                      </Typography>
+                                    ) : null}
+                                  </>
+                                ) : null}
+                                {(shippingTest.result.rates || []).length ? (
+                                  <Stack spacing={1}>
+                                    {(shippingTest.result.rates || []).slice(0, 5).map((rate) => (
+                                      <Card key={`${rate.carrier}-${rate.service}-${rate.amount}`} variant="outlined">
+                                        <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+                                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                            {rate.carrier} · {rate.service}
+                                          </Typography>
+                                          <Typography variant="body2">
+                                            {rate.currency} {rate.amount}
+                                          </Typography>
+                                          <Typography variant="caption" color="text.secondary">
+                                            {rate.delivery_estimate_label}
+                                          </Typography>
+                                        </CardContent>
+                                      </Card>
+                                    ))}
+                                  </Stack>
+                                ) : null}
+                                {(shippingTest.result.notices || []).map((notice) => (
+                                  <Alert key={notice} severity="info" sx={{ py: 0 }}>
+                                    {notice}
+                                  </Alert>
+                                ))}
+                              </>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Choose a product, package, quantity, and destination, then request test rates.
+                              </Typography>
+                            )}
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : isContentWorkflow && contentPack ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack spacing={1.5}>
@@ -2340,6 +2788,15 @@ const CommerceCopilotDrawer = ({
                       <Button variant="contained" onClick={continueProductSetup} disabled={busy || !completion?.available_actions?.help_finish_setup}>
                         Help me finish setup
                       </Button>
+                      {!completion?.product?.is_digital ? (
+                        <Button
+                          variant="outlined"
+                          onClick={() => createSession("test_shipping_setup", { productId: completion?.product?.product_id })}
+                          disabled={busy || !completion?.product?.product_id}
+                        >
+                          Test shipping setup
+                        </Button>
+                      ) : null}
                       <Button variant="outlined" onClick={() => startContentWorkflow(completion?.product?.product_id)} disabled={busy || !completion?.product?.product_id}>
                         Improve storefront content
                       </Button>

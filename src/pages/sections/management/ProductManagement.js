@@ -363,11 +363,22 @@ const ProductManagement = ({ token }) => {
     setOpen(true);
   }, []);
 
+  const clearEditProductIdFromUrl = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const search = new URLSearchParams(window.location.search);
+    if (!search.has("editProductId")) return;
+    search.delete("editProductId");
+    const nextSearch = search.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, []);
+
   const handleClose = useCallback(() => {
+    clearEditProductIdFromUrl();
     setOpen(false);
     setEditing(null);
     setForm(emptyForm);
-  }, []);
+  }, [clearEditProductIdFromUrl]);
 
   useEffect(() => {
     const search = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
@@ -673,6 +684,9 @@ const ProductManagement = ({ token }) => {
             </IconButton>
             <Button size="small" variant="text" onClick={() => openCopilot("repair_product", params.row.id)}>
               Fix with AI
+            </Button>
+            <Button size="small" variant="text" onClick={() => openCopilot("test_shipping_setup", params.row.id)}>
+              Test shipping
             </Button>
             <Button size="small" variant="text" onClick={() => openCopilot("improve_product_content", params.row.id)}>
               Improve content
@@ -1714,6 +1728,11 @@ const ProductManagement = ({ token }) => {
           {editing?.id ? (
             <Button variant="outlined" onClick={() => openCopilot("improve_product_content", editing.id)}>
               Generate storefront content
+            </Button>
+          ) : null}
+          {editing?.id && !form.is_digital ? (
+            <Button variant="outlined" onClick={() => openCopilot("test_shipping_setup", editing.id)}>
+              Test this Product's shipping setup
             </Button>
           ) : null}
           <Button variant="contained" onClick={persist}>

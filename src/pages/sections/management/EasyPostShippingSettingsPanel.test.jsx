@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
@@ -105,6 +106,19 @@ describe("EasyPostShippingSettingsPanel", () => {
     fireEvent.mouseOver(helpButton);
 
     expect(await screen.findByText(/sender\/business name used as shipment origin/i)).toBeInTheDocument();
+  });
+
+  test("opens Commerce Copilot in shipping-test mode from Delivery Setup", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+    await userEvent.click(await screen.findByRole("button", { name: /test shipping setup/i }));
+
+    expect(await screen.findByTestId("commerce-copilot-drawer")).toBeInTheDocument();
+    expect(mockCopilotDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        initialWorkflow: "test_shipping_setup",
+      })
+    );
   });
 
   test("supports editing and archiving package profiles", async () => {

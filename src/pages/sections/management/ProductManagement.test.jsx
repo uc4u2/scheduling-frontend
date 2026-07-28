@@ -42,6 +42,7 @@ jest.setTimeout(15000);
 describe("ProductManagement", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.history.replaceState({}, "", "/manager/advanced-management?panel=products");
     mockApiGet.mockImplementation((url) => {
       if (String(url).startsWith("/inventory/products?") || String(url) === "/inventory/products") {
         return Promise.resolve({ data: [] });
@@ -153,6 +154,128 @@ describe("ProductManagement", () => {
         open: true,
         initialWorkflow: "improve_product_content",
         targetProductId: null,
+      })
+    );
+  });
+
+  test("closing a URL-opened edit modal clears editProductId so it stays closed", async () => {
+    window.history.replaceState({}, "", "/manager/advanced-management?panel=products&editProductId=60");
+    mockApiGet.mockImplementation((url) => {
+      if (String(url).startsWith("/inventory/products?") || String(url) === "/inventory/products") {
+        return Promise.resolve({
+          data: [
+            {
+              id: 60,
+              sku: "SMOKY-LEM-60",
+              name: "Smoky-Lemon Quartz Necklace",
+              price: 50,
+              qty_on_hand: 2,
+              track_stock: true,
+              is_digital: false,
+              is_active: true,
+            },
+          ],
+        });
+      }
+      if (String(url) === "/inventory/product-categories") {
+        return Promise.resolve({ data: { categories: [] } });
+      }
+      if (String(url) === "/inventory/shipping-settings") {
+        return Promise.resolve({
+          data: {
+            allow_pickup: true,
+            allow_shipping: true,
+            allow_local_delivery: false,
+            country_catalog: [],
+          },
+        });
+      }
+      if (String(url) === "/inventory/products/low-stock?limit=10") {
+        return Promise.resolve({
+          data: {
+            count: 0,
+            out_of_stock_count: 0,
+            low_stock_count: 0,
+            items: [],
+          },
+        });
+      }
+      if (String(url) === "/finance/inventory/items?active=true") {
+        return Promise.resolve({ data: { items: [] } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByText("manager.product.dialog.editTitle")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /manager\.product\.dialog\.cancel/i }));
+
+    expect(screen.queryByText("manager.product.dialog.editTitle")).not.toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get("editProductId")).toBeNull();
+  });
+
+  test("opens shipping-test Copilot workflow from the edit product modal", async () => {
+    window.history.replaceState({}, "", "/manager/advanced-management?panel=products&editProductId=60");
+    mockApiGet.mockImplementation((url) => {
+      if (String(url).startsWith("/inventory/products?") || String(url) === "/inventory/products") {
+        return Promise.resolve({
+          data: [
+            {
+              id: 60,
+              sku: "SMOKY-LEM-60",
+              name: "Smoky-Lemon Quartz Necklace",
+              price: 50,
+              qty_on_hand: 2,
+              track_stock: true,
+              is_digital: false,
+              is_active: true,
+            },
+          ],
+        });
+      }
+      if (String(url) === "/inventory/product-categories") {
+        return Promise.resolve({ data: { categories: [] } });
+      }
+      if (String(url) === "/inventory/shipping-settings") {
+        return Promise.resolve({
+          data: {
+            allow_pickup: true,
+            allow_shipping: true,
+            allow_local_delivery: false,
+            country_catalog: [],
+          },
+        });
+      }
+      if (String(url) === "/inventory/products/low-stock?limit=10") {
+        return Promise.resolve({
+          data: { count: 0, out_of_stock_count: 0, low_stock_count: 0, items: [] },
+        });
+      }
+      if (String(url) === "/finance/inventory/items?active=true") {
+        return Promise.resolve({ data: { items: [] } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByText("manager.product.dialog.editTitle")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /test this product's shipping setup/i }));
+
+    expect(mockCopilotDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        initialWorkflow: "test_shipping_setup",
+        targetProductId: 60,
       })
     );
   });

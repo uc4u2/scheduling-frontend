@@ -152,6 +152,60 @@ const guidedSession = {
   usage_summary: { requests: 1, draft_generations: 1, plan_generations: 0, estimated_total_cost_micros: 1000 },
 };
 
+const shippingTestSession = {
+  session: { public_id: "ship_1", workflow: "test_shipping_setup", status: "awaiting_manager", current_step: "shipping_test_setup", context_summary_json: { progress_percent: 100 } },
+  messages: [],
+  facts: [],
+  draft: null,
+  plan: null,
+  approval: null,
+  execution: null,
+  usage_summary: { requests: 0, shipping_tests: 0 },
+  shipping_test: {
+    enabled: true,
+    workspace_scope_note: "Package Profiles are workspace-level. Testing another package here does not attach it to this Product or change the workspace default.",
+    country_catalog: [
+      { code: "CA", label: "Canada" },
+      { code: "US", label: "United States" },
+    ],
+    product_options: [
+      { id: 60, name: "Smoky-Lemon Quartz Necklace", sku: "SMOKY-LEM-60", is_digital: false, shipping_weight_grams: 50, is_active: false },
+    ],
+    package_options: [
+      { id: 9, name: "Small Jewelry Box", display_dimensions: "10 × 5 × 5 cm", tare_weight_display: "15 g", tare_weight_grams: 15, is_default: true },
+    ],
+    selected_product_id: 60,
+    selected_package_profile_id: 9,
+    draft: {
+      product_id: 60,
+      package_profile_id: 9,
+      quantity: 1,
+      save_destination: false,
+      saved_destination: {
+        address1: "777 Hornby St",
+        city: "Vancouver",
+        region: "BC",
+        postal_code: "V6Z 1S4",
+        country: "CA",
+      },
+    },
+    preview: {
+      total_weight_grams: 65,
+      product_weight_display: "50 g × 1",
+      tare_weight_display: "15 g",
+      total_weight_display: "65 g",
+    },
+    links: {
+      delivery_setup: "/manager/advanced-management?panel=easypost-shipping",
+      product: "/manager/advanced-management?panel=products&editProductId=60",
+    },
+    address_review: null,
+    result: null,
+    result_stale: false,
+    stale_message: "",
+  },
+};
+
 describe("CommerceCopilotDrawer", () => {
   let consoleErrorSpy;
 
@@ -201,6 +255,128 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.getByRole("heading", { name: /or describe what you need/i })).toBeInTheDocument();
     expect(screen.queryByText(/preview only/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/not available right now/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/test my shipping setup/i)).toBeInTheDocument();
+  });
+
+  test("renders shipping-test workflow and requests test rates without label actions", async () => {
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: shippingTestSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/ship_1/test-shipping") {
+        expect(body).toEqual(
+          expect.objectContaining({
+            product_id: 60,
+            package_profile_id: 9,
+            quantity: 1,
+            save_destination: false,
+            destination: expect.objectContaining({
+              address1: "777 Hornby St",
+              city: "Vancouver",
+              region: "BC",
+              postal_code: "V6Z 1S4",
+              country: "CA",
+            }),
+          })
+        );
+        return Promise.resolve({
+          data: {
+            ...shippingTestSession,
+            session: { ...shippingTestSession.session, status: "completed", current_step: "shipping_test_results" },
+            shipping_test: {
+              ...shippingTestSession.shipping_test,
+              result: {
+                status: "passed",
+                product: { id: 60, name: "Smoky-Lemon Quartz Necklace", quantity: 1 },
+                package: {
+                  name: "Small Jewelry Box",
+                  display_dimensions: "10 × 5 × 5 cm",
+                  total_test_weight: "65 g",
+                },
+                destination: { city: "Vancouver", region: "BC", country: "Canada" },
+                summary: {
+                  rate_count: 2,
+                  lowest_rate: { currency: "CAD", amount: "12.40" },
+                  fastest_rate: { delivery_days: 2 },
+                },
+                rates: [
+                  {
+                    carrier: "CanadaPost",
+                    service: "ExpeditedParcel",
+                    amount: "12.40",
+                    currency: "CAD",
+                    delivery_estimate_label: "Estimated carrier transit: 3 business days",
+                  },
+                ],
+                readiness: { items: [] },
+                notices: ["No label was purchased.", "Actual checkout rates may differ."],
+              },
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "test_shipping_setup", targetProductId: 60 });
+
+    expect(await screen.findByText(/test shipping setup/i)).toBeInTheDocument();
+    expect(screen.getByText(/total: 65 g/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /request test rates/i }));
+
+    expect(await screen.findByText(/shipping test passed/i)).toBeInTheDocument();
+    expect(screen.getByText(/lowest test rate: CAD 12\.40/i)).toBeInTheDocument();
+    expect(screen.getByText(/no label was purchased/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /buy label/i })).not.toBeInTheDocument();
+  });
+
+  test("submits the suggested-address acceptance choice during shipping test review", async () => {
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({
+          data: {
+            ...shippingTestSession,
+            shipping_test: {
+              ...shippingTestSession.shipping_test,
+              address_review: {
+                status: "corrected",
+                original_address: {
+                  address1: "777 Hornby Street",
+                  city: "Vancouver",
+                  region: "BC",
+                  postal_code: "V6Z 1S4",
+                  country: "CA",
+                },
+                suggested_address: {
+                  address1: "777 Hornby St",
+                  city: "Vancouver",
+                  region: "BC",
+                  postal_code: "V6Z 1S4",
+                  country: "CA",
+                },
+              },
+            },
+          },
+        });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/ship_1/test-shipping") {
+        expect(body.verification_choice).toBe("suggested");
+        return Promise.resolve({ data: shippingTestSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "test_shipping_setup", targetProductId: 60 });
+
+    expect(await screen.findByText(/please review the suggested address/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /use suggested address/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions/ship_1/test-shipping",
+      expect.objectContaining({ verification_choice: "suggested" }),
+      expect.any(Object)
+    ));
   });
 
   test("renders structured guided questions and submits structured answers", async () => {
