@@ -408,6 +408,82 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.queryByLabelText(/review and confirm cost/i)).not.toBeInTheDocument();
   });
 
+  test("shows the completion card with readiness and next actions after hidden product creation", async () => {
+    mockApiPost.mockResolvedValueOnce({
+      data: {
+        ...guidedSession,
+        session: { ...guidedSession.session, current_step: "finish_setup", status: "awaiting_manager" },
+        messages: guidedSession.messages,
+        plan: null,
+        approval: null,
+        execution: {
+          public_id: "exec_1",
+          status: "completed",
+          summary: {
+            actions: [
+              {
+                public_id: "exec_row_1",
+                status: "succeeded",
+                result_summary_json: { title: "Smoky-Lemon Quartz Necklace" },
+              },
+            ],
+          },
+        },
+        completion: {
+          product: {
+            created: true,
+            product_id: 101,
+            name: "Smoky-Lemon Quartz Necklace",
+            is_active: false,
+            visibility: "hidden",
+            manager_url: "/manager/advanced-management?panel=products&editProductId=101",
+          },
+          readiness: {
+            overall_status: "setup_incomplete",
+            items: [
+              {
+                code: "product_core",
+                label: "Product information",
+                status: "ready",
+                message: "Product name and price are complete.",
+                action_target: "product",
+              },
+              {
+                code: "easypost_connection",
+                label: "Shipping connection",
+                status: "missing",
+                message: "Connect EasyPost before showing live carrier rates.",
+                action_target: "delivery_setup",
+              },
+            ],
+          },
+          available_actions: {
+            help_finish_setup: true,
+            open_product: true,
+            open_delivery_setup: true,
+            open_digital_products: false,
+            prepare_publish: false,
+          },
+          links: {
+            product: "/manager/advanced-management?panel=products&editProductId=101",
+            delivery_setup: "/manager/advanced-management?panel=easypost-shipping",
+            digital_products: null,
+          },
+        },
+      },
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+
+    expect(await screen.findByText(/product created/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/smoky-lemon quartz necklace/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/product information/i)).toBeInTheDocument();
+    expect(screen.getByText(/connect easypost before showing live carrier rates\./i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /help me finish setup/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /finish setup before publishing/i })).toBeDisabled();
+  });
+
   test("accepts package bundle input and keeps the guided flow single-column", async () => {
     const packageSession = {
       ...guidedSession,
@@ -465,11 +541,11 @@ describe("CommerceCopilotDrawer", () => {
 
     renderDrawer();
     await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    await userEvent.type(await screen.findByLabelText(/package name/i), "Small Jewelry Box");
-    await userEvent.type(screen.getByLabelText(/^length$/i), "5");
-    await userEvent.type(screen.getByLabelText(/^width$/i), "4");
-    await userEvent.type(screen.getByLabelText(/^height$/i), "3");
-    await userEvent.type(screen.getByLabelText(/empty package weight/i), "15");
+    fireEvent.change(await screen.findByLabelText(/package name/i), { target: { value: "Small Jewelry Box" } });
+    fireEvent.change(screen.getByLabelText(/^length$/i), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText(/^width$/i), { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText(/^height$/i), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText(/empty package weight/i), { target: { value: "15" } });
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(

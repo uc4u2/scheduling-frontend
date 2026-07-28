@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Card,
@@ -24,6 +27,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../../utils/api";
@@ -165,7 +169,11 @@ const summarizeConversationForCopy = (messages = []) =>
     .join("\n\n")
     .trim();
 
-const wizardStepForState = ({ currentQuestions, plan, execution }) => {
+const wizardStepForState = ({ currentQuestions, plan, execution, session }) => {
+  if (session?.current_step === "published") return { number: 4, label: "Published" };
+  if (session?.current_step === "publish_review") return { number: 4, label: "Publish review" };
+  if (session?.current_step === "publish") return { number: 4, label: "Publish" };
+  if (session?.current_step === "finish_setup") return { number: 4, label: "Finish setup" };
   if (execution) return { number: 4, label: "Create" };
   if (plan) return { number: 4, label: "Create" };
   if (Array.isArray(currentQuestions) && currentQuestions.some((question) => {
@@ -176,6 +184,13 @@ const wizardStepForState = ({ currentQuestions, plan, execution }) => {
   }
   if (Array.isArray(currentQuestions) && currentQuestions.length) return { number: 1, label: "Product" };
   return { number: 3, label: "Review" };
+};
+
+const completionStatusTone = (status) => {
+  if (status === "ready") return "success";
+  if (status === "not_applicable") return "info";
+  if (status === "warning") return "warning";
+  return "warning";
 };
 
 const copyText = async (text) => {
@@ -646,11 +661,13 @@ const CommerceCopilotDrawer = ({
   const [answerFieldErrors, setAnswerFieldErrors] = useState({});
   const [conversationOpen, setConversationOpen] = useState(false);
   const [draftDetailsOpen, setDraftDetailsOpen] = useState(false);
+  const [appliedChangesOpen, setAppliedChangesOpen] = useState(false);
   const questionCardRef = useRef(null);
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
   const plan = sessionData?.plan || null;
+  const completion = sessionData?.completion || null;
   const usageSummary = sessionData?.usage_summary || {};
   const messages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
   const availability = capabilities?.availability || {};
@@ -672,7 +689,14 @@ const CommerceCopilotDrawer = ({
   const currentQuestions = Array.isArray(latestAssistantMessage?.safe_metadata_json?.questions)
     ? latestAssistantMessage.safe_metadata_json.questions.slice(0, 3)
     : [];
-  const wizardStep = wizardStepForState({ currentQuestions, plan, execution });
+  const wizardStep = wizardStepForState({ currentQuestions, plan, execution, session });
+  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review";
+  const showPlanSection = Boolean(!currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
+  const completionHeading = session?.current_step === "published"
+    ? "Product is live"
+    : completion?.available_actions?.prepare_publish
+      ? "Ready to publish"
+      : "Product created";
 
   const resetState = useCallback(() => {
     setSessionData(null);
@@ -691,6 +715,7 @@ const CommerceCopilotDrawer = ({
     setAnswerFieldErrors({});
     setConversationOpen(false);
     setDraftDetailsOpen(false);
+    setAppliedChangesOpen(false);
   }, []);
 
   const loadCapabilities = useCallback(async () => {
@@ -1059,12 +1084,47 @@ const CommerceCopilotDrawer = ({
         auth
       );
       setExecution(data);
+      if (session?.public_id) {
+        await loadSessionDetail(session.public_id);
+      }
       setStatusMessage({
         type: "success",
         text: data?.status === "completed" ? "Approved changes were applied." : "Execution finished with follow-up items.",
       });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to apply approved changes." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const continueProductSetup = async () => {
+    if (!session?.public_id) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/inventory/commerce-copilot/sessions/${session.public_id}/continue-product-setup`, {}, auth);
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      setStatusMessage({ type: "success", text: "Commerce Copilot refreshed the remaining setup for this product." });
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to continue this product setup." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const preparePublish = async () => {
+    if (!session?.public_id) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/inventory/commerce-copilot/sessions/${session.public_id}/prepare-publish`, {}, auth);
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      setStatusMessage({ type: "success", text: "Publish review is ready. Approve the activation change to continue." });
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Finish setup before publishing." });
     } finally {
       setBusy(false);
     }
@@ -1280,7 +1340,7 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-              {(!currentQuestions.length || conversationOpen) ? (
+              {((!currentQuestions.length && !completionVisible) || conversationOpen) ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Conversation summary</Typography>
@@ -1366,7 +1426,7 @@ const CommerceCopilotDrawer = ({
                     </Stack>
                   </CardContent>
                 </Card>
-              ) : (
+              ) : !completionVisible ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack spacing={1}>
@@ -1394,9 +1454,9 @@ const CommerceCopilotDrawer = ({
                     </Stack>
                   </CardContent>
                 </Card>
-              )}
+              ) : null}
 
-              {!currentQuestions.length ? (
+              {!currentQuestions.length && !completionVisible ? (
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Progress</Typography>
@@ -1409,7 +1469,7 @@ const CommerceCopilotDrawer = ({
               </Card>
               ) : null}
 
-              {draft && (!currentQuestions.length || draftDetailsOpen) ? (
+              {draft && (((!currentQuestions.length && !completionVisible) || draftDetailsOpen)) ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -1512,7 +1572,89 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-            {!currentQuestions.length && plan ? (
+            {completionVisible ? (
+              <Card variant="outlined">
+                <CardContent>
+                  <Stack spacing={1.5}>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{completionHeading}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {completion?.product?.name || "Your product"}
+                      </Typography>
+                    </Box>
+                    <Alert severity={completion?.product?.is_active ? "success" : "info"}>
+                      {completion?.product?.is_active ? "Visible on your storefront." : "Hidden until you publish it."}
+                    </Alert>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Readiness</Typography>
+                      {(completion?.readiness?.items || []).map((item) => (
+                        <Alert key={item.code} severity={completionStatusTone(item.status)} sx={{ py: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                          <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                        </Alert>
+                      ))}
+                    </Stack>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button variant="contained" onClick={continueProductSetup} disabled={busy || !completion?.available_actions?.help_finish_setup}>
+                        Help me finish setup
+                      </Button>
+                      {completion?.links?.product ? (
+                        <Button variant="outlined" component="a" href={completion.links.product}>
+                          Open product
+                        </Button>
+                      ) : null}
+                      {completion?.available_actions?.open_digital_products && completion?.links?.digital_products ? (
+                        <Button variant="outlined" component="a" href={completion.links.digital_products}>
+                          Open Digital Products
+                        </Button>
+                      ) : completion?.links?.delivery_setup ? (
+                        <Button variant="outlined" component="a" href={completion.links.delivery_setup}>
+                          Open delivery setup
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="text"
+                        onClick={preparePublish}
+                        disabled={busy || !completion?.available_actions?.prepare_publish}
+                      >
+                        {completion?.available_actions?.prepare_publish ? "Publish when ready" : "Finish setup before publishing"}
+                      </Button>
+                    </Stack>
+                    {execution ? (
+                      <Accordion expanded={appliedChangesOpen} onChange={(_, next) => setAppliedChangesOpen(next)}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>View actions applied</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Stack spacing={1}>
+                            {(execution.summary?.actions || []).map((row) => (
+                              <Alert
+                                key={row.public_id || `${row.action_id}-${row.attempt_number}`}
+                                severity={row.status === "succeeded" ? "success" : row.status === "skipped_dependency" ? "info" : "warning"}
+                              >
+                                <Typography variant="body2" sx={{ fontWeight: 700 }}>{humanizeStatus(row.status, "result")}</Typography>
+                                {row.result_summary_json?.title ? (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                                    {row.result_summary_json.title}
+                                  </Typography>
+                                ) : null}
+                                {row.safe_error_message ? (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                                    {row.safe_error_message}
+                                  </Typography>
+                                ) : null}
+                              </Alert>
+                            ))}
+                          </Stack>
+                        </AccordionDetails>
+                      </Accordion>
+                    ) : null}
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {showPlanSection ? (
               <Card variant="outlined">
                 <CardContent>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mb: 1 }}>
@@ -1628,14 +1770,14 @@ const CommerceCopilotDrawer = ({
               </Card>
             ) : null}
 
-            {approval ? (
+            {approval && showPlanSection ? (
               <Alert severity="info">
                 Approved {Array.isArray(approval.approved_actions) ? approval.approved_actions.length : 0} change{Array.isArray(approval.approved_actions) && approval.approved_actions.length === 1 ? "" : "s"}.
                 {approval.execution_available ? " You can now apply them." : " Changes were reviewed, but applying them is currently disabled."}
               </Alert>
             ) : null}
 
-            {execution ? (
+            {execution && !completionVisible ? (
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Execution results</Typography>
@@ -1675,7 +1817,7 @@ const CommerceCopilotDrawer = ({
                         Open Product
                       </Button>
                     ) : null}
-                    <Button variant="text" component="a" href="/manager/advanced-management?tab=delivery">
+                    <Button variant="text" component="a" href="/manager/advanced-management?panel=easypost-shipping">
                       Open Delivery Setup
                     </Button>
                     <Button variant="text" onClick={onClose}>

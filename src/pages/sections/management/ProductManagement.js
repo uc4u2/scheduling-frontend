@@ -350,6 +350,16 @@ const ProductManagement = ({ token }) => {
     setForm(emptyForm);
   }, []);
 
+  useEffect(() => {
+    const search = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const editProductId = Number(search.get("editProductId") || 0);
+    if (!editProductId || open) return;
+    const match = products.find((row) => Number(row.id) === editProductId);
+    if (match) {
+      handleOpen(match);
+    }
+  }, [products, open, handleOpen]);
+
   const handleChange = useCallback(
     (field) => (event) => {
       const value =
