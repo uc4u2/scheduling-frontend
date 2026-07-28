@@ -169,7 +169,7 @@ const wizardStepForState = ({ currentQuestions, plan, execution, session }) => {
   if (plan) return { number: 4, label: "Create" };
   if (Array.isArray(currentQuestions) && currentQuestions.some((question) => {
     const key = String(question.fact_key || "");
-    return ["package_profile_bundle", "package_length_mm", "package_width_mm", "package_height_mm", "package_tare_weight_grams", "quantity"].includes(key);
+    return ["package_profile_bundle", "package_reuse_choice", "package_length_mm", "package_width_mm", "package_height_mm", "package_tare_weight_grams", "quantity"].includes(key);
   })) {
     return { number: 2, label: "Package" };
   }
@@ -258,11 +258,15 @@ const planSummarySections = (action, draftPresentation = {}) => {
   }
 
   if (Object.keys(settingsPayload).length || values.package_profile_id) {
+    const packageSummary = values.package_profile_summary || {};
     sections.push({
       title: "Shipping",
       rows: [
         ["Destination policy", settingsPayload.destination_policy_mode ? humanizeStatus(settingsPayload.destination_policy_mode, "policy") : null],
-        ["Package selection", values.package_profile_id ? `Use package #${values.package_profile_id}` : null],
+        ["Package selection", packageSummary.name ? `Use existing package “${packageSummary.name}”` : null],
+        ["Package dimensions", packageSummary.display_dimensions || null],
+        ["Empty package weight", packageSummary.tare_weight_display || null],
+        ["Workspace impact", packageSummary.workspace_scope === "default_package_profile" && values.package_profile_id ? (packageSummary.is_default ? "Already the workspace default package" : "This change makes the saved package the workspace default for future shipping quotes") : null],
       ].filter(([, value]) => value !== null && value !== undefined && value !== ""),
     });
   }
@@ -417,6 +421,92 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
   );
 };
 
+const PackageChoiceControl = ({ question, value, fieldErrors = {}, onChange, disabled }) => {
+  const defaults = question?.defaults || {};
+  const matches = Array.isArray(defaults.matches) ? defaults.matches : [];
+  const selectedMatch = matches.find((row) => row.public_reference === value?.selected_package_profile_reference) || matches[0] || null;
+  const selectedChoice = value?.choice || defaults.choice || defaults.recommended_action || "";
+  const makeDefault = Boolean(value?.package_make_workspace_default);
+  const update = (next) => onChange({
+    choice: selectedChoice,
+    selected_package_profile_reference: selectedMatch?.public_reference || defaults.selected_package_profile_reference || "",
+    package_make_workspace_default: makeDefault,
+    ...next,
+  });
+  return (
+    <Stack spacing={1.25}>
+      <Alert severity={defaults.decision_status === "close_match" ? "warning" : "info"} sx={{ py: 0 }}>
+        {defaults.plain_language_reason}
+      </Alert>
+      {selectedMatch ? (
+        <Card variant="outlined">
+          <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+            <Stack spacing={0.6}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{selectedMatch.name}</Typography>
+              <Typography variant="body2">Dimensions: {selectedMatch.display_dimensions}</Typography>
+              <Typography variant="body2">Empty-package weight: {selectedMatch.tare_weight_display}</Typography>
+              <Typography variant="body2">Workspace default: {selectedMatch.is_default ? "Yes" : "No"}</Typography>
+              {(selectedMatch.match_details || []).map((detail) => (
+                <Typography key={detail} variant="caption" color="text.secondary">{detail}</Typography>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
+      {matches.length > 1 ? (
+        <FormControl fullWidth size="small">
+          <InputLabel id={`${question.question_id}-profile-label`}>Saved package</InputLabel>
+          <Select
+            labelId={`${question.question_id}-profile-label`}
+            value={selectedMatch?.public_reference || ""}
+            label="Saved package"
+            onChange={(event) => {
+              const match = matches.find((row) => row.public_reference === event.target.value) || null;
+              update({
+                selected_package_profile_reference: match?.public_reference || "",
+                package_make_workspace_default: Boolean(match?.is_default) ? false : makeDefault,
+              });
+            }}
+            disabled={disabled}
+          >
+            {matches.map((match) => (
+              <MenuItem key={match.public_reference} value={match.public_reference}>
+                {match.name} · {match.display_dimensions} · {match.tare_weight_display}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      ) : null}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Button variant={selectedChoice === "use_existing" ? "contained" : "outlined"} onClick={() => update({ choice: "use_existing" })} disabled={disabled}>
+          Use existing package
+        </Button>
+        <Button variant={selectedChoice === "create_new" ? "contained" : "outlined"} onClick={() => update({ choice: "create_new" })} disabled={disabled}>
+          Create a new package
+        </Button>
+      </Stack>
+      {selectedChoice === "use_existing" && selectedMatch && !selectedMatch.is_default ? (
+        <FormControlLabel
+          control={<Checkbox checked={makeDefault} onChange={(event) => update({ package_make_workspace_default: event.target.checked })} disabled={disabled} />}
+          label="Make this the workspace default package. This may affect shipping quotes for other products."
+        />
+      ) : null}
+      <Button size="small" variant="text" onClick={() => update({})} disabled={disabled}>
+        View package details
+      </Button>
+      {fieldErrors.package_make_workspace_default ? (
+        <Typography variant="caption" color="error">{fieldErrors.package_make_workspace_default}</Typography>
+      ) : null}
+      {fieldErrors.selected_package_profile_reference ? (
+        <Typography variant="caption" color="error">{fieldErrors.selected_package_profile_reference}</Typography>
+      ) : null}
+      {fieldErrors.package_reuse_choice ? (
+        <Typography variant="caption" color="error">{fieldErrors.package_reuse_choice}</Typography>
+      ) : null}
+    </Stack>
+  );
+};
+
 const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSuggestion, onShowHelp, onSaveIncomplete, disabled }) => {
   const inputType = String(question?.input_type || "text").toLowerCase();
   const choices = Array.isArray(question?.choices) ? question.choices : [];
@@ -451,6 +541,18 @@ const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSug
           onShowHelp={onShowHelp}
           onSaveIncomplete={onSaveIncomplete}
           disabled={disabled}
+      />
+    );
+  }
+
+  if (inputType === "package_choice") {
+    return (
+      <PackageChoiceControl
+        question={question}
+        value={value}
+        fieldErrors={fieldErrors}
+        onChange={onChange}
+        disabled={disabled}
       />
     );
   }

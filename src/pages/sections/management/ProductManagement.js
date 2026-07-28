@@ -1856,6 +1856,7 @@ const ProductManagement = ({ token }) => {
               <Typography variant="body2"><strong>Product dimensions:</strong> The item itself. These are usually optional unless the product ships separately or its own dimensions matter for packing.</Typography>
               <Typography variant="body2"><strong>Package dimensions:</strong> The actual box or mailer customers receive. Manage these in <strong>Delivery setup -&gt; Package Profiles</strong>, not in the Product dimension fields.</Typography>
               <Typography variant="body2"><strong>Package tare weight:</strong> The empty box, envelope, and packing material without the product.</Typography>
+              <Typography variant="body2"><strong>Package reuse:</strong> Commerce Copilot checks your saved <strong>Package Profiles</strong> before creating another one. Reuse the saved package when the dimensions and empty-package weight match.</Typography>
               <Typography variant="body2"><strong>Units:</strong> Manual Product Management stores grams and millimetres. Commerce Copilot can accept mm, cm, or in and converts safely to millimetres before shipping providers are called.</Typography>
               <Typography variant="body2"><strong>Ships separately:</strong> Turn this on when the product ships in its own parcel instead of sharing a package with other items.</Typography>
               <Typography variant="body2"><strong>Delivery override:</strong> Use this only when the product needs different checkout delivery methods from your workspace defaults.</Typography>
@@ -1892,6 +1893,7 @@ const ProductManagement = ({ token }) => {
                   <Typography variant="body2">Ships separately: <code>No</code></Typography>
                   <Typography variant="body2">Allow international shipping: <code>Off</code></Typography>
                   <Typography variant="body2">Package Profile in Delivery Setup: <code>10 × 5 × 5 cm</code> with <code>15 g</code> empty package weight.</Typography>
+                  <Typography variant="body2">If that same Package Profile already exists, Commerce Copilot can reuse it instead of creating a duplicate.</Typography>
                 </Stack>
               </Paper>
               <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "background.default" }}>

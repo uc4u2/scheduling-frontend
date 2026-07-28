@@ -84,3 +84,16 @@ The expected sequence is:
 2. Fix technical readiness.
 3. Improve storefront content.
 4. Publish later through the existing approved activation flow.
+
+## Release C interaction
+
+Release C adds Smart Package Reuse to the physical-product setup flow before content polish.
+
+Key behavior:
+- Commerce Copilot checks existing active Package Profiles before proposing a new package
+- the manager may choose **Use existing package** or **Create a new package**
+- if a reused package is not already the workspace default, Copilot explains that making it the default can affect future shipping quotes for other Products
+
+This package-reuse decision stays separate from the storefront content pack:
+- package reuse does not change description or SEO content
+- content approval still remains one separate harmless content action

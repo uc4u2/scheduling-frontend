@@ -814,6 +814,147 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.queryByText(/review selected changes/i)).not.toBeInTheDocument();
   });
 
+  test("renders a package choice card when a saved package matches", async () => {
+    const packageChoiceSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "We found a saved package that may work for this product.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_reuse_choice",
+                fact_key: "package_reuse_choice",
+                plain_language_question: "We found a saved package that may work for this product. What would you like to do?",
+                why_needed: "The current shipping system uses the workspace default package for shipping quotes.",
+                input_type: "package_choice",
+                choices: [],
+                allow_unknown: false,
+                show_help_measure: false,
+                help_text: "Reuse an existing package when the dimensions and empty-package weight match.",
+                defaults: {
+                  choice: "",
+                  selected_package_profile_reference: "package_profile:12",
+                  package_make_workspace_default: false,
+                  decision_status: "exact_match",
+                  recommended_action: "use_existing",
+                  plain_language_reason: "A saved package has the same dimensions and empty-package weight.",
+                  matches: [
+                    {
+                      public_reference: "package_profile:12",
+                      name: "Small Jewelry Box",
+                      display_dimensions: "10 × 5 × 5 cm",
+                      tare_weight_display: "15 g",
+                      is_default: true,
+                      match_quality: "exact",
+                      match_details: ["Dimensions match", "Empty-package weight matches", "Already used as the workspace default"],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: packageChoiceSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/sess_1/messages") {
+        expect(body.answers).toEqual([
+          {
+            question_id: "package_reuse_choice",
+            fact_key: "package_reuse_choice",
+            value: {
+              choice: "use_existing",
+              selected_package_profile_reference: "package_profile:12",
+              package_make_workspace_default: false,
+            },
+            confirmation_status: "confirmed",
+          },
+        ]);
+        return Promise.resolve({ data: packageChoiceSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/small jewelry box/i)).toBeInTheDocument();
+    expect(screen.getByText(/10 × 5 × 5 cm/i)).toBeInTheDocument();
+    expect(screen.getByText(/workspace default: yes/i)).toBeInTheDocument();
+    expect(screen.queryByText(/package_profile:12/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /use existing package/i }));
+    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions/sess_1/messages",
+      expect.objectContaining({ answers: expect.any(Array) }),
+      expect.any(Object)
+    ));
+  });
+
+  test("shows workspace-default warning for a non-default saved package", async () => {
+    const packageChoiceSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "We found a saved package that may work for this product.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_reuse_choice",
+                fact_key: "package_reuse_choice",
+                plain_language_question: "The saved package dimensions match, but its empty-package weight is 18 g while you entered 15 g. What would you like to do?",
+                why_needed: "The current shipping system uses the workspace default package for shipping quotes.",
+                input_type: "package_choice",
+                choices: [],
+                allow_unknown: false,
+                show_help_measure: false,
+                help_text: "Reuse an existing package when the dimensions and empty-package weight match.",
+                defaults: {
+                  choice: "",
+                  selected_package_profile_reference: "package_profile:33",
+                  package_make_workspace_default: false,
+                  decision_status: "close_match",
+                  recommended_action: "ask_manager",
+                  plain_language_reason: "A saved package has matching dimensions, but the empty-package weight is slightly different.",
+                  matches: [
+                    {
+                      public_reference: "package_profile:33",
+                      name: "Necklace Mailer",
+                      display_dimensions: "10 × 5 × 5 cm",
+                      tare_weight_display: "18 g",
+                      is_default: false,
+                      match_quality: "close_weight",
+                      match_details: ["Dimensions match", "Saved empty-package weight is 18 g"],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: packageChoiceSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/the empty-package weight is slightly different/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /use existing package/i }));
+    expect(await screen.findByText(/may affect shipping quotes for other products/i)).toBeInTheDocument();
+  });
+
   test("renders storefront content suggestions and approves selected content", async () => {
     const contentSession = {
       session: {
