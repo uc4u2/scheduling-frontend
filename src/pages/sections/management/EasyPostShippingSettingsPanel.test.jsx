@@ -121,6 +121,43 @@ describe("EasyPostShippingSettingsPanel", () => {
     );
   });
 
+  test("saving manual shipping settings does not send destination policy fields when EasyPost automation is off", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        enabled: true,
+        easypost_enabled: false,
+        allow_pickup: true,
+        allow_shipping: true,
+        allow_local_delivery: false,
+        origin_country: "",
+        destination_policy_preset: "domestic_only",
+        destination_policy_mode: "domestic_only",
+        allowed_destination_countries: [],
+        country_catalog: [{ code: "CA", label: "Canada" }],
+        package_profiles: [],
+        readiness: { ready: false, checklist: [] },
+      },
+    });
+    mockApiPost.mockResolvedValue({ data: { enabled: true, easypost_enabled: false, allow_pickup: true, allow_shipping: true, allow_local_delivery: false, package_profiles: [], readiness: { ready: false, checklist: [] } } });
+
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /save shipping settings/i }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/inventory/shipping-settings",
+        expect.not.objectContaining({
+          origin_country: expect.anything(),
+          destination_policy_preset: expect.anything(),
+          destination_policy_mode: expect.anything(),
+          destination_countries: expect.anything(),
+        }),
+        expect.any(Object)
+      )
+    );
+  });
+
   test("supports editing and archiving package profiles", async () => {
     mockApiGet.mockResolvedValue({
       data: {
