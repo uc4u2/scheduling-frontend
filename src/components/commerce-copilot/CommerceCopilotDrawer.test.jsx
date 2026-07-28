@@ -607,6 +607,141 @@ describe("CommerceCopilotDrawer", () => {
     expect(tareInput).toHaveValue("15");
   });
 
+  test("preserves package dimensions when inline help opens and closes", async () => {
+    const packageSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I need your package details next.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Shipping rates need exact package details.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box customers receive.",
+                defaults: {
+                  package_name: "Gold Necklace Shipping Box",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    mockApiPost.mockResolvedValueOnce({ data: packageSession });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    const lengthInput = await screen.findByLabelText(/^package length$/i);
+    await userEvent.type(lengthInput, "10");
+    await userEvent.click(screen.getByRole("button", { name: /help me find or measure this/i }));
+    expect(await screen.findByText(/how to measure your package/i)).toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole("button", { name: /close help/i })[0]);
+    expect(await screen.findByRole("button", { name: /help me find or measure this/i })).toBeInTheDocument();
+    expect(lengthInput).toHaveValue("10");
+  }, 10000);
+
+  test("supports tab navigation across package dimensions and weight", async () => {
+    const packageSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I need your package details next.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Shipping rates need exact package details.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box customers receive.",
+                defaults: {
+                  package_name: "",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    mockApiPost.mockResolvedValueOnce({ data: packageSession });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    const packageNameInput = await screen.findByLabelText(/package name/i);
+    await userEvent.click(packageNameInput);
+    await userEvent.tab();
+    expect(screen.getByLabelText(/^package length$/i)).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByLabelText(/^package width$/i)).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByLabelText(/^package height$/i)).toHaveFocus();
+  });
+
+  test("marking a package question unknown does not save the full session", async () => {
+    const packageSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I need your package details next.",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "package_profile_bundle",
+                fact_key: "package_profile_bundle",
+                plain_language_question: "What package do you normally use for this product?",
+                why_needed: "Shipping rates need exact package details.",
+                input_type: "package_bundle",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: true,
+                help_text: "Use the actual box customers receive.",
+                defaults: {
+                  package_name: "",
+                  length_unit: "cm",
+                  weight_unit: "g",
+                  set_as_default: true,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    mockApiPost.mockResolvedValueOnce({ data: packageSession });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /i don't know yet/i }));
+
+    expect(await screen.findByText(/i left this question incomplete for now/i)).toBeInTheDocument();
+    expect(mockApiPost).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole("button", { name: /save and finish later/i })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /save incomplete/i })).not.toBeInTheDocument();
+  });
+
   test("keeps accepted answers and field errors visible on partial package submission", async () => {
     const partialSession = {
       ...guidedSession,
@@ -954,6 +1089,76 @@ describe("CommerceCopilotDrawer", () => {
     await userEvent.click(screen.getByRole("button", { name: /use existing package/i }));
     expect(await screen.findByText(/may affect shipping quotes for other products/i)).toBeInTheDocument();
   });
+
+  test("uses the structured package editor in draft preview instead of a generic text field", async () => {
+    const packageDraftSession = {
+      ...guidedSession,
+      facts: [
+        { fact_key: "package_profile_name", normalized_value_json: "Gold Necklace Shipping Box" },
+        { fact_key: "package_length_mm", normalized_value_json: 100 },
+        { fact_key: "package_width_mm", normalized_value_json: 50 },
+        { fact_key: "package_height_mm", normalized_value_json: 50 },
+        { fact_key: "package_tare_weight_grams", normalized_value_json: 15 },
+        { fact_key: "package_length_input", normalized_value_json: "10" },
+        { fact_key: "package_width_input", normalized_value_json: "5" },
+        { fact_key: "package_height_input", normalized_value_json: "5" },
+        { fact_key: "package_tare_weight_input", normalized_value_json: "15" },
+        { fact_key: "package_length_unit", normalized_value_json: "cm" },
+        { fact_key: "package_weight_unit", normalized_value_json: "g" },
+        { fact_key: "package_set_as_default", normalized_value_json: true },
+      ],
+      draft: {
+        ...guidedSession.draft,
+        presentation: {
+          ...guidedSession.draft.presentation,
+          sections: {
+            ...guidedSession.draft.presentation.sections,
+            package: [
+              { fact_key: "package_profile_name", label: "Package name", display_value: "Gold Necklace Shipping Box", raw_value: "Gold Necklace Shipping Box", editable: true },
+              { fact_key: "package_dimensions", label: "Package dimensions", display_value: "10 × 5 × 5 cm", raw_value: null, editable: true },
+              { fact_key: "package_tare_weight_grams", label: "Package empty weight", display_value: "15 g", raw_value: 15, editable: true },
+            ],
+          },
+        },
+      },
+    };
+    mockApiPost.mockResolvedValueOnce({ data: packageDraftSession });
+    mockApiPatch.mockResolvedValueOnce({
+      data: {
+        ...packageDraftSession,
+        facts: packageDraftSession.facts.map((row) => (
+          row.fact_key === "package_width_mm"
+            ? { ...row, normalized_value_json: 60 }
+            : row.fact_key === "package_width_input"
+              ? { ...row, normalized_value_json: "6" }
+              : row
+        )),
+      },
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /view current draft details/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /edit package/i }));
+    expect(screen.getByLabelText(/package name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^package width$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^package dimensions$/i)).not.toBeInTheDocument();
+
+    const widthInput = screen.getByLabelText(/^package width$/i);
+    await userEvent.clear(widthInput);
+    await userEvent.type(widthInput, "6");
+    await userEvent.click(screen.getByRole("button", { name: /save package changes/i }));
+
+    await waitFor(() => expect(mockApiPatch).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/drafts/draft_1",
+      expect.objectContaining({
+        package_profile_bundle: expect.objectContaining({
+          width: "6",
+        }),
+      }),
+      expect.any(Object)
+    ));
+  }, 10000);
 
   test("renders storefront content suggestions and approves selected content", async () => {
     const contentSession = {

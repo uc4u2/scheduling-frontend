@@ -122,6 +122,79 @@ const humanizeStatus = (value, fallback = "draft") => String(value || fallback).
 const humanizeFactKey = (value) => HUMAN_LABELS[value] || String(value || "").replace(/_/g, " ");
 const factKeyFromQuestion = (question) => String(question?.fact_key || question?.question_id || "");
 
+const PRODUCT_STEP_KEYS = new Set([
+  "product_name",
+  "price",
+  "currency",
+  "is_digital",
+  "track_stock",
+  "quantity",
+  "shipping_weight_grams",
+  "category",
+  "product_title_candidate",
+]);
+
+const PACKAGE_STEP_KEYS = new Set([
+  "package_profile_bundle",
+  "package_reuse_choice",
+  "package_length_mm",
+  "package_width_mm",
+  "package_height_mm",
+  "package_tare_weight_grams",
+  "package_profile_name",
+  "package_set_as_default",
+]);
+
+const PACKAGE_DRAFT_FACT_KEYS = new Set([
+  "package_profile_bundle",
+  "package_profile_name",
+  "package_length_mm",
+  "package_width_mm",
+  "package_height_mm",
+  "package_tare_weight_grams",
+  "package_set_as_default",
+  "package_reuse_choice",
+  "selected_package_profile_reference",
+  "package_make_workspace_default",
+]);
+
+const isPackageDraftRow = (row) => PACKAGE_DRAFT_FACT_KEYS.has(String(row?.fact_key || ""));
+
+const formatPackageDimensionDisplay = (facts = {}) => {
+  const length = Number(facts.package_length_mm || 0);
+  const width = Number(facts.package_width_mm || 0);
+  const height = Number(facts.package_height_mm || 0);
+  if (!(length > 0 && width > 0 && height > 0)) return "Still needed";
+  return `${length / 10} × ${width / 10} × ${height / 10} cm`;
+};
+
+const buildPackageDraftSummaryRows = (facts = {}, draftPresentation = {}) => {
+  const packageRows = Array.isArray(draftPresentation?.sections?.package) ? draftPresentation.sections.package : [];
+  const packageNameRow = packageRows.find((row) => row.fact_key === "package_profile_name");
+  const tareRow = packageRows.find((row) => row.fact_key === "package_tare_weight_grams");
+  const defaultRow = packageRows.find((row) => row.fact_key === "package_set_as_default");
+  const reuseRow = packageRows.find((row) => row.fact_key === "package_reuse_choice");
+  return [
+    {
+      label: "Package name",
+      display_value: packageNameRow?.display_value || facts.package_profile_name || "Still needed",
+    },
+    {
+      label: "Package dimensions",
+      display_value: formatPackageDimensionDisplay(facts),
+    },
+    {
+      label: "Package empty weight",
+      display_value: tareRow?.display_value || (facts.package_tare_weight_grams ? `${facts.package_tare_weight_grams} g` : "Still needed"),
+    },
+    {
+      label: "Use as default package",
+      display_value: defaultRow?.display_value || (facts.package_set_as_default == null ? "Still needed" : facts.package_set_as_default ? "Yes" : "No"),
+    },
+    ...(reuseRow?.display_value ? [{ label: reuseRow.label || "Package choice", display_value: reuseRow.display_value }] : []),
+  ];
+};
+
 const questionFieldLabel = (question) => {
   const key = String(question?.fact_key || question?.question_id || "");
   if (key === "product_name") return "Product name";
@@ -167,10 +240,10 @@ const wizardStepForState = ({ currentQuestions, plan, execution, session }) => {
   if (session?.current_step === "finish_setup") return { number: 4, label: "Finish setup" };
   if (execution) return { number: 4, label: "Create" };
   if (plan) return { number: 4, label: "Create" };
-  if (Array.isArray(currentQuestions) && currentQuestions.some((question) => {
-    const key = String(question.fact_key || "");
-    return ["package_profile_bundle", "package_reuse_choice", "package_length_mm", "package_width_mm", "package_height_mm", "package_tare_weight_grams", "quantity"].includes(key);
-  })) {
+  if (Array.isArray(currentQuestions) && currentQuestions.some((question) => PRODUCT_STEP_KEYS.has(String(question.fact_key || "")))) {
+    return { number: 1, label: "Product" };
+  }
+  if (Array.isArray(currentQuestions) && currentQuestions.some((question) => PACKAGE_STEP_KEYS.has(String(question.fact_key || "")))) {
     return { number: 2, label: "Package" };
   }
   if (Array.isArray(currentQuestions) && currentQuestions.length) return { number: 1, label: "Product" };
@@ -284,9 +357,41 @@ const newPackageBundleValue = (defaults = {}) => ({
   package_set_as_default: defaults.set_as_default !== false,
 });
 
-const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onShowHelp, onSaveIncomplete, disabled }) => {
-  const bundle = value && typeof value === "object" ? value : newPackageBundleValue(question?.defaults || {});
+const defaultAnswerForQuestion = (question) => {
+  const inputType = String(question?.input_type || "").toLowerCase();
+  if (inputType === "package_bundle") return newPackageBundleValue(question?.defaults || {});
+  if (inputType === "package_choice") {
+    const defaults = question?.defaults || {};
+    return {
+      choice: defaults.choice || "",
+      selected_package_profile_reference: defaults.selected_package_profile_reference || "",
+      package_make_workspace_default: Boolean(defaults.package_make_workspace_default),
+    };
+  }
+  return "";
+};
 
+const seedPackageBundleFromFacts = (facts = {}) => ({
+  package_profile_name: facts.package_profile_name || "",
+  length: facts.package_length_input || "",
+  width: facts.package_width_input || "",
+  height: facts.package_height_input || "",
+  length_unit: facts.package_length_unit || "cm",
+  package_tare_weight_input: facts.package_tare_weight_input || "",
+  weight_unit: facts.package_weight_unit || "g",
+  package_set_as_default: facts.package_set_as_default !== false,
+});
+
+const PackageFieldsEditor = ({
+  editorId,
+  bundle,
+  fieldErrors = {},
+  disabled,
+  onChange,
+  allowUnknown = false,
+  onMarkUnknown,
+}) => {
+  const [helpOpen, setHelpOpen] = useState(false);
   const updateBundle = (key, nextValue) => onChange({ ...bundle, [key]: nextValue });
   const sharedInputProps = {
     autoComplete: "off",
@@ -312,7 +417,14 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
         inputProps={{ "aria-label": "Package name" }}
       />
       <Typography variant="body2" sx={{ fontWeight: 700 }}>Package dimensions</Typography>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ minWidth: 0 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+          gap: 1,
+          minWidth: 0,
+        }}
+      >
         <TextField
           fullWidth
           size="small"
@@ -353,9 +465,9 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
           inputProps={{ "aria-label": "Package height", inputMode: "decimal" }}
         />
         <FormControl fullWidth size="small">
-          <InputLabel id={`${question.question_id}-length-unit-label`}>Size unit</InputLabel>
+          <InputLabel id={`${editorId}-length-unit-label`}>Size unit</InputLabel>
           <Select
-            labelId={`${question.question_id}-length-unit-label`}
+            labelId={`${editorId}-length-unit-label`}
             value={bundle.length_unit || "cm"}
             label="Size unit"
             onChange={(event) => updateBundle("length_unit", event.target.value)}
@@ -366,9 +478,6 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
             <MenuItem value="in">in</MenuItem>
           </Select>
         </FormControl>
-      </Stack>
-      <Typography variant="body2" sx={{ fontWeight: 700 }}>Empty package weight</Typography>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ minWidth: 0 }}>
         <TextField
           fullWidth
           size="small"
@@ -383,9 +492,9 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
           inputProps={{ "aria-label": "Empty package weight", inputMode: "decimal" }}
         />
         <FormControl fullWidth size="small">
-          <InputLabel id={`${question.question_id}-weight-unit-label`}>Weight unit</InputLabel>
+          <InputLabel id={`${editorId}-weight-unit-label`}>Weight unit</InputLabel>
           <Select
-            labelId={`${question.question_id}-weight-unit-label`}
+            labelId={`${editorId}-weight-unit-label`}
             value={bundle.weight_unit || "g"}
             label="Weight unit"
             onChange={(event) => updateBundle("weight_unit", event.target.value)}
@@ -395,7 +504,7 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
             <MenuItem value="oz">oz</MenuItem>
           </Select>
         </FormControl>
-      </Stack>
+      </Box>
       <Typography variant="caption" color="text.secondary">
         Measure the box or mailer customers will receive. Empty package weight means the box, envelope and packing material without the product.
       </Typography>
@@ -410,14 +519,59 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
         label="Use this package as the default"
       />
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-        <Button size="small" variant="text" onClick={onShowHelp} disabled={disabled}>
-          Help me find or measure this
+        <Button size="small" variant="text" onClick={() => setHelpOpen((prev) => !prev)} disabled={disabled}>
+          {helpOpen ? "Close help" : "Help me find or measure this"}
         </Button>
-        <Button size="small" variant="text" onClick={onSaveIncomplete} disabled={disabled}>
-          I don't know - save incomplete for now
-        </Button>
+        {allowUnknown ? (
+          <Button size="small" variant="text" onClick={onMarkUnknown} disabled={disabled}>
+            I don't know yet
+          </Button>
+        ) : null}
       </Stack>
+      <Collapse in={helpOpen}>
+        <Card variant="outlined" sx={{ backgroundColor: "background.default" }}>
+          <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+            <Stack spacing={0.75}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>How to measure your package</Typography>
+              <Typography variant="body2">1. Measure the outside length of the box or mailer.</Typography>
+              <Typography variant="body2">2. Measure the outside width.</Typography>
+              <Typography variant="body2">3. Measure the outside height.</Typography>
+              <Typography variant="body2">4. Weigh the empty box, envelope and packing material without the Product.</Typography>
+              <Typography variant="body2">5. Choose cm, mm or inches and Schedulaa will convert it safely.</Typography>
+              <Typography variant="body2" color="text.secondary">Example: 10 × 5 × 5 cm · Empty package weight: 15 g</Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onChange({ ...bundle, length: "10", width: "5", height: "5", length_unit: "cm", package_tare_weight_input: "15", weight_unit: "g" })}
+                  disabled={disabled}
+                >
+                  Use example values
+                </Button>
+                <Button size="small" variant="text" onClick={() => setHelpOpen(false)} disabled={disabled}>
+                  Close help
+                </Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Collapse>
     </Stack>
+  );
+};
+
+const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onMarkUnknown, disabled }) => {
+  const bundle = value && typeof value === "object" ? value : newPackageBundleValue(question?.defaults || {});
+  return (
+    <PackageFieldsEditor
+      editorId={question?.question_id || "package-bundle"}
+      bundle={bundle}
+      fieldErrors={fieldErrors}
+      disabled={disabled}
+      onChange={onChange}
+      allowUnknown
+      onMarkUnknown={onMarkUnknown}
+    />
   );
 };
 
@@ -507,7 +661,7 @@ const PackageChoiceControl = ({ question, value, fieldErrors = {}, onChange, dis
   );
 };
 
-const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSuggestion, onShowHelp, onSaveIncomplete, disabled }) => {
+const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSuggestion, onShowHelp, onMarkUnknown, disabled }) => {
   const inputType = String(question?.input_type || "text").toLowerCase();
   const choices = Array.isArray(question?.choices) ? question.choices : [];
 
@@ -524,8 +678,8 @@ const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSug
         </Button>
       ) : null}
       {question?.allow_unknown ? (
-        <Button size="small" variant="text" onClick={onSaveIncomplete} disabled={disabled}>
-          I don't know - save incomplete for now
+        <Button size="small" variant="text" onClick={onMarkUnknown} disabled={disabled}>
+          I don't know yet
         </Button>
       ) : null}
     </Stack>
@@ -538,8 +692,7 @@ const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSug
           value={value}
           fieldErrors={fieldErrors}
           onChange={onChange}
-          onShowHelp={onShowHelp}
-          onSaveIncomplete={onSaveIncomplete}
+          onMarkUnknown={onMarkUnknown}
           disabled={disabled}
       />
     );
@@ -691,6 +844,63 @@ const DraftSection = ({ title, rows, editingKey, editValue, onEdit, onChange, on
   );
 };
 
+const PackageDraftSection = ({
+  facts,
+  draftPresentation,
+  editing,
+  editValue,
+  fieldErrors = {},
+  busy,
+  onEdit,
+  onChange,
+  onSave,
+  onCancel,
+}) => {
+  const summaryRows = buildPackageDraftSummaryRows(facts, draftPresentation);
+  return (
+    <Stack spacing={1}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Package</Typography>
+      <Card variant="outlined">
+        <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+          <Stack spacing={1}>
+            {summaryRows.map((row) => (
+              <Box key={row.label}>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.label}</Typography>
+                <Typography variant="body2" color={row.display_value === "Still needed" ? "text.secondary" : "text.primary"}>
+                  {row.display_value}
+                </Typography>
+              </Box>
+            ))}
+            {editing ? (
+              <Stack spacing={1}>
+                <PackageFieldsEditor
+                  editorId="draft-package-editor"
+                  bundle={editValue}
+                  fieldErrors={fieldErrors}
+                  disabled={busy}
+                  onChange={onChange}
+                />
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button size="small" variant="contained" onClick={onSave} disabled={busy}>
+                    Save package changes
+                  </Button>
+                  <Button size="small" variant="text" onClick={onCancel} disabled={busy}>
+                    Cancel
+                  </Button>
+                </Stack>
+              </Stack>
+            ) : (
+              <Button size="small" variant="text" onClick={onEdit}>
+                Edit package
+              </Button>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
+    </Stack>
+  );
+};
+
 const inferWorkflowFromText = (message, { targetProductId, targetProductOrderId }) => {
   const text = String(message || "").toLowerCase();
   if (!text.trim()) return null;
@@ -719,6 +929,7 @@ const CommerceCopilotDrawer = ({
   const [busy, setBusy] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [questionAnswers, setQuestionAnswers] = useState({});
+  const [unknownQuestionIds, setUnknownQuestionIds] = useState({});
   const [recentSessions, setRecentSessions] = useState([]);
   const [sessionData, setSessionData] = useState(null);
   const [draftEdits, setDraftEdits] = useState({});
@@ -730,6 +941,8 @@ const CommerceCopilotDrawer = ({
   const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
   const [questionDetailsOpen, setQuestionDetailsOpen] = useState(false);
   const [editingDraftFact, setEditingDraftFact] = useState(null);
+  const [editingPackageDraft, setEditingPackageDraft] = useState(false);
+  const [packageDraftValue, setPackageDraftValue] = useState(newPackageBundleValue());
   const [answerFieldErrors, setAnswerFieldErrors] = useState({});
   const [conversationOpen, setConversationOpen] = useState(false);
   const [draftDetailsOpen, setDraftDetailsOpen] = useState(false);
@@ -740,6 +953,7 @@ const CommerceCopilotDrawer = ({
   const [contentFieldEdits, setContentFieldEdits] = useState({});
   const [editingContentField, setEditingContentField] = useState(null);
   const questionCardRef = useRef(null);
+  const questionSeedRef = useRef({});
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
@@ -757,7 +971,6 @@ const CommerceCopilotDrawer = ({
   const monetizationMode = availability?.monetization_mode || copilotBilling?.monetization_mode || "free_launch";
   const writeActionsAvailable = Boolean(availability?.write_actions_available);
   const chatAvailable = Boolean(availability?.chat_available);
-  const draftsAvailable = Boolean(availability?.drafts_available);
   const overallAvailable = Boolean(availability?.available);
   const addonActive = Boolean(copilotBilling?.addon_active);
   const activationAvailable = Boolean(copilotBilling?.activation_available);
@@ -765,9 +978,30 @@ const CommerceCopilotDrawer = ({
   const generationLocked = !chatAvailable;
   const executionLocked = !writeActionsAvailable || allowanceRemaining === 0;
   const latestAssistantMessage = [...messages].reverse().find((row) => row.role === "assistant");
-  const currentQuestions = Array.isArray(latestAssistantMessage?.safe_metadata_json?.questions)
-    ? latestAssistantMessage.safe_metadata_json.questions.slice(0, 3)
-    : [];
+  const currentQuestions = useMemo(
+    () => (Array.isArray(latestAssistantMessage?.safe_metadata_json?.questions)
+      ? latestAssistantMessage.safe_metadata_json.questions.slice(0, 3)
+      : []),
+    [latestAssistantMessage?.safe_metadata_json?.questions]
+  );
+  const currentQuestionSeedSignature = useMemo(
+    () => JSON.stringify(
+      currentQuestions.map((question) => ({
+        question_id: question?.question_id || "",
+        input_type: question?.input_type || "",
+        defaults: question?.defaults || {},
+        plain_language_question: question?.plain_language_question || "",
+      }))
+    ),
+    [currentQuestions]
+  );
+  const sessionFacts = useMemo(() => {
+    const rows = Array.isArray(sessionData?.facts) ? sessionData.facts : [];
+    return rows.reduce((accumulator, row) => {
+      accumulator[row.fact_key] = row.normalized_value_json;
+      return accumulator;
+    }, {});
+  }, [sessionData?.facts]);
   const wizardStep = wizardStepForState({ currentQuestions, plan, execution, session });
   const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review" && !isContentWorkflow;
   const showPlanSection = Boolean(!isContentWorkflow && !currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
@@ -777,10 +1011,54 @@ const CommerceCopilotDrawer = ({
       ? "Ready to publish"
       : "Product created";
 
+  useEffect(() => {
+    if (!currentQuestions.length) {
+      questionSeedRef.current = {};
+      setQuestionAnswers({});
+      setUnknownQuestionIds({});
+      return;
+    }
+    const activeIds = new Set(currentQuestions.map((question) => question.question_id));
+    setQuestionAnswers((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      currentQuestions.forEach((question) => {
+        const signature = JSON.stringify({
+          input_type: question?.input_type || "",
+          defaults: question?.defaults || {},
+          plain_language_question: question?.plain_language_question || "",
+        });
+        if (questionSeedRef.current[question.question_id] !== signature || next[question.question_id] === undefined) {
+          questionSeedRef.current[question.question_id] = signature;
+          next[question.question_id] = defaultAnswerForQuestion(question);
+          changed = true;
+        }
+      });
+      Object.keys(next).forEach((questionId) => {
+        if (!activeIds.has(questionId)) {
+          delete next[questionId];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+    setUnknownQuestionIds((prev) => {
+      let changed = false;
+      const next = {};
+      Object.keys(prev).forEach((questionId) => {
+        if (activeIds.has(questionId)) next[questionId] = prev[questionId];
+        else changed = true;
+      });
+      if (!changed && Object.keys(next).length === Object.keys(prev).length) return prev;
+      return next;
+    });
+  }, [currentQuestionSeedSignature, currentQuestions]);
+
   const resetState = useCallback(() => {
     setSessionData(null);
     setMessageText("");
     setQuestionAnswers({});
+    setUnknownQuestionIds({});
     setRecentSessions([]);
     setDraftEdits({});
     setSelectedActions({});
@@ -791,6 +1069,8 @@ const CommerceCopilotDrawer = ({
     setStatusMessage({ type: "", text: "" });
     setQuestionDetailsOpen(false);
     setEditingDraftFact(null);
+    setEditingPackageDraft(false);
+    setPackageDraftValue(newPackageBundleValue());
     setAnswerFieldErrors({});
     setConversationOpen(false);
     setDraftDetailsOpen(false);
@@ -800,6 +1080,7 @@ const CommerceCopilotDrawer = ({
     setContentFieldSelections({});
     setContentFieldEdits({});
     setEditingContentField(null);
+    questionSeedRef.current = {};
   }, [targetProductId]);
 
   const loadCapabilities = useCallback(async () => {
@@ -1007,11 +1288,21 @@ const CommerceCopilotDrawer = ({
     }
   };
 
-  const submitQuestionAnswers = async () => {
-    if (!session?.public_id || !currentQuestions.length) return;
-    const answers = currentQuestions
+  const buildCurrentQuestionAnswers = useCallback(() => (
+    currentQuestions
       .map((question) => {
         const value = questionAnswers[question.question_id];
+        if (unknownQuestionIds[question.question_id]) {
+          return {
+            question_id: question.question_id,
+            fact_key: question.fact_key || question.question_id,
+            value: {
+              ...(value && typeof value === "object" ? value : {}),
+              __intentionally_unresolved: true,
+            },
+            confirmation_status: "unknown",
+          };
+        }
         if (value == null || value === "") return null;
         return {
           question_id: question.question_id,
@@ -1020,7 +1311,12 @@ const CommerceCopilotDrawer = ({
           confirmation_status: "confirmed",
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+  ), [currentQuestions, questionAnswers, unknownQuestionIds]);
+
+  const submitQuestionAnswers = async () => {
+    if (!session?.public_id || !currentQuestions.length) return;
+    const answers = buildCurrentQuestionAnswers();
     if (!answers.length) {
       setStatusMessage({ type: "warning", text: "Answer at least one question before sending." });
       return;
@@ -1044,10 +1340,15 @@ const CommerceCopilotDrawer = ({
     }
   }, [auth]);
 
-  const saveIncomplete = async () => {
+  const saveIncomplete = useCallback(async () => {
     if (!session?.public_id) {
       setStatusMessage({ type: "info", text: "Start a conversation first, then you can save an incomplete draft." });
       return;
+    }
+    const pendingAnswers = currentQuestions.length ? buildCurrentQuestionAnswers() : [];
+    if (pendingAnswers.length) {
+      const preserved = await pushSessionTurn(session.public_id, "", pendingAnswers);
+      if (!preserved) return;
     }
     setBusy(true);
     try {
@@ -1055,13 +1356,13 @@ const CommerceCopilotDrawer = ({
       setSessionData(data);
       setApproval(data?.approval || null);
       setExecution(data?.execution || null);
-      setStatusMessage({ type: "success", text: "Incomplete draft saved." });
+      setStatusMessage({ type: "success", text: "Draft saved. You can finish this setup later." });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to save this draft yet." });
     } finally {
       setBusy(false);
     }
-  };
+  }, [auth, buildCurrentQuestionAnswers, currentQuestions.length, pushSessionTurn, session?.public_id]);
 
   const cancelSession = async () => {
     if (!session?.public_id) {
@@ -1100,17 +1401,22 @@ const CommerceCopilotDrawer = ({
     }
   };
 
-  const validateDraft = async () => {
+  const savePackageDraftEdits = async () => {
     if (!draft?.public_id) return;
     setBusy(true);
     try {
-      const { data } = await api.post(`/inventory/commerce-copilot/drafts/${draft.public_id}/validate`, {}, auth);
+      const { data } = await api.patch(
+        `/inventory/commerce-copilot/drafts/${draft.public_id}`,
+        { package_profile_bundle: packageDraftValue },
+        auth
+      );
       setSessionData(data);
       setApproval(data?.approval || null);
       setExecution(data?.execution || null);
-      setStatusMessage({ type: "success", text: "Draft validation updated." });
+      setEditingPackageDraft(false);
+      setStatusMessage({ type: "success", text: "Package changes saved for review." });
     } catch (error) {
-      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to validate this draft." });
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to save package changes." });
     } finally {
       setBusy(false);
     }
@@ -1138,6 +1444,33 @@ const CommerceCopilotDrawer = ({
 
   const draftPayload = draft?.draft_payload_json || {};
   const draftPresentation = draft?.presentation || draftPayload.presentation || { sections: {} };
+  const filteredConfirmedRows = useMemo(
+    () => (draftPresentation.sections?.confirmed || []).filter((row) => !isPackageDraftRow(row)),
+    [draftPresentation.sections]
+  );
+  const filteredNeedsConfirmationRows = useMemo(
+    () => (draftPresentation.sections?.needs_confirmation || []).filter((row) => !isPackageDraftRow(row)),
+    [draftPresentation.sections]
+  );
+  const filteredSuggestedRows = useMemo(
+    () => (draftPresentation.sections?.suggested || []).filter((row) => !isPackageDraftRow(row)),
+    [draftPresentation.sections]
+  );
+  const filteredMissingRows = useMemo(
+    () => (draftPresentation.sections?.missing || []).filter((row) => !isPackageDraftRow(row)),
+    [draftPresentation.sections]
+  );
+  const hasPackageDraftSection = useMemo(() => {
+    const sectionGroups = ["package", "needs_confirmation", "missing"];
+    return sectionGroups.some((key) => (draftPresentation.sections?.[key] || []).some(isPackageDraftRow))
+      || Boolean(
+        sessionFacts.package_profile_name
+        || sessionFacts.package_length_mm
+        || sessionFacts.package_width_mm
+        || sessionFacts.package_height_mm
+        || sessionFacts.package_tare_weight_grams
+      );
+  }, [draftPresentation.sections, sessionFacts]);
   const planActions = useMemo(() => (Array.isArray(plan?.actions) ? plan.actions.slice(0, 5) : []), [plan?.actions]);
   const confirmationRequirements = useMemo(
     () => (Array.isArray(plan?.confirmation_requirements) ? plan.confirmation_requirements : []),
@@ -1792,10 +2125,16 @@ const CommerceCopilotDrawer = ({
                             question={question}
                             value={questionAnswers[question.question_id] ?? ""}
                             fieldErrors={answerFieldErrors[question.question_id] || {}}
-                            onChange={(value) => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: value }))}
+                            onChange={(value) => {
+                              setUnknownQuestionIds((prev) => ({ ...prev, [question.question_id]: false }));
+                              setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: value }));
+                            }}
                             onUseSuggestion={() => setQuestionAnswers((prev) => ({ ...prev, [question.question_id]: "Ask AI for a suggestion" }))}
                             onShowHelp={() => setStatusMessage({ type: "info", text: question.help_text || "Use a simple measurement or product reference and Schedulaa will normalize it." })}
-                            onSaveIncomplete={saveIncomplete}
+                            onMarkUnknown={() => {
+                              setUnknownQuestionIds((prev) => ({ ...prev, [question.question_id]: true }));
+                              setStatusMessage({ type: "info", text: "I left this question incomplete for now. Continue when you are ready, or save and finish later." });
+                            }}
                             disabled={busy || generationLocked}
                           />
                           <Divider />
@@ -1809,7 +2148,7 @@ const CommerceCopilotDrawer = ({
                           {questionDetailsOpen ? "Hide extra details" : "Add more details instead"}
                         </Button>
                         <Button variant="outlined" onClick={saveIncomplete} disabled={busy}>
-                          Save incomplete draft
+                          Save and finish later
                         </Button>
                       </Stack>
                       <Collapse in={questionDetailsOpen}>
@@ -1848,7 +2187,7 @@ const CommerceCopilotDrawer = ({
                           {busy ? "Working..." : "Send"}
                         </Button>
                         <Button variant="outlined" onClick={saveIncomplete} disabled={busy}>
-                          Save incomplete draft
+                          Save and finish later
                         </Button>
                         <Button variant="text" color="inherit" onClick={cancelSession} disabled={busy}>
                           Cancel
@@ -1882,7 +2221,7 @@ const CommerceCopilotDrawer = ({
                     <Stack spacing={1.5}>
                       <DraftSection
                         title="Confirmed"
-                        rows={draftPresentation.sections?.confirmed || []}
+                        rows={filteredConfirmedRows}
                         editingKey={editingDraftFact?.fact_key}
                         editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
                         onEdit={(row) => {
@@ -1896,25 +2235,30 @@ const CommerceCopilotDrawer = ({
                           setDraftEdits({});
                         }}
                       />
-                      <DraftSection
-                        title="Package"
-                        rows={draftPresentation.sections?.package || []}
-                        editingKey={editingDraftFact?.fact_key}
-                        editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
-                        onEdit={(row) => {
-                          setEditingDraftFact(row);
-                          setDraftEdits((prev) => ({ ...prev, [row.fact_key]: row.raw_value ?? "" }));
-                        }}
-                        onChange={(value) => editingDraftFact && setDraftEdits((prev) => ({ ...prev, [editingDraftFact.fact_key]: value }))}
-                        onSave={saveDraftEdits}
-                        onCancel={() => {
-                          setEditingDraftFact(null);
-                          setDraftEdits({});
-                        }}
-                      />
+                      {hasPackageDraftSection ? (
+                        <PackageDraftSection
+                          facts={sessionFacts}
+                          draftPresentation={draftPresentation}
+                          editing={editingPackageDraft}
+                          editValue={packageDraftValue}
+                          fieldErrors={answerFieldErrors.package_profile_bundle || {}}
+                          busy={busy}
+                          onEdit={() => {
+                            setEditingDraftFact(null);
+                            setEditingPackageDraft(true);
+                            setPackageDraftValue(seedPackageBundleFromFacts(sessionFacts));
+                          }}
+                          onChange={setPackageDraftValue}
+                          onSave={savePackageDraftEdits}
+                          onCancel={() => {
+                            setEditingPackageDraft(false);
+                            setPackageDraftValue(seedPackageBundleFromFacts(sessionFacts));
+                          }}
+                        />
+                      ) : null}
                       <DraftSection
                         title="Needs confirmation"
-                        rows={draftPresentation.sections?.needs_confirmation || []}
+                        rows={filteredNeedsConfirmationRows}
                         editingKey={editingDraftFact?.fact_key}
                         editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
                         onEdit={(row) => {
@@ -1930,7 +2274,7 @@ const CommerceCopilotDrawer = ({
                       />
                       <DraftSection
                         title="Suggested"
-                        rows={draftPresentation.sections?.suggested || []}
+                        rows={filteredSuggestedRows}
                         editingKey={editingDraftFact?.fact_key}
                         editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
                         onEdit={(row) => {
@@ -1946,7 +2290,7 @@ const CommerceCopilotDrawer = ({
                       />
                       <DraftSection
                         title="Still needed"
-                        rows={draftPresentation.sections?.missing || []}
+                        rows={filteredMissingRows}
                         editingKey={editingDraftFact?.fact_key}
                         editValue={editingDraftFact ? draftEdits[editingDraftFact.fact_key] ?? "" : ""}
                         onEdit={(row) => {
@@ -1965,11 +2309,6 @@ const CommerceCopilotDrawer = ({
                           {(draftPresentation.activation_blockers || []).map((blocker) => blocker.plain_language_message).join(" ")}
                         </Alert>
                       ) : null}
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                        <Button variant="outlined" onClick={validateDraft} disabled={busy || !draftsAvailable}>
-                          Validate draft
-                        </Button>
-                      </Stack>
                     </Stack>
                   </CardContent>
                 </Card>
