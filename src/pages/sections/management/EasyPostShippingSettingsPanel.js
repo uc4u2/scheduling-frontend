@@ -153,6 +153,62 @@ Business country:
 
 Thank you.`;
 
+const STATUS_CHIP_CONTRACT = {
+  ready: {
+    variant: "filled",
+    sx: {
+      bgcolor: "#dff3e4",
+      border: "1px solid #a8cfb3",
+      color: "#175c2e",
+      fontWeight: 700,
+    },
+  },
+  needsSetup: {
+    variant: "filled",
+    sx: {
+      bgcolor: "#fff1d6",
+      border: "1px solid #f0c98b",
+      color: "#8a5400",
+      fontWeight: 700,
+    },
+  },
+  available: {
+    variant: "filled",
+    sx: {
+      bgcolor: "#e3efff",
+      border: "1px solid #b7cff5",
+      color: "#1b4f9c",
+      fontWeight: 700,
+    },
+  },
+  info: {
+    variant: "outlined",
+    sx: {
+      bgcolor: "#f5f8fc",
+      borderColor: "#c7d3e0",
+      color: "#2f415e",
+      fontWeight: 700,
+    },
+  },
+};
+
+const getChecklistStatusChipProps = (status) => {
+  switch (status) {
+    case "Ready":
+      return STATUS_CHIP_CONTRACT.ready;
+    case "Available":
+      return STATUS_CHIP_CONTRACT.available;
+    case "Confirm in EasyPost":
+      return STATUS_CHIP_CONTRACT.info;
+    default:
+      return STATUS_CHIP_CONTRACT.needsSetup;
+  }
+};
+
+const getReadinessChipProps = (ready) => (
+  ready ? STATUS_CHIP_CONTRACT.ready : STATUS_CHIP_CONTRACT.needsSetup
+);
+
 const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false }) => {
   const token = tokenProp || localStorage.getItem("token") || "";
   const headers = useMemo(
@@ -826,24 +882,27 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         Enabled countries: {Array.isArray(settings.allowed_destination_countries) ? settings.allowed_destination_countries.length : 0}
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                        {(settings.readiness?.checklist || []).map((item) => (
-                          <Chip
-                            key={item.code}
-                            size="small"
-                            color={item.ready ? "success" : "warning"}
-                            variant={item.ready ? "filled" : "outlined"}
-                            label={item.label}
-                            sx={{
-                              height: "auto",
-                              "& .MuiChip-label": {
-                                display: "block",
-                                whiteSpace: "normal",
-                                lineHeight: 1.2,
-                                py: 0.5,
-                              },
-                            }}
-                          />
-                        ))}
+                        {(settings.readiness?.checklist || []).map((item) => {
+                          const chipProps = getReadinessChipProps(item.ready);
+                          return (
+                            <Chip
+                              key={item.code}
+                              size="small"
+                              variant={chipProps.variant}
+                              label={item.label}
+                              sx={{
+                                ...chipProps.sx,
+                                height: "auto",
+                                "& .MuiChip-label": {
+                                  display: "block",
+                                  whiteSpace: "normal",
+                                  lineHeight: 1.2,
+                                  py: 0.5,
+                                },
+                              }}
+                            />
+                          );
+                        })}
                       </Stack>
                     </Alert>
                   </Grid>
@@ -1160,24 +1219,27 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     gap: 1,
                   }}
                 >
-                  {helpChecklistItems.map((item) => (
-                    <Stack
-                      key={item.label}
-                      direction="row"
-                      spacing={1}
-                      alignItems="center"
-                      justifyContent="space-between"
-                      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, px: 1, py: 0.75 }}
-                    >
-                      <Typography variant="body2">{item.label}</Typography>
-                      <Chip
-                        size="small"
-                        label={item.status}
-                        color={item.status === "Ready" || item.status === "Available" ? "success" : item.status === "Confirm in EasyPost" ? "default" : "warning"}
-                        variant={item.status === "Confirm in EasyPost" ? "outlined" : "filled"}
-                      />
-                    </Stack>
-                  ))}
+                  {helpChecklistItems.map((item) => {
+                    const chipProps = getChecklistStatusChipProps(item.status);
+                    return (
+                      <Stack
+                        key={item.label}
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, px: 1, py: 0.75 }}
+                      >
+                        <Typography variant="body2">{item.label}</Typography>
+                        <Chip
+                          size="small"
+                          label={item.status}
+                          variant={chipProps.variant}
+                          sx={chipProps.sx}
+                        />
+                      </Stack>
+                    );
+                  })}
                 </Box>
               </Stack>
             </Paper>

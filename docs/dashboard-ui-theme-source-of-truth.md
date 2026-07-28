@@ -68,6 +68,35 @@ Current direction:
 - Inputs/selects use a light themed fill with theme-aware borders.
 - Dialogs/popovers should be opaque enough that underlying page content does not visually bleed through.
 
+## Status Chip Contrast Contract
+
+Manager-facing status chips, badges, and readiness pills on light or tinted surfaces must not rely on default MUI semantic chip colors alone.
+
+Rules:
+- Do not render light or white text on pale green, pale yellow, pale blue, or pale gray chip backgrounds.
+- For manager/admin chips, explicitly set all three:
+  - foreground text color
+  - background color
+  - border color
+- Use dark readable text for semantic light-surface chips:
+  - success/ready -> dark green text on pale green
+  - warning/needs setup -> dark amber text on pale amber
+  - info/available -> dark blue text on pale blue
+  - external-confirmation/neutral -> dark slate text on pale neutral
+- Do not use color alone to communicate meaning. Labels such as `Ready`, `Needs setup`, `Available`, and `Confirm in EasyPost` must remain readable without relying on hue interpretation.
+- If a chip sits inside a tinted card, help dialog, alert, or drawer, verify readability at:
+  - 100% zoom
+  - 125% zoom
+  - 150% zoom
+- When new semantic chips are added to manager UI, prefer a local chip contract/helper instead of ad hoc `color=\"success\"` or `color=\"warning\"` usage.
+
+Current reference implementation:
+- `src/pages/sections/management/EasyPostShippingSettingsPanel.js`
+
+Reason:
+- Theme overrides can make default semantic chip foregrounds too light for pale-surface status rows and help dialogs.
+- Explicit chip contracts prevent recurring low-contrast regressions like unreadable readiness/status labels.
+
 ## Date / Time Picker Standard
 
 Use the shared picker wrapper for dashboard date/time fields:
