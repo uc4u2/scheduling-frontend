@@ -108,5 +108,14 @@ describe("ProductManagement", () => {
         targetProductId: null,
       })
     );
+
+    fireEvent.click(screen.getByRole("button", { name: /improve content with ai/i }));
+    expect(mockCopilotDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        initialWorkflow: "improve_product_content",
+        targetProductId: null,
+      })
+    );
   });
 });

@@ -655,6 +655,9 @@ const ProductManagement = ({ token }) => {
             <Button size="small" variant="text" onClick={() => openCopilot("repair_product", params.row.id)}>
               Fix with AI
             </Button>
+            <Button size="small" variant="text" onClick={() => openCopilot("improve_product_content", params.row.id)}>
+              Improve content
+            </Button>
             <IconButton
               color={params.row.is_active ? "primary" : "default"}
               onClick={() => openImages(params.row)}
@@ -873,6 +876,13 @@ const ProductManagement = ({ token }) => {
           onClick={() => openCopilot("create_physical_product")}
         >
           Create with AI
+        </Button>
+        <Button
+          variant="outlined"
+          color="inherit"
+          onClick={() => openCopilot("improve_product_content")}
+        >
+          Improve content with AI
         </Button>
         <Tooltip title="Configure checkout delivery methods (manual policy) and EasyPost automation in one place." arrow>
           <Button
@@ -1573,6 +1583,11 @@ const ProductManagement = ({ token }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>{t("manager.product.dialog.cancel")}</Button>
+          {editing?.id ? (
+            <Button variant="outlined" onClick={() => openCopilot("improve_product_content", editing.id)}>
+              Generate storefront content
+            </Button>
+          ) : null}
           <Button variant="contained" onClick={persist}>
             {editing ? t("manager.product.dialog.save") : t("manager.product.dialog.create")}
           </Button>

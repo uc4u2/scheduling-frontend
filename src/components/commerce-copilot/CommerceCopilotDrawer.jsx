@@ -34,6 +34,11 @@ import api from "../../utils/api";
 
 const QUICK_STARTS = [
   {
+    workflow: "improve_product_content",
+    title: "Improve a product listing",
+    description: "Generate storefront content suggestions for an existing product listing.",
+  },
+  {
     workflow: "create_physical_product",
     title: "Create a physical product",
     description: "Start a product draft for something customers receive by shipping, pickup, or local delivery.",
@@ -85,6 +90,14 @@ const HUMAN_LABELS = {
   package_set_as_default: "Use as default package",
   product_name: "Product name",
   product_title_candidate: "Product type/name suggestion",
+  description: "Description",
+  category: "Category",
+  sku: "SKU",
+  slug: "Slug",
+  meta_title: "Meta title",
+  meta_description: "Meta description",
+  short_storefront_copy: "Storefront summary",
+  image_alt_text: "Image alt text",
 };
 
 const STATUS_LABELS = {
@@ -123,28 +136,6 @@ const questionPlaceholder = (question) => {
   if (key === "product_name") return "Example: Smoky-Lemon Quartz Necklace";
   if (key === "quantity") return "Example: 20";
   if (key === "shipping_weight_grams") return "Example: 50 g";
-  return "";
-};
-
-const summarizeAnswerFeedback = (answerResults = []) => {
-  const accepted = answerResults.filter((row) => row.status === "accepted");
-  const partial = answerResults.filter((row) => row.status === "partially_accepted");
-  const rejected = answerResults.filter((row) => row.status === "rejected");
-  if (partial.length) {
-    const fieldErrors = partial[0].field_errors || {};
-    const firstError = Object.values(fieldErrors)[0];
-    if (accepted.length) {
-      return `${humanizeFactKey(accepted[0].fact_key)} was saved. ${firstError}`;
-    }
-    return firstError || "One answer still needs attention.";
-  }
-  if (rejected.length && accepted.length) {
-    const firstError = Object.values(rejected[0].field_errors || {})[0];
-    return `${humanizeFactKey(accepted[0].fact_key)} was saved. ${firstError || "Another answer still needs attention."}`;
-  }
-  if (rejected.length) {
-    return Object.values(rejected[0].field_errors || {})[0] || "One answer still needs attention.";
-  }
   return "";
 };
 
@@ -426,27 +417,6 @@ const PackageBundleControl = ({ question, value, fieldErrors = {}, onChange, onS
   );
 };
 
-const FieldEditor = ({ sectionTitle, values, onChange, readOnly = false }) => {
-  const entries = Object.entries(values || {});
-  if (!entries.length) return null;
-  return (
-    <Stack spacing={1.25}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{sectionTitle}</Typography>
-      {entries.map(([key, value]) => (
-        <TextField
-          key={key}
-          label={humanizeFactKey(key)}
-          value={value == null ? "" : String(value)}
-          onChange={(event) => onChange?.(key, event.target.value)}
-          fullWidth
-          size="small"
-          InputProps={readOnly ? { readOnly: true } : undefined}
-        />
-      ))}
-    </Stack>
-  );
-};
-
 const QuestionControl = ({ question, value, fieldErrors = {}, onChange, onUseSuggestion, onShowHelp, onSaveIncomplete, disabled }) => {
   const inputType = String(question?.input_type || "text").toLowerCase();
   const choices = Array.isArray(question?.choices) ? question.choices : [];
@@ -662,12 +632,19 @@ const CommerceCopilotDrawer = ({
   const [conversationOpen, setConversationOpen] = useState(false);
   const [draftDetailsOpen, setDraftDetailsOpen] = useState(false);
   const [appliedChangesOpen, setAppliedChangesOpen] = useState(false);
+  const [contentProducts, setContentProducts] = useState([]);
+  const [contentProductId, setContentProductId] = useState(targetProductId || "");
+  const [contentFieldSelections, setContentFieldSelections] = useState({});
+  const [contentFieldEdits, setContentFieldEdits] = useState({});
+  const [editingContentField, setEditingContentField] = useState(null);
   const questionCardRef = useRef(null);
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
   const plan = sessionData?.plan || null;
   const completion = sessionData?.completion || null;
+  const contentPack = draft?.draft_payload_json?.content_pack || null;
+  const isContentWorkflow = session?.workflow === "improve_product_content";
   const usageSummary = sessionData?.usage_summary || {};
   const messages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
   const availability = capabilities?.availability || {};
@@ -690,8 +667,8 @@ const CommerceCopilotDrawer = ({
     ? latestAssistantMessage.safe_metadata_json.questions.slice(0, 3)
     : [];
   const wizardStep = wizardStepForState({ currentQuestions, plan, execution, session });
-  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review";
-  const showPlanSection = Boolean(!currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
+  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review" && !isContentWorkflow;
+  const showPlanSection = Boolean(!isContentWorkflow && !currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
   const completionHeading = session?.current_step === "published"
     ? "Product is live"
     : completion?.available_actions?.prepare_publish
@@ -716,7 +693,12 @@ const CommerceCopilotDrawer = ({
     setConversationOpen(false);
     setDraftDetailsOpen(false);
     setAppliedChangesOpen(false);
-  }, []);
+    setContentProducts([]);
+    setContentProductId(targetProductId || "");
+    setContentFieldSelections({});
+    setContentFieldEdits({});
+    setEditingContentField(null);
+  }, [targetProductId]);
 
   const loadCapabilities = useCallback(async () => {
     setLoadingCapabilities(true);
@@ -744,6 +726,15 @@ const CommerceCopilotDrawer = ({
     }
   }, [auth]);
 
+  const loadContentProducts = useCallback(async () => {
+    try {
+      const { data } = await api.get("/inventory/products", auth);
+      setContentProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setContentProducts([]);
+    }
+  }, [auth]);
+
   const createSession = useCallback(async (workflow) => {
     setBusy(true);
     try {
@@ -768,6 +759,34 @@ const CommerceCopilotDrawer = ({
       setBusy(false);
     }
   }, [auth, targetProductId, targetProductOrderId]);
+
+  const generateContentPack = useCallback(async (sessionPublicId, payload = {}) => {
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/inventory/commerce-copilot/sessions/${sessionPublicId}/generate-content`, payload, auth);
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      return data;
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to prepare storefront content." });
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }, [auth]);
+
+  const startContentWorkflow = useCallback(async (productId) => {
+    const effectiveProductId = Number(productId || targetProductId || contentProductId || 0);
+    if (!effectiveProductId) {
+      setStatusMessage({ type: "warning", text: "Select a product first." });
+      return;
+    }
+    const created = await createSession("improve_product_content");
+    if (created?.session?.public_id) {
+      await generateContentPack(created.session.public_id, { target_product_id: effectiveProductId });
+    }
+  }, [contentProductId, createSession, generateContentPack, targetProductId]);
 
   const pushSessionTurn = useCallback(async (sessionPublicId, text, answers = []) => {
     setBusy(true);
@@ -844,12 +863,35 @@ const CommerceCopilotDrawer = ({
     }
     loadCapabilities();
     loadRecentSessions();
-  }, [open, loadCapabilities, loadRecentSessions, resetState]);
+    if (quickStartWorkflow === "improve_product_content" || !targetProductId) {
+      loadContentProducts();
+    }
+  }, [open, loadCapabilities, loadRecentSessions, loadContentProducts, quickStartWorkflow, resetState, targetProductId]);
 
   useEffect(() => {
     if (!open || !capabilities || !quickStartWorkflow || sessionData || !availability.chat_available) return;
+    if (quickStartWorkflow === "improve_product_content") {
+      if (targetProductId) {
+        startContentWorkflow(targetProductId);
+      }
+      return;
+    }
     createSession(quickStartWorkflow);
-  }, [open, capabilities, quickStartWorkflow, sessionData, availability.chat_available, createSession]);
+  }, [open, capabilities, quickStartWorkflow, sessionData, availability.chat_available, createSession, startContentWorkflow, targetProductId]);
+
+  useEffect(() => {
+    if (!contentPack) return;
+    const suggestions = contentPack.suggestions || {};
+    setContentFieldSelections((prev) => {
+      const nextSelections = {};
+      Object.entries(suggestions).forEach(([key, row]) => {
+        if ((prev[key] === undefined) && row?.status === "suggested" && row?.value) {
+          nextSelections[key] = true;
+        }
+      });
+      return Object.keys(nextSelections).length ? { ...prev, ...nextSelections } : prev;
+    });
+  }, [contentPack]);
 
   const submitMessage = async () => {
     if (session?.public_id && String(messageText || "").trim()) {
@@ -972,8 +1014,6 @@ const CommerceCopilotDrawer = ({
     }
   };
 
-  const updateDraftEditField = (key, value) => setDraftEdits((prev) => ({ ...prev, [key]: value }));
-
   useEffect(() => {
     if (!currentQuestions.length || !questionCardRef.current || typeof questionCardRef.current.scrollIntoView !== "function") return;
     questionCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -996,8 +1036,11 @@ const CommerceCopilotDrawer = ({
 
   const draftPayload = draft?.draft_payload_json || {};
   const draftPresentation = draft?.presentation || draftPayload.presentation || { sections: {} };
-  const planActions = Array.isArray(plan?.actions) ? plan.actions.slice(0, 5) : [];
-  const confirmationRequirements = Array.isArray(plan?.confirmation_requirements) ? plan.confirmation_requirements : [];
+  const planActions = useMemo(() => (Array.isArray(plan?.actions) ? plan.actions.slice(0, 5) : []), [plan?.actions]);
+  const confirmationRequirements = useMemo(
+    () => (Array.isArray(plan?.confirmation_requirements) ? plan.confirmation_requirements : []),
+    [plan?.confirmation_requirements]
+  );
   const progressKnown = Array.isArray(draft?.validation_results_json?.known) ? draft.validation_results_json.known : [];
   const progressMissing = Array.isArray(draft?.validation_results_json?.missing_required) ? draft.validation_results_json.missing_required : [];
   const progressNeedsConfirmation = Array.isArray(draft?.validation_results_json?.needs_confirmation)
@@ -1018,11 +1061,9 @@ const CommerceCopilotDrawer = ({
       });
       return next;
     });
-  }, [plan?.public_id, planActions.length]);
+  }, [plan?.public_id, planActions]);
 
   const setActionSelected = (publicId, checked) => setSelectedActions((prev) => ({ ...prev, [publicId]: checked }));
-  const setActionFieldEdit = (publicId, key, value) =>
-    setActionValueEdits((prev) => ({ ...prev, [publicId]: { ...(prev[publicId] || {}), [key]: value } }));
   const toggleConfirmationKey = (key, checked) => setConfirmationKeys((prev) => ({ ...prev, [key]: checked }));
 
   const selectedActionIds = useMemo(
@@ -1041,6 +1082,29 @@ const CommerceCopilotDrawer = ({
     () => selectedConfirmationRequirements.filter((row) => !row.requires_checkbox),
     [selectedConfirmationRequirements]
   );
+  const contentAction = useMemo(
+    () => planActions.find((action) => action.action_type === "update_product_content") || null,
+    [planActions]
+  );
+  const contentSuggestions = useMemo(() => (contentPack?.suggestions || {}), [contentPack?.suggestions]);
+  const contentSupportedFields = useMemo(
+    () => (Array.isArray(contentPack?.supported_fields) ? contentPack.supported_fields : []),
+    [contentPack?.supported_fields]
+  );
+
+  const buildSelectedContentPayload = useCallback(() => {
+    const productPayload = {};
+    contentSupportedFields.forEach((field) => {
+      if (!contentFieldSelections[field]) return;
+      const edited = contentFieldEdits[field];
+      const suggestion = contentSuggestions[field];
+      const finalValue = edited != null && edited !== "" ? edited : suggestion?.value;
+      if (finalValue != null && finalValue !== "") {
+        productPayload[field] = finalValue;
+      }
+    });
+    return productPayload;
+  }, [contentFieldEdits, contentFieldSelections, contentSuggestions, contentSupportedFields]);
 
   const approveSelectedChanges = async () => {
     if (!plan?.public_id) return;
@@ -1066,6 +1130,40 @@ const CommerceCopilotDrawer = ({
       setStatusMessage({ type: "success", text: "Changes approved. Review once more before applying them." });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to approve these changes." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const approveSelectedContent = async () => {
+    if (!plan?.public_id || !contentAction) return;
+    const productPayload = buildSelectedContentPayload();
+    if (!Object.keys(productPayload).length) {
+      setStatusMessage({ type: "warning", text: "Select at least one storefront content field to apply." });
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await api.post(
+        `/inventory/commerce-copilot/plans/${plan.public_id}/approve`,
+        {
+          plan_version: plan.version,
+          selected_action_ids: [contentAction.public_id],
+          action_value_edits: {
+            [contentAction.public_id]: {
+              product_id: contentPack?.product_id,
+              product_payload: productPayload,
+            },
+          },
+          confirmation_keys: Object.keys(confirmationKeys).filter((key) => confirmationKeys[key]),
+        },
+        auth
+      );
+      setApproval(data);
+      setExecution(null);
+      setStatusMessage({ type: "success", text: "Storefront content approved. Apply it when you are ready." });
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to approve this storefront content." });
     } finally {
       setBusy(false);
     }
@@ -1127,6 +1225,19 @@ const CommerceCopilotDrawer = ({
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Finish setup before publishing." });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const regenerateContentField = async (field) => {
+    if (!session?.public_id || !field) return;
+    const loaded = await generateContentPack(session.public_id, { fields: [field] });
+    if (loaded) {
+      setContentFieldEdits((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      setStatusMessage({ type: "success", text: `A new ${humanizeFactKey(field).toLowerCase()} suggestion is ready.` });
     }
   };
 
@@ -1200,7 +1311,21 @@ const CommerceCopilotDrawer = ({
               {QUICK_STARTS.map((card) => (
                 <Box key={card.workflow}>
                   <Card variant="outlined">
-                    <CardActionArea onClick={() => (chatAvailable ? createSession(card.workflow) : null)}>
+                    <CardActionArea
+                      onClick={() => {
+                        if (!chatAvailable) return;
+                        if (card.workflow === "improve_product_content" && !targetProductId) {
+                          loadContentProducts();
+                          setContentProductId((prev) => prev || "");
+                          return;
+                        }
+                        if (card.workflow === "improve_product_content") {
+                          startContentWorkflow(targetProductId);
+                          return;
+                        }
+                        createSession(card.workflow);
+                      }}
+                    >
                       <Box sx={{ pointerEvents: chatAvailable ? "auto" : "none", opacity: chatAvailable ? 1 : 0.65 }}>
                         <CardContent>
                           <Stack spacing={0.75}>
@@ -1217,6 +1342,36 @@ const CommerceCopilotDrawer = ({
                 </Box>
               ))}
             </Box>
+            {(quickStartWorkflow === "improve_product_content" || contentProducts.length) && !targetProductId ? (
+              <Card variant="outlined">
+                <CardContent>
+                  <Stack spacing={1.25}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Select a product to improve</Typography>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Product"
+                      value={contentProductId}
+                      onChange={(event) => setContentProductId(event.target.value)}
+                    >
+                      <MenuItem value="">Choose a product</MenuItem>
+                      {contentProducts.map((product) => (
+                        <MenuItem key={product.id} value={product.id}>
+                          {product.name} {product.sku ? `(${product.sku})` : ""}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <Button
+                      variant="contained"
+                      onClick={() => startContentWorkflow(contentProductId)}
+                      disabled={busy || !contentProductId || !chatAvailable}
+                    >
+                      Improve storefront content
+                    </Button>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : null}
             <Card variant="outlined">
               <CardContent>
                 <Stack spacing={1.25}>
@@ -1290,7 +1445,7 @@ const CommerceCopilotDrawer = ({
             </Stack>
 
             <Stack spacing={2} sx={{ minWidth: 0, overflowX: "hidden" }}>
-              {currentQuestions.length ? (
+              {!isContentWorkflow && currentQuestions.length ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack spacing={1}>
@@ -1340,7 +1495,7 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-              {((!currentQuestions.length && !completionVisible) || conversationOpen) ? (
+              {((( !currentQuestions.length && !completionVisible) || conversationOpen) && !isContentWorkflow) || (isContentWorkflow && conversationOpen) ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Conversation summary</Typography>
@@ -1371,7 +1526,153 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-              {currentQuestions.length ? (
+              {isContentWorkflow && contentPack ? (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>Storefront content suggestions</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Review the current and suggested storefront content. Select only the fields you want to apply.
+                        </Typography>
+                      </Box>
+                      <Alert severity={contentPack?.product_state?.is_active ? "warning" : "info"}>
+                        {contentPack?.product_state?.visibility_message}
+                      </Alert>
+                      {(contentPack?.warnings || []).map((warning) => (
+                        <Alert key={warning} severity="warning" sx={{ py: 0 }}>{warning}</Alert>
+                      ))}
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Product preview</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{contentPack?.product_preview?.title || completion?.product?.name}</Typography>
+                          {contentPack?.product_preview?.price != null ? (
+                            <Typography variant="body2" color="text.secondary">
+                              {contentPack?.product_preview?.currency || ""} {contentPack?.product_preview?.price}
+                            </Typography>
+                          ) : null}
+                          {contentPack?.product_preview?.description ? (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                              {contentPack.product_preview.description}
+                            </Typography>
+                          ) : null}
+                        </CardContent>
+                      </Card>
+                      {Object.entries(contentSuggestions).map(([fieldKey, row]) => (
+                        <Card key={fieldKey} variant="outlined">
+                          <CardContent>
+                            <Stack spacing={1}>
+                              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                                <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{humanizeFactKey(fieldKey)}</Typography>
+                                  <Typography variant="caption" color="text.secondary">{row?.reason}</Typography>
+                                </Stack>
+                                {contentSupportedFields.includes(fieldKey) ? (
+                                  <FormControlLabel
+                                    control={<Checkbox checked={Boolean(contentFieldSelections[fieldKey])} onChange={(event) => setContentFieldSelections((prev) => ({ ...prev, [fieldKey]: event.target.checked }))} />}
+                                    label="Use suggestion"
+                                    sx={{ mr: 0 }}
+                                  />
+                                ) : null}
+                              </Stack>
+                              <Typography variant="caption" color="text.secondary">Current</Typography>
+                              <Typography variant="body2" sx={{ whiteSpace: "pre-line", userSelect: "text", WebkitUserSelect: "text" }}>
+                                {row?.current_value || "Empty"}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">Suggested</Typography>
+                              {editingContentField === fieldKey ? (
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  multiline={fieldKey === "description" || fieldKey === "meta_description"}
+                                  minRows={fieldKey === "description" ? 4 : 2}
+                                  value={contentFieldEdits[fieldKey] ?? row?.value ?? ""}
+                                  onChange={(event) => setContentFieldEdits((prev) => ({ ...prev, [fieldKey]: event.target.value }))}
+                                />
+                              ) : (
+                                <Typography variant="body2" sx={{ whiteSpace: "pre-line", userSelect: "text", WebkitUserSelect: "text" }}>
+                                  {contentFieldEdits[fieldKey] ?? row?.value ?? row?.reason}
+                                </Typography>
+                              )}
+                              {contentSupportedFields.includes(fieldKey) ? (
+                                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                  <Button size="small" variant="text" onClick={() => setContentFieldSelections((prev) => ({ ...prev, [fieldKey]: true }))}>
+                                    Use suggestion
+                                  </Button>
+                                  <Button size="small" variant="text" onClick={() => setContentFieldSelections((prev) => ({ ...prev, [fieldKey]: false }))}>
+                                    Keep current
+                                  </Button>
+                                  <Button size="small" variant="text" onClick={() => setEditingContentField((prev) => (prev === fieldKey ? null : fieldKey))}>
+                                    {editingContentField === fieldKey ? "Done editing" : "Edit"}
+                                  </Button>
+                                  <Button size="small" variant="text" onClick={() => regenerateContentField(fieldKey)} disabled={busy}>
+                                    Regenerate
+                                  </Button>
+                                </Stack>
+                              ) : null}
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            const next = {};
+                            contentSupportedFields.forEach((field) => {
+                              if ((contentSuggestions[field] || {}).value) next[field] = true;
+                            });
+                            setContentFieldSelections(next);
+                          }}
+                        >
+                          Use all suggestions
+                        </Button>
+                        <Button variant="text" onClick={() => setDraftDetailsOpen((prev) => !prev)}>
+                          {draftDetailsOpen ? "Hide current draft details" : "View current draft details"}
+                        </Button>
+                        <Button variant="text" onClick={() => setConversationOpen((prev) => !prev)}>
+                          {conversationOpen ? "Hide conversation" : "View conversation"}
+                        </Button>
+                      </Stack>
+                      <Stack spacing={1.25}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Approve selected content</Typography>
+                        {checkboxRequirements.map((requirement) => (
+                          <FormControlLabel
+                            key={requirement.requirement_id}
+                            control={<Checkbox checked={Boolean(confirmationKeys[requirement.requirement_id])} onChange={(event) => toggleConfirmationKey(requirement.requirement_id, event.target.checked)} />}
+                            label={`Review and confirm ${requirement.label}${requirement.display_value ? `: ${requirement.display_value}` : ""}.`}
+                          />
+                        ))}
+                        <Alert severity="info" sx={{ py: 0 }}>
+                          I reviewed the selected storefront content and want to apply it.
+                        </Alert>
+                        <FormControlLabel
+                          control={<Checkbox checked={Boolean(confirmationKeys.__account_confirmed__)} onChange={(event) => toggleConfirmationKey("__account_confirmed__", event.target.checked)} disabled={busy} />}
+                          label="I understand that the selected storefront content will be applied to my Schedulaa account."
+                        />
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                          <Button variant="contained" onClick={approveSelectedContent} disabled={busy || !confirmationKeys.__account_confirmed__}>
+                            Approve selected content
+                          </Button>
+                          <Button variant="outlined" onClick={applyApprovedChanges} disabled={busy || !approval?.public_id || executionLocked}>
+                            Apply approved content
+                          </Button>
+                          {completion?.links?.product ? (
+                            <Button variant="text" component="a" href={completion.links.product}>
+                              Open Product
+                            </Button>
+                          ) : null}
+                          {completion?.available_actions?.prepare_publish ? (
+                            <Button variant="text" onClick={preparePublish} disabled={busy}>
+                              Publish when ready
+                            </Button>
+                          ) : null}
+                        </Stack>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : currentQuestions.length ? (
                 <Card variant="outlined" ref={questionCardRef}>
                   <CardContent>
                     <Stack spacing={1.5}>
@@ -1426,7 +1727,7 @@ const CommerceCopilotDrawer = ({
                     </Stack>
                   </CardContent>
                 </Card>
-              ) : !completionVisible ? (
+              ) : !completionVisible && !isContentWorkflow ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack spacing={1}>
@@ -1456,7 +1757,7 @@ const CommerceCopilotDrawer = ({
                 </Card>
               ) : null}
 
-              {!currentQuestions.length && !completionVisible ? (
+              {!isContentWorkflow && !currentQuestions.length && !completionVisible ? (
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>Progress</Typography>
@@ -1469,7 +1770,7 @@ const CommerceCopilotDrawer = ({
               </Card>
               ) : null}
 
-              {draft && (((!currentQuestions.length && !completionVisible) || draftDetailsOpen)) ? (
+              {draft && (((!currentQuestions.length && !completionVisible && !isContentWorkflow) || draftDetailsOpen)) ? (
                 <Card variant="outlined">
                   <CardContent>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -1597,6 +1898,9 @@ const CommerceCopilotDrawer = ({
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                       <Button variant="contained" onClick={continueProductSetup} disabled={busy || !completion?.available_actions?.help_finish_setup}>
                         Help me finish setup
+                      </Button>
+                      <Button variant="outlined" onClick={() => startContentWorkflow(completion?.product?.product_id)} disabled={busy || !completion?.product?.product_id}>
+                        Improve storefront content
                       </Button>
                       {completion?.links?.product ? (
                         <Button variant="outlined" component="a" href={completion.links.product}>
@@ -1774,6 +2078,13 @@ const CommerceCopilotDrawer = ({
               <Alert severity="info">
                 Approved {Array.isArray(approval.approved_actions) ? approval.approved_actions.length : 0} change{Array.isArray(approval.approved_actions) && approval.approved_actions.length === 1 ? "" : "s"}.
                 {approval.execution_available ? " You can now apply them." : " Changes were reviewed, but applying them is currently disabled."}
+              </Alert>
+            ) : null}
+
+            {approval && isContentWorkflow ? (
+              <Alert severity="info">
+                Approved {Array.isArray(approval.approved_actions) ? approval.approved_actions.length : 0} content action{Array.isArray(approval.approved_actions) && approval.approved_actions.length === 1 ? "" : "s"}.
+                {approval.execution_available ? " You can now apply the selected storefront content." : " Content was reviewed, but applying it is currently disabled."}
               </Alert>
             ) : null}
 

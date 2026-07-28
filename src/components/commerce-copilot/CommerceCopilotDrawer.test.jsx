@@ -813,4 +813,175 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.getByText(/enter the empty package weight\./i)).toBeInTheDocument();
     expect(screen.queryByText(/review selected changes/i)).not.toBeInTheDocument();
   });
+
+  test("renders storefront content suggestions and approves selected content", async () => {
+    const contentSession = {
+      session: {
+        public_id: "sess_content_1",
+        workflow: "improve_product_content",
+        status: "ready_for_review",
+        current_step: "content_review",
+        context_summary_json: { progress_percent: 100 },
+      },
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I prepared storefront content suggestions for this product.",
+          safe_metadata_json: {},
+        },
+      ],
+      facts: [],
+      draft: {
+        public_id: "draft_content_1",
+        status: "ready_for_review",
+        draft_payload_json: {
+          content_pack: {
+            product_id: 101,
+            supported_fields: ["description", "category", "sku", "slug", "meta_title", "meta_description"],
+            warnings: [],
+            product_state: {
+              is_active: false,
+              visibility_message: "Content changes will remain hidden until you publish the Product.",
+            },
+            product_preview: {
+              title: "Smoky-Lemon Quartz Necklace",
+              price: 50,
+              currency: "USD",
+              description: "An elegant necklace presented in a protective jewelry box.",
+            },
+            suggestions: {
+              description: {
+                current_value: "",
+                value: "An elegant necklace presented in a protective jewelry box.",
+                reason: "Generated from confirmed product facts.",
+                status: "suggested",
+              },
+              category: {
+                current_value: "Jewelry",
+                value: "Jewelry",
+                reason: "Use existing category \"Jewelry\".",
+                status: "suggested",
+              },
+              sku: {
+                current_value: "NECKLACE-001",
+                value: "SMOKY-NECKLACE-JEWELRY",
+                reason: "Suggested from the product name and checked for tenant SKU uniqueness.",
+                status: "suggested",
+              },
+              slug: {
+                current_value: "",
+                value: "smoky-lemon-quartz-necklace",
+                reason: "Generated from the product name and normalized with current URL rules.",
+                status: "suggested",
+              },
+              meta_title: {
+                current_value: "",
+                value: "Smoky-Lemon Quartz Necklace | Demo",
+                reason: "Generated for search results.",
+                status: "suggested",
+              },
+              meta_description: {
+                current_value: "",
+                value: "Explore the Smoky-Lemon Quartz Necklace and review the current product details.",
+                reason: "Generated for search results without unsupported claims.",
+                status: "suggested",
+              },
+              short_storefront_copy: {
+                current_value: null,
+                value: null,
+                reason: "This storefront does not currently persist a separate short product summary field.",
+                status: "unavailable",
+              },
+              image_alt_text: {
+                current_value: null,
+                value: null,
+                reason: "Image alt text is not managed by the current storefront product contract in this release.",
+                status: "not_applicable",
+              },
+            },
+          },
+          presentation: { display_state: "ready_for_review", sections: {} },
+        },
+        presentation: { sections: {} },
+        validation_results_json: { progress_percent: 100, known: [], missing_required: [], needs_confirmation: [] },
+      },
+      plan: {
+        public_id: "plan_content_1",
+        version: 1,
+        actions: [
+          {
+            public_id: "act_content_1",
+            action_type: "update_product_content",
+            title: "Update storefront content",
+            plain_language_description: "Apply the selected storefront content.",
+            risk_level: "medium_write",
+            proposed_input_json: { product_id: 101, product_payload: {} },
+            status: "proposed",
+          },
+        ],
+        confirmation_requirements: [],
+      },
+      approval: null,
+      execution: null,
+      completion: {
+        product: { created: true, product_id: 101, name: "Smoky-Lemon Quartz Necklace", is_active: false },
+        available_actions: { prepare_publish: true },
+        links: { product: "/manager/advanced-management?panel=products&editProductId=101" },
+      },
+      usage_summary: { requests: 1, draft_generations: 1, plan_generations: 1, estimated_total_cost_micros: 1000 },
+    };
+
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: contentSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/sess_content_1/generate-content") {
+        return Promise.resolve({ data: contentSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/plans/plan_content_1/approve") {
+        expect(body.selected_action_ids).toEqual(["act_content_1"]);
+        expect(body.action_value_edits.act_content_1.product_payload).toEqual(
+          expect.objectContaining({
+            description: "An elegant necklace presented in a protective jewelry box.",
+            category: "Jewelry",
+          })
+        );
+        return Promise.resolve({
+          data: {
+            public_id: "approval_content_1",
+            status: "approved",
+            execution_available: true,
+            approved_actions: [{ action_public_id: "act_content_1" }],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "improve_product_content", targetProductId: 101 });
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions",
+      expect.objectContaining({ workflow: "improve_product_content", target_product_id: 101 }),
+      expect.any(Object)
+    ));
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions/sess_content_1/generate-content",
+      expect.objectContaining({ target_product_id: 101 }),
+      expect.any(Object)
+    ));
+    expect(await screen.findByText(/storefront content suggestions/i)).toBeInTheDocument();
+    expect(screen.getByText(/content changes will remain hidden until you publish the product\./i)).toBeInTheDocument();
+    expect(screen.getByText(/use existing category "jewelry"\./i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /i understand that the selected storefront content will be applied/i }));
+    await userEvent.click(screen.getByRole("button", { name: /approve selected content/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/plans/plan_content_1/approve",
+      expect.objectContaining({ selected_action_ids: ["act_content_1"] }),
+      expect.any(Object)
+    ));
+    expect(screen.queryByText(/proposed_input_json/i)).not.toBeInTheDocument();
+  });
 });
