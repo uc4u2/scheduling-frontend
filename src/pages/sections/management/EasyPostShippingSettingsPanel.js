@@ -126,6 +126,33 @@ const hintedTextField = ({ label, hint, inputProps, ...props }) => (
   </Stack>
 );
 
+const HELP_TAB_OPTIONS = [
+  { value: "schedulaa_setup", label: "Schedulaa setup" },
+  { value: "easypost_website", label: "EasyPost website setup" },
+  { value: "test_go_live", label: "Test and go live" },
+  { value: "troubleshooting", label: "Troubleshooting" },
+];
+
+const EASYPOST_SUPPORT_URL = "https://support.easypost.com/hc/en-us/requests/new";
+
+const SUPPORT_REQUEST_SUBJECT = "Security verification required for API access and shipping features";
+
+const SUPPORT_REQUEST_TEMPLATE = `Hello EasyPost Support,
+
+My EasyPost dashboard displays "Security Verification Required" and says that some shipping features may be limited.
+
+We are preparing this account to connect with Schedulaa through the EasyPost API for carrier rates, shipping labels, and tracking.
+
+Please review the account and let us know what business, identity, billing, ship-from address, or carrier information is required to complete verification.
+
+EasyPost account email:
+[ACCOUNT EMAIL]
+
+Business country:
+[COUNTRY]
+
+Thank you.`;
+
 const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false }) => {
   const token = tokenProp || localStorage.getItem("token") || "";
   const headers = useMemo(
@@ -141,6 +168,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [clearApiKey, setClearApiKey] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState("schedulaa_setup");
+  const [helpCopyMessage, setHelpCopyMessage] = useState("");
   const [activeTab, setActiveTab] = useState("delivery_methods");
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotWorkflow, setCopilotWorkflow] = useState("review_shipping_setup");
@@ -161,6 +190,56 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     const catalog = Array.isArray(settings?.country_catalog) ? settings.country_catalog : [];
     return catalog.filter((row) => selected.includes(row.code));
   }, [settings?.allowed_destination_countries, settings?.country_catalog]);
+  const originComplete = useMemo(() => (
+    Boolean(
+      settings?.origin_name
+      && settings?.origin_phone
+      && settings?.origin_address1
+      && settings?.origin_city
+      && settings?.origin_region
+      && settings?.origin_postal_code
+      && settings?.origin_country
+    )
+  ), [
+    settings?.origin_address1,
+    settings?.origin_city,
+    settings?.origin_country,
+    settings?.origin_name,
+    settings?.origin_phone,
+    settings?.origin_postal_code,
+    settings?.origin_region,
+  ]);
+  const destinationConfigured = useMemo(() => {
+    if (!settings) return false;
+    const mode = settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only";
+    if (mode === "domestic_only") {
+      return Boolean(settings.origin_country);
+    }
+    return Array.isArray(settings.allowed_destination_countries) && settings.allowed_destination_countries.length > 0;
+  }, [settings]);
+  const helpChecklistItems = useMemo(() => ([
+    { label: "Shipping enabled", status: settings?.enabled ? "Ready" : "Needs setup" },
+    { label: "Allow shipping enabled", status: settings?.allow_shipping ? "Ready" : "Needs setup" },
+    { label: "EasyPost automation enabled", status: settings?.easypost_enabled ? "Ready" : "Needs setup" },
+    { label: "API key saved", status: settings?.easypost_has_api_key ? "Ready" : "Needs setup" },
+    { label: "Connection tested", status: settings?.easypost_connected ? "Ready" : "Needs setup" },
+    { label: "Origin complete", status: originComplete ? "Ready" : "Needs setup" },
+    { label: "Default Package Profile present", status: settings?.default_package_profile_id ? "Ready" : "Needs setup" },
+    { label: "Destination policy configured", status: destinationConfigured ? "Ready" : "Needs setup" },
+    { label: "Test shipping setup available", status: settings?.allow_shipping ? "Available" : "Enable shipping first" },
+    { label: "EasyPost account verification", status: "Confirm in EasyPost" },
+    { label: "EasyPost Wallet or carrier billing", status: "Confirm in EasyPost" },
+    { label: "Carrier activated in EasyPost", status: "Confirm in EasyPost" },
+  ]), [
+    destinationConfigured,
+    originComplete,
+    settings?.allow_shipping,
+    settings?.default_package_profile_id,
+    settings?.easypost_connected,
+    settings?.easypost_enabled,
+    settings?.easypost_has_api_key,
+    settings?.enabled,
+  ]);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -182,6 +261,33 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
   const updateField = useCallback((field, value) => {
     setSettings((prev) => ({ ...(prev || {}), [field]: value }));
+  }, []);
+
+  const openHelp = useCallback((tab = "schedulaa_setup") => {
+    setHelpTab(tab);
+    setHelpCopyMessage("");
+    setHelpOpen(true);
+  }, []);
+
+  const copyHelpText = useCallback(async (text, successMessage) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const temp = document.createElement("textarea");
+        temp.value = text;
+        temp.setAttribute("readonly", "true");
+        temp.style.position = "absolute";
+        temp.style.left = "-9999px";
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+      }
+      setHelpCopyMessage(successMessage);
+    } catch (_error) {
+      setHelpCopyMessage("Unable to copy automatically. Select the text and copy it manually.");
+    }
   }, []);
 
   const saveSettings = useCallback(async () => {
@@ -384,7 +490,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
               size="small"
               variant="outlined"
               startIcon={<HelpOutlineIcon />}
-              onClick={() => setHelpOpen(true)}
+              onClick={() => openHelp("schedulaa_setup")}
             >
               Help
             </Button>
@@ -543,6 +649,18 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     ? "Customer shipping addresses are verified before live rates are shown. Pickup and local delivery are not affected."
                     : "Address verification is disabled. Live rates still work, but delivery and address errors are more likely."}
                 </Alert>
+                {(!settings.easypost_has_api_key || !settings.easypost_connected) && (
+                  <Alert
+                    severity="warning"
+                    action={(
+                      <Button color="inherit" size="small" onClick={() => openHelp("easypost_website")}>
+                        EasyPost account setup guide
+                      </Button>
+                    )}
+                  >
+                    Finish the EasyPost website account steps before expecting live rates or label purchase to work in Schedulaa.
+                  </Alert>
+                )}
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={4}>
                     <FormControlLabel
@@ -1020,77 +1138,305 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         <DialogContent sx={{ p: 2.5 }}>
           <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
-              This panel controls checkout delivery choices, EasyPost automation, your shipping origin, destination policy, and reusable Package Profiles. Manual shipping remains available if EasyPost is disabled or unavailable.
+              Use this guide to finish both the Schedulaa-side setup and the EasyPost-account steps on the EasyPost website. Manual shipping remains available if EasyPost is disabled or unavailable.
             </Typography>
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>1) What this page controls</Typography>
-              <Typography variant="body2">- Delivery Methods: what customers can choose at checkout, such as pickup, shipping, and local delivery.</Typography>
-              <Typography variant="body2">- EasyPost Automation: your API connection, origin address, destination policy, address verification, customs defaults, and Package Profiles.</Typography>
-              <Typography variant="body2">- Test shipping setup: requests live carrier test rates without buying a label or creating an order.</Typography>
-            </Box>
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" fontWeight={700}>Current Schedulaa checklist</Typography>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                    gap: 1,
+                  }}
+                >
+                  {helpChecklistItems.map((item) => (
+                    <Stack
+                      key={item.label}
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, px: 1, py: 0.75 }}
+                    >
+                      <Typography variant="body2">{item.label}</Typography>
+                      <Chip
+                        size="small"
+                        label={item.status}
+                        color={item.status === "Ready" || item.status === "Available" ? "success" : item.status === "Confirm in EasyPost" ? "default" : "warning"}
+                        variant={item.status === "Confirm in EasyPost" ? "outlined" : "filled"}
+                      />
+                    </Stack>
+                  ))}
+                </Box>
+              </Stack>
+            </Paper>
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>2) Setup checklist</Typography>
-              <Typography variant="body2">
-                1. Turn on <strong>Shipping settings enabled</strong> and <strong>Allow shipping</strong> if you want customers to see shipping at checkout.
-              </Typography>
-              <Typography variant="body2">
-                2. Add your EasyPost API key and verify the connection in the <strong>EasyPost Automation</strong> tab.
-              </Typography>
-              <Typography variant="body2">
-                3. Complete the shipping origin: sender name, phone, country, street, city, region, and postal code.
-              </Typography>
-              <Typography variant="body2">
-                4. Choose where you want to ship: domestic only, Canada and United States, or selected countries.
-              </Typography>
-              <Typography variant="body2">
-                5. Create at least one Package Profile with box or mailer dimensions and empty-package weight, then set a workspace default.
-              </Typography>
-            </Box>
+            <Tabs
+              value={helpTab}
+              onChange={(_event, next) => setHelpTab(next)}
+              variant="scrollable"
+              allowScrollButtonsMobile
+              aria-label="EasyPost shipping help sections"
+            >
+              {HELP_TAB_OPTIONS.map((tab) => (
+                <Tab key={tab.value} value={tab.value} label={tab.label} />
+              ))}
+            </Tabs>
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>3) Product versus package</Typography>
-              <Typography variant="body2">- Product weight belongs on the Product itself, without packaging.</Typography>
-              <Typography variant="body2">- Package Profiles describe the actual box or mailer used for shipment.</Typography>
-              <Typography variant="body2">- Example: Necklace weight 50 g. Jewelry box 10 x 5 x 5 cm. Empty box weight 15 g.</Typography>
-              <Typography variant="body2">- Commerce Copilot can collect package facts in cm, mm, or inches and Schedulaa converts them safely.</Typography>
-            </Box>
+            {helpCopyMessage ? (
+              <Alert severity="success" role="status" aria-live="polite">
+                {helpCopyMessage}
+              </Alert>
+            ) : null}
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>4) Real-life scenarios</Typography>
-              <Typography variant="body2">
-                <strong>Domestic jewelry in Canada:</strong> A necklace weighs 50 g, ships in a 10 x 5 x 5 cm jewelry box with 15 g tare weight, and sells only within Canada.
-                Use domestic-only destination policy, one default Package Profile, and run <strong>Test shipping setup</strong> with a Vancouver address before going live.
-              </Typography>
-              <Typography variant="body2">
-                <strong>Canada to the United States:</strong> If you also want to sell the same product in the United States, enable the destination policy that includes the US and complete the Product's customs information before running an international test.
-              </Typography>
-            </Box>
+            {helpTab === "schedulaa_setup" && (
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Schedulaa setup</Typography>
+                  <Typography variant="body2">1. Enable <strong>Shipping settings</strong>.</Typography>
+                  <Typography variant="body2">2. Enable <strong>Allow shipping</strong>.</Typography>
+                  <Typography variant="body2">3. Select <strong>EasyPost automation</strong>.</Typography>
+                  <Typography variant="body2">4. Add the EasyPost API key.</Typography>
+                  <Typography variant="body2">5. Enter the shipping origin.</Typography>
+                  <Typography variant="body2">6. Choose destination countries.</Typography>
+                  <Typography variant="body2">7. Create or select a Package Profile.</Typography>
+                  <Typography variant="body2">8. Click <strong>Test connection</strong>.</Typography>
+                  <Typography variant="body2">9. Run <strong>Test shipping setup</strong>.</Typography>
+                  <Typography variant="body2">10. Product Order label actions happen only after a real order.</Typography>
+                </Box>
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>5) What the shipping test does</Typography>
-              <Typography variant="body2">- Uses your current Product weight, selected Package Profile, quantity, origin address, and test destination.</Typography>
-              <Typography variant="body2">- Requests live carrier rates from EasyPost.</Typography>
-              <Typography variant="body2">- Does not buy a label.</Typography>
-              <Typography variant="body2">- Does not create a Product Order.</Typography>
-              <Typography variant="body2">- Does not charge a customer.</Typography>
-            </Box>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Neutral shipping example</Typography>
+                  <Typography variant="body2">Physical Product: Product weight 250 g.</Typography>
+                  <Typography variant="body2">Reusable Package Profile: box 20 x 15 x 8 cm, empty-package weight 80 g.</Typography>
+                  <Typography variant="body2">Domestic setup: domestic destination policy, one active/default Package Profile, and a valid test destination.</Typography>
+                </Box>
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>6) Common blockers and what to fix</Typography>
-              <Typography variant="body2">- EasyPost disconnected: connect EasyPost before requesting live rates.</Typography>
-              <Typography variant="body2">- Origin incomplete: finish the sender address in EasyPost Automation.</Typography>
-              <Typography variant="body2">- No default Package Profile: create or choose a default package with dimensions and empty-package weight.</Typography>
-              <Typography variant="body2">- Product weight missing: add the Product's weight without packaging.</Typography>
-              <Typography variant="body2">- Destination blocked: update the destination policy before testing that country.</Typography>
-              <Typography variant="body2">- International customs incomplete: complete product customs data before international rate tests.</Typography>
-            </Box>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Product weight versus package weight</Typography>
+                  <Typography variant="body2">- Product weight is the item without packaging.</Typography>
+                  <Typography variant="body2">- Package weight is the empty box, mailer, and packing material.</Typography>
+                  <Typography variant="body2">- Schedulaa combines them when requesting shipping rates.</Typography>
+                </Box>
+              </Stack>
+            )}
 
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700}>7) Order-level actions happen later</Typography>
-              <Typography variant="body2">Use Product Orders after a customer actually places an order. That is where managers refresh order rates, choose a service, buy a label, and print or reopen the purchased label.</Typography>
-            </Box>
+            {helpTab === "easypost_website" && (
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Create or verify the EasyPost account</Typography>
+                  <Typography variant="body2">1. Sign in to EasyPost.</Typography>
+                  <Typography variant="body2">2. Review any yellow <strong>Security Verification Required</strong> banner.</Typography>
+                  <Typography variant="body2">3. Follow the support or verification instructions shown by EasyPost.</Typography>
+                  <Typography variant="body2">4. Complete requested business or account information.</Typography>
+                  <Typography variant="body2">5. Add the real ship-from address.</Typography>
+                  <Typography variant="body2">6. Add or configure the EasyPost Wallet payment method where required.</Typography>
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    EasyPost may restrict Production features until account verification is complete. Schedulaa cannot remove or bypass an EasyPost restriction.
+                  </Alert>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Security verification support request</Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>Use this template when the EasyPost dashboard says security verification is required.</Typography>
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={700}>Subject</Typography>
+                      <Typography variant="body2">{SUPPORT_REQUEST_SUBJECT}</Typography>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button size="small" variant="outlined" onClick={() => copyHelpText(SUPPORT_REQUEST_SUBJECT, "Copied support request subject.")}>
+                          Copy subject
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          component="a"
+                          href={EASYPOST_SUPPORT_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open EasyPost Support
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                  <Paper variant="outlined" sx={{ p: 1.5, mt: 1 }}>
+                    <Stack spacing={1}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={700}>Description template</Typography>
+                      <Typography variant="body2" component="pre" sx={{ m: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
+                        {SUPPORT_REQUEST_TEMPLATE}
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={() => copyHelpText(SUPPORT_REQUEST_TEMPLATE, "Copied support request message.")} sx={{ alignSelf: "flex-start" }}>
+                        Copy request message
+                      </Button>
+                    </Stack>
+                  </Paper>
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Never paste your EasyPost API key, password, payment details, or other secret credentials into a support request.
+                  </Alert>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>EasyPost Wallet and billing</Typography>
+                  <Typography variant="body2">- EasyPost Wallet is used for EasyPost Wallet carrier postage.</Typography>
+                  <Typography variant="body2">- The Wallet may require a payment method or Wallet funding.</Typography>
+                  <Typography variant="body2">- The tenant is responsible for EasyPost or carrier shipping charges.</Typography>
+                  <Typography variant="body2">- Bring Your Own Carrier Account is for tenants who already have a direct carrier account.</Typography>
+                  <Typography variant="body2">- The carrier may bill the tenant directly.</Typography>
+                  <Typography variant="body2">- Negotiated carrier rates generally require Production mode.</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Carrier setup</Typography>
+                  <Typography variant="body2">At least one usable carrier account should be active before expecting meaningful Production rates or label purchase.</Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}><strong>EasyPost Wallet carrier</strong></Typography>
+                  <Typography variant="body2">1. Open EasyPost.</Typography>
+                  <Typography variant="body2">2. Go to Account Settings.</Typography>
+                  <Typography variant="body2">3. Open Carriers.</Typography>
+                  <Typography variant="body2">4. Open EasyPost Wallet Carriers.</Typography>
+                  <Typography variant="body2">5. Select an available carrier.</Typography>
+                  <Typography variant="body2">6. Complete its activation steps.</Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}><strong>Existing carrier account</strong></Typography>
+                  <Typography variant="body2">1. Open Account Settings.</Typography>
+                  <Typography variant="body2">2. Open Carriers.</Typography>
+                  <Typography variant="body2">3. Select Add Carrier.</Typography>
+                  <Typography variant="body2">4. Choose the carrier.</Typography>
+                  <Typography variant="body2">5. Authenticate or enter the carrier credentials requested by EasyPost.</Typography>
+                  <Typography variant="body2">6. Confirm the carrier account is active.</Typography>
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    Example only — available carriers depend on the EasyPost account, country, plan, and carrier agreements.
+                  </Alert>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>API key guide</Typography>
+                  <Typography variant="body2">- Test API key: use while configuring and testing.</Typography>
+                  <Typography variant="body2">- Production API key: use for live rates and real label operations after the EasyPost account is ready for Production use.</Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>1. Open EasyPost Account Settings.</Typography>
+                  <Typography variant="body2">2. Open API Keys.</Typography>
+                  <Typography variant="body2">3. Locate the Test or Production key.</Typography>
+                  <Typography variant="body2">4. Copy the selected key.</Typography>
+                  <Typography variant="body2">5. Return to Schedulaa.</Typography>
+                  <Typography variant="body2">6. Open Products -> Delivery setup -> EasyPost Automation.</Typography>
+                  <Typography variant="body2">7. Paste the key into the EasyPost API key field.</Typography>
+                  <Typography variant="body2">8. Save.</Typography>
+                  <Typography variant="body2">9. Click Test connection.</Typography>
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Never place the API key in Product descriptions, email, public documentation, or Commerce Copilot chat. After saving, Schedulaa should show only connection status and the last four characters.
+                  </Alert>
+                </Box>
+              </Stack>
+            )}
+
+            {helpTab === "test_go_live" && (
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Stage 1 - Configure</Typography>
+                  <Typography variant="body2">- complete the EasyPost account</Typography>
+                  <Typography variant="body2">- add a carrier</Typography>
+                  <Typography variant="body2">- obtain a Test key</Typography>
+                  <Typography variant="body2">- configure Schedulaa</Typography>
+                  <Typography variant="body2">- add the origin</Typography>
+                  <Typography variant="body2">- create a Package Profile</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Stage 2 - Test</Typography>
+                  <Typography variant="body2">- Test connection</Typography>
+                  <Typography variant="body2">- run Test shipping setup</Typography>
+                  <Typography variant="body2">- confirm Product and package data</Typography>
+                  <Typography variant="body2">- confirm carrier services are returned</Typography>
+                  <Typography variant="body2">- no label is purchased by the setup test</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Stage 3 - Go live</Typography>
+                  <Typography variant="body2">- finish EasyPost Production verification</Typography>
+                  <Typography variant="body2">- confirm billing, Wallet, or carrier readiness</Typography>
+                  <Typography variant="body2">- replace the Test key with the Production key</Typography>
+                  <Typography variant="body2">- Test connection again</Typography>
+                  <Typography variant="body2">- run a final setup test</Typography>
+                  <Typography variant="body2">- place one controlled real order</Typography>
+                  <Typography variant="body2">- purchase the first label from Schedulaa Product Orders</Typography>
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Changing from a Test key to a Production key changes the EasyPost environment. Test data and Production data are separate.
+                  </Alert>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>What the shipping test does</Typography>
+                  <Typography variant="body2">- Uses the current Product, quantity, selected Package Profile, shipping origin, and test destination.</Typography>
+                  <Typography variant="body2">- Requests rates.</Typography>
+                  <Typography variant="body2">- Buys no label.</Typography>
+                  <Typography variant="body2">- Creates no order.</Typography>
+                  <Typography variant="body2">- Charges no customer.</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Webhook and tracking responsibility</Typography>
+                  <Typography variant="body2">
+                    Tracking integration is managed by Schedulaa. You do not need to manually create an EasyPost webhook unless Schedulaa Support specifically instructs you.
+                  </Typography>
+                </Box>
+              </Stack>
+            )}
+
+            {helpTab === "troubleshooting" && (
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Security Verification Required</Typography>
+                  <Typography variant="body2">- submit the EasyPost support request</Typography>
+                  <Typography variant="body2">- do not repeatedly replace API keys</Typography>
+                  <Typography variant="body2">- wait for EasyPost instructions</Typography>
+                  <Typography variant="body2">- Schedulaa cannot override the restriction</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>No API Keys page or key unavailable</Typography>
+                  <Typography variant="body2">- confirm Wallet and ship-from address are configured</Typography>
+                  <Typography variant="body2">- confirm account verification</Typography>
+                  <Typography variant="body2">- contact EasyPost Support</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Test connection failed</Typography>
+                  <Typography variant="body2">- confirm the correct key environment</Typography>
+                  <Typography variant="body2">- remove spaces before or after the key</Typography>
+                  <Typography variant="body2">- confirm the key is active</Typography>
+                  <Typography variant="body2">- confirm account restrictions in EasyPost</Typography>
+                  <Typography variant="body2">- save and test again</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>No rates</Typography>
+                  <Typography variant="body2">- verify carrier setup</Typography>
+                  <Typography variant="body2">- verify origin</Typography>
+                  <Typography variant="body2">- verify Product weight</Typography>
+                  <Typography variant="body2">- verify Package Profile</Typography>
+                  <Typography variant="body2">- verify destination policy</Typography>
+                  <Typography variant="body2">- test a valid destination</Typography>
+                  <Typography variant="body2">- check EasyPost account limitations</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Test works but Production fails</Typography>
+                  <Typography variant="body2">- confirm the Production API key</Typography>
+                  <Typography variant="body2">- confirm Production carrier or billing state</Typography>
+                  <Typography variant="body2">- confirm EasyPost account verification</Typography>
+                  <Typography variant="body2">- test the Production connection again</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>Label purchase blocked</Typography>
+                  <Typography variant="body2">- verify the EasyPost Production account</Typography>
+                  <Typography variant="body2">- verify carrier billing or Wallet state</Typography>
+                  <Typography variant="body2">- verify order address and shipment readiness</Typography>
+                  <Typography variant="body2">- review the Schedulaa error shown in Product Orders</Typography>
+                </Box>
+              </Stack>
+            )}
           </Stack>
         </DialogContent>
       </Dialog>

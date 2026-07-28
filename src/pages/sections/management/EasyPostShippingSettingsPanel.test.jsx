@@ -4,13 +4,14 @@ import userEvent from "@testing-library/user-event";
 
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
-jest.setTimeout(20000);
+jest.setTimeout(30000);
 
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockApiPatch = jest.fn();
 const mockApiDelete = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
+const mockClipboardWriteText = jest.fn().mockResolvedValue();
 
 jest.mock("../../../utils/api", () => ({
   api: {
@@ -29,6 +30,11 @@ jest.mock("../../../components/commerce-copilot/CommerceCopilotDrawer", () => (p
 describe("EasyPostShippingSettingsPanel", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockClipboardWriteText,
+      },
+    });
     mockApiPatch.mockResolvedValue({ data: {} });
     mockApiDelete.mockResolvedValue({ data: { deleted: true } });
     mockApiGet.mockResolvedValue({
@@ -121,16 +127,89 @@ describe("EasyPostShippingSettingsPanel", () => {
     );
   });
 
-  test("shows setup checklist and real-life scenarios in EasyPost Shipping Help", async () => {
+  test("shows the default Schedulaa setup tab with a neutral shipping example", async () => {
     render(<EasyPostShippingSettingsPanel token="test-token" compact />);
 
     await userEvent.click(await screen.findByRole("button", { name: /^help$/i }));
 
-    expect(await screen.findByText(/setup checklist/i)).toBeInTheDocument();
-    expect(screen.getByText(/domestic jewelry in canada/i)).toBeInTheDocument();
-    expect(screen.getByText(/what the shipping test does/i)).toBeInTheDocument();
-    expect(screen.getByText(/does not buy a label/i)).toBeInTheDocument();
-    expect(screen.getByText(/no default package profile/i)).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /schedulaa setup/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText(/current schedulaa checklist/i)).toBeInTheDocument();
+    expect(screen.getByText(/physical product: product weight 250 g/i)).toBeInTheDocument();
+    expect(screen.getByText(/reusable package profile: box 20 x 15 x 8 cm, empty-package weight 80 g/i)).toBeInTheDocument();
+    expect(screen.queryByText(/domestic jewelry in canada/i)).not.toBeInTheDocument();
+  });
+
+  test("shows the EasyPost website setup tab with support request helpers and safe external link", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^help$/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /easypost website setup/i }));
+
+    expect(await screen.findByText(/create or verify the easypost account/i)).toBeInTheDocument();
+    expect(screen.getByText(/easypost wallet and billing/i)).toBeInTheDocument();
+    expect(screen.getByText(/existing carrier account/i)).toBeInTheDocument();
+    expect(screen.getByText(/never paste your easypost api key/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /copy subject/i }));
+    expect(mockClipboardWriteText).toHaveBeenCalledWith("Security verification required for API access and shipping features");
+    expect(await screen.findByRole("status")).toHaveTextContent(/copied support request subject/i);
+
+    await userEvent.click(screen.getByRole("button", { name: /copy request message/i }));
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(expect.stringContaining("Hello EasyPost Support,"));
+
+    const supportLink = screen.getByRole("link", { name: /open easypost support/i });
+    expect(supportLink).toHaveAttribute("target", "_blank");
+    expect(supportLink).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    expect(supportLink).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
+  });
+
+  test("supports keyboard tab navigation into help tabs and shows webhook responsibility wording", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^help$/i }));
+    const schedulaaTab = screen.getByRole("tab", { name: /schedulaa setup/i });
+    await userEvent.tab();
+    await userEvent.tab();
+    expect(schedulaaTab).toHaveFocus();
+
+    await userEvent.click(screen.getByRole("tab", { name: /test and go live/i }));
+    expect(screen.getByText(/tracking integration is managed by schedulaa/i)).toBeInTheDocument();
+    expect(screen.getByText(/you do not need to manually create an easypost webhook/i)).toBeInTheDocument();
+  });
+
+  test("opens help directly on the EasyPost website setup tab from the account warning", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        enabled: true,
+        easypost_enabled: true,
+        easypost_has_api_key: false,
+        easypost_connected: false,
+        allow_shipping: true,
+        origin_country: "CA",
+        country_catalog: [{ code: "CA", label: "Canada" }],
+        package_profiles: [],
+        readiness: { ready: false, checklist: [] },
+      },
+    });
+
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+    fireEvent.click(await screen.findByRole("tab", { name: /easypost automation/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /easypost account setup guide/i }));
+
+    expect(await screen.findByRole("tab", { name: /easypost website setup/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("shows test and go live guidance, dynamic checklist states, and no raw API key examples", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^help$/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /test and go live/i }));
+
+    expect(await screen.findByText(/stage 1 - configure/i)).toBeInTheDocument();
+    expect(screen.getByText(/changing from a test key to a production key changes the easypost environment/i)).toBeInTheDocument();
+    expect(screen.getByText(/easypost account verification/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/confirm in easypost/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/EZTK/i)).not.toBeInTheDocument();
   });
 
   test("saving manual shipping settings does not send destination policy fields when EasyPost automation is off", async () => {

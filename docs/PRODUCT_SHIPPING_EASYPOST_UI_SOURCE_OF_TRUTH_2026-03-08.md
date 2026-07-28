@@ -57,6 +57,19 @@ Phase 3 UX rules:
 - Responsibilities:
   - Tab 1 `Delivery Methods`: checkout policy controls (`allow_pickup`, `allow_shipping`, `allow_local_delivery`, labels)
   - Tab 2 `EasyPost Automation`: API key, enable toggle, test connection, origin settings, destination policy, package profiles, shipping-readiness checklist, address-verification toggle/status, selected-country allowlist, international verification mode, cross-border customs defaults, and US export filing controls when origin is US
+  - Help drawer now uses a tabbed onboarding guide:
+    - `Schedulaa setup`
+    - `EasyPost website setup`
+    - `Test and go live`
+    - `Troubleshooting`
+  - Help drawer includes:
+    - neutral product/package examples
+    - EasyPost account verification guidance
+    - support-request copy helpers
+    - Test-versus-Production API key guidance
+    - Wallet versus own-carrier guidance
+    - platform-managed webhook wording
+    - dynamic checklist using current server-confirmed Schedulaa state only
   - International duties notice/policy controls:
     - `Domestic shipping only`
     - `Sell to international customers — buyer may pay import charges`

@@ -12,7 +12,37 @@ This guide explains EasyPost features in the three manager areas:
 
 Manual shipping remains fully supported as fallback.
 
-## 1) Settings: EasyPost Connection
+## 1) Tenant onboarding before Schedulaa setup
+
+Tenants usually need to finish part of their EasyPost account setup on the EasyPost website before Schedulaa can return meaningful live rates or buy labels.
+
+### EasyPost website checklist
+
+1. Sign in to EasyPost.
+2. Review any `Security Verification Required` banner.
+3. Complete the requested business, identity, billing, or ship-from verification steps.
+4. Add the real ship-from address.
+5. Add Wallet funding or another payment method where EasyPost requires it.
+6. Activate at least one carrier:
+   - EasyPost Wallet carrier, or
+   - existing carrier account connected through EasyPost
+7. Copy the correct API key:
+   - Test key while configuring
+   - Production key only after the EasyPost account is ready for live operations
+
+Important:
+
+- Schedulaa cannot bypass an EasyPost account restriction.
+- Never paste an EasyPost API key, password, or payment details into support requests, screenshots, or chat.
+- Test and Production EasyPost environments are separate.
+
+### Webhook responsibility
+
+Tracking webhooks are managed by Schedulaa on the platform side.
+
+Tenants do **not** need to manually create an EasyPost webhook unless Schedulaa Support specifically instructs them to do so.
+
+## 2) Settings: EasyPost Connection
 
 Use this section to enable and validate account-level EasyPost integration.
 
@@ -55,7 +85,7 @@ Use this section to enable and validate account-level EasyPost integration.
 7. If enabling international shipping beyond domestic-only, complete the customs defaults and product customs data before using international shipping.
 8. If using `Selected countries`, choose only the countries you actually intend to serve; checkout only exposes the tenant-enabled allowlist.
 
-## 2) Advanced Management: EasyPost Overview
+## 3) Advanced Management: EasyPost Overview
 
 Use this area as the operational control surface and quick access point.
 
@@ -71,7 +101,7 @@ Use this area as the operational control surface and quick access point.
 
 If no product orders exist yet, order-level EasyPost actions in Product Orders will not be visible because they appear per order.
 
-## 3) Product Orders: EasyPost Automation on an Order
+## 4) Product Orders: EasyPost Automation on an Order
 
 Use this section when fulfilling a specific shipping order.
 
