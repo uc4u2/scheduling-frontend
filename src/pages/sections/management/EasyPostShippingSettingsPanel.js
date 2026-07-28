@@ -1006,8 +1006,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         scroll="paper"
         sx={{ zIndex: (theme) => theme.zIndex.modal + 3000 }}
       >
-        <DialogTitle sx={{ pr: 7 }}>
-          <Typography variant="h6" fontWeight={700}>EasyPost Shipping Help</Typography>
+        <DialogTitle sx={{ pr: 7, fontWeight: 700 }}>
+          EasyPost Shipping Help
           <IconButton
             size="small"
             onClick={() => setHelpOpen(false)}
@@ -1020,37 +1020,76 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         <DialogContent sx={{ p: 2.5 }}>
           <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
-              This panel controls EasyPost connection and shipping defaults. Manual shipping remains available if EasyPost is disabled or unavailable.
+              This panel controls checkout delivery choices, EasyPost automation, your shipping origin, destination policy, and reusable Package Profiles. Manual shipping remains available if EasyPost is disabled or unavailable.
             </Typography>
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700}>1) Settings Panel (this page)</Typography>
-              <Typography variant="body2">- Open from Products -> Delivery setup.</Typography>
-              <Typography variant="body2">- Delivery Methods tab: controls checkout delivery choices and labels.</Typography>
-              <Typography variant="body2">- EasyPost Automation tab: connection and shipping automation configuration.</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>1) What this page controls</Typography>
+              <Typography variant="body2">- Delivery Methods: what customers can choose at checkout, such as pickup, shipping, and local delivery.</Typography>
+              <Typography variant="body2">- EasyPost Automation: your API connection, origin address, destination policy, address verification, customs defaults, and Package Profiles.</Typography>
+              <Typography variant="body2">- Test shipping setup: requests live carrier test rates without buying a label or creating an order.</Typography>
             </Box>
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700}>2) Advanced Management</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>2) Setup checklist</Typography>
               <Typography variant="body2">
-                Use Advanced Management as the control entry point. If there are no product orders yet, order-level EasyPost actions will not appear.
+                1. Turn on <strong>Shipping settings enabled</strong> and <strong>Allow shipping</strong> if you want customers to see shipping at checkout.
+              </Typography>
+              <Typography variant="body2">
+                2. Add your EasyPost API key and verify the connection in the <strong>EasyPost Automation</strong> tab.
+              </Typography>
+              <Typography variant="body2">
+                3. Complete the shipping origin: sender name, phone, country, street, city, region, and postal code.
+              </Typography>
+              <Typography variant="body2">
+                4. Choose where you want to ship: domestic only, Canada and United States, or selected countries.
+              </Typography>
+              <Typography variant="body2">
+                5. Create at least one Package Profile with box or mailer dimensions and empty-package weight, then set a workspace default.
               </Typography>
             </Box>
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700}>3) Product Orders (order-level actions)</Typography>
-              <Typography variant="body2">- Open order detail -> Actions tab</Typography>
-              <Typography variant="body2">- Refresh rates</Typography>
-              <Typography variant="body2">- Select rate</Typography>
-              <Typography variant="body2">- Buy label</Typography>
-              <Typography variant="body2">- Open/print purchased label</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>3) Product versus package</Typography>
+              <Typography variant="body2">- Product weight belongs on the Product itself, without packaging.</Typography>
+              <Typography variant="body2">- Package Profiles describe the actual box or mailer used for shipment.</Typography>
+              <Typography variant="body2">- Example: Necklace weight 50 g. Jewelry box 10 x 5 x 5 cm. Empty box weight 15 g.</Typography>
+              <Typography variant="body2">- Commerce Copilot can collect package facts in cm, mm, or inches and Schedulaa converts them safely.</Typography>
             </Box>
 
             <Box>
-              <Typography variant="subtitle2" fontWeight={700}>Troubleshooting</Typography>
-              <Typography variant="body2">- No rates: check EasyPost toggle, API key, origin address, and shipping destination completeness.</Typography>
-              <Typography variant="body2">- Stale rate: refresh rates and reselect.</Typography>
-              <Typography variant="body2">- Pickup/local delivery: manual flow can still be used.</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>4) Real-life scenarios</Typography>
+              <Typography variant="body2">
+                <strong>Domestic jewelry in Canada:</strong> A necklace weighs 50 g, ships in a 10 x 5 x 5 cm jewelry box with 15 g tare weight, and sells only within Canada.
+                Use domestic-only destination policy, one default Package Profile, and run <strong>Test shipping setup</strong> with a Vancouver address before going live.
+              </Typography>
+              <Typography variant="body2">
+                <strong>Canada to the United States:</strong> If you also want to sell the same product in the United States, enable the destination policy that includes the US and complete the Product's customs information before running an international test.
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>5) What the shipping test does</Typography>
+              <Typography variant="body2">- Uses your current Product weight, selected Package Profile, quantity, origin address, and test destination.</Typography>
+              <Typography variant="body2">- Requests live carrier rates from EasyPost.</Typography>
+              <Typography variant="body2">- Does not buy a label.</Typography>
+              <Typography variant="body2">- Does not create a Product Order.</Typography>
+              <Typography variant="body2">- Does not charge a customer.</Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>6) Common blockers and what to fix</Typography>
+              <Typography variant="body2">- EasyPost disconnected: connect EasyPost before requesting live rates.</Typography>
+              <Typography variant="body2">- Origin incomplete: finish the sender address in EasyPost Automation.</Typography>
+              <Typography variant="body2">- No default Package Profile: create or choose a default package with dimensions and empty-package weight.</Typography>
+              <Typography variant="body2">- Product weight missing: add the Product's weight without packaging.</Typography>
+              <Typography variant="body2">- Destination blocked: update the destination policy before testing that country.</Typography>
+              <Typography variant="body2">- International customs incomplete: complete product customs data before international rate tests.</Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>7) Order-level actions happen later</Typography>
+              <Typography variant="body2">Use Product Orders after a customer actually places an order. That is where managers refresh order rates, choose a service, buy a label, and print or reopen the purchased label.</Typography>
             </Box>
           </Stack>
         </DialogContent>

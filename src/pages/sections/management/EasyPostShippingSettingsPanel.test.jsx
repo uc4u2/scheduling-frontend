@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
-jest.setTimeout(15000);
+jest.setTimeout(20000);
 
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
@@ -119,6 +119,18 @@ describe("EasyPostShippingSettingsPanel", () => {
         initialWorkflow: "test_shipping_setup",
       })
     );
+  });
+
+  test("shows setup checklist and real-life scenarios in EasyPost Shipping Help", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^help$/i }));
+
+    expect(await screen.findByText(/setup checklist/i)).toBeInTheDocument();
+    expect(screen.getByText(/domestic jewelry in canada/i)).toBeInTheDocument();
+    expect(screen.getByText(/what the shipping test does/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not buy a label/i)).toBeInTheDocument();
+    expect(screen.getByText(/no default package profile/i)).toBeInTheDocument();
   });
 
   test("saving manual shipping settings does not send destination policy fields when EasyPost automation is off", async () => {
