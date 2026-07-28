@@ -31,6 +31,8 @@ import {
   List,
   ListItem,
   ListItemText,
+  Tab,
+  Tabs,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -51,7 +53,6 @@ import CategoryAutocomplete from "../../../components/common/CategoryAutocomplet
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
-import { COUNTRIES } from "../../../constants/jobMetadata";
 
 const emptyForm = {
   sku: "",
@@ -82,7 +83,7 @@ const emptyForm = {
   shipping_customs_description: "",
   shipping_country_of_origin: "",
   shipping_hs_code: "",
-  shipping_declared_value_cents: "",
+  shipping_declared_value: "",
   shipping_declared_value_currency: "CAD",
   shipping_customs_manufacturer: "",
   shipping_customs_eccn: "",
@@ -99,6 +100,20 @@ const fieldLabelWithTooltip = (label, tooltip) => (
     </Tooltip>
   </Stack>
 );
+
+const centsToDisplayValue = (cents) => {
+  const numeric = Number(cents);
+  if (!Number.isFinite(numeric)) return "";
+  return (numeric / 100).toFixed(2);
+};
+
+const displayValueToCents = (value) => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  const numeric = Number(normalized);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.round(numeric * 100);
+};
 
 const productStockSourceLabel = (row) =>
   String(row?.stock_source || "").toLowerCase() === "finance_inventory" ? "Linked inventory" : "Product stock";
@@ -169,6 +184,7 @@ const ProductManagement = ({ token }) => {
   const [imageUploading, setImageUploading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState("basics");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [stockSourceFilter, setStockSourceFilter] = useState("all");
   const [lowStockSummary, setLowStockSummary] = useState({ count: 0, out_of_stock_count: 0, low_stock_count: 0 });
@@ -189,6 +205,7 @@ const ProductManagement = ({ token }) => {
     allow_shipping: true,
     allow_local_delivery: false,
   });
+  const [shippingCountryCatalog, setShippingCountryCatalog] = useState([]);
   const [globalMovementLoading, setGlobalMovementLoading] = useState(false);
   const [globalMovementRows, setGlobalMovementRows] = useState([]);
   const [globalMovementPagination, setGlobalMovementPagination] = useState({ page: 1, per_page: 50, total: 0 });
@@ -245,12 +262,14 @@ const ProductManagement = ({ token }) => {
           allow_shipping: shippingSettings?.allow_shipping !== false,
           allow_local_delivery: Boolean(shippingSettings?.allow_local_delivery),
         });
+        setShippingCountryCatalog(Array.isArray(shippingSettings?.country_catalog) ? shippingSettings.country_catalog : []);
       } catch {
         setGlobalDeliveryPolicy({
           allow_pickup: false,
           allow_shipping: true,
           allow_local_delivery: false,
         });
+        setShippingCountryCatalog([]);
       }
       try {
         const { data: lowStock } = await api.get(`/inventory/products/low-stock?limit=10`, auth);
@@ -330,7 +349,7 @@ const ProductManagement = ({ token }) => {
         shipping_customs_description: row.shipping_customs_description || "",
         shipping_country_of_origin: row.shipping_country_of_origin || "",
         shipping_hs_code: row.shipping_hs_code || "",
-        shipping_declared_value_cents: row.shipping_declared_value_cents != null ? String(row.shipping_declared_value_cents) : "",
+        shipping_declared_value: row.shipping_declared_value_cents != null ? centsToDisplayValue(row.shipping_declared_value_cents) : "",
         shipping_declared_value_currency: row.shipping_declared_value_currency || "CAD",
         shipping_customs_manufacturer: row.shipping_customs_manufacturer || "",
         shipping_customs_eccn: row.shipping_customs_eccn || "",
@@ -432,13 +451,13 @@ const ProductManagement = ({ token }) => {
       shipping_width_mm: form.shipping_width_mm === "" ? null : Number(form.shipping_width_mm),
       shipping_height_mm: form.shipping_height_mm === "" ? null : Number(form.shipping_height_mm),
       allow_international_shipping: Boolean(form.allow_international_shipping),
-      shipping_customs_description: form.shipping_customs_description || null,
-      shipping_country_of_origin: form.shipping_country_of_origin || null,
-      shipping_hs_code: form.shipping_hs_code || null,
-      shipping_declared_value_cents: form.shipping_declared_value_cents === "" ? null : Number(form.shipping_declared_value_cents),
+      shipping_customs_description: form.allow_international_shipping ? (form.shipping_customs_description || null) : null,
+      shipping_country_of_origin: form.allow_international_shipping ? (form.shipping_country_of_origin || null) : null,
+      shipping_hs_code: form.allow_international_shipping ? (form.shipping_hs_code || null) : null,
+      shipping_declared_value_cents: form.allow_international_shipping ? displayValueToCents(form.shipping_declared_value) : null,
       shipping_declared_value_currency: form.shipping_declared_value_currency || null,
-      shipping_customs_manufacturer: form.shipping_customs_manufacturer || null,
-      shipping_customs_eccn: form.shipping_customs_eccn || null,
+      shipping_customs_manufacturer: form.allow_international_shipping ? (form.shipping_customs_manufacturer || null) : null,
+      shipping_customs_eccn: form.allow_international_shipping ? (form.shipping_customs_eccn || null) : null,
       digital_asset_id: form.digital_asset_id === "" ? null : Number(form.digital_asset_id),
       linked_inventory_item_id:
         form.is_digital || !form.track_stock || !form.link_inventory_enabled ? null : (form.linked_inventory_item_id || null),
@@ -1406,7 +1425,7 @@ const ProductManagement = ({ token }) => {
               <Stack spacing={1}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Typography variant="subtitle2" fontWeight={700}>
-                    Physical shipping
+                    Product weight and dimensions
                   </Typography>
                   {!form.is_digital && editing?.shipping_readiness?.required && (
                     <Chip
@@ -1418,17 +1437,31 @@ const ProductManagement = ({ token }) => {
                   )}
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
-                  Use grams and millimetres. Digital products can leave these fields blank.
+                  Enter the product itself without packaging. This form stores grams and millimetres. Commerce Copilot can accept mm, cm, or in and normalizes them safely. Configure the box or mailer under Products -&gt; Delivery setup -&gt; Package Profiles.
                 </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button size="small" variant="text" onClick={() => setDeliverySetupOpen(true)}>
+                    Configure package profiles
+                  </Button>
+                  {editing?.id ? (
+                    <Button size="small" variant="text" onClick={() => openCopilot("repair_product", editing.id)}>
+                      Ask Commerce Copilot to explain this
+                    </Button>
+                  ) : null}
+                </Stack>
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={3}>
                     <TextField
                       fullWidth
                       size="small"
                       type="number"
-                      label="Weight (g)"
+                      label={fieldLabelWithTooltip(
+                        "Weight (g)",
+                        "Product weight only, without the box or mailer. EasyPost uses the product weight plus the package tare weight from Delivery setup."
+                      )}
                       value={form.shipping_weight_grams}
                       onChange={handleChange("shipping_weight_grams")}
+                      helperText="Example: Necklace = 50 g"
                     />
                   </Grid>
                   <Grid item xs={12} md={3}>
@@ -1436,7 +1469,10 @@ const ProductManagement = ({ token }) => {
                       fullWidth
                       size="small"
                       type="number"
-                      label="Length (mm)"
+                      label={fieldLabelWithTooltip(
+                        "Length (mm)",
+                        "Product dimension only. Leave blank unless the item ships separately or its own dimensions are required for packing."
+                      )}
                       value={form.shipping_length_mm}
                       onChange={handleChange("shipping_length_mm")}
                     />
@@ -1446,7 +1482,10 @@ const ProductManagement = ({ token }) => {
                       fullWidth
                       size="small"
                       type="number"
-                      label="Width (mm)"
+                      label={fieldLabelWithTooltip(
+                        "Width (mm)",
+                        "Product dimension only. Package dimensions belong in Delivery setup -> Package Profiles."
+                      )}
                       value={form.shipping_width_mm}
                       onChange={handleChange("shipping_width_mm")}
                     />
@@ -1456,7 +1495,10 @@ const ProductManagement = ({ token }) => {
                       fullWidth
                       size="small"
                       type="number"
-                      label="Height (mm)"
+                      label={fieldLabelWithTooltip(
+                        "Height (mm)",
+                        "Product dimension only. A 2 mm product measurement should be entered here as 2."
+                      )}
                       value={form.shipping_height_mm}
                       onChange={handleChange("shipping_height_mm")}
                     />
@@ -1470,7 +1512,10 @@ const ProductManagement = ({ token }) => {
                       onChange={handleChange("shipping_ships_separately")}
                     />
                   )}
-                  label="Ships separately"
+                  label={fieldLabelWithTooltip(
+                    "Ships separately",
+                    "Enable this when the item ships on its own rather than sharing a package with other items in the order."
+                  )}
                 />
                 {!form.is_digital && (
                   <FormControlLabel
@@ -1481,7 +1526,10 @@ const ProductManagement = ({ token }) => {
                         onChange={handleChange("allow_international_shipping")}
                       />
                     )}
-                    label="Allow international shipping"
+                    label={fieldLabelWithTooltip(
+                      "Allow international shipping",
+                      "Enable this only when you want to sell this physical product outside your origin country. Customs details are required for cross-border shipments."
+                    )}
                   />
                 )}
               </Stack>
@@ -1512,58 +1560,138 @@ const ProductManagement = ({ token }) => {
                     />
                   )}
                 </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Country of origin means where the product was manufactured or assembled. Verify the correct customs classification for your product.
-                </Typography>
-                {!form.is_digital && form.allow_international_shipping && Array.isArray(editing?.customs_readiness?.missing) && editing.customs_readiness.missing.length > 0 && (
-                  <Alert severity="warning">
-                    Missing fields: {editing.customs_readiness.missing.join(", ")}
+                {form.is_digital ? (
+                  <Alert severity="info">Customs information is not required for digital products.</Alert>
+                ) : !form.allow_international_shipping ? (
+                  <Alert severity="info">
+                    No customs information is needed for domestic sales. Turn on <strong>Allow international shipping</strong> only when you want to sell this product outside your origin country.
                   </Alert>
-                )}
-                <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={6}>
-                    <TextField fullWidth size="small" label="Customs description" value={form.shipping_customs_description} onChange={handleChange("shipping_customs_description")} />
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Autocomplete
-                      options={COUNTRIES}
-                      value={COUNTRIES.find((option) => option.code === form.shipping_country_of_origin) || null}
-                      onChange={(_, option) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          shipping_country_of_origin: option?.code || "",
-                        }))
-                      }
-                      getOptionLabel={(option) => `${option.label} (${option.code})`}
-                      renderInput={(params) => (
+                ) : (
+                  <>
+                    <Typography variant="caption" color="text.secondary">
+                      Country of origin means where the product was manufactured or assembled. Customs description should be a simple item description, not a marketing sentence.
+                    </Typography>
+                    {Array.isArray(editing?.customs_readiness?.missing) && editing.customs_readiness.missing.length > 0 ? (
+                      <Alert severity="warning">
+                        Missing fields: {editing.customs_readiness.missing.join(", ")}
+                      </Alert>
+                    ) : null}
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} md={6}>
                         <TextField
-                          {...params}
                           fullWidth
                           size="small"
-                          label="Country of origin"
+                          label={fieldLabelWithTooltip(
+                            "Customs description",
+                            "A simple customs label for the physical item, such as Fashion necklace or Printed paperback book. Do not use a long marketing description."
+                          )}
+                          value={form.shipping_customs_description}
+                          onChange={handleChange("shipping_customs_description")}
                         />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <TextField fullWidth size="small" label="HS / tariff code" value={form.shipping_hs_code} onChange={handleChange("shipping_hs_code")} />
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <TextField fullWidth size="small" type="number" label="Declared value (cents)" value={form.shipping_declared_value_cents} onChange={handleChange("shipping_declared_value_cents")} />
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <TextField select fullWidth size="small" label="Declared-value currency" value={form.shipping_declared_value_currency} onChange={handleChange("shipping_declared_value_currency")}>
-                      <MenuItem value="CAD">CAD</MenuItem>
-                      <MenuItem value="USD">USD</MenuItem>
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <TextField fullWidth size="small" label="Manufacturer (optional)" value={form.shipping_customs_manufacturer} onChange={handleChange("shipping_customs_manufacturer")} />
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <TextField fullWidth size="small" label="ECCN (optional)" value={form.shipping_customs_eccn} onChange={handleChange("shipping_customs_eccn")} />
-                  </Grid>
-                </Grid>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <Autocomplete
+                          options={shippingCountryCatalog}
+                          value={shippingCountryCatalog.find((option) => option.code === form.shipping_country_of_origin) || null}
+                          onChange={(_, option) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              shipping_country_of_origin: option?.code || "",
+                            }))
+                          }
+                          getOptionLabel={(option) => `${option.label} (${option.code})`}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              fullWidth
+                              size="small"
+                              label={fieldLabelWithTooltip(
+                                "Country of origin",
+                                "Where the product was manufactured or assembled. This is not the customer destination country."
+                              )}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label={fieldLabelWithTooltip(
+                            "HS / tariff code",
+                            "The customs classification code used on international declarations. Confirm the correct code before shipping internationally."
+                          )}
+                          value={form.shipping_hs_code}
+                          onChange={handleChange("shipping_hs_code")}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          type="number"
+                          label={fieldLabelWithTooltip(
+                            "Declared value",
+                            "The value declared for one product unit on customs forms. Enter the currency amount, such as 50.00, not cents."
+                          )}
+                          value={form.shipping_declared_value}
+                          onChange={handleChange("shipping_declared_value")}
+                          helperText="Example: 50.00"
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          label={fieldLabelWithTooltip(
+                            "Declared-value currency",
+                            "The currency used for the customs declared value."
+                          )}
+                          value={form.shipping_declared_value_currency}
+                          onChange={handleChange("shipping_declared_value_currency")}
+                        >
+                          <MenuItem value="CAD">CAD</MenuItem>
+                          <MenuItem value="USD">USD</MenuItem>
+                        </TextField>
+                      </Grid>
+                    </Grid>
+                    <Accordion disableGutters elevation={0} sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+                      <AccordionSummary expandIcon={<ExpandMore />}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>Advanced export information</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Grid container spacing={1.5}>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label={fieldLabelWithTooltip(
+                                "Manufacturer (optional)",
+                                "Optional manufacturer name when your customs paperwork or supplier documentation requires it."
+                              )}
+                              value={form.shipping_customs_manufacturer}
+                              onChange={handleChange("shipping_customs_manufacturer")}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label={fieldLabelWithTooltip(
+                                "ECCN (advanced and optional)",
+                                "ECCN means Export Control Classification Number. Leave blank unless your manufacturer, export advisor, or compliance documentation provides one."
+                              )}
+                              value={form.shipping_customs_eccn}
+                              onChange={handleChange("shipping_customs_eccn")}
+                              helperText="Used for certain export-controlled products. Most managers can leave this blank."
+                            />
+                          </Grid>
+                        </Grid>
+                      </AccordionDetails>
+                    </Accordion>
+                  </>
+                )}
               </Stack>
               <FormControlLabel
                 control={(
@@ -1697,49 +1825,88 @@ const ProductManagement = ({ token }) => {
           </Typography>
 
           <Divider />
+          <Tabs value={helpTab} onChange={(_, next) => setHelpTab(next)} variant="scrollable" allowScrollButtonsMobile>
+            <Tab value="basics" label="Product basics" />
+            <Tab value="shipping" label="Shipping & packages" />
+            <Tab value="customs" label="International customs" />
+            <Tab value="examples" label="Step-by-step examples" />
+          </Tabs>
 
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Field Guide</Typography>
-          <Stack spacing={1.25}>
-            <Typography variant="body2"><strong>SKU:</strong> Internal stock code. Keep it unique and stable for reporting.</Typography>
-            <Typography variant="body2"><strong>Name:</strong> Customer-facing product name.</Typography>
-            <Typography variant="body2"><strong>Description:</strong> Short plain-language summary shown on product pages.</Typography>
-            <Typography variant="body2"><strong>Category:</strong> Used for grouping/filtering catalog items.</Typography>
-            <Typography variant="body2"><strong>Slug:</strong> Optional URL-safe identifier for cleaner links.</Typography>
-            <Typography variant="body2"><strong>Meta title / description:</strong> Optional SEO text for public product pages.</Typography>
-            <Typography variant="body2"><strong>Price:</strong> Amount customer pays.</Typography>
-            <Typography variant="body2"><strong>Cost:</strong> Internal cost for margin tracking.</Typography>
-            <Typography variant="body2"><strong>Quantity on hand:</strong> Current inventory count.</Typography>
-            <Typography variant="body2"><strong>Low stock threshold:</strong> Warning level used in manager list.</Typography>
-            <Typography variant="body2"><strong>Track inventory:</strong> If on, sales decrement stock and stock checks apply.</Typography>
-            <Typography variant="body2"><strong>Digital product:</strong> Marks item as digital. Digital asset/library/access policy is managed in the <strong>Digital Products</strong> workspace.</Typography>
-            <Typography variant="body2"><strong>Visible on site:</strong> If off, hidden from public catalog.</Typography>
-          </Stack>
-
-          <Divider />
-
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Example Setup</Typography>
-          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "background.default" }}>
-            <Stack spacing={0.75}>
-              <Typography variant="body2"><strong>Example:</strong> “Sterling Silver Ring”</Typography>
-              <Typography variant="body2">SKU: <code>RING-STERLING-001</code></Typography>
-              <Typography variant="body2">Category: <code>Jewelry</code></Typography>
-              <Typography variant="body2">Price: <code>129.00</code> / Cost: <code>62.00</code></Typography>
-              <Typography variant="body2">Quantity on hand: <code>18</code></Typography>
-              <Typography variant="body2">Low stock threshold: <code>5</code></Typography>
-              <Typography variant="body2">Track inventory: <code>On</code></Typography>
-              <Typography variant="body2">Visible on site: <code>On</code></Typography>
+          {helpTab === "basics" ? (
+            <Stack spacing={1.25}>
+              <Typography variant="body2"><strong>SKU:</strong> Internal stock code. Keep it unique and stable for reporting.</Typography>
+              <Typography variant="body2"><strong>Name:</strong> Customer-facing product name.</Typography>
+              <Typography variant="body2"><strong>Description:</strong> Short plain-language summary shown on product pages.</Typography>
+              <Typography variant="body2"><strong>Category:</strong> Used for grouping/filtering catalog items.</Typography>
+              <Typography variant="body2"><strong>Slug:</strong> Optional URL-safe identifier for cleaner links.</Typography>
+              <Typography variant="body2"><strong>Meta title / description:</strong> Optional SEO text for public product pages.</Typography>
+              <Typography variant="body2"><strong>Price:</strong> Amount customer pays.</Typography>
+              <Typography variant="body2"><strong>Cost:</strong> Internal cost for margin tracking.</Typography>
+              <Typography variant="body2"><strong>Quantity on hand:</strong> Current inventory count.</Typography>
+              <Typography variant="body2"><strong>Low stock threshold:</strong> Warning level used in manager list.</Typography>
+              <Typography variant="body2"><strong>Track inventory:</strong> If on, sales decrement stock and stock checks apply.</Typography>
+              <Typography variant="body2"><strong>Digital product:</strong> Marks item as digital. Digital asset/library/access policy is managed in the <strong>Digital Products</strong> workspace.</Typography>
+              <Typography variant="body2"><strong>Visible on site:</strong> If off, the product is hidden from the public catalog until you are ready.</Typography>
             </Stack>
-          </Paper>
+          ) : null}
 
-          <Divider />
+          {helpTab === "shipping" ? (
+            <Stack spacing={1.25}>
+              <Typography variant="body2"><strong>Product weight:</strong> The item itself, without the box.</Typography>
+              <Typography variant="body2"><strong>Product dimensions:</strong> The item itself. These are usually optional unless the product ships separately or its own dimensions matter for packing.</Typography>
+              <Typography variant="body2"><strong>Package dimensions:</strong> The actual box or mailer customers receive. Manage these in <strong>Delivery setup -&gt; Package Profiles</strong>, not in the Product dimension fields.</Typography>
+              <Typography variant="body2"><strong>Package tare weight:</strong> The empty box, envelope, and packing material without the product.</Typography>
+              <Typography variant="body2"><strong>Units:</strong> Manual Product Management stores grams and millimetres. Commerce Copilot can accept mm, cm, or in and converts safely to millimetres before shipping providers are called.</Typography>
+              <Typography variant="body2"><strong>Ships separately:</strong> Turn this on when the product ships in its own parcel instead of sharing a package with other items.</Typography>
+              <Typography variant="body2"><strong>Delivery override:</strong> Use this only when the product needs different checkout delivery methods from your workspace defaults.</Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button size="small" variant="outlined" onClick={() => { setHelpOpen(false); setDeliverySetupOpen(true); }}>
+                  Open Delivery Setup
+                </Button>
+                <Button size="small" variant="text" onClick={() => { setHelpOpen(false); openCopilot("review_shipping_setup", editing?.id || null); }}>
+                  Ask Commerce Copilot to explain shipping
+                </Button>
+              </Stack>
+            </Stack>
+          ) : null}
 
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Manager Tips</Typography>
-          <Stack spacing={1}>
-            <Typography variant="body2">Use the Images action to upload product photos after saving.</Typography>
-            <Typography variant="body2">Use <strong>Delivery setup</strong> to control checkout delivery methods and EasyPost automation policy.</Typography>
-            <Typography variant="body2">For physical products, keep <strong>Track inventory</strong> enabled.</Typography>
-            <Typography variant="body2">Set low-stock threshold early to avoid overselling.</Typography>
-          </Stack>
+          {helpTab === "customs" ? (
+            <Stack spacing={1.25}>
+              <Typography variant="body2"><strong>When it is required:</strong> Only for physical products that will ship outside your origin country.</Typography>
+              <Typography variant="body2"><strong>Domestic only:</strong> If <strong>Allow international shipping</strong> is off, no customs information is needed.</Typography>
+              <Typography variant="body2"><strong>Customs description:</strong> A simple item label like Fashion necklace or Printed paperback book.</Typography>
+              <Typography variant="body2"><strong>Country of origin:</strong> Where the product was manufactured or assembled, not where your business is located.</Typography>
+              <Typography variant="body2"><strong>HS / tariff code:</strong> The customs classification code used for international declarations. Confirm the correct code before shipping internationally.</Typography>
+              <Typography variant="body2"><strong>Declared value:</strong> The per-unit customs value, entered as a normal currency amount like 50.00, not cents.</Typography>
+              <Typography variant="body2"><strong>Manufacturer:</strong> Optional unless your supplier or customs paperwork requires it.</Typography>
+              <Typography variant="body2"><strong>ECCN:</strong> Advanced and usually optional. Leave blank unless your manufacturer or export documentation gives you one.</Typography>
+            </Stack>
+          ) : null}
+
+          {helpTab === "examples" ? (
+            <Stack spacing={1.5}>
+              <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "background.default" }}>
+                <Stack spacing={0.75}>
+                  <Typography variant="body2"><strong>Domestic jewelry example</strong></Typography>
+                  <Typography variant="body2">Product weight: <code>50 g</code></Typography>
+                  <Typography variant="body2">Ships separately: <code>No</code></Typography>
+                  <Typography variant="body2">Allow international shipping: <code>Off</code></Typography>
+                  <Typography variant="body2">Package Profile in Delivery Setup: <code>10 × 5 × 5 cm</code> with <code>15 g</code> empty package weight.</Typography>
+                </Stack>
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "background.default" }}>
+                <Stack spacing={0.75}>
+                  <Typography variant="body2"><strong>International jewelry example</strong></Typography>
+                  <Typography variant="body2">Allow international shipping: <code>On</code></Typography>
+                  <Typography variant="body2">Customs description: <code>Fashion necklace</code></Typography>
+                  <Typography variant="body2">Country of origin: Actual manufacturing country</Typography>
+                  <Typography variant="body2">HS code: Manager-confirmed</Typography>
+                  <Typography variant="body2">Declared value: <code>USD 50.00</code></Typography>
+                  <Typography variant="body2">ECCN: Leave blank unless applicable</Typography>
+                </Stack>
+              </Paper>
+            </Stack>
+          ) : null}
         </Stack>
       </Drawer>
 

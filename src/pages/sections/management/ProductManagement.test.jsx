@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 import ProductManagement from "./ProductManagement";
@@ -36,6 +37,8 @@ jest.mock("../../../components/commerce-copilot/CommerceCopilotDrawer", () => (p
   return props.open ? <div data-testid="commerce-copilot-drawer">Commerce Copilot Drawer</div> : null;
 });
 
+jest.setTimeout(15000);
+
 describe("ProductManagement", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -52,6 +55,11 @@ describe("ProductManagement", () => {
             allow_pickup: true,
             allow_shipping: true,
             allow_local_delivery: false,
+            country_catalog: [
+              { code: "CA", label: "Canada" },
+              { code: "QA", label: "Qatar" },
+              { code: "US", label: "United States" },
+            ],
           },
         });
       }
@@ -72,7 +80,7 @@ describe("ProductManagement", () => {
     });
   });
 
-  test("shows physical shipping fields in the product editor", async () => {
+  test("shows physical shipping fields, uses server country catalog, and reveals customs only for international shipping", async () => {
     render(
       <ThemeProvider theme={createTheme()}>
         <ProductManagement token="test-token" />
@@ -81,15 +89,45 @@ describe("ProductManagement", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /manager\.product\.buttonadd/i }));
 
-    await waitFor(() => expect(screen.getByLabelText(/weight \(g\)/i)).toBeInTheDocument());
+    expect(await screen.findByLabelText(/weight \(g\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/length \(mm\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/width \(mm\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/height \(mm\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/ships separately/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/customs description/i)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /ships separately/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/customs description/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/no customs information is needed for domestic sales/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/allow international shipping/i));
+
+    expect(await screen.findByLabelText(/customs description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/country of origin/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/hs \/ tariff code/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/declared value \(cents\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^declared value$/i)).toBeInTheDocument();
+
+    const originInput = screen.getByLabelText(/country of origin/i);
+    fireEvent.change(originInput, { target: { value: "Qat" } });
+    expect(await screen.findByText(/Qatar \(QA\)/i)).toBeInTheDocument();
+  });
+
+  test("shows shipping and customs guidance in Product Management Help", async () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /help/i }));
+    expect(await screen.findByText(/product management help/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: /shipping & packages/i }));
+    expect(screen.getByText(/product weight:/i)).toBeInTheDocument();
+    expect(screen.getByText(/package dimensions:/i)).toBeInTheDocument();
+    expect(screen.getByText(/package tare weight:/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open delivery setup/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: /international customs/i }));
+    expect(screen.getByText(/only for physical products that will ship outside your origin country/i)).toBeInTheDocument();
+    expect(screen.getByText(/ECCN:/i)).toBeInTheDocument();
   });
 
   test("opens Commerce Copilot from product entry points", async () => {
