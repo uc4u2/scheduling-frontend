@@ -833,6 +833,15 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                             color={item.ready ? "success" : "warning"}
                             variant={item.ready ? "filled" : "outlined"}
                             label={item.label}
+                            sx={{
+                              height: "auto",
+                              "& .MuiChip-label": {
+                                display: "block",
+                                whiteSpace: "normal",
+                                lineHeight: 1.2,
+                                py: 0.5,
+                              },
+                            }}
                           />
                         ))}
                       </Stack>
