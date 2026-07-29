@@ -28,6 +28,11 @@ How long a selected time is reserved while a client is checking out.
 - **Charge currency mode**: How charges are sent to Stripe (platform-fixed or region-based).
 - **Logo URL**: Optional logo used in checkout.
 
+Quebec note:
+- Legacy Quebec tax-country storage may still appear as `QC`.
+- That commerce currency context still resolves to `CAD`.
+- Offline and card-on-file amount-only flows do not rely on Stripe automatic tax to reinterpret the amount later.
+
 ## Tax setup (Stripe Tax)
 Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - Enable automatic tax.

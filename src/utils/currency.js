@@ -9,6 +9,7 @@ const CURRENCY_EVENT = "schedulaa:currency-changed";
 export const COUNTRY_TO_CURRENCY = Object.freeze({
   US: "USD",
   CA: "CAD",
+  QC: "CAD",
   GB: "GBP",
   IE: "EUR",
   FR: "EUR",

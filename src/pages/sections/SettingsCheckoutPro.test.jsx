@@ -80,6 +80,34 @@ describe("SettingsCheckoutPro", () => {
     expect(sellingCurrency).toHaveAttribute("aria-disabled", "true");
   });
 
+  test("legacy Quebec tax-country context resolves to CAD and keeps the Quebec option", async () => {
+    window.localStorage.setItem("company_currency", "USD");
+    mockApiGet.mockResolvedValue({
+      data: {
+        enable_stripe_payments: false,
+        allow_card_on_file: false,
+        stripe_publishable_key: "pk_test_123",
+        booking_hold_minutes: 3,
+        prices_include_tax: false,
+        charge_currency_mode: "LOCALIZED",
+        tax_country_code: "QC",
+        tax_region_code: "",
+        display_currency: "CAD",
+        country_code: "CA",
+        currency_context: {
+          charge_currency_mode: "LOCALIZED",
+          business_selling_currency: "CAD",
+          currency_source: "tax_country",
+        },
+      },
+    });
+
+    renderSettings();
+
+    expect(await screen.findByText(/Current Product and Finance currency:/i)).toHaveTextContent("CAD");
+    expect(document.querySelector('input[value="QC"]')).not.toBeNull();
+  });
+
   test("asks for confirmation before saving a changed fixed business currency", async () => {
     const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
     mockApiGet.mockResolvedValue({

@@ -28,6 +28,12 @@ Manager entry points:
 1. Click **Add Product**.
 2. Fill the fields:
    - Name
+
+## Currency clarification
+
+- Product selling price uses your business selling currency from **Checkout Pro & Payments**.
+- Legacy Quebec checkout storage still resolves to `CAD`.
+- `Customs declared-value currency` is separate and only affects international customs paperwork.
    - Price
    - Cost (optional)
    - SKU (optional)
