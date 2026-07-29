@@ -27,11 +27,14 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
-import { createEstimate, createManagerClient, updateEstimate } from "./financeApi";
+import PreviewOutlinedIcon from "@mui/icons-material/PreviewOutlined";
+import { useSnackbar } from "notistack";
+import { createEstimate, createManagerClient, previewFinanceTransaction, updateEstimate } from "./financeApi";
 import ClientQuickCreateDialog from "./ClientQuickCreateDialog";
 import ClientLookupField from "./ClientLookupField";
 import { buildClientCreatePayload } from "./clientUtils";
 import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
+import FinanceTransactionPreviewDialog, { buildFinancePreviewSummary } from "./components/FinanceTransactionPreviewDialog";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import {
@@ -159,6 +162,7 @@ export default function EstimateEditorDialog({
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { enqueueSnackbar } = useSnackbar();
   const tEstimate = React.useCallback(
     (key, fallback, options = {}) => t(`manager.finance.estimates.editor.${key}`, { defaultValue: fallback, ...options }),
     [t]
@@ -194,6 +198,12 @@ export default function EstimateEditorDialog({
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSaving, setClientSaving] = useState(false);
   const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "" });
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewData, setPreviewData] = useState(null);
+  const [previewStale, setPreviewStale] = useState(false);
+  const [formDirtySinceOpen, setFormDirtySinceOpen] = useState(false);
   const effectiveTaxContext = useMemo(
     () => estimate?.tax_context || taxContext || {},
     [estimate?.tax_context, taxContext]
@@ -255,22 +265,16 @@ export default function EstimateEditorDialog({
     setError("");
     setLineItemError({ lineId: null, field: "" });
     setEstimateNumberError("");
+    setPreviewData(null);
+    setPreviewError("");
+    setPreviewStale(false);
+    setFormDirtySinceOpen(false);
   }, [activeCurrency, estimate, initialDraft, open, taxContext]);
 
-  const preview = useMemo(() => {
-    const subtotal = roundMoney(
-      form.line_items.reduce((sum, line) => sum + computePreviewLine(line, effectiveTaxContext).base, 0)
-    );
-    const taxTotal = roundMoney(
-      form.line_items.reduce((sum, line) => sum + computePreviewLine(line, effectiveTaxContext).tax, 0)
-    );
-    const discount = roundMoney(toNumber(form.discount_total, 0));
-    return {
-      subtotal,
-      taxTotal,
-      total: roundMoney(subtotal + taxTotal - discount),
-    };
-  }, [effectiveTaxContext, form]);
+  const markPreviewDirty = () => {
+    setFormDirtySinceOpen(true);
+    if (previewData) setPreviewStale(true);
+  };
 
   const applyTemplate = (templateId) => {
     const template = templates.find((item) => String(item.id) === String(templateId));
@@ -285,12 +289,14 @@ export default function EstimateEditorDialog({
         ? template.line_items.map((line, idx) => makeLine(line, idx))
         : prev.line_items,
     }));
+    markPreviewDirty();
   };
 
   const setField = (field, value) => {
     if (field === "estimate_number") {
       setEstimateNumberError("");
     }
+    markPreviewDirty();
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -302,6 +308,7 @@ export default function EstimateEditorDialog({
     }));
 
   const setLineField = (lineId, field, value) => {
+    markPreviewDirty();
     setForm((prev) => ({
       ...prev,
       line_items: prev.line_items.map((line) => {
@@ -319,6 +326,7 @@ export default function EstimateEditorDialog({
 
   const applyLinePreset = (lineId, presetKey) => {
     const preset = LINE_ITEM_PRESETS[presetKey] || LINE_ITEM_PRESETS.custom;
+    markPreviewDirty();
     setForm((prev) => ({
       ...prev,
       line_items: prev.line_items.map((line) => {
@@ -337,6 +345,7 @@ export default function EstimateEditorDialog({
   };
 
   const addLine = () => {
+    markPreviewDirty();
     setForm((prev) => ({
       ...prev,
       line_items: [...prev.line_items, makeLine({}, prev.line_items.length)],
@@ -344,6 +353,7 @@ export default function EstimateEditorDialog({
   };
 
   const removeLine = (lineId) => {
+    markPreviewDirty();
     setForm((prev) => ({
       ...prev,
       line_items: prev.line_items.length > 1 ? prev.line_items.filter((line) => line.id !== lineId) : prev.line_items,
@@ -417,6 +427,57 @@ export default function EstimateEditorDialog({
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const buildPreviewPayload = () => {
+    if (estimate?.id && !formDirtySinceOpen) {
+      return { source_type: "estimate", source_id: estimate.id };
+    }
+    const validLineItems = form.line_items.filter((line) => String(line.description || "").trim());
+    return {
+      source_type: "draft",
+      document_type: "estimate",
+      line_items: (validLineItems.length ? validLineItems : form.line_items).map((line) => ({
+        description: line.description || "Line item",
+        quantity: toNumber(line.quantity, 1),
+        unit_price: toNumber(line.unit_price, 0),
+        taxable: Boolean(line.taxable),
+      })),
+      discount_total: toNumber(form.discount_total, 0),
+      prices_include_tax: Boolean(effectiveTaxContext?.prices_include_tax),
+    };
+  };
+
+  const runPreview = async () => {
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const payload = await previewFinanceTransaction(buildPreviewPayload());
+      setPreviewData(payload || null);
+      setPreviewStale(false);
+    } catch (err) {
+      setPreviewError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tEstimate("errors.previewFailed", "Unable to preview taxes and total.")
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleOpenPreview = () => {
+    setPreviewOpen(true);
+    void runPreview();
+  };
+
+  const handleCopyPreviewSummary = async () => {
+    try {
+      await navigator.clipboard.writeText(buildFinancePreviewSummary(previewData));
+      enqueueSnackbar(tEstimate("snackbar.previewCopied", "Preview summary copied."), { variant: "success" });
+    } catch {
+      enqueueSnackbar(tEstimate("errors.previewCopyFailed", "Unable to copy the preview summary."), { variant: "error" });
     }
   };
 
@@ -972,20 +1033,19 @@ export default function EstimateEditorDialog({
               </Alert>
             </Grid>
             <Grid item xs={12}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Typography variant="body2">{tEstimate("totals.subtotal", "Subtotal")}: {preview.subtotal.toFixed(2)}</Typography>
-                <Typography variant="body2">{tEstimate("totals.tax", "Tax")}: {preview.taxTotal.toFixed(2)}</Typography>
-                <Stack direction="row" spacing={0.75} alignItems="center">
-                  <Typography variant="body2">{tEstimate("totals.total", "Total")}: {preview.total.toFixed(2)}</Typography>
-                  <Tooltip
-                    title={tEstimate(
-                      "totals.backendRuleTooltip",
-                      "Final subtotal, tax, and total are confirmed by backend tax rules when you save."
-                    )}
-                  >
-                    <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 16 }} />
-                  </Tooltip>
-                </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }}>
+                <Button variant="outlined" startIcon={<PreviewOutlinedIcon />} onClick={handleOpenPreview}>
+                  {tEstimate("actions.previewTotals", "Preview taxes and total")}
+                </Button>
+                {previewStale ? (
+                  <Typography variant="body2" color="warning.main">
+                    {tEstimate("preview.stale", "The Estimate changed after this preview. Refresh to see current totals.")}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    {tEstimate("preview.helper", "Preview uses current Finance rules without saving the Estimate.")}
+                  </Typography>
+                )}
               </Stack>
             </Grid>
             {estimate?.id ? (
@@ -1033,6 +1093,16 @@ export default function EstimateEditorDialog({
         loading={clientSaving}
         title={tEstimate("clientDialog.title", "Create new client")}
         description={tEstimate("clientDialog.description", "Create the official customer record used for estimates, invoices, and work orders.")}
+      />
+      <FinanceTransactionPreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        preview={previewData}
+        loading={previewLoading}
+        error={previewError}
+        stale={previewStale}
+        onRefresh={runPreview}
+        onCopySummary={handleCopyPreviewSummary}
       />
     </Dialog>
   );

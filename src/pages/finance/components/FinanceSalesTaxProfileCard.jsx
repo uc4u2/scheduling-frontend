@@ -21,8 +21,11 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import PreviewOutlinedIcon from "@mui/icons-material/PreviewOutlined";
 import { useTranslation } from "react-i18next";
-import { getFinanceSalesTaxProfile, updateFinanceSalesTaxProfile } from "../financeApi";
+import { useSnackbar } from "notistack";
+import { getFinanceSalesTaxProfile, previewFinanceTransaction, updateFinanceSalesTaxProfile } from "../financeApi";
+import FinanceTransactionPreviewDialog, { buildFinancePreviewSummary } from "./FinanceTransactionPreviewDialog";
 
 const emptyComponent = () => ({ code: "", rate: "" });
 
@@ -39,6 +42,7 @@ const formatRate = (value) => {
 
 export default function FinanceSalesTaxProfileCard({ onUpdatedTaxContext }) {
   const { t } = useTranslation();
+  const { enqueueSnackbar } = useSnackbar();
   const tProfile = useCallback(
     (key, fallback, options = {}) =>
       t(`manager.finance.salesTaxProfile.${key}`, { defaultValue: fallback, ...options }),
@@ -50,6 +54,16 @@ export default function FinanceSalesTaxProfileCard({ onUpdatedTaxContext }) {
   const [open, setOpen] = useState(false);
   const [profileState, setProfileState] = useState(null);
   const [form, setForm] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewData, setPreviewData] = useState(null);
+  const [previewSample, setPreviewSample] = useState({
+    description: "Sample taxable item",
+    quantity: "1",
+    unit_price: "100.00",
+    taxable: true,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,6 +170,8 @@ export default function FinanceSalesTaxProfileCard({ onUpdatedTaxContext }) {
   }, [companySource, onUpdatedTaxContext, suggested, tProfile]);
 
   const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  const setPreviewSampleField = (field, value) =>
+    setPreviewSample((current) => ({ ...current, [field]: value }));
   const setComponentField = (index, field, value) =>
     setForm((current) => ({
       ...current,
@@ -232,6 +248,50 @@ export default function FinanceSalesTaxProfileCard({ onUpdatedTaxContext }) {
     }
   }, [form, onUpdatedTaxContext, tProfile]);
 
+  const runPreview = useCallback(async () => {
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const payload = await previewFinanceTransaction({
+        source_type: "draft",
+        document_type: "estimate",
+        line_items: [
+          {
+            description: previewSample.description || "Sample taxable item",
+            quantity: Number(previewSample.quantity || 0),
+            unit_price: Number(previewSample.unit_price || 0),
+            taxable: Boolean(previewSample.taxable),
+          },
+        ],
+        discount_total: 0,
+        prices_include_tax: Boolean(companySource?.prices_include_tax),
+      });
+      setPreviewData(payload || null);
+    } catch (err) {
+      setPreviewError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tProfile("errors.previewFailed", "Unable to build Finance preview.")
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [companySource?.prices_include_tax, previewSample, tProfile]);
+
+  const openPreview = useCallback(() => {
+    setPreviewOpen(true);
+    void runPreview();
+  }, [runPreview]);
+
+  const handleCopyPreviewSummary = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(buildFinancePreviewSummary(previewData));
+      enqueueSnackbar(tProfile("snackbar.previewCopied", "Preview summary copied."), { variant: "success" });
+    } catch {
+      enqueueSnackbar(tProfile("errors.previewCopyFailed", "Unable to copy the preview summary."), { variant: "error" });
+    }
+  }, [enqueueSnackbar, previewData, tProfile]);
+
   if (loading) {
     return (
       <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
@@ -259,6 +319,9 @@ export default function FinanceSalesTaxProfileCard({ onUpdatedTaxContext }) {
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
+              <Button variant="outlined" startIcon={<PreviewOutlinedIcon />} onClick={openPreview}>
+                {tProfile("actions.testSetup", "Test this tax setup")}
+              </Button>
               {profileState?.can_confirm_catalog_suggestion ? (
                 <Button variant="outlined" onClick={handleConfirmSuggestion} disabled={saving}>
                   {tProfile("actions.confirmSuggestion", "Confirm suggested default")}
@@ -468,6 +531,59 @@ export default function FinanceSalesTaxProfileCard({ onUpdatedTaxContext }) {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <FinanceTransactionPreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        preview={previewData}
+        loading={previewLoading}
+        error={previewError}
+        onRefresh={runPreview}
+        onCopySummary={handleCopyPreviewSummary}
+      >
+        <Alert severity="info">This sample is not saved.</Alert>
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label={tProfile("preview.description", "Description")}
+              value={previewSample.description}
+              onChange={(e) => setPreviewSampleField("description", e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label={tProfile("preview.quantity", "Quantity")}
+              type="number"
+              inputProps={{ step: "0.0001" }}
+              value={previewSample.quantity}
+              onChange={(e) => setPreviewSampleField("quantity", e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label={tProfile("preview.unitPrice", "Unit price")}
+              type="number"
+              inputProps={{ step: "0.01" }}
+              value={previewSample.unit_price}
+              onChange={(e) => setPreviewSampleField("unit_price", e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(previewSample.taxable)}
+                  onChange={(e) => setPreviewSampleField("taxable", e.target.checked)}
+                />
+              }
+              label={tProfile("preview.taxable", "Taxable")}
+            />
+          </Grid>
+        </Grid>
+      </FinanceTransactionPreviewDialog>
     </>
   );
 }

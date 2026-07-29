@@ -19,6 +19,10 @@ What this page feeds:
 - month-end readiness follow-up
 - accountant handoff preparation
 
+Finance-only preview action:
+- `Business Finance sales tax` -> `Test this tax setup`
+- This previews subtotal, Finance tax, total, and payment-link collection amount without creating any document or Stripe object.
+
 ## Business Finance -> Quotes
 
 What manager does here:
@@ -52,6 +56,10 @@ What this page feeds:
 - invoice creation
 - commercial approval history
 - client-facing scope and totals
+
+Finance-only preview action:
+- Estimate editor -> `Preview taxes and total`
+- This uses the current unsaved form values and marks the preview stale when the form changes afterward.
 
 ## Business Finance -> Work Orders
 
@@ -172,3 +180,7 @@ What this page feeds:
 - manager payment visibility
 - refund visibility
 - invoice follow-up workflow
+
+Finance-only preview action:
+- Invoice detail -> `Preview payment amount`
+- This shows the current balance due and the exact amount a Finance payment link would collect before the manager creates that payment link.

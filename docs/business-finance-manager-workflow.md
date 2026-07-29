@@ -52,6 +52,27 @@ Manager flow:
 
 Business Finance is for custom-price work. The estimate is the pricing proposal. The invoice is the bill after the scope is approved.
 
+## Preview Taxes And Total
+
+Phase T1 now adds a Finance-only preview flow.
+
+Managers can preview:
+- what the customer will see
+- the combined Finance tax amount
+- the final document total
+- the exact amount a Finance payment link would collect
+
+Current entry points:
+- `Business Finance sales tax` -> `Test this tax setup`
+- Estimate editor -> `Preview taxes and total`
+- Invoice detail -> `Preview payment amount`
+
+This preview is read-only:
+- no estimate is created
+- no invoice is created
+- no payment link is created
+- no Stripe charge or Stripe invoice object is created
+
 ## Online Payment vs Offline Payment
 
 There are two payment paths.

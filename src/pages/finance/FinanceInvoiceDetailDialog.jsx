@@ -37,6 +37,7 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
+import PreviewOutlinedIcon from "@mui/icons-material/PreviewOutlined";
 import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
@@ -47,6 +48,7 @@ import FinanceEmailTemplatePicker from "./components/FinanceEmailTemplatePicker"
 import FinanceEmailTemplateManagerDialog from "./components/FinanceEmailTemplateManagerDialog";
 import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
+import FinanceTransactionPreviewDialog, { buildFinancePreviewSummary } from "./components/FinanceTransactionPreviewDialog";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
 import {
   createBillingRecipient,
@@ -63,6 +65,7 @@ import {
   listManagerClient360EmailTemplates,
   listManagerClient360Documents,
   listBillingRecipients,
+  previewFinanceTransaction,
   sendFinanceInvoiceEmail,
   setManagerClient360EmailTemplateDefault,
   setFinanceClientDefaultBillingRecipient,
@@ -386,6 +389,10 @@ export default function FinanceInvoiceDetailDialog({
   const [emailTemplateDraft, setEmailTemplateDraft] = useState(null);
   const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
   const [saveAndSendPending, setSaveAndSendPending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [previewData, setPreviewData] = useState(null);
   const sendEmailCapabilityRequestRef = useRef(0);
 
   useEffect(() => {
@@ -828,6 +835,41 @@ export default function FinanceInvoiceDetailDialog({
       setSavingClientDefaultBillingRecipient(false);
     }
   };
+
+  const runPaymentPreview = useCallback(async () => {
+    if (!invoice?.id) return;
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const payload = await previewFinanceTransaction({
+        source_type: "invoice",
+        source_id: invoice.id,
+      });
+      setPreviewData(payload || null);
+    } catch (err) {
+      setPreviewError(
+        err?.response?.data?.error ||
+          err?.message ||
+          tDetail("errors.previewFailed", "Unable to preview the current payment amount.")
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [invoice?.id, tDetail]);
+
+  const handleOpenPreview = useCallback(() => {
+    setPreviewOpen(true);
+    void runPaymentPreview();
+  }, [runPaymentPreview]);
+
+  const handleCopyPreviewSummary = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(buildFinancePreviewSummary(previewData));
+      enqueueSnackbar(tDetail("snackbar.previewCopied", "Preview summary copied."), { variant: "success" });
+    } catch {
+      enqueueSnackbar(tDetail("errors.previewCopyFailed", "Unable to copy the preview summary."), { variant: "error" });
+    }
+  }, [enqueueSnackbar, previewData, tDetail]);
 
   const handleClearClientDefaultBillingRecipient = async () => {
     if (!clientId) return;
@@ -1541,6 +1583,15 @@ export default function FinanceInvoiceDetailDialog({
                     ))}
                   </Box>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<PreviewOutlinedIcon />}
+                      onClick={handleOpenPreview}
+                      disabled={loading || saving || !invoice?.id}
+                    >
+                      {tDetail("actions.previewPaymentAmount", "Preview payment amount")}
+                    </Button>
                     <Button
                       variant="contained"
                       size="small"
@@ -2492,6 +2543,16 @@ export default function FinanceInvoiceDetailDialog({
           setEmailTemplateDraft(null);
         }}
         onSubmit={handleSaveEmailTemplate}
+      />
+      <FinanceTransactionPreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={tDetail("preview.title", "Preview customer total")}
+        preview={previewData}
+        loading={previewLoading}
+        error={previewError}
+        onRefresh={runPaymentPreview}
+        onCopySummary={handleCopyPreviewSummary}
       />
       <FinanceAuditTimeline
         open={auditOpen}

@@ -8,6 +8,7 @@ const mockEnqueueSnackbar = jest.fn();
 const mockGetFinanceInvoice = jest.fn();
 const mockUpdateFinanceInvoice = jest.fn();
 const mockSendFinanceInvoiceEmail = jest.fn();
+const mockPreviewFinanceTransaction = jest.fn();
 const mockListManagerClient360Documents = jest.fn();
 const mockListManagerClient360EmailTemplates = jest.fn();
 const mockGetFinanceDocumentSettings = jest.fn();
@@ -49,6 +50,7 @@ jest.mock("../financeApi", () => ({
   listManagerClient360EmailTemplates: (...args) => mockListManagerClient360EmailTemplates(...args),
   listManagerClient360Documents: (...args) => mockListManagerClient360Documents(...args),
   listBillingRecipients: (...args) => mockListBillingRecipients(...args),
+  previewFinanceTransaction: (...args) => mockPreviewFinanceTransaction(...args),
   sendFinanceInvoiceEmail: (...args) => mockSendFinanceInvoiceEmail(...args),
   setManagerClient360EmailTemplateDefault: jest.fn(),
   setFinanceClientDefaultBillingRecipient: jest.fn(),
@@ -109,6 +111,7 @@ describe("FinanceInvoiceDetailDialog", () => {
     mockGetFinanceDocumentSettings.mockReset();
     mockListBillingRecipients.mockReset();
     mockGetFinanceInvoiceDeliveryCapabilities.mockReset();
+    mockPreviewFinanceTransaction.mockReset();
 
     mockGetFinanceInvoice.mockResolvedValue({ invoice: buildInvoice() });
     mockUpdateFinanceInvoice.mockResolvedValue({ invoice: buildInvoice() });
@@ -125,6 +128,35 @@ describe("FinanceInvoiceDetailDialog", () => {
         eligible: true,
         help_text: "Adds a secondary Google review button to this invoice email. It does not send a separate review email.",
       },
+    });
+    mockPreviewFinanceTransaction.mockResolvedValue({
+      currency: "CAD",
+      customer_view: {
+        subtotal: "2.00",
+        discount_total: "0.00",
+        tax_total: "0.00",
+        total: "2.00",
+        amount_paid: "0.00",
+        balance_due: "2.00",
+      },
+      tax: {
+        label: "Tax",
+        default_rate: "0",
+        prices_include_tax: false,
+        components: [],
+        jurisdiction: { country: "CA", region: "ON" },
+        source: "sales_tax_jurisdiction_catalog",
+      },
+      payment_link_preview: {
+        available: true,
+        stripe_currency: "cad",
+        amount_to_collect: "2.00",
+        amount_to_collect_cents: 200,
+        stripe_automatic_tax_applied: false,
+        message: "Schedulaa has already calculated tax. Stripe would collect the stored Finance total.",
+      },
+      line_items: [],
+      source: { type: "invoice", status: "pending" },
     });
   });
 
@@ -259,5 +291,16 @@ describe("FinanceInvoiceDetailDialog", () => {
 
     await waitFor(() => expect(reviewCheckbox).toBeDisabled());
     expect(screen.queryByText(/secondary Google review button/i)).not.toBeInTheDocument();
+  });
+
+  test("opens the invoice preview dialog", async () => {
+    render(<FinanceInvoiceDetailDialog open invoiceId={43} onClose={() => {}} onSaved={() => {}} />);
+
+    await screen.findByText("Finance Invoice Detail");
+    fireEvent.click(await screen.findByRole("button", { name: "Preview payment amount" }));
+
+    await waitFor(() => expect(mockPreviewFinanceTransaction).toHaveBeenCalledWith({ source_type: "invoice", source_id: 43 }));
+    expect(await screen.findByText("Preview customer total")).toBeInTheDocument();
+    expect(screen.getAllByText(/Stripe would collect/i).length).toBeGreaterThan(0);
   });
 });
