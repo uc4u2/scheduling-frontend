@@ -51,6 +51,7 @@ import CategoryAutocomplete from "../../../components/common/CategoryAutocomplet
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import TutorialHelpCard from "../../../components/tutorials/TutorialHelpCard";
 import { SERVICE_MANAGEMENT_TUTORIAL_GROUP } from "../../../tutorials/appTutorialCatalog";
+import BookingPaymentPreviewDialog, { buildBookingPreviewSummary } from "../../../components/booking/BookingPaymentPreviewDialog";
 
 const emptyForm = {
   name: "",
@@ -112,6 +113,11 @@ const ServiceManagement = ({ token }) => {
   const [packageHelpOpen, setPackageHelpOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [bookingPreview, setBookingPreview] = useState(null);
+  const [previewStale, setPreviewStale] = useState(false);
 
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -246,6 +252,51 @@ const ServiceManagement = ({ token }) => {
     setOpen(false);
     setEditing(null);
     setForm(emptyForm);
+    setPreviewOpen(false);
+    setPreviewError("");
+    setBookingPreview(null);
+    setPreviewStale(false);
+  };
+
+  useEffect(() => {
+    if (!open || !bookingPreview) return;
+    setPreviewStale(true);
+  }, [form, open, bookingPreview]);
+
+  const runPreview = async () => {
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const { data } = await api.post(
+        "/api/manager/booking-payment-preview",
+        {
+          source_type: "service_draft",
+          service: {
+            name: form.name,
+            base_price: form.base_price,
+          },
+        },
+        auth
+      );
+      setBookingPreview(data);
+      setPreviewStale(false);
+      setPreviewOpen(true);
+    } catch (err) {
+      setPreviewError(err?.response?.data?.error || "Unable to preview customer payment.");
+      setPreviewOpen(true);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleCopyPreview = async () => {
+    if (!bookingPreview) return;
+    try {
+      await navigator.clipboard.writeText(buildBookingPreviewSummary(bookingPreview));
+      setSnk({ open: true, key: "Booking payment preview copied." });
+    } catch {
+      setSnk({ open: true, key: "Unable to copy the booking payment preview." });
+    }
   };
 
   const handleDelete = async (id) => {
@@ -728,11 +779,30 @@ const ServiceManagement = ({ token }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>{t("manager.service.dialog.cancel")}</Button>
+          <Button variant="outlined" onClick={runPreview}>
+            Preview customer payment
+          </Button>
           <Button onClick={save} variant="contained">
             {editing ? t("manager.service.dialog.update") : t("manager.service.dialog.create")}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <BookingPaymentPreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        preview={bookingPreview}
+        loading={previewLoading}
+        error={previewError}
+        stale={previewStale}
+        staleMessage="The Service changed after this preview. Refresh to see current payment behavior."
+        onRefresh={runPreview}
+        onCopySummary={handleCopyPreview}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Preview the current unsaved Service price with your tenant’s current booking payment settings. The Service is not saved.
+        </Typography>
+      </BookingPaymentPreviewDialog>
 
       <Dialog open={packagesOpen} onClose={closePackages} maxWidth="md" fullWidth>
         <DialogTitle>

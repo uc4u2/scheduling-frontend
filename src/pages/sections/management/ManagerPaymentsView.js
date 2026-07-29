@@ -298,6 +298,7 @@ export default function ManagerPaymentsView({ connect }) {
   const [chargeOnboardingUrl, setChargeOnboardingUrl] = useState("");
   const [note, setNote] = useState("");
   const [charging, setCharging] = useState(false);
+  const [chargeReviewOpen, setChargeReviewOpen] = useState(false);
   const [chargeTxns, setChargeTxns] = useState([]);
   const [chargeSummary, setChargeSummary] = useState({
     capturedBalance: 0,
@@ -1048,6 +1049,7 @@ export default function ManagerPaymentsView({ connect }) {
     setChargeTip("");
     setChargeIntent("");
     setChargeOnboardingUrl("");
+    setChargeReviewOpen(false);
     setNote("");
     setChargeTxns([]);
     setChargeSummary({
@@ -2171,6 +2173,14 @@ export default function ManagerPaymentsView({ connect }) {
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                   Saved-card charges are amount-only. If tax applies, include it in the amount.
                 </Typography>
+                <Button
+                  size="small"
+                  variant="text"
+                  sx={{ mt: 1, alignSelf: "flex-start", textTransform: "none", fontWeight: 600 }}
+                  onClick={() => setChargeReviewOpen(true)}
+                >
+                  Review amount and tax handling
+                </Button>
               </>
             )}
           </DialogContent>
@@ -2190,6 +2200,47 @@ export default function ManagerPaymentsView({ connect }) {
             >
               {charging ? <CircularProgress size={20} /> : "Charge"}
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={chargeReviewOpen}
+          onClose={() => setChargeReviewOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Review amount and tax handling</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={1.5}>
+              <Alert severity="info">
+                Preview only — opening this review does not create a charge, save a card, or contact Stripe.
+              </Alert>
+              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography variant="body2">Entered charge amount</Typography>
+                <Typography variant="body2" fontWeight={700}>
+                  {money(Number(amount || 0), displayCurrency)}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography variant="body2">Currency</Typography>
+                <Typography variant="body2">{displayCurrency}</Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography variant="body2">Stripe Automatic Tax</Typography>
+                <Typography variant="body2">Not applied</Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Saved-card charges are amount-only. If tax applies, include it in the amount entered before charging the card.
+              </Typography>
+              {chargeBooking ? (
+                <Typography variant="body2" color="text.secondary">
+                  Current Service amount reference: {money(Number(chargeBooking.amount || 0), displayCurrency)}
+                </Typography>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setChargeReviewOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
 

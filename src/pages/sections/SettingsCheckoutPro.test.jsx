@@ -174,4 +174,110 @@ describe("SettingsCheckoutPro", () => {
 
     confirmSpy.mockRestore();
   });
+
+  test("opens booking payment preview from Checkout Pro with current mode and service pricing", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/admin/company-profile") {
+        return Promise.resolve({
+          data: {
+            slug: "tenant-preview",
+            enable_stripe_payments: true,
+            allow_card_on_file: true,
+            stripe_publishable_key: "pk_test_123",
+            booking_hold_minutes: 3,
+            prices_include_tax: false,
+            charge_currency_mode: "LOCALIZED",
+            tax_country_code: "QC",
+            tax_region_code: "",
+            display_currency: "CAD",
+            country_code: "CA",
+            currency_context: {
+              charge_currency_mode: "LOCALIZED",
+              business_selling_currency: "CAD",
+              currency_source: "tax_country",
+            },
+          },
+        });
+      }
+      if (url === "/booking/services?active=true") {
+        return Promise.resolve({
+          data: [{ id: 7, name: "Consultation", base_price: 100 }],
+        });
+      }
+      if (url === "/public/tenant-preview/service/7/addons") {
+        return Promise.resolve({
+          data: [{ id: 9, name: "Add-on", base_price: 20 }],
+        });
+      }
+      return Promise.reject(new Error(`Unhandled GET ${url}`));
+    });
+    mockApiPost.mockImplementation((url) => {
+      if (url === "/api/manager/booking-payment-preview") {
+        return Promise.resolve({
+          data: {
+            domain: "booking",
+            preview_only: true,
+            source: { type: "draft", id: null },
+            payment_mode: "pay_now",
+            currency: "CAD",
+            customer_view: {
+              service_subtotal: "120.00",
+              addons_total: "20.00",
+              discount_total: "0.00",
+              subtotal_before_tax: "120.00",
+              tax_amount: null,
+              tax_amount_status: "calculated_at_checkout",
+              amount_due_now: null,
+              amount_due_now_status: "provider_calculated",
+              amount_due_later: null,
+              total_expected: null,
+            },
+            payment: {
+              card_collected: true,
+              card_saved: false,
+              online_charge_created: true,
+              collection_timing: "during_checkout",
+              stripe_automatic_tax: true,
+            },
+            tax: {
+              handling_mode: "stripe_checkout_automatic_tax",
+              prices_include_tax: false,
+              exact_amount_available: false,
+              message: "Stripe Automatic Tax is enabled for this checkout flow.",
+            },
+            settings_source: {
+              payment_mode: "Checkout Pro & Payments",
+              currency: "Company currency settings",
+              tax: "Checkout Pro / Stripe checkout",
+            },
+            warnings: [],
+            line_items: [
+              { code: "service", label: "Consultation", amount: "100.00" },
+              { code: "addon:9", label: "Add-on", amount: "20.00" },
+            ],
+            side_effects: {
+              booking_created: false,
+              slot_reserved: false,
+              card_saved: false,
+              payment_created: false,
+              stripe_object_created: false,
+              email_sent: false,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderSettings();
+    await screen.findByText(/Current Product and Finance currency:/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /preview booking payment/i }));
+
+    expect(await screen.findByRole("heading", { name: /preview customer payment/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Current mode:/i)).toHaveTextContent("Pay during checkout");
+    expect(await screen.findByText(/Subtotal before tax/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Calculated by Stripe/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Preview only — no Booking/i)).toBeInTheDocument();
+  });
 });

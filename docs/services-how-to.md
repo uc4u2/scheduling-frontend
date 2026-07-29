@@ -24,6 +24,7 @@ Manager Portal → Services & Bookings → Services
 
 1. Open a service row.
 2. Update price, duration, or description.
+3. Use **Preview customer payment** to see how the current unsaved Service price behaves under the tenant’s current Checkout Pro payment mode.
 3. Toggle **Active** to archive/unarchive.
 4. Click **Save**.
 
@@ -33,3 +34,11 @@ Manager Portal → Services & Bookings → Services
 2. Assign eligible staff.
 3. Add required resources (rooms, chairs, equipment).
 4. Save changes.
+
+## Booking payment preview
+
+- The Service editor preview is read-only.
+- It uses the tenant’s current booking payment settings and business currency.
+- Offline and card-on-file previews do not calculate a new tax amount for you.
+- Pay-now preview shows the known subtotal and whether Stripe Automatic Tax is applied.
+- Changing the Service after preview marks the preview stale until you refresh it.

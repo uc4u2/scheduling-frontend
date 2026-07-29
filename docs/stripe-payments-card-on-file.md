@@ -43,7 +43,10 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - **Save Stripe Settings**: saves the checkout configuration.
 - **Open Tax Help**: opens the tax checklist.
 - **Open Stripe Dashboard**: opens your Stripe account for setup and reconciliation.
+- **Preview booking payment**: opens a read-only Manager preview of the current booking payment behavior for offline, card-on-file, or pay-now mode.
 
 ## Tips
 - If you use card on file, make sure staff know how to charge from Payments.
 - If prices include tax, Stripe backs tax out automatically at checkout.
+- Saved-card charges remain amount-only. Automatic tax is not added later when a Manager enters a saved-card charge amount.
+- Use **Review amount and tax handling** in the saved-card charge dialog to confirm the entered amount, currency, and manual-tax rule before charging.

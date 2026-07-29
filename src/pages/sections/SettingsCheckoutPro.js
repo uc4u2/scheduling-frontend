@@ -18,6 +18,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Checkbox,
+  ListItemText,
   Box,
   RadioGroup,
   FormLabel,
@@ -44,6 +46,7 @@ import TaxHelpGuide from "./TaxHelpGuide";
 import { useTranslation } from "react-i18next";
 import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
+import BookingPaymentPreviewDialog, { buildBookingPreviewSummary } from "../../components/booking/BookingPaymentPreviewDialog";
 
 const CANADA_PROVINCES = [
   "AB","BC","MB","NB","NL","NS","NT","NU","ON","PE","SK","YT",
@@ -129,7 +132,20 @@ export default function SettingsCheckoutPro() {
   const [displayCurrency, setDisplayCurrency] = useState("USD");
   const [logoUrl, setLogoUrl] = useState("");
   const [companyCountry, setCompanyCountry] = useState("");
+  const [companySlug, setCompanySlug] = useState("");
   const [savedBusinessCurrency, setSavedBusinessCurrency] = useState("USD");
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewServices, setPreviewServices] = useState([]);
+  const [previewServicesLoading, setPreviewServicesLoading] = useState(false);
+  const [previewServicesLoaded, setPreviewServicesLoaded] = useState(false);
+  const [previewServiceId, setPreviewServiceId] = useState("");
+  const [previewAddons, setPreviewAddons] = useState([]);
+  const [previewAddonIds, setPreviewAddonIds] = useState([]);
+  const [previewSampleAmount, setPreviewSampleAmount] = useState("100.00");
+  const [bookingPreview, setBookingPreview] = useState(null);
+  const [bookingPreviewLoading, setBookingPreviewLoading] = useState(false);
+  const [bookingPreviewError, setBookingPreviewError] = useState("");
+  const [bookingPreviewStale, setBookingPreviewStale] = useState(false);
 
   // 👇 Help drawer state
   const [guideOpen, setGuideOpen] = useState(false);
@@ -185,6 +201,7 @@ export default function SettingsCheckoutPro() {
         setDisplayCurrency(normalizedDisplay);
         setActiveCurrency(normalizedDisplay);
         setLogoUrl(data.logo_url || "");
+        setCompanySlug(data.slug || "");
         setCompanyCountry((data.country_code || "").toUpperCase());
         const resolvedCurrency =
           normalizeCurrency(
@@ -235,6 +252,82 @@ export default function SettingsCheckoutPro() {
     if (normalized) setActiveCurrency(normalized);
   }, [displayCurrency]);
 
+  useEffect(() => {
+    if (!previewDialogOpen || !bookingPreview) return;
+    setBookingPreviewStale(true);
+  }, [
+    previewServiceId,
+    previewAddonIds,
+    previewSampleAmount,
+    paymentMode,
+    pricesIncludeTax,
+    resolvedBusinessCurrency,
+    previewDialogOpen,
+  ]);
+
+  useEffect(() => {
+    if (!previewDialogOpen) return;
+    let ignore = false;
+    const loadServices = async () => {
+      setPreviewServicesLoading(true);
+      setPreviewServicesLoaded(false);
+      try {
+        const { data } = await api.get("/booking/services?active=true", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (ignore) return;
+        const rows = Array.isArray(data) ? data : [];
+        setPreviewServices(rows);
+        if (!previewServiceId && rows.length) {
+          setPreviewServiceId(String(rows[0].id));
+        }
+      } catch (error) {
+        if (!ignore) {
+          setPreviewServices([]);
+          setBookingPreviewError(error?.response?.data?.error || "Unable to load services for preview.");
+        }
+      } finally {
+        if (!ignore) {
+          setPreviewServicesLoading(false);
+          setPreviewServicesLoaded(true);
+        }
+      }
+    };
+    loadServices();
+    return () => {
+      ignore = true;
+    };
+  }, [previewDialogOpen, previewServiceId, token]);
+
+  useEffect(() => {
+    if (!previewDialogOpen || !companySlug || !previewServiceId) {
+      setPreviewAddons([]);
+      setPreviewAddonIds([]);
+      return;
+    }
+    let ignore = false;
+    const loadAddons = async () => {
+      try {
+        const { data } = await api.get(`/public/${companySlug}/service/${previewServiceId}/addons`);
+        if (ignore) return;
+        const rows = Array.isArray(data) ? data : [];
+        setPreviewAddons(rows);
+        setPreviewAddonIds((prev) =>
+          prev.filter((id) => rows.some((row) => String(row.id) === String(id)))
+        );
+      } catch {
+        if (!ignore) {
+          setPreviewAddons([]);
+          setPreviewAddonIds([]);
+        }
+      }
+    };
+    loadAddons();
+    return () => {
+      ignore = true;
+    };
+  }, [previewDialogOpen, companySlug, previewServiceId]);
+
   const taxRegionList = React.useMemo(() => {
     const code = (taxCountry || "").toUpperCase();
     if (code === "CA") return Array.from(new Set([...CANADA_PROVINCES, ...QUEBEC_ONLY]));
@@ -261,6 +354,7 @@ export default function SettingsCheckoutPro() {
     setDisplayCurrency(normalizedDisplay);
     setActiveCurrency(normalizedDisplay);
     setLogoUrl(data.logo_url || "");
+    setCompanySlug(data.slug || "");
     setCompanyCountry((data.country_code || "").toUpperCase());
     setBookingHoldMinutes(data.booking_hold_minutes ?? 3);
     const resolvedCurrency =
@@ -272,6 +366,66 @@ export default function SettingsCheckoutPro() {
       "USD";
     setSavedBusinessCurrency(resolvedCurrency);
   };
+
+  const runBookingPreview = async () => {
+    setBookingPreviewLoading(true);
+    setBookingPreviewError("");
+    try {
+      const payload = previewServiceId
+        ? {
+            source_type: "draft",
+            service_id: Number(previewServiceId),
+            addon_ids: previewAddonIds.map((id) => Number(id)),
+          }
+        : {
+            source_type: "draft",
+            sample_amount: Number(previewSampleAmount || 0),
+          };
+      const { data } = await api.post("/api/manager/booking-payment-preview", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookingPreview(data);
+      setBookingPreviewStale(false);
+    } catch (error) {
+      setBookingPreviewError(error?.response?.data?.error || "Unable to preview booking payment.");
+    } finally {
+      setBookingPreviewLoading(false);
+    }
+  };
+
+  const openBookingPreview = () => {
+    setPreviewDialogOpen(true);
+    setBookingPreview(null);
+    setBookingPreviewError("");
+    setBookingPreviewStale(false);
+  };
+
+  const handleCopyBookingPreview = async () => {
+    if (!bookingPreview) return;
+    try {
+      await navigator.clipboard.writeText(buildBookingPreviewSummary(bookingPreview));
+      setMsg("Booking payment preview copied.");
+      setMsgSeverity("success");
+    } catch {
+      setMsg("Unable to copy the booking preview.");
+      setMsgSeverity("error");
+    }
+  };
+
+  useEffect(() => {
+    if (!previewDialogOpen || bookingPreview || bookingPreviewLoading || previewServicesLoading || !previewServicesLoaded) return;
+    if (previewServiceId || previewServices.length === 0) {
+      runBookingPreview();
+    }
+  }, [
+    previewDialogOpen,
+    bookingPreview,
+    bookingPreviewLoading,
+    previewServicesLoading,
+    previewServicesLoaded,
+    previewServiceId,
+    previewServices.length,
+  ]);
 
   const onSave = async () => {
     const currentSavedCurrency = normalizeCurrency(savedBusinessCurrency) || "USD";
@@ -682,9 +836,12 @@ export default function SettingsCheckoutPro() {
             </Grid>
           </Grid>
 
-          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+          <Stack direction="row" spacing={2} sx={{ mt: 3, flexWrap: "wrap" }}>
             <Button variant="contained" disabled={disableSave} onClick={onSave}>
               {saving ? t("settings.common.saving") : t("settings.checkout.buttons.save")}
+            </Button>
+            <Button variant="outlined" onClick={openBookingPreview}>
+              Preview booking payment
             </Button>
             <Button variant="outlined" onClick={() => setGuideOpen(true)}>{t("settings.checkout.buttons.openTaxHelp")}</Button>
             <Button variant="text" onClick={openStripeDashboard}>{t("settings.checkout.buttons.openStripeDashboard")}</Button>
@@ -711,6 +868,97 @@ export default function SettingsCheckoutPro() {
           />
         </Box>
       </Drawer>
+
+      <BookingPaymentPreviewDialog
+        open={previewDialogOpen}
+        onClose={() => setPreviewDialogOpen(false)}
+        preview={bookingPreview}
+        loading={bookingPreviewLoading || previewServicesLoading}
+        error={bookingPreviewError}
+        stale={bookingPreviewStale}
+        onRefresh={runBookingPreview}
+        onCopySummary={handleCopyBookingPreview}
+      >
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            Preview the current booking payment behavior using a saved Service or a sample amount. This does not change Checkout Pro settings.
+          </Typography>
+          {previewServices.length ? (
+            <>
+              <FormControl fullWidth>
+                <InputLabel id="booking-preview-service-label">Select a Service</InputLabel>
+                <Select
+                  labelId="booking-preview-service-label"
+                  value={previewServiceId}
+                  label="Select a Service"
+                  onChange={(event) => {
+                    setPreviewServiceId(String(event.target.value || ""));
+                    setBookingPreviewStale(Boolean(bookingPreview));
+                  }}
+                >
+                  {previewServices.map((service) => (
+                    <MenuItem key={service.id} value={String(service.id)}>
+                      {service.name} — {resolvedBusinessCurrency} {Number(service.base_price || 0).toFixed(2)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {previewAddons.length ? (
+                <FormControl fullWidth>
+                  <InputLabel id="booking-preview-addon-label">Optional add-ons</InputLabel>
+                  <Select
+                    multiple
+                    labelId="booking-preview-addon-label"
+                    value={previewAddonIds}
+                    label="Optional add-ons"
+                    onChange={(event) => {
+                      setPreviewAddonIds(event.target.value);
+                      setBookingPreviewStale(Boolean(bookingPreview));
+                    }}
+                    renderValue={(selected) =>
+                      previewAddons
+                        .filter((addon) => selected.includes(String(addon.id)) || selected.includes(addon.id))
+                        .map((addon) => addon.name)
+                        .join(", ")
+                    }
+                  >
+                    {previewAddons.map((addon) => (
+                      <MenuItem key={addon.id} value={String(addon.id)}>
+                        <Checkbox checked={previewAddonIds.includes(String(addon.id)) || previewAddonIds.includes(addon.id)} />
+                        <ListItemText primary={`${addon.name} — ${Number(addon.base_price || 0).toFixed(2)}`} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : null}
+            </>
+          ) : (
+            <TextField
+              label="Sample Service price"
+              type="number"
+              value={previewSampleAmount}
+              onChange={(event) => {
+                setPreviewSampleAmount(event.target.value);
+                setBookingPreviewStale(Boolean(bookingPreview));
+              }}
+              inputProps={{ min: 0, step: "0.01" }}
+              fullWidth
+              helperText="This sample is not saved."
+            />
+          )}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <Typography variant="body2">
+              Current mode: <strong>{paymentMode === "pay_now" ? "Pay during checkout" : paymentMode === "card_on_file" ? "Card on file" : "Offline payment"}</strong>
+            </Typography>
+            <Typography variant="body2">
+              Currency: <strong>{resolvedBusinessCurrency}</strong>
+            </Typography>
+            <Typography variant="body2">
+              Prices include tax: <strong>{pricesIncludeTax ? "Yes" : "No"}</strong>
+            </Typography>
+          </Stack>
+        </Stack>
+      </BookingPaymentPreviewDialog>
     </>
   );
 }
