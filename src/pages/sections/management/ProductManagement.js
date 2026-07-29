@@ -688,6 +688,11 @@ const ProductManagement = ({ token }) => {
             <Button size="small" variant="text" onClick={() => openCopilot("test_shipping_setup", params.row.id)}>
               Test shipping
             </Button>
+            {!params.row.is_digital ? (
+              <Button size="small" variant="text" onClick={() => openCopilot("international_expansion_assistant", params.row.id)}>
+                Expand internationally
+              </Button>
+            ) : null}
             <Button size="small" variant="text" onClick={() => openCopilot("improve_product_content", params.row.id)}>
               Improve content
             </Button>
@@ -1733,6 +1738,11 @@ const ProductManagement = ({ token }) => {
           {editing?.id && !form.is_digital ? (
             <Button variant="outlined" onClick={() => openCopilot("test_shipping_setup", editing.id)}>
               Test this Product's shipping setup
+            </Button>
+          ) : null}
+          {editing?.id && !form.is_digital ? (
+            <Button variant="outlined" onClick={() => openCopilot("international_expansion_assistant", editing.id)}>
+              Review international selling
             </Button>
           ) : null}
           <Button variant="contained" onClick={persist}>

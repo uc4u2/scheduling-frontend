@@ -545,6 +545,16 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
             <Button
               size="small"
               variant="outlined"
+              onClick={() => {
+                setCopilotWorkflow("international_expansion_assistant");
+                setCopilotOpen(true);
+              }}
+            >
+              Review international readiness
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
               startIcon={<HelpOutlineIcon />}
               onClick={() => openHelp("schedulaa_setup")}
             >

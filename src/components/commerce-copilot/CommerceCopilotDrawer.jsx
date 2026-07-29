@@ -4,6 +4,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -55,9 +56,9 @@ const QUICK_STARTS = [
     description: "Review what is missing and prepare a safer product draft.",
   },
   {
-    workflow: "prepare_international_shipping",
-    title: "Prepare a product for international sales",
-    description: "Review customs and destination readiness without applying changes.",
+    workflow: "international_expansion_assistant",
+    title: "Expand a product internationally",
+    description: "Review common setup, selected destinations, and safe destination enablement.",
   },
   {
     workflow: "review_shipping_setup",
@@ -156,6 +157,12 @@ const buildShippingTestForm = (view, fallbackProductId = null) => {
     },
   };
 };
+
+const buildInternationalExpansionForm = (view, fallbackProductId = null) => ({
+  product_id: String(view?.draft?.product_id || view?.selected_product_id || fallbackProductId || ""),
+  destinations: Array.isArray(view?.draft?.destinations) ? view.draft.destinations : [],
+  enable_destinations: [],
+});
 
 const shippingTestStatusTone = (status) => {
   if (status === "passed") return "success";
@@ -964,7 +971,7 @@ const inferWorkflowFromText = (message, { targetProductId, targetProductOrderId 
   if (targetProductId && /\brepair\b|\bfix\b|\bmissing\b|\bready to ship\b/.test(text)) return "repair_product";
   if (/\btest shipping\b|\brate test\b|\bcarrier rate\b|\bshipping quote\b/.test(text)) return "test_shipping_setup";
   if (/\bshipping setup\b|\bdelivery setup\b|\beasypost\b|\bshipping policy\b/.test(text)) return "review_shipping_setup";
-  if (targetProductId && /\binternational\b|\bcustoms\b|\bworldwide\b|\bunited states\b|\boutside canada\b/.test(text)) return "prepare_international_shipping";
+  if (targetProductId && /\binternational\b|\bcustoms\b|\bworldwide\b|\bunited states\b|\boutside canada\b/.test(text)) return "international_expansion_assistant";
   if (/\bsell\b|\bproduct\b|\bship\b|\bcanada\b|\bunited states\b|\bprice\b/.test(text)) return "create_physical_product";
   return null;
 };
@@ -1009,18 +1016,22 @@ const CommerceCopilotDrawer = ({
   const [contentFieldEdits, setContentFieldEdits] = useState({});
   const [editingContentField, setEditingContentField] = useState(null);
   const [shippingTestForm, setShippingTestForm] = useState(buildShippingTestForm(null, targetProductId));
+  const [internationalExpansionForm, setInternationalExpansionForm] = useState(buildInternationalExpansionForm(null, targetProductId));
   const questionCardRef = useRef(null);
   const questionSeedRef = useRef({});
   const shippingTestSeedRef = useRef("");
+  const internationalExpansionSeedRef = useRef("");
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
   const plan = sessionData?.plan || null;
   const completion = sessionData?.completion || null;
   const shippingTest = sessionData?.shipping_test || null;
+  const internationalExpansion = sessionData?.international_expansion || null;
   const contentPack = draft?.draft_payload_json?.content_pack || null;
   const isContentWorkflow = session?.workflow === "improve_product_content";
   const isShippingTestWorkflow = session?.workflow === "test_shipping_setup";
+  const isInternationalExpansionWorkflow = session?.workflow === "international_expansion_assistant";
   const usageSummary = sessionData?.usage_summary || {};
   const messages = Array.isArray(sessionData?.messages) ? sessionData.messages : [];
   const availability = capabilities?.availability || {};
@@ -1063,8 +1074,8 @@ const CommerceCopilotDrawer = ({
     }, {});
   }, [sessionData?.facts]);
   const wizardStep = wizardStepForState({ currentQuestions, plan, execution, session });
-  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review" && !isContentWorkflow && !isShippingTestWorkflow;
-  const showPlanSection = Boolean(!isContentWorkflow && !isShippingTestWorkflow && !currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
+  const completionVisible = Boolean(completion?.product?.created) && session?.current_step !== "publish_review" && !isContentWorkflow && !isShippingTestWorkflow && !isInternationalExpansionWorkflow;
+  const showPlanSection = Boolean(!isContentWorkflow && !isShippingTestWorkflow && !isInternationalExpansionWorkflow && !currentQuestions.length && plan && (!completionVisible || session?.current_step === "publish_review"));
   const completionHeading = session?.current_step === "published"
     ? "Product is live"
     : completion?.available_actions?.prepare_publish
@@ -1133,6 +1144,23 @@ const CommerceCopilotDrawer = ({
     targetProductId,
   ]);
 
+  useEffect(() => {
+    if (!isInternationalExpansionWorkflow) return;
+    const signature = JSON.stringify({
+      session_public_id: session?.public_id || "",
+      selected_product_id: internationalExpansion?.selected_product_id || null,
+      draft: internationalExpansion?.draft || {},
+    });
+    if (internationalExpansionSeedRef.current === signature) return;
+    internationalExpansionSeedRef.current = signature;
+    setInternationalExpansionForm(buildInternationalExpansionForm(internationalExpansion, targetProductId));
+  }, [
+    isInternationalExpansionWorkflow,
+    session?.public_id,
+    internationalExpansion,
+    targetProductId,
+  ]);
+
   const resetState = useCallback(() => {
     setSessionData(null);
     setMessageText("");
@@ -1160,8 +1188,10 @@ const CommerceCopilotDrawer = ({
     setContentFieldEdits({});
     setEditingContentField(null);
     setShippingTestForm(buildShippingTestForm(null, targetProductId));
+    setInternationalExpansionForm(buildInternationalExpansionForm(null, targetProductId));
     questionSeedRef.current = {};
     shippingTestSeedRef.current = "";
+    internationalExpansionSeedRef.current = "";
   }, [targetProductId]);
 
   const loadCapabilities = useCallback(async () => {
@@ -1211,12 +1241,23 @@ const CommerceCopilotDrawer = ({
           mode: workflow === "explain_order" ? "guide" : "draft",
           target_product_id: effectiveProductId,
           target_product_order_id: effectiveProductOrderId,
+          initial_destination_country: options.initialDestinationCountry || null,
         },
         auth
       );
       setSessionData(data);
       setApproval(data?.approval || null);
       setExecution(data?.execution || null);
+      if (workflow === "test_shipping_setup" && options.initialDestinationCountry) {
+        setShippingTestForm({
+          ...buildShippingTestForm(data?.shipping_test, effectiveProductId),
+          destination: {
+            ...emptyShippingTestDestination(),
+            ...(data?.shipping_test?.draft?.saved_destination || {}),
+            country: options.initialDestinationCountry,
+          },
+        });
+      }
       return data;
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to start Commerce Copilot." });
@@ -1626,6 +1667,26 @@ const CommerceCopilotDrawer = ({
     () => (Array.isArray(shippingTest?.package_options) ? shippingTest.package_options : []),
     [shippingTest?.package_options]
   );
+  const internationalCountryOptions = useMemo(
+    () => (Array.isArray(internationalExpansion?.country_catalog) ? internationalExpansion.country_catalog : []),
+    [internationalExpansion?.country_catalog]
+  );
+  const internationalOriginCode = useMemo(
+    () => String(internationalExpansion?.result?.origin?.code || internationalExpansion?.product_summary?.origin_code || "").toUpperCase(),
+    [internationalExpansion?.product_summary?.origin_code, internationalExpansion?.result?.origin?.code]
+  );
+  const internationalEligibleEnablementRows = useMemo(() => {
+    const eligibleCodes = new Set(Array.isArray(internationalExpansion?.result?.eligible_destination_codes)
+      ? internationalExpansion.result.eligible_destination_codes
+      : []);
+    return (internationalExpansion?.result?.reviewed_destinations || []).filter(
+      (row) => row.status === "not_enabled" && eligibleCodes.has(row.code)
+    );
+  }, [internationalExpansion?.result?.eligible_destination_codes, internationalExpansion?.result?.reviewed_destinations]);
+  const selectedInternationalCountryOptions = useMemo(
+    () => internationalCountryOptions.filter((row) => (internationalExpansionForm.destinations || []).includes(row.code)),
+    [internationalCountryOptions, internationalExpansionForm.destinations]
+  );
   const selectedShippingTestProduct = useMemo(
     () => shippingTestProductOptions.find((row) => String(row.id) === String(shippingTestForm.product_id || "")) || null,
     [shippingTestForm.product_id, shippingTestProductOptions]
@@ -1649,6 +1710,7 @@ const CommerceCopilotDrawer = ({
       total_weight_display: `${totalWeight} g`,
     };
   }, [selectedShippingTestPackage, selectedShippingTestProduct, shippingTestQuantity]);
+  const internationalDestinationLimitReached = (internationalExpansionForm.destinations || []).length >= 10;
 
   const buildSelectedContentPayload = useCallback(() => {
     const productPayload = {};
@@ -1815,6 +1877,101 @@ const CommerceCopilotDrawer = ({
       return null;
     } finally {
       setBusy(false);
+    }
+  };
+
+  const requestInternationalReview = async () => {
+    if (!session?.public_id) return null;
+    setBusy(true);
+    try {
+      const { data } = await api.post(
+        `/inventory/commerce-copilot/sessions/${session.public_id}/review-international`,
+        {
+          product_id: Number(internationalExpansionForm.product_id || 0) || null,
+          destinations: internationalExpansionForm.destinations,
+        },
+        auth
+      );
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      setStatusMessage({ type: "success", text: "International expansion review is ready below." });
+      return data;
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to review international selling right now." });
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const continueInternationalSetup = async () => {
+    if (!session?.public_id) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/inventory/commerce-copilot/sessions/${session.public_id}/continue-international-setup`, {}, auth);
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      setStatusMessage({ type: "success", text: "Commerce Copilot refreshed the remaining international setup for this Product." });
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to continue this international setup." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const prepareDestinationEnablement = async () => {
+    if (!session?.public_id) return;
+    const selected = Array.isArray(internationalExpansionForm.enable_destinations)
+      ? internationalExpansionForm.enable_destinations
+      : [];
+    if (!selected.length) {
+      setStatusMessage({ type: "warning", text: "Select at least one eligible destination to prepare." });
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await api.post(
+        `/inventory/commerce-copilot/sessions/${session.public_id}/prepare-destination-enablement`,
+        { destinations: selected },
+        auth
+      );
+      setSessionData(data);
+      setApproval(data?.approval || null);
+      setExecution(data?.execution || null);
+      setStatusMessage({ type: "success", text: "Destination enablement review is ready. Approve the selected changes when you are ready." });
+    } catch (error) {
+      setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to prepare destination changes." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyInternationalSummary = async () => {
+    const payload = internationalExpansion?.result;
+    if (!payload) return;
+      const lines = [
+      `Product: ${payload?.product?.name || "Unknown"}`,
+      `Origin: ${payload?.origin?.label || "Not set"}`,
+      "",
+      "Common Product setup:",
+      ...((payload?.common_readiness?.items || []).map((item) => `- ${item.label}: ${item.message}`)),
+      "",
+      "Reviewed destinations:",
+      ...((payload?.reviewed_destinations || []).flatMap((row) => [
+        `- ${row.label}: ${row.manager_label}`,
+        ...(row?.shipping_test?.status ? [`  - Shipping test: ${humanizeStatus(row.shipping_test.status, "status")}${row.shipping_test.safe_summary ? ` — ${row.shipping_test.safe_summary}` : ""}`] : []),
+        ...(row?.items || []).map((item) => `  - ${item.label}: ${item.message}`),
+      ])),
+      "",
+      payload?.disclaimer || "",
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setStatusMessage({ type: "success", text: "International readiness summary copied." });
+    } catch (error) {
+      setStatusMessage({ type: "error", text: "Unable to copy the international readiness summary." });
     }
   };
 
@@ -2827,6 +2984,15 @@ const CommerceCopilotDrawer = ({
                           Test shipping setup
                         </Button>
                       ) : null}
+                      {!completion?.product?.is_digital ? (
+                        <Button
+                          variant="outlined"
+                          onClick={() => createSession("international_expansion_assistant", { productId: completion?.product?.product_id })}
+                          disabled={busy || !completion?.product?.product_id}
+                        >
+                          Expand internationally
+                        </Button>
+                      ) : null}
                       <Button variant="outlined" onClick={() => startContentWorkflow(completion?.product?.product_id)} disabled={busy || !completion?.product?.product_id}>
                         Improve storefront content
                       </Button>
@@ -2880,6 +3046,264 @@ const CommerceCopilotDrawer = ({
                           </Stack>
                         </AccordionDetails>
                       </Accordion>
+                    ) : null}
+                  </Stack>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {isInternationalExpansionWorkflow ? (
+              <Card variant="outlined">
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>International expansion review</Typography>
+                    <Alert severity="info">
+                      Configuration ready means Product and Schedulaa settings are complete under the current supported checks. Carrier rates, Customs acceptance, and legal eligibility are not guaranteed.
+                    </Alert>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Step 1 of 4 - Product</Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Product"
+                        value={internationalExpansionForm.product_id}
+                        onChange={(event) => setInternationalExpansionForm((prev) => ({ ...prev, product_id: event.target.value }))}
+                        SelectProps={{ MenuProps: DRAWER_MENU_PROPS }}
+                      >
+                        <MenuItem value="">Choose a Product</MenuItem>
+                        {(internationalExpansion?.product_options || []).map((product) => (
+                          <MenuItem key={product.id} value={String(product.id)}>
+                            {product.name} {product.sku ? `(${product.sku})` : ""}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Step 2 of 4 - Destinations</Typography>
+                      <Autocomplete
+                        multiple
+                        disablePortal
+                        options={internationalCountryOptions}
+                        value={selectedInternationalCountryOptions}
+                        filterSelectedOptions
+                        getOptionDisabled={(option) => option.code === internationalOriginCode || !(internationalExpansionForm.destinations || []).includes(option.code) && internationalDestinationLimitReached}
+                        isOptionEqualToValue={(option, value) => option.code === value.code}
+                        getOptionLabel={(option) => `${option.label} (${option.code})`}
+                        onChange={(_, value) => {
+                          const next = value
+                            .map((row) => row.code)
+                            .filter((code, index, array) => array.indexOf(code) === index)
+                            .slice(0, 10);
+                          setInternationalExpansionForm((prev) => ({
+                            ...prev,
+                            destinations: next,
+                            enable_destinations: (prev.enable_destinations || []).filter((code) => next.includes(code)),
+                          }));
+                        }}
+                        filterOptions={(options, state) => {
+                          const term = String(state.inputValue || "").trim().toLowerCase();
+                          return options.filter((option) => {
+                            const haystack = `${option.label} ${option.code}`.toLowerCase();
+                            return haystack.includes(term);
+                          });
+                        }}
+                        renderTags={(value, getTagProps) => value.map((option, index) => (
+                          <Chip
+                            {...getTagProps({ index })}
+                            key={option.code}
+                            size="small"
+                            label={option.label}
+                          />
+                        ))}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            fullWidth
+                            label="Destinations to review"
+                            placeholder="Search by country or code"
+                            helperText={
+                              internationalDestinationLimitReached
+                                ? "Review up to 10 countries at a time."
+                                : internationalOriginCode
+                                  ? `${internationalExpansion?.result?.origin?.label || "Your domestic origin country"} is excluded from the international review list.`
+                                  : "Search by country name or two-letter code."
+                            }
+                          />
+                        )}
+                        slotProps={{
+                          paper: {
+                            sx: { zIndex: COPILOT_OVERLAY_Z_INDEX },
+                          },
+                        }}
+                      />
+                      <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
+                        {(internationalExpansion?.recommended_destinations || []).map((group) => (
+                          <Button
+                            key={group.label}
+                            size="small"
+                            variant="text"
+                            onClick={() => setInternationalExpansionForm((prev) => ({
+                              ...prev,
+                              destinations: Array.from(new Set([...(prev.destinations || []), ...((group.codes || []).filter((code) => code !== internationalOriginCode))])).slice(0, 10),
+                              enable_destinations: (prev.enable_destinations || []).filter((code) => Array.from(new Set([...(prev.destinations || []), ...((group.codes || []).filter((nextCode) => nextCode !== internationalOriginCode))])).slice(0, 10).includes(code)),
+                            }))}
+                          >
+                            {group.label}
+                          </Button>
+                        ))}
+                      </Stack>
+                    </Box>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button variant="contained" onClick={requestInternationalReview} disabled={busy || !internationalExpansionForm.product_id || !(internationalExpansionForm.destinations || []).length}>
+                        Review selected countries
+                      </Button>
+                      {internationalExpansion?.links?.product ? (
+                        <Button variant="outlined" component="a" href={internationalExpansion.links.product}>
+                          Open Product
+                        </Button>
+                      ) : null}
+                      {internationalExpansion?.links?.delivery_setup ? (
+                        <Button variant="outlined" component="a" href={internationalExpansion.links.delivery_setup}>
+                          Open Delivery Setup
+                        </Button>
+                      ) : null}
+                    </Stack>
+                    {internationalExpansion?.result_stale ? (
+                      <Alert severity="warning">{internationalExpansion?.stale_message}</Alert>
+                    ) : null}
+                    {internationalExpansion?.result ? (
+                      <Stack spacing={2}>
+                        {internationalExpansion.result.product?.is_digital ? (
+                          <Alert severity="info">
+                            This is a Digital Product. International parcel shipping and Customs do not apply.
+                          </Alert>
+                        ) : null}
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Step 3 of 4 - Review</Typography>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Stack spacing={1}>
+                                <Typography variant="body2" sx={{ fontWeight: 700 }}>Common Product setup</Typography>
+                                {(internationalExpansion.result.common_readiness?.items || []).map((item) => (
+                                  <Alert key={item.code} severity={item.status === "ready" ? "success" : item.status === "blocked" ? "warning" : "info"} sx={{ py: 0 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                                  </Alert>
+                                ))}
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        </Box>
+                        {["ready_now", "needs_setup", "not_enabled", "blocked", "not_applicable"].map((groupStatus) => {
+                          const rows = (internationalExpansion.result.reviewed_destinations || []).filter((row) => row.status === groupStatus);
+                          if (!rows.length) return null;
+                          const title = {
+                            ready_now: "Configuration ready",
+                            needs_setup: "Needs setup",
+                            not_enabled: "Not enabled",
+                            blocked: "Blocked",
+                            not_applicable: "Not applicable",
+                          }[groupStatus];
+                          return (
+                            <Box key={groupStatus}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>{title}</Typography>
+                              <Stack spacing={1}>
+                                {rows.map((row) => (
+                                  <Card key={row.code} variant="outlined">
+                                    <CardContent>
+                                      <Stack spacing={0.75}>
+                                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.label}</Typography>
+                                        <Typography variant="caption" color="text.secondary">{row.summary}</Typography>
+                                        <Alert severity={row.shipping_test?.status === "passed" ? "success" : row.shipping_test?.status === "not_tested" ? "info" : "warning"} sx={{ py: 0 }}>
+                                          Carrier test: {row.shipping_test?.status === "passed" ? "Passed" : row.shipping_test?.status === "failed" ? "Failed" : row.shipping_test?.status === "stale" ? "Stale" : "Not tested"}
+                                          {row.shipping_test?.safe_summary ? ` — ${row.shipping_test.safe_summary}` : ""}
+                                          {row.shipping_test?.last_tested_at ? ` · Last tested ${new Date(row.shipping_test.last_tested_at).toLocaleDateString()}` : ""}
+                                        </Alert>
+                                        {(row.items || []).map((item) => (
+                                          <Typography key={`${row.code}-${item.code}`} variant="body2">
+                                            <strong>{item.label}:</strong> {item.message}
+                                          </Typography>
+                                        ))}
+                                        {groupStatus === "ready_now" ? (
+                                          <Button
+                                            size="small"
+                                            variant="text"
+                                            onClick={() => createSession("test_shipping_setup", { productId: Number(internationalExpansionForm.product_id || 0), initialDestinationCountry: row.code })}
+                                            disabled={busy}
+                                          >
+                                            Test shipping to this country
+                                          </Button>
+                                        ) : null}
+                                      </Stack>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </Stack>
+                            </Box>
+                          );
+                        })}
+                        {internationalExpansion?.result?.buyer_notice_preview?.display_lines?.length ? (
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Stack spacing={0.75}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>What your international customer will see</Typography>
+                                <Typography variant="body2">Shipping: Calculated at checkout</Typography>
+                                <Typography variant="body2">Import duties and taxes: Not included</Typography>
+                                {(internationalExpansion.result.buyer_notice_preview.display_lines || []).map((line) => (
+                                  <Typography key={line} variant="caption" color="text.secondary">{line}</Typography>
+                                ))}
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        ) : null}
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Step 4 of 4 - Next actions</Typography>
+                          {internationalEligibleEnablementRows.length ? (
+                            <Card variant="outlined" sx={{ mb: 1.5 }}>
+                              <CardContent>
+                                <Stack spacing={1}>
+                                  <Typography variant="body2" sx={{ fontWeight: 700 }}>Destinations eligible to enable</Typography>
+                                  {internationalEligibleEnablementRows.map((row) => (
+                                    <FormControlLabel
+                                      key={row.code}
+                                      control={(
+                                        <Checkbox
+                                          checked={(internationalExpansionForm.enable_destinations || []).includes(row.code)}
+                                          onChange={(event) => setInternationalExpansionForm((prev) => ({
+                                            ...prev,
+                                            enable_destinations: event.target.checked
+                                              ? [...new Set([...(prev.enable_destinations || []), row.code])]
+                                              : (prev.enable_destinations || []).filter((code) => code !== row.code),
+                                          }))}
+                                          disabled={busy || internationalExpansion?.result_stale}
+                                        />
+                                      )}
+                                      label={row.label}
+                                    />
+                                  ))}
+                                  {internationalExpansion?.result_stale ? (
+                                    <Typography variant="caption" color="text.secondary">Refresh this review before preparing destination changes.</Typography>
+                                  ) : null}
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          ) : null}
+                          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap">
+                            <Button variant="contained" onClick={continueInternationalSetup} disabled={busy || !internationalExpansion.result.available_actions?.help_finish_setup}>
+                              Help me finish international setup
+                            </Button>
+                            <Button variant="outlined" onClick={prepareDestinationEnablement} disabled={busy || internationalExpansion?.result_stale || !internationalExpansion.result.available_actions?.prepare_destination_enablement || !(internationalExpansionForm.enable_destinations || []).length}>
+                              Prepare selected destination changes
+                            </Button>
+                            <Button variant="outlined" onClick={copyInternationalSummary} disabled={busy || !internationalExpansion.result.available_actions?.copy_summary}>
+                              Copy review summary
+                            </Button>
+                            <Button variant="text" onClick={requestInternationalReview} disabled={busy}>
+                              {internationalExpansion?.result_stale ? "Refresh review" : "Review another country"}
+                            </Button>
+                          </Stack>
+                        </Box>
+                      </Stack>
                     ) : null}
                   </Stack>
                 </CardContent>

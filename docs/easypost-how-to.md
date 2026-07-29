@@ -285,7 +285,7 @@ Controls appear in order detail, and only for eligible delivery method/orders.
 - Generic fallback parcel dimensions are no longer used for new live shipping requests.
 # EasyPost / Shipping Setup How-To
 
-Updated: 2026-07-27
+Updated: 2026-07-29
 
 ## Commerce Copilot Phase 1
 
@@ -293,6 +293,8 @@ Managers may now open Commerce Copilot from Delivery Setup and Product screens t
 - review shipping readiness
 - prepare an international setup draft
 - explain what is missing
+- run a rates-only shipping setup test
+- review selected international destinations and prepare narrow destination-enable changes
 
 Phase 1 does not apply shipping changes automatically.
 

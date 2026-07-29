@@ -92,3 +92,21 @@ Create a new package when:
 Important current behavior:
 - Package Profiles are workspace-level defaults, not Product-specific package attachments
 - if Copilot recommends a non-default saved package, changing it to the workspace default may affect future shipping quotes for other Products
+
+## International expansion review
+
+Commerce Copilot can now review a physical Product for selected foreign destinations before you enable those destinations.
+
+The review shows:
+- common Product-level blockers once
+- destination-specific blockers separately
+- `Configuration ready`, `Needs setup`, `Not enabled`, `Blocked`, or `Not applicable`
+
+`Configuration ready` means the Product and Schedulaa settings pass the current supported checks. It does not guarantee carrier rates, legal eligibility, or Customs acceptance.
+
+From the review you can:
+- open the Product
+- open Delivery Setup
+- help finish only unresolved international facts
+- test shipping to a selected country
+- prepare selected destination changes for approval

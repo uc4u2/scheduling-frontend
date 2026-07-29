@@ -127,6 +127,19 @@ describe("EasyPostShippingSettingsPanel", () => {
     );
   });
 
+  test("opens Commerce Copilot in international-review mode from Delivery Setup", async () => {
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+    await userEvent.click(await screen.findByRole("button", { name: /review international readiness/i }));
+
+    expect(await screen.findByTestId("commerce-copilot-drawer")).toBeInTheDocument();
+    expect(mockCopilotDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        initialWorkflow: "international_expansion_assistant",
+      })
+    );
+  });
+
   test("shows the default Schedulaa setup tab with a neutral shipping example", async () => {
     render(<EasyPostShippingSettingsPanel token="test-token" compact />);
 

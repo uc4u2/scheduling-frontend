@@ -263,6 +263,100 @@ const currencyQuestionSession = {
   usage_summary: { requests: 1, draft_generations: 1, plan_generations: 0, estimated_total_cost_micros: 1000 },
 };
 
+const internationalExpansionSession = {
+  session: { public_id: "intl_1", workflow: "international_expansion_assistant", status: "awaiting_manager", current_step: "international_review_results", context_summary_json: { progress_percent: 100 } },
+  messages: [],
+  facts: [],
+  draft: null,
+  plan: null,
+  approval: null,
+  execution: null,
+  usage_summary: { requests: 0 },
+  international_expansion: {
+    enabled: true,
+    selected_product_id: 60,
+    draft: { product_id: 60, destinations: ["US", "GB", "QA"] },
+    product_options: [
+      { id: 60, name: "Travel Mug", sku: "MUG-60", is_digital: false, allow_international_shipping: true, shipping_weight_grams: 250 },
+    ],
+    country_catalog: [
+      { code: "US", label: "United States" },
+      { code: "GB", label: "United Kingdom" },
+      { code: "QA", label: "Qatar" },
+    ],
+    recommended_destinations: [
+      { label: "United States", codes: ["US"] },
+      { label: "United Kingdom", codes: ["GB"] },
+      { label: "Australia", codes: ["AU"] },
+      { label: "European destinations", codes: ["DE", "FR"] },
+    ],
+    links: {
+      delivery_setup: "/manager/advanced-management?panel=easypost-shipping",
+      product: "/manager/advanced-management?panel=products&editProductId=60",
+    },
+    result_stale: false,
+    stale_message: "",
+    result: {
+      product: { id: 60, name: "Travel Mug", is_digital: false, allow_international_shipping: true },
+      origin: { code: "CA", label: "Canada" },
+      common_readiness: {
+        status: "needs_setup",
+        items: [
+          { code: "product_weight", label: "Product weight", status: "ready", message: "Product weight is present." },
+          { code: "country_of_origin", label: "Country of origin", status: "missing", message: "Enter where the Product was manufactured or assembled." },
+        ],
+      },
+      reviewed_destinations: [
+        {
+          code: "US",
+          label: "United States",
+          status: "ready_now",
+          manager_label: "Configuration ready",
+          summary: "Your current Product and shipping settings are configured for this destination.",
+          shipping_test: { status: "passed", safe_summary: "3 services returned" },
+          items: [],
+        },
+        {
+          code: "GB",
+          label: "United Kingdom",
+          status: "not_enabled",
+          manager_label: "Not enabled",
+          summary: "United Kingdom is not included in your current destination policy.",
+          shipping_test: { status: "not_tested", safe_summary: null },
+          items: [
+            { code: "destination_policy", label: "Destination country", message: "Add United Kingdom in Delivery Setup before offering shipping there." },
+          ],
+        },
+        {
+          code: "QA",
+          label: "Qatar",
+          status: "not_enabled",
+          manager_label: "Not enabled",
+          summary: "Qatar is not included in your current destination policy.",
+          shipping_test: { status: "not_tested", safe_summary: null },
+          items: [
+            { code: "destination_policy", label: "Destination country", message: "Add Qatar in Delivery Setup before offering shipping there." },
+          ],
+        },
+      ],
+      available_actions: {
+        help_finish_setup: true,
+        open_product: true,
+        open_delivery_setup: true,
+        test_selected_destination: true,
+        prepare_destination_enablement: false,
+        copy_summary: true,
+      },
+      buyer_notice_preview: {
+        display_lines: [
+          "The carrier or customs authority may collect import duties, taxes, brokerage charges, or other fees separately before or at delivery.",
+        ],
+      },
+      disclaimer: "Configuration ready means Product and Schedulaa settings are complete under the current supported checks. Carrier rates, Customs acceptance, and legal eligibility are not guaranteed.",
+    },
+  },
+};
+
 describe("CommerceCopilotDrawer", () => {
   let consoleErrorSpy;
 
@@ -480,6 +574,145 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.getByLabelText(/region \/ state \/ province/i)).toHaveValue("BC");
     expect(screen.getByLabelText(/postal \/ zip code/i)).toHaveValue("V6Z 1S4");
     expect(screen.queryByText(/this question arrived without choices/i)).not.toBeInTheDocument();
+  });
+
+  test("renders the international expansion review with grouped country results", async () => {
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: internationalExpansionSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "international_expansion_assistant", targetProductId: 60 });
+
+    expect(await screen.findByText(/international expansion review/i)).toBeInTheDocument();
+    expect(screen.getByText(/common product setup/i)).toBeInTheDocument();
+    expect(screen.getByText(/country of origin/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /configuration ready/i })).toBeInTheDocument();
+    expect(screen.getByText(/not enabled/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/qatar/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/what your international customer will see/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/not included/i).length).toBeGreaterThan(0);
+  });
+
+  test("uses a searchable country selector and prepares only explicitly selected destinations", async () => {
+    const enablementSession = {
+      ...internationalExpansionSession,
+      international_expansion: {
+        ...internationalExpansionSession.international_expansion,
+        result: {
+          ...internationalExpansionSession.international_expansion.result,
+          common_readiness: {
+            status: "ready",
+            items: [
+              { code: "product_weight", label: "Product weight", status: "ready", message: "Product weight is present." },
+            ],
+          },
+          eligible_destination_codes: ["GB", "QA"],
+          available_actions: {
+            ...internationalExpansionSession.international_expansion.result.available_actions,
+            prepare_destination_enablement: true,
+          },
+        },
+      },
+    };
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: enablementSession });
+      }
+      if (String(url) === "/inventory/commerce-copilot/sessions/intl_1/prepare-destination-enablement") {
+        expect(body.destinations).toEqual(["QA"]);
+        return Promise.resolve({ data: enablementSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "international_expansion_assistant", targetProductId: 60 });
+
+    expect(await screen.findByText(/international expansion review/i)).toBeInTheDocument();
+    const destinationSearch = screen.getByLabelText(/destinations to review/i);
+    expect(destinationSearch).toHaveAttribute("role", "combobox");
+    expect(screen.getAllByText(/qatar/i).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("checkbox", { name: /qatar/i }));
+    await userEvent.click(screen.getByRole("button", { name: /prepare selected destination changes/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions/intl_1/prepare-destination-enablement",
+      { destinations: ["QA"] },
+      expect.any(Object)
+    ));
+  });
+
+  test("shows a digital-product international message instead of parcel customs guidance", async () => {
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({
+          data: {
+            ...internationalExpansionSession,
+            international_expansion: {
+              ...internationalExpansionSession.international_expansion,
+              result: {
+                ...internationalExpansionSession.international_expansion.result,
+                product: {
+                  ...internationalExpansionSession.international_expansion.result.product,
+                  is_digital: true,
+                },
+              },
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "international_expansion_assistant", targetProductId: 60 });
+    expect(await screen.findByText(/this is a digital product\. international parcel shipping and customs do not apply\./i)).toBeInTheDocument();
+  });
+
+  test("starts the shipping-test workflow prefilled for the selected international country", async () => {
+    mockApiPost.mockImplementation((url, body) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        if (body.workflow === "international_expansion_assistant") {
+          return Promise.resolve({ data: internationalExpansionSession });
+        }
+        if (body.workflow === "test_shipping_setup") {
+          expect(body.initial_destination_country).toBe("US");
+          expect(body.target_product_id).toBe(60);
+          return Promise.resolve({
+            data: {
+              ...shippingTestSession,
+              shipping_test: {
+                ...shippingTestSession.shipping_test,
+                draft: {
+                  ...shippingTestSession.shipping_test.draft,
+                  saved_destination: {
+                    ...shippingTestSession.shipping_test.draft.saved_destination,
+                    country: "US",
+                  },
+                },
+              },
+            },
+          });
+        }
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "international_expansion_assistant", targetProductId: 60 });
+
+    await screen.findByText(/international expansion review/i);
+    await userEvent.click(screen.getByRole("button", { name: /test shipping to this country/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions",
+      expect.objectContaining({
+        workflow: "test_shipping_setup",
+        target_product_id: 60,
+        initial_destination_country: "US",
+      }),
+      expect.any(Object)
+    ));
   });
 
   test("renders structured guided questions and submits structured answers", async () => {
@@ -1467,6 +1700,7 @@ describe("CommerceCopilotDrawer", () => {
   test("uses the structured package editor in draft preview instead of a generic text field", async () => {
     const packageDraftSession = {
       ...guidedSession,
+      messages: [],
       facts: [
         { fact_key: "package_profile_name", normalized_value_json: "Gold Necklace Shipping Box" },
         { fact_key: "package_length_mm", normalized_value_json: 100 },
@@ -1512,7 +1746,6 @@ describe("CommerceCopilotDrawer", () => {
 
     renderDrawer();
     await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    await userEvent.click(await screen.findByRole("button", { name: /view current draft details/i }));
     await userEvent.click(await screen.findByRole("button", { name: /edit package/i }));
     expect(screen.getByLabelText(/package name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^package width$/i)).toBeInTheDocument();

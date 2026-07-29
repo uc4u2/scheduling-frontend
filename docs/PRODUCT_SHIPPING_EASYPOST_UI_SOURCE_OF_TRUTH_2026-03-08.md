@@ -7,6 +7,13 @@ Scope: manager product workspace, delivery setup, order actions, checkout/client
 
 As of Monday, July 27, 2026, the manager UI includes Schedulaa Commerce Copilot entry points, safe-write approval flow, and free-launch or paid-add-on billing states.
 
+As of Wednesday, July 29, 2026, the manager UI also includes:
+- Release D shipping-test workflow entry points
+- Release E international expansion review entry points
+- searchable country selection in the Commerce Copilot drawer
+- explicit selected-country destination enablement review
+- international buyer-notice preview inside the review step
+
 Entry points:
 - `ProductManagement.js`
   - `Create with AI`
