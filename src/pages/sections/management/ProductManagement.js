@@ -31,6 +31,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  Menu,
   Tab,
   Tabs,
 } from "@mui/material";
@@ -47,6 +48,7 @@ import {
   InfoOutlined,
   History,
   ExpandMore,
+  MoreHoriz,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
@@ -175,6 +177,91 @@ const sectionFocusSx = (active) => ({
   transition: "background-color 0.25s ease, outline-color 0.25s ease",
   scrollMarginTop: 96,
 });
+
+const ProductRowActions = ({
+  row,
+  handleOpen,
+  openCopilot,
+  openImages,
+  setMovementTarget,
+  setMovementOpen,
+  handleDelete,
+}) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const openMenu = useCallback((event) => {
+    setAnchorEl(event.currentTarget);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setAnchorEl(null);
+  }, []);
+
+  const runMenuAction = useCallback((callback) => {
+    closeMenu();
+    callback();
+  }, [closeMenu]);
+
+  return (
+    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ width: "100%", minWidth: 0 }}>
+      <IconButton size="small" aria-label={`Edit ${row.name}`} onClick={() => handleOpen(row)}>
+        <Edit fontSize="small" />
+      </IconButton>
+      <Button
+        size="small"
+        variant="text"
+        onClick={() => openCopilot("repair_product", row.id)}
+        sx={{ whiteSpace: "nowrap", minWidth: 0 }}
+      >
+        Fix with AI
+      </Button>
+      <IconButton
+        size="small"
+        aria-label={`More actions for ${row.name}`}
+        onClick={openMenu}
+      >
+        <MoreHoriz fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={menuOpen}
+        onClose={closeMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {!row.is_digital ? (
+          <MenuItem onClick={() => runMenuAction(() => openCopilot("test_shipping_setup", row.id))}>
+            Test shipping setup
+          </MenuItem>
+        ) : null}
+        {!row.is_digital ? (
+          <MenuItem onClick={() => runMenuAction(() => openCopilot("international_expansion_assistant", row.id))}>
+            Expand internationally
+          </MenuItem>
+        ) : null}
+        <MenuItem onClick={() => runMenuAction(() => openCopilot("improve_product_content", row.id))}>
+          Improve content
+        </MenuItem>
+        <MenuItem onClick={() => runMenuAction(() => openImages(row))}>
+          Manage images
+        </MenuItem>
+        <MenuItem onClick={() => runMenuAction(() => {
+          setMovementTarget(row);
+          setMovementOpen(true);
+        })}>
+          Stock history
+        </MenuItem>
+        <MenuItem
+          onClick={() => runMenuAction(() => handleDelete(row.id))}
+          sx={{ color: "error.main" }}
+        >
+          Delete
+        </MenuItem>
+      </Menu>
+    </Stack>
+  );
+};
 
 const ProductManagement = ({ token }) => {
   const { t } = useTranslation();
@@ -709,45 +796,20 @@ const ProductManagement = ({ token }) => {
       {
         field: "actions",
         headerName: t("manager.product.columns.actions"),
-        width: 220,
+        width: 190,
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
         renderCell: (params) => (
-          <Stack direction="row" spacing={1}>
-            <IconButton onClick={() => handleOpen(params.row)}>
-              <Edit />
-            </IconButton>
-            <Button size="small" variant="text" onClick={() => openCopilot("repair_product", params.row.id)}>
-              Fix with AI
-            </Button>
-            <Button size="small" variant="text" onClick={() => openCopilot("test_shipping_setup", params.row.id)}>
-              Test shipping
-            </Button>
-            {!params.row.is_digital ? (
-              <Button size="small" variant="text" onClick={() => openCopilot("international_expansion_assistant", params.row.id)}>
-                Expand internationally
-              </Button>
-            ) : null}
-            <Button size="small" variant="text" onClick={() => openCopilot("improve_product_content", params.row.id)}>
-              Improve content
-            </Button>
-            <IconButton
-              color={params.row.is_active ? "primary" : "default"}
-              onClick={() => openImages(params.row)}
-            >
-              <PhotoCamera />
-            </IconButton>
-            <IconButton onClick={() => {
-              setMovementTarget(params.row);
-              setMovementOpen(true);
-            }}>
-              <History />
-            </IconButton>
-            <IconButton color="error" onClick={() => handleDelete(params.row.id)}>
-              <Delete />
-            </IconButton>
-          </Stack>
+          <ProductRowActions
+            row={params.row}
+            handleOpen={handleOpen}
+            openCopilot={openCopilot}
+            openImages={openImages}
+            setMovementTarget={setMovementTarget}
+            setMovementOpen={setMovementOpen}
+            handleDelete={handleDelete}
+          />
         ),
       },
     ],
