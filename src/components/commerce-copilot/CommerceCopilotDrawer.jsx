@@ -1564,6 +1564,15 @@ const CommerceCopilotDrawer = ({
   const progressNeedsConfirmation = Array.isArray(draft?.validation_results_json?.needs_confirmation)
     ? draft.validation_results_json.needs_confirmation
     : [];
+  const packageReuseDecision = draft?.validation_results_json?.package_reuse?.reuse_decision || null;
+  const showNoMatchPackageInfo = Boolean(
+    !currentQuestions.some((question) => String(question?.fact_key || "") === "package_reuse_choice")
+    && packageReuseDecision?.status === "no_match"
+    && sessionFacts.package_length_mm
+    && sessionFacts.package_width_mm
+    && sessionFacts.package_height_mm
+    && sessionFacts.package_tare_weight_grams
+  );
 
   useEffect(() => {
     if (!planActions.length) {
@@ -2581,6 +2590,11 @@ const CommerceCopilotDrawer = ({
                           Answer these and Commerce Copilot will continue the draft.
                         </Typography>
                       </Box>
+                      {showNoMatchPackageInfo ? (
+                        <Alert severity="info" sx={{ py: 0 }}>
+                          No saved package matches these confirmed dimensions and empty-package weight. A new Package Profile will be created.
+                        </Alert>
+                      ) : null}
                       {currentQuestions.map((question) => (
                         <Stack key={question.question_id} spacing={0.75}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{question.plain_language_question}</Typography>

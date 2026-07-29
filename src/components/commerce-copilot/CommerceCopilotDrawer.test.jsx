@@ -886,7 +886,12 @@ describe("CommerceCopilotDrawer", () => {
       ],
     };
 
-    mockApiPost.mockResolvedValueOnce({ data: packageSession });
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: packageSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
 
     renderDrawer();
     await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
@@ -1027,11 +1032,23 @@ describe("CommerceCopilotDrawer", () => {
         },
       ],
     };
-    mockApiPost.mockResolvedValueOnce({ data: packageSession });
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: packageSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
 
     renderDrawer();
     await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
-    await userEvent.click(await screen.findByRole("button", { name: /i don't know yet/i }));
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/commerce-copilot/sessions",
+      expect.any(Object),
+      expect.any(Object)
+    ));
+    expect(await screen.findByText(/what package do you normally use for this product/i)).toBeInTheDocument();
+    const unknownButtons = await screen.findAllByRole("button", { name: /i don't know yet/i });
+    await userEvent.click(unknownButtons[unknownButtons.length - 1]);
 
     expect(await screen.findByText(/i left this question incomplete for now/i)).toBeInTheDocument();
     expect(mockApiPost).toHaveBeenCalledTimes(1);
@@ -1326,6 +1343,66 @@ describe("CommerceCopilotDrawer", () => {
       expect.objectContaining({ answers: expect.any(Array) }),
       expect.any(Object)
     ));
+  });
+
+  test("shows an informational no-match package card without choice buttons", async () => {
+    const noMatchSession = {
+      ...guidedSession,
+      messages: [
+        {
+          id: 1,
+          role: "assistant",
+          message_text: "I need one more detail: how many are currently available?",
+          safe_metadata_json: {
+            questions: [
+              {
+                question_id: "quantity",
+                fact_key: "quantity",
+                plain_language_question: "How many are currently available?",
+                why_needed: "Inventory tracking needs a starting quantity.",
+                input_type: "number",
+                choices: [],
+                allow_unknown: true,
+                show_help_measure: false,
+                help_text: null,
+              },
+            ],
+          },
+        },
+      ],
+      facts: [
+        { fact_key: "package_length_mm", normalized_value_json: 100 },
+        { fact_key: "package_width_mm", normalized_value_json: 50 },
+        { fact_key: "package_height_mm", normalized_value_json: 30 },
+        { fact_key: "package_tare_weight_grams", normalized_value_json: 50 },
+      ],
+      draft: {
+        ...guidedSession.draft,
+        validation_results_json: {
+          ...(guidedSession.draft?.validation_results_json || {}),
+          package_reuse: {
+            reuse_decision: {
+              status: "no_match",
+              recommended_action: "create_new",
+              plain_language_reason: "No saved package matches these confirmed dimensions and empty-package weight.",
+              matched_profiles: [],
+            },
+          },
+        },
+      },
+    };
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return Promise.resolve({ data: noMatchSession });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer();
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/no saved package matches these confirmed dimensions and empty-package weight/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /use existing package/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create a new package/i })).not.toBeInTheDocument();
   });
 
   test("shows workspace-default warning for a non-default saved package", async () => {
