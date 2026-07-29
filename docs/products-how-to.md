@@ -34,6 +34,23 @@ Manager entry points:
 3. Upload product images if available.
 4. Click **Save**.
 
+### Selling currency
+
+Products do not have their own separate selling-currency field.
+
+Current rule:
+- the numeric Product price is interpreted through the tenant business-selling currency from **Settings → Checkout Pro & Payments**
+- the same business currency is used for Products, Services, checkout defaults, and Finance defaults
+- changing the business currency changes the current catalog currency context, but does **not** convert existing numeric Product amounts
+
+Example:
+- if a Product price is `50.00`
+- and the business currency is `CAD`
+- customers see `CAD 50.00`
+- if the business currency is later changed to `USD`, the same numeric Product amount becomes `USD 50.00`
+
+Use **Manage currency settings** from the Product editor when you need to change the tenant business currency.
+
 ## Step 2: Track inventory
 
 1. Toggle **Track stock**.
@@ -135,3 +152,16 @@ From the review you can:
 - help finish only unresolved international facts
 - test shipping to a selected country
 - prepare selected destination changes for approval
+
+### Customs declared-value currency
+
+`Customs declared-value currency` is separate from the Product selling price currency.
+
+Use it only for:
+- customs declarations
+- shipment paperwork
+
+It does not change:
+- storefront price
+- checkout charge currency
+- Finance defaults

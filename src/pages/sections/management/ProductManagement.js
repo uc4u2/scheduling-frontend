@@ -28,9 +28,11 @@ import {
   useMediaQuery,
   Alert,
   Autocomplete,
+  InputAdornment,
   List,
   ListItem,
   ListItemText,
+  Link,
   Menu,
   Tab,
   Tabs,
@@ -55,6 +57,7 @@ import CategoryAutocomplete from "../../../components/common/CategoryAutocomplet
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
+import useCompanyCurrencyContext from "../../../hooks/useCompanyCurrencyContext";
 
 const emptyForm = {
   sku: "",
@@ -86,7 +89,7 @@ const emptyForm = {
   shipping_country_of_origin: "",
   shipping_hs_code: "",
   shipping_declared_value: "",
-  shipping_declared_value_currency: "CAD",
+  shipping_declared_value_currency: "",
   shipping_customs_manufacturer: "",
   shipping_customs_eccn: "",
   digital_asset_id: "",
@@ -307,6 +310,7 @@ const ProductManagement = ({ token }) => {
   const [globalMovementPagination, setGlobalMovementPagination] = useState({ page: 1, per_page: 50, total: 0 });
   const [inventoryItems, setInventoryItems] = useState([]);
   const [inventoryItemsLoading, setInventoryItemsLoading] = useState(false);
+  const [companyCurrencyProfile, setCompanyCurrencyProfile] = useState(null);
   const [globalMovementFilters, setGlobalMovementFilters] = useState({
     product_id: "",
     reason: "",
@@ -319,6 +323,8 @@ const ProductManagement = ({ token }) => {
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
   const compactLinkedInventorySnapshot = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const companyCurrencyContext = useCompanyCurrencyContext(companyCurrencyProfile);
+  const businessSellingCurrency = companyCurrencyContext.businessSellingCurrency || "USD";
 
   const notify = useCallback((message) => {
     setSnk({ open: true, message });
@@ -372,6 +378,12 @@ const ProductManagement = ({ token }) => {
           allow_local_delivery: false,
         });
         setShippingCountryCatalog([]);
+      }
+      try {
+        const { data: companyProfile } = await api.get(`/admin/company-profile`, auth);
+        setCompanyCurrencyProfile(companyProfile || null);
+      } catch {
+        setCompanyCurrencyProfile(null);
       }
       try {
         const { data: lowStock } = await api.get(`/inventory/products/low-stock?limit=10`, auth);
@@ -452,7 +464,7 @@ const ProductManagement = ({ token }) => {
         shipping_country_of_origin: row.shipping_country_of_origin || "",
         shipping_hs_code: row.shipping_hs_code || "",
         shipping_declared_value: row.shipping_declared_value_cents != null ? centsToDisplayValue(row.shipping_declared_value_cents) : "",
-        shipping_declared_value_currency: row.shipping_declared_value_currency || "CAD",
+        shipping_declared_value_currency: row.shipping_declared_value_currency || "",
         shipping_customs_manufacturer: row.shipping_customs_manufacturer || "",
         shipping_customs_eccn: row.shipping_customs_eccn || "",
         digital_asset_id: row.digital_asset_id != null ? String(row.digital_asset_id) : "",
@@ -742,7 +754,7 @@ const ProductManagement = ({ token }) => {
         field: "price",
         headerName: t("manager.product.columns.price"),
         width: 140,
-        valueFormatter: (params) => `$${Number(params.value ?? 0).toFixed(2)}`,
+        valueFormatter: (params) => `${businessSellingCurrency} ${Number(params.value ?? 0).toFixed(2)}`,
       },
       {
         field: "qty_on_hand",
@@ -813,7 +825,7 @@ const ProductManagement = ({ token }) => {
         ),
       },
     ],
-    [handleDelete, handleOpen, openCopilot, openImages, t]
+    [businessSellingCurrency, handleDelete, handleOpen, openCopilot, openImages, t]
   );
 
   useEffect(() => {
@@ -1220,14 +1232,26 @@ const ProductManagement = ({ token }) => {
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label={fieldLabelWithTooltip(
-                  t("manager.product.labels.price"),
-                  "Selling price charged to customers."
+                  "Selling price",
+                  "Selling price charged to customers in your business selling currency."
                 )}
                 type="number"
                 value={form.price}
                 onChange={handleChange("price")}
                 fullWidth
                 inputProps={{ step: "0.01" }}
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">{businessSellingCurrency}</InputAdornment>,
+                }}
+                FormHelperTextProps={{ component: "div" }}
+                helperText={(
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
+                    <span>This Product uses your business selling currency from Checkout Pro & Payments.</span>
+                    <Link href="/manager/dashboard?view=settings&tab=checkout" underline="hover">
+                      Manage currency settings
+                    </Link>
+                  </Stack>
+                )}
               />
               <TextField
                 label={fieldLabelWithTooltip(
@@ -1771,15 +1795,25 @@ const ProductManagement = ({ token }) => {
                           fullWidth
                           size="small"
                           label={fieldLabelWithTooltip(
-                            "Declared-value currency",
-                            "The currency used for the customs declared value."
+                            "Customs declared-value currency",
+                            "This currency is used on Customs paperwork. It does not change the Product’s storefront price or customer payment currency."
                           )}
                           value={form.shipping_declared_value_currency}
                           onChange={handleChange("shipping_declared_value_currency")}
+                          helperText="Used only for international Customs paperwork."
                         >
                           <MenuItem value="CAD">CAD</MenuItem>
                           <MenuItem value="USD">USD</MenuItem>
                         </TextField>
+                        {!form.shipping_declared_value_currency ? (
+                          <Button
+                            size="small"
+                            onClick={() => setForm((prev) => ({ ...prev, shipping_declared_value_currency: businessSellingCurrency }))}
+                            sx={{ mt: 0.75 }}
+                          >
+                            Use selling currency ({businessSellingCurrency})
+                          </Button>
+                        ) : null}
                       </Grid>
                     </Grid>
                     <Accordion disableGutters elevation={0} sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>

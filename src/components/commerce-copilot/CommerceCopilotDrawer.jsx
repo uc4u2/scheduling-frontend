@@ -179,6 +179,8 @@ const PRODUCT_STEP_KEYS = new Set([
   "product_name",
   "price",
   "currency",
+  "business_selling_currency",
+  "business_currency_mode",
   "is_digital",
   "track_stock",
   "quantity",
@@ -254,6 +256,7 @@ const questionFieldLabel = (question) => {
   if (key === "quantity") return "Starting inventory";
   if (key === "shipping_weight_grams") return "Product weight";
   if (key === "currency") return "Currency";
+  if (key === "business_selling_currency") return "Business selling currency";
   return humanizeFactKey(key) || "Your answer";
 };
 

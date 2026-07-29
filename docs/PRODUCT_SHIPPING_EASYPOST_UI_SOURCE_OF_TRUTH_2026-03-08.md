@@ -15,6 +15,12 @@ As of Wednesday, July 29, 2026, the manager UI also includes:
 - international buyer-notice preview inside the review step
 - post-creation Commerce Copilot readiness grouping
 - exact `focus=` deep links for API key, origin, destinations, package profiles, and Product shipping/customs sections
+
+Currency display contract:
+- Product selling prices use the tenant business-selling currency from Checkout Pro.
+- `Customs declared-value currency` is shown separately in Product shipping/customs fields and is never the storefront selling currency.
+- carrier-rate currency is provider-supplied and must not be relabeled under another code.
+- no automatic FX conversion is supported between Product price, customs paperwork, and provider parcel rates.
 - auto-refresh of readiness after the manager returns to the Copilot tab
 
 Entry points:

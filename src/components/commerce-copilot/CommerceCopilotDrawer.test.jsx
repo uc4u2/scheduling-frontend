@@ -1784,8 +1784,7 @@ describe("CommerceCopilotDrawer", () => {
       },
     });
 
-    renderDrawer();
-    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    renderDrawer({ initialWorkflow: "create_physical_product" });
     await userEvent.click(await screen.findByRole("button", { name: /edit package/i }));
     expect(screen.getByLabelText(/package name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^package width$/i)).toBeInTheDocument();

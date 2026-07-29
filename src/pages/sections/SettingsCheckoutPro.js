@@ -129,6 +129,7 @@ export default function SettingsCheckoutPro() {
   const [displayCurrency, setDisplayCurrency] = useState("USD");
   const [logoUrl, setLogoUrl] = useState("");
   const [companyCountry, setCompanyCountry] = useState("");
+  const [savedBusinessCurrency, setSavedBusinessCurrency] = useState("USD");
 
   // 👇 Help drawer state
   const [guideOpen, setGuideOpen] = useState(false);
@@ -185,6 +186,14 @@ export default function SettingsCheckoutPro() {
         setActiveCurrency(normalizedDisplay);
         setLogoUrl(data.logo_url || "");
         setCompanyCountry((data.country_code || "").toUpperCase());
+        const resolvedCurrency =
+          normalizeCurrency(
+            data?.currency_context?.business_selling_currency ||
+            data?.display_currency
+          ) ||
+          normalizeCurrency(resolveCurrencyForCountry((data.tax_country_code || data.country_code || "").toUpperCase())) ||
+          "USD";
+        setSavedBusinessCurrency(resolvedCurrency);
       } catch (error) {
         setMsg(t("settings.checkout.loadError"));
         setMsgSeverity("error");
@@ -198,6 +207,12 @@ export default function SettingsCheckoutPro() {
   }, [token]);
 
   const localizedCurrency = chargeCurrencyMode === "LOCALIZED";
+  const resolvedBusinessCurrency = useMemo(() => {
+    if (localizedCurrency) {
+      return normalizeCurrency(resolveCurrencyForCountry((taxCountry || companyCountry || "").toUpperCase())) || "USD";
+    }
+    return normalizeCurrency(displayCurrency) || "USD";
+  }, [localizedCurrency, taxCountry, companyCountry, displayCurrency]);
 
   useEffect(() => {
     const targetCountry = (taxCountry || companyCountry || "").toUpperCase();
@@ -248,9 +263,29 @@ export default function SettingsCheckoutPro() {
     setLogoUrl(data.logo_url || "");
     setCompanyCountry((data.country_code || "").toUpperCase());
     setBookingHoldMinutes(data.booking_hold_minutes ?? 3);
+    const resolvedCurrency =
+      normalizeCurrency(
+        data?.currency_context?.business_selling_currency ||
+        data?.display_currency
+      ) ||
+      normalizeCurrency(resolveCurrencyForCountry((data.tax_country_code || data.country_code || "").toUpperCase())) ||
+      "USD";
+    setSavedBusinessCurrency(resolvedCurrency);
   };
 
   const onSave = async () => {
+    const currentSavedCurrency = normalizeCurrency(savedBusinessCurrency) || "USD";
+    const nextResolvedCurrency = resolvedBusinessCurrency;
+    if (
+      currentSavedCurrency &&
+      nextResolvedCurrency &&
+      currentSavedCurrency !== nextResolvedCurrency &&
+      !window.confirm(
+        `Changing ${currentSavedCurrency} to ${nextResolvedCurrency} does not convert existing numeric prices. A product priced at ${currentSavedCurrency} 50 will become ${nextResolvedCurrency} 50 under the new business currency.`
+      )
+    ) {
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -547,20 +582,25 @@ export default function SettingsCheckoutPro() {
 
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel id="charge-currency-mode-label">{t("settings.checkout.chargeCurrencyMode.label")}</InputLabel>
+                <InputLabel id="charge-currency-mode-label">Currency rule</InputLabel>
                 <Select
                   labelId="charge-currency-mode-label"
                   value={chargeCurrencyMode}
-                  label={t("settings.checkout.chargeCurrencyMode.label")}
+                  label="Currency rule"
                   onChange={(e) => setChargeCurrencyMode(e.target.value)}
                 >
                   {CHARGE_CURRENCY_CODES.map((code) => (
                     <MenuItem key={code} value={code}>
-                      {t(code === "PLATFORM_FIXED" ? "settings.checkout.chargeModes.platformFixed" : "settings.checkout.chargeModes.localized")}
+                      {code === "PLATFORM_FIXED" ? "Fixed business currency" : "Business-country currency"}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75 }}>
+                {localizedCurrency
+                  ? "Uses the standard currency for your business tax country. Canadian businesses use CAD; U.S. businesses use USD."
+                  : "Use one fixed business currency for Products, checkout, and Finance defaults."}
+              </Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
@@ -588,28 +628,32 @@ export default function SettingsCheckoutPro() {
 
             <Grid item xs={12} md={6}>{taxRegionOptions}</Grid>
 
+            <Grid item xs={12}>
+              <Alert severity="info">
+                Current Product and Finance currency: <strong>{resolvedBusinessCurrency}</strong>
+              </Alert>
+            </Grid>
+
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel id="display-currency-label">{t("settings.checkout.displayCurrency.label")}</InputLabel>
+                <InputLabel id="display-currency-label">Business selling currency</InputLabel>
                 <Select
                   labelId="display-currency-label"
                   value={(displayCurrency || "USD").toUpperCase()}
-                  label={t("settings.checkout.displayCurrency.label")}
+                  label="Business selling currency"
                   onChange={(e) => setDisplayCurrency((e.target.value || "USD").toUpperCase())}
+                  disabled={localizedCurrency}
                 >
                   {CURRENCY_OPTIONS.map((c) => (
                     <MenuItem key={c.code} value={c.code}>{c.label}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
-              {chargeCurrencyMode === "LOCALIZED" && (
-                <Typography variant="caption" color="text.secondary" display="block">
-                  {t(
-                    "settings.checkout.displayCurrency.helper",
-                    "Localized pricing will follow your tax country by default. You can override it here."
-                  )}
-                </Typography>
-              )}
+              <Typography variant="caption" color="text.secondary" display="block">
+                {localizedCurrency
+                  ? "Derived from your business tax country. Customer-location conversion is not enabled."
+                  : "Used for Products, Services, checkout, and Finance defaults."}
+              </Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>

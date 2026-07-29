@@ -57,14 +57,9 @@ export const SUPPORTED_CURRENCIES = new Set([
 ]);
 
 const CURRENCY_KEYS = [
+  "business_selling_currency",
   "display_currency",
-  "preferred_billing_currency",
-  "billing_currency",
-  "currency_code",
-  "currency",
-  "stripe_currency",
-  "price_currency",
-  "default_currency",
+  "finance_default_currency",
 ];
 
 const COMPANY_KEYS = ["company", "profile", "settings", "config", "organization"];
@@ -180,6 +175,11 @@ export function subscribeToActiveCurrency(listener) {
 function pickCurrencyFromObject(obj) {
   if (!obj || typeof obj !== "object") return "";
 
+  if (obj.currency_context && typeof obj.currency_context === "object") {
+    const nestedContext = pickCurrencyFromObject(obj.currency_context);
+    if (nestedContext) return nestedContext;
+  }
+
   for (const key of CURRENCY_KEYS) {
     if (key in obj) {
       const norm = normalizeCurrency(obj[key]);
@@ -228,7 +228,11 @@ function extractCurrency(data) {
 }
 
 export function captureCurrencyFromResponse(data) {
-  const candidate = extractCurrency(data);
+  const companyLike =
+    (data && typeof data === "object" && (data.currency_context || data.display_currency || data.tax_country_code || data.country_code))
+      ? data
+      : null;
+  const candidate = companyLike ? pickCurrencyFromObject(companyLike) : "";
   if (candidate && isSupportedCurrency(candidate)) {
     setActiveCurrency(candidate);
   }
@@ -270,4 +274,31 @@ export function resolveActiveCurrencyFromCompany(companyLike) {
   );
   setActiveCurrency(derived);
   return derived;
+}
+
+export function extractCompanyCurrencyContext(companyLike) {
+  if (!companyLike || typeof companyLike !== "object") {
+    const fallback = getActiveCurrency("USD");
+    return {
+      businessSellingCurrency: fallback,
+      chargeCurrencyMode: "PLATFORM_FIXED",
+      source: "cache",
+      automaticFxConversion: false,
+      customsCurrencySeparate: true,
+    };
+  }
+  const context = companyLike.currency_context && typeof companyLike.currency_context === "object"
+    ? companyLike.currency_context
+    : companyLike;
+  const businessSellingCurrency =
+    normalizeCurrency(context.business_selling_currency || context.product_price_currency || context.display_currency) ||
+    resolveCurrencyForCountry(context.tax_country || context.tax_country_code || context.company_country || context.country_code || "") ||
+    getActiveCurrency("USD");
+  return {
+    businessSellingCurrency,
+    chargeCurrencyMode: String(context.charge_currency_mode || "PLATFORM_FIXED").toUpperCase(),
+    source: context.currency_source || "display_currency",
+    automaticFxConversion: false,
+    customsCurrencySeparate: true,
+  };
 }
