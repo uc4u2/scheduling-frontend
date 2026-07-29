@@ -246,7 +246,8 @@ describe("EasyPostShippingSettingsPanel", () => {
 
     render(<EasyPostShippingSettingsPanel token="test-token" compact />);
 
-    await userEvent.click(await screen.findByRole("button", { name: /save shipping settings/i }));
+    await screen.findByText(/how customers can receive orders/i);
+    await userEvent.click(screen.getByRole("button", { name: /save shipping settings/i }));
 
     await waitFor(() =>
       expect(mockApiPost).toHaveBeenCalledWith(

@@ -706,7 +706,7 @@ export function CheckoutFormCore({
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
   const [productDelivery, setProductDelivery] = useState({
-    delivery_method: "pickup",
+    delivery_method: "",
     pickup_instructions: "",
     shipping: {
       name: "",
@@ -726,7 +726,10 @@ export function CheckoutFormCore({
   const [deliveryMethodPolicy, setDeliveryMethodPolicy] = useState({
     loading: false,
     source: "default",
-    allowedMethods: ["pickup", "shipping", "local_delivery"],
+    deliveryEnabled: false,
+    automationMode: "manual",
+    methods: [],
+    allowedMethods: [],
     allowedDestinationCountries: [],
     allowedDestinationCountryOptions: [],
     countryCatalog: [],
@@ -1018,7 +1021,10 @@ export function CheckoutFormCore({
       setDeliveryMethodPolicy({
         loading: false,
         source: "default",
-        allowedMethods: ["pickup", "shipping", "local_delivery"],
+        deliveryEnabled: false,
+        automationMode: "manual",
+        methods: [],
+        allowedMethods: [],
         allowedDestinationCountries: [],
         allowedDestinationCountryOptions: [],
         countryCatalog: [],
@@ -1035,9 +1041,27 @@ export function CheckoutFormCore({
       .get(`/public/${slugLocal}/delivery-methods`)
       .then(({ data }) => {
         if (cancelled) return;
-        const allowedMethods = Array.isArray(data?.allowed_methods)
-          ? data.allowed_methods.filter((m) => ["pickup", "shipping", "local_delivery"].includes(String(m)))
+        const methods = Array.isArray(data?.methods)
+          ? data.methods
+              .filter((row) => row && ["pickup", "shipping", "local_delivery"].includes(String(row.code)))
+              .map((row) => ({
+                code: String(row.code),
+                label: String(row.label || row.code),
+                enabled: row.enabled !== false,
+              }))
           : [];
+        const allowedMethods = Array.isArray(data?.effective_method_codes)
+          ? data.effective_method_codes.filter((m) => ["pickup", "shipping", "local_delivery"].includes(String(m)))
+          : Array.isArray(data?.allowed_methods)
+            ? data.allowed_methods.filter((m) => ["pickup", "shipping", "local_delivery"].includes(String(m)))
+            : [];
+        const normalizedMethods = methods.length > 0
+          ? methods
+          : allowedMethods.map((code) => ({
+              code,
+              label: code === "pickup" ? "Pickup" : code === "shipping" ? "Shipping" : "Local delivery",
+              enabled: true,
+            }));
         const allowedDestinationCountries = Array.isArray(data?.allowed_destination_countries)
           ? data.allowed_destination_countries
               .map((country) => normalizeDeliveryCountryCode(country))
@@ -1064,6 +1088,9 @@ export function CheckoutFormCore({
         setDeliveryMethodPolicy({
           loading: false,
           source: "api",
+          deliveryEnabled: Boolean(data?.delivery_enabled),
+          automationMode: String(data?.automation_mode || "manual"),
+          methods: normalizedMethods,
           allowedMethods,
           allowedDestinationCountries,
           allowedDestinationCountryOptions,
@@ -1086,7 +1113,10 @@ export function CheckoutFormCore({
         setDeliveryMethodPolicy({
           loading: false,
           source: "fallback",
-          allowedMethods: ["pickup", "shipping", "local_delivery"],
+          deliveryEnabled: false,
+          automationMode: "manual",
+          methods: [],
+          allowedMethods: [],
           allowedDestinationCountries: [],
           allowedDestinationCountryOptions: [],
           countryCatalog: [],
@@ -1259,14 +1289,11 @@ export function CheckoutFormCore({
   const guestOk =
     guest.name.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email.trim());
   const allowedDeliveryMethods = useMemo(() => {
-    if (productItems.length === 0) return ["pickup", "shipping", "local_delivery"];
+    if (productItems.length === 0) return [];
     let allowed = Array.isArray(deliveryMethodPolicy.allowedMethods)
       ? [...deliveryMethodPolicy.allowedMethods]
-      : ["pickup", "shipping", "local_delivery"];
+      : [];
     allowed = allowed.filter((m) => ["pickup", "shipping", "local_delivery"].includes(m));
-    if (!allowed.length && deliveryMethodPolicy.source !== "api") {
-      allowed = ["pickup", "shipping", "local_delivery"];
-    }
     for (const item of productItems) {
       if (!item?.delivery_methods_override_enabled) continue;
       const itemAllowed = [];
@@ -1277,39 +1304,51 @@ export function CheckoutFormCore({
     }
     return Array.from(new Set(allowed));
   }, [productItems, deliveryMethodPolicy.allowedMethods, deliveryMethodPolicy.source]);
-  const deliveryMethodOptions = useMemo(
-    () =>
-      [
-        ["pickup", "Pickup"],
-        ["shipping", "Shipping"],
-        ["local_delivery", "Local delivery"],
-      ].filter(([value]) => allowedDeliveryMethods.includes(value)),
-    [allowedDeliveryMethods]
-  );
+  const deliveryMethodOptions = useMemo(() => {
+    const labelsFromApi = new Map(
+      (Array.isArray(deliveryMethodPolicy.methods) ? deliveryMethodPolicy.methods : []).map((row) => [
+        row.code,
+        row.label || row.code,
+      ])
+    );
+    return allowedDeliveryMethods.map((value) => [
+      value,
+      labelsFromApi.get(value) || (
+        value === "pickup"
+          ? "Pickup"
+          : value === "shipping"
+            ? "Shipping"
+            : "Local delivery"
+      ),
+    ]);
+  }, [allowedDeliveryMethods, deliveryMethodPolicy.methods]);
   const policyIsApiLoadedEmpty =
     productItems.length > 0 &&
     deliveryMethodPolicy.source === "api" &&
     allowedDeliveryMethods.length === 0;
+  const safeDeliveryMethodValue = allowedDeliveryMethods.includes(String(productDelivery.delivery_method || "").toLowerCase())
+    ? productDelivery.delivery_method || ""
+    : "";
   useEffect(() => {
     if (productItems.length === 0) return;
     if (allowedDeliveryMethods.length === 0) return;
-    const current = String(productDelivery.delivery_method || "pickup").toLowerCase();
+    const current = String(productDelivery.delivery_method || "").toLowerCase();
     if (allowedDeliveryMethods.includes(current)) return;
-    const fallback = deliveryMethodOptions[0]?.[0] || productDelivery.delivery_method || "pickup";
+    const fallback = allowedDeliveryMethods.length === 1 ? (deliveryMethodOptions[0]?.[0] || "") : "";
     setProductDelivery((prev) => ({ ...prev, delivery_method: fallback }));
   }, [productItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
 
   const requiresShippingAddress =
     productItems.length > 0 &&
     allowedDeliveryMethods.length > 0 &&
-    ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "pickup").toLowerCase());
+    ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "").toLowerCase());
   const currentShippingCountry = normalizeDeliveryCountryCode(productDelivery.shipping?.country || "");
   const isDomesticVerificationCountry = ["CA", "US"].includes(currentShippingCountry);
   const shippingRegionRequired = currentShippingCountry === "CA" || currentShippingCountry === "US";
   const shippingPostalRequired = currentShippingCountry === "CA" || currentShippingCountry === "US";
   const verificationEnabled =
     requiresShippingAddress &&
-    (productDelivery.delivery_method || "pickup").toLowerCase() === "shipping" &&
+    (productDelivery.delivery_method || "").toLowerCase() === "shipping" &&
     (
       (isDomesticVerificationCountry && Boolean(deliveryMethodPolicy.addressVerificationEnabled)) ||
       (!isDomesticVerificationCountry && ["best_effort", "required", "disabled"].includes(String(deliveryMethodPolicy.internationalAddressVerificationMode || "")))
@@ -1319,7 +1358,11 @@ export function CheckoutFormCore({
     if (productItems.length === 0) return [];
     const errors = [];
     if (!allowedDeliveryMethods.length) {
-      errors.push("No delivery methods are currently available for these products.");
+      errors.push("This Product is not currently available for delivery or pickup.");
+      return errors;
+    }
+    if (allowedDeliveryMethods.length > 1 && !String(productDelivery.delivery_method || "").trim()) {
+      errors.push("Choose how you would like to receive your order.");
       return errors;
     }
     const shipping = productDelivery.shipping || {};
@@ -1472,8 +1515,9 @@ export function CheckoutFormCore({
     const timer = setTimeout(async () => {
       try {
         setShippingRates((prev) => ({ ...prev, loading: true, message: "" }));
+        const selectedDeliveryMethod = productDelivery.delivery_method || deliveryMethodOptions[0]?.[0] || "";
         const payload = {
-          delivery_method: productDelivery.delivery_method || "shipping",
+          delivery_method: selectedDeliveryMethod,
           shipping: {
             name: productDelivery.shipping?.name || "",
             phone: productDelivery.shipping?.phone || "",
@@ -1555,6 +1599,7 @@ export function CheckoutFormCore({
     deliveryOk,
     slugLocal,
     productDelivery.delivery_method,
+    deliveryMethodOptions,
     productDelivery.shipping?.name,
     productDelivery.shipping?.phone,
     productDelivery.shipping?.address1,
@@ -1574,7 +1619,7 @@ export function CheckoutFormCore({
       localStorage.setItem(
         "checkout_product_delivery_prefill",
         JSON.stringify({
-          delivery_method: productDelivery.delivery_method || "pickup",
+          delivery_method: productDelivery.delivery_method || "",
           pickup_instructions: productDelivery.pickup_instructions || "",
           shipping: productDelivery.shipping || {},
         })
@@ -1634,7 +1679,7 @@ export function CheckoutFormCore({
       ...prev,
       delivery_method: allowedDeliveryMethods.includes(value)
         ? value
-        : (deliveryMethodOptions[0]?.[0] || "pickup"),
+        : (allowedDeliveryMethods.length === 1 ? (deliveryMethodOptions[0]?.[0] || "") : ""),
     }));
     clearShippingRatesState();
     resetShippingVerificationState();
@@ -2154,7 +2199,7 @@ export function CheckoutFormCore({
       setup_intent_id: setupIntentId,
       allow_unpaid: allowUnpaid,
       currency: (normalizeCurrency(displayCurrency) || "USD").toLowerCase(),
-      delivery_method: productDelivery.delivery_method || "pickup",
+      delivery_method: productDelivery.delivery_method || deliveryMethodOptions[0]?.[0] || "",
       pickup_instructions: productDelivery.pickup_instructions || "",
       shipping: shippingPayload,
       selected_rate_id: shippingRates.selectedRateId || undefined,
@@ -3192,12 +3237,17 @@ export function CheckoutFormCore({
             select
             fullWidth
             label="Delivery method"
-            value={productDelivery.delivery_method || "pickup"}
+            value={safeDeliveryMethodValue}
             onChange={handleDeliveryMethod}
             SelectProps={{ MenuProps: CHECKOUT_SELECT_MENU_PROPS }}
             sx={{ mb: 2 }}
             disabled={deliveryMethodPolicy.loading || deliveryMethodOptions.length === 0}
           >
+            {deliveryMethodOptions.length > 1 && (
+              <MenuItem value="">
+                Choose a delivery method
+              </MenuItem>
+            )}
             {deliveryMethodOptions.map(([value, label]) => (
               <MenuItem key={value} value={value}>
                 {label}
@@ -3212,7 +3262,7 @@ export function CheckoutFormCore({
           {!deliveryMethodPolicy.loading && deliveryMethodOptions.length === 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               {policyIsApiLoadedEmpty
-                ? "No delivery methods are currently available for these products."
+                ? "This Product is not currently available for delivery or pickup."
                 : "Delivery methods are temporarily unavailable. Please try again."}
             </Alert>
           )}
@@ -3431,6 +3481,11 @@ export function CheckoutFormCore({
                   {currentImportChargesNotice?.standard_notice ||
                     "International shipping may be subject to import duties, taxes, brokerage charges, or other fees collected separately by the carrier or destination authorities."}
                   {currentImportChargesNotice?.additional_note ? ` ${currentImportChargesNotice.additional_note}` : ""}
+                </Alert>
+              )}
+              {!verificationEnabled && (productDelivery.delivery_method || "").toLowerCase() === "shipping" && deliveryMethodPolicy.automationMode === "manual" && (
+                <Alert severity="warning">
+                  Shipping is arranged manually by the business. The order total shown now does not include a live carrier rate.
                 </Alert>
               )}
               {shippingRates.loading && (

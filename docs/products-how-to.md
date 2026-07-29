@@ -79,6 +79,15 @@ If the Product is already visible, Copilot warns that approved content changes w
 
 Package Profiles are reusable shipping boxes or mailers managed in **Delivery setup**.
 
+Important current behavior:
+
+- Package Profiles are workspace-level reusable package definitions, not Product-specific package attachments
+- one active Package Profile may be the workspace default
+- Products usually reuse the workspace default package unless you deliberately switch to another supported package in a shipping workflow
+- parcel shipping weight is calculated from:
+  - Product weight
+  - plus Package Profile empty-package tare weight
+
 Commerce Copilot now checks existing active Package Profiles before proposing a new one when you confirm package dimensions and empty-package weight.
 
 Use an existing package when:
@@ -89,9 +98,25 @@ Create a new package when:
 - the box or mailer is materially different
 - the empty-package weight is different enough that you do not want to reuse the saved profile
 
-Important current behavior:
-- Package Profiles are workspace-level defaults, not Product-specific package attachments
-- if Copilot recommends a non-default saved package, changing it to the workspace default may affect future shipping quotes for other Products
+If Copilot recommends a non-default saved package, changing it to the workspace default may affect future shipping quotes for other Products.
+
+## Delivery Methods and checkout choices
+
+Delivery Setup now separates:
+
+- whether customers can choose delivery at checkout
+- which delivery methods are available
+- how parcel shipping is fulfilled
+
+Manager-facing rules:
+
+- `Offer delivery options at checkout` is the master switch
+- `Pickup`, `Ship the order`, and `Local delivery` are child method choices
+- `How parcel shipping is handled` changes only parcel-rate and label automation:
+  - `Manual fulfillment`
+  - `EasyPost rates and labels`
+
+EasyPost does not decide whether methods appear at checkout. It only automates parcel shipping after `Ship the order` is already available.
 
 ## International expansion review
 

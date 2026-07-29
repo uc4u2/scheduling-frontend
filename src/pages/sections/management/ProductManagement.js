@@ -269,16 +269,19 @@ const ProductManagement = ({ token }) => {
       }
       try {
         const { data: shippingSettings } = await api.get(`/inventory/shipping-settings`, auth);
+        const deliveryEnabled = Boolean(shippingSettings?.enabled);
         setGlobalDeliveryPolicy({
-          allow_pickup: Boolean(shippingSettings?.allow_pickup),
-          allow_shipping: shippingSettings?.allow_shipping !== false,
-          allow_local_delivery: Boolean(shippingSettings?.allow_local_delivery),
+          enabled: deliveryEnabled,
+          allow_pickup: deliveryEnabled && Boolean(shippingSettings?.allow_pickup),
+          allow_shipping: deliveryEnabled && shippingSettings?.allow_shipping !== false,
+          allow_local_delivery: deliveryEnabled && Boolean(shippingSettings?.allow_local_delivery),
         });
         setShippingCountryCatalog(Array.isArray(shippingSettings?.country_catalog) ? shippingSettings.country_catalog : []);
       } catch {
         setGlobalDeliveryPolicy({
+          enabled: false,
           allow_pickup: false,
-          allow_shipping: true,
+          allow_shipping: false,
           allow_local_delivery: false,
         });
         setShippingCountryCatalog([]);
@@ -1395,19 +1398,26 @@ const ProductManagement = ({ token }) => {
                 )}
                 label={fieldLabelWithTooltip(
                   "Product delivery override (advanced)",
-                  "Checkout-delivery control only. If enabled, this product can narrow pickup/shipping/local-delivery methods relative to Products -> Delivery setup. It does not configure digital file/link access."
+                  "Use this only when this Product should offer fewer delivery methods than your workspace settings. It cannot enable a delivery method that the workspace has turned off."
                 )}
               />
               {!form.delivery_methods_override_enabled && (
                 <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                  Override is off. This product uses workspace defaults from Products -> Delivery setup.
+                  Override is off. This Product uses the workspace delivery settings from Products -> Delivery setup.
                 </Typography>
               )}
               {form.delivery_methods_override_enabled && (
                 <>
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                    Workspace currently allows:
+                    {globalDeliveryPolicy.allow_pickup ? " Pickup" : ""}
+                    {globalDeliveryPolicy.allow_shipping ? `${globalDeliveryPolicy.allow_pickup ? "," : ""} Shipping` : ""}
+                    {globalDeliveryPolicy.allow_local_delivery ? `${(globalDeliveryPolicy.allow_pickup || globalDeliveryPolicy.allow_shipping) ? "," : ""} Local delivery` : ""}
+                    {!globalDeliveryPolicy.allow_pickup && !globalDeliveryPolicy.allow_shipping && !globalDeliveryPolicy.allow_local_delivery ? " no delivery methods right now." : "."}
+                  </Typography>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                     <Tooltip
-                      title={globalDeliveryPolicy.allow_pickup ? "" : "Enable pickup in Products -> Delivery setup first."}
+                      title={globalDeliveryPolicy.allow_pickup ? "" : (globalDeliveryPolicy.enabled ? "Enable Pickup in Products -> Delivery setup first." : "Turn on checkout delivery and enable Pickup in Products -> Delivery setup first.")}
                       arrow
                     >
                       <span>
@@ -1420,12 +1430,12 @@ const ProductManagement = ({ token }) => {
                               disabled={!globalDeliveryPolicy.allow_pickup}
                             />
                           )}
-                          label="Allow pickup"
+                          label="Pickup"
                         />
                       </span>
                     </Tooltip>
                     <Tooltip
-                      title={globalDeliveryPolicy.allow_shipping ? "" : "Enable shipping in Products -> Delivery setup first."}
+                      title={globalDeliveryPolicy.allow_shipping ? "" : (globalDeliveryPolicy.enabled ? "Enable Ship the order in Products -> Delivery setup first." : "Turn on checkout delivery and enable Ship the order in Products -> Delivery setup first.")}
                       arrow
                     >
                       <span>
@@ -1438,12 +1448,12 @@ const ProductManagement = ({ token }) => {
                               disabled={!globalDeliveryPolicy.allow_shipping}
                             />
                           )}
-                          label="Allow shipping"
+                          label="Ship the order"
                         />
                       </span>
                     </Tooltip>
                     <Tooltip
-                      title={globalDeliveryPolicy.allow_local_delivery ? "" : "Enable local delivery in Products -> Delivery setup first."}
+                      title={globalDeliveryPolicy.allow_local_delivery ? "" : (globalDeliveryPolicy.enabled ? "Enable Local delivery in Products -> Delivery setup first." : "Turn on checkout delivery and enable Local delivery in Products -> Delivery setup first.")}
                       arrow
                     >
                       <span>
@@ -1456,13 +1466,13 @@ const ProductManagement = ({ token }) => {
                               disabled={!globalDeliveryPolicy.allow_local_delivery}
                             />
                           )}
-                          label="Allow local delivery"
+                          label="Local delivery"
                         />
                       </span>
                     </Tooltip>
                   </Stack>
                   <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    Override is on. This product uses custom checkout delivery methods, narrowed from Products -> Delivery setup.
+                    Override is on. This Product can only narrow the workspace delivery choices.
                   </Typography>
                 </>
               )}

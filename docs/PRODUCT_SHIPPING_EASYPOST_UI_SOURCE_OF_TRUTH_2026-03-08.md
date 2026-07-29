@@ -69,8 +69,14 @@ Phase 3 UX rules:
 ### Delivery setup panel
 - File: `frontend/src/pages/sections/management/EasyPostShippingSettingsPanel.js`
 - Responsibilities:
-  - Tab 1 `Delivery Methods`: checkout policy controls (`allow_pickup`, `allow_shipping`, `allow_local_delivery`, labels)
+  - Tab 1 `Delivery Methods`: checkout policy controls (`enabled`, `allow_pickup`, `allow_shipping`, `allow_local_delivery`, labels)
   - Tab 2 `EasyPost Automation`: API key, enable toggle, test connection, origin settings, destination policy, package profiles, shipping-readiness checklist, address-verification toggle/status, selected-country allowlist, international verification mode, cross-border customs defaults, and US export filing controls when origin is US
+  - Delivery Methods UX contract:
+    - `Offer delivery options at checkout` is the master switch
+    - child methods remain saved when the master is OFF, but are visually inactive
+    - customer-facing label fields appear only for selected methods
+    - `Customer checkout preview` always reflects the effective server-owned state
+    - manual parcel shipping shows a warning that no live carrier rate is calculated
   - Help drawer now uses a tabbed onboarding guide:
     - `Schedulaa setup`
     - `EasyPost website setup`
@@ -115,10 +121,14 @@ Phase 3 UX rules:
 - File: `frontend/src/pages/client/Checkout.js`
 - Responsibilities:
   - Reads delivery policy from `GET /public/<slug>/delivery-methods`
+  - Treats `delivery_enabled`, `methods`, and `effective_method_codes` as authoritative
   - Reads allowed destination countries from the same backend payload
   - Reads the server-owned country catalog / destination options from the same backend payload
   - Reads origin country from the same backend payload
   - Renders allowed delivery methods only
+  - Shows no-method-safe messaging instead of falling back to all methods
+  - Clears a stale selected delivery method when it becomes unavailable
+  - Auto-selects the method only when exactly one effective method exists
   - Uses backend destination countries for checkout country choices instead of hardcoded CA/US
   - When shipping address verification is enabled, requires explicit `Verify address & view shipping options` before live rates are requested
   - For corrected addresses, renders a correction choice UI:
@@ -159,12 +169,23 @@ Phase 3 UX rules:
 
 - `Products -> Delivery setup -> Delivery Methods tab`:
   - Decides checkout delivery options shown to customer globally.
+  - Master/child rule:
+    - effective workspace methods = `enabled && allow_*`
 - `Products -> Delivery setup -> EasyPost Automation tab`:
   - Decides shipping automation capabilities (rates/label ops), not checkout option visibility by itself.
 - Product modal `Override delivery methods`:
   - Exception layer for this product only.
   - OFF => uses workspace defaults from Delivery setup.
-  - ON => uses per-product override flags.
+  - ON => uses per-product override flags, but only as a narrowing intersection with workspace-effective methods.
+
+Package Profile contract:
+
+- Package Profiles are workspace-level reusable package definitions.
+- One active profile may be the workspace default.
+- Products do not each own a separate Package Profile under the current architecture.
+- Live parcel math uses:
+  - Product shipping weight
+  - plus the selected/default Package Profile tare weight and dimensions
 
 ## 4) Commerce Copilot Completion UX
 

@@ -192,6 +192,36 @@ const STATUS_CHIP_CONTRACT = {
   },
 };
 
+const DELIVERY_METHOD_META = {
+  pickup: {
+    label: "Pickup",
+    description: "Customer collects the order from your location.",
+    field: "allow_pickup",
+    customLabelField: "shipping_label_pickup",
+    customerLabel: "Customer-facing pickup name - optional",
+  },
+  shipping: {
+    label: "Ship the order",
+    description: "Send the order to the customer's shipping address.",
+    field: "allow_shipping",
+    customLabelField: "shipping_label_shipping",
+    customerLabel: "Customer-facing shipping name - optional",
+  },
+  local_delivery: {
+    label: "Local delivery",
+    description: "Your business or local courier delivers within your service area.",
+    field: "allow_local_delivery",
+    customLabelField: "shipping_label_local_delivery",
+    customerLabel: "Customer-facing local-delivery name - optional",
+  },
+};
+
+const DELIVERY_METHOD_DEFAULT_LABELS = {
+  pickup: "Pickup",
+  shipping: "Shipping",
+  local_delivery: "Local delivery",
+};
+
 const getChecklistStatusChipProps = (status) => {
   switch (status) {
     case "Ready":
@@ -253,6 +283,33 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const destinationSectionRef = useRef(null);
   const packageProfilesSectionRef = useRef(null);
   const isEasyPostMode = Boolean(settings?.easypost_enabled);
+  const deliveryEnabled = Boolean(settings?.enabled);
+  const savedMethodCodes = useMemo(
+    () => Object.entries(DELIVERY_METHOD_META)
+      .filter(([, meta]) => Boolean(settings?.[meta.field]))
+      .map(([code]) => code),
+    [settings]
+  );
+  const effectiveMethodCodes = useMemo(
+    () => (deliveryEnabled ? savedMethodCodes : []),
+    [deliveryEnabled, savedMethodCodes]
+  );
+  const deliveryMethodsError = useMemo(() => {
+    if (!deliveryEnabled) return "";
+    if (savedMethodCodes.length > 0) return "";
+    return "Choose at least one delivery method or turn off Product delivery.";
+  }, [deliveryEnabled, savedMethodCodes.length]);
+  const previewMethodLabels = useMemo(
+    () => effectiveMethodCodes.map((code) => {
+      const meta = DELIVERY_METHOD_META[code];
+      const custom = String(settings?.[meta?.customLabelField] || "").trim();
+      return custom || DELIVERY_METHOD_DEFAULT_LABELS[code] || meta?.label || code;
+    }),
+    [effectiveMethodCodes, settings]
+  );
+  const showManualShippingWarning = Boolean(
+    deliveryEnabled && Boolean(settings?.allow_shipping) && !isEasyPostMode
+  );
   const destinationPolicyMode = settings?.destination_policy_mode || settings?.destination_policy_preset || "domestic_only";
   const selectedCountryOptions = useMemo(() => {
     const selected = Array.isArray(settings?.allowed_destination_countries) ? settings.allowed_destination_countries : [];
@@ -388,6 +445,10 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
   const saveSettings = useCallback(async () => {
     if (!settings) return;
+    if (deliveryEnabled && !savedMethodCodes.length) {
+      setMessage({ type: "error", text: "Choose at least one delivery method or turn off Product delivery." });
+      return;
+    }
     setSaving(true);
     setMessage({ type: "", text: "" });
     try {
@@ -455,7 +516,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     } finally {
       setSaving(false);
     }
-  }, [settings, apiKeyInput, clearApiKey, headers]);
+  }, [settings, deliveryEnabled, savedMethodCodes.length, apiKeyInput, clearApiKey, headers]);
 
   const resetPackageProfileForm = useCallback(() => {
     setPackageProfileForm({
@@ -625,7 +686,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
           <Stack spacing={2}>
             <Stack spacing={1}>
               <Typography variant="subtitle2" fontWeight={700}>
-                Default shipping mode
+                How parcel shipping is handled
               </Typography>
               <Stack direction="row" spacing={1}>
                 <Button
@@ -633,18 +694,18 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   variant={isEasyPostMode ? "outlined" : "contained"}
                   onClick={() => updateField("easypost_enabled", false)}
                 >
-                  Manual shipping
+                  Manual fulfillment
                 </Button>
                 <Button
                   size="small"
                   variant={isEasyPostMode ? "contained" : "outlined"}
                   onClick={() => updateField("easypost_enabled", true)}
                 >
-                  EasyPost automation
+                  EasyPost rates and labels
                 </Button>
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                The non-selected mode is read-only. Switch mode here anytime.
+                Manual fulfillment means you arrange parcel shipping yourself. EasyPost rates and labels means Schedulaa can request carrier rates and purchase labels through the connected EasyPost account.
               </Typography>
             </Stack>
 
@@ -661,41 +722,112 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
             {activeTab === "delivery_methods" && (
               <Stack spacing={2}>
                 <Alert severity="info">
-                  These controls decide checkout delivery choices for clients (pickup, shipping, local delivery), independent of EasyPost.
+                  Delivery Methods control what customers see. Automation mode controls how parcel shipping rates and labels are handled.
                 </Alert>
-                {isEasyPostMode && (
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Stack spacing={0.5}>
+                      <FormControlLabel
+                        control={(
+                          <Switch
+                            checked={deliveryEnabled}
+                            onChange={(e) => updateField("enabled", e.target.checked)}
+                          />
+                        )}
+                        label="Offer delivery options at checkout"
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        {deliveryEnabled
+                          ? "Choose at least one way customers can receive their orders."
+                          : "Product delivery is paused. Customers will not see any delivery choices at checkout."}
+                      </Typography>
+                    </Stack>
+                    <Divider />
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        How customers can receive orders
+                      </Typography>
+                      {!deliveryEnabled && savedMethodCodes.length > 0 && (
+                        <Typography variant="caption" color="text.secondary">
+                          Saved method choices are preserved but currently inactive.
+                        </Typography>
+                      )}
+                      <Grid container spacing={1.5}>
+                        {Object.entries(DELIVERY_METHOD_META).map(([code, meta]) => {
+                          const checked = Boolean(settings?.[meta.field]);
+                          const customLabel = settings?.[meta.customLabelField] || "";
+                          return (
+                            <Grid key={code} item xs={12}>
+                              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, opacity: deliveryEnabled ? 1 : 0.78 }}>
+                                <Stack spacing={1}>
+                                  <FormControlLabel
+                                    control={(
+                                      <Switch
+                                        checked={checked}
+                                        onChange={(e) => updateField(meta.field, e.target.checked)}
+                                        disabled={!deliveryEnabled}
+                                      />
+                                    )}
+                                    label={meta.label}
+                                  />
+                                  <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                                    {meta.description}
+                                  </Typography>
+                                  {checked && (
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      label={meta.customerLabel}
+                                      helperText="This is the name customers see at checkout. Leave blank to use the default."
+                                      value={customLabel}
+                                      onChange={(e) => updateField(meta.customLabelField, e.target.value)}
+                                    />
+                                  )}
+                                </Stack>
+                              </Paper>
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                      {deliveryMethodsError && (
+                        <Alert severity="error">{deliveryMethodsError}</Alert>
+                      )}
+                    </Stack>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Customer checkout preview
+                    </Typography>
+                    {!deliveryEnabled || previewMethodLabels.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No delivery options will be shown.
+                      </Typography>
+                    ) : (
+                      <>
+                        <Typography variant="body2" color="text.secondary">
+                          How would you like to receive your order?
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {previewMethodLabels.map((label) => (
+                            <Typography key={label} variant="body2">
+                              ○ {label}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </>
+                    )}
+                  </Stack>
+                </Paper>
+                {showManualShippingWarning && (
                   <Alert severity="warning">
-                    Delivery Methods controls are read-only while EasyPost automation is selected as default mode.
+                    Manual fulfillment does not calculate carrier rates. Confirm that shipping is included in your Product price, or use EasyPost rates and labels.
                   </Alert>
                 )}
-                <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={4}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={Boolean(settings.enabled)}
-                          onChange={(e) => updateField("enabled", e.target.checked)}
-                          disabled={isEasyPostMode}
-                        />
-                      }
-                      label="Shipping settings enabled"
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_pickup)} onChange={(e) => updateField("allow_pickup", e.target.checked)} disabled={isEasyPostMode} />} label="Allow pickup" />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_shipping)} onChange={(e) => updateField("allow_shipping", e.target.checked)} disabled={isEasyPostMode} />} label="Allow shipping" />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_local_delivery)} onChange={(e) => updateField("allow_local_delivery", e.target.checked)} disabled={isEasyPostMode} />} label="Allow local delivery" />
-                  </Grid>
-                </Grid>
-                <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Pickup label" value={settings.shipping_label_pickup} onChange={(e) => updateField("shipping_label_pickup", e.target.value)} disabled={isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Shipping label" value={settings.shipping_label_shipping} onChange={(e) => updateField("shipping_label_shipping", e.target.value)} disabled={isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Local delivery label" value={settings.shipping_label_local_delivery} onChange={(e) => updateField("shipping_label_local_delivery", e.target.value)} disabled={isEasyPostMode} /></Grid>
-                </Grid>
+                <Alert severity="info">
+                  Local delivery currently acts as a fulfillment choice only. Customers may select Local Delivery, and your business arranges it manually.
+                </Alert>
               </Stack>
             )}
 
@@ -705,8 +837,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   EasyPost automates shipping rates and label purchase only. It does not decide which delivery method choices appear at checkout.
                 </Alert>
                 {!isEasyPostMode && (
-                  <Alert severity="warning">
-                    EasyPost controls are read-only while Manual shipping is selected as default mode.
+                  <Alert severity="info">
+                    EasyPost settings stay available here even while Manual fulfillment is selected. Turn on EasyPost rates and labels when you want live carrier rates or label purchase.
                   </Alert>
                 )}
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>

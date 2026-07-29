@@ -46,6 +46,27 @@ Tenants do **not** need to manually create an EasyPost webhook unless Schedulaa 
 
 Use this section to enable and validate account-level EasyPost integration.
 
+## 2A) Delivery Methods versus EasyPost Automation
+
+The Delivery Setup page now separates two different decisions:
+
+- `Offer delivery options at checkout`
+  - controls whether customers can choose Pickup, Shipping, or Local delivery
+- `How parcel shipping is handled`
+  - controls whether parcel shipping stays manual or uses EasyPost rates and labels
+
+Effective method formula:
+
+- `pickup` is customer-visible only when the master switch is ON and Pickup is selected
+- `shipping` is customer-visible only when the master switch is ON and Ship the order is selected
+- `local delivery` is customer-visible only when the master switch is ON and Local delivery is selected
+
+Important:
+
+- EasyPost does not decide whether Pickup or Local delivery appears at checkout
+- Product-level delivery overrides may only narrow the workspace methods, never expand them
+- Customer-facing labels change checkout wording only; they do not change price or behavior
+
 ### Main fields
 
 - `Enable EasyPost automation`: turns EasyPost features on/off for the company.
@@ -73,6 +94,7 @@ Use this section to enable and validate account-level EasyPost integration.
 - A default active package profile is required before live EasyPost rates can run.
 - Blocking readiness or destination-policy failures do not claim manual-shipping fallback to the customer.
 - When address verification is enabled, shipping customers must verify the delivery address before live rates are shown.
+- When parcel shipping stays on `Manual fulfillment`, Schedulaa does not calculate a separate carrier charge at checkout. Confirm shipping is already included in Product pricing, or move to EasyPost rates and labels.
 
 ### Safe setup order
 
