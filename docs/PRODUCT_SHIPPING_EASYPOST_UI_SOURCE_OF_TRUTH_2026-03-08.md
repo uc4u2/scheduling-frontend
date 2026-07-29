@@ -13,6 +13,9 @@ As of Wednesday, July 29, 2026, the manager UI also includes:
 - searchable country selection in the Commerce Copilot drawer
 - explicit selected-country destination enablement review
 - international buyer-notice preview inside the review step
+- post-creation Commerce Copilot readiness grouping
+- exact `focus=` deep links for API key, origin, destinations, package profiles, and Product shipping/customs sections
+- auto-refresh of readiness after the manager returns to the Copilot tab
 
 Entry points:
 - `ProductManagement.js`
@@ -58,6 +61,10 @@ Phase 3 UX rules:
     - optional manufacturer / ECCN
   - shipping readiness badge from backend serializer
   - customs readiness badge from backend serializer
+  - query-driven focus support for:
+    - `core_details`
+    - `shipping_details`
+    - `customs`
 
 ### Delivery setup panel
 - File: `frontend/src/pages/sections/management/EasyPostShippingSettingsPanel.js`
@@ -85,6 +92,11 @@ Phase 3 UX rules:
     - `Require import-charge acknowledgement`
   - Auto-load settings on mount
   - Help drawer for this panel
+  - query-driven focus support for:
+    - `api_key`
+    - `origin`
+    - `destinations`
+    - `package_profiles`
 
 ### Product orders + order detail actions
 - File: `frontend/src/pages/sections/management/ManagerProductOrdersView.js`
@@ -154,7 +166,36 @@ Phase 3 UX rules:
   - OFF => uses workspace defaults from Delivery setup.
   - ON => uses per-product override flags.
 
-## 4) Troubleshooting UI Symptoms
+## 4) Commerce Copilot Completion UX
+
+After hidden Product creation, the drawer must show:
+- `Product created`
+- Product name
+- hidden visibility as an informational state
+- grouped readiness:
+  - `Needs attention`
+  - `Warnings`
+  - `Completed setup`
+  - `Information`
+
+The primary button is server-driven:
+- `Answer remaining Product questions`
+- `Fix N setup items`
+- `Publish Product`
+- `View Product`
+
+Blocking items must provide:
+- `Fix now`
+- `How to fix`
+
+`Fix now` behavior:
+- opens the exact Product or Delivery Setup location in a new tab
+- preserves the Copilot session in the original tab
+- after the manager returns, the drawer refreshes readiness once and shows `Setup status refreshed.`
+
+The guided setup dialog is blocker-only and must not reimplement the full Delivery Setup forms.
+
+## 5) Troubleshooting UI Symptoms
 
 ### A) Delivery setup opens but empty values shown initially
 - Check that settings panel auto-load effect is present in `EasyPostShippingSettingsPanel.js`.
@@ -183,7 +224,7 @@ Phase 3 UX rules:
   - package profile selection, or
   - one-time actual parcel entry
 
-## 5) Primary UI Validation Checklist
+## 6) Primary UI Validation Checklist
 
 ### Manager
 1. Open Products workspace.

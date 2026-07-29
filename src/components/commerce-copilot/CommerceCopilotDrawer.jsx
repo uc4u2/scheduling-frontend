@@ -27,6 +27,7 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
@@ -310,10 +311,19 @@ const wizardStepForState = ({ currentQuestions, plan, execution, session }) => {
 
 const completionStatusTone = (status) => {
   if (status === "ready") return "success";
-  if (status === "not_applicable") return "info";
+  if (status === "missing") return "warning";
+  if (status === "blocked") return "error";
   if (status === "warning") return "warning";
-  return "warning";
+  if (["not_applicable", "informational", "pending"].includes(status)) return "info";
+  return "info";
 };
+
+const readinessGroups = (items = []) => ({
+  needsAttention: items.filter((item) => item?.blocking && ["missing", "blocked"].includes(item?.status)),
+  warnings: items.filter((item) => item?.status === "warning" && !item?.blocking),
+  completed: items.filter((item) => item?.status === "ready"),
+  information: items.filter((item) => ["not_applicable", "informational", "pending"].includes(item?.status)),
+});
 
 const copyText = async (text) => {
   const rendered = String(text || "").trim();
@@ -1010,6 +1020,11 @@ const CommerceCopilotDrawer = ({
   const [conversationOpen, setConversationOpen] = useState(false);
   const [draftDetailsOpen, setDraftDetailsOpen] = useState(false);
   const [appliedChangesOpen, setAppliedChangesOpen] = useState(false);
+  const [completionCompletedOpen, setCompletionCompletedOpen] = useState(false);
+  const [completionInformationOpen, setCompletionInformationOpen] = useState(false);
+  const [completionMoreActionsOpen, setCompletionMoreActionsOpen] = useState(false);
+  const [guidedSetupOpen, setGuidedSetupOpen] = useState(false);
+  const [expandedCompletionGuidance, setExpandedCompletionGuidance] = useState({});
   const [contentProducts, setContentProducts] = useState([]);
   const [contentProductId, setContentProductId] = useState(targetProductId || "");
   const [contentFieldSelections, setContentFieldSelections] = useState({});
@@ -1017,10 +1032,12 @@ const CommerceCopilotDrawer = ({
   const [editingContentField, setEditingContentField] = useState(null);
   const [shippingTestForm, setShippingTestForm] = useState(buildShippingTestForm(null, targetProductId));
   const [internationalExpansionForm, setInternationalExpansionForm] = useState(buildInternationalExpansionForm(null, targetProductId));
+  const isMobileDialog = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const questionCardRef = useRef(null);
   const questionSeedRef = useRef({});
   const shippingTestSeedRef = useRef("");
   const internationalExpansionSeedRef = useRef("");
+  const completionRefreshPendingRef = useRef(false);
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
@@ -1081,6 +1098,14 @@ const CommerceCopilotDrawer = ({
     : completion?.available_actions?.prepare_publish
       ? "Ready to publish"
       : "Product created";
+  const completionSummary = completion?.readiness?.summary || {};
+  const completionGroupedItems = useMemo(
+    () => readinessGroups(completion?.readiness?.items || []),
+    [completion?.readiness?.items]
+  );
+  const completionNextAction = completion?.next_best_action || null;
+  const completionShippingTestAction = completion?.available_actions?.shipping_test || { enabled: false, label: "Test shipping setup", message: "" };
+  const completionBlockerCount = Number(completionSummary.blocking_count || 0);
 
   useEffect(() => {
     if (!currentQuestions.length) {
@@ -1182,6 +1207,11 @@ const CommerceCopilotDrawer = ({
     setConversationOpen(false);
     setDraftDetailsOpen(false);
     setAppliedChangesOpen(false);
+    setCompletionCompletedOpen(false);
+    setCompletionInformationOpen(false);
+    setCompletionMoreActionsOpen(false);
+    setGuidedSetupOpen(false);
+    setExpandedCompletionGuidance({});
     setContentProducts([]);
     setContentProductId(targetProductId || "");
     setContentFieldSelections({});
@@ -1192,6 +1222,7 @@ const CommerceCopilotDrawer = ({
     questionSeedRef.current = {};
     shippingTestSeedRef.current = "";
     internationalExpansionSeedRef.current = "";
+    completionRefreshPendingRef.current = false;
   }, [targetProductId]);
 
   const loadCapabilities = useCallback(async () => {
@@ -1463,6 +1494,34 @@ const CommerceCopilotDrawer = ({
       setBusy(false);
     }
   }, [auth]);
+
+  const refreshCompletionStatus = useCallback(async (message = "Setup status refreshed.") => {
+    if (!session?.public_id) return;
+    await loadSessionDetail(session.public_id);
+    setStatusMessage({ type: "success", text: message });
+  }, [loadSessionDetail, session?.public_id]);
+
+  const openCompletionLink = useCallback((url) => {
+    if (!url) return;
+    completionRefreshPendingRef.current = true;
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleFocus = () => {
+      if (!completionRefreshPendingRef.current || !session?.public_id) return;
+      completionRefreshPendingRef.current = false;
+      refreshCompletionStatus();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleFocus);
+      return () => window.removeEventListener("focus", handleFocus);
+    }
+    return undefined;
+  }, [open, refreshCompletionStatus, session?.public_id]);
 
   const saveIncomplete = useCallback(async () => {
     if (!session?.public_id) {
@@ -1845,6 +1904,26 @@ const CommerceCopilotDrawer = ({
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Finish setup before publishing." });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleCompletionPrimaryAction = async () => {
+    switch (completionNextAction?.type) {
+      case "answer_product_questions":
+        await continueProductSetup();
+        break;
+      case "fix_setup":
+        setGuidedSetupOpen(true);
+        break;
+      case "publish":
+        await preparePublish();
+        break;
+      case "view_product":
+      case "open_product":
+        if (completion?.links?.product) openCompletionLink(completion.links.product);
+        break;
+      default:
+        break;
     }
   };
 
@@ -2952,72 +3031,209 @@ const CommerceCopilotDrawer = ({
             {completionVisible ? (
               <Card variant="outlined">
                 <CardContent>
-                  <Stack spacing={1.5}>
+                  <Stack spacing={2}>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{completionHeading}</Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="h6" sx={{ fontWeight: 800 }}>
                         {completion?.product?.name || "Your product"}
                       </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {completion?.product?.is_active ? "Visible on your storefront" : "Hidden until you publish it"}
+                      </Typography>
                     </Box>
-                    <Alert severity={completion?.product?.is_active ? "success" : "info"}>
-                      {completion?.product?.is_active ? "Visible on your storefront." : "Hidden until you publish it."}
-                    </Alert>
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {completionBlockerCount > 0
+                          ? `${completionBlockerCount} setup item${completionBlockerCount === 1 ? "" : "s"} need attention`
+                          : completion?.product?.is_active
+                            ? "Product is published"
+                            : "Product is ready to publish"}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {Number(completionSummary.completed_count || 0) > 0 ? `${Number(completionSummary.completed_count || 0)} setup item${Number(completionSummary.completed_count || 0) === 1 ? "" : "s"} complete` : "No setup items complete yet"}
+                      </Typography>
+                    </Stack>
+
+                    <Stack spacing={1.25}>
+                      {completionGroupedItems.needsAttention.length ? (
+                        <Stack spacing={1}>
+                          {completionGroupedItems.needsAttention.map((item) => (
+                            <Card key={item.code} variant="outlined">
+                              <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+                                <Stack spacing={1}>
+                                  <Alert severity={completionStatusTone(item.status)} sx={{ py: 0 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                                  </Alert>
+                                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                    {item?.action?.url ? (
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={() => openCompletionLink(item.action.url)}
+                                      >
+                                        {item?.action?.label || "Fix now"}
+                                      </Button>
+                                    ) : null}
+                                    {item?.guidance?.steps?.length ? (
+                                      <Button
+                                        size="small"
+                                        variant="text"
+                                        onClick={() => setExpandedCompletionGuidance((prev) => ({ ...prev, [item.code]: !prev[item.code] }))}
+                                      >
+                                        How to fix
+                                      </Button>
+                                    ) : null}
+                                  </Stack>
+                                  <Collapse in={Boolean(expandedCompletionGuidance[item.code])}>
+                                    <Stack spacing={1} sx={{ pt: 0.5 }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                        {item?.guidance?.title || item.label}
+                                      </Typography>
+                                      {(item?.guidance?.steps || []).map((step, index) => (
+                                        <Typography key={`${item.code}-step-${index}`} variant="body2" color="text.secondary">
+                                          {index + 1}. {step}
+                                        </Typography>
+                                      ))}
+                                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                        {(item?.guidance?.links || []).map((link) => (
+                                          <Button
+                                            key={`${item.code}-${link.label}`}
+                                            size="small"
+                                            variant="text"
+                                            onClick={() => openCompletionLink(link.url)}
+                                          >
+                                            {link.label}
+                                          </Button>
+                                        ))}
+                                      </Stack>
+                                    </Stack>
+                                  </Collapse>
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Stack>
+                      ) : null}
+
+                      {completionGroupedItems.warnings.length ? (
+                        <Stack spacing={1}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Warnings</Typography>
+                          {completionGroupedItems.warnings.map((item) => (
+                            <Alert key={item.code} severity="warning" sx={{ py: 0 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                              <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                            </Alert>
+                          ))}
+                        </Stack>
+                      ) : null}
+
+                      {completionGroupedItems.completed.length ? (
+                        <Accordion expanded={completionCompletedOpen} onChange={(_, next) => setCompletionCompletedOpen(next)}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              Completed setup ({completionGroupedItems.completed.length})
+                            </Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Stack spacing={1}>
+                              {completionGroupedItems.completed.map((item) => (
+                                <Alert key={item.code} severity="success" sx={{ py: 0 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                                  <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                                </Alert>
+                              ))}
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
+                      ) : null}
+
+                      {completionGroupedItems.information.length ? (
+                        <Accordion expanded={completionInformationOpen} onChange={(_, next) => setCompletionInformationOpen(next)}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>Information</Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Stack spacing={1}>
+                              {completionGroupedItems.information.map((item) => (
+                                <Alert key={item.code} severity="info" sx={{ py: 0 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                                  <Typography variant="caption" color="text.secondary">{item.message}</Typography>
+                                </Alert>
+                              ))}
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
+                      ) : null}
+                    </Stack>
+
                     <Stack spacing={1}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Readiness</Typography>
-                      {(completion?.readiness?.items || []).map((item) => (
-                        <Alert key={item.code} severity={completionStatusTone(item.status)} sx={{ py: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.label}</Typography>
-                          <Typography variant="caption" color="text.secondary">{item.message}</Typography>
-                        </Alert>
-                      ))}
+                      {completionNextAction ? (
+                        <Button variant="contained" onClick={handleCompletionPrimaryAction} disabled={busy}>
+                          {completionNextAction.label}
+                        </Button>
+                      ) : null}
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        {completion?.links?.product ? (
+                          <Button variant="outlined" onClick={() => openCompletionLink(completion.links.product)}>
+                            Open Product
+                          </Button>
+                        ) : null}
+                        <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refreshCompletionStatus()} disabled={busy || !session?.public_id}>
+                          Refresh status
+                        </Button>
+                      </Stack>
+                      {!completion?.available_actions?.prepare_publish ? (
+                        <Typography variant="caption" color="text.secondary">
+                          Publish Product{completionBlockerCount > 0 ? ` is available after ${completionBlockerCount} setup item${completionBlockerCount === 1 ? "" : "s"}.` : " requires a readiness refresh."}
+                        </Typography>
+                      ) : null}
                     </Stack>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                      <Button variant="contained" onClick={continueProductSetup} disabled={busy || !completion?.available_actions?.help_finish_setup}>
-                        Help me finish setup
-                      </Button>
-                      {!completion?.product?.is_digital ? (
-                        <Button
-                          variant="outlined"
-                          onClick={() => createSession("test_shipping_setup", { productId: completion?.product?.product_id })}
-                          disabled={busy || !completion?.product?.product_id}
-                        >
-                          Test shipping setup
-                        </Button>
-                      ) : null}
-                      {!completion?.product?.is_digital ? (
-                        <Button
-                          variant="outlined"
-                          onClick={() => createSession("international_expansion_assistant", { productId: completion?.product?.product_id })}
-                          disabled={busy || !completion?.product?.product_id}
-                        >
-                          Expand internationally
-                        </Button>
-                      ) : null}
-                      <Button variant="outlined" onClick={() => startContentWorkflow(completion?.product?.product_id)} disabled={busy || !completion?.product?.product_id}>
-                        Improve storefront content
-                      </Button>
-                      {completion?.links?.product ? (
-                        <Button variant="outlined" component="a" href={completion.links.product}>
-                          Open product
-                        </Button>
-                      ) : null}
-                      {completion?.available_actions?.open_digital_products && completion?.links?.digital_products ? (
-                        <Button variant="outlined" component="a" href={completion.links.digital_products}>
-                          Open Digital Products
-                        </Button>
-                      ) : completion?.links?.delivery_setup ? (
-                        <Button variant="outlined" component="a" href={completion.links.delivery_setup}>
-                          Open delivery setup
-                        </Button>
-                      ) : null}
-                      <Button
-                        variant="text"
-                        onClick={preparePublish}
-                        disabled={busy || !completion?.available_actions?.prepare_publish}
-                      >
-                        {completion?.available_actions?.prepare_publish ? "Publish when ready" : "Finish setup before publishing"}
-                      </Button>
-                    </Stack>
+
+                    <Accordion expanded={completionMoreActionsOpen} onChange={(_, next) => setCompletionMoreActionsOpen(next)}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>More actions</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                          {!completion?.product?.is_digital ? (
+                            <Button
+                              variant="outlined"
+                              onClick={() => createSession("test_shipping_setup", { productId: completion?.product?.product_id })}
+                              disabled={busy || !completion?.product?.product_id || !completionShippingTestAction.enabled}
+                            >
+                              {completionShippingTestAction.label || "Test shipping setup"}
+                            </Button>
+                          ) : null}
+                          {!completionShippingTestAction.enabled && completionShippingTestAction.message ? (
+                            <Typography variant="caption" color="text.secondary">
+                              {completionShippingTestAction.message}
+                            </Typography>
+                          ) : null}
+                          {!completion?.product?.is_digital ? (
+                            <Button
+                              variant="outlined"
+                              onClick={() => createSession("international_expansion_assistant", { productId: completion?.product?.product_id })}
+                              disabled={busy || !completion?.product?.product_id}
+                            >
+                              Expand internationally
+                            </Button>
+                          ) : null}
+                          <Button variant="outlined" onClick={() => startContentWorkflow(completion?.product?.product_id)} disabled={busy || !completion?.product?.product_id}>
+                            Improve storefront content
+                          </Button>
+                          {completion?.available_actions?.open_digital_products && completion?.links?.digital_products ? (
+                            <Button variant="outlined" onClick={() => openCompletionLink(completion.links.digital_products)}>
+                              Open Digital Products
+                            </Button>
+                          ) : completion?.links?.delivery_setup ? (
+                            <Button variant="outlined" onClick={() => openCompletionLink(completion.links.delivery_setup)}>
+                              Open Delivery Setup
+                            </Button>
+                          ) : null}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
                     {execution ? (
                       <Accordion expanded={appliedChangesOpen} onChange={(_, next) => setAppliedChangesOpen(next)}>
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -3050,6 +3266,74 @@ const CommerceCopilotDrawer = ({
                   </Stack>
                 </CardContent>
               </Card>
+            ) : null}
+
+            {completionVisible ? (
+              <Dialog
+                open={guidedSetupOpen}
+                onClose={() => setGuidedSetupOpen(false)}
+                fullScreen={isMobileDialog}
+                fullWidth
+                maxWidth="md"
+                scroll="paper"
+              >
+                <DialogTitle sx={{ fontWeight: 800 }}>Finish Product setup</DialogTitle>
+                <DialogContent dividers>
+                  <Stack spacing={2}>
+                    {completionGroupedItems.needsAttention.map((item, index) => (
+                      <Card key={`guided-${item.code}`} variant="outlined">
+                        <CardContent>
+                          <Stack spacing={1.25}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                              Step {index + 1} of {completionGroupedItems.needsAttention.length} - {item.label}
+                            </Typography>
+                            <Typography variant="body2">{item.message}</Typography>
+                            {item?.guidance?.title ? (
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {item.guidance.title}
+                              </Typography>
+                            ) : null}
+                            {(item?.guidance?.steps || []).map((step, stepIndex) => (
+                              <Typography key={`guided-${item.code}-${stepIndex}`} variant="body2" color="text.secondary">
+                                {stepIndex + 1}. {step}
+                              </Typography>
+                            ))}
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                              {(item?.guidance?.links || []).map((link) => (
+                                <Button
+                                  key={`guided-link-${item.code}-${link.label}`}
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => openCompletionLink(link.url)}
+                                >
+                                  {link.label}
+                                </Button>
+                              ))}
+                              {item?.action?.url ? (
+                                <Button
+                                  variant="text"
+                                  size="small"
+                                  onClick={() => openCompletionLink(item.action.url)}
+                                >
+                                  {item.action.label || "Fix now"}
+                                </Button>
+                              ) : null}
+                            </Stack>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Stack>
+                </DialogContent>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2, justifyContent: "flex-end" }}>
+                  <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refreshCompletionStatus()} disabled={busy || !session?.public_id}>
+                    Refresh status
+                  </Button>
+                  <Button variant="text" onClick={() => setGuidedSetupOpen(false)}>
+                    Close and finish later
+                  </Button>
+                </Stack>
+              </Dialog>
             ) : null}
 
             {isInternationalExpansionWorkflow ? (

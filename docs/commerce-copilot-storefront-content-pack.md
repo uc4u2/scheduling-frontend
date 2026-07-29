@@ -8,6 +8,18 @@ description: Release B manager UI contract for improving storefront content.
 Updated: 2026-07-28
 Status: Release B complete
 
+## Post-creation completion note
+
+As of Wednesday, July 29, 2026, the Commerce Copilot completion card after hidden Product creation is separate from the storefront content workflow.
+
+The completion card now:
+- groups setup blockers separately from completed and informational items
+- uses a server-driven primary action
+- opens exact Product or Delivery Setup deep links in a new tab
+- refreshes readiness once when the manager returns to the Copilot tab
+
+This behavior belongs to the Product-creation and readiness loop, not to Release B content suggestion logic.
+
 ## Purpose
 
 Release B helps a manager turn an existing Product into a more polished storefront listing without changing factual commerce settings.

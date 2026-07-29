@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -209,6 +209,14 @@ const getReadinessChipProps = (ready) => (
   ready ? STATUS_CHIP_CONTRACT.ready : STATUS_CHIP_CONTRACT.needsSetup
 );
 
+const focusHighlightSx = (active) => ({
+  borderRadius: 1.5,
+  outline: active ? "2px solid rgba(59, 130, 246, 0.45)" : "none",
+  backgroundColor: active ? "rgba(59, 130, 246, 0.08)" : "transparent",
+  transition: "background-color 0.25s ease, outline-color 0.25s ease",
+  scrollMarginTop: 96,
+});
+
 const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false }) => {
   const token = tokenProp || localStorage.getItem("token") || "";
   const headers = useMemo(
@@ -227,6 +235,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [helpTab, setHelpTab] = useState("schedulaa_setup");
   const [helpCopyMessage, setHelpCopyMessage] = useState("");
   const [activeTab, setActiveTab] = useState("delivery_methods");
+  const [focusedSection, setFocusedSection] = useState("");
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotWorkflow, setCopilotWorkflow] = useState("review_shipping_setup");
   const [packageProfileForm, setPackageProfileForm] = useState({
@@ -239,6 +248,10 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     is_default: false,
   });
   const [editingPackageProfileId, setEditingPackageProfileId] = useState(null);
+  const apiKeySectionRef = useRef(null);
+  const originSectionRef = useRef(null);
+  const destinationSectionRef = useRef(null);
+  const packageProfilesSectionRef = useRef(null);
   const isEasyPostMode = Boolean(settings?.easypost_enabled);
   const destinationPolicyMode = settings?.destination_policy_mode || settings?.destination_policy_preset || "domestic_only";
   const selectedCountryOptions = useMemo(() => {
@@ -314,6 +327,33 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const search = new URLSearchParams(window.location.search);
+    const requestedTab = String(search.get("tab") || "").trim().toLowerCase();
+    const requestedFocus = String(search.get("focus") || "").trim().toLowerCase();
+    if (requestedTab === "easypost_automation" && activeTab !== "easypost") {
+      setActiveTab("easypost");
+      return undefined;
+    }
+    const focusMap = {
+      api_key: apiKeySectionRef,
+      origin: originSectionRef,
+      destinations: destinationSectionRef,
+      package_profiles: packageProfilesSectionRef,
+    };
+    const targetRef = focusMap[requestedFocus];
+    if (!targetRef?.current) return undefined;
+    const timer = window.setTimeout(() => {
+      targetRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFocusedSection(requestedFocus);
+      window.setTimeout(() => {
+        setFocusedSection((prev) => (prev === requestedFocus ? "" : prev));
+      }, 1800);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, settings]);
 
   const updateField = useCallback((field, value) => {
     setSettings((prev) => ({ ...(prev || {}), [field]: value }));
@@ -735,6 +775,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     />
                   </Grid>
                 </Grid>
+                <Box ref={apiKeySectionRef} sx={focusHighlightSx(focusedSection === "api_key")}>
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={8}>
                     <FormControlLabel
@@ -769,6 +810,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     </Button>
                   </Grid>
                 </Grid>
+                </Box>
+                <Box ref={originSectionRef} sx={focusHighlightSx(focusedSection === "origin")}>
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin name", hint: "Sender/business name used as shipment origin. Example: your store name.", value: settings.origin_name, onChange: (e) => updateField("origin_name", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin phone", hint: "Contact phone for origin/sender address. Include country code where possible.", value: settings.origin_phone, onChange: (e) => updateField("origin_phone", e.target.value), disabled: !isEasyPostMode })}</Grid>
@@ -778,6 +821,10 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin region", hint: "State/Province/Region code. Example: ON, CA, NY.", value: settings.origin_region, onChange: (e) => updateField("origin_region", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin postal code", hint: "ZIP/Postal code for origin address.", value: settings.origin_postal_code, onChange: (e) => updateField("origin_postal_code", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin country", hint: "2-letter country code (ISO-2). Example: US, CA.", value: settings.origin_country, onChange: (e) => updateField("origin_country", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                </Grid>
+                </Box>
+                <Box ref={destinationSectionRef} sx={focusHighlightSx(focusedSection === "destinations")}>
+                <Grid container spacing={1.5}>
                   <Grid item xs={12} md={4}>
                     <TextField
                       select
@@ -791,7 +838,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       <MenuItem value="domestic_only">Domestic only</MenuItem>
                       <MenuItem value="ca_us">Canada and United States</MenuItem>
                       <MenuItem value="selected_countries">Selected countries</MenuItem>
-                    </TextField>
+                      </TextField>
                   </Grid>
                   <Grid item xs={12} md={8}>
                     <Autocomplete
@@ -917,6 +964,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     </Alert>
                   </Grid>
                 </Grid>
+                </Box>
                 {destinationPolicyMode !== "domestic_only" && (
                   <>
                     <Divider />
@@ -1104,7 +1152,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   </Grid>
                 </Stack>
                 <Divider />
-                <Stack spacing={1.5}>
+                <Stack spacing={1.5} ref={packageProfilesSectionRef} sx={focusHighlightSx(focusedSection === "package_profiles")}>
                   <Typography variant="subtitle2" fontWeight={700}>Package Profiles</Typography>
                   <Typography variant="body2" color="text.secondary">
                     The default package provides parcel dimensions and tare weight for live shipping rates.

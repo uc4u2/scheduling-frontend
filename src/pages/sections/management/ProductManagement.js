@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Accordion,
@@ -168,6 +168,14 @@ const productChipSuccessSx = {
   },
 };
 
+const sectionFocusSx = (active) => ({
+  borderRadius: 1.5,
+  outline: active ? "2px solid rgba(59, 130, 246, 0.45)" : "none",
+  backgroundColor: active ? "rgba(59, 130, 246, 0.08)" : "transparent",
+  transition: "background-color 0.25s ease, outline-color 0.25s ease",
+  scrollMarginTop: 96,
+});
+
 const ProductManagement = ({ token }) => {
   const { t } = useTranslation();
 
@@ -200,6 +208,7 @@ const ProductManagement = ({ token }) => {
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotWorkflow, setCopilotWorkflow] = useState("");
   const [copilotProductId, setCopilotProductId] = useState(null);
+  const [focusedSection, setFocusedSection] = useState("");
   const [globalDeliveryPolicy, setGlobalDeliveryPolicy] = useState({
     allow_pickup: false,
     allow_shipping: true,
@@ -217,6 +226,9 @@ const ProductManagement = ({ token }) => {
     q: "",
     page: 1,
   });
+  const coreDetailsRef = useRef(null);
+  const shippingDetailsRef = useRef(null);
+  const customsSectionRef = useRef(null);
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
   const compactLinkedInventorySnapshot = useMediaQuery((theme) => theme.breakpoints.down("sm"));
@@ -389,6 +401,27 @@ const ProductManagement = ({ token }) => {
       handleOpen(match);
     }
   }, [products, open, handleOpen]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return undefined;
+    const search = new URLSearchParams(window.location.search);
+    const focus = String(search.get("focus") || "").trim().toLowerCase();
+    const focusMap = {
+      core_details: coreDetailsRef,
+      shipping_details: shippingDetailsRef,
+      customs: customsSectionRef,
+    };
+    const targetRef = focusMap[focus];
+    if (!targetRef?.current) return undefined;
+    const timer = window.setTimeout(() => {
+      targetRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFocusedSection(focus);
+      window.setTimeout(() => {
+        setFocusedSection((prev) => (prev === focus ? "" : prev));
+      }, 1800);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   const handleChange = useCallback(
     (field) => (event) => {
@@ -1039,6 +1072,7 @@ const ProductManagement = ({ token }) => {
         </DialogTitle>
         <DialogContent dividers sx={{ backgroundColor: (theme) => theme.palette.background.paper }}>
           <Stack spacing={2.5} mt={0.5}>
+            <Box ref={coreDetailsRef} sx={sectionFocusSx(focusedSection === "core_details")}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
               Core details
             </Typography>
@@ -1071,6 +1105,7 @@ const ProductManagement = ({ token }) => {
               multiline
               minRows={3}
             />
+            </Box>
             <Divider />
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
               Catalog and SEO
@@ -1441,7 +1476,7 @@ const ProductManagement = ({ token }) => {
                 </Alert>
               )}
               <Divider sx={{ my: 1 }} />
-              <Stack spacing={1}>
+              <Stack spacing={1} ref={shippingDetailsRef} sx={sectionFocusSx(focusedSection === "shipping_details")}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Typography variant="subtitle2" fontWeight={700}>
                     Product weight and dimensions
@@ -1553,7 +1588,7 @@ const ProductManagement = ({ token }) => {
                 )}
               </Stack>
               <Divider sx={{ my: 1 }} />
-              <Stack spacing={1}>
+              <Stack spacing={1} ref={customsSectionRef} sx={sectionFocusSx(focusedSection === "customs")}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Typography variant="subtitle2" fontWeight={700}>
                     International customs

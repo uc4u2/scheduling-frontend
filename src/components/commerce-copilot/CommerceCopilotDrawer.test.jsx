@@ -791,8 +791,7 @@ describe("CommerceCopilotDrawer", () => {
   test("renders a read-only draft preview with humanized labels and no raw keys", async () => {
     mockApiPost.mockResolvedValueOnce({ data: guidedSession });
 
-    renderDrawer();
-    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    renderDrawer({ initialWorkflow: "create_physical_product" });
     await userEvent.click(await screen.findByRole("button", { name: /view current draft details/i }));
     expect(await screen.findByText(/draft preview/i)).toBeInTheDocument();
     expect(screen.getAllByText("USD 50").length).toBeGreaterThan(0);
@@ -806,8 +805,7 @@ describe("CommerceCopilotDrawer", () => {
   test("opens explicit draft edit instead of showing missing facts as text fields", async () => {
     mockApiPost.mockResolvedValueOnce({ data: guidedSession });
 
-    renderDrawer();
-    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    renderDrawer({ initialWorkflow: "create_physical_product" });
     await userEvent.click(await screen.findByRole("button", { name: /view current draft details/i }));
     expect((await screen.findAllByText(/^Still needed$/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /^save$/i })).not.toBeInTheDocument();
@@ -970,6 +968,12 @@ describe("CommerceCopilotDrawer", () => {
           },
           readiness: {
             overall_status: "setup_incomplete",
+            summary: {
+              blocking_count: 1,
+              warning_count: 0,
+              completed_count: 1,
+              informational_count: 1,
+            },
             items: [
               {
                 code: "product_core",
@@ -977,6 +981,7 @@ describe("CommerceCopilotDrawer", () => {
                 status: "ready",
                 message: "Product name and price are complete.",
                 action_target: "product",
+                blocking: false,
               },
               {
                 code: "easypost_connection",
@@ -984,8 +989,36 @@ describe("CommerceCopilotDrawer", () => {
                 status: "missing",
                 message: "Connect EasyPost before showing live carrier rates.",
                 action_target: "delivery_setup",
+                blocking: true,
+                action: {
+                  type: "open_delivery_setup",
+                  label: "Fix now",
+                  url: "/manager/advanced-management?panel=easypost-shipping&tab=easypost_automation&focus=api_key",
+                },
+                guidance: {
+                  title: "Connect EasyPost",
+                  steps: [
+                    "Create or sign in to your EasyPost account.",
+                    "Copy a Test or Production API key.",
+                  ],
+                  links: [
+                    { label: "Open Delivery Setup", url: "/manager/advanced-management?panel=easypost-shipping&tab=easypost_automation&focus=api_key" },
+                  ],
+                },
+              },
+              {
+                code: "storefront_visibility",
+                label: "Storefront visibility",
+                status: "informational",
+                message: "This Product will remain hidden until you publish it.",
+                action_target: "product",
+                blocking: false,
               },
             ],
+          },
+          next_best_action: {
+            type: "fix_setup",
+            label: "Fix 1 setup item",
           },
           available_actions: {
             help_finish_setup: true,
@@ -993,10 +1026,15 @@ describe("CommerceCopilotDrawer", () => {
             open_delivery_setup: true,
             open_digital_products: false,
             prepare_publish: false,
+            shipping_test: {
+              enabled: false,
+              label: "Available after shipping setup",
+              message: "Connect EasyPost and complete the shipping origin before requesting live test rates.",
+            },
           },
           links: {
             product: "/manager/advanced-management?panel=products&editProductId=101",
-            delivery_setup: "/manager/advanced-management?panel=easypost-shipping",
+            delivery_setup: "/manager/advanced-management?panel=easypost-shipping&tab=easypost_automation",
             digital_products: null,
           },
         },
@@ -1008,10 +1046,12 @@ describe("CommerceCopilotDrawer", () => {
 
     expect(await screen.findByText(/product created/i)).toBeInTheDocument();
     expect(screen.getAllByText(/smoky-lemon quartz necklace/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/product information/i)).toBeInTheDocument();
-    expect(screen.getByText(/connect easypost before showing live carrier rates\./i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /help me finish setup/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /finish setup before publishing/i })).toBeDisabled();
+    expect(screen.getByText(/1 setup item need attention/i)).toBeInTheDocument();
+    expect(screen.getByText(/5? setup item complete|1 setup item complete/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /fix 1 setup item/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open product/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /refresh status/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /how to fix/i })).toBeInTheDocument();
   });
 
   test("accepts package bundle input and keeps the guided flow single-column", async () => {
