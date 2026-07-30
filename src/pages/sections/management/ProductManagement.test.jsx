@@ -157,6 +157,40 @@ describe("ProductManagement", () => {
           delivery_policy: "Product and Delivery Setup settings",
           tax: "Checkout Pro / Stripe checkout",
         },
+        seller_view: {
+          status: "complete",
+          currency: "CAD",
+          revenue: {
+            product_revenue_before_tax: "50.00",
+            shipping_collected: "0.00",
+            known_customer_amount_before_tax: "50.00",
+            customer_listed_amount: null,
+          },
+          costs: {
+            product_unit_cost: "20.00",
+            product_cost_total: "20.00",
+            estimated_shipping_label_cost: "0.00",
+            known_costs_total: "20.00",
+          },
+          margin: {
+            product_gross_margin: "30.00",
+            shipping_difference: "0.00",
+            estimated_order_contribution: "30.00",
+            estimated_contribution_rate_percent: "60.00",
+          },
+          completeness: {
+            product_cost_available: true,
+            shipping_cost_available: true,
+            tax_treatment_complete: true,
+          },
+          warnings: [],
+          recommended_actions: [],
+          excluded_costs: [
+            "Stripe and payment-processing fees",
+            "Packaging materials",
+          ],
+          disclaimer: "This is an estimate and is not accounting profit.",
+        },
       },
     });
   });
@@ -171,6 +205,7 @@ describe("ProductManagement", () => {
     fireEvent.click(await screen.findByRole("button", { name: /manager\.product\.buttonadd/i }));
 
     expect(await screen.findByLabelText(/weight \(g\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Used only for Manager-side Seller estimates and Business Finance analysis\. Customers never see this value\./i)).toBeInTheDocument();
     expect(screen.getByLabelText(/length \(mm\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/width \(mm\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/height \(mm\)/i)).toBeInTheDocument();

@@ -85,6 +85,41 @@ export const buildProductCheckoutPreviewSummary = (preview) => {
   return lines.join("\n");
 };
 
+export const buildProductSellerEstimateSummary = (preview) => {
+  const seller = preview?.seller_view;
+  if (!preview || !seller) return "";
+  const currency = seller.currency || preview.currency || "USD";
+  const lines = [
+    "Seller estimate",
+    "",
+    `Currency: ${currency}`,
+    "",
+    "Revenue:",
+  ];
+  if (seller?.revenue?.product_revenue_before_tax != null) {
+    lines.push(`Product revenue before tax: ${formatMoney(seller.revenue.product_revenue_before_tax, currency)}`);
+  } else if (seller?.revenue?.customer_listed_amount != null) {
+    lines.push(`Customer-listed amount: ${formatMoney(seller.revenue.customer_listed_amount, currency)}`);
+  } else {
+    lines.push("Product revenue before tax: Unavailable");
+  }
+  lines.push(`Customer shipping collected: ${formatMoney(seller?.revenue?.shipping_collected, currency)}`);
+  lines.push("");
+  lines.push("Known costs:");
+  lines.push(`Product cost: ${seller?.costs?.product_cost_total != null ? formatMoney(seller.costs.product_cost_total, currency) : "Unavailable"}`);
+  lines.push(`Estimated label cost: ${seller?.costs?.estimated_shipping_label_cost != null ? formatMoney(seller.costs.estimated_shipping_label_cost, currency) : "Unavailable"}`);
+  lines.push("");
+  lines.push(`Estimated order contribution: ${seller?.margin?.estimated_order_contribution != null ? formatMoney(seller.margin.estimated_order_contribution, currency) : "Unavailable"}`);
+  if (seller?.margin?.estimated_contribution_rate_percent != null) {
+    lines.push(`Estimated contribution rate: ${seller.margin.estimated_contribution_rate_percent}%`);
+  }
+  lines.push("");
+  lines.push(`Excluded: ${(seller?.excluded_costs || []).join(", ")}`);
+  lines.push("");
+  lines.push("This is an estimate and is not accounting profit.");
+  return lines.join("\n");
+};
+
 export const effectiveProductPreviewMethods = (product, globalDeliveryPolicy) => {
   if (!product) return [];
   if (product.is_digital) return ["digital"];
@@ -121,6 +156,9 @@ export default function ProductCheckoutPreviewDialog({
   title = "Preview customer checkout",
   onNotify,
   externalStateFingerprint = "",
+  onOpenProductCost = null,
+  onOpenProduct = null,
+  deliverySetupHref = "/manager/advanced-management?panel=easypost-shipping",
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -255,13 +293,43 @@ export default function ProductCheckoutPreviewDialog({
     }
   };
 
+  const handleCopySellerEstimate = async () => {
+    try {
+      const summary = buildProductSellerEstimateSummary(preview);
+      if (!summary) return;
+      await navigator.clipboard.writeText(summary);
+      onNotify?.("Seller estimate copied.");
+    } catch {
+      onNotify?.("Unable to copy Seller estimate.");
+    }
+  };
+
   const handleRateSelection = async (event) => {
     const nextReference = event.target.value;
     setSelectedRateReference(nextReference);
     setStale(true);
   };
 
+  const handleRecommendedAction = (code) => {
+    if (code === "open_product_cost") {
+      onOpenProductCost?.(selectedProduct?.id || selectedProductId);
+      return;
+    }
+    if (code === "open_product") {
+      onOpenProduct?.(selectedProduct?.id || selectedProductId);
+      return;
+    }
+    if (code === "open_delivery_setup") {
+      if (typeof window !== "undefined") window.location.assign(deliverySetupHref);
+      return;
+    }
+    if (code === "test_easypost_shipping") {
+      setDeliveryMethod("shipping");
+    }
+  };
+
   const customerView = preview?.customer_view || {};
+  const sellerView = preview?.seller_view || null;
   const readinessItems = Array.isArray(preview?.readiness?.items) ? preview.readiness.items : [];
   const rateOptions = Array.isArray(preview?.delivery?.test_rates) ? preview.delivery.test_rates : [];
   const addressReview = preview?.address_review || null;
@@ -497,19 +565,93 @@ export default function ProductCheckoutPreviewDialog({
                   </Stack>
                 </AccordionDetails>
               </Accordion>
+
+              {sellerView ? (
+                <Accordion disableGutters sx={{ boxShadow: "none", border: 1, borderColor: "divider", borderRadius: 1.5, overflow: "hidden" }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2" fontWeight={700}>Seller estimate</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={1.25}>
+                      <Alert severity={sellerView.status === "complete" ? "success" : "warning"}>
+                        {sellerView.status === "complete"
+                          ? "Estimated contribution based on your stored Product cost and current preview-safe checkout settings."
+                          : "Seller estimate incomplete"}
+                      </Alert>
+                      {(sellerView.warnings || []).map((warning) => (
+                        <Alert key={warning} severity="warning">
+                          {warning}
+                        </Alert>
+                      ))}
+                      {(sellerView.recommended_actions || []).length ? (
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                          {sellerView.recommended_actions.map((action) => (
+                            <Button key={action.code} variant="outlined" size="small" onClick={() => handleRecommendedAction(action.code)}>
+                              {action.label}
+                            </Button>
+                          ))}
+                        </Stack>
+                      ) : null}
+                      <Stack spacing={0.75}>
+                        <Typography variant="subtitle2" fontWeight={800}>Revenue</Typography>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Product revenue before tax</Typography><Typography variant="body2">{sellerView?.revenue?.product_revenue_before_tax != null ? formatMoney(sellerView.revenue.product_revenue_before_tax, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Customer shipping collected</Typography><Typography variant="body2">{formatMoney(sellerView?.revenue?.shipping_collected, sellerView.currency)}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Known customer amount before tax</Typography><Typography variant="body2">{formatMoney(sellerView?.revenue?.known_customer_amount_before_tax, sellerView.currency)}</Typography></Stack>
+                      </Stack>
+                      <Divider flexItem />
+                      <Stack spacing={0.75}>
+                        <Typography variant="subtitle2" fontWeight={800}>Known costs</Typography>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Product cost</Typography><Typography variant="body2">{sellerView?.costs?.product_cost_total != null ? formatMoney(sellerView.costs.product_cost_total, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Estimated shipping-label cost</Typography><Typography variant="body2">{sellerView?.costs?.estimated_shipping_label_cost != null ? formatMoney(sellerView.costs.estimated_shipping_label_cost, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Known costs</Typography><Typography variant="body2">{sellerView?.costs?.known_costs_total != null ? formatMoney(sellerView.costs.known_costs_total, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                      </Stack>
+                      <Divider flexItem />
+                      <Stack spacing={0.75}>
+                        <Typography variant="subtitle2" fontWeight={800}>Estimate</Typography>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Product gross margin</Typography><Typography variant="body2">{sellerView?.margin?.product_gross_margin != null ? formatMoney(sellerView.margin.product_gross_margin, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Estimated shipping difference</Typography><Typography variant="body2">{sellerView?.margin?.shipping_difference != null ? formatMoney(sellerView.margin.shipping_difference, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="subtitle2" fontWeight={800}>Estimated order contribution</Typography><Typography variant="subtitle2" fontWeight={800}>{sellerView?.margin?.estimated_order_contribution != null ? formatMoney(sellerView.margin.estimated_order_contribution, sellerView.currency) : "Unavailable"}</Typography></Stack>
+                        <Stack direction="row" justifyContent="space-between"><Typography variant="body2">Estimated contribution rate</Typography><Typography variant="body2">{sellerView?.margin?.estimated_contribution_rate_percent != null ? `${sellerView.margin.estimated_contribution_rate_percent}%` : "Unavailable"}</Typography></Stack>
+                      </Stack>
+                      <Divider flexItem />
+                      <Stack spacing={0.5}>
+                        <Typography variant="subtitle2" fontWeight={800}>Excluded</Typography>
+                        {(sellerView.excluded_costs || []).map((item) => (
+                          <Typography key={item} variant="body2" color="text.secondary">
+                            - {item}
+                          </Typography>
+                        ))}
+                      </Stack>
+                      <Alert severity="info">
+                        {sellerView.disclaimer}
+                      </Alert>
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              ) : null}
             </>
           ) : null}
         </Stack>
       </DialogContent>
       <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, p: 2, flexWrap: "wrap" }}>
-        <Button
-          variant="outlined"
-          startIcon={<ContentCopyOutlinedIcon />}
-          onClick={handleCopySummary}
-          disabled={!preview}
-        >
-          Copy summary
-        </Button>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyOutlinedIcon />}
+            onClick={handleCopySummary}
+            disabled={!preview}
+          >
+            Copy summary
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyOutlinedIcon />}
+            onClick={handleCopySellerEstimate}
+            disabled={!preview?.seller_view}
+          >
+            Copy Seller estimate
+          </Button>
+        </Stack>
         <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
           <Button variant="outlined" startIcon={<RefreshOutlinedIcon />} onClick={requestPreview} disabled={loading || !selectedProduct}>
             Refresh preview

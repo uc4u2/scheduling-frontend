@@ -516,6 +516,17 @@ const ProductManagement = ({ token }) => {
     setOpen(true);
   }, []);
 
+  const openProductCost = useCallback((productId = null) => {
+    const match = products.find((row) => Number(row.id) === Number(productId)) || null;
+    setCheckoutPreviewOpen(false);
+    if (open && editing && Number(editing.id) === Number(productId)) {
+      return;
+    }
+    if (match) {
+      handleOpen(match);
+    }
+  }, [editing, handleOpen, open, products]);
+
   const clearEditProductIdFromUrl = useCallback(() => {
     if (typeof window === "undefined") return;
     const search = new URLSearchParams(window.location.search);
@@ -1296,13 +1307,14 @@ const ProductManagement = ({ token }) => {
               <TextField
                 label={fieldLabelWithTooltip(
                   t("manager.product.labels.cost"),
-                  "Internal cost for margin reporting."
+                  "Used only for Manager-side Seller estimates and Business Finance analysis. Customers never see this value."
                 )}
                 type="number"
                 value={form.cost}
                 onChange={handleChange("cost")}
                 fullWidth
                 inputProps={{ step: "0.01" }}
+                helperText="Used only for Manager-side Seller estimates and Business Finance analysis. Customers never see this value."
               />
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -2167,6 +2179,8 @@ const ProductManagement = ({ token }) => {
         globalDeliveryPolicy={globalDeliveryPolicy}
         onNotify={notify}
         externalStateFingerprint={open ? checkoutPreviewEditorFingerprint : ""}
+        onOpenProductCost={openProductCost}
+        onOpenProduct={handleOpen}
       />
 
       <Drawer

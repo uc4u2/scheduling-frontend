@@ -3201,13 +3201,22 @@ const CommerceCopilotDrawer = ({
                       <AccordionDetails>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
                           {completion?.product?.product_id ? (
-                            <Button
-                              variant="outlined"
-                              onClick={() => onOpenProductCheckoutPreview?.(completion.product.product_id)}
-                              disabled={busy || !onOpenProductCheckoutPreview}
-                            >
-                              Explain customer checkout
-                            </Button>
+                            <>
+                              <Button
+                                variant="outlined"
+                                onClick={() => onOpenProductCheckoutPreview?.(completion.product.product_id)}
+                                disabled={busy || !onOpenProductCheckoutPreview}
+                              >
+                                Explain customer checkout
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                onClick={() => onOpenProductCheckoutPreview?.(completion.product.product_id)}
+                                disabled={busy || !onOpenProductCheckoutPreview}
+                              >
+                                What could I make on this sale?
+                              </Button>
+                            </>
                           ) : null}
                           {!completion?.product?.is_digital ? (
                             <Button

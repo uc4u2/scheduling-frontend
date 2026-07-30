@@ -154,6 +154,7 @@ What it shows:
 - Pickup / Local Delivery / Manual Shipping / EasyPost behavior under the current setup
 - Stripe tax status for checkout
 - international buyer notice when import charges are not included
+- a manager-only Seller estimate with Product cost and estimated label cost only when those values are safely known
 
 What it does not do:
 - create a Product Order
@@ -166,6 +167,8 @@ Important:
 - EasyPost test rates are preview-only and may change at real checkout
 - provider-rate currency must match checkout currency or the rate is shown as unavailable
 - Delivery Setup does not open this preview yet in the current release
+- Seller estimate excludes Stripe fees, packaging, duties, returns, labour, overhead, and advertising
+- customers never see the stored Product cost
 
 ## International expansion review
 

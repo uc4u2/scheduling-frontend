@@ -328,12 +328,17 @@ Current scope:
 - preview-safe EasyPost test rates where supported
 - Stripe tax status messaging
 - international buyer notice when import charges are not included
+- manager-only Seller estimate when Product cost and preview-safe shipping-cost inputs are available
 
 Side-effect guarantee:
 - no Product Order
 - no checkout session
 - no label
 - no inventory reservation
+
+Seller estimate note:
+- selected EasyPost test rates may be reused as estimated label-cost inputs
+- Local Delivery and Manual Shipping remain incomplete because Schedulaa does not track a seller delivery cost there
 
 Current limitation:
 - Delivery Setup itself does not open the Product checkout preview in this release.

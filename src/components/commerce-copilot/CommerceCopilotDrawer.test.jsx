@@ -1105,6 +1105,8 @@ describe("CommerceCopilotDrawer", () => {
     await userEvent.click(await screen.findByRole("button", { name: /explain customer checkout/i }));
 
     expect(onOpenProductCheckoutPreview).toHaveBeenCalledWith(101);
+    await userEvent.click(screen.getByRole("button", { name: /what could i make on this sale/i }));
+    expect(onOpenProductCheckoutPreview).toHaveBeenCalledWith(101);
   });
 
   test("accepts package bundle input and keeps the guided flow single-column", async () => {

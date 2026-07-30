@@ -1,6 +1,6 @@
 # Product + Shipping + EasyPost UI Source Of Truth
 
-Updated: 2026-07-29
+Updated: 2026-07-30
 Scope: manager product workspace, delivery setup, order actions, checkout/client behavior.
 
 ## Commerce Copilot Note
@@ -11,6 +11,7 @@ As of Wednesday, July 29, 2026, the manager UI also includes:
 - Release D shipping-test workflow entry points
 - Release E international expansion review entry points
 - Release T3 Product checkout preview entry points
+- Release T4 Seller estimate inside the Product checkout preview
 - searchable country selection in the Commerce Copilot drawer
 - explicit selected-country destination enablement review
 - international buyer-notice preview inside the review step
@@ -118,6 +119,13 @@ Phase 3 UX rules:
 
 Current deliberate limitation:
 - Delivery setup does not directly launch Product checkout preview in this release.
+
+Seller estimate UX contract:
+- stays inside the existing manager-only Product checkout preview dialog
+- remains collapsed by default while Customer view stays primary
+- shows Product cost and estimated contribution only to managers
+- offers manager actions such as `Add Product cost` when inputs are incomplete
+- never exposes Product cost in customer-facing preview sections
 - Managers use Product Management or Commerce Copilot to open the preview.
 
 ### Product orders + order detail actions
