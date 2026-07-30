@@ -8,6 +8,7 @@ import {
   ListItemButton, Checkbox, ListItemIcon
 } from "@mui/material";
 import { api } from "../../utils/api";
+import { CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE } from "../../utils/bookingErrors";
 import { buildHostedCheckoutPayload, startHostedCheckout } from "../../utils/hostedCheckout";
 import { CartTypes } from "../../utils/cart";
 import { formatCurrency } from "../../utils/formatters";
@@ -365,7 +366,15 @@ function CheckoutShell({
         ...(it.couponApplied && it.coupon ? { coupon_code: it.coupon.code } : {}),
         ...extraPayload,
       };
-      const { data: res } = await api.post(`/public/${slug}/book`, payload);
+      const { data: res } = await api.post(`/public/${slug}/book`, payload).catch((err) => {
+        const errorCode = err?.response?.data?.error_code;
+        if (errorCode === "CLIENT_BOOKING_BLOCKED") {
+          const blockedErr = new Error(CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE);
+          blockedErr.displayMessage = CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE;
+          throw blockedErr;
+        }
+        throw err;
+      });
       if (!first && res?.appointment_id) first = res;
     }
     sessionStorage.removeItem("booking_cart");

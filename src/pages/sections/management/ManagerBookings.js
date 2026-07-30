@@ -29,10 +29,12 @@ import {
   Backdrop,
   InputAdornment,
   Link,
+  useMediaQuery,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "@mui/material/styles";
 import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 import { api } from "../../../utils/api";
 import { DateTime } from "luxon";
@@ -182,6 +184,8 @@ const ManagerBookings = ({ slug, connect }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
 
   const [bookings, setBookings] = useState([]);
@@ -1043,14 +1047,14 @@ const RowActions = ({ row }) => {
       {
         field: "status",
         headerName: t("manager.bookings.columns.status"),
-        width: 140,
+        width: isMobile ? 128 : 140,
         valueGetter: (params) => params.row.status || "",
         renderCell: (params) => bookingStatusLabel(params.row.status),
       },
       {
         field: "payment_status",
         headerName: t("manager.bookings.columns.payment"),
-        width: 160,
+        width: isMobile ? 148 : 160,
         valueGetter: (params) => params.row.payment_status || "",
         renderCell: (params) => (
           <Chip
@@ -1063,14 +1067,14 @@ const RowActions = ({ row }) => {
       {
         field: "actions",
         headerName: t("manager.bookings.columns.actions"),
-        width: 110,
+        width: isMobile ? 76 : 110,
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
         renderCell: (params) => <RowActions row={params.row} />,
       },
     ],
-    [bookingStatusLabel, paymentStatusLabel, t, i18n.language]
+    [bookingStatusLabel, paymentStatusLabel, t, i18n.language, isMobile]
   );
 
 
@@ -1095,7 +1099,7 @@ const RowActions = ({ row }) => {
 </Backdrop>
 
       <Toolbar />
-      <Container maxWidth={false} sx={{ py: 4 }}>
+      <Container maxWidth={false} sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1, sm: 3 } }}>
         <Box sx={{ maxWidth: 1600, mx: "auto" }}>
           <Typography variant="h4" gutterBottom>
             {t("manager.bookings.title")}
@@ -1164,7 +1168,7 @@ const RowActions = ({ row }) => {
             </Alert>
           ) : null}
 
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
               {t("manager.bookings.filters.heading")}
             </Typography>
@@ -1223,35 +1227,47 @@ const RowActions = ({ row }) => {
             </Grid>
           </Paper>
 
-          <Paper sx={{ p: 2 }}>
+          <Paper sx={{ p: { xs: 1, sm: 2 } }}>
             {loading ? (
               <CircularProgress />
             ) : (
-              <DataGrid
-                rows={visibleRows}
-                columns={columns}
-                autoHeight
-                density="compact"
-                pagination
-                initialState={{
-                  pagination: { paginationModel: { page: 0, pageSize: paginationModel.pageSize } },
-                }}
-                pageSizeOptions={[10, 20, 50, 100]}
-                paginationModel={paginationModel}
-                onPaginationModelChange={handlePaginationChange}
-                localeText={localeText}
-                getRowId={(row) => row.id ?? row.appointment_id}
-                getRowClassName={(params) => {
-                  if (params.row.status === "no_show") return "row-no-show";
-                  if (params.row.status === "refunded") return "row-refunded";
-                  return "";
-                }}
+              <Box
                 sx={{
-                  "& .row-no-show": { backgroundColor: "rgba(255, 152, 0, 0.06)" },
-                  "& .row-refunded": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
-                  "& .MuiDataGrid-virtualScroller": { overflowX: "hidden" },
+                  width: "100%",
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
                 }}
-              />
+              >
+                <DataGrid
+                  rows={visibleRows}
+                  columns={columns}
+                  autoHeight
+                  density="compact"
+                  pagination
+                  initialState={{
+                    pagination: { paginationModel: { page: 0, pageSize: paginationModel.pageSize } },
+                  }}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  paginationModel={paginationModel}
+                  onPaginationModelChange={handlePaginationChange}
+                  localeText={localeText}
+                  getRowId={(row) => row.id ?? row.appointment_id}
+                  getRowClassName={(params) => {
+                    if (params.row.status === "no_show") return "row-no-show";
+                    if (params.row.status === "refunded") return "row-refunded";
+                    return "";
+                  }}
+                  sx={{
+                    minWidth: { xs: 980, md: "100%" },
+                    "& .row-no-show": { backgroundColor: "rgba(255, 152, 0, 0.06)" },
+                    "& .row-refunded": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                    "& .MuiDataGrid-main": { overflowX: "auto" },
+                    "& .MuiDataGrid-virtualScroller": {
+                      overflowX: "auto !important",
+                    },
+                  }}
+                />
+              </Box>
             )}
           </Paper>
 
@@ -1648,7 +1664,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
 
 
 

@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { useTheme, alpha, lighten } from "@mui/material/styles";
 import api from "../../../utils/api";
+import { getBookingBlockedDisplayMessage } from "../../../utils/bookingErrors";
 import EmployeeAvailabilityCalendar from "../../client/EmployeeAvailabilityCalendar";
 import { settingsApi } from "../../../utils/api";
 
@@ -225,7 +226,7 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
       setClientName(""); setClientEmail(""); setClientPhone("");
     } catch(e) {
       const status = e?.response?.status;
-      const errorText = e?.response?.data?.error || "Booking failed";
+      const errorText = getBookingBlockedDisplayMessage(e, "manager");
       if (status === 409) {
         setSlot(null);
         setCalendarNonce((prev) => prev + 1);

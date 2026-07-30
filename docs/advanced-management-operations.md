@@ -102,6 +102,25 @@ Buttons:
 
 ## Client 360 & Segments
 
+### Client booking access
+
+Client 360 now includes a tenant-side `Block new bookings` control.
+
+Use it when a manager needs:
+
+- public booking blocked
+- manager-created new booking blocked
+- public reschedule to a new slot blocked
+
+This control is intentionally narrow:
+
+- existing bookings stay unchanged
+- finance records stay unchanged
+- product checkout stays unchanged
+- portal login stays unchanged
+
+Managers can later use `Allow bookings again` to restore normal booking access.
+
 - **Components:** `Client360.js`, `ClientsSummaryTab.js`, `ClientsSegmentsTab.js`, `ClientsChurnRiskTab.js`.
 - **What you get:** Unified client profiles with booking history, spend metrics, churn risk tags, and filtered segment exports (VIP, win-back, missed rebook, etc.).
 - **Integration:** Marketing automations pull directly from these segments to send targeted campaigns.

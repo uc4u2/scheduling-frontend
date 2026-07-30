@@ -479,6 +479,12 @@ export const listManagerClient360 = (params = {}) =>
 export const getManagerClient360 = (clientId) =>
   unwrap(api.get(`/api/manager/client-360/${clientId}`));
 
+export const blockManagerClient360Bookings = (clientId, payload = {}) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/booking-block`, payload));
+
+export const unblockManagerClient360Bookings = (clientId) =>
+  unwrap(api.delete(`/api/manager/client-360/${clientId}/booking-block`));
+
 export const createManagerClient360Note = (clientId, payload) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/notes`, payload));
 

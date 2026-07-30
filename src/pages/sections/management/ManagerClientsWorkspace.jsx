@@ -88,6 +88,7 @@ import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 import {
   archiveFinanceClient,
+  blockManagerClient360Bookings,
   cancelManagerClient360DocumentRequest,
   createManagerClient360EmailTemplate,
   createManagerClient360Document,
@@ -109,6 +110,7 @@ import {
   sendManagerClient360PhotoShareLinkEmail,
   sendManagerClient360Email,
   setManagerClient360EmailTemplateDefault,
+  unblockManagerClient360Bookings,
   uploadManagerClient360PhotoFromDevice,
   updateFinanceClient,
   updateManagerClient360EmailTemplate,
@@ -118,6 +120,7 @@ import FinanceMetricCard from "../../finance/components/FinanceMetricCard";
 import FinancePagination from "../../finance/components/FinancePagination";
 import ClientQuickCreateDialog from "../../finance/ClientQuickCreateDialog";
 import { buildClientCreatePayload } from "../../finance/clientUtils";
+import ClientBookingAccessDialog from "./ClientBookingAccessDialog";
 
 const CURRENCY = "USD";
 const PIE_COLORS = ["#2563eb", "#0f766e", "#d97706", "#7c3aed", "#dc2626", "#0891b2"];
@@ -2411,6 +2414,8 @@ export default function ManagerClientsWorkspace() {
   const [editingClient, setEditingClient] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const [bookingBlockOpen, setBookingBlockOpen] = useState(false);
+  const [bookingUnblockOpen, setBookingUnblockOpen] = useState(false);
   const [savingClient, setSavingClient] = useState(false);
   const [collectDialogBooking, setCollectDialogBooking] = useState(null);
   const [offlineBooking, setOfflineBooking] = useState(null);
@@ -2643,6 +2648,7 @@ export default function ManagerClientsWorkspace() {
   const listItems = useMemo(() => listPayload.items || [], [listPayload.items]);
   const pagination = listPayload.pagination || null;
   const profile = detail?.client || {};
+  const bookingAccess = profile?.booking_access || {};
   const summary = detail?.summary || {};
   const auth = detail?.auth || {};
   const notes = useMemo(() => detail?.notes || [], [detail]);
@@ -2805,8 +2811,11 @@ export default function ManagerClientsWorkspace() {
     if (profile.status === "archived" || profile.archived_at) {
       alerts.push({ key: "archived", label: "Archived profile", tone: "default", helper: "Restore the profile before resuming normal client activity." });
     }
+    if (bookingAccess.blocked) {
+      alerts.push({ key: "booking_blocked", label: "Booking blocked", tone: "warning", helper: "New bookings are blocked for this client until a manager restores access." });
+    }
     return alerts;
-  }, [auth.has_login, detail, profile.archived_at, profile.status, summary]);
+  }, [auth.has_login, bookingAccess.blocked, detail, profile.archived_at, profile.status, summary]);
 
   const wellnessSnapshot = useMemo(() => ([
     {
@@ -3480,6 +3489,36 @@ export default function ManagerClientsWorkspace() {
     }
   };
 
+  const handleBlockClientBookings = async (payload) => {
+    if (!profile?.id) return;
+    setSavingClient(true);
+    try {
+      await blockManagerClient360Bookings(profile.id, payload);
+      setBookingBlockOpen(false);
+      enqueueSnackbar("New bookings blocked for this client.", { variant: "success" });
+      await Promise.all([loadDetail(), loadList()]);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to block new bookings.", { variant: "error" });
+    } finally {
+      setSavingClient(false);
+    }
+  };
+
+  const handleUnblockClientBookings = async () => {
+    if (!profile?.id) return;
+    setSavingClient(true);
+    try {
+      await unblockManagerClient360Bookings(profile.id);
+      setBookingUnblockOpen(false);
+      enqueueSnackbar("Booking access restored.", { variant: "success" });
+      await Promise.all([loadDetail(), loadList()]);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to restore booking access.", { variant: "error" });
+    } finally {
+      setSavingClient(false);
+    }
+  };
+
   const handleMarkBookingComplete = async (bookingId) => {
     try {
       await api.post(`/api/manager/bookings/${bookingId}/complete`, {});
@@ -3846,6 +3885,15 @@ export default function ManagerClientsWorkspace() {
                         Archive
                       </Button>
                     )}
+                    {bookingAccess.blocked ? (
+                      <Button size="small" color="success" startIcon={<LinkOffOutlinedIcon fontSize="small" />} onClick={() => setBookingUnblockOpen(true)}>
+                        Allow bookings
+                      </Button>
+                    ) : (
+                      <Button size="small" color="warning" startIcon={<LinkOffOutlinedIcon fontSize="small" />} onClick={() => setBookingBlockOpen(true)}>
+                        Block new bookings
+                      </Button>
+                    )}
                     <Button size="small" component={RouterLink} to="/manager/finance-clients">
                       Open finance
                     </Button>
@@ -3888,8 +3936,22 @@ export default function ManagerClientsWorkspace() {
                       <SectionCard title={getClientDisplayName(profile)} description="Core client profile and portal status.">
                         <Stack spacing={1.5}>
                           <Typography variant="body2">{profile.email || "No email"}{profile.phone ? ` • ${profile.phone}` : ""}</Typography>
+                          {bookingAccess.blocked ? (
+                            <Alert severity="warning" sx={{ alignItems: "flex-start" }}>
+                              <Stack spacing={0.5}>
+                                <Typography variant="body2" fontWeight={700}>New bookings are blocked for this Client.</Typography>
+                                {bookingAccess.reason_label ? (
+                                  <Typography variant="body2" color="text.secondary">Reason: {bookingAccess.reason_label}</Typography>
+                                ) : null}
+                                {bookingAccess.note ? (
+                                  <Typography variant="body2" color="text.secondary">{bookingAccess.note}</Typography>
+                                ) : null}
+                              </Stack>
+                            </Alert>
+                          ) : null}
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" label={profile.status === "archived" || profile.archived_at ? "Archived" : "Active"} variant="outlined" />
+                            {bookingAccess.blocked ? <Chip size="small" label="Booking blocked" color="warning" variant="outlined" /> : null}
                             <Chip size="small" label={auth.has_login ? "Portal linked" : "No portal login"} color={auth.has_login ? "success" : "default"} variant="outlined" />
                             {summary.has_card_on_file ? <Chip size="small" label="Card on file" color="success" variant="outlined" /> : null}
                           </Stack>
@@ -3974,7 +4036,7 @@ export default function ManagerClientsWorkspace() {
                 <SectionCard title="Manager actions" description="Keep the most-used actions prominent, and use lightweight actions for notes and follow-up.">
                   <Stack spacing={1.5}>
                     <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
-                      <Button variant="contained" component={RouterLink} to={`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`}>
+                      <Button variant="contained" component={RouterLink} to={`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`} disabled={bookingAccess.blocked}>
                         Book appointment
                       </Button>
                       <Button
@@ -4213,7 +4275,7 @@ export default function ManagerClientsWorkspace() {
                           title="No upcoming bookings yet"
                           description="Start a new appointment for this client or open the client-scoped checkout view."
                           primaryAction={(
-                            <Button variant="contained" size="small" component={RouterLink} to={`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`}>
+                            <Button variant="contained" size="small" component={RouterLink} to={`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`} disabled={bookingAccess.blocked}>
                               Book appointment
                             </Button>
                           )}
@@ -5374,6 +5436,22 @@ export default function ManagerClientsWorkspace() {
           title="Restore client"
           body={`Restore ${getClientDisplayName(profile)} to the active client list?`}
           confirmLabel="Restore client"
+          confirmColor="success"
+        />
+        <ClientBookingAccessDialog
+          open={bookingBlockOpen}
+          onClose={() => setBookingBlockOpen(false)}
+          onConfirm={handleBlockClientBookings}
+          saving={savingClient}
+        />
+        <ConfirmClientDialog
+          open={bookingUnblockOpen}
+          onClose={() => setBookingUnblockOpen(false)}
+          onConfirm={handleUnblockClientBookings}
+          saving={savingClient}
+          title="Allow bookings again?"
+          body="This Client will be able to create and receive new appointments again."
+          confirmLabel="Allow bookings"
           confirmColor="success"
         />
         <Client360CollectPaymentDialog

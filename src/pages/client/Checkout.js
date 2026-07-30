@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getActiveCurrency } from "../../utils/currency";
 import { api as apiClient, API_BASE_URL } from "../../utils/api";
+import { CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE } from "../../utils/bookingErrors";
 import { buildHostedCheckoutPayload, startHostedCheckout, releasePendingCheckout } from "../../utils/hostedCheckout";
 import { CartTypes, loadCart, saveCart, clearCart } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
@@ -2095,7 +2096,9 @@ export function CheckoutFormCore({
         }));
       } catch (err) {
         const data = err?.response?.data;
-        if (err?.response?.status === 409 && data) {
+        if (data?.error_code === "CLIENT_BOOKING_BLOCKED") {
+          setErr(CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE);
+        } else if (err?.response?.status === 409 && data) {
           const conflicts = Array.isArray(data.conflicts)
             ? data.conflicts
                 .map((c) => `  ${c.source || "busy"}: ${c.busy_start_local} ? ${c.busy_end_local}`)
@@ -2140,7 +2143,9 @@ export function CheckoutFormCore({
         results.push(res);
       } catch (err) {
         const data = err?.response?.data;
-        if (err?.response?.status === 409 && data) {
+        if (data?.error_code === "CLIENT_BOOKING_BLOCKED") {
+          setErr(CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE);
+        } else if (err?.response?.status === 409 && data) {
           const conflicts = Array.isArray(data.conflicts)
             ? data.conflicts
                 .map((c) => `  ${c.source || "busy"}: ${c.busy_start_local} ? ${c.busy_end_local}`)
