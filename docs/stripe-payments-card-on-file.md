@@ -3,6 +3,14 @@ description: Configure checkout mode, card-on-file, tax, and branding in Checkou
 
 # Stripe Payments & Card on File
 
+Manager-facing help only.
+
+For the canonical backend technical contract covering hosted setup-mode flow,
+PendingCheckout, webhook-primary finalization, saved-card route security, and
+later Manager off-session charges, refer to:
+
+- `backend/docs/VERIFIED_CARD_BOOKING_SOURCE_OF_TRUTH.md`
+
 This page controls how clients pay at checkout and how tax is applied.
 
 ## Where to find it
