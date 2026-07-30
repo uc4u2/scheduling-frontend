@@ -296,6 +296,29 @@ describe("CheckoutFormCore", () => {
     expect(payload.__payloadArgs.selectedRateId).toBe("rate_1");
   });
 
+  test("renders card-on-file consent copy without crashing when capture mode is enabled", async () => {
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        businessName="Vanda Orchid Jewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled
+        displayCurrency="CAD"
+        policy={{ mode: "capture", cancellation_policy: "24-hour cancellation policy." }}
+        holdMinutes={3}
+      />
+    );
+
+    expect(
+      await screen.findByLabelText(/I agree that Vanda Orchid Jewels may securely save my card with Stripe/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/24-hour cancellation policy\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Saving a card does not guarantee that a future charge will be approved\./i),
+    ).toBeInTheDocument();
+  });
+
   test("shows cross-border customs notice and safe international unavailability message", async () => {
     mockLoadCart.mockReturnValue([
       {

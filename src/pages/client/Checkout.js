@@ -581,6 +581,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
 export function CheckoutFormCore({
   companySlug,
   slugOverride,
+  businessName,
   onRequestAddService,
   service,
   artist,
@@ -3629,7 +3630,7 @@ export function CheckoutFormCore({
                     }}
                   />
                 }
-                label={`I agree that ${sitePayload?.name || "this business"} may securely save my card with Stripe and use it for future charges that I authorize under the cancellation and no-show policy shown here.`}
+                label={`I agree that ${businessName || companySlug || "this business"} may securely save my card with Stripe and use it for future charges that I authorize under the cancellation and no-show policy shown here.`}
               />
               <Typography variant="body2" color="text.secondary">
                 {policy?.cancellation_policy || "The current cancellation and no-show policy will apply to future authorized charges."}
@@ -4104,6 +4105,7 @@ export default function Checkout(props) {
       {...props}
       companySlug={companySlug}
       slugOverride={slugOverride}
+      businessName={sitePayload?.name || sitePayload?.site_title || undefined}
       paymentsEnabled={paymentsEnabled}
       tipEnabled={tipEnabled}
       cardOnFileEnabled={cardOnFileEnabled}
