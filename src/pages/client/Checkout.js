@@ -758,6 +758,8 @@ export function CheckoutFormCore({
   const [couponError, setCouponError] = useState("");
   const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
   const [publicUpgradeMessage, setPublicUpgradeMessage] = useState("");
+  const [cardOnFileConsentAccepted, setCardOnFileConsentAccepted] = useState(false);
+  const [cardOnFileConsentError, setCardOnFileConsentError] = useState("");
   const lastAckDependencyRef = useRef("");
 
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
@@ -2452,8 +2454,13 @@ export function CheckoutFormCore({
       setErr("No payment is due. Use Confirm booking to apply your package credits.");
       return;
     }
+    if (!cardOnFileConsentAccepted) {
+      setCardOnFileConsentError("Please accept the card-saving authorization to continue.");
+      return;
+    }
 
     setErr("");
+    setCardOnFileConsentError("");
     setLoading(true);
 
     try {
@@ -2489,6 +2496,11 @@ export function CheckoutFormCore({
           requireImportChargesAcknowledgement && isCrossBorderShipping
             ? importChargesAcknowledgementCustomsHash || undefined
             : undefined,
+        cardOnFileConsent: {
+          accepted: true,
+          policy_version: policy?.policy_version || undefined,
+          policy_text_hash: policy?.policy_text_hash || undefined,
+        },
         metadata: { source: "checkout", flow: "capture" },
       });
 
@@ -3599,6 +3611,40 @@ export function CheckoutFormCore({
       )}
 
       {/* Auth section with login & sign up buttons */}
+      {showCaptureOption &&
+        serviceItems.length > 0 &&
+        productItems.length === 0 &&
+        packageItems.length === 0 && (
+          <Paper sx={{ mb: 2, p: 2, borderRadius: 2 }}>
+            <Stack spacing={1}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={cardOnFileConsentAccepted}
+                    onChange={(event) => {
+                      setCardOnFileConsentAccepted(event.target.checked);
+                      if (event.target.checked) {
+                        setCardOnFileConsentError("");
+                      }
+                    }}
+                  />
+                }
+                label={`I agree that ${sitePayload?.name || "this business"} may securely save my card with Stripe and use it for future charges that I authorize under the cancellation and no-show policy shown here.`}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {policy?.cancellation_policy || "The current cancellation and no-show policy will apply to future authorized charges."}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                No payment is collected now. Saving a card does not guarantee that a future charge will be approved.
+              </Typography>
+              {cardOnFileConsentError ? (
+                <Typography variant="body2" color="error">
+                  {cardOnFileConsentError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </Paper>
+        )}
       {client ? (
         <>
           <TextField

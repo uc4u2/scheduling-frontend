@@ -2651,6 +2651,7 @@ export default function ManagerClientsWorkspace() {
   const bookingAccess = profile?.booking_access || {};
   const summary = detail?.summary || {};
   const auth = detail?.auth || {};
+  const cardOnFile = detail?.card_on_file || {};
   const notes = useMemo(() => detail?.notes || [], [detail]);
   const sortedNotes = useMemo(
     () =>
@@ -3953,8 +3954,27 @@ export default function ManagerClientsWorkspace() {
                             <Chip size="small" label={profile.status === "archived" || profile.archived_at ? "Archived" : "Active"} variant="outlined" />
                             {bookingAccess.blocked ? <Chip size="small" label="Booking blocked" color="warning" variant="outlined" /> : null}
                             <Chip size="small" label={auth.has_login ? "Portal linked" : "No portal login"} color={auth.has_login ? "success" : "default"} variant="outlined" />
-                            {summary.has_card_on_file ? <Chip size="small" label="Card on file" color="success" variant="outlined" /> : null}
+                            {summary.has_card_on_file ? <Chip size="small" label={cardOnFile?.status_label ? `Card on file: ${cardOnFile.status_label}` : "Card on file"} color="success" variant="outlined" /> : null}
                           </Stack>
+                          {summary.has_card_on_file ? (
+                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                              <Stack spacing={0.5}>
+                                <Typography variant="body2" fontWeight={700}>Card on file status</Typography>
+                                <Typography variant="body2">
+                                  {cardOnFile?.brand && cardOnFile?.last4
+                                    ? `${cardOnFile.brand} •••• ${cardOnFile.last4} — ${cardOnFile.status_label || "Saved"}`
+                                    : cardOnFile?.status_label || "Saved"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {cardOnFile?.exp_month && cardOnFile?.exp_year
+                                    ? `Expires ${cardOnFile.exp_month}/${cardOnFile.exp_year}`
+                                    : "No live expiry details available."}
+                                  {cardOnFile?.verified_at ? ` • Verified ${formatDateTime(cardOnFile.verified_at, timezone)}` : ""}
+                                  {cardOnFile?.consent_accepted_at ? ` • Consent recorded ${formatDateTime(cardOnFile.consent_accepted_at, timezone)}` : ""}
+                                </Typography>
+                              </Stack>
+                            </Paper>
+                          ) : null}
                           <Divider />
                           <Typography variant="body2" color="text.secondary">Last appointment</Typography>
                           <Typography variant="body2">{formatDateTime(summary.last_appointment, timezone)}</Typography>

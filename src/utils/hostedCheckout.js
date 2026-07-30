@@ -75,6 +75,7 @@ export const buildHostedCheckoutPayload = ({
   importChargesAcknowledgementDestinationCountry,
   importChargesAcknowledgementCartFingerprint,
   importChargesAcknowledgementCustomsHash,
+  cardOnFileConsent,
   metadata,
 }) => {
   const itemsPayload = [];
@@ -294,6 +295,19 @@ export const buildHostedCheckoutPayload = ({
   const cleanedMetadata = sanitizeMetadata(metadata);
   if (cleanedMetadata) {
     payload.metadata = cleanedMetadata;
+  }
+
+  if (
+    normalizePolicyMode(policyMode) === "capture" &&
+    cardOnFileConsent &&
+    typeof cardOnFileConsent === "object" &&
+    cardOnFileConsent.accepted === true
+  ) {
+    payload.card_on_file_consent = {
+      accepted: true,
+      policy_version: cardOnFileConsent.policy_version || undefined,
+      policy_text_hash: cardOnFileConsent.policy_text_hash || undefined,
+    };
   }
 
   return payload;

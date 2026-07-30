@@ -26,6 +26,11 @@ Card on File uses hosted Stripe Checkout in secure setup mode. The booking is
 confirmed only after Schedulaa verifies the completed Stripe setup flow on the
 server.
 
+Clients must now actively accept the card-saving authorization checkbox before
+the hosted Stripe flow starts. Schedulaa records the policy snapshot shown at
+acceptance time and later marks the card verified only after Stripe setup
+verification succeeds.
+
 ## Stripe publishable key
 This is managed by Schedulaa when Stripe is connected. It is read-only.
 
@@ -64,3 +69,5 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - Use **Review amount and tax handling** in the saved-card charge dialog to confirm the entered amount, currency, and manual-tax rule before charging.
 - Guest/public users cannot list previously saved cards by entering an email address.
 - A verified saved card means Stripe successfully saved a reusable card for later off-session use. It does not guarantee future funds or prevent future issuer declines.
+- Client and Manager saved-card views now show `Verified`, `Expiring soon`, `Expired`, `Update required`, or `No card` based on live Stripe expiry details plus Schedulaa's local verified-card status.
+- Managers cannot start a saved-card charge when the saved card is already expired or marked update required.

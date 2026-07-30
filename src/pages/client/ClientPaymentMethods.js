@@ -18,6 +18,7 @@ import { persistTenantSlug, resolveTenantSlug } from "../../utils/clientTenant";
 
 export default function ClientPaymentMethods() {
   const [methods, setMethods] = useState([]);
+  const [cardSummary, setCardSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [launching, setLaunching] = useState(false);
   const location = useLocation();
@@ -44,10 +45,12 @@ export default function ClientPaymentMethods() {
           ? res.data.payment_methods
           : [];
         setMethods(rows);
+        setCardSummary(res.data?.card_on_file || null);
       })
       .catch((err) => {
         console.error("Failed to load payment methods:", err);
         setMethods([]);
+        setCardSummary(null);
       })
       .finally(() => setLoading(false));
   }, [tenantSlug]);
@@ -90,6 +93,7 @@ export default function ClientPaymentMethods() {
       const payload = {
         policy: { mode: "capture" },
         items: [],
+        card_on_file_consent: { accepted: true },
       };
 
       const { data } = await api.post(`/public/${site}/checkout/session`, payload, {
@@ -127,28 +131,47 @@ export default function ClientPaymentMethods() {
         {loading ? (
           <CircularProgress />
         ) : (
-          <List>
-            {methods.map((pm) => (
-              <ListItem
-                key={pm.id}
-                secondaryAction={
-                  <IconButton edge="end" onClick={() => handleDelete(pm.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                }
-              >
-                <ListItemText
-                  primary={`**** **** **** ${pm.last4} (${pm.brand})`}
-                  secondary={`Exp: ${pm.exp_month}/${pm.exp_year}`}
-                />
-              </ListItem>
-            ))}
-            {methods.length === 0 && (
-              <ListItem>
-                <ListItemText primary="No cards found." />
-              </ListItem>
-            )}
-          </List>
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2, pt: 2 }}>
+              A verified saved card can still be declined by the card issuer during a future charge.
+            </Typography>
+            <List>
+              {methods.map((pm) => (
+                <ListItem
+                  key={pm.id}
+                  secondaryAction={
+                    <IconButton edge="end" onClick={() => handleDelete(pm.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  }
+                >
+                  <ListItemText
+                    primary={`${(pm.brand || "Card").toUpperCase()} •••• ${pm.last4} — ${pm.status_label || "Saved"}`}
+                    secondary={
+                      pm.expired
+                        ? "This card is expired."
+                        : pm.card_status === "expiring_soon"
+                        ? `${pm.brand || "Card"} •••• ${pm.last4} expires soon.`
+                        : pm.card_status === "update_required"
+                        ? "This saved card can no longer be used."
+                        : `Exp: ${pm.exp_month}/${pm.exp_year}`
+                    }
+                  />
+                </ListItem>
+              ))}
+              {methods.length === 0 && (
+                <ListItem>
+                  <ListItemText
+                    primary={
+                      cardSummary?.card_status === "provider_unavailable"
+                        ? "Card details are temporarily unavailable. Try again later."
+                        : "No card is currently saved."
+                    }
+                  />
+                </ListItem>
+              )}
+            </List>
+          </Box>
         )}
       </Paper>
     </Box>

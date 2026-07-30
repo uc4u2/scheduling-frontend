@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box, Paper, Typography, Tabs, Tab, Stack, Chip, Divider, List, ListItem,
-  ListItemText, Button, Alert, CircularProgress, TextField,
+  ListItemText, Button, Alert, CircularProgress, TextField, FormControlLabel,
   Dialog, DialogTitle, DialogContent, DialogActions,
   ListItemButton, Checkbox, ListItemIcon
 } from "@mui/material";
@@ -171,6 +171,8 @@ function CheckoutShell({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [cardOnFileConsentAccepted, setCardOnFileConsentAccepted] = useState(false);
+  const [cardOnFileConsentError, setCardOnFileConsentError] = useState("");
 
   // UI state: Add-ons dialog & coupon entry
   const [addonsOpen, setAddonsOpen] = useState(false);
@@ -403,6 +405,14 @@ function CheckoutShell({
       clientName: client?.full_name || guest.name,
       clientEmail: client?.email || guest.email,
       clientPhone: client?.phone || guest.phone,
+      cardOnFileConsent:
+        mode === "capture"
+          ? {
+              accepted: true,
+              policy_version: policy?.policy_version || undefined,
+              policy_text_hash: policy?.policy_text_hash || undefined,
+            }
+          : undefined,
       metadata: { source: "checkout-pro", mode },
     });
 
@@ -459,8 +469,13 @@ function CheckoutShell({
   };
 
   const confirmCaptureCard = async () => {
+    if (!cardOnFileConsentAccepted) {
+      setCardOnFileConsentError("Please accept the card-saving authorization to continue.");
+      return;
+    }
     setBusy(true);
     setError("");
+    setCardOnFileConsentError("");
     try {
       await launchHostedCheckout("capture");
     } catch (ex) {
@@ -765,6 +780,44 @@ function CheckoutShell({
             <Typography variant="body2" color="text.secondary">{policy.cancellation_policy}</Typography>
           </Paper>
         )}
+        {active === "capture" ? (
+          <Paper
+            sx={{
+              mt: 2,
+              p: { xs: 2, md: 3 },
+              borderRadius: 3,
+              border: `1px solid ${borderColor}`,
+              backgroundColor: surfaceColor,
+              boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.05))",
+            }}
+          >
+            <Stack spacing={1}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={cardOnFileConsentAccepted}
+                    onChange={(event) => {
+                      setCardOnFileConsentAccepted(event.target.checked);
+                      if (event.target.checked) setCardOnFileConsentError("");
+                    }}
+                  />
+                }
+                label={`I agree that ${slug} may securely save my card with Stripe and use it for future charges that I authorize under the cancellation and no-show policy shown here.`}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {policy?.cancellation_policy || "The current cancellation and no-show policy will apply to future authorized charges."}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                No payment is collected now. Saving a card does not guarantee that a future charge will be approved.
+              </Typography>
+              {cardOnFileConsentError ? (
+                <Typography variant="body2" color="error">
+                  {cardOnFileConsentError}
+                </Typography>
+              ) : null}
+            </Stack>
+          </Paper>
+        ) : null}
       </Box>
 
       {/* Add-ons dialog */}

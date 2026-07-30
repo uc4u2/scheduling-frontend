@@ -1161,7 +1161,7 @@ export default function ManagerPaymentsView({ connect }) {
       });
       setSnackbar({
         open: true,
-        message: chargeData?.message || "Charge captured.",
+        message: [chargeData?.message || "Charge captured.", chargeData?.warning].filter(Boolean).join(" "),
         severity: "success",
       });
       setChargeOpen(false);
@@ -1188,7 +1188,7 @@ export default function ManagerPaymentsView({ connect }) {
         connectRefreshStatus?.();
       } else {
         const errorMessage =
-          e?.response?.data?.error || e?.displayMessage || "Charge failed.";
+          e?.response?.data?.message || e?.response?.data?.error || e?.displayMessage || "Charge failed.";
         setSnackbar({ open: true, message: errorMessage, severity: "error" });
       }
     } finally {
