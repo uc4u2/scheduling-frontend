@@ -19,7 +19,7 @@ describe("ClientBookingAccessDialog", () => {
     );
 
     expect(screen.getByText("Block new bookings?")).toBeInTheDocument();
-    expect(screen.getByText("Manager and staff only.")).toBeInTheDocument();
+    expect(screen.getByText("Manager only.")).toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole("combobox"));
     expect(screen.getAllByText(CLIENT_BOOKING_BLOCK_REASON_OPTIONS[0].label).length).toBeGreaterThan(0);

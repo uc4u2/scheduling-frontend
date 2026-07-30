@@ -61,7 +61,7 @@ export default function ClientBookingAccessDialog({ open, saving = false, onClos
             label="Internal note"
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            helperText="Manager and staff only."
+            helperText="Manager only."
           />
         </Stack>
       </DialogContent>
