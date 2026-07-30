@@ -318,6 +318,26 @@ Managers may now open Commerce Copilot from Delivery Setup and Product screens t
 - run a rates-only shipping setup test
 - review selected international destinations and prepare narrow destination-enable changes
 
+## Product checkout preview
+
+Managers can now preview the customer checkout result from Product Management before creating any real checkout.
+
+Current scope:
+- deterministic Product subtotal
+- current delivery-method availability
+- preview-safe EasyPost test rates where supported
+- Stripe tax status messaging
+- international buyer notice when import charges are not included
+
+Side-effect guarantee:
+- no Product Order
+- no checkout session
+- no label
+- no inventory reservation
+
+Current limitation:
+- Delivery Setup itself does not open the Product checkout preview in this release.
+
 Phase 1 does not apply shipping changes automatically.
 
 The Copilot may:

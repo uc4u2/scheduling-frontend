@@ -1054,6 +1054,59 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.getByRole("button", { name: /how to fix/i })).toBeInTheDocument();
   });
 
+  test("opens Product checkout preview from completion more actions", async () => {
+    const onOpenProductCheckoutPreview = jest.fn();
+    mockApiPost.mockResolvedValueOnce({
+      data: {
+        ...guidedSession,
+        session: { ...guidedSession.session, current_step: "finish_setup", status: "awaiting_manager" },
+        completion: {
+          product: {
+            created: true,
+            product_id: 101,
+            name: "Smoky-Lemon Quartz Necklace",
+            is_digital: false,
+            is_active: false,
+          },
+          readiness: {
+            overall_status: "setup_incomplete",
+            summary: {
+              blocking_count: 1,
+              warning_count: 0,
+              completed_count: 1,
+              informational_count: 0,
+            },
+            items: [],
+          },
+          next_best_action: {
+            type: "fix_setup",
+            label: "Fix 1 setup item",
+          },
+          available_actions: {
+            shipping_test: {
+              enabled: false,
+              label: "Available after shipping setup",
+              message: "",
+            },
+            prepare_publish: false,
+          },
+          links: {
+            product: "/manager/advanced-management?panel=products&editProductId=101",
+            delivery_setup: "/manager/advanced-management?panel=easypost-shipping",
+          },
+        },
+      },
+    });
+
+    renderDrawer({ onOpenProductCheckoutPreview });
+    await userEvent.click(await screen.findByRole("button", { name: /create a physical product/i }));
+    expect(await screen.findByText(/product created/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /more actions/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /explain customer checkout/i }));
+
+    expect(onOpenProductCheckoutPreview).toHaveBeenCalledWith(101);
+  });
+
   test("accepts package bundle input and keeps the guided flow single-column", async () => {
     const packageSession = {
       ...guidedSession,

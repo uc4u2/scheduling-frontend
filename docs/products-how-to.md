@@ -22,6 +22,9 @@ Manager entry points:
 - Product row action: **Improve content**
 - Product editor action: **Generate storefront content**
 - Copilot completion card after hidden Product creation: **Improve storefront content**
+- Product row action: **Preview customer checkout**
+- Product editor action: **Preview customer checkout**
+- Copilot completion card: **Explain customer checkout**
 
 ## Step 1: Create a product
 
@@ -140,6 +143,29 @@ Manager-facing rules:
   - `EasyPost rates and labels`
 
 EasyPost does not decide whether methods appear at checkout. It only automates parcel shipping after `Ship the order` is already available.
+
+## Preview customer checkout
+
+Managers can now open a read-only Product checkout preview before publishing or sharing a Product.
+
+What it shows:
+- Product subtotal in the tenant business selling currency
+- current delivery-method availability
+- Pickup / Local Delivery / Manual Shipping / EasyPost behavior under the current setup
+- Stripe tax status for checkout
+- international buyer notice when import charges are not included
+
+What it does not do:
+- create a Product Order
+- reserve inventory
+- create a Stripe Checkout Session
+- buy a label
+- estimate duties or convert currencies
+
+Important:
+- EasyPost test rates are preview-only and may change at real checkout
+- provider-rate currency must match checkout currency or the rate is shown as unavailable
+- Delivery Setup does not open this preview yet in the current release
 
 ## International expansion review
 

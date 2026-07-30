@@ -1,6 +1,6 @@
 # Product + Shipping + EasyPost UI Source Of Truth
 
-Updated: 2026-07-27
+Updated: 2026-07-29
 Scope: manager product workspace, delivery setup, order actions, checkout/client behavior.
 
 ## Commerce Copilot Note
@@ -10,6 +10,7 @@ As of Monday, July 27, 2026, the manager UI includes Schedulaa Commerce Copilot 
 As of Wednesday, July 29, 2026, the manager UI also includes:
 - Release D shipping-test workflow entry points
 - Release E international expansion review entry points
+- Release T3 Product checkout preview entry points
 - searchable country selection in the Commerce Copilot drawer
 - explicit selected-country destination enablement review
 - international buyer-notice preview inside the review step
@@ -27,6 +28,7 @@ Entry points:
 - `ProductManagement.js`
   - `Create with AI`
   - `Fix with AI`
+  - `Preview customer checkout`
 - `EasyPostShippingSettingsPanel.js`
   - `Configure shipping with AI`
 - `DigitalProductsWorkspace.js`
@@ -67,6 +69,10 @@ Phase 3 UX rules:
     - optional manufacturer / ECCN
   - shipping readiness badge from backend serializer
   - customs readiness badge from backend serializer
+  - Product checkout preview dialog launch from:
+    - row action
+    - Product editor
+    - Commerce Copilot completion handoff
   - query-driven focus support for:
     - `core_details`
     - `shipping_details`
@@ -109,6 +115,10 @@ Phase 3 UX rules:
     - `origin`
     - `destinations`
     - `package_profiles`
+
+Current deliberate limitation:
+- Delivery setup does not directly launch Product checkout preview in this release.
+- Managers use Product Management or Commerce Copilot to open the preview.
 
 ### Product orders + order detail actions
 - File: `frontend/src/pages/sections/management/ManagerProductOrdersView.js`

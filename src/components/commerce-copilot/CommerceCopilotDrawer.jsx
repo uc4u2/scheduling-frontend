@@ -996,6 +996,7 @@ const CommerceCopilotDrawer = ({
   initialWorkflow = "",
   targetProductId = null,
   targetProductOrderId = null,
+  onOpenProductCheckoutPreview = null,
 }) => {
   const auth = useMemo(() => (token ? { headers: { Authorization: `Bearer ${token}` } } : {}), [token]);
   const isMobile = typeof window !== "undefined" ? window.innerWidth < 900 : false;
@@ -3199,6 +3200,15 @@ const CommerceCopilotDrawer = ({
                       </AccordionSummary>
                       <AccordionDetails>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                          {completion?.product?.product_id ? (
+                            <Button
+                              variant="outlined"
+                              onClick={() => onOpenProductCheckoutPreview?.(completion.product.product_id)}
+                              disabled={busy || !onOpenProductCheckoutPreview}
+                            >
+                              Explain customer checkout
+                            </Button>
+                          ) : null}
                           {!completion?.product?.is_digital ? (
                             <Button
                               variant="outlined"

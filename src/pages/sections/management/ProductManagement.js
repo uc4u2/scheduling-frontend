@@ -57,6 +57,7 @@ import CategoryAutocomplete from "../../../components/common/CategoryAutocomplet
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
+import ProductCheckoutPreviewDialog from "../../../components/products/ProductCheckoutPreviewDialog";
 import useCompanyCurrencyContext from "../../../hooks/useCompanyCurrencyContext";
 
 const emptyForm = {
@@ -185,6 +186,7 @@ const ProductRowActions = ({
   row,
   handleOpen,
   openCopilot,
+  openCheckoutPreview,
   openImages,
   setMovementTarget,
   setMovementOpen,
@@ -233,6 +235,9 @@ const ProductRowActions = ({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
+        <MenuItem onClick={() => runMenuAction(() => openCheckoutPreview(row.id))}>
+          Preview customer checkout
+        </MenuItem>
         {!row.is_digital ? (
           <MenuItem onClick={() => runMenuAction(() => openCopilot("test_shipping_setup", row.id))}>
             Test shipping setup
@@ -298,6 +303,8 @@ const ProductManagement = ({ token }) => {
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotWorkflow, setCopilotWorkflow] = useState("");
   const [copilotProductId, setCopilotProductId] = useState(null);
+  const [checkoutPreviewOpen, setCheckoutPreviewOpen] = useState(false);
+  const [checkoutPreviewInitialProductId, setCheckoutPreviewInitialProductId] = useState(null);
   const [focusedSection, setFocusedSection] = useState("");
   const [globalDeliveryPolicy, setGlobalDeliveryPolicy] = useState({
     allow_pickup: false,
@@ -325,6 +332,33 @@ const ProductManagement = ({ token }) => {
   const compactLinkedInventorySnapshot = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const companyCurrencyContext = useCompanyCurrencyContext(companyCurrencyProfile);
   const businessSellingCurrency = companyCurrencyContext.businessSellingCurrency || "USD";
+  const checkoutPreviewEditorFingerprint = useMemo(
+    () => JSON.stringify({
+      editingId: editing?.id || null,
+      name: form.name,
+      price: form.price,
+      qty_on_hand: form.qty_on_hand,
+      is_active: form.is_active,
+      is_digital: form.is_digital,
+      delivery_methods_override_enabled: form.delivery_methods_override_enabled,
+      delivery_allow_pickup: form.delivery_allow_pickup,
+      delivery_allow_shipping: form.delivery_allow_shipping,
+      delivery_allow_local_delivery: form.delivery_allow_local_delivery,
+      shipping_weight_grams: form.shipping_weight_grams,
+      shipping_length_mm: form.shipping_length_mm,
+      shipping_width_mm: form.shipping_width_mm,
+      shipping_height_mm: form.shipping_height_mm,
+      allow_international_shipping: form.allow_international_shipping,
+      shipping_customs_description: form.shipping_customs_description,
+      shipping_country_of_origin: form.shipping_country_of_origin,
+      shipping_hs_code: form.shipping_hs_code,
+      shipping_declared_value: form.shipping_declared_value,
+      shipping_declared_value_currency: form.shipping_declared_value_currency,
+      shipping_customs_manufacturer: form.shipping_customs_manufacturer,
+      shipping_customs_eccn: form.shipping_customs_eccn,
+    }),
+    [editing?.id, form]
+  );
 
   const notify = useCallback((message) => {
     setSnk({ open: true, message });
@@ -334,6 +368,11 @@ const ProductManagement = ({ token }) => {
     setCopilotWorkflow(workflow);
     setCopilotProductId(productId);
     setCopilotOpen(true);
+  }, []);
+
+  const openCheckoutPreview = useCallback((productId = null) => {
+    setCheckoutPreviewInitialProductId(productId);
+    setCheckoutPreviewOpen(true);
   }, []);
 
   const load = useCallback(async () => {
@@ -817,6 +856,7 @@ const ProductManagement = ({ token }) => {
             row={params.row}
             handleOpen={handleOpen}
             openCopilot={openCopilot}
+            openCheckoutPreview={openCheckoutPreview}
             openImages={openImages}
             setMovementTarget={setMovementTarget}
             setMovementOpen={setMovementOpen}
@@ -825,7 +865,7 @@ const ProductManagement = ({ token }) => {
         ),
       },
     ],
-    [businessSellingCurrency, handleDelete, handleOpen, openCopilot, openImages, t]
+    [businessSellingCurrency, handleDelete, handleOpen, openCheckoutPreview, openCopilot, openImages, t]
   );
 
   useEffect(() => {
@@ -1876,6 +1916,11 @@ const ProductManagement = ({ token }) => {
               Generate storefront content
             </Button>
           ) : null}
+          {editing?.id ? (
+            <Button variant="outlined" onClick={() => openCheckoutPreview(editing.id)}>
+              Preview customer checkout
+            </Button>
+          ) : null}
           {editing?.id && !form.is_digital ? (
             <Button variant="outlined" onClick={() => openCopilot("test_shipping_setup", editing.id)}>
               Test this Product's shipping setup
@@ -2111,6 +2156,17 @@ const ProductManagement = ({ token }) => {
         token={token}
         initialWorkflow={copilotWorkflow}
         targetProductId={copilotProductId}
+        onOpenProductCheckoutPreview={openCheckoutPreview}
+      />
+      <ProductCheckoutPreviewDialog
+        open={checkoutPreviewOpen}
+        onClose={() => setCheckoutPreviewOpen(false)}
+        token={token}
+        products={products}
+        initialProductId={checkoutPreviewInitialProductId}
+        globalDeliveryPolicy={globalDeliveryPolicy}
+        onNotify={notify}
+        externalStateFingerprint={open ? checkoutPreviewEditorFingerprint : ""}
       />
 
       <Drawer
