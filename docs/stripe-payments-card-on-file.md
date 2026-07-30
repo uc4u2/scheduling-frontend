@@ -14,6 +14,10 @@ Choose how clients pay:
 - **Card on file**: Client saves a card so you can charge later or apply no-show fees.
 - **Pay during checkout**: Client pays immediately.
 
+Card on File uses hosted Stripe Checkout in secure setup mode. The booking is
+confirmed only after Schedulaa verifies the completed Stripe setup flow on the
+server.
+
 ## Stripe publishable key
 This is managed by Schedulaa when Stripe is connected. It is read-only.
 
@@ -50,3 +54,5 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - If prices include tax, Stripe backs tax out automatically at checkout.
 - Saved-card charges remain amount-only. Automatic tax is not added later when a Manager enters a saved-card charge amount.
 - Use **Review amount and tax handling** in the saved-card charge dialog to confirm the entered amount, currency, and manual-tax rule before charging.
+- Guest/public users cannot list previously saved cards by entering an email address.
+- A verified saved card means Stripe successfully saved a reusable card for later off-session use. It does not guarantee future funds or prevent future issuer declines.

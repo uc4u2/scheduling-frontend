@@ -846,28 +846,47 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
         const paymentStatus = String(data?.payment_status || "").toLowerCase();
 
         const sessionStatus = String(data?.status || "").toLowerCase();
+        const checkoutMode = String(data?.checkout_mode || "").toLowerCase();
+        const customerStatus = String(data?.customer_status || "").toLowerCase();
 
         const orderPaymentStatus = String(
           data?.product_order?.payment_status || "",
         ).toLowerCase();
 
         const paidish =
-          Boolean(data?.paid) ||
-          [paymentStatus, sessionStatus, orderPaymentStatus].some((s) =>
-            ["paid", "complete", "succeeded"].includes(s),
-          );
+          checkoutMode === "capture"
+            ? customerStatus === "confirmed"
+            : Boolean(data?.paid) ||
+              [paymentStatus, sessionStatus, orderPaymentStatus].some((s) =>
+                ["paid", "complete", "succeeded"].includes(s),
+              );
 
         if (paidish) {
           stripeRetryRef.current = 0;
 
           setStripeSessionStatus("success");
+        } else if (
+          checkoutMode === "capture" &&
+          ["failed", "expired", "slot_unavailable"].includes(customerStatus)
+        ) {
+          stripeRetryRef.current = 0;
+          setStripeSessionStatus("error");
+          setStripeSessionError(
+            customerStatus === "slot_unavailable"
+              ? "Your card was saved, but the selected time is no longer available. Choose another appointment time."
+              : customerStatus === "expired"
+                ? "This checkout session expired before your booking could be completed. Choose another appointment time and try again."
+                : "We could not verify and save this card. Try another card to complete your booking.",
+          );
         } else if (stripeRetryRef.current >= MAX_STRIPE_SESSION_POLLS) {
           stripeRetryRef.current = 0;
 
           setStripeSessionStatus("error");
 
           setStripeSessionError(
-            "We could not confirm a payment for this session yet. If you cancelled at Stripe, you can return to your basket and try again.",
+            checkoutMode === "capture"
+              ? "Card verification is still processing. This page will update automatically."
+              : "We could not confirm a payment for this session yet. If you cancelled at Stripe, you can return to your basket and try again.",
           );
 
           setPendingCheckoutId(null);
@@ -1026,9 +1045,9 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
       ? "Pending confirmation"
       : paymentStatus || (isCardOnFile ? "CARD_ON_FILE" : isPaid ? "PAID" : "UNPAID");
     const paymentNote = isFinalizing
-      ? ""
+      ? "We're confirming the card with Stripe and completing your booking."
       : isCardOnFile
-        ? "A card has been stored securely with Stripe. The business may charge it later."
+        ? "Your card was verified and saved securely with Stripe. The business may charge it later."
         : isPackage
           ? "This booking was covered by your package credits."
         : !isPaid
@@ -1177,9 +1196,9 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
         ? "Pending confirmation"
         : orderPaymentStatus || (orderCardOnFile ? "CARD_ON_FILE" : orderPaid ? "PAID" : "UNPAID");
       const orderNote = awaitingStripe
-        ? ""
+        ? "We're confirming the card with Stripe and completing your booking."
         : orderCardOnFile
-          ? "A card has been stored securely with Stripe. The business may charge it later."
+          ? "Your card was verified and saved securely with Stripe. The business may charge it later."
           : orderIsPackage
             ? "These bookings were covered by package credits."
           : !orderPaid
@@ -1213,8 +1232,7 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
 
             {awaitingStripe && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                We're confirming your payment with Stripe. This usually takes
-                just a moment.
+                Verifying your card with Stripe and completing your booking.
               </Alert>
             )}
 
