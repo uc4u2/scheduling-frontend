@@ -113,6 +113,56 @@ const timeHMInTZ = (startUtc, tz) => {
   }); // "HH:MM"
 };
 
+export const mergeAvailabilityResponse = (data, serviceDurationMinutes = 0) => {
+  const slots = Array.isArray(data?.slots)
+    ? data.slots
+    : (Array.isArray(data?.times) ? data.times : []);
+  const booked = Array.isArray(data?.booked) ? data.booked : [];
+  const svcMinutes = Number(data?.service_duration || serviceDurationMinutes || 0);
+  const markBookedOverlaps = (items) => {
+    if (!booked.length) return items;
+    return items.map((s) => {
+      const mode = s.mode || "one_to_one";
+      if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
+        return s;
+      }
+      const stUtc = s.start_utc
+        ? new Date(s.start_utc)
+        : (s.date && s.start_time && s.timezone
+          ? new Date(isoFromPartsTz(s.date, s.start_time, s.timezone))
+          : null);
+      if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
+      const etUtc = s.end_utc
+        ? new Date(s.end_utc)
+        : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
+      const overlaps = booked.some((b) => {
+        const bStart = b.start_utc ? new Date(b.start_utc) : null;
+        const bEnd = b.end_utc ? new Date(b.end_utc) : null;
+        if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
+          return false;
+        }
+        return stUtc < bEnd && etUtc > bStart;
+      });
+      return overlaps ? { ...s, type: "booked" } : s;
+    });
+  };
+
+  const slotsMarked = markBookedOverlaps(slots);
+  const byKey = new Map();
+  for (const s of slotsMarked) {
+    const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
+    byKey.set(key, s);
+  }
+  for (const b of booked) {
+    const entry = { ...b, type: "booked" };
+    const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, entry);
+    }
+  }
+  return Array.from(byKey.values());
+};
+
 export default function ServiceDetails({ slugOverride, companySlug, serviceId: serviceIdProp }) {
   const { slug: routeSlug, serviceId: routeServiceId } = useParams();
   const slug = slugOverride || companySlug || routeSlug;
@@ -426,128 +476,61 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
     });
     if (departmentId) qs.set("department_id", departmentId);
     if (cartJSON) qs.set("cart", cartJSON);
+    const requestCanonical = async (cartParam) => {
+      const req = new URLSearchParams({
+        artist_id: empId,
+        service_id: serviceId,
+        date: dateStr,
+        timezone: tz,
+        explicit_only: 1,
+        respect_rows: 1,
+      });
+      if (departmentId) req.set("department_id", departmentId);
+      if (cartParam) req.set("cart", cartParam);
+      const { data } = await api.get(
+        `/public/${slug}/availability?${req.toString()}`,
+        { noCompanyHeader: true, noAuth: true, signal }
+      );
+      return mergeAvailabilityResponse(data, service?.duration || 0);
+    };
+
+    const requestArtistFallback = async (cartParam) => {
+      const alt = new URLSearchParams({
+        service_id: serviceId,
+        date: dateStr,
+        timezone: tz,
+        explicit_only: 1,
+        respect_rows: 1,
+        ...(departmentId ? { department_id: departmentId } : {}),
+      });
+      if (cartParam) alt.set("cart", cartParam);
+      const { data } = await api.get(
+        `/public/${slug}/artists/${empId}/availability?${alt.toString()}`,
+        { noCompanyHeader: true, noAuth: true, signal }
+      );
+      return mergeAvailabilityResponse(data, service?.duration || 0);
+    };
+
     const load = (async () => {
       try {
-        const { data } = await api.get(
-          `/public/${slug}/availability?${qs.toString()}`,
-          { noCompanyHeader: true, noAuth: true, signal }
-        );
-        const slots = Array.isArray(data?.slots)
-          ? data.slots
-          : (Array.isArray(data?.times) ? data.times : []);
-        const booked = Array.isArray(data?.booked) ? data.booked : [];
-        const svcMinutes = Number(data?.service_duration || service?.duration || 0);
-        const markBookedOverlaps = (items) => {
-          if (!booked.length) return items;
-          return items.map((s) => {
-            const mode = s.mode || "one_to_one";
-            if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
-              return s;
-            }
-            const stUtc = s.start_utc
-              ? new Date(s.start_utc)
-              : (s.date && s.start_time && s.timezone
-                ? new Date(isoFromPartsTz(s.date, s.start_time, s.timezone))
-                : null);
-            if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
-            const etUtc = s.end_utc
-              ? new Date(s.end_utc)
-              : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
-            const overlaps = booked.some((b) => {
-              const bStart = b.start_utc ? new Date(b.start_utc) : null;
-              const bEnd = b.end_utc ? new Date(b.end_utc) : null;
-              if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
-                return false;
-              }
-              return stUtc < bEnd && etUtc > bStart;
-            });
-            return overlaps ? { ...s, type: "booked" } : s;
-          });
-        };
-        const slotsMarked = markBookedOverlaps(slots);
-        const merged = (() => {
-          const byKey = new Map();
-          for (const s of slotsMarked) {
-            const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
-            byKey.set(key, s);
-          }
-          for (const b of booked) {
-            const entry = { ...b, type: "booked" };
-            const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
-            if (!byKey.has(key)) {
-              byKey.set(key, entry);
-            }
-          }
-          return Array.from(byKey.values());
-        })();
+        const merged = await requestCanonical(cartJSON);
         if (merged.length) return merged;
+        if (cartJSON && cartJSON !== "[]") {
+          const retry = await requestCanonical("");
+          if (retry.length) return retry;
+        }
       } catch {
         /* ignore and try fallback */
       }
 
-    // 2) per-artist wrapper (if present)
+      // 2) per-artist wrapper (if present)
       try {
-        const alt = new URLSearchParams({
-          service_id: serviceId,
-          date: dateStr,
-          timezone: tz,
-          explicit_only: 1,
-          respect_rows: 1,
-          ...(departmentId ? { department_id: departmentId } : {}),
-        });
-        if (cartJSON) alt.set("cart", cartJSON);
-        const { data } = await api.get(
-          `/public/${slug}/artists/${empId}/availability?${alt.toString()}`,
-          { noCompanyHeader: true, noAuth: true, signal }
-        );
-        const slots = Array.isArray(data?.slots)
-          ? data.slots
-          : Array.isArray(data?.times)
-          ? data.times
-          : [];
-        const booked = Array.isArray(data?.booked) ? data.booked : [];
-        const svcMinutes = Number(data?.service_duration || service?.duration || 0);
-        const markBookedOverlaps = (items) => {
-          if (!booked.length) return items;
-          return items.map((s) => {
-            const mode = s.mode || "one_to_one";
-            if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
-              return s;
-            }
-            const stUtc = s.start_utc
-              ? new Date(s.start_utc)
-              : (s.date && s.start_time && s.timezone
-                ? new Date(isoFromPartsTz(s.date, s.start_time, s.timezone))
-                : null);
-            if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
-            const etUtc = s.end_utc
-              ? new Date(s.end_utc)
-              : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
-            const overlaps = booked.some((b) => {
-              const bStart = b.start_utc ? new Date(b.start_utc) : null;
-              const bEnd = b.end_utc ? new Date(b.end_utc) : null;
-              if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
-                return false;
-              }
-              return stUtc < bEnd && etUtc > bStart;
-            });
-            return overlaps ? { ...s, type: "booked" } : s;
-          });
-        };
-        const slotsMarked = markBookedOverlaps(slots);
-        const byKey = new Map();
-        for (const s of slotsMarked) {
-          const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
-          byKey.set(key, s);
+        const merged = await requestArtistFallback(cartJSON);
+        if (merged.length) return merged;
+        if (cartJSON && cartJSON !== "[]") {
+          return await requestArtistFallback("");
         }
-        for (const b of booked) {
-          const entry = { ...b, type: "booked" };
-          const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
-          if (!byKey.has(key)) {
-            byKey.set(key, entry);
-          }
-        }
-        return Array.from(byKey.values());
+        return [];
       } catch {
         return [];
       }
