@@ -948,11 +948,17 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
 
   let content;
 
+  const stripeCheckoutMode = String(stripeSession?.checkout_mode || "").toLowerCase();
+  const hasCaptureOnlyContext =
+    !productOrder && stripeCheckoutMode === "capture";
   const hasProductContext = Boolean(
-    productOrder || stripeSession || stripeSessionId,
+    productOrder ||
+      (stripeSession && !hasCaptureOnlyContext) ||
+      (!stripeSession && stripeSessionId),
   );
 
   const canRenderProductOnly = !raw && !!slugOverride && hasProductContext;
+  const canRenderCaptureOnly = !raw && !!slugOverride && hasCaptureOnlyContext;
 
   const slugForNav = slugOverride || "";
   const isCustomDomain = getTenantHostMode() === "custom";
@@ -965,6 +971,100 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
         <CircularProgress />
 
         <Typography sx={{ mt: 2 }}>Loading details...</Typography>
+      </Box>
+    );
+  } else if (canRenderCaptureOnly) {
+    const receiptEmail =
+      stripeSession?.customer_details?.email ||
+      stripeSession?.customer_email ||
+      "your inbox";
+    const customerStatus = String(stripeSession?.customer_status || "").toLowerCase();
+    const isConfirmed = customerStatus === "confirmed";
+    const isSlotUnavailable = customerStatus === "slot_unavailable";
+    const isExpired = customerStatus === "expired";
+    const statusMessage = awaitingStripe
+      ? "We're confirming the card with Stripe and completing your booking."
+      : stripeSessionError ||
+        (isConfirmed
+          ? "Your card was verified and your booking is confirmed."
+          : isSlotUnavailable
+            ? "Your card was saved, but the selected time is no longer available. Choose another appointment time."
+            : isExpired
+              ? "This checkout session expired before your booking could be completed. Choose another appointment time and try again."
+              : "We could not verify and save this card. Try another card to complete your booking.");
+    const statusSeverity = awaitingStripe
+      ? "info"
+      : isConfirmed
+        ? "success"
+        : isSlotUnavailable || isExpired
+          ? "warning"
+          : "warning";
+    const captureHeading = awaitingStripe
+      ? "Verifying your card..."
+      : isConfirmed
+        ? "Booking confirmed"
+        : "Card verification incomplete";
+    const amountDisplay = money(
+      stripeSession?.amount_total != null ? stripeSession.amount_total / 100 : 0,
+      stripeSession?.currency || displayCurrency || "USD",
+    );
+
+    content = (
+      <Box
+        sx={{
+          px: { xs: 2, md: 4 },
+          py: { xs: 4, md: 6 },
+          width: "100%",
+          maxWidth: 900,
+          mx: "auto",
+        }}
+      >
+        <Paper
+          sx={{
+            p: { xs: 3, md: 5 },
+            borderRadius: "var(--page-card-radius, 18px)",
+            backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.95))",
+            boxShadow:
+              "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
+            color: "var(--page-body-color, inherit)",
+          }}
+          elevation={0}
+        >
+          <Typography variant="h3" fontWeight={800} gutterBottom>
+            {captureHeading}
+          </Typography>
+
+          <Typography color="text.secondary">
+            {isConfirmed
+              ? `We sent a confirmation to ${receiptEmail}.`
+              : `We'll update ${receiptEmail} once booking confirmation is complete.`}
+          </Typography>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" fontWeight={600}>
+              Amount due {amountDisplay}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Payment status: {String(stripeSession?.payment_status || "CARD_ON_FILE").toUpperCase()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              No payment is collected now. Saving a card does not guarantee that a future charge will be approved.
+            </Typography>
+          </Box>
+
+          <Alert severity={statusSeverity} sx={{ mt: 3 }}>
+            {statusMessage}
+          </Alert>
+
+          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mt: 3 }}>
+            <Button variant="contained" onClick={() => go(rootPath)}>
+              Back to site
+            </Button>
+            <Button variant="outlined" onClick={() => go(`${basePath}/services`)}>
+              Choose another appointment time
+            </Button>
+          </Box>
+        </Paper>
       </Box>
     );
   } else if (canRenderProductOnly) {

@@ -55,6 +55,9 @@ describe("BookingConfirmation card-on-file return states", () => {
         screen.getByText("We could not verify and save this card. Try another card to complete your booking."),
       ).toBeInTheDocument();
     });
+
+    expect(screen.getByText("Card verification incomplete")).toBeInTheDocument();
+    expect(screen.queryByText("Order confirmed")).not.toBeInTheDocument();
   });
 
   test("shows the processing message while card verification is still pending", async () => {
