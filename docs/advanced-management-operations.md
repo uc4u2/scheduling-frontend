@@ -131,11 +131,11 @@ Client 360 keeps the same data and manager actions, but the default presentation
   - one at-a-glance metric grid for next appointment, total visits, outstanding balance, and open work orders
 - **Linked summary** and **Visit & payment snapshot** are no longer shown as separate repeated overview cards.
 - **Quick Actions** uses one compact primary row:
-  - Book appointment
+  - Book service for client
   - Collect payment
   - Create invoice
   - More actions
-- Lower-frequency actions moved into **More actions** instead of repeating as full-size rows.
+- Lower-frequency actions moved into **More actions** instead of repeating as full-size rows, including the broader **Open manager bookings** entry for the manager booking workspace.
 - **Billing readiness** is still available with the same readiness logic, but it is collapsed by default.
 - **Bookings & Checkout** now uses collapsible subsections:
   - Upcoming bookings

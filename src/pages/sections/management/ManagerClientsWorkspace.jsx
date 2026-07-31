@@ -4175,11 +4175,11 @@ export default function ManagerClientsWorkspace() {
                 expanded={detailSections.quickActions}
                 onChange={toggleSection("quickActions")}
               >
-                <SectionCard title="Manager actions" description="Keep the most-used actions prominent, and use lightweight actions for notes and follow-up.">
+                <SectionCard title="Manager actions" description="Use the client booking flow for booking on the client's behalf, and keep broader manager booking tools one click away.">
                   <Stack spacing={1.5}>
                     <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
-                      <Button variant="contained" component={RouterLink} to={`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`} disabled={bookingAccess.blocked}>
-                        Book appointment
+                      <Button variant="contained" component={RouterLink} to={`/manager/advanced-management?panel=client-bookings&clientId=${profile.id}`} disabled={bookingAccess.blocked}>
+                        Book service for client
                       </Button>
                       <Button
                         variant={actionReadiness.collect_payment?.state === "recommended" ? "contained" : "outlined"}
@@ -4237,6 +4237,7 @@ export default function ManagerClientsWorkspace() {
                 >
                   <MenuItem onClick={() => runMoreAction(() => openCreateEstimateAction())}>Create estimate</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => navigate(`/manager/finance-work-orders?clientId=${profile.id}&action=create`))}>Create work order</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => navigate(`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`))}>Open manager bookings</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => openCollectPaymentAction())}>Open checkout</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => openMarkPaidOfflineAction())}>Mark paid offline</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => handleSmartPaymentLink())}>Send invoice</MenuItem>
@@ -4328,8 +4329,8 @@ export default function ManagerClientsWorkspace() {
                           title="No upcoming bookings yet"
                           description="Start a new appointment for this client or open the client-scoped checkout view."
                           primaryAction={(
-                            <Button variant="contained" size="small" component={RouterLink} to={`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`} disabled={bookingAccess.blocked}>
-                              Book appointment
+                            <Button variant="contained" size="small" component={RouterLink} to={`/manager/advanced-management?panel=client-bookings&clientId=${profile.id}`} disabled={bookingAccess.blocked}>
+                              Book service for client
                             </Button>
                           )}
                           secondaryAction={(

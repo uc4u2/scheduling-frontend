@@ -317,7 +317,7 @@ describe("ManagerClientsWorkspace", () => {
     const quickActionsSection = quickActionsToggle.closest(".MuiAccordion-root");
     expect(quickActionsSection).not.toBeNull();
     const quickActionsQueries = within(quickActionsSection);
-    expect(quickActionsQueries.getByRole("link", { name: /^Book appointment$/i })).toBeInTheDocument();
+    expect(quickActionsQueries.getByRole("link", { name: /^Book service for client$/i })).toBeInTheDocument();
     expect(quickActionsQueries.getByRole("button", { name: /^Collect payment$/i })).toBeInTheDocument();
     expect(quickActionsQueries.getByRole("button", { name: /^Create invoice$/i })).toBeInTheDocument();
     expect(quickActionsQueries.getByRole("button", { name: /More actions/i })).toBeInTheDocument();
@@ -330,6 +330,7 @@ describe("ManagerClientsWorkspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /More actions/i }));
     const menu = await screen.findByRole("menu");
+    expect(within(menu).getByText("Open manager bookings")).toBeInTheDocument();
     expect(within(menu).getByText("Create estimate")).toBeInTheDocument();
     expect(within(menu).getByText("Create work order")).toBeInTheDocument();
     expect(within(menu).getByText("Send follow-up")).toBeInTheDocument();
