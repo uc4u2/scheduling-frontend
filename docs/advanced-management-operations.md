@@ -121,6 +121,34 @@ This control is intentionally narrow:
 
 Managers can later use `Allow bookings again` to restore normal booking access.
 
+### Client 360 layout
+
+Client 360 keeps the same data and manager actions, but the default presentation is now more compact:
+
+- **Overview** stays expanded by default and consolidates:
+  - client identity
+  - portal / booking-block / card-on-file status
+  - one at-a-glance metric grid for next appointment, total visits, outstanding balance, and open work orders
+- **Linked summary** and **Visit & payment snapshot** are no longer shown as separate repeated overview cards.
+- **Quick Actions** uses one compact primary row:
+  - Book appointment
+  - Collect payment
+  - Create invoice
+  - More actions
+- Lower-frequency actions moved into **More actions** instead of repeating as full-size rows.
+- **Billing readiness** is still available with the same readiness logic, but it is collapsed by default.
+- **Bookings & Checkout** now uses collapsible subsections:
+  - Upcoming bookings
+  - Recent bookings
+- Recent booking notes now hide known internal machine markers such as saved-card audit tokens while preserving real human notes.
+
+This cleanup is frontend-only:
+
+- no backend/API changes
+- no billing or booking calculation changes
+- no card-on-file workflow changes
+- no permission changes
+
 - **Components:** `Client360.js`, `ClientsSummaryTab.js`, `ClientsSegmentsTab.js`, `ClientsChurnRiskTab.js`.
 - **What you get:** Unified client profiles with booking history, spend metrics, churn risk tags, and filtered segment exports (VIP, win-back, missed rebook, etc.).
 - **Integration:** Marketing automations pull directly from these segments to send targeted campaigns.

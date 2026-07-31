@@ -14,7 +14,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -60,7 +59,6 @@ import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
-import SmsOutlinedIcon from "@mui/icons-material/SmsOutlined";
 import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
@@ -136,6 +134,11 @@ const DEFAULT_DETAIL_SECTIONS = {
   timeline: false,
   insights: false,
 };
+
+const SYSTEM_BOOKING_NOTE_MARKERS = [
+  /\[setup_intent_id=[^\]]+\]/gi,
+  /\[review_email_sent(?::[^\]]*)?\]/gi,
+];
 
 const CLIENT_DOCUMENT_CATEGORIES = [
   ["consent", "Consent"],
@@ -469,6 +472,21 @@ const normalizeTextValue = (value) => {
     }
   }
   return String(value);
+};
+
+export const sanitizeBookingDisplayNote = (value) => {
+  const normalized = normalizeTextValue(value);
+  if (!normalized) return "";
+  const stripped = SYSTEM_BOOKING_NOTE_MARKERS.reduce(
+    (current, pattern) => current.replace(pattern, " "),
+    normalized
+  );
+  return stripped
+    .split("\n")
+    .map((line) => line.replace(/\s{2,}/g, " ").trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 };
 
 const getClientPhotoUploaderLabel = (row = {}) => {
@@ -1922,6 +1940,26 @@ function SectionAccordion({ title, description, icon, expanded, onChange, childr
   );
 }
 
+function CompactSubsection({ title, summary, expanded, onChange, defaultExpanded = false, children }) {
+  return (
+    <Accordion expanded={expanded} onChange={onChange} disableGutters defaultExpanded={defaultExpanded} sx={{ borderRadius: 1.5 }}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-label={title}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={0.5}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+          sx={{ width: "100%" }}
+        >
+          <Typography fontWeight={700}>{title}</Typography>
+          {summary ? <Typography variant="body2" color="text.secondary">{summary}</Typography> : null}
+        </Stack>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>{children}</AccordionDetails>
+    </Accordion>
+  );
+}
+
 function FinanceRecordActions({ row, enqueueSnackbar }) {
   const recordType = inferFinanceRecordType(row);
   const invoiceRowId = row?.invoice_id || row?.id;
@@ -2426,6 +2464,10 @@ export default function ManagerClientsWorkspace() {
   const [detailQuickNoteOpen, setDetailQuickNoteOpen] = useState(false);
   const [detailQuickSessionOpen, setDetailQuickSessionOpen] = useState(false);
   const [detailQuickEmailOpen, setDetailQuickEmailOpen] = useState(false);
+  const [moreActionsAnchor, setMoreActionsAnchor] = useState(null);
+  const [billingReadinessExpanded, setBillingReadinessExpanded] = useState(false);
+  const [upcomingBookingsExpanded, setUpcomingBookingsExpanded] = useState(true);
+  const [recentBookingsExpanded, setRecentBookingsExpanded] = useState(false);
   const [detailEmailDraft, setDetailEmailDraft] = useState(null);
   const [reviewRequestTemplate, setReviewRequestTemplate] = useState(null);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -2634,6 +2676,10 @@ export default function ManagerClientsWorkspace() {
 
   useEffect(() => {
     setDetailSections(DEFAULT_DETAIL_SECTIONS);
+    setMoreActionsAnchor(null);
+    setBillingReadinessExpanded(false);
+    setUpcomingBookingsExpanded(true);
+    setRecentBookingsExpanded(false);
     setPhotoFile(null);
     setPhotoNote("");
     setPhotoPreviewUrls({});
@@ -2798,59 +2844,51 @@ export default function ManagerClientsWorkspace() {
     if (Number(summary.open_invoice_count || 0) > 0 || Number(summary.unpaid_balance || 0) > 0) {
       alerts.push({ key: "billing", label: "Billing follow-up", tone: "warning", helper: `${summary.open_invoice_count || 0} open invoices • ${formatMoney(summary.unpaid_balance || 0)} unpaid` });
     }
-    if (Number(summary.appointments || 0) <= 1) {
-      alerts.push({ key: "first_visit", label: "New or first-visit client", tone: "info", helper: "Keep follow-up and next-visit planning visible." });
-    }
-    if (!summary.next_appointment && Number(summary.appointments || 0) > 0) {
-      alerts.push({ key: "rebook", label: "No next booking", tone: "primary", helper: "Good candidate for a rebooking follow-up." });
-    }
     if (Number(summary.no_show_count || 0) > 0) {
       alerts.push({ key: "no_show", label: "Attendance risk", tone: "default", helper: `${summary.no_show_count || 0} no-shows on record.` });
-    }
-    if (!auth.has_login) {
-      alerts.push({ key: "portal", label: "No portal login", tone: "default", helper: "Client history exists without a portal-linked login." });
-    }
-    if (profile.status === "archived" || profile.archived_at) {
-      alerts.push({ key: "archived", label: "Archived profile", tone: "default", helper: "Restore the profile before resuming normal client activity." });
     }
     if (bookingAccess.blocked) {
       alerts.push({ key: "booking_blocked", label: "Booking blocked", tone: "warning", helper: "New bookings are blocked for this client until a manager restores access." });
     }
+    if (!String(profile.email || "").trim()) {
+      alerts.push({ key: "missing_email", label: "Missing client email", tone: "warning", helper: "Email-based reminders and secure links are unavailable until an email address is added." });
+    }
+    if (Number(pendingDocumentRequests.length || 0) > 0) {
+      alerts.push({ key: "documents", label: "Pending document request", tone: "info", helper: `${pendingDocumentRequests.length} document request${pendingDocumentRequests.length === 1 ? "" : "s"} still waiting on the client.` });
+    }
+    if (cardOnFile?.expired) {
+      alerts.push({ key: "card_expired", label: "Card expired", tone: "warning", helper: "Request a fresh saved card before relying on later charges." });
+    } else if (cardOnFile?.update_required) {
+      alerts.push({ key: "card_update", label: "Card update required", tone: "warning", helper: "The current saved card can no longer be used until the client replaces it." });
+    }
+    if (!auth.has_login) {
+      alerts.push({ key: "portal", label: "No portal login", tone: "default", helper: "Client history exists without a portal-linked login." });
+    }
     return alerts;
-  }, [auth.has_login, bookingAccess.blocked, detail, profile.archived_at, profile.status, summary]);
+  }, [auth.has_login, bookingAccess.blocked, cardOnFile?.expired, cardOnFile?.update_required, detail, pendingDocumentRequests.length, profile.email, summary]);
 
-  const wellnessSnapshot = useMemo(() => ([
+  const secondaryOverviewChips = useMemo(() => ([
     {
-      label: "Last session",
-      value: summary.last_appointment ? formatDateTime(summary.last_appointment, timezone) : "No visits yet",
-      helper: "Most recent completed or tracked appointment.",
+      key: "no_show",
+      label: `${summary.no_show_count ?? 0} no-show${Number(summary.no_show_count || 0) === 1 ? "" : "s"}`,
+      tone: Number(summary.no_show_count || 0) > 0 ? "warning" : "default",
     },
     {
-      label: "Next session",
-      value: summary.next_appointment ? formatDateTime(summary.next_appointment, timezone) : "Not booked",
-      helper: "Upcoming appointment on the client record.",
+      key: "cancelled",
+      label: `${summary.cancelled_count ?? 0} cancelled`,
+      tone: Number(summary.cancelled_count || 0) > 0 ? "default" : "default",
     },
     {
-      label: "Total visits",
-      value: String(summary.appointments ?? 0),
-      helper: `${summary.upcoming_appointments ?? 0} upcoming appointment${Number(summary.upcoming_appointments || 0) === 1 ? "" : "s"}.`,
+      key: "revenue",
+      label: `Lifetime revenue ${formatMoney(summary.ltv || summary.gross || 0)}`,
+      tone: "success",
     },
     {
-      label: "No-show count",
-      value: String(summary.no_show_count ?? 0),
-      helper: `${summary.cancelled_count ?? 0} cancelled booking${Number(summary.cancelled_count || 0) === 1 ? "" : "s"}.`,
+      key: "package",
+      label: "Package status not tracked",
+      tone: "default",
     },
-    {
-      label: "Prepaid / package",
-      value: "Not tracked yet",
-      helper: "No package-credit field is exposed in the current Client 360 payload yet.",
-    },
-    {
-      label: "Outstanding invoice",
-      value: formatMoney(summary.unpaid_balance || 0),
-      helper: `${summary.open_invoice_count ?? 0} open invoice${Number(summary.open_invoice_count || 0) === 1 ? "" : "s"}.`,
-    },
-  ]), [summary, timezone]);
+  ]), [summary]);
 
   const pageMetrics = useMemo(() => ({
     total: Number(pagination?.total || listItems.length || 0),
@@ -3851,6 +3889,88 @@ export default function ManagerClientsWorkspace() {
     openNotesComposer("email", buildEmailTemplate(templateKey));
   }, [actionReadiness.send_follow_up, buildEmailTemplate, explainActionState, summary.unpaid_balance, summary.next_appointment]);
 
+  const billingReadinessItems = useMemo(() => {
+    const items = [
+      {
+        key: "send_payment_link",
+        title: "Payment link",
+        entry: actionReadiness.send_payment_link,
+        primaryAction: (
+          <Button size="small" variant="contained" onClick={() => handleSmartPaymentLink()}>
+            {actionReadiness.send_payment_link?.payment_url ? "Open link" : "Review"}
+          </Button>
+        ),
+        secondaryAction: actionReadiness.send_payment_link?.payment_url ? (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
+            onClick={() => copyText(actionReadiness.send_payment_link?.payment_url, enqueueSnackbar, "Payment link copied.")}
+          >
+            Copy
+          </Button>
+        ) : null,
+      },
+      {
+        key: "create_invoice",
+        title: "Invoice readiness",
+        entry: actionReadiness.create_invoice,
+        primaryAction: (
+          <Button size="small" variant="contained" onClick={() => openCreateInvoiceAction()}>
+            Create invoice
+          </Button>
+        ),
+      },
+      {
+        key: "collect_payment",
+        title: "Checkout readiness",
+        entry: actionReadiness.collect_payment,
+        primaryAction: (
+          <Button size="small" variant="contained" onClick={() => openCollectPaymentAction()}>
+            Open checkout
+          </Button>
+        ),
+        secondaryAction: (
+          <Button size="small" variant="outlined" onClick={() => openMarkPaidOfflineAction()}>
+            Offline paid
+          </Button>
+        ),
+      },
+    ];
+    const priority = { blocked: 0, recommended: 1, ready: 2, done_recently: 3 };
+    return items.sort((a, b) => (priority[a.entry?.state] ?? 4) - (priority[b.entry?.state] ?? 4));
+  }, [actionReadiness.collect_payment, actionReadiness.create_invoice, actionReadiness.send_payment_link, enqueueSnackbar, handleSmartPaymentLink, openCollectPaymentAction, openCreateInvoiceAction, openMarkPaidOfflineAction]);
+
+  const billingReadinessSummary = useMemo(() => {
+    const counts = billingReadinessItems.reduce((acc, item) => {
+      const key = String(item.entry?.state || "blocked");
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    if ((counts.ready || 0) === billingReadinessItems.length) {
+      return "Billing ready";
+    }
+    const parts = [];
+    if (counts.recommended) parts.push(`${counts.recommended} recommended`);
+    if (counts.ready) parts.push(`${counts.ready} ready`);
+    if (counts.blocked) parts.push(`${counts.blocked} blocked`);
+    if (counts.done_recently) parts.push(`${counts.done_recently} done recently`);
+    return parts.join(" · ");
+  }, [billingReadinessItems]);
+
+  const handleOpenMoreActions = useCallback((event) => {
+    setMoreActionsAnchor(event.currentTarget);
+  }, []);
+
+  const handleCloseMoreActions = useCallback(() => {
+    setMoreActionsAnchor(null);
+  }, []);
+
+  const runMoreAction = useCallback((callback) => {
+    handleCloseMoreActions();
+    callback?.();
+  }, [handleCloseMoreActions]);
+
   const requestCardUpdate = useCallback(async () => {
     if (!profile?.id) return;
     try {
@@ -3925,58 +4045,34 @@ export default function ManagerClientsWorkspace() {
               >
                 <Stack spacing={2.5}>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={6} xl={3}>
-                      <FinanceMetricCard label="Appointments" value={String(summary.appointments ?? 0)} helper={`${summary.upcoming_appointments ?? 0} upcoming`} accent="primary" />
-                    </Grid>
-                    <Grid item xs={12} md={6} xl={3}>
-                      <FinanceMetricCard label="Unpaid balance" value={formatMoney(summary.unpaid_balance || 0)} helper={`${summary.open_invoice_count ?? 0} open invoices`} accent="warning" />
-                    </Grid>
-                    <Grid item xs={12} md={6} xl={3}>
-                      <FinanceMetricCard label="Revenue snapshot" value={formatMoney(summary.ltv || summary.gross || 0)} helper="Lifetime value when available, otherwise all-time gross snapshot." accent="success" />
-                    </Grid>
-                    <Grid item xs={12} md={6} xl={3}>
-                      <FinanceMetricCard label="Open work orders" value={String(summary.open_work_order_count ?? 0)} helper={`${summary.no_show_count ?? 0} no-shows • ${summary.cancelled_count ?? 0} cancelled`} accent="info" />
-                    </Grid>
-                  </Grid>
-                  {clientAlerts.length ? (
-                    <SectionCard title="Client flags & alerts" description="Derived operational alerts from bookings, billing, and portal status.">
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {clientAlerts.map((alert) => (
-                          <Chip
-                            key={alert.key}
-                            label={alert.label}
-                            color={alert.tone}
-                            variant="outlined"
-                            sx={readableChipSx(alert.tone)}
-                            title={alert.helper}
-                          />
-                        ))}
-                      </Stack>
-                    </SectionCard>
-                  ) : null}
-                  <Grid container spacing={2}>
                     <Grid item xs={12} lg={5}>
-                      <SectionCard title={getClientDisplayName(profile)} description="Core client profile and portal status.">
+                      <SectionCard title={getClientDisplayName(profile)} description="Client identity, important state, and saved-card details.">
                         <Stack spacing={1.5}>
                           <Typography variant="body2">{profile.email || "No email"}{profile.phone ? ` • ${profile.phone}` : ""}</Typography>
-                          {bookingAccess.blocked ? (
-                            <Alert severity="warning" sx={{ alignItems: "flex-start" }}>
-                              <Stack spacing={0.5}>
-                                <Typography variant="body2" fontWeight={700}>New bookings are blocked for this Client.</Typography>
-                                {bookingAccess.reason_label ? (
-                                  <Typography variant="body2" color="text.secondary">Reason: {bookingAccess.reason_label}</Typography>
-                                ) : null}
-                                {bookingAccess.note ? (
-                                  <Typography variant="body2" color="text.secondary">{bookingAccess.note}</Typography>
-                                ) : null}
-                              </Stack>
-                            </Alert>
+                          {clientAlerts.length ? (
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              {clientAlerts.map((alert) => (
+                                <Chip
+                                  key={alert.key}
+                                  label={alert.label}
+                                  color={alert.tone}
+                                  variant="outlined"
+                                  sx={readableChipSx(alert.tone)}
+                                  title={alert.helper}
+                                />
+                              ))}
+                            </Stack>
                           ) : null}
                           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip size="small" label={profile.status === "archived" || profile.archived_at ? "Archived" : "Active"} variant="outlined" />
                             {bookingAccess.blocked ? <Chip size="small" label="Booking blocked" color="warning" variant="outlined" /> : null}
                             <Chip size="small" label={auth.has_login ? "Portal linked" : "No portal login"} color={auth.has_login ? "success" : "default"} variant="outlined" />
-                            {summary.has_card_on_file ? <Chip size="small" label={cardOnFile?.status_label ? `Card on file: ${cardOnFile.status_label}` : "Card on file"} color="success" variant="outlined" /> : null}
+                            <Chip
+                              size="small"
+                              label={summary.has_card_on_file ? (cardOnFile?.status_label ? `Card on file: ${cardOnFile.status_label}` : "Card on file") : "No card on file"}
+                              color={summary.has_card_on_file ? "success" : "default"}
+                              variant="outlined"
+                            />
                           </Stack>
                           {summary.has_card_on_file ? (
                             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
@@ -4006,13 +4102,14 @@ export default function ManagerClientsWorkspace() {
                               Send secure card update link
                             </Button>
                           )}
-                          <Divider />
-                          <Typography variant="body2" color="text.secondary">Last appointment</Typography>
-                          <Typography variant="body2">{formatDateTime(summary.last_appointment, timezone)}</Typography>
-                          <Typography variant="body2" color="text.secondary">Next appointment</Typography>
-                          <Typography variant="body2">{formatDateTime(summary.next_appointment, timezone)}</Typography>
                           <Typography variant="body2" color="text.secondary">Auth email</Typography>
                           <Typography variant="body2">{auth.auth_email || "No linked auth email"}</Typography>
+                          {auth.membership_id ? (
+                            <>
+                              <Typography variant="body2" color="text.secondary">Membership</Typography>
+                              <Typography variant="body2">#{auth.membership_id}</Typography>
+                            </>
+                          ) : null}
                           {profile.notes ? (
                             <>
                               <Typography variant="body2" color="text.secondary">Client profile notes</Typography>
@@ -4023,57 +4120,51 @@ export default function ManagerClientsWorkspace() {
                       </SectionCard>
                     </Grid>
                     <Grid item xs={12} lg={7}>
-                      <SectionCard title="Linked summary" description="Operational snapshot across booking, billing, and work orders.">
+                      <Stack spacing={2}>
                         <Grid container spacing={1.5}>
                           <Grid item xs={12} sm={6}>
-                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                              <Typography fontWeight={700}>Bookings</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {summary.appointments ?? 0} total • {summary.upcoming_appointments ?? 0} upcoming
-                              </Typography>
-                            </Paper>
+                            <FinanceMetricCard
+                              label="Next appointment"
+                              value={summary.next_appointment ? formatDateTime(summary.next_appointment, timezone) : "Not booked"}
+                              helper={summary.next_appointment ? "Scheduled client visit." : "No upcoming booking on file."}
+                              accent="primary"
+                            />
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                              <Typography fontWeight={700}>Invoices</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {summary.open_invoice_count ?? 0} open • {formatMoney(summary.unpaid_balance || 0)}
-                              </Typography>
-                            </Paper>
+                            <FinanceMetricCard
+                              label="Total visits"
+                              value={String(summary.appointments ?? 0)}
+                              helper={`${summary.upcoming_appointments ?? 0} upcoming appointment${Number(summary.upcoming_appointments || 0) === 1 ? "" : "s"}`}
+                              accent="success"
+                            />
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                              <Typography fontWeight={700}>Work orders</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {summary.open_work_order_count ?? 0} open
-                              </Typography>
-                            </Paper>
+                            <FinanceMetricCard
+                              label="Outstanding balance"
+                              value={formatMoney(summary.unpaid_balance || 0)}
+                              helper={`${summary.open_invoice_count ?? 0} open invoice${Number(summary.open_invoice_count || 0) === 1 ? "" : "s"}`}
+                              accent="warning"
+                            />
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                              <Typography fontWeight={700}>Client portal</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {auth.has_login ? "Linked" : "No login yet"} • {auth.membership_id ? `Membership #${auth.membership_id}` : "No membership"}
-                              </Typography>
-                            </Paper>
+                            <FinanceMetricCard
+                              label="Open work orders"
+                              value={String(summary.open_work_order_count ?? 0)}
+                              helper={summary.open_work_order_count ? "Assigned work still in progress." : "No active work orders."}
+                              accent="info"
+                            />
                           </Grid>
                         </Grid>
-                      </SectionCard>
+                        <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1.5 }}>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                            {secondaryOverviewChips.map((chip) => (
+                              <Chip key={chip.key} size="small" label={chip.label} variant="outlined" sx={readableChipSx(chip.tone)} />
+                            ))}
+                          </Stack>
+                        </Paper>
+                      </Stack>
                     </Grid>
                   </Grid>
-                  <SectionCard title="Visit & payment snapshot" description="Wellness-style snapshot for appointments, billing follow-up, and session cadence.">
-                    <Grid container spacing={1.5}>
-                      {wellnessSnapshot.map((card) => (
-                        <Grid item xs={12} sm={6} xl={4} key={card.label}>
-                          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
-                            <Typography variant="body2" color="text.secondary">{card.label}</Typography>
-                            <Typography fontWeight={800} sx={{ mt: 0.5 }}>{card.value}</Typography>
-                            <Typography variant="caption" color="text.secondary">{card.helper}</Typography>
-                          </Paper>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </SectionCard>
                 </Stack>
               </SectionAccordion>
 
@@ -4098,162 +4189,67 @@ export default function ManagerClientsWorkspace() {
                         Collect payment
                       </Button>
                       <Button
-                        variant={actionReadiness.create_estimate?.state === "recommended" ? "contained" : "outlined"}
-                        color={actionReadiness.create_estimate?.state === "recommended" ? "warning" : "primary"}
-                        onClick={() => openCreateEstimateAction()}
-                      >
-                        Create estimate
-                      </Button>
-                      <Button
                         variant={actionReadiness.create_invoice?.state === "recommended" ? "contained" : "outlined"}
                         color={actionReadiness.create_invoice?.state === "recommended" ? "warning" : "primary"}
                         onClick={() => openCreateInvoiceAction()}
                       >
                         Create invoice
                       </Button>
-                    </Stack>
-                    <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
-                      <Button variant="text" component={RouterLink} to={`/manager/finance-work-orders?clientId=${profile.id}&action=create`}>
-                        Create work order
-                      </Button>
-                      <Button variant="text" startIcon={<PhotoCameraOutlinedIcon fontSize="small" />} onClick={handleGoToPhotos}>
-                        Client photos
-                      </Button>
                       <Button
-                        variant="text"
-                        onClick={() => handleSmartPaymentLink()}
+                        id="client-360-more-actions"
+                        aria-haspopup="menu"
+                        aria-expanded={Boolean(moreActionsAnchor)}
+                        aria-controls={moreActionsAnchor ? "client-360-more-actions-menu" : undefined}
+                        variant="outlined"
+                        endIcon={<MoreHorizOutlinedIcon fontSize="small" />}
+                        onClick={handleOpenMoreActions}
                       >
-                        Send invoice
-                      </Button>
-                      <Button variant="text" onClick={() => openMarkPaidOfflineAction()}>
-                        Mark paid offline
-                      </Button>
-                      <Button
-                        variant="text"
-                        startIcon={<MailOutlineOutlinedIcon fontSize="small" />}
-                        onClick={() => openNotesComposer("email")}
-                        disabled={!String(profile.email || "").trim()}
-                      >
-                        Send email
-                      </Button>
-                      <Button
-                        variant="text"
-                        startIcon={<MailOutlineOutlinedIcon fontSize="small" />}
-                        onClick={() => openGoogleReviewRequestAction()}
-                        disabled={actionReadiness.request_google_review?.state === "blocked"}
-                      >
-                        Request Google review
-                      </Button>
-                      <Button variant="text" startIcon={<SmsOutlinedIcon fontSize="small" />} disabled>
-                        SMS (coming soon)
-                      </Button>
-                      <Button variant="text" startIcon={<AddCommentOutlinedIcon fontSize="small" />} onClick={() => openNotesComposer("note")}>
-                        Add note
-                      </Button>
-                      <Button variant="text" startIcon={<AssignmentTurnedInOutlinedIcon fontSize="small" />} onClick={() => openNotesComposer("session")}>
-                        Add session note
+                        More actions
                       </Button>
                     </Stack>
-                    <SectionCard
+                    <CompactSubsection
                       title="Billing readiness"
-                      description="See what is ready now, what is recommended next, and why billing actions are blocked."
-                      sx={{ borderRadius: 1.25, background: "linear-gradient(180deg, rgba(217,119,6,0.05) 0%, rgba(255,255,255,0.98) 100%)" }}
+                      summary={billingReadinessSummary}
+                      expanded={billingReadinessExpanded}
+                      onChange={() => setBillingReadinessExpanded((current) => !current)}
                     >
-                      <Grid container spacing={1.5}>
-                        <Grid item xs={12} md={6} xl={3}>
-                          <ReadinessCard
-                            title="Payment link"
-                            entry={actionReadiness.send_payment_link}
-                            primaryAction={(
-                              <Button size="small" variant="contained" onClick={() => handleSmartPaymentLink()}>
-                                {actionReadiness.send_payment_link?.payment_url ? "Open link" : "Review"}
-                              </Button>
-                            )}
-                            secondaryAction={actionReadiness.send_payment_link?.payment_url ? (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<ContentCopyOutlinedIcon fontSize="small" />}
-                                onClick={() => copyText(actionReadiness.send_payment_link?.payment_url, enqueueSnackbar, "Payment link copied.")}
-                              >
-                                Copy
-                              </Button>
-                            ) : null}
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6} xl={3}>
-                          <ReadinessCard
-                            title="Invoice readiness"
-                            entry={actionReadiness.create_invoice}
-                            primaryAction={(
-                              <Button size="small" variant="contained" onClick={() => openCreateInvoiceAction()}>
-                                Create invoice
-                              </Button>
-                            )}
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6} xl={3}>
-                          <ReadinessCard
-                            title="Checkout readiness"
-                            entry={actionReadiness.collect_payment}
-                            primaryAction={(
-                              <Button size="small" variant="contained" onClick={() => openCollectPaymentAction()}>
-                                Open checkout
-                              </Button>
-                            )}
-                            secondaryAction={(
-                              <Button size="small" variant="outlined" onClick={() => openMarkPaidOfflineAction()}>
-                                Offline paid
-                              </Button>
-                            )}
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6} xl={3}>
-                          <ReadinessCard
-                            title="Follow-up"
-                            entry={actionReadiness.send_follow_up}
-                            primaryAction={(
-                              <Button size="small" variant="contained" onClick={() => openFollowUpAction()}>
-                                Send follow-up
-                              </Button>
-                            )}
-                          />
-                        </Grid>
+                      <Grid container spacing={1.5} sx={{ pt: 0.5 }}>
+                        {billingReadinessItems.map((item) => (
+                          <Grid item xs={12} md={6} xl={4} key={item.key}>
+                            <ReadinessCard
+                              title={item.title}
+                              entry={item.entry}
+                              primaryAction={item.primaryAction}
+                              secondaryAction={item.secondaryAction}
+                            />
+                          </Grid>
+                        ))}
                       </Grid>
-                    </SectionCard>
-                    <Divider />
-                    <SectionCard
-                      title="Follow-up workflow"
-                      description="Use lightweight follow-up actions for rebooking, billing, and post-session communication."
-                      sx={{ borderRadius: 1.25, background: "linear-gradient(180deg, rgba(37,99,235,0.04) 0%, rgba(255,255,255,0.98) 100%)" }}
-                    >
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildEmailTemplate("rebooking_reminder"))}>
-                          Send follow-up
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => openGoogleReviewRequestAction()}
-                          disabled={actionReadiness.request_google_review?.state === "blocked"}
-                        >
-                          Request Google review
-                        </Button>
-                        <Button size="small" variant="outlined" onClick={() => openNotesComposer("email", buildEmailTemplate("payment_reminder"))}>
-                          Send payment reminder
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => openNotesComposer("email", buildEmailTemplate("document_reminder"))}
-                          disabled={!pendingDocumentRequests.length}
-                        >
-                          Send document reminder
-                        </Button>
-                      </Stack>
-                    </SectionCard>
+                    </CompactSubsection>
                   </Stack>
                 </SectionCard>
+                <Menu
+                  id="client-360-more-actions-menu"
+                  anchorEl={moreActionsAnchor}
+                  open={Boolean(moreActionsAnchor)}
+                  onClose={handleCloseMoreActions}
+                  MenuListProps={{ "aria-labelledby": "client-360-more-actions" }}
+                >
+                  <MenuItem onClick={() => runMoreAction(() => openCreateEstimateAction())}>Create estimate</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => navigate(`/manager/finance-work-orders?clientId=${profile.id}&action=create`))}>Create work order</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openCollectPaymentAction())}>Open checkout</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openMarkPaidOfflineAction())}>Mark paid offline</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => handleSmartPaymentLink())}>Send invoice</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openNotesComposer("email"))} disabled={!String(profile.email || "").trim()}>Send email</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openFollowUpAction())}>Send follow-up</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openNotesComposer("email", buildEmailTemplate("payment_reminder")))}>Send payment reminder</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openNotesComposer("email", buildEmailTemplate("document_reminder")))} disabled={!pendingDocumentRequests.length}>Send document reminder</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openGoogleReviewRequestAction())} disabled={actionReadiness.request_google_review?.state === "blocked"}>Request Google review</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openNotesComposer("note"))}>Add note</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openNotesComposer("session"))}>Add session note</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => handleGoToPhotos())}>Client photos</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => navigate("/manager/finance-clients"))}>Open Finance</MenuItem>
+                </Menu>
               </SectionAccordion>
 
               <SectionAccordion
@@ -4264,8 +4260,13 @@ export default function ManagerClientsWorkspace() {
                 onChange={toggleSection("bookings")}
               >
                 <Stack spacing={2}>
-                  <SectionCard title="Upcoming bookings" description="Client-only booking rows with checkout actions.">
-                    <Stack spacing={1.25}>
+                  <CompactSubsection
+                    title={`Upcoming bookings · ${detail?.bookings?.upcoming?.length || 0}`}
+                    summary={detail?.bookings?.upcoming?.length ? "Client-only booking rows with checkout actions." : "No upcoming bookings yet."}
+                    expanded={upcomingBookingsExpanded}
+                    onChange={() => setUpcomingBookingsExpanded((current) => !current)}
+                  >
+                    <Stack spacing={1.25} sx={{ pt: 0.5 }}>
                       <PagedStackList
                         items={detail?.bookings?.upcoming || []}
                         initialVisible={3}
@@ -4274,6 +4275,7 @@ export default function ManagerClientsWorkspace() {
                           const isPaid = paymentMeta.label === "Paid";
                           const isCompleted = String(row.status || "").toLowerCase() === "completed";
                           const invoiceHref = `/manager/finance-invoices?clientId=${profile.id}&appointmentId=${row.id}&action=create`;
+                          const displayNote = sanitizeBookingDisplayNote(row.notes);
                           return (
                             <Paper key={`upcoming-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                               <Stack spacing={1.25}>
@@ -4283,7 +4285,7 @@ export default function ManagerClientsWorkspace() {
                                     <Typography variant="body2" color="text.secondary">
                                       {formatApptWhen(row, timezone)} • {row.provider || "No provider"}
                                     </Typography>
-                                    {row.notes ? <ExpandableText text={row.notes} /> : null}
+                                    {displayNote ? <ExpandableText text={displayNote} /> : null}
                                   </Stack>
                                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                     <QuickStatusChip status={row.status} />
@@ -4338,17 +4340,23 @@ export default function ManagerClientsWorkspace() {
                         />
                       ) : null}
                     </Stack>
-                  </SectionCard>
-                  <SectionCard title="Recent bookings" description="Past appointment history with compact actions.">
-                    <Stack spacing={1.25}>
+                  </CompactSubsection>
+                  <CompactSubsection
+                    title={`Recent bookings · ${detail?.bookings?.past?.length || 0}`}
+                    summary="Past appointment history with compact actions."
+                    expanded={recentBookingsExpanded}
+                    onChange={() => setRecentBookingsExpanded((current) => !current)}
+                  >
+                    <Stack spacing={1.25} sx={{ pt: 0.5 }}>
                       <PagedStackList
                         items={(detail?.bookings?.past || []).slice(0, 12)}
-                        initialVisible={4}
+                        initialVisible={3}
                         renderItem={(row) => {
                           const paymentMeta = bookingPaymentStateMeta(row);
                           const isPaid = paymentMeta.label === "Paid";
                           const isCompleted = String(row.status || "").toLowerCase() === "completed";
                           const invoiceHref = `/manager/finance-invoices?clientId=${profile.id}&appointmentId=${row.id}&action=create`;
+                          const displayNote = sanitizeBookingDisplayNote(row.notes);
                           return (
                             <Paper key={`past-${row.id}`} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                               <Stack spacing={1.25}>
@@ -4358,7 +4366,7 @@ export default function ManagerClientsWorkspace() {
                                     <Typography variant="body2" color="text.secondary">
                                       {formatApptWhen(row, timezone)} • {row.provider || "No provider"}
                                     </Typography>
-                                    {row.notes ? <ExpandableText text={row.notes} /> : null}
+                                    {displayNote ? <ExpandableText text={displayNote} /> : null}
                                   </Stack>
                                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                     <QuickStatusChip status={row.status} />
@@ -4398,7 +4406,7 @@ export default function ManagerClientsWorkspace() {
                       />
                       {!detail?.bookings?.past?.length ? <Typography color="text.secondary">No past bookings for this client.</Typography> : null}
                     </Stack>
-                  </SectionCard>
+                  </CompactSubsection>
                 </Stack>
               </SectionAccordion>
 
