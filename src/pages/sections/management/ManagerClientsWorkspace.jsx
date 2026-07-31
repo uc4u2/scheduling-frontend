@@ -3856,9 +3856,11 @@ export default function ManagerClientsWorkspace() {
     try {
       const payload = await sendManagerClient360CardUpdateRequest(profile.id);
       enqueueSnackbar(
-        payload?.email?.reused
-          ? "The existing secure card update link was sent again."
-          : "Secure card update request sent.",
+        payload?.email?.resent
+          ? "A new secure card update email was sent."
+          : payload?.email?.sent_new
+            ? "Secure card update request sent."
+            : "A recent send was already in progress. No duplicate email was sent.",
         { variant: "success" }
       );
       await loadDetail();
