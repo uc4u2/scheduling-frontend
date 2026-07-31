@@ -494,6 +494,9 @@ export const createManagerClient360SessionNote = (clientId, payload) =>
 export const sendManagerClient360Email = (clientId, payload) =>
   unwrap(api.post(`/api/manager/client-360/${clientId}/email`, payload));
 
+export const sendManagerClient360CardUpdateRequest = (clientId, payload = {}) =>
+  unwrap(api.post(`/api/manager/client-360/${clientId}/card-on-file/update-request`, payload));
+
 export const getManagerClient360ReviewRequestDraft = (clientId) =>
   unwrap(api.get(`/api/manager/client-360/${clientId}/review-request-draft`));
 

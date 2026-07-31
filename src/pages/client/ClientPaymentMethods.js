@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Paper,
-  Button,
   List,
   ListItem,
   ListItemText,
@@ -11,7 +10,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
 import api from "../../utils/api";
 import { useLocation, useParams } from "react-router-dom";
 import { persistTenantSlug, resolveTenantSlug } from "../../utils/clientTenant";
@@ -20,7 +18,6 @@ export default function ClientPaymentMethods() {
   const [methods, setMethods] = useState([]);
   const [cardSummary, setCardSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [launching, setLaunching] = useState(false);
   const location = useLocation();
   const { slug: routeSlug } = useParams();
   const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
@@ -79,54 +76,11 @@ export default function ClientPaymentMethods() {
     }
   };
 
-  async function startSaveCard() {
-    if (launching) return;
-
-    try {
-      setLaunching(true);
-      const site = tenantSlug || localStorage.getItem("site");
-      if (!site) {
-        alert("Open your provider's public site first so we know where to save the card.");
-        return;
-      }
-
-      const payload = {
-        policy: { mode: "capture" },
-        items: [],
-        card_on_file_consent: { accepted: true },
-      };
-
-      const { data } = await api.post(`/public/${site}/checkout/session`, payload, {
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (data?.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      } else {
-        throw new Error("Stripe did not return a redirect URL.");
-      }
-    } catch (err) {
-      console.error("Failed to start card save flow:", err);
-      const message = err?.response?.data?.error || err?.message || "Could not start card save flow.";
-      alert(message);
-    } finally {
-      setLaunching(false);
-    }
-  }
-
   return (
     <Box>
       <Typography variant="h5" gutterBottom>
         Payment Methods
       </Typography>
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={startSaveCard}
-        disabled={launching}
-      >
-        {launching ? "Starting secure card save..." : "Add Card (Secure via Stripe)"}
-      </Button>
       <Paper sx={{ mt: 2 }}>
         {loading ? (
           <CircularProgress />
@@ -134,6 +88,9 @@ export default function ClientPaymentMethods() {
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ px: 2, pt: 2 }}>
               A verified saved card can still be declined by the card issuer during a future charge.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ px: 2, pt: 1 }}>
+              If your saved card needs to be updated, ask the business to send you a secure update link.
             </Typography>
             <List>
               {methods.map((pm) => (

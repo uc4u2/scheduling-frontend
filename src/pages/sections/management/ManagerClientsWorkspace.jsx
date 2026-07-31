@@ -108,6 +108,7 @@ import {
   listManagerClient360,
   revokeManagerClient360PhotoShareLink,
   sendManagerClient360PhotoShareLinkEmail,
+  sendManagerClient360CardUpdateRequest,
   sendManagerClient360Email,
   setManagerClient360EmailTemplateDefault,
   unblockManagerClient360Bookings,
@@ -3850,6 +3851,25 @@ export default function ManagerClientsWorkspace() {
     openNotesComposer("email", buildEmailTemplate(templateKey));
   }, [actionReadiness.send_follow_up, buildEmailTemplate, explainActionState, summary.unpaid_balance, summary.next_appointment]);
 
+  const requestCardUpdate = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      const payload = await sendManagerClient360CardUpdateRequest(profile.id);
+      enqueueSnackbar(
+        payload?.email?.reused
+          ? "The existing secure card update link was sent again."
+          : "Secure card update request sent.",
+        { variant: "success" }
+      );
+      await loadDetail();
+    } catch (err) {
+      enqueueSnackbar(
+        err?.response?.data?.error || err?.message || "Unable to send the secure card update request.",
+        { variant: "error" }
+      );
+    }
+  }, [enqueueSnackbar, loadDetail, profile?.id]);
+
   if (clientId) {
     return (
       <ManagementFrame
@@ -3972,9 +3992,18 @@ export default function ManagerClientsWorkspace() {
                                   {cardOnFile?.verified_at ? ` • Verified ${formatDateTime(cardOnFile.verified_at, timezone)}` : ""}
                                   {cardOnFile?.consent_accepted_at ? ` • Consent recorded ${formatDateTime(cardOnFile.consent_accepted_at, timezone)}` : ""}
                                 </Typography>
+                                <Box sx={{ pt: 0.5 }}>
+                                  <Button size="small" variant="outlined" onClick={requestCardUpdate} disabled={!profile?.email}>
+                                    Request card update
+                                  </Button>
+                                </Box>
                               </Stack>
                             </Paper>
-                          ) : null}
+                          ) : (
+                            <Button size="small" variant="outlined" onClick={requestCardUpdate} disabled={!profile?.email}>
+                              Send secure card update link
+                            </Button>
+                          )}
                           <Divider />
                           <Typography variant="body2" color="text.secondary">Last appointment</Typography>
                           <Typography variant="body2">{formatDateTime(summary.last_appointment, timezone)}</Typography>

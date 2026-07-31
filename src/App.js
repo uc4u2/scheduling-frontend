@@ -181,6 +181,7 @@ import EmployeeBooking from "./pages/client/EmployeeBooking";
 import BookingConfirmation from "./pages/client/BookingConfirmation";
 import ClientBookingHistory from "./pages/client/ClientBookingHistory";
 import ClientPaymentMethods from "./pages/client/ClientPaymentMethods";
+import ClientUpdateCardPage from "./pages/client/ClientUpdateCardPage";
 import ClientPackages from "./pages/client/ClientPackages";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 import ClientReviews from "./pages/client/ClientReviews";
@@ -913,6 +914,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/dashboard" element={<DashboardShellGate />} />
           <Route path="/client/bookings" element={<ClientBookingHistory />} />
           <Route path="/client/payments" element={<ClientPaymentMethods />} />
+          <Route path="/card-on-file/update/:token" element={<ClientUpdateCardPage />} />
           <Route path="/client/packages" element={<ClientPackages />} />
           <Route path="/client/profile" element={<ClientProfileSettings />} />
           <Route path="/client/reviews" element={<ClientReviews />} />

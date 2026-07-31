@@ -71,3 +71,4 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - A verified saved card means Stripe successfully saved a reusable card for later off-session use. It does not guarantee future funds or prevent future issuer declines.
 - Client and Manager saved-card views now show `Verified`, `Expiring soon`, `Expired`, `Update required`, or `No card` based on live Stripe expiry details plus Schedulaa's local verified-card status.
 - Managers cannot start a saved-card charge when the saved card is already expired or marked update required.
+- Client 360 now includes a **Request card update** action that emails the client a secure, time-limited Stripe-hosted update-card link.

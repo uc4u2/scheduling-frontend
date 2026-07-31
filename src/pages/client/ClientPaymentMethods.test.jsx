@@ -72,6 +72,9 @@ describe("ClientPaymentMethods", () => {
     expect(
       screen.getByText(/a verified saved card can still be declined by the card issuer during a future charge/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/ask the business to send you a secure update link/i),
+    ).toBeInTheDocument();
   });
 
   test("shows provider unavailable when no safe card details can be returned", async () => {
