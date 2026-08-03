@@ -1450,10 +1450,11 @@ export function CheckoutFormCore({
     const rows = productItems
       .map((item) => ({
         product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
+        variant_id: item.variant_id != null ? Number(item.variant_id) : null,
         quantity: getQuantity(item),
       }))
       .filter((row) => Number.isFinite(row.product_id) && row.product_id > 0 && row.quantity > 0)
-      .sort((a, b) => (a.product_id - b.product_id) || (a.quantity - b.quantity));
+      .sort((a, b) => (a.product_id - b.product_id) || ((a.variant_id || 0) - (b.variant_id || 0)) || (a.quantity - b.quantity));
     return JSON.stringify(rows);
   }, [productItems]);
   const currentDeliveryCountryValue = useMemo(() => {
@@ -1535,6 +1536,7 @@ export function CheckoutFormCore({
           },
           items: productItems.map((item) => ({
             product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
+            variant_id: item.variant_id != null ? Number(item.variant_id) : undefined,
             quantity: getQuantity(item),
           })),
         };
@@ -2198,6 +2200,7 @@ export function CheckoutFormCore({
     const payload = {
       items: productItems.map((item) => ({
         product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
+        variant_id: item.variant_id != null ? Number(item.variant_id) : undefined,
         quantity: getQuantity(item),
       })),
       client_name: client?.full_name || guest.name,

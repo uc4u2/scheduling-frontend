@@ -92,6 +92,7 @@ export const buildHostedCheckoutPayload = ({
       itemsPayload.push({
         type: "product",
         product_id: productId,
+        ...(item?.variant_id != null ? { variant_id: Number(item.variant_id) } : {}),
         quantity,
       });
       return;

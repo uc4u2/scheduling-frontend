@@ -62,24 +62,43 @@ export function clearCart() {
   }
 }
 
-export function addProductToCart(product, quantity = 1) {
+export function addProductToCart(product, quantity = 1, variant = null) {
   if (!product) return loadCart();
   const qty = Math.max(1, Number(quantity) || 1);
   const current = loadCart();
   ensureCompatibleCart(CartTypes.PRODUCT, current);
 
-  const id = `product-${product.id}`;
+  const variantId = variant?.id != null ? Number(variant.id) : null;
+  const id = variantId ? `product-${product.id}-variant-${variantId}` : `product-${product.id}`;
   const existing = current.find((item) => item.id === id);
   const base = {
     id,
     type: CartTypes.PRODUCT,
     product_id: product.id,
+    variant_id: variantId,
     sku: product.sku,
     name: product.name,
     description: product.description,
-    price: Number(product.price || 0),
+    price: Number((variant?.effective_price ?? product.price) || 0),
     quantity: qty,
-    image: product.images && product.images.length ? product.images[0].url : null,
+    image:
+      variant?.image?.url_public ||
+      variant?.image?.url ||
+      (product.images && product.images.length ? product.images[0].url : null),
+    display: variantId
+      ? {
+          variant_label: variant?.label || "",
+          variant_options: Array.isArray(variant?.selection)
+            ? variant.selection.map((row) => ({
+                option_name: row.option_name,
+                value: row.value,
+              }))
+            : [],
+          variant_sku: variant?.sku || null,
+          unit_price: variant?.effective_price || null,
+          image: variant?.image?.url_public || variant?.image?.url || null,
+        }
+      : undefined,
     delivery_methods_override_enabled: Boolean(product.delivery_methods_override_enabled),
     delivery_allow_pickup:
       product.delivery_allow_pickup == null ? null : Boolean(product.delivery_allow_pickup),

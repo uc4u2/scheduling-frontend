@@ -6,6 +6,38 @@ jest.mock("./api", () => ({
 }));
 
 describe("buildHostedCheckoutPayload", () => {
+  test("includes variant_id for product lines without trusting browser display fields", () => {
+    const payload = buildHostedCheckoutPayload({
+      cartItems: [
+        {
+          id: "product-48-variant-101",
+          type: "product",
+          product_id: 48,
+          variant_id: 101,
+          quantity: 2,
+          display: {
+            variant_label: "Black / Mini",
+            variant_sku: "BAG-BLACK-MINI",
+            unit_price: "79.00",
+          },
+        },
+      ],
+      policyMode: "pay",
+      currency: "cad",
+      clientName: "Jamie Buyer",
+      clientEmail: "jamie@example.com",
+    });
+
+    expect(payload.items).toEqual([
+      {
+        type: "product",
+        product_id: 48,
+        variant_id: 101,
+        quantity: 2,
+      },
+    ]);
+  });
+
   test("includes allowlisted card-on-file consent fields for capture mode", () => {
     const payload = buildHostedCheckoutPayload({
       cartItems: [

@@ -17,8 +17,9 @@ import {
   IconButton,
   Snackbar,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
   TextField,
-  Tooltip,
   Typography,
   useMediaQuery,
 } from "@mui/material";
@@ -170,6 +171,7 @@ const ProductDetails = ({ slugOverride }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: "" });
+  const [selectedOptions, setSelectedOptions] = useState({});
 
   useEffect(() => {
     if (!slug || !effectiveProductId) return;
@@ -183,6 +185,7 @@ const ProductDetails = ({ slugOverride }) => {
         setProduct(data);
         setQuantity(1);
         setActiveImageIndex(0);
+        setSelectedOptions({});
       })
       .catch(() => {
         if (!alive) return;
@@ -196,10 +199,10 @@ const ProductDetails = ({ slugOverride }) => {
   }, [slug, effectiveProductId]);
 
   const handleAdd = () => {
-    if (!product || soldOut) return;
+    if (!product || soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)) return;
     const qty = Math.max(1, Number(quantity) || 1);
     try {
-      addProductToCart(product, qty);
+      addProductToCart(product, qty, selectedVariant);
       setSnack({ open: true, msg: `${product.name} added to basket` });
     } catch (error) {
       const mixed = error?.code === CartErrorCodes.MIXED_TYPES;
@@ -243,11 +246,103 @@ const ProductDetails = ({ slugOverride }) => {
   };
 
   const gallery = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product]);
-  const activeImage = gallery[activeImageIndex] || gallery[0] || null;
-  const quantityAvailable = Number(product?.qty_on_hand || 0);
-  const soldOut = Boolean(product?.track_stock) && quantityAvailable <= 0;
-  const lowStock = Boolean(product?.track_stock) && quantityAvailable > 0 && quantityAvailable <= 3;
+  const variantCatalog = product?.variant_catalog || null;
+  const variantSellingActive = Boolean(product?.variant_selling_enabled && variantCatalog);
+  const variantPurchaseUnavailable = Boolean(product?.variant_purchase_unavailable);
+  const variantOptions = Array.isArray(variantCatalog?.options) ? variantCatalog.options : [];
+  const variantRows = Array.isArray(variantCatalog?.variants) ? variantCatalog.variants : [];
+  const selectedVariant = useMemo(() => {
+    if (!variantSellingActive) return null;
+    return (
+      variantRows.find((variant) => {
+        const selection = Array.isArray(variant.selection) ? variant.selection : [];
+        return (
+          selection.length === variantOptions.length &&
+          selection.every((row) => String(selectedOptions[row.option_id] || "") === String(row.value_id))
+        );
+      }) || null
+    );
+  }, [selectedOptions, variantOptions, variantRows, variantSellingActive]);
+  const variantRange = useMemo(() => {
+    if (!variantSellingActive) return null;
+    const summary = variantCatalog?.price_summary || {};
+    return summary;
+  }, [variantSellingActive, variantCatalog]);
+  const activeImage = useMemo(() => {
+    if (selectedVariant?.image) {
+      return {
+        ...selectedVariant.image,
+        url: selectedVariant.image.url_public || selectedVariant.image.url,
+      };
+    }
+    return gallery[activeImageIndex] || gallery[0] || null;
+  }, [selectedVariant, gallery, activeImageIndex]);
+  const simpleQuantityAvailable = Number(product?.qty_on_hand || 0);
+  const soldOut = variantSellingActive
+    ? selectedVariant
+      ? Boolean(selectedVariant.out_of_stock)
+      : Boolean(variantCatalog?.availability?.sold_out)
+    : Boolean(product?.track_stock) && simpleQuantityAvailable <= 0;
+  const lowStock =
+    !variantSellingActive && Boolean(product?.track_stock) && simpleQuantityAvailable > 0 && simpleQuantityAvailable <= 3;
   const currency = product?.selling_currency || getActiveCurrency();
+  const displayPrice = selectedVariant
+    ? formatCurrency(selectedVariant.effective_price, currency)
+    : variantSellingActive && variantRange?.varies
+    ? `From ${formatCurrency(variantRange.minimum, currency)}`
+    : formatCurrency(variantRange?.minimum || product?.price, currency);
+  const displaySku = selectedVariant?.sku || product?.sku;
+
+  useEffect(() => {
+    if (!variantSellingActive) return;
+    const nextSelections = {};
+    variantOptions.forEach((option) => {
+      const values = Array.isArray(option.values) ? option.values : [];
+      if (values.length === 1) {
+        nextSelections[option.id] = values[0].id;
+      }
+    });
+    if (Object.keys(nextSelections).length) {
+      setSelectedOptions((current) => ({ ...nextSelections, ...current }));
+    }
+  }, [variantSellingActive, variantOptions]);
+
+  useEffect(() => {
+    if (!selectedVariant?.image) return;
+    const nextIndex = gallery.findIndex((image) => {
+      const left = image?.url_public || image?.url;
+      const right = selectedVariant?.image?.url_public || selectedVariant?.image?.url;
+      return left && right && left === right;
+    });
+    if (nextIndex >= 0) setActiveImageIndex(nextIndex);
+  }, [selectedVariant, gallery]);
+
+  const optionAvailability = useMemo(() => {
+    if (!variantSellingActive) return {};
+    const availability = {};
+    variantOptions.forEach((option) => {
+      availability[option.id] = {};
+      (option.values || []).forEach((value) => {
+        const candidateSelections = { ...selectedOptions, [option.id]: value.id };
+        const matching = variantRows.filter((variant) => {
+          if (variant.out_of_stock || !variant.available) return false;
+          return (variant.selection || []).every((row) => {
+            const chosen = candidateSelections[row.option_id];
+            return !chosen || String(chosen) === String(row.value_id);
+          });
+        });
+        availability[option.id][value.id] = matching.length > 0;
+      });
+    });
+    return availability;
+  }, [variantSellingActive, variantOptions, variantRows, selectedOptions]);
+
+  const handleOptionSelect = (optionId, valueId) => {
+    setSelectedOptions((current) => ({
+      ...current,
+      [optionId]: valueId,
+    }));
+  };
   const detailSections = useMemo(() => {
     const rows = [];
     if (hasMeaningfulText(product?.details_text)) {
@@ -460,7 +555,7 @@ const ProductDetails = ({ slugOverride }) => {
                   {soldOut ? (
                     <Chip label="Sold out" size="small" sx={{ bgcolor: "rgba(33,33,33,0.72)", color: "#fff" }} />
                   ) : null}
-                  {!soldOut && lowStock ? <Chip label={`Only ${quantityAvailable} left`} color="warning" size="small" /> : null}
+                  {!soldOut && lowStock ? <Chip label={`Only ${simpleQuantityAvailable} left`} color="warning" size="small" /> : null}
                 </Stack>
               </Box>
               {gallery.length > 1 ? (
@@ -502,11 +597,9 @@ const ProductDetails = ({ slugOverride }) => {
                     <Typography color="text.primary">{product.name}</Typography>
                   </Breadcrumbs>
                 </Stack>
-                <Tooltip title="Share product">
-                  <IconButton onClick={handleShare} aria-label="Share product">
-                    <ShareIcon />
-                  </IconButton>
-                </Tooltip>
+                <IconButton onClick={handleShare} aria-label="Share product">
+                  <ShareIcon />
+                </IconButton>
               </Stack>
               {isNewArrival(product.created_at) ? (
                 <Chip label="New arrival" color="secondary" size="small" sx={{ alignSelf: "flex-start" }} />
@@ -515,7 +608,7 @@ const ProductDetails = ({ slugOverride }) => {
                 {product.name}
               </Typography>
               <Typography variant="h5" color="primary" fontWeight={700}>
-                {formatCurrency(product.price, currency)}
+                {displayPrice}
               </Typography>
               {hasMeaningfulText(product.description) ? (
                 <Typography variant="body1" color="text.secondary">
@@ -523,7 +616,7 @@ const ProductDetails = ({ slugOverride }) => {
                 </Typography>
               ) : null}
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
-                {product.sku ? <Chip label={`SKU ${product.sku}`} variant="outlined" size="small" /> : null}
+                {displaySku ? <Chip label={`SKU ${displaySku}`} variant="outlined" size="small" /> : null}
                 {product.is_digital ? <Chip label="Digital product" color="info" size="small" /> : null}
                 {!product.is_digital ? (
                   <Chip
@@ -540,15 +633,77 @@ const ProductDetails = ({ slugOverride }) => {
                   ))}
                 </Stack>
               ) : null}
+              {variantSellingActive ? (
+                <Stack spacing={2}>
+                  {variantOptions.map((option) => (
+                    <Stack key={option.id} spacing={1}>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        {option.name}
+                      </Typography>
+                      <ToggleButtonGroup
+                        value={selectedOptions[option.id] || null}
+                        exclusive
+                        onChange={(_, value) => value && handleOptionSelect(option.id, value)}
+                        sx={{ flexWrap: "wrap", gap: 1 }}
+                      >
+                        {(option.values || []).map((value) => {
+                          const enabled = Boolean(optionAvailability?.[option.id]?.[value.id]);
+                          return (
+                            <ToggleButton
+                              key={value.id}
+                              value={value.id}
+                              disabled={!enabled}
+                              aria-label={`${option.name}: ${value.value}`}
+                              sx={{ textTransform: "none", borderRadius: 2 }}
+                            >
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                {value.swatch_color ? (
+                                  <Box
+                                    sx={{
+                                      width: 14,
+                                      height: 14,
+                                      borderRadius: "50%",
+                                      border: "1px solid",
+                                      borderColor: "divider",
+                                      bgcolor: value.swatch_color,
+                                    }}
+                                  />
+                                ) : null}
+                                <span>{value.value}</span>
+                              </Stack>
+                            </ToggleButton>
+                          );
+                        })}
+                      </ToggleButtonGroup>
+                    </Stack>
+                  ))}
+                  {!selectedVariant ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Choose your options
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ) : null}
               <Typography variant="body2" color={soldOut ? "error" : lowStock ? "warning.main" : "success.main"}>
-                {soldOut
+                {variantSellingActive && !selectedVariant
+                  ? "Choose options to view exact availability."
+                  : variantSellingActive && selectedVariant
+                  ? soldOut
+                    ? "This option combination is currently out of stock."
+                    : "This option combination is available."
+                  : soldOut
                   ? "This item is currently out of stock."
                   : product.track_stock
                   ? lowStock
-                    ? `Only ${quantityAvailable} left in stock.`
-                    : `${quantityAvailable} available.`
+                    ? `Only ${simpleQuantityAvailable} left in stock.`
+                    : `${simpleQuantityAvailable} available.`
                   : "Available"}
               </Typography>
+              {variantPurchaseUnavailable ? (
+                <Typography variant="body2" color="error">
+                  {product?.variant_purchase_unavailable_reason || "This product is temporarily unavailable."}
+                </Typography>
+              ) : null}
               <Stack direction="row" spacing={2} alignItems="center">
                 <TextField
                   label="Quantity"
@@ -557,12 +712,24 @@ const ProductDetails = ({ slugOverride }) => {
                   onChange={(event) => setQuantity(event.target.value)}
                   inputProps={{ min: 1 }}
                   sx={{ width: 120 }}
-                  disabled={soldOut}
+                  disabled={soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)}
                 />
-                {product.track_stock ? (
+                {product.track_stock && !variantSellingActive ? (
                   <Chip
-                    label={soldOut ? "Out of stock" : lowStock ? `Only ${quantityAvailable} left` : `${quantityAvailable} available`}
+                    label={
+                      soldOut
+                        ? "Out of stock"
+                        : lowStock
+                        ? `Only ${simpleQuantityAvailable} left`
+                        : `${simpleQuantityAvailable} available`
+                    }
                     color={soldOut ? "default" : lowStock ? "warning" : "success"}
+                  />
+                ) : null}
+                {variantSellingActive && selectedVariant ? (
+                  <Chip
+                    label={soldOut ? "Out of stock" : "Available"}
+                    color={soldOut ? "default" : "success"}
                   />
                 ) : null}
               </Stack>
@@ -572,7 +739,7 @@ const ProductDetails = ({ slugOverride }) => {
                   size="large"
                   startIcon={<ShoppingCartCheckoutIcon />}
                   onClick={handleAdd}
-                  disabled={soldOut}
+                  disabled={soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)}
                   sx={{
                     borderRadius: "var(--page-btn-radius, 12px)",
                     backgroundColor: "var(--page-btn-bg, #2563eb)",
@@ -658,18 +825,24 @@ const ProductDetails = ({ slugOverride }) => {
         >
           <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
             <Stack spacing={0.25}>
-              <Typography variant="subtitle2" fontWeight={800}>
-                {formatCurrency(product.price, currency)}
-              </Typography>
+                <Typography variant="subtitle2" fontWeight={800}>
+                {displayPrice}
+                </Typography>
               <Typography variant="caption" color="text.secondary">
-                {soldOut ? "Out of stock" : "Ready to add"}
+                {variantPurchaseUnavailable
+                  ? "Temporarily unavailable"
+                  : variantSellingActive && !selectedVariant
+                  ? "Choose options"
+                  : soldOut
+                  ? "Out of stock"
+                  : "Ready to add"}
               </Typography>
             </Stack>
             <Button
               variant="contained"
               startIcon={<ShoppingCartCheckoutIcon />}
               onClick={handleAdd}
-              disabled={soldOut}
+              disabled={soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)}
               sx={{
                 minWidth: 180,
                 borderRadius: "var(--page-btn-radius, 12px)",

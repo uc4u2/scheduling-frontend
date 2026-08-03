@@ -61,21 +61,35 @@ Rules:
 - `Specifications` uses label/value rows and is meant for customer-facing marketing/spec data
 - no Size/Colour variant support exists in PV1
 
-## Draft Product options and variants (PV2-A)
+## Draft and active Product options and variants (PV2-B2A)
 
-Products now support a manager-only draft configuration workflow for future variants.
+Products now support both:
+
+- manager-only draft configuration
+- server-authoritative active Variant selling for supported physical Products
 
 Manager entry points:
 - Product row **More actions** → `Configure options`
 - Product editor → `Configure size and colour`
 - Product editor → `Edit options and variants` when a draft already exists
 
-Current PV2-A rules:
-- draft only
-- customers still see the current parent Product
-- no public Colour/Size selector exists yet
-- no cart or checkout change exists yet
-- no ProductOrder variant snapshot exists yet
+Current activation rules:
+- runtime flag `PRODUCT_VARIANT_SELLING_ENABLED` must be on
+- the Product must be active and physical
+- linked Materials & Supplies inventory must be removed first
+- the Variant configuration must pass server readiness
+
+When Variant selling is active:
+- customers must choose a valid available option combination before adding to basket
+- the selected Variant price, SKU, image, and stock become authoritative
+- cart identity becomes `product_id + variant_id`
+- Orders store immutable Variant snapshots
+
+When the runtime flag is off:
+- managers can still edit drafts
+- activation is unavailable
+- already-active Variant Products show as temporarily unavailable to customers
+- Schedulaa does not silently fall back to selling the parent Product
 
 Current limits:
 - up to 2 option groups
@@ -92,7 +106,46 @@ Each draft variant can store:
 Current boundaries:
 - digital Products cannot use Product options in this release
 - linked Materials & Supplies inventory blocks non-zero variant stock until the inventory link is removed
-- variant selling is not enabled until the next checkout phase
+- shipping and customs still come from the parent Product
+- no per-Variant cost, weight, dimensions, Package Profile, or customs fields exist
+
+### Customer storefront behavior
+
+Active Variant Products now show safe customer selectors on the public Product page.
+
+Selector rules:
+- one or two option groups
+- generic option names supported
+- impossible combinations are disabled
+- inactive combinations are unavailable
+- sold-out combinations stay visible but unavailable
+- a single sole legitimate value may auto-select
+- multiple legitimate values are not auto-selected
+
+Add to basket rules:
+- no add is allowed until a complete valid Variant is selected
+- the selected Variant updates the displayed price, SKU, image, and availability
+- the sticky mobile Add to basket bar uses the same selection and add handler
+
+Product list behavior:
+- active Variant Products show `Choose options`
+- different active Variant prices show `From CAD X`
+- equal active Variant prices show the exact price
+- simple Products keep the existing quick-add flow
+
+### Orders and refunds
+
+Variant purchases now store immutable order snapshots for:
+- Variant label
+- Variant SKU
+- selected option summary
+- Variant image
+
+Refund/restock contract:
+- tracked Variant stock restores only to the exact purchased Variant
+- parent Product stock does not change for Variant lines
+- duplicate manual refund replays do not restore stock twice
+- simple Product refunds keep the existing parent-Product behavior
 
 ### Specifications format
 
@@ -284,7 +337,7 @@ It does not change:
 - checkout charge currency
 - Finance defaults
 
-## Public Product page (PV1)
+## Public Product page
 
 The public Product detail page now supports:
 - business-currency price formatting
@@ -299,9 +352,41 @@ The public Product detail page now supports:
   - `Shipping & returns`
 - mobile sticky purchase bar with price and `Add to basket`
 
-PV1 does not add:
-- Size selector
-- Colour selector
-- variants
-- variant pricing
-- variant stock
+For active Variant Products, the public page additionally supports:
+- safe option selectors
+- authoritative selected Variant price and SKU
+- Variant image switching
+- unavailable/sold-out combination states
+
+Still excluded from this phase:
+- per-Variant shipping
+- per-Variant customs
+- per-Variant cost
+- Commerce Copilot Variant actions
+- advanced Seller Estimate Variant frontend
+- advanced Preview frontend refinements
+
+## LIVE_DEFERRED QA checklist
+
+The following checks are post-deployment QA, not local blockers:
+
+1. Set `PRODUCT_VARIANT_SELLING_ENABLED=false`.
+2. Deploy backend.
+3. Run backend migrations.
+4. Deploy frontend.
+5. Verify existing simple Product purchase flow.
+6. Create one controlled physical Product with Size and Colour Variants.
+7. Use a low test price such as `CAD 1.00`.
+8. Enable `PRODUCT_VARIANT_SELLING_ENABLED=true`.
+9. Activate only the controlled Product.
+10. Complete one real card purchase for a selected Variant.
+11. Verify Stripe Connect routing.
+12. Verify Variant Order snapshots.
+13. Verify exact Variant stock decrement.
+14. Process a partial refund.
+15. Verify exact Variant stock restoration.
+16. Observe webhook replay/idempotency behavior.
+17. Test pause after adding the Variant to cart.
+18. Test runtime kill switch after cart creation.
+19. Verify Client and Manager order emails.
+20. Disable or archive the controlled Product after QA.

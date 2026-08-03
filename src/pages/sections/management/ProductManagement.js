@@ -165,11 +165,12 @@ const financeInventoryMovementTypeLabel = (row) => {
 
 const variantSummaryLabel = (row) => {
   const mode = String(row?.variant_mode || "none").toLowerCase();
-  if (mode !== "draft") return "Variants: None";
+  if (mode === "none") return "Variants: None";
   const summary = row?.variant_summary || {};
   const optionCount = Number(summary.option_count || 0);
   const variantCount = Number(summary.variant_count || 0);
-  return `Variants: Draft · ${optionCount} option${optionCount === 1 ? "" : "s"} · ${variantCount} combination${variantCount === 1 ? "" : "s"}`;
+  const modeLabel = mode === "active" ? "Active" : "Draft";
+  return `Variants: ${modeLabel} · ${optionCount} option${optionCount === 1 ? "" : "s"} · ${variantCount} combination${variantCount === 1 ? "" : "s"}`;
 };
 
 const productChipBaseSx = {
@@ -278,7 +279,7 @@ const ProductRowActions = ({
           </MenuItem>
         ) : null}
         <MenuItem onClick={() => runMenuAction(() => openVariantConfiguration(row))}>
-          {row.variant_mode === "draft" ? "Edit options and variants" : "Configure options"}
+          {String(row.variant_mode || "none").toLowerCase() === "none" ? "Configure options" : "Edit options and variants"}
         </MenuItem>
         <MenuItem onClick={() => runMenuAction(() => openCopilot("improve_product_content", row.id))}>
           Improve content
@@ -2095,7 +2096,7 @@ const ProductManagement = ({ token }) => {
           {editing?.id ? (
             <Stack spacing={0.5} alignItems="flex-start" sx={{ mr: "auto", ml: { xs: 0, sm: 1 } }}>
               <Button variant="outlined" onClick={() => openVariantConfiguration(editing)}>
-                {editing?.variant_mode === "draft" ? "Edit options and variants" : "Configure size and colour"}
+                {String(editing?.variant_mode || "none").toLowerCase() === "none" ? "Configure size and colour" : "Edit options and variants"}
               </Button>
               <Typography variant="caption" color="text.secondary">
                 {variantSummaryLabel(editing)}

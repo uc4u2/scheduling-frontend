@@ -64,6 +64,7 @@ beforeEach(() => {
       product_id: 48,
       variant_mode: "none",
       configuration_version: "2026-08-03T12:00:00",
+      runtime_selling_enabled: false,
       limits: { max_options: 2, max_values_per_option: 20, max_variants: 100 },
       options: [],
       variants: [],
@@ -72,7 +73,12 @@ beforeEach(() => {
         sellable: false,
         expected_combinations: 0,
         configured_variants: 0,
-        blockers: ["Variant selling is not enabled until PV2-B."],
+        blockers: [],
+      },
+      activation_readiness: {
+        ready_for_activation: false,
+        blockers: [],
+        warnings: [],
       },
       variant_summary: {
         option_count: 0,
@@ -99,6 +105,7 @@ beforeEach(() => {
       product_id: 48,
       variant_mode: "draft",
       configuration_version: "2026-08-03T12:05:00",
+      runtime_selling_enabled: false,
       options: [
         {
           id: 1,
@@ -124,7 +131,12 @@ beforeEach(() => {
         sellable: false,
         expected_combinations: 1,
         configured_variants: 1,
-        blockers: ["Variant selling is not enabled until PV2-B."],
+        blockers: [],
+      },
+      activation_readiness: {
+        ready_for_activation: true,
+        blockers: [],
+        warnings: [],
       },
       variant_summary: {
         option_count: 1,
@@ -151,6 +163,7 @@ beforeEach(() => {
       product_id: 48,
       variant_mode: "none",
       configuration_version: "2026-08-03T12:10:00",
+      runtime_selling_enabled: false,
       options: [],
       variants: [],
       readiness: {
@@ -158,7 +171,12 @@ beforeEach(() => {
         sellable: false,
         expected_combinations: 0,
         configured_variants: 0,
-        blockers: ["Variant selling is not enabled until PV2-B."],
+        blockers: [],
+      },
+      activation_readiness: {
+        ready_for_activation: false,
+        blockers: [],
+        warnings: [],
       },
       variant_summary: {
         option_count: 0,
@@ -259,6 +277,7 @@ test("removes an existing draft with confirmation", async () => {
       product_id: 48,
       variant_mode: "draft",
       configuration_version: "2026-08-03T12:00:00",
+      runtime_selling_enabled: false,
       options: [
         {
           id: 1,
@@ -284,7 +303,12 @@ test("removes an existing draft with confirmation", async () => {
         sellable: false,
         expected_combinations: 1,
         configured_variants: 1,
-        blockers: ["Variant selling is not enabled until PV2-B."],
+        blockers: [],
+      },
+      activation_readiness: {
+        ready_for_activation: true,
+        blockers: [],
+        warnings: [],
       },
       variant_summary: {
         option_count: 1,

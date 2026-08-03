@@ -108,4 +108,59 @@ describe("BookingConfirmation card-on-file return states", () => {
     expect(screen.queryByText(/pm_/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/cus_/i)).not.toBeInTheDocument();
   });
+
+  test("shows immutable variant product snapshots for a confirmed order", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        id: "cs_capture_1",
+        checkout_mode: "payment",
+        customer_status: "confirmed",
+        currency: "CAD",
+        payment_status: "paid",
+        status: "complete",
+        paid: true,
+        amount_subtotal: 15800,
+        amount_tax: 0,
+        amount_total: 15800,
+        line_items: [],
+        product_order: {
+          id: 41,
+          payment_status: "paid",
+          stripe_session_id: "cs_capture_1",
+          stripe_currency: "CAD",
+          stripe_subtotal_cents: 15800,
+          stripe_tax_cents: 0,
+          stripe_total_cents: 15800,
+          total_amount: 158,
+          items: [
+            {
+              id: 71,
+              product_id: 11,
+              name: "Carry Bag",
+              description: "Canvas carry bag",
+              quantity: 2,
+              unit_price: "79.00",
+              total_price: "158.00",
+              variant_label_snapshot: "Black / Mini",
+              variant_sku_snapshot: "BAG-BLACK-MINI",
+              variant_options_snapshot: [
+                { option_name: "Colour", value: "Black" },
+                { option_name: "Size", value: "Mini" },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    render(<BookingConfirmation slugOverride="tenant" />);
+
+    expect(await screen.findByText("Products")).toBeInTheDocument();
+    expect(await screen.findByText(/carry bag x2/i)).toBeInTheDocument();
+    expect(screen.getByText(/black \/ mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/variant sku:\s*bag-black-mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/colour: black • size: mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/unit:\s*CA\$79\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/products total\s*CA\$158\.00/i)).toBeInTheDocument();
+  });
 });

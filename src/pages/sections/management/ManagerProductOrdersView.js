@@ -341,6 +341,17 @@ const deriveOrderTotal = (order = {}) => {
   return null;
 };
 
+const variantLineSummary = (item = {}) => {
+  const label = String(item?.variant_label_snapshot || "").trim();
+  const sku = String(item?.variant_sku_snapshot || "").trim();
+  const options = Array.isArray(item?.variant_options_snapshot) ? item.variant_options_snapshot : [];
+  return {
+    label,
+    sku,
+    options,
+  };
+};
+
 const normalizeProductOrderRecord = (order = {}) => {
   const paymentMeta = normalizeOrderPaymentStatus(order);
   const totalAmount = deriveOrderTotal(order);
@@ -2182,6 +2193,23 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                         (
                           <Stack key="info" spacing={0.5}>
                             <Typography fontWeight={600}>{item.name}</Typography>
+                            {variantLineSummary(item).label ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {variantLineSummary(item).label}
+                              </Typography>
+                            ) : null}
+                            {variantLineSummary(item).options.length ? (
+                              <Typography variant="caption" color="text.secondary">
+                                {variantLineSummary(item).options
+                                  .map((row) => `${row.option_name}: ${row.value}`)
+                                  .join(" • ")}
+                              </Typography>
+                            ) : null}
+                            {variantLineSummary(item).sku ? (
+                              <Typography variant="caption" color="text.secondary">
+                                Variant SKU: {variantLineSummary(item).sku}
+                              </Typography>
+                            ) : null}
                             {item.sku && (
                               <Typography variant="caption" color="text.secondary">
                                 SKU: {item.sku}
@@ -2290,6 +2318,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                 })()}
                               </Stack>
                             }
+                            secondaryTypographyProps={{ component: "div" }}
                           />
                         </ListItem>
                       ))}

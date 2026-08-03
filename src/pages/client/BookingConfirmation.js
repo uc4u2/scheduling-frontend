@@ -407,6 +407,14 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
 
         name: it.name,
 
+        variantLabel: it.variant_label_snapshot || "",
+
+        variantSku: it.variant_sku_snapshot || "",
+
+        variantOptions: Array.isArray(it.variant_options_snapshot)
+          ? it.variant_options_snapshot
+          : [],
+
         quantity: it.quantity || 1,
 
         description: it.description,
@@ -499,11 +507,23 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
                   <ListItemText
                     primary={`${it.name || "Item"} x${it.quantity || 1}`}
                     secondary={
-                      it.description ||
-                      (it.unit != null
-                        ? `Unit: ${formatCurrency(it.unit, productSummary.currency)}`
-                        : undefined)
+                      [
+                        it.variantLabel || null,
+                        it.variantSku ? `Variant SKU: ${it.variantSku}` : null,
+                        it.variantOptions.length
+                          ? it.variantOptions
+                              .map((row) => `${row.option_name}: ${row.value}`)
+                              .join(" • ")
+                          : null,
+                        it.description || null,
+                        it.unit != null
+                          ? `Unit: ${formatCurrency(it.unit, productSummary.currency)}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" \n")
                     }
+                    secondaryTypographyProps={{ sx: { whiteSpace: "pre-line" } }}
                   />
 
                   <Typography>

@@ -30,7 +30,7 @@ Public Product page additions:
   - `Shipping & returns`
 - mobile sticky purchase bar with effective price + `Add to basket`
 
-## Product Commerce PV2-A
+## Product Commerce PV2-A / PV2-B2A
 
 As of Monday, August 3, 2026, the manager UI supports draft-only Product option and variant preparation with no public selling activation.
 
@@ -65,7 +65,23 @@ PV2-A exclusions:
 - no variant inventory decrement
 - no customer-facing variant payload
 
-Still excluded in PV1:
+PV2-B2A now adds:
+- manager activation and pause for readiness-complete Variant Products
+- runtime-disabled activation messaging
+- public Product `Choose options` flow for active Variant Products
+- ProductDetails option selectors
+- Variant cart identity (`product_id + variant_id`)
+- hosted/direct checkout `variant_id` payloads
+- storefront temporary-unavailable handling when the runtime kill switch is off
+- Manager Order and Client confirmation Variant snapshot rendering
+
+Current active-selling boundaries:
+- no per-Variant shipping fields
+- no per-Variant customs fields
+- no per-Variant cost
+- no Commerce Copilot Variant actions yet
+
+Still excluded in earlier PV1-only behavior:
 - `ProductOption`
 - `ProductOptionValue`
 - `ProductVariant`

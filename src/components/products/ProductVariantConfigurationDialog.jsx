@@ -35,6 +35,7 @@ const MAX_VALUES_PER_OPTION = 20;
 const emptyConfig = {
   configuration_version: null,
   variant_mode: "none",
+  runtime_selling_enabled: false,
   options: [],
   variants: [],
   readiness: {
@@ -42,7 +43,12 @@ const emptyConfig = {
     sellable: false,
     expected_combinations: 0,
     configured_variants: 0,
+      blockers: [],
+  },
+  activation_readiness: {
+    ready_for_activation: false,
     blockers: [],
+    warnings: [],
   },
   variant_summary: {
     option_count: 0,
@@ -194,6 +200,7 @@ export default function ProductVariantConfigurationDialog({
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [config, setConfig] = useState(emptyConfig);
   const [draftOptions, setDraftOptions] = useState([]);
@@ -206,6 +213,8 @@ export default function ProductVariantConfigurationDialog({
   const currency = product?.selling_currency || businessSellingCurrency || "USD";
   const draftOnlyWarning =
     "Draft only — customers still see the current Product. Variant selling will be enabled in the next checkout phase.";
+  const activeWarning =
+    "Variant selling active — customers must choose an available option combination before adding this Product to their basket.";
 
   useEffect(() => {
     if (!open || !product?.id) return undefined;
@@ -440,29 +449,96 @@ export default function ProductVariantConfigurationDialog({
     }
   };
 
-  const summaryLabel = config?.product_summary?.variant_mode === "draft" || draftOptions.length
-    ? `Variants: Draft · ${draftOptions.length} option${draftOptions.length === 1 ? "" : "s"} · ${draftVariants.length} combination${draftVariants.length === 1 ? "" : "s"}`
-    : "Variants: None";
+  const isActiveMode = String(config?.variant_mode || "none").toLowerCase() === "active";
+  const summaryModeLabel = isActiveMode
+    ? "Active"
+    : (String(config?.product_summary?.variant_mode || "none").toLowerCase() === "draft" || draftOptions.length)
+    ? "Draft"
+    : "None";
+  const summaryLabel =
+    summaryModeLabel === "None"
+      ? "Variants: None"
+      : `Variants: ${summaryModeLabel} · ${draftOptions.length} option${draftOptions.length === 1 ? "" : "s"} · ${draftVariants.length} combination${draftVariants.length === 1 ? "" : "s"}`;
 
   const readinessBlockers = config?.readiness?.blockers || [];
+  const activationReadiness = config?.activation_readiness || emptyConfig.activation_readiness;
+  const activationBlockers = activationReadiness?.blockers || [];
+  const activationWarnings = activationReadiness?.warnings || [];
+  const runtimeSellingEnabled = Boolean(config?.runtime_selling_enabled);
+
+  const handleActivation = async (activate) => {
+    const confirmation = activate
+      ? "Customers will be required to choose an available option combination before adding this Product to their basket. Variant Price, SKU, and Stock will become authoritative."
+      : "Customers will no longer be able to purchase this Product until variant selling is activated again.";
+    if (!window.confirm(confirmation)) return;
+    setActivating(true);
+    setError("");
+    try {
+      const { data } = await api.post(
+        `/inventory/products/${product.id}/variant-activation`,
+        {
+          activate,
+          configuration_version: config.configuration_version,
+        },
+        auth
+      );
+      const next = normalizeConfigForEditor(data || emptyConfig);
+      setConfig(next);
+      setDraftOptions(next.options);
+      setDraftVariants(buildCombinationDrafts({ options: next.options, existingVariants: next.variants, product }));
+      setDirty(false);
+      onSaved?.(next);
+      notify?.(activate ? "Variant selling activated." : "Variant selling paused.");
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to update variant selling.");
+    } finally {
+      setActivating(false);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={handleRequestClose} maxWidth="lg" fullWidth fullScreen={isMobile}>
       <DialogTitle>Configure Product options and variants</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Alert severity="warning">{draftOnlyWarning}</Alert>
+          <Alert severity={isActiveMode ? "success" : "warning"}>
+            {isActiveMode ? activeWarning : draftOnlyWarning}
+          </Alert>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               {product?.name || "Product"}
             </Typography>
-            <Chip label={summaryLabel} size="small" color="warning" variant="outlined" />
+            <Chip
+              label={summaryLabel}
+              size="small"
+              color={isActiveMode ? "success" : "warning"}
+              variant="outlined"
+            />
           </Stack>
           {error ? <Alert severity="error">{error}</Alert> : null}
+          {!runtimeSellingEnabled ? (
+            <Alert severity="info">
+              Variant selling is currently disabled by runtime configuration. Draft editing remains available, but activation is blocked.
+            </Alert>
+          ) : null}
           {readinessBlockers.length ? (
             <Alert severity="info">
               {readinessBlockers.map((blocker) => (
                 <Box key={blocker}>{blocker}</Box>
+              ))}
+            </Alert>
+          ) : null}
+          {activationBlockers.length ? (
+            <Alert severity="warning">
+              {activationBlockers.map((blocker) => (
+                <Box key={blocker}>{blocker}</Box>
+              ))}
+            </Alert>
+          ) : null}
+          {activationWarnings.length ? (
+            <Alert severity="info">
+              {activationWarnings.map((warning) => (
+                <Box key={warning}>{warning}</Box>
               ))}
             </Alert>
           ) : null}
@@ -739,8 +815,26 @@ export default function ProductVariantConfigurationDialog({
         <Button color="error" onClick={handleRemove} disabled={removing || loading || !config.options.length}>
           Remove draft configuration
         </Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving || loading}>
-          Save draft variants
+        {isActiveMode ? (
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={() => handleActivation(false)}
+            disabled={activating || saving || loading}
+          >
+            Pause variant selling
+          </Button>
+        ) : (
+          <Button
+            variant="outlined"
+            onClick={() => handleActivation(true)}
+            disabled={activating || saving || loading || !runtimeSellingEnabled || !activationReadiness?.ready_for_activation}
+          >
+            Activate variant selling
+          </Button>
+        )}
+        <Button variant="contained" onClick={handleSave} disabled={saving || activating || loading}>
+          {isActiveMode ? "Save active variants" : "Save draft variants"}
         </Button>
       </DialogActions>
     </Dialog>

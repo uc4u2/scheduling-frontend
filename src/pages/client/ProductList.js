@@ -267,6 +267,14 @@ const ProductListBase = ({
     }
   };
 
+  const productCardPriceLabel = (product) => {
+    const summary = product?.variant_catalog?.price_summary;
+    if (product?.variant_selling_enabled && summary?.varies) {
+      return `From ${formatCurrency(summary.minimum, product.selling_currency)}`;
+    }
+    return formatCurrency(summary?.minimum || product.price, product.selling_currency);
+  };
+
   const goToDetails = (productId) => {
     if (!slug) return;
     navigate(`${basePath}/products/${productId}${embedSuffix}`);
@@ -458,7 +466,11 @@ const ProductListBase = ({
         <Grid container spacing={3} justifyContent="center">
           {visibleProducts.map((product) => {
             const quantity = Number(product.qty_on_hand || 0);
-            const soldOut = Boolean(product.track_stock) && quantity <= 0;
+            const variantSellingActive = Boolean(product?.variant_selling_enabled && product?.variant_catalog);
+            const variantPurchaseUnavailable = Boolean(product?.variant_purchase_unavailable);
+            const soldOut = variantSellingActive
+              ? Boolean(product?.variant_catalog?.availability?.sold_out)
+              : Boolean(product.track_stock) && quantity <= 0;
             const threshold = Number(product.low_stock_threshold || 0);
             const lowStock = Boolean(product.track_stock) && quantity > 0 && ((threshold > 0 && quantity <= threshold) || (threshold <= 0 && quantity <= 3));
             const showNewBadge = Boolean(product?.is_active) && isNewArrival(product?.created_at);
@@ -529,9 +541,9 @@ const ProductListBase = ({
                       </Box>
                     )}
 
-                    {soldOut && (
-                      <Chip
-                        label="Sold out"
+                      {soldOut && (
+                        <Chip
+                          label="Sold out"
                         size="small"
                         sx={{
                           ...catalogBadgeSx,
@@ -601,6 +613,20 @@ const ProductListBase = ({
                             bgcolor: "rgba(255,255,255,0.66)",
                             borderColor: "rgba(148,163,184,0.42)",
                             color: "rgba(51,65,85,0.86)",
+                          }}
+                        />
+                      )}
+                      {variantPurchaseUnavailable && !soldOut && (
+                        <Chip
+                          label="Temporarily unavailable"
+                          size="small"
+                          sx={{
+                            ...catalogBadgeSx,
+                            position: "absolute",
+                            top: 12,
+                            left: 12,
+                            bgcolor: "rgba(153,27,27,0.9)",
+                            color: "#fff",
                           }}
                         />
                       )}
@@ -674,9 +700,9 @@ const ProductListBase = ({
                           fontSize: 14,
                         }}
                       >
-                        {formatCurrency(product.price, product.selling_currency)}
+                        {productCardPriceLabel(product)}
                       </Typography>
-                      {product.track_stock && (
+                      {product.track_stock && !variantSellingActive && (
                         <Chip
                           label={soldOut ? "Out of stock" : lowStock ? `Only ${quantity} left` : `${quantity} in stock`}
                           size="small"
@@ -712,8 +738,10 @@ const ProductListBase = ({
                         variant="contained"
                         fullWidth
                         startIcon={<ShoppingCartCheckoutIcon />}
-                        onClick={() => handleAdd(product)}
-                        disabled={soldOut}
+                        onClick={() =>
+                          variantSellingActive || variantPurchaseUnavailable ? goToDetails(product.id) : handleAdd(product)
+                        }
+                        disabled={!variantSellingActive && !variantPurchaseUnavailable && soldOut}
                         sx={{
                           ...primaryButtonSx,
                           fontWeight: 600,
@@ -721,7 +749,7 @@ const ProductListBase = ({
                           py: 1.1,
                         }}
                       >
-                        Add
+                        {variantSellingActive || variantPurchaseUnavailable ? "Choose options" : "Add"}
                       </Button>
                     </Box>
                   </CardContent>
