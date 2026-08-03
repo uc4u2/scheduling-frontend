@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import ProductDetails from "./ProductDetails";
+import { setActiveCurrency } from "../../utils/currency";
 
 const mockApiGet = jest.fn();
 const mockNavigate = jest.fn();
@@ -27,6 +28,9 @@ jest.mock("./CompanyPublic", () => ({ externalRenderOverride }) => externalRende
 describe("ProductDetails", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.localStorage.clear();
+    window.history.replaceState({}, "", "/products/77");
+    setActiveCurrency("USD");
     window.matchMedia = jest.fn().mockImplementation(() => ({
       matches: false,
       media: "",
@@ -111,10 +115,15 @@ describe("ProductDetails", () => {
     expect(await screen.findByRole("heading", { name: "Structured Pendant" })).toBeInTheDocument();
     expect(screen.getByText("New arrival")).toBeInTheDocument();
 
+    window.history.replaceState(
+      {},
+      "",
+      "/products/77?embed=1&checkout_session_id=cs_test&private=1"
+    );
     fireEvent.click(screen.getByRole("button", { name: /share product/i }));
     await waitFor(() =>
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        "https://app.schedulaa.com/products/structured-pendant"
+        "http://localhost/products/77?embed=1"
       )
     );
     expect(await screen.findByText(/product link copied/i)).toBeInTheDocument();
@@ -136,6 +145,42 @@ describe("ProductDetails", () => {
     fireEvent.click(screen.getAllByAltText("Front view")[0]);
     expect(await screen.findByRole("button", { name: /close image viewer/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next image/i })).toBeInTheDocument();
+  });
+
+  test("uses navigator.share with a sanitized slug-route public URL", async () => {
+    navigator.share = jest.fn().mockResolvedValue();
+    window.history.replaceState(
+      {},
+      "",
+      "/sale/products/77?dialog=1&checkout_session_id=cs_live_123"
+    );
+    mockApiGet.mockResolvedValue({
+      data: {
+        id: 77,
+        name: "Shared Pendant",
+        description: "Short intro",
+        price: 120,
+        selling_currency: "CAD",
+        sku: "SHR-77",
+        qty_on_hand: 4,
+        track_stock: true,
+        is_digital: false,
+        created_at: "2026-07-20T12:00:00Z",
+        product_url: "https://api.internal.example/public/sale/products/77",
+        images: [{ id: 1, url: "https://example.com/pendant.jpg", alt: "Shared Pendant" }],
+      },
+    });
+
+    render(<ProductDetails />);
+    expect(await screen.findByRole("heading", { name: "Shared Pendant" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /share product/i }));
+    await waitFor(() =>
+      expect(navigator.share).toHaveBeenCalledWith({
+        title: "Shared Pendant",
+        url: "http://localhost/sale/products/77?dialog=1",
+      })
+    );
   });
 
   test("shows a mobile sticky purchase bar and disables add when sold out", async () => {
@@ -175,5 +220,29 @@ describe("ProductDetails", () => {
     addButtons.forEach((button) => {
       expect(button).toBeDisabled();
     });
+  });
+
+  test("falls back to the active business currency when the product payload omits selling_currency", async () => {
+    window.localStorage.setItem("company_currency", "USD");
+    setActiveCurrency("CAD");
+    mockApiGet.mockResolvedValue({
+      data: {
+        id: 77,
+        name: "Context Pendant",
+        description: "Short intro",
+        price: 69,
+        sku: "CTX-77",
+        qty_on_hand: 5,
+        track_stock: true,
+        is_digital: false,
+        created_at: "2026-06-01T12:00:00Z",
+        images: [{ id: 1, url: "https://example.com/pendant.jpg", alt: "Context Pendant" }],
+      },
+    });
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByRole("heading", { name: "Context Pendant" })).toBeInTheDocument();
+    expect(screen.getByText("CA$69.00")).toBeInTheDocument();
   });
 });

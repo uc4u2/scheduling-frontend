@@ -34,6 +34,7 @@ import { useTheme } from "@mui/material/styles";
 import { formatCurrency } from "../../utils/formatters";
 import { addProductToCart, CartErrorCodes } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
+import { getActiveCurrency } from "../../utils/currency";
 import CompanyPublic from "./CompanyPublic";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
@@ -74,6 +75,29 @@ const safeLines = (value) =>
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
     .filter((line, index, rows) => line || rows.some((row) => row));
+
+const SAFE_SHARE_QUERY_KEYS = new Set(["embed", "mode", "dialog", "primary", "text"]);
+
+const isPublicProductPath = (pathname) => {
+  const path = String(pathname || "");
+  return /^\/products\/[^/]+\/?$/.test(path) || /^\/[^/]+\/products\/[^/]+\/?$/.test(path);
+};
+
+const sanitizeShareUrl = (rawUrl) => {
+  if (!rawUrl) return "";
+  try {
+    const parsed = new URL(rawUrl, typeof window !== "undefined" ? window.location.origin : "https://app.schedulaa.com");
+    if (!isPublicProductPath(parsed.pathname)) return "";
+    const sanitized = new URL(parsed.toString());
+    Array.from(sanitized.searchParams.keys()).forEach((key) => {
+      if (!SAFE_SHARE_QUERY_KEYS.has(key)) sanitized.searchParams.delete(key);
+    });
+    sanitized.hash = "";
+    return sanitized.toString();
+  } catch {
+    return "";
+  }
+};
 
 const ProductDetails = ({ slugOverride }) => {
   const { slug: routeSlug, productId } = useParams();
@@ -189,7 +213,13 @@ const ProductDetails = ({ slugOverride }) => {
   };
 
   const handleShare = async () => {
-    const url = product?.product_url || (typeof window !== "undefined" ? window.location.href : "");
+    const currentUrl = typeof window !== "undefined" ? sanitizeShareUrl(window.location.href) : "";
+    const fallbackUrl = sanitizeShareUrl(product?.product_url);
+    const url = currentUrl || fallbackUrl;
+    if (!url) {
+      setSnack({ open: true, msg: "Unable to share this product right now." });
+      return;
+    }
     try {
       if (navigator?.share) {
         await navigator.share({ title: product?.name || "Product", url });
@@ -217,7 +247,7 @@ const ProductDetails = ({ slugOverride }) => {
   const quantityAvailable = Number(product?.qty_on_hand || 0);
   const soldOut = Boolean(product?.track_stock) && quantityAvailable <= 0;
   const lowStock = Boolean(product?.track_stock) && quantityAvailable > 0 && quantityAvailable <= 3;
-  const currency = product?.selling_currency || "USD";
+  const currency = product?.selling_currency || getActiveCurrency();
   const detailSections = useMemo(() => {
     const rows = [];
     if (hasMeaningfulText(product?.details_text)) {
