@@ -43,6 +43,36 @@ Manager entry points:
 3. Upload product images if available.
 4. Click **Save**.
 
+## Product information (PV1)
+
+The Product editor now includes a lightweight **Product information** section for optional structured storefront content.
+
+Available fields:
+- `Product details`
+- `Specifications`
+- `Materials & care`
+- `Packaging`
+
+Rules:
+- all fields are optional
+- plain text only
+- the short `Description` still appears near the Product title on the public Product page
+- `Product details` appears lower on the public page and does not replace the short description
+- `Specifications` uses label/value rows and is meant for customer-facing marketing/spec data
+- no Size/Colour variant support exists in PV1
+
+### Specifications format
+
+Each specification row contains:
+- `Label`
+- `Value`
+
+Example:
+- `Material` → `Sterling silver`
+- `Made in` → `Canada`
+
+Blank rows are ignored when saving.
+
 ### Selling currency
 
 Products do not have their own separate selling-currency field.
@@ -144,6 +174,26 @@ Manager-facing rules:
 
 EasyPost does not decide whether methods appear at checkout. It only automates parcel shipping after `Ship the order` is already available.
 
+## Customer Shipping & Returns information
+
+Delivery Setup now includes a compact customer-facing section:
+- `Customer Shipping & Returns information`
+- `Customer Shipping & Returns URL`
+
+This content appears on public Product pages inside the **Shipping & returns** accordion.
+
+Use it for:
+- shipping timelines you are comfortable publishing
+- return/exchange guidance
+- links to customer-facing policy pages
+
+Do not put these there:
+- API keys
+- carrier credentials
+- Package Profile dimensions
+- internal warehouse notes
+- private fulfillment instructions
+
 ## Preview customer checkout
 
 Managers can now open a read-only Product checkout preview before publishing or sharing a Product.
@@ -200,3 +250,25 @@ It does not change:
 - storefront price
 - checkout charge currency
 - Finance defaults
+
+## Public Product page (PV1)
+
+The public Product detail page now supports:
+- business-currency price formatting
+- `New` badge for recently created active Products
+- image lightbox
+- `Share product`
+- structured accordions that appear only when content exists:
+  - `Product details`
+  - `Specifications`
+  - `Materials & care`
+  - `Packaging`
+  - `Shipping & returns`
+- mobile sticky purchase bar with price and `Add to basket`
+
+PV1 does not add:
+- Size selector
+- Colour selector
+- variants
+- variant pricing
+- variant stock

@@ -64,6 +64,10 @@ const emptyForm = {
   sku: "",
   name: "",
   description: "",
+  details_text: "",
+  specifications_json: [],
+  materials_care_text: "",
+  packaging_text: "",
   category: "",
   slug: "",
   meta_title: "",
@@ -97,6 +101,20 @@ const emptyForm = {
   is_active: true,
   adjustment_note: "",
 };
+
+const emptySpecificationRow = () => ({ label: "", value: "" });
+
+const hasStructuredProductContent = (row) =>
+  Boolean(
+    String(row?.details_text || "").trim() ||
+      String(row?.materials_care_text || "").trim() ||
+      String(row?.packaging_text || "").trim() ||
+      (Array.isArray(row?.specifications_json) &&
+        row.specifications_json.some(
+          (item) =>
+            String(item?.label || "").trim() || String(item?.value || "").trim()
+        ))
+  );
 
 const fieldLabelWithTooltip = (label, tooltip) => (
   <Stack direction="row" spacing={0.5} alignItems="center">
@@ -280,6 +298,7 @@ const ProductManagement = ({ token }) => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [productInfoExpanded, setProductInfoExpanded] = useState(false);
   const [snk, setSnk] = useState({ open: false, message: "" });
 
   const [imageModal, setImageModal] = useState(false);
@@ -477,6 +496,10 @@ const ProductManagement = ({ token }) => {
         sku: row.sku || "",
         name: row.name || "",
         description: row.description || "",
+        details_text: row.details_text || "",
+        specifications_json: Array.isArray(row.specifications_json) ? row.specifications_json : [],
+        materials_care_text: row.materials_care_text || "",
+        packaging_text: row.packaging_text || "",
         category: row.category || "",
         slug: row.slug || "",
         meta_title: row.meta_title || "",
@@ -510,8 +533,10 @@ const ProductManagement = ({ token }) => {
         is_active: !!row.is_active,
         adjustment_note: "",
       });
+      setProductInfoExpanded(hasStructuredProductContent(row));
     } else {
       setForm(emptyForm);
+      setProductInfoExpanded(false);
     }
     setOpen(true);
   }, []);
@@ -542,6 +567,7 @@ const ProductManagement = ({ token }) => {
     setOpen(false);
     setEditing(null);
     setForm(emptyForm);
+    setProductInfoExpanded(false);
   }, [clearEditProductIdFromUrl]);
 
   useEffect(() => {
@@ -624,6 +650,30 @@ const ProductManagement = ({ token }) => {
     []
   );
 
+  const addSpecificationRow = useCallback(() => {
+    setForm((prev) => ({
+      ...prev,
+      specifications_json: [...(Array.isArray(prev.specifications_json) ? prev.specifications_json : []), emptySpecificationRow()],
+    }));
+    setProductInfoExpanded(true);
+  }, []);
+
+  const updateSpecificationRow = useCallback((index, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      specifications_json: (Array.isArray(prev.specifications_json) ? prev.specifications_json : []).map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [field]: value } : row
+      ),
+    }));
+  }, []);
+
+  const removeSpecificationRow = useCallback((index) => {
+    setForm((prev) => ({
+      ...prev,
+      specifications_json: (Array.isArray(prev.specifications_json) ? prev.specifications_json : []).filter((_, rowIndex) => rowIndex !== index),
+    }));
+  }, []);
+
   const persist = useCallback(async () => {
     if (
       form.delivery_methods_override_enabled &&
@@ -657,6 +707,15 @@ const ProductManagement = ({ token }) => {
       digital_asset_id: form.digital_asset_id === "" ? null : Number(form.digital_asset_id),
       linked_inventory_item_id:
         form.is_digital || !form.track_stock || !form.link_inventory_enabled ? null : (form.linked_inventory_item_id || null),
+      details_text: String(form.details_text || "").trim() || null,
+      specifications_json: (Array.isArray(form.specifications_json) ? form.specifications_json : [])
+        .map((row) => ({
+          label: String(row?.label || "").trim(),
+          value: String(row?.value || "").trim(),
+        }))
+        .filter((row) => row.label || row.value),
+      materials_care_text: String(form.materials_care_text || "").trim() || null,
+      packaging_text: String(form.packaging_text || "").trim() || null,
     };
     if (editing && Number(form.qty_on_hand || 0) !== Number(editing.qty_on_hand || 0)) {
       payload.adjustment_note = String(form.adjustment_note || "").trim() || null;
@@ -1233,6 +1292,89 @@ const ProductManagement = ({ token }) => {
               multiline
               minRows={3}
             />
+            <Accordion
+              expanded={productInfoExpanded}
+              onChange={(_, expanded) => setProductInfoExpanded(expanded)}
+              disableGutters
+              elevation={0}
+              sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1.5, "&:before": { display: "none" } }}
+            >
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Stack spacing={0.25}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Product information
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Short Description stays near the title. These optional sections appear lower on the public product page.
+                  </Typography>
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack spacing={2}>
+                  <TextField
+                    label="Product details"
+                    value={form.details_text}
+                    onChange={handleChange("details_text")}
+                    fullWidth
+                    multiline
+                    minRows={3}
+                  />
+                  <Stack spacing={1}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        Specifications
+                      </Typography>
+                      <Button size="small" onClick={addSpecificationRow}>
+                        Add specification
+                      </Button>
+                    </Stack>
+                    {Array.isArray(form.specifications_json) && form.specifications_json.length > 0 ? (
+                      <Stack spacing={1.25}>
+                        {form.specifications_json.map((row, index) => (
+                          <Stack key={`spec-${index}`} direction={{ xs: "column", sm: "row" }} spacing={1}>
+                            <TextField
+                              label="Label"
+                              value={row?.label || ""}
+                              onChange={(event) => updateSpecificationRow(index, "label", event.target.value)}
+                              fullWidth
+                            />
+                            <TextField
+                              label="Value"
+                              value={row?.value || ""}
+                              onChange={(event) => updateSpecificationRow(index, "value", event.target.value)}
+                              fullWidth
+                            />
+                            <Button color="inherit" onClick={() => removeSpecificationRow(index)}>
+                              Remove
+                            </Button>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Add label/value rows for customer-facing specifications such as material, width, or made in.
+                      </Typography>
+                    )}
+                  </Stack>
+                  <TextField
+                    label="Materials & care"
+                    value={form.materials_care_text}
+                    onChange={handleChange("materials_care_text")}
+                    fullWidth
+                    multiline
+                    minRows={3}
+                  />
+                  <TextField
+                    label="Packaging"
+                    value={form.packaging_text}
+                    onChange={handleChange("packaging_text")}
+                    fullWidth
+                    multiline
+                    minRows={3}
+                  />
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
             </Box>
             <Divider />
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>

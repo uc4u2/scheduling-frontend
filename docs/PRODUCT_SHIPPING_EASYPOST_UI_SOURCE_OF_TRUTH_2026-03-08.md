@@ -1,7 +1,42 @@
 # Product + Shipping + EasyPost UI Source Of Truth
 
-Updated: 2026-07-30
+Updated: 2026-08-03
 Scope: manager product workspace, delivery setup, order actions, checkout/client behavior.
+
+## Product Commerce PV1
+
+As of Monday, August 3, 2026, the public Product experience has a presentation-only upgrade with no cart, checkout, order, or inventory redesign.
+
+Added manager-side Product content fields:
+- `details_text`
+- `specifications_json`
+- `materials_care_text`
+- `packaging_text`
+
+Added Delivery Setup customer-facing policy fields:
+- `customer_shipping_returns_policy_text`
+- `customer_shipping_returns_policy_url`
+
+Public Product page additions:
+- business-currency price formatting
+- `New` badge from `created_at`
+- image lightbox
+- `Share product`
+- conditional accordions:
+  - `Product details`
+  - `Specifications`
+  - `Materials & care`
+  - `Packaging`
+  - `Shipping & returns`
+- mobile sticky purchase bar with effective price + `Add to basket`
+
+Still excluded in PV1:
+- `ProductOption`
+- `ProductOptionValue`
+- `ProductVariant`
+- Colour/Size selectors
+- variant stock
+- variant order snapshots
 
 ## Commerce Copilot Note
 
@@ -53,6 +88,11 @@ Phase 3 UX rules:
 - File: `frontend/src/pages/sections/management/ProductManagement.js`
 - Responsibilities:
   - Product CRUD modal
+  - optional `Product information` accordion with:
+    - `Product details`
+    - repeatable `Specifications`
+    - `Materials & care`
+    - `Packaging`
   - Low-stock panel
   - Product stock history access
   - Delivery setup entrypoint (drawer/panel)
@@ -83,6 +123,9 @@ Phase 3 UX rules:
 - File: `frontend/src/pages/sections/management/EasyPostShippingSettingsPanel.js`
 - Responsibilities:
   - Tab 1 `Delivery Methods`: checkout policy controls (`enabled`, `allow_pickup`, `allow_shipping`, `allow_local_delivery`, labels)
+  - Tab 1 also owns customer-facing Product-page policy text:
+    - `Customer Shipping & Returns information`
+    - `Customer Shipping & Returns URL`
   - Tab 2 `EasyPost Automation`: API key, enable toggle, test connection, origin settings, destination policy, package profiles, shipping-readiness checklist, address-verification toggle/status, selected-country allowlist, international verification mode, cross-border customs defaults, and US export filing controls when origin is US
   - Delivery Methods UX contract:
     - `Offer delivery options at checkout` is the master switch
@@ -188,6 +231,14 @@ Seller estimate UX contract:
   - `frontend/src/pages/client/ProductList.js`
   - `frontend/src/pages/client/ProductDetails.js`
   - `frontend/src/pages/client/MyBasket.js`
+
+Public Product detail PV1 contract:
+- keep the current two-column desktop layout
+- show short description near title
+- render structured accordions only when content exists
+- render shipping&returns accordion from safe delivery facts plus manager-entered customer policy text/url
+- never render Package Profile internals, EasyPost credentials, shipment IDs, customs HS/ECCN, or private warehouse notes
+- mobile sticky purchase bar reuses the current Add-to-Basket handler and sold-out state
 
 ## 3) UX Contract (What each area decides)
 

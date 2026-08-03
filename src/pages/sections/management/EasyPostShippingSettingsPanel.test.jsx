@@ -522,4 +522,59 @@ describe("EasyPostShippingSettingsPanel", () => {
       })
     );
   });
+
+  test("saves customer-facing shipping and returns content in manual fulfillment mode", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        enabled: true,
+        easypost_enabled: false,
+        allow_pickup: true,
+        allow_shipping: true,
+        allow_local_delivery: false,
+        customer_shipping_returns_policy_text: "",
+        customer_shipping_returns_policy_url: "",
+        country_catalog: [{ code: "CA", label: "Canada" }],
+        package_profiles: [],
+        readiness: { ready: false, checklist: [] },
+      },
+    });
+    mockApiPost.mockImplementation((url, payload) => {
+      if (String(url) === "/inventory/shipping-settings") {
+        return Promise.resolve({
+          data: {
+            ...payload,
+            package_profiles: [],
+            readiness: { ready: false, checklist: [] },
+            country_catalog: [{ code: "CA", label: "Canada" }],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    fireEvent.click(await screen.findByRole("tab", { name: /delivery methods/i }));
+    await screen.findByText(/offer delivery options at checkout/i);
+    fireEvent.change(screen.getByLabelText(/^customer shipping & returns information$/i), {
+      target: { value: "Ships in 2-3 business days.\nReturns accepted with receipt." },
+    });
+    fireEvent.change(screen.getByLabelText(/^customer shipping & returns url$/i), {
+      target: { value: "https://example.com/policies/shipping" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /save shipping settings/i }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/inventory/shipping-settings",
+        expect.objectContaining({
+          easypost_enabled: false,
+          customer_shipping_returns_policy_text: "Ships in 2-3 business days.\nReturns accepted with receipt.",
+          customer_shipping_returns_policy_url: "https://example.com/policies/shipping",
+        }),
+        expect.any(Object)
+      )
+    );
+  });
 });

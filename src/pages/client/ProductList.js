@@ -29,8 +29,14 @@ import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
 import PublicCatalogFilters, { UNCATEGORIZED_VALUE } from "../../components/public/PublicCatalogFilters";
+import { formatCurrency } from "../../utils/formatters";
 
-const money = (v) => `$${Number(v || 0).toFixed(2)}`;
+const isNewArrival = (createdAt) => {
+  const parsed = Date.parse(createdAt || "");
+  if (!Number.isFinite(parsed)) return false;
+  const ageMs = Date.now() - parsed;
+  return ageMs >= 0 && ageMs <= 30 * 24 * 60 * 60 * 1000;
+};
 
 const ProductListBase = ({
   slugOverride,
@@ -455,6 +461,7 @@ const ProductListBase = ({
             const soldOut = Boolean(product.track_stock) && quantity <= 0;
             const threshold = Number(product.low_stock_threshold || 0);
             const lowStock = Boolean(product.track_stock) && quantity > 0 && ((threshold > 0 && quantity <= threshold) || (threshold <= 0 && quantity <= 3));
+            const showNewBadge = Boolean(product?.is_active) && isNewArrival(product?.created_at);
 
             return (
               <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
@@ -533,6 +540,19 @@ const ProductListBase = ({
                           left: 12,
                           bgcolor: "rgba(15,23,42,0.78)",
                           color: "#fff",
+                        }}
+                      />
+                    )}
+                    {showNewBadge && (
+                      <Chip
+                        label="New"
+                        size="small"
+                        color="secondary"
+                        sx={{
+                          ...catalogBadgeSx,
+                          position: "absolute",
+                          top: 12,
+                          right: 12,
                         }}
                       />
                     )}
@@ -654,7 +674,7 @@ const ProductListBase = ({
                           fontSize: 14,
                         }}
                       >
-                        {money(product.price)}
+                        {formatCurrency(product.price, product.selling_currency)}
                       </Typography>
                       {product.track_stock && (
                         <Chip

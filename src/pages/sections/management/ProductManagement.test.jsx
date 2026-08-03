@@ -7,6 +7,8 @@ import ProductManagement from "./ProductManagement";
 
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
+const mockApiPatch = jest.fn();
+const mockApiDelete = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
 
 jest.mock("react-i18next", () => ({
@@ -21,8 +23,8 @@ jest.mock("../../../utils/api", () => ({
   default: {
     get: (...args) => mockApiGet(...args),
     post: (...args) => mockApiPost(...args),
-    patch: jest.fn(),
-    delete: jest.fn(),
+    patch: (...args) => mockApiPatch(...args),
+    delete: (...args) => mockApiDelete(...args),
   },
 }));
 
@@ -193,6 +195,8 @@ describe("ProductManagement", () => {
         },
       },
     });
+    mockApiPatch.mockResolvedValue({ data: {} });
+    mockApiDelete.mockResolvedValue({ data: {} });
   });
 
   test("shows physical shipping fields, uses server country catalog, and reveals customs only for international shipping", async () => {
@@ -472,6 +476,81 @@ describe("ProductManagement", () => {
       expect(
         screen.getByText(/Product checkout settings changed after this preview\. Refresh to see the current customer experience\./i)
       ).toBeInTheDocument()
+    );
+  });
+
+  test("supports optional structured product content and specification rows in the product form", async () => {
+    mockApiPost.mockImplementation((url, payload) => {
+      if (String(url) === "/inventory/products") {
+        return Promise.resolve({
+          data: {
+            id: 61,
+            sku: payload.sku || "AUTO-61",
+            name: payload.name,
+            description: payload.description,
+            details_text: payload.details_text,
+            specifications_json: payload.specifications_json,
+            materials_care_text: payload.materials_care_text,
+            packaging_text: payload.packaging_text,
+            price: Number(payload.price || 0),
+            qty_on_hand: Number(payload.qty_on_hand || 0),
+            track_stock: Boolean(payload.track_stock),
+            is_digital: Boolean(payload.is_digital),
+            is_active: true,
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /manager\.product\.buttonadd/i }));
+
+    fireEvent.change(screen.getByLabelText(/manager\.product\.labels\.name/i), {
+      target: { value: "Structured Pendant" },
+    });
+    fireEvent.change(screen.getByLabelText(/manager\.product\.labels\.description/i), {
+      target: { value: "Short intro text" },
+    });
+    fireEvent.change(screen.getAllByLabelText(/selling price/i)[0], {
+      target: { value: "79.00" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /product information/i }));
+
+    fireEvent.change(screen.getByLabelText(/product details/i), {
+      target: { value: "Longer customer-facing details" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: /add specification/i }));
+    const labelInputs = screen.getAllByLabelText(/^label$/i);
+    const valueInputs = screen.getAllByLabelText(/^value$/i);
+    fireEvent.change(labelInputs[0], { target: { value: "Material" } });
+    fireEvent.change(valueInputs[0], { target: { value: "Sterling silver" } });
+    fireEvent.change(screen.getByLabelText(/materials & care/i), {
+      target: { value: "Wipe clean after wear" },
+    });
+    fireEvent.change(screen.getByLabelText(/packaging/i), {
+      target: { value: "Gift box included" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /manager\.product\.dialog\.create/i }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/inventory/products",
+        expect.objectContaining({
+          details_text: "Longer customer-facing details",
+          specifications_json: [{ label: "Material", value: "Sterling silver" }],
+          materials_care_text: "Wipe clean after wear",
+          packaging_text: "Gift box included",
+        }),
+        expect.any(Object)
+      )
     );
   });
 });

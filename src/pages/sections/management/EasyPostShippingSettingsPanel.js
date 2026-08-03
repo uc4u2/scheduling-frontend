@@ -60,6 +60,8 @@ const normalizeSettings = (data = {}) => ({
   international_shipping_policy: data?.international_shipping_policy || "buyer_pays_on_import",
   international_shipping_note: data?.international_shipping_note || "",
   international_shipping_terms_url: data?.international_shipping_terms_url || "",
+  customer_shipping_returns_policy_text: data?.customer_shipping_returns_policy_text || "",
+  customer_shipping_returns_policy_url: data?.customer_shipping_returns_policy_url || "",
   require_import_charges_acknowledgement: data?.require_import_charges_acknowledgement !== false,
   email_customer_order_shipped: data?.email_customer_order_shipped !== false,
   email_customer_order_delivered: data?.email_customer_order_delivered !== false,
@@ -458,6 +460,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         allow_pickup: Boolean(settings.allow_pickup),
         allow_shipping: Boolean(settings.allow_shipping),
         allow_local_delivery: Boolean(settings.allow_local_delivery),
+        customer_shipping_returns_policy_text: settings.customer_shipping_returns_policy_text || null,
+        customer_shipping_returns_policy_url: settings.customer_shipping_returns_policy_url || null,
         email_customer_order_shipped: settings.email_customer_order_shipped !== false,
         email_customer_order_delivered: settings.email_customer_order_delivered !== false,
         email_customer_delivery_exception: settings.email_customer_delivery_exception !== false,
@@ -828,6 +832,33 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 <Alert severity="info">
                   Local delivery currently acts as a fulfillment choice only. Customers may select Local Delivery, and your business arranges it manually.
                 </Alert>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Stack spacing={1.25}>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Customer Shipping & Returns information
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      This information appears on public Product pages. Do not include API keys, Package dimensions, carrier credentials, or internal fulfillment notes.
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      multiline
+                      minRows={3}
+                      label="Customer Shipping & Returns information"
+                      value={settings.customer_shipping_returns_policy_text}
+                      onChange={(e) => updateField("customer_shipping_returns_policy_text", e.target.value)}
+                    />
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Customer Shipping & Returns URL"
+                      placeholder="https://example.com/shipping-and-returns"
+                      value={settings.customer_shipping_returns_policy_url}
+                      onChange={(e) => updateField("customer_shipping_returns_policy_url", e.target.value)}
+                    />
+                  </Stack>
+                </Paper>
               </Stack>
             )}
 
