@@ -58,6 +58,7 @@ import CategoryManagerDialog from "../../../components/common/CategoryManagerDia
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
 import ProductCheckoutPreviewDialog from "../../../components/products/ProductCheckoutPreviewDialog";
+import ProductVariantConfigurationDialog from "../../../components/products/ProductVariantConfigurationDialog";
 import useCompanyCurrencyContext from "../../../hooks/useCompanyCurrencyContext";
 
 const emptyForm = {
@@ -162,6 +163,15 @@ const financeInventoryMovementTypeLabel = (row) => {
   return row?.transaction_type || "movement";
 };
 
+const variantSummaryLabel = (row) => {
+  const mode = String(row?.variant_mode || "none").toLowerCase();
+  if (mode !== "draft") return "Variants: None";
+  const summary = row?.variant_summary || {};
+  const optionCount = Number(summary.option_count || 0);
+  const variantCount = Number(summary.variant_count || 0);
+  return `Variants: Draft · ${optionCount} option${optionCount === 1 ? "" : "s"} · ${variantCount} combination${variantCount === 1 ? "" : "s"}`;
+};
+
 const productChipBaseSx = {
   color: "#4a2b1a",
   bgcolor: "rgba(255, 255, 255, 0.82)",
@@ -205,6 +215,7 @@ const ProductRowActions = ({
   handleOpen,
   openCopilot,
   openCheckoutPreview,
+  openVariantConfiguration,
   openImages,
   setMovementTarget,
   setMovementOpen,
@@ -266,6 +277,9 @@ const ProductRowActions = ({
             Expand internationally
           </MenuItem>
         ) : null}
+        <MenuItem onClick={() => runMenuAction(() => openVariantConfiguration(row))}>
+          {row.variant_mode === "draft" ? "Edit options and variants" : "Configure options"}
+        </MenuItem>
         <MenuItem onClick={() => runMenuAction(() => openCopilot("improve_product_content", row.id))}>
           Improve content
         </MenuItem>
@@ -324,6 +338,8 @@ const ProductManagement = ({ token }) => {
   const [copilotProductId, setCopilotProductId] = useState(null);
   const [checkoutPreviewOpen, setCheckoutPreviewOpen] = useState(false);
   const [checkoutPreviewInitialProductId, setCheckoutPreviewInitialProductId] = useState(null);
+  const [variantConfigOpen, setVariantConfigOpen] = useState(false);
+  const [variantConfigProduct, setVariantConfigProduct] = useState(null);
   const [focusedSection, setFocusedSection] = useState("");
   const [globalDeliveryPolicy, setGlobalDeliveryPolicy] = useState({
     allow_pickup: false,
@@ -392,6 +408,11 @@ const ProductManagement = ({ token }) => {
   const openCheckoutPreview = useCallback((productId = null) => {
     setCheckoutPreviewInitialProductId(productId);
     setCheckoutPreviewOpen(true);
+  }, []);
+
+  const openVariantConfiguration = useCallback((row = null) => {
+    setVariantConfigProduct(row);
+    setVariantConfigOpen(true);
   }, []);
 
   const load = useCallback(async () => {
@@ -927,6 +948,7 @@ const ProductManagement = ({ token }) => {
             handleOpen={handleOpen}
             openCopilot={openCopilot}
             openCheckoutPreview={openCheckoutPreview}
+            openVariantConfiguration={openVariantConfiguration}
             openImages={openImages}
             setMovementTarget={setMovementTarget}
             setMovementOpen={setMovementOpen}
@@ -935,7 +957,7 @@ const ProductManagement = ({ token }) => {
         ),
       },
     ],
-    [businessSellingCurrency, handleDelete, handleOpen, openCheckoutPreview, openCopilot, openImages, t]
+    [businessSellingCurrency, handleDelete, handleOpen, openCheckoutPreview, openCopilot, openImages, openVariantConfiguration, t]
   );
 
   useEffect(() => {
@@ -2071,6 +2093,20 @@ const ProductManagement = ({ token }) => {
             </Button>
           ) : null}
           {editing?.id ? (
+            <Stack spacing={0.5} alignItems="flex-start" sx={{ mr: "auto", ml: { xs: 0, sm: 1 } }}>
+              <Button variant="outlined" onClick={() => openVariantConfiguration(editing)}>
+                {editing?.variant_mode === "draft" ? "Edit options and variants" : "Configure size and colour"}
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                {variantSummaryLabel(editing)}
+              </Typography>
+            </Stack>
+          ) : (
+            <Button variant="outlined" disabled sx={{ mr: "auto", ml: { xs: 0, sm: 1 } }}>
+              Save product first to configure options
+            </Button>
+          )}
+          {editing?.id ? (
             <Button variant="outlined" onClick={() => openCheckoutPreview(editing.id)}>
               Preview customer checkout
             </Button>
@@ -2323,6 +2359,18 @@ const ProductManagement = ({ token }) => {
         externalStateFingerprint={open ? checkoutPreviewEditorFingerprint : ""}
         onOpenProductCost={openProductCost}
         onOpenProduct={handleOpen}
+      />
+      <ProductVariantConfigurationDialog
+        open={variantConfigOpen}
+        onClose={() => setVariantConfigOpen(false)}
+        token={token}
+        product={variantConfigProduct}
+        businessSellingCurrency={businessSellingCurrency}
+        notify={notify}
+        onSaved={() => {
+          setVariantConfigOpen(false);
+          load();
+        }}
       />
 
       <Drawer

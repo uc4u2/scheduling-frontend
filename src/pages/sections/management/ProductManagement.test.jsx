@@ -10,6 +10,7 @@ const mockApiPost = jest.fn();
 const mockApiPatch = jest.fn();
 const mockApiDelete = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
+const mockVariantDialog = jest.fn(() => null);
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -38,6 +39,10 @@ jest.mock("./EasyPostShippingSettingsPanel", () => () => <div>Delivery setup pan
 jest.mock("../../../components/commerce-copilot/CommerceCopilotDrawer", () => (props) => {
   mockCopilotDrawer(props);
   return props.open ? <div data-testid="commerce-copilot-drawer">Commerce Copilot Drawer</div> : null;
+});
+jest.mock("../../../components/products/ProductVariantConfigurationDialog", () => (props) => {
+  mockVariantDialog(props);
+  return props.open ? <div data-testid="variant-config-dialog">Variant configuration dialog</div> : null;
 });
 
 jest.setTimeout(15000);
@@ -551,6 +556,93 @@ describe("ProductManagement", () => {
         }),
         expect.any(Object)
       )
+    );
+  });
+
+  test("requires a product to be saved before variant configuration is available", async () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /manager\.product\.buttonadd/i }));
+    expect(screen.getByRole("button", { name: /save product first to configure options/i })).toBeDisabled();
+  });
+
+  test("opens the draft variant dialog from the edit product modal", async () => {
+    window.history.replaceState({}, "", "/manager/advanced-management?panel=products&editProductId=60");
+    mockApiGet.mockImplementation((url) => {
+      if (String(url).startsWith("/inventory/products?") || String(url) === "/inventory/products") {
+        return Promise.resolve({
+          data: [
+            {
+              id: 60,
+              sku: "SMOKY-LEM-60",
+              name: "Smoky-Lemon Quartz Necklace",
+              price: 50,
+              qty_on_hand: 2,
+              track_stock: true,
+              is_digital: false,
+              is_active: true,
+              variant_mode: "draft",
+              variant_summary: {
+                option_count: 2,
+                variant_count: 6,
+                active_variant_count: 6,
+                configuration_complete: true,
+                selling_enabled: false,
+              },
+            },
+          ],
+        });
+      }
+      if (String(url) === "/inventory/product-categories") {
+        return Promise.resolve({ data: { categories: [] } });
+      }
+      if (String(url) === "/inventory/shipping-settings") {
+        return Promise.resolve({
+          data: {
+            allow_pickup: true,
+            allow_shipping: true,
+            allow_local_delivery: false,
+            country_catalog: [],
+          },
+        });
+      }
+      if (String(url) === "/inventory/products/low-stock?limit=10") {
+        return Promise.resolve({
+          data: { count: 0, out_of_stock_count: 0, low_stock_count: 0, items: [] },
+        });
+      }
+      if (String(url) === "/finance/inventory/items?active=true") {
+        return Promise.resolve({ data: { items: [] } });
+      }
+      if (String(url) === "/admin/company-profile") {
+        return Promise.resolve({ data: { display_currency: "CAD", currency_context: { business_selling_currency: "CAD" } } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByText("manager.product.dialog.editTitle")).toBeInTheDocument();
+    expect(screen.getByText(/Variants: Draft · 2 options · 6 combinations/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /edit options and variants/i }));
+    expect(await screen.findByTestId("variant-config-dialog")).toBeInTheDocument();
+    expect(mockVariantDialog).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+        product: expect.objectContaining({
+          id: 60,
+          variant_mode: "draft",
+        }),
+      })
     );
   });
 });

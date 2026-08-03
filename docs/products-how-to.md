@@ -61,6 +61,39 @@ Rules:
 - `Specifications` uses label/value rows and is meant for customer-facing marketing/spec data
 - no Size/Colour variant support exists in PV1
 
+## Draft Product options and variants (PV2-A)
+
+Products now support a manager-only draft configuration workflow for future variants.
+
+Manager entry points:
+- Product row **More actions** → `Configure options`
+- Product editor → `Configure size and colour`
+- Product editor → `Edit options and variants` when a draft already exists
+
+Current PV2-A rules:
+- draft only
+- customers still see the current parent Product
+- no public Colour/Size selector exists yet
+- no cart or checkout change exists yet
+- no ProductOrder variant snapshot exists yet
+
+Current limits:
+- up to 2 option groups
+- up to 20 values per option
+- up to 100 generated combinations
+
+Each draft variant can store:
+- active / inactive state
+- SKU
+- stock quantity
+- optional price override
+- optional gallery image
+
+Current boundaries:
+- digital Products cannot use Product options in this release
+- linked Materials & Supplies inventory blocks non-zero variant stock until the inventory link is removed
+- variant selling is not enabled until the next checkout phase
+
 ### Specifications format
 
 Each specification row contains:

@@ -30,6 +30,41 @@ Public Product page additions:
   - `Shipping & returns`
 - mobile sticky purchase bar with effective price + `Add to basket`
 
+## Product Commerce PV2-A
+
+As of Monday, August 3, 2026, the manager UI supports draft-only Product option and variant preparation with no public selling activation.
+
+Manager-only additions:
+- Product row `More actions` → `Configure options`
+- Product editor:
+  - `Configure size and colour`
+  - `Edit options and variants` when a draft already exists
+- `ProductVariantConfigurationDialog.jsx`
+
+Draft workflow contract:
+- warning shown inside the dialog:
+  - customers still see the current parent Product
+  - variant selling will be enabled in PV2-B
+- at most 2 option groups
+- at most 20 values per option
+- at most 100 generated combinations
+- generic option names supported, with `Colour` and `Size` as the main presets
+
+Draft variant fields:
+- active / inactive
+- SKU
+- stock quantity
+- optional price override
+- optional gallery image
+
+PV2-A exclusions:
+- no public Product selectors
+- no cart changes
+- no checkout changes
+- no Product Order changes
+- no variant inventory decrement
+- no customer-facing variant payload
+
 Still excluded in PV1:
 - `ProductOption`
 - `ProductOptionValue`
