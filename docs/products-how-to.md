@@ -70,8 +70,7 @@ Products now support both:
 
 Manager entry points:
 - Product row **More actions** → `Configure options`
-- Product editor → `Configure size and colour`
-- Product editor → `Edit options and variants` when a draft already exists
+- Product editor → expand **Product options and variants**
 
 Current activation rules:
 - runtime flag `PRODUCT_VARIANT_SELLING_ENABLED` must be on
@@ -80,18 +79,35 @@ Current activation rules:
 - the Variant configuration must pass server readiness
 
 Manager workflow:
-1. Open **Configure options** / **Configure size and colour**.
+1. Open **Configure options** from the Product row, or expand **Product options and variants** inside the Product editor.
 2. Step 1: add valid option names and values.
 3. Step 2: review generated combinations and set SKU, stock, optional price, and optional image overrides.
 4. Step 3: review readiness, save the draft, and activate when the checklist is clear.
 
 Editor rules:
+- `Product options and variants` is now a first-class collapsible Product section, not a footer action
+- the section sits after Product price / SKU / inventory and before Product weight and dimensions
+- the collapsed header shows compact authoritative summary text such as `None configured`, `Draft · Colour and Size · 6 combinations`, or `Active · 5 available · 1 sold out`
+- draft or active Variant Products expand the section by default
 - no phantom option/value rows are counted as configuration
 - counts use only valid nonblank values
 - unsaved edits show `Unsaved changes`
 - server activation readiness is authoritative only after Save
 - when edits are unsaved, the dialog shows `Save your changes to refresh the activation check.`
 - linked Materials & Supplies inventory is shown once inside the activation checklist, not repeated across the dialog
+
+Add Product behavior:
+- the inline section is available before the Product exists
+- local Option / Value drafting can begin immediately
+- the panel explains: `Variant configuration will be saved after the Product is created.`
+- Product gallery upload stays unavailable until the Product has been created
+- the panel explains: `Save the Product before uploading Variant images.`
+
+Save sequence:
+1. Save the main Product form.
+2. When a local Variant draft exists, save Variant configuration using the new Product ID.
+3. Reload authoritative readiness and Variant summary.
+4. If Product creation succeeds but Variant save fails, keep the editor open and show that Product save succeeded while Variant configuration still needs attention.
 
 Image workflow:
 - each value may use an existing Product gallery image or upload a new Product image directly from the dialog
@@ -475,7 +491,7 @@ Quick actions:
 - `Review Product variants`
 - `Explain activation requirements`
 - `Preview selected Variant`
-- `Configure size and colour`
+- `Configure Product options and variants`
 
 What Copilot can do:
 - summarize whether the Product has Product options / Variants

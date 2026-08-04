@@ -1,5 +1,5 @@
 import React from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
@@ -10,7 +10,7 @@ const mockApiPost = jest.fn();
 const mockApiPatch = jest.fn();
 const mockApiDelete = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
-const mockVariantDialog = jest.fn(() => null);
+const mockVariantPanel = jest.fn(() => null);
 const mockPreviewDialog = jest.fn(() => null);
 
 jest.mock("react-i18next", () => ({
@@ -41,9 +41,54 @@ jest.mock("../../../components/commerce-copilot/CommerceCopilotDrawer", () => (p
   mockCopilotDrawer(props);
   return props.open ? <div data-testid="commerce-copilot-drawer">Commerce Copilot Drawer</div> : null;
 });
-jest.mock("../../../components/products/ProductVariantConfigurationDialog", () => (props) => {
-  mockVariantDialog(props);
-  return props.open ? <div data-testid="variant-config-dialog">Variant configuration dialog</div> : null;
+jest.mock("../../../components/products/ProductVariantConfigurationPanel", () => {
+  const React = require("react");
+  return React.forwardRef((props, ref) => {
+    mockVariantPanel(props);
+    const summary = React.useMemo(
+      () =>
+        props.product?.id
+          ? props.product?.variant_mode === "active"
+            ? { modeLabel: "Active", collapsedSummary: "Active · 4 available · 1 sold out" }
+            : props.product?.variant_mode === "draft"
+              ? { modeLabel: "Draft", collapsedSummary: "Draft · 2 options · 6 combinations" }
+              : { modeLabel: "None", collapsedSummary: "None configured" }
+          : { modeLabel: "None", collapsedSummary: "None configured" },
+      [props.product?.id, props.product?.variant_mode]
+    );
+    React.useEffect(() => {
+      props.onStateChange?.({
+        ...summary,
+        dirty: false,
+        hasValidationErrors: false,
+        runtimeSellingEnabled: true,
+      });
+    }, [props.onStateChange, summary]);
+    React.useImperativeHandle(ref, () => ({
+      focusSection: jest.fn(),
+      focusOptions: jest.fn(),
+      hasLocalDraft: () => false,
+      isDirty: () => false,
+      validateForSave: () => true,
+      saveDraft: jest.fn(async ({ productId } = {}) => ({ ok: true, data: { product_id: productId || props.product?.id || null } })),
+      preserveDraftForProductId: jest.fn(),
+      getSummary: () => summary,
+    }), [props.product?.id, summary]);
+    return (
+      <div data-testid="variant-config-panel">
+        <div>Inline variant panel</div>
+        {!props.product?.id ? (
+          <>
+            <div>Variant configuration will be saved after the Product is created.</div>
+            <div>Save the Product before uploading Variant images.</div>
+          </>
+        ) : null}
+        <div>Preview only — no Product Order, inventory reservation, payment, shipping label, or customer notification will be created.</div>
+        <div data-testid="variant-panel-product-id">{props.product?.id ?? "new"}</div>
+        <div data-testid="variant-panel-variant-mode">{props.product?.variant_mode || "none"}</div>
+      </div>
+    );
+  });
 });
 jest.mock("../../../components/products/ProductCheckoutPreviewDialog", () => {
   const React = require("react");
@@ -522,7 +567,9 @@ describe("ProductManagement", () => {
 
     expect((await screen.findAllByText(/preview customer checkout/i)).length).toBeGreaterThan(0);
     expect(
-      await screen.findByText(/Preview only — no Product Order, inventory reservation, payment, shipping label, or customer notification will be created\./i)
+      await within(screen.getByTestId("checkout-preview-dialog")).findByText(
+        /Preview only — no Product Order, inventory reservation, payment, shipping label, or customer notification will be created\./i
+      )
     ).toBeInTheDocument();
     expect(mockApiPost).toHaveBeenCalledWith(
       "/inventory/product-checkout-preview",
@@ -624,10 +671,14 @@ describe("ProductManagement", () => {
     );
 
     fireEvent.click(await screen.findByRole("button", { name: /manager\.product\.buttonadd/i }));
-    expect(screen.getByRole("button", { name: /save product first to configure options/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /product options and variants/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save product first to configure options/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /product options and variants/i }));
+    expect(screen.getByText(/Variant configuration will be saved after the Product is created\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Save the Product before uploading Variant images\./i)).toBeInTheDocument();
   });
 
-  test("opens the draft variant dialog from the edit product modal", async () => {
+  test("shows the inline variants section for a draft product instead of opening a second dialog", async () => {
     window.history.replaceState({}, "", "/manager/advanced-management?panel=products&editProductId=60");
     mockApiGet.mockImplementation((url) => {
       if (String(url).startsWith("/inventory/products?") || String(url) === "/inventory/products") {
@@ -688,18 +739,80 @@ describe("ProductManagement", () => {
     );
 
     expect(await screen.findByText("manager.product.dialog.editTitle")).toBeInTheDocument();
-    expect(screen.getByText(/Variants: Draft · 2 options · 6 combinations/i)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: /edit options and variants/i }));
-    expect(await screen.findByTestId("variant-config-dialog")).toBeInTheDocument();
-    expect(mockVariantDialog).toHaveBeenLastCalledWith(
+    expect(screen.getByText(/Draft · 2 options · 6 combinations/i)).toBeInTheDocument();
+    expect(screen.getByTestId("variant-config-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("variant-config-dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /configure size and colour/i })).not.toBeInTheDocument();
+    expect(mockVariantPanel).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        open: true,
         product: expect.objectContaining({
           id: 60,
           variant_mode: "draft",
         }),
       })
     );
+  });
+
+  test("opens and focuses the inline variants section from Commerce Copilot instead of a second dialog", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (String(url).startsWith("/inventory/products?") || String(url) === "/inventory/products") {
+        return Promise.resolve({
+          data: [
+            {
+              id: 60,
+              sku: "SMOKY-LEM-60",
+              name: "Smoky-Lemon Quartz Necklace",
+              price: 50,
+              qty_on_hand: 2,
+              track_stock: true,
+              is_digital: false,
+              is_active: true,
+              variant_mode: "none",
+              variant_summary: {
+                option_count: 0,
+                variant_count: 0,
+              },
+            },
+          ],
+        });
+      }
+      if (String(url) === "/inventory/product-categories") {
+        return Promise.resolve({ data: { categories: [] } });
+      }
+      if (String(url) === "/inventory/shipping-settings") {
+        return Promise.resolve({
+          data: {
+            allow_pickup: true,
+            allow_shipping: true,
+            allow_local_delivery: false,
+            country_catalog: [],
+          },
+        });
+      }
+      if (String(url) === "/inventory/products/low-stock?limit=10") {
+        return Promise.resolve({
+          data: { count: 0, out_of_stock_count: 0, low_stock_count: 0, items: [] },
+        });
+      }
+      if (String(url) === "/finance/inventory/items?active=true") {
+        return Promise.resolve({ data: { items: [] } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => expect(mockCopilotDrawer.mock.calls.length).toBeGreaterThan(1));
+    const drawerProps = mockCopilotDrawer.mock.calls.at(-1)[0];
+    drawerProps.onOpenProductVariantConfiguration(60);
+
+    expect(await screen.findByText("manager.product.dialog.editTitle")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /product options and variants/i, expanded: true })).toBeInTheDocument();
+    expect(screen.getByTestId("variant-config-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("variant-config-dialog")).not.toBeInTheDocument();
   });
 });

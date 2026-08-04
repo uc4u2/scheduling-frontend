@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -52,6 +52,7 @@ import {
 
 import api from "../../utils/api";
 import { formatCurrency } from "../../utils/formatters";
+import { dashboardStatusChipProps } from "../../utils/dashboardStatusChip";
 
 const MAX_OPTIONS = 2;
 const MAX_VALUES_PER_OPTION = 20;
@@ -315,10 +316,60 @@ const HelpTooltip = ({ title, ariaLabel }) => (
   </Tooltip>
 );
 
-const statusChipColor = (value) => {
+const statusChipTone = (value) => {
   if (value === "Active" || value === "Ready") return "success";
   if (value === "Not ready" || value === "Draft") return "warning";
-  return "default";
+  return "neutral";
+};
+
+const buildVariantSectionSummary = ({
+  modeLabel,
+  draftOptions,
+  draftVariants,
+  analysis,
+  dirty,
+  runtimeSellingEnabled,
+  activationReadiness,
+  product,
+}) => {
+  const validOptionNames = (analysis?.validOptions || []).map((option) => String(option.name || "").trim()).filter(Boolean);
+  const optionCount = analysis?.validOptionCount || 0;
+  const combinationCount = Array.isArray(draftVariants) ? draftVariants.length : 0;
+  const availableCount = (draftVariants || []).filter(
+    (variant) => Boolean(variant.is_active) && (!product?.track_stock || Number(variant.qty_on_hand || 0) > 0)
+  ).length;
+  const soldOutCount = (draftVariants || []).filter(
+    (variant) => Boolean(variant.is_active) && Boolean(product?.track_stock) && Number(variant.qty_on_hand || 0) <= 0
+  ).length;
+  const blockers = activationReadiness?.blockers || [];
+  let collapsedSummary = "None configured";
+  if (modeLabel === "Active") {
+    collapsedSummary = `Active · ${availableCount} available${soldOutCount ? ` · ${soldOutCount} sold out` : ""}`;
+  } else if (modeLabel === "Draft") {
+    const optionLabel =
+      validOptionNames.length === 2
+        ? `${validOptionNames[0]} and ${validOptionNames[1]}`
+        : validOptionNames[0] || `${optionCount} option${optionCount === 1 ? "" : "s"}`;
+    collapsedSummary = `Draft · ${optionLabel} · ${combinationCount} combination${combinationCount === 1 ? "" : "s"}`;
+  }
+  if (dirty) {
+    collapsedSummary = `${collapsedSummary} · Unsaved changes`;
+  } else if (!runtimeSellingEnabled && modeLabel !== "None") {
+    collapsedSummary = `${collapsedSummary} · Activation unavailable`;
+  } else if ((blockers || []).some((item) => String(item || "").toLowerCase().includes("inventory"))) {
+    collapsedSummary = `${collapsedSummary} · Activation blocked by linked inventory`;
+  }
+  return {
+    modeLabel,
+    optionCount,
+    combinationCount,
+    availableCount,
+    soldOutCount,
+    validOptionNames,
+    dirty,
+    runtimeSellingEnabled,
+    collapsedSummary,
+  };
 };
 
 const fieldRefKey = (...parts) => parts.join(":");
@@ -463,15 +514,17 @@ const ImageAssignmentField = ({
   );
 };
 
-export default function ProductVariantConfigurationDialog({
-  open,
+export const ProductVariantConfigurationPanel = forwardRef(function ProductVariantConfigurationPanel({
+  open = true,
   onClose,
   token,
   product,
   onSaved,
   notify,
   businessSellingCurrency = "USD",
-}) {
+  embedded = false,
+  onStateChange,
+}, ref) {
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const fieldRefs = useRef(new Map());
@@ -488,9 +541,13 @@ export default function ProductVariantConfigurationDialog({
   const [moreActionsAnchor, setMoreActionsAnchor] = useState(null);
   const [bulkStockValue, setBulkStockValue] = useState("");
   const initializedRef = useRef(false);
+  const lastLoadedProductIdRef = useRef(null);
+  const panelHeadingRef = useRef(null);
+  const preserveDraftForProductIdRef = useRef(null);
 
   const currency = product?.selling_currency || businessSellingCurrency || "USD";
   const isActiveMode = String(config?.variant_mode || "none").toLowerCase() === "active";
+  const isInteractive = embedded || open;
 
   const registerFieldRef = (key) => (element) => {
     if (element) {
@@ -508,9 +565,29 @@ export default function ProductVariantConfigurationDialog({
   };
 
   useEffect(() => {
-    if (!open || !product?.id) return undefined;
+    if (!isInteractive) return undefined;
+    if (!product?.id) {
+      if (!initializedRef.current || lastLoadedProductIdRef.current !== null) {
+        setConfig(emptyConfig);
+        setDraftOptions([]);
+        setDraftVariants([]);
+        setGalleryImages(Array.isArray(product?.images) ? product.images : []);
+        setError("");
+        setCurrentStep(0);
+        initializedRef.current = true;
+        lastLoadedProductIdRef.current = null;
+      }
+      return undefined;
+    }
+    if (preserveDraftForProductIdRef.current && Number(preserveDraftForProductIdRef.current) === Number(product.id)) {
+      preserveDraftForProductIdRef.current = null;
+      lastLoadedProductIdRef.current = product.id;
+      setGalleryImages(Array.isArray(product?.images) ? product.images : []);
+      return undefined;
+    }
     let alive = true;
     initializedRef.current = false;
+    lastLoadedProductIdRef.current = product.id;
     setLoading(true);
     setError("");
     setCurrentStep(0);
@@ -536,7 +613,11 @@ export default function ProductVariantConfigurationDialog({
     return () => {
       alive = false;
     };
-  }, [auth, open, product]);
+  }, [auth, isInteractive, product]);
+
+  useEffect(() => {
+    setGalleryImages(Array.isArray(product?.images) ? product.images : []);
+  }, [product?.images]);
 
   const analysis = useMemo(() => {
     const nonBlankOptionNames = new Map();
@@ -646,14 +727,14 @@ export default function ProductVariantConfigurationDialog({
   }, [config?.options, config?.variants, draftOptions, draftVariants]);
 
   useEffect(() => {
-    if (!open || !dirty) return undefined;
+    if (!isInteractive || !dirty) return undefined;
     const handler = (event) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, open]);
+  }, [dirty, isInteractive]);
 
   useEffect(() => {
     if (!initializedRef.current) return;
@@ -726,6 +807,20 @@ export default function ProductVariantConfigurationDialog({
 
   const optionStepReady = analysis.allConfiguredOptionsValid;
   const reviewStepReady = optionStepReady && draftVariants.length > 0;
+  const sectionSummary = useMemo(
+    () =>
+      buildVariantSectionSummary({
+        modeLabel: currentModeLabel,
+        draftOptions,
+        draftVariants,
+        analysis,
+        dirty,
+        runtimeSellingEnabled,
+        activationReadiness,
+        product,
+      }),
+    [activationReadiness, analysis, currentModeLabel, dirty, draftOptions, draftVariants, product, runtimeSellingEnabled]
+  );
 
   const dirtySummaryText = dirty ? "Save your changes to refresh the activation check." : null;
   const activationDisableReason = dirty
@@ -742,6 +837,25 @@ export default function ProductVariantConfigurationDialog({
     setMoreActionsAnchor(null);
     onClose?.();
   };
+
+  useEffect(() => {
+    onStateChange?.({
+      ...sectionSummary,
+      hasValidationErrors: Boolean(draftOptions.length) && (!analysis.allConfiguredOptionsValid || hasVariantClientErrors),
+      activationReadiness,
+      runtimeSellingEnabled,
+      isActiveMode,
+    });
+  }, [
+    activationReadiness,
+    analysis.allConfiguredOptionsValid,
+    draftOptions.length,
+    hasVariantClientErrors,
+    isActiveMode,
+    onStateChange,
+    runtimeSellingEnabled,
+    sectionSummary,
+  ]);
 
   const updateOptions = (nextOptions) => {
     setDraftOptions(nextOptions);
@@ -937,21 +1051,37 @@ export default function ProductVariantConfigurationDialog({
     setDraftOptions(next.options);
     setDraftVariants(next.variants);
     onSaved?.(next);
+    return next;
   };
 
-  const handleSave = async () => {
+  const saveVariantDraft = async ({ productId: overrideProductId, silentNotify = false } = {}) => {
     if (!validateBeforeSave()) return;
+    const targetProductId = overrideProductId || product?.id;
+    if (!targetProductId) {
+      const saveError = "Save the Product before saving Variant configuration.";
+      setError(saveError);
+      return { ok: false, error: saveError };
+    }
     setSaving(true);
     setError("");
     try {
-      const { data } = await api.put(`/inventory/products/${product.id}/variant-configuration`, variantPayload, auth);
-      applyServerConfiguration(data);
-      notify?.(isActiveMode ? "Active variant changes saved." : "Variant draft saved.");
+      const { data } = await api.put(`/inventory/products/${targetProductId}/variant-configuration`, variantPayload, auth);
+      const next = applyServerConfiguration(data);
+      if (!silentNotify) {
+        notify?.(isActiveMode ? "Active variant changes saved." : "Variant draft saved.");
+      }
+      return { ok: true, data: next };
     } catch (err) {
-      setError(err?.response?.data?.error || "Failed to save variant draft.");
+      const saveError = err?.response?.data?.error || "Failed to save variant draft.";
+      setError(saveError);
+      return { ok: false, error: saveError };
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    await saveVariantDraft();
   };
 
   const handleRemove = async () => {
@@ -1069,20 +1199,22 @@ export default function ProductVariantConfigurationDialog({
       <Stack spacing={1}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }}>
           <Box>
-            <Typography variant="h6">{product?.name || "Product"}</Typography>
+            <Typography variant="h6" tabIndex={-1} ref={panelHeadingRef}>
+              {product?.name || "Product"}
+            </Typography>
             <Typography variant="body2" color="text.secondary">
               {currentModeLabel} · {analysis.validOptionCount} option{analysis.validOptionCount === 1 ? "" : "s"} · {draftVariants.length} combination{draftVariants.length === 1 ? "" : "s"}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Chip label={currentModeLabel} size="small" color={statusChipColor(currentModeLabel)} />
+            <Chip label={currentModeLabel} size="small" {...dashboardStatusChipProps(statusChipTone(currentModeLabel))} />
             <Chip
               label={runtimeSellingEnabled ? "Runtime on" : "Runtime off"}
               size="small"
               icon={runtimeSellingEnabled ? <CheckCircleOutline /> : <RadioButtonUnchecked />}
-              variant="outlined"
+              {...dashboardStatusChipProps(runtimeSellingEnabled ? "info" : "neutral")}
             />
-            <Chip label={activationStatus} size="small" color={statusChipColor(activationStatus)} />
+            <Chip label={activationStatus} size="small" {...dashboardStatusChipProps(statusChipTone(activationStatus))} />
           </Stack>
         </Stack>
         <Typography variant="body2" color="text.secondary">
@@ -1091,10 +1223,9 @@ export default function ProductVariantConfigurationDialog({
         {dirty ? (
           <Chip
             size="small"
-            color="warning"
-            variant="outlined"
             label="Unsaved changes"
-            sx={{ alignSelf: "flex-start" }}
+            {...dashboardStatusChipProps("warning")}
+            sx={{ alignSelf: "flex-start", ...dashboardStatusChipProps("warning").sx }}
           />
         ) : null}
       </Stack>
@@ -1130,6 +1261,11 @@ export default function ProductVariantConfigurationDialog({
 
   const renderOptionStep = () => (
     <Stack spacing={2}>
+      {!product?.id ? (
+        <Alert severity="info">
+          Variant configuration will be saved after the Product is created. Save the Product before uploading Variant images.
+        </Alert>
+      ) : null}
       {!draftOptions.length ? (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
           <Stack spacing={2} alignItems="center">
@@ -1243,8 +1379,9 @@ export default function ProductVariantConfigurationDialog({
                                       title="Assigned image"
                                       assignedImageId={value.image_id}
                                       galleryImages={galleryImages}
+                                      disabled={!product?.id}
                                       helperText="An image assigned to a value is used for every Variant containing that value. A Variant-specific image can override it."
-                                      emptyLabel={galleryImages.length ? "Upload new image" : "Upload image"}
+                                      emptyLabel={product?.id ? (galleryImages.length ? "Upload new image" : "Upload image") : "Save Product before uploading images"}
                                       uploadTestId={`value-image-upload-${optionIndex}-${valueIndex}`}
                                       onAssign={(imageId) => updateValueField(optionIndex, valueIndex, "image_id", imageId)}
                                       onRemove={() => updateValueField(optionIndex, valueIndex, "image_id", null)}
@@ -1352,8 +1489,9 @@ export default function ProductVariantConfigurationDialog({
               title="Image override"
               assignedImageId={variant.primary_image_id}
               galleryImages={galleryImages}
+              disabled={!product?.id}
               helperText="Optional. Overrides the image inherited from Colour or another Option Value."
-              emptyLabel={galleryImages.length ? "Upload new image" : "Upload image"}
+              emptyLabel={product?.id ? (galleryImages.length ? "Upload new image" : "Upload image") : "Save Product before uploading images"}
               uploadTestId={`variant-image-upload-${variant.signature}`}
               onAssign={(imageId) => updateVariantField(variant.signature, "primary_image_id", imageId)}
               onRemove={() => updateVariantField(variant.signature, "primary_image_id", null)}
@@ -1650,125 +1788,182 @@ export default function ProductVariantConfigurationDialog({
 
   const saveLabel = isActiveMode ? "Save active changes" : "Save draft";
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusSection: () => panelHeadingRef.current?.focus?.(),
+      focusOptions: () => {
+        setCurrentStep(0);
+        if (draftOptions.length) {
+          const firstOption = draftOptions[0];
+          focusField(fieldRefKey("option", firstOption.id || firstOption.client_key, "name"));
+        }
+      },
+      isDirty: () => dirty,
+      hasLocalDraft: () => Boolean(draftOptions.length || draftVariants.length),
+      getSummary: () => sectionSummary,
+      saveDraft: (options = {}) => saveVariantDraft(options),
+      validateForSave: () => validateBeforeSave(),
+      preserveDraftForProductId: (productId) => {
+        preserveDraftForProductIdRef.current = productId;
+      },
+    }),
+    [dirty, draftOptions, draftVariants.length, sectionSummary]
+  );
+
+  const stepContent = (
+    <Stack spacing={2}>
+      {renderStatusHeader()}
+      {renderHowItWorks()}
+      {error ? <Alert severity="error">{error}</Alert> : null}
+      {(saving || activating || removing) ? <LinearProgress /> : null}
+
+      <Tabs
+        value={currentStep}
+        onChange={(_, nextStep) => {
+          if (nextStep === 1 && !optionStepReady) return;
+          if (nextStep === 2 && !reviewStepReady) return;
+          setCurrentStep(nextStep);
+        }}
+        variant={isMobile ? "fullWidth" : "standard"}
+        aria-label="Variant configuration steps"
+      >
+        <Tab label="1. Options and values" />
+        <Tab label="2. Variants" disabled={!optionStepReady} />
+        <Tab label="3. Review and activate" disabled={!reviewStepReady} />
+      </Tabs>
+
+      {currentStep === 0 ? renderOptionStep() : null}
+      {currentStep === 1 ? renderVariantStep() : null}
+      {currentStep === 2 ? renderReviewStep() : null}
+    </Stack>
+  );
+
+  const resetDraftToCurrentConfig = () => {
+    const next = normalizeConfigForEditor(config);
+    setDraftOptions(next.options);
+    setDraftVariants(next.variants);
+    setError("");
+  };
+
+  const sharedActions = (
+    <>
+      <Button
+        variant="text"
+        startIcon={<MoreHoriz />}
+        onClick={(event) => setMoreActionsAnchor(event.currentTarget)}
+        disabled={!product?.id || !config.options.length}
+      >
+        More actions
+      </Button>
+      <Menu anchorEl={moreActionsAnchor} open={Boolean(moreActionsAnchor)} onClose={() => setMoreActionsAnchor(null)}>
+        <MenuItem onClick={handleRemove} disabled={removing || loading || !product?.id || !config.options.length}>
+          Remove configuration
+        </MenuItem>
+      </Menu>
+
+      {currentStep > 0 ? (
+        <Button variant="outlined" onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}>
+          Back
+        </Button>
+      ) : null}
+      {currentStep < 2 ? (
+        <Button
+          variant="outlined"
+          onClick={() => setCurrentStep((step) => step + 1)}
+          disabled={(currentStep === 0 && !optionStepReady) || (currentStep === 1 && !reviewStepReady)}
+        >
+          Next
+        </Button>
+      ) : null}
+
+      {isActiveMode ? (
+        <Tooltip title="Customers will no longer be able to purchase this Product until variant selling is activated again." arrow>
+          <span>
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<PauseCircleOutline />}
+              onClick={() => handleActivation(false)}
+              disabled={!product?.id || activating || saving || loading}
+            >
+              Pause Variant selling
+            </Button>
+          </span>
+        </Tooltip>
+      ) : null}
+
+      {!isActiveMode ? (
+        <Tooltip title={activationDisableReason || "Activate Variant selling"} arrow>
+          <span>
+            <Button
+              variant="outlined"
+              onClick={() => handleActivation(true)}
+              disabled={!product?.id || activating || saving || loading || dirty || !runtimeSellingEnabled || !activationReadiness?.ready_for_activation}
+            >
+              Activate Variant selling
+            </Button>
+          </span>
+        </Tooltip>
+      ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <Stack spacing={2}>
+        {stepContent}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
+          <Stack direction="row" spacing={1}>
+            {dirty ? (
+              <Button color="inherit" onClick={resetDraftToCurrentConfig}>
+                Discard Variant changes
+              </Button>
+            ) : null}
+          </Stack>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+            {sharedActions}
+          </Stack>
+        </Stack>
+      </Stack>
+    );
+  }
+
   return (
-    <Dialog open={open} onClose={handleRequestClose} maxWidth="lg" fullWidth fullScreen={isMobile}>
+    <>
       <DialogTitle>Configure Product options and variants</DialogTitle>
       <DialogContent dividers sx={{ pb: 2 }}>
-        <Stack spacing={2}>
-          {renderStatusHeader()}
-          {renderHowItWorks()}
-          {error ? <Alert severity="error">{error}</Alert> : null}
-          {(saving || activating || removing) ? <LinearProgress /> : null}
-
-          <Tabs
-            value={currentStep}
-            onChange={(_, nextStep) => {
-              if (nextStep === 1 && !optionStepReady) return;
-              if (nextStep === 2 && !reviewStepReady) return;
-              setCurrentStep(nextStep);
-            }}
-            variant={isMobile ? "fullWidth" : "standard"}
-            aria-label="Variant configuration steps"
-          >
-            <Tab label="1. Options and values" />
-            <Tab label="2. Variants" disabled={!optionStepReady} />
-            <Tab label="3. Review and activate" disabled={!reviewStepReady} />
-          </Tabs>
-
-          {currentStep === 0 ? renderOptionStep() : null}
-          {currentStep === 1 ? renderVariantStep() : null}
-          {currentStep === 2 ? renderReviewStep() : null}
-        </Stack>
+        {stepContent}
       </DialogContent>
       <DialogActions sx={{ position: "sticky", bottom: 0, bgcolor: "background.paper", borderTop: "1px solid rgba(0,0,0,0.08)", px: 3, py: 2 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" width="100%">
           <Stack direction="row" spacing={1}>
             <Button onClick={handleRequestClose}>Close</Button>
             {dirty ? (
-              <Button color="inherit" onClick={() => {
-                const next = normalizeConfigForEditor(config);
-                setDraftOptions(next.options);
-                setDraftVariants(next.variants);
-                setDirty(false);
-              }}>
+              <Button color="inherit" onClick={resetDraftToCurrentConfig}>
                 Discard changes
               </Button>
             ) : null}
           </Stack>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
-            <Button
-              variant="text"
-              startIcon={<MoreHoriz />}
-              onClick={(event) => setMoreActionsAnchor(event.currentTarget)}
-              disabled={!config.options.length}
-            >
-              More actions
-            </Button>
-            <Menu
-              anchorEl={moreActionsAnchor}
-              open={Boolean(moreActionsAnchor)}
-              onClose={() => setMoreActionsAnchor(null)}
-            >
-              <MenuItem
-                onClick={handleRemove}
-                disabled={removing || loading || !config.options.length}
-              >
-                Remove configuration
-              </MenuItem>
-            </Menu>
-
-            {currentStep > 0 ? (
-              <Button variant="outlined" onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}>
-                Back
-              </Button>
-            ) : null}
-            {currentStep < 2 ? (
-              <Button
-                variant="outlined"
-                onClick={() => setCurrentStep((step) => step + 1)}
-                disabled={(currentStep === 0 && !optionStepReady) || (currentStep === 1 && !reviewStepReady)}
-              >
-                Next
-              </Button>
-            ) : null}
-
-            {isActiveMode ? (
-              <Tooltip title="Customers will no longer be able to purchase this Product until variant selling is activated again." arrow>
-                <span>
-                  <Button
-                    variant="outlined"
-                    color="warning"
-                    startIcon={<PauseCircleOutline />}
-                    onClick={() => handleActivation(false)}
-                    disabled={activating || saving || loading}
-                  >
-                    Pause Variant selling
-                  </Button>
-                </span>
-              </Tooltip>
-            ) : null}
-
-            {!isActiveMode ? (
-              <Tooltip title={activationDisableReason || "Activate Variant selling"} arrow>
-                <span>
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleActivation(true)}
-                    disabled={activating || saving || loading || dirty || !runtimeSellingEnabled || !activationReadiness?.ready_for_activation}
-                  >
-                    Activate Variant selling
-                  </Button>
-                </span>
-              </Tooltip>
-            ) : null}
-
+            {sharedActions}
             <Button variant="contained" onClick={handleSave} disabled={saving || activating || loading}>
               {saveLabel}
             </Button>
           </Stack>
         </Stack>
       </DialogActions>
+    </>
+  );
+});
+
+export default function ProductVariantConfigurationDialog(props) {
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+
+  return (
+    <Dialog open={props.open} onClose={props.onClose} maxWidth="lg" fullWidth fullScreen={isMobile}>
+      <ProductVariantConfigurationPanel {...props} />
     </Dialog>
   );
 }

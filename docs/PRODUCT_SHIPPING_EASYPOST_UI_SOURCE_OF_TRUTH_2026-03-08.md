@@ -37,9 +37,19 @@ As of Tuesday, August 4, 2026, the manager UI supports both draft configuration 
 Manager additions:
 - Product row `More actions` → `Configure options`
 - Product editor:
-  - `Configure size and colour`
-  - `Edit options and variants` when a draft already exists
+  - first-class collapsible `Product options and variants` section
+  - inline editing inside the main Product editor scroll container
 - `ProductVariantConfigurationDialog.jsx`
+
+Inline Product editor contract:
+- the footer no longer contains a Variant configuration button or Variant mode summary
+- the inline section appears after Product price / SKU / inventory and before Product weight and dimensions
+- the collapsed header shows compact authoritative summary text
+- draft / active Variant Products auto-expand the section
+- unsaved Variant edits remain in the section when it is collapsed and re-expanded
+- Add Product can collect local Variant draft edits before the Product exists
+- Product image upload for Variant values remains unavailable until the Product has a persisted ID
+- Product save can create the Product first, then save the Variant draft against the new Product ID
 
 Manager workflow contract:
 - Step 1: `Options and values`

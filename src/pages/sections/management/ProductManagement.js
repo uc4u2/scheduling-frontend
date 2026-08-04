@@ -58,9 +58,10 @@ import CategoryManagerDialog from "../../../components/common/CategoryManagerDia
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
 import ProductCheckoutPreviewDialog from "../../../components/products/ProductCheckoutPreviewDialog";
-import ProductVariantConfigurationDialog from "../../../components/products/ProductVariantConfigurationDialog";
+import ProductVariantConfigurationPanel from "../../../components/products/ProductVariantConfigurationPanel";
 import useCompanyCurrencyContext from "../../../hooks/useCompanyCurrencyContext";
 import { getActiveCurrency } from "../../../utils/currency";
+import { dashboardStatusChipProps } from "../../../utils/dashboardStatusChip";
 
 const emptyForm = {
   sku: "",
@@ -164,14 +165,22 @@ const financeInventoryMovementTypeLabel = (row) => {
   return row?.transaction_type || "movement";
 };
 
-const variantSummaryLabel = (row) => {
+const variantSectionCollapsedSummary = (summary = {}) => summary.collapsedSummary || "None configured";
+
+const variantSectionSummaryFromRow = (row) => {
   const mode = String(row?.variant_mode || "none").toLowerCase();
-  if (mode === "none") return "Variants: None";
   const summary = row?.variant_summary || {};
-  const optionCount = Number(summary.option_count || 0);
-  const variantCount = Number(summary.variant_count || 0);
-  const modeLabel = mode === "active" ? "Active" : "Draft";
-  return `Variants: ${modeLabel} · ${optionCount} option${optionCount === 1 ? "" : "s"} · ${variantCount} combination${variantCount === 1 ? "" : "s"}`;
+  if (mode === "active") {
+    const available = Number(summary.available_variant_count || summary.active_variant_count || 0);
+    const soldOut = Number(summary.sold_out_variant_count || 0);
+    return `Active · ${available} available${soldOut ? ` · ${soldOut} sold out` : ""}`;
+  }
+  if (mode === "draft") {
+    const optionCount = Number(summary.option_count || 0);
+    const combinationCount = Number(summary.variant_count || 0);
+    return `Draft · ${optionCount} option${optionCount === 1 ? "" : "s"} · ${combinationCount} combination${combinationCount === 1 ? "" : "s"}`;
+  }
+  return "None configured";
 };
 
 const productChipBaseSx = {
@@ -341,8 +350,9 @@ const ProductManagement = ({ token }) => {
   const [checkoutPreviewOpen, setCheckoutPreviewOpen] = useState(false);
   const [checkoutPreviewInitialProductId, setCheckoutPreviewInitialProductId] = useState(null);
   const [checkoutPreviewInitialVariantId, setCheckoutPreviewInitialVariantId] = useState(null);
-  const [variantConfigOpen, setVariantConfigOpen] = useState(false);
-  const [variantConfigProduct, setVariantConfigProduct] = useState(null);
+  const [variantSectionExpanded, setVariantSectionExpanded] = useState(false);
+  const [variantSectionFocusRequested, setVariantSectionFocusRequested] = useState(false);
+  const [variantPanelState, setVariantPanelState] = useState(null);
   const [focusedSection, setFocusedSection] = useState("");
   const [globalDeliveryPolicy, setGlobalDeliveryPolicy] = useState({
     allow_pickup: false,
@@ -365,9 +375,12 @@ const ProductManagement = ({ token }) => {
   const coreDetailsRef = useRef(null);
   const shippingDetailsRef = useRef(null);
   const customsSectionRef = useRef(null);
+  const variantSectionRef = useRef(null);
+  const variantPanelRef = useRef(null);
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
   const compactLinkedInventorySnapshot = useMediaQuery((theme) => theme.breakpoints.down("sm"));
+  const productEditorFullScreen = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const companyCurrencyContext = useCompanyCurrencyContext(companyCurrencyProfile);
   const businessSellingCurrency = companyCurrencyContext.businessSellingCurrency || getActiveCurrency();
   const checkoutPreviewEditorFingerprint = useMemo(
@@ -414,9 +427,9 @@ const ProductManagement = ({ token }) => {
     setCheckoutPreviewOpen(true);
   }, []);
 
-  const openVariantConfiguration = useCallback((row = null) => {
-    setVariantConfigProduct(row);
-    setVariantConfigOpen(true);
+  const focusVariantSection = useCallback(() => {
+    setVariantSectionExpanded(true);
+    setVariantSectionFocusRequested(true);
   }, []);
 
   const load = useCallback(async () => {
@@ -514,8 +527,13 @@ const ProductManagement = ({ token }) => {
     };
   }, [auth, form.is_digital, form.track_stock, open]);
 
-  const handleOpen = useCallback((row = null) => {
+  const handleOpen = useCallback((row = null, options = {}) => {
     setEditing(row);
+    const nextMode = String(row?.variant_mode || "none").toLowerCase();
+    const shouldExpandVariants = Boolean(options?.expandVariants) || nextMode === "draft" || nextMode === "active";
+    setVariantSectionExpanded(shouldExpandVariants);
+    setVariantSectionFocusRequested(Boolean(options?.focusVariants));
+    setVariantPanelState(null);
     if (row) {
       setForm({
         sku: row.sku || "",
@@ -566,6 +584,14 @@ const ProductManagement = ({ token }) => {
     setOpen(true);
   }, []);
 
+  const openVariantConfiguration = useCallback((row = null) => {
+    if (row && (!open || Number(editing?.id || 0) !== Number(row.id || 0))) {
+      handleOpen(row, { expandVariants: true, focusVariants: true });
+      return;
+    }
+    focusVariantSection();
+  }, [editing?.id, focusVariantSection, handleOpen, open]);
+
   const openProductCost = useCallback((productId = null) => {
     const match = products.find((row) => Number(row.id) === Number(productId)) || null;
     setCheckoutPreviewOpen(false);
@@ -587,14 +613,6 @@ const ProductManagement = ({ token }) => {
     window.history.replaceState({}, "", nextUrl);
   }, []);
 
-  const handleClose = useCallback(() => {
-    clearEditProductIdFromUrl();
-    setOpen(false);
-    setEditing(null);
-    setForm(emptyForm);
-    setProductInfoExpanded(false);
-  }, [clearEditProductIdFromUrl]);
-
   useEffect(() => {
     const search = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     const editProductId = Number(search.get("editProductId") || 0);
@@ -613,6 +631,7 @@ const ProductManagement = ({ token }) => {
       core_details: coreDetailsRef,
       shipping_details: shippingDetailsRef,
       customs: customsSectionRef,
+      variants: variantSectionRef,
     };
     const targetRef = focusMap[focus];
     if (!targetRef?.current) return undefined;
@@ -625,6 +644,29 @@ const ProductManagement = ({ token }) => {
     }, 120);
     return () => window.clearTimeout(timer);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !variantSectionFocusRequested || !variantSectionExpanded) return undefined;
+    const timer = window.setTimeout(() => {
+      if (typeof variantSectionRef.current?.scrollIntoView === "function") {
+        variantSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      variantPanelRef.current?.focusSection?.();
+      setFocusedSection("variants");
+      window.setTimeout(() => {
+        setFocusedSection((prev) => (prev === "variants" ? "" : prev));
+      }, 1800);
+      setVariantSectionFocusRequested(false);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [open, variantSectionExpanded, variantSectionFocusRequested]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (variantPanelState?.dirty || variantPanelState?.hasValidationErrors || ["Draft", "Active"].includes(variantPanelState?.modeLabel)) {
+      setVariantSectionExpanded(true);
+    }
+  }, [open, variantPanelState]);
 
   const handleChange = useCallback(
     (field) => (event) => {
@@ -699,17 +741,7 @@ const ProductManagement = ({ token }) => {
     }));
   }, []);
 
-  const persist = useCallback(async () => {
-    if (
-      form.delivery_methods_override_enabled &&
-      !form.delivery_allow_pickup &&
-      !form.delivery_allow_shipping &&
-      !form.delivery_allow_local_delivery
-    ) {
-      notify("Select at least one delivery method when product delivery override is enabled.");
-      return;
-    }
-
+  const buildProductPayload = useCallback(() => {
     const payload = {
       ...form,
       category: String(form.category || "").trim(),
@@ -746,16 +778,171 @@ const ProductManagement = ({ token }) => {
       payload.adjustment_note = String(form.adjustment_note || "").trim() || null;
       payload.adjustment_reason = "manual_adjustment";
     }
+    return payload;
+  }, [editing, form]);
+
+  const productFormDirty = useMemo(() => {
+    const baselineForm = editing
+      ? {
+          sku: editing.sku || "",
+          name: editing.name || "",
+          description: editing.description || "",
+          details_text: editing.details_text || "",
+          specifications_json: Array.isArray(editing.specifications_json) ? editing.specifications_json : [],
+          materials_care_text: editing.materials_care_text || "",
+          packaging_text: editing.packaging_text || "",
+          category: editing.category || "",
+          slug: editing.slug || "",
+          meta_title: editing.meta_title || "",
+          meta_description: editing.meta_description || "",
+          price: editing.price != null ? String(editing.price) : "0",
+          cost: editing.cost != null ? String(editing.cost) : "",
+          qty_on_hand: editing.qty_on_hand ?? 0,
+          low_stock_threshold: editing.low_stock_threshold ?? "",
+          track_stock: !!editing.track_stock,
+          is_digital: !!editing.is_digital,
+          link_inventory_enabled: !!editing.linked_inventory_item_id,
+          linked_inventory_item_id: editing.linked_inventory_item_id ?? null,
+          delivery_methods_override_enabled: !!editing.delivery_methods_override_enabled,
+          delivery_allow_pickup: !!editing.delivery_allow_pickup,
+          delivery_allow_shipping: !!editing.delivery_allow_shipping,
+          delivery_allow_local_delivery: !!editing.delivery_allow_local_delivery,
+          shipping_weight_grams: editing.shipping_weight_grams != null ? String(editing.shipping_weight_grams) : "",
+          shipping_length_mm: editing.shipping_length_mm != null ? String(editing.shipping_length_mm) : "",
+          shipping_width_mm: editing.shipping_width_mm != null ? String(editing.shipping_width_mm) : "",
+          shipping_height_mm: editing.shipping_height_mm != null ? String(editing.shipping_height_mm) : "",
+          shipping_ships_separately: !!editing.shipping_ships_separately,
+          allow_international_shipping: !!editing.allow_international_shipping,
+          shipping_customs_description: editing.shipping_customs_description || "",
+          shipping_country_of_origin: editing.shipping_country_of_origin || "",
+          shipping_hs_code: editing.shipping_hs_code || "",
+          shipping_declared_value: editing.shipping_declared_value_cents != null ? centsToDisplayValue(editing.shipping_declared_value_cents) : "",
+          shipping_declared_value_currency: editing.shipping_declared_value_currency || "",
+          shipping_customs_manufacturer: editing.shipping_customs_manufacturer || "",
+          shipping_customs_eccn: editing.shipping_customs_eccn || "",
+          digital_asset_id: editing.digital_asset_id != null ? String(editing.digital_asset_id) : "",
+          is_active: !!editing.is_active,
+          adjustment_note: "",
+        }
+      : emptyForm;
+    return JSON.stringify(buildProductPayload()) !== JSON.stringify(
+      (() => {
+        const previousForm = baselineForm;
+        const previousEditing = editing;
+        const payload = {
+          ...previousForm,
+          category: String(previousForm.category || "").trim(),
+          price: previousForm.price === "" ? "0" : previousForm.price,
+          cost: previousForm.cost === "" ? null : previousForm.cost,
+          qty_on_hand: Number(previousForm.qty_on_hand || 0),
+          low_stock_threshold: previousForm.low_stock_threshold === "" ? null : Number(previousForm.low_stock_threshold),
+          shipping_weight_grams: previousForm.shipping_weight_grams === "" ? null : Number(previousForm.shipping_weight_grams),
+          shipping_length_mm: previousForm.shipping_length_mm === "" ? null : Number(previousForm.shipping_length_mm),
+          shipping_width_mm: previousForm.shipping_width_mm === "" ? null : Number(previousForm.shipping_width_mm),
+          shipping_height_mm: previousForm.shipping_height_mm === "" ? null : Number(previousForm.shipping_height_mm),
+          allow_international_shipping: Boolean(previousForm.allow_international_shipping),
+          shipping_customs_description: previousForm.allow_international_shipping ? (previousForm.shipping_customs_description || null) : null,
+          shipping_country_of_origin: previousForm.allow_international_shipping ? (previousForm.shipping_country_of_origin || null) : null,
+          shipping_hs_code: previousForm.allow_international_shipping ? (previousForm.shipping_hs_code || null) : null,
+          shipping_declared_value_cents: previousForm.allow_international_shipping ? displayValueToCents(previousForm.shipping_declared_value) : null,
+          shipping_declared_value_currency: previousForm.shipping_declared_value_currency || null,
+          shipping_customs_manufacturer: previousForm.allow_international_shipping ? (previousForm.shipping_customs_manufacturer || null) : null,
+          shipping_customs_eccn: previousForm.allow_international_shipping ? (previousForm.shipping_customs_eccn || null) : null,
+          digital_asset_id: previousForm.digital_asset_id === "" ? null : Number(previousForm.digital_asset_id),
+          linked_inventory_item_id:
+            previousForm.is_digital || !previousForm.track_stock || !previousForm.link_inventory_enabled ? null : (previousForm.linked_inventory_item_id || null),
+          details_text: String(previousForm.details_text || "").trim() || null,
+          specifications_json: (Array.isArray(previousForm.specifications_json) ? previousForm.specifications_json : [])
+            .map((row) => ({
+              label: String(row?.label || "").trim(),
+              value: String(row?.value || "").trim(),
+            }))
+            .filter((row) => row.label || row.value),
+          materials_care_text: String(previousForm.materials_care_text || "").trim() || null,
+          packaging_text: String(previousForm.packaging_text || "").trim() || null,
+        };
+        if (previousEditing && Number(previousForm.qty_on_hand || 0) !== Number(previousEditing.qty_on_hand || 0)) {
+          payload.adjustment_note = String(previousForm.adjustment_note || "").trim() || null;
+          payload.adjustment_reason = "manual_adjustment";
+        }
+        return payload;
+      })()
+    );
+  }, [buildProductPayload, editing]);
+
+  const editorDirty = productFormDirty || Boolean(variantPanelState?.dirty);
+
+  const handleClose = useCallback(() => {
+    if (editorDirty && !window.confirm("Discard unsaved Product or Variant changes?")) {
+      return;
+    }
+    clearEditProductIdFromUrl();
+    setOpen(false);
+    setEditing(null);
+    setForm(emptyForm);
+    setProductInfoExpanded(false);
+    setVariantSectionExpanded(false);
+    setVariantSectionFocusRequested(false);
+    setVariantPanelState(null);
+  }, [clearEditProductIdFromUrl, editorDirty]);
+
+  const persist = useCallback(async () => {
+    if (
+      form.delivery_methods_override_enabled &&
+      !form.delivery_allow_pickup &&
+      !form.delivery_allow_shipping &&
+      !form.delivery_allow_local_delivery
+    ) {
+      notify("Select at least one delivery method when product delivery override is enabled.");
+      return;
+    }
+    const payload = buildProductPayload();
 
     try {
+      const variantPanel = variantPanelRef.current;
+      const hasVariantDraft = Boolean(variantPanel?.hasLocalDraft?.());
+      const variantDirty = Boolean(variantPanel?.isDirty?.());
+      if (hasVariantDraft && variantPanel?.validateForSave && !variantPanel.validateForSave()) {
+        setVariantSectionExpanded(true);
+        setVariantSectionFocusRequested(true);
+        notify("Product options and variants need attention before saving.");
+        return;
+      }
+
+      let savedProduct = null;
       if (editing) {
-        await api.patch(`/inventory/products/${editing.id}`, payload, auth);
-        notify(t("manager.product.messages.updated"));
+        const { data } = await api.patch(`/inventory/products/${editing.id}`, payload, auth);
+        savedProduct = data || { ...editing, ...payload, id: editing.id };
       } else {
         const { data: saved } = await api.post(`/inventory/products`, payload, auth);
+        savedProduct = saved;
+      }
+
+        if (variantDirty && variantPanel?.saveDraft) {
+          const variantResult = await variantPanel.saveDraft({
+            productId: savedProduct?.id || editing?.id,
+            silentNotify: true,
+          });
+          if (!variantResult?.ok) {
+            if (!editing && savedProduct?.id) {
+              variantPanel?.preserveDraftForProductId?.(savedProduct.id);
+              setEditing(savedProduct);
+              setForm((prev) => ({ ...prev }));
+            }
+            setVariantSectionExpanded(true);
+            setVariantSectionFocusRequested(true);
+          notify(editing ? "Product saved. Variant configuration needs attention." : "Product created. Variant configuration needs attention.");
+          await load();
+          return;
+        }
+      }
+
+      if (editing) {
+        notify(t("manager.product.messages.updated"));
+      } else {
         const baseMessage = t("manager.product.messages.added");
-        if (!form.sku && saved?.sku) {
-          notify(`${baseMessage} (SKU: ${saved.sku})`);
+        if (!form.sku && savedProduct?.sku) {
+          notify(`${baseMessage} (SKU: ${savedProduct.sku})`);
         } else {
           notify(baseMessage);
         }
@@ -766,7 +953,7 @@ const ProductManagement = ({ token }) => {
       console.error("Failed to save product", err);
       notify(t("manager.product.messages.saveFailed"));
     }
-  }, [auth, editing, form, handleClose, load, notify, t]);
+  }, [auth, buildProductPayload, editing, form.sku, form.delivery_allow_local_delivery, form.delivery_allow_pickup, form.delivery_allow_shipping, form.delivery_methods_override_enabled, handleClose, load, notify, t]);
 
   const renameProductCategory = useCallback(
     async (oldName, newName) => {
@@ -1279,7 +1466,7 @@ const ProductManagement = ({ token }) => {
         />
       </Paper>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth fullScreen={productEditorFullScreen}>
         <DialogTitle>
           {editing ? t("manager.product.dialog.editTitle") : t("manager.product.dialog.addTitle")}
         </DialogTitle>
@@ -1519,9 +1706,8 @@ const ProductManagement = ({ token }) => {
                     </Typography>
                     <Chip
                       size="small"
-                      variant={form.link_inventory_enabled ? "filled" : "outlined"}
-                      color={form.link_inventory_enabled ? "primary" : "default"}
                       label={form.link_inventory_enabled ? "Linked to Materials & Supplies" : "Using product stock"}
+                      {...dashboardStatusChipProps(form.link_inventory_enabled ? "info" : "neutral")}
                     />
                   </Stack>
                   <FormControlLabel
@@ -1791,6 +1977,87 @@ const ProductManagement = ({ token }) => {
                   2. <strong>Delivery override</strong> controls checkout delivery choices for this product only.
                 </Alert>
               )}
+              <Divider sx={{ my: 1 }} />
+              <Accordion
+                disableGutters
+                elevation={0}
+                expanded={variantSectionExpanded}
+                onChange={(_, nextExpanded) => setVariantSectionExpanded(nextExpanded)}
+                ref={variantSectionRef}
+                sx={{
+                  border: (theme) => `1px solid ${theme.palette.divider}`,
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  ...sectionFocusSx(focusedSection === "variants"),
+                  "&:before": { display: "none" },
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMore />}
+                  aria-label="Product options and variants"
+                  aria-controls="product-variant-section-content"
+                  id="product-variant-section-header"
+                >
+                  <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        Product options and variants
+                      </Typography>
+                      <Tooltip
+                        title="Variants may have their own SKU, Price, stock and image while sharing the Product’s shipping and Customs settings."
+                        arrow
+                      >
+                        <InfoOutlined sx={{ fontSize: 16, color: "text.secondary" }} aria-hidden="true" />
+                      </Tooltip>
+                      <Chip
+                        size="small"
+                        label={variantPanelState?.modeLabel || (String(editing?.variant_mode || "none").toLowerCase() === "active" ? "Active" : String(editing?.variant_mode || "none").toLowerCase() === "draft" ? "Draft" : "None")}
+                        {...dashboardStatusChipProps(
+                          String(variantPanelState?.modeLabel || editing?.variant_mode || "none").toLowerCase() === "active"
+                            ? "success"
+                            : String(variantPanelState?.modeLabel || editing?.variant_mode || "none").toLowerCase() === "draft"
+                              ? "warning"
+                              : "neutral"
+                        )}
+                      />
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
+                      {variantPanelState ? variantSectionCollapsedSummary(variantPanelState) : variantSectionSummaryFromRow(editing)}
+                    </Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails id="product-variant-section-content">
+                  <Stack spacing={1.5}>
+                    <Typography variant="body2" color="text.secondary">
+                      Add the choices customers make, such as Colour, Size, Material or Style. Schedulaa generates a sellable Variant for each valid combination.
+                    </Typography>
+                    <ProductVariantConfigurationPanel
+                      ref={variantPanelRef}
+                      embedded
+                      open={open}
+                      token={token}
+                      product={{
+                        ...(editing || {}),
+                        id: editing?.id || null,
+                        sku: form.sku,
+                        name: form.name,
+                        price: form.price,
+                        track_stock: form.track_stock,
+                        is_digital: form.is_digital,
+                        linked_inventory_item_id: form.linked_inventory_item_id,
+                        selling_currency: businessSellingCurrency,
+                        images: editing?.images || [],
+                      }}
+                      businessSellingCurrency={businessSellingCurrency}
+                      notify={notify}
+                      onSaved={() => {
+                        load();
+                      }}
+                      onStateChange={setVariantPanelState}
+                    />
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
               <Divider sx={{ my: 1 }} />
               <Stack spacing={1} ref={shippingDetailsRef} sx={sectionFocusSx(focusedSection === "shipping_details")}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -2097,20 +2364,6 @@ const ProductManagement = ({ token }) => {
             </Button>
           ) : null}
           {editing?.id ? (
-            <Stack spacing={0.5} alignItems="flex-start" sx={{ mr: "auto", ml: { xs: 0, sm: 1 } }}>
-              <Button variant="outlined" onClick={() => openVariantConfiguration(editing)}>
-                {String(editing?.variant_mode || "none").toLowerCase() === "none" ? "Configure size and colour" : "Edit options and variants"}
-              </Button>
-              <Typography variant="caption" color="text.secondary">
-                {variantSummaryLabel(editing)}
-              </Typography>
-            </Stack>
-          ) : (
-            <Button variant="outlined" disabled sx={{ mr: "auto", ml: { xs: 0, sm: 1 } }}>
-              Save product first to configure options
-            </Button>
-          )}
-          {editing?.id ? (
             <Button variant="outlined" onClick={() => openCheckoutPreview(editing.id)}>
               Preview customer checkout
             </Button>
@@ -2373,18 +2626,6 @@ const ProductManagement = ({ token }) => {
         externalStateFingerprint={open ? checkoutPreviewEditorFingerprint : ""}
         onOpenProductCost={openProductCost}
         onOpenProduct={handleOpen}
-      />
-      <ProductVariantConfigurationDialog
-        open={variantConfigOpen}
-        onClose={() => setVariantConfigOpen(false)}
-        token={token}
-        product={variantConfigProduct}
-        businessSellingCurrency={businessSellingCurrency}
-        notify={notify}
-        onSaved={() => {
-          setVariantConfigOpen(false);
-          load();
-        }}
       />
 
       <Drawer
