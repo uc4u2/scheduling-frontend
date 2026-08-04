@@ -409,6 +409,96 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.queryByText(/preview only/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/not available right now/i)).not.toBeInTheDocument();
     expect(screen.getByText(/test my shipping setup/i)).toBeInTheDocument();
+    expect(screen.getByText(/review product variants/i)).toBeInTheDocument();
+  });
+
+  test("renders variant cards and safe manager actions without write actions", async () => {
+    const onOpenProductCheckoutPreview = jest.fn();
+    const onOpenProductVariantConfiguration = jest.fn();
+    mockApiPost.mockResolvedValue({
+      data: {
+        session: { public_id: "variant_1", workflow: "review_product_variants", status: "awaiting_manager" },
+        messages: [
+          {
+            id: 1,
+            role: "assistant",
+            message_text: "Here is the current Variant status.",
+            safe_metadata_json: {
+              questions: [],
+              variant_cards: [
+                {
+                  type: "variant_summary",
+                  title: "Carry Bag",
+                  product_id: 60,
+                  mode: "active",
+                  option_names: ["Colour", "Size"],
+                  counts: { variants: 4, active: 3, available: 2, sold_out: 1 },
+                  price_summary: { minimum: "69.00", maximum: "79.00", varies: true, currency: "CAD" },
+                  activation_readiness: { ready_for_activation: false, blockers: ["Variant selling is disabled in this environment."], warnings: [] },
+                  actions: [
+                    { type: "open_product_variant_configuration", label: "Open Variant configuration", product_id: 60 },
+                    { type: "open_product_checkout_preview", label: "Open Checkout Preview", product_id: 60 },
+                  ],
+                },
+                {
+                  type: "selected_variant",
+                  title: "Black / Mini",
+                  product_id: 60,
+                  variant_id: 101,
+                  product_name: "Carry Bag",
+                  selected_options: [
+                    { option_name: "Colour", value: "Black" },
+                    { option_name: "Size", value: "Mini" },
+                  ],
+                  sku: "BAG-BLACK-MINI",
+                  effective_price: "79.00",
+                  price_source: "variant_override",
+                  currency: "CAD",
+                  available: true,
+                  out_of_stock: false,
+                  image: { url: "https://example.com/black-mini.jpg" },
+                  image_source_label: "Variant override",
+                  actions: [{ type: "open_product_checkout_preview", label: "Open Checkout Preview", product_id: 60, variant_id: 101 }],
+                },
+              ],
+            },
+          },
+        ],
+        facts: [],
+        draft: null,
+        plan: null,
+        approval: null,
+        execution: null,
+        completion: null,
+        shipping_test: null,
+        international_expansion: null,
+        usage_summary: { requests: 1 },
+      },
+    });
+
+    renderDrawer({
+      initialWorkflow: "review_product_variants",
+      targetProductId: 60,
+      onOpenProductCheckoutPreview,
+      onOpenProductVariantConfiguration,
+    });
+
+    expect(await screen.findByText(/variant mode:\s*active/i)).toBeInTheDocument();
+    expect(screen.getByText(/variant mode:\s*active/i)).toBeInTheDocument();
+    expect(screen.getByText(/options:\s*colour \/ size/i)).toBeInTheDocument();
+    expect(screen.getByText(/sku:\s*bag-black-mini/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /activate variant selling/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pause variant selling/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole("button", { name: /open variant configuration/i })[0]);
+    expect(onOpenProductVariantConfiguration).toHaveBeenCalledWith(60);
+
+    await userEvent.click(screen.getAllByRole("button", { name: /open checkout preview/i })[0]);
+    expect(onOpenProductCheckoutPreview).toHaveBeenCalledWith(60);
+
+    await userEvent.click(screen.getAllByRole("button", { name: /open checkout preview/i })[1]);
+    expect(onOpenProductCheckoutPreview).toHaveBeenCalledWith(60, { variantId: 101 });
+    expect(screen.getByAltText(/carry bag black \/ mini preview/i)).toBeInTheDocument();
   });
 
   test("renders shipping-test workflow and requests test rates without label actions", async () => {

@@ -444,9 +444,7 @@ Still excluded from this phase:
 - per-Variant shipping
 - per-Variant customs
 - per-Variant cost
-- Commerce Copilot Variant actions
-- advanced Seller Estimate Variant frontend
-- advanced Preview frontend refinements
+- AI Variant write actions
 
 ## LIVE_DEFERRED QA checklist
 
@@ -468,6 +466,45 @@ The following checks are post-deployment QA, not local blockers:
 14. Process a partial refund.
 15. Verify exact Variant stock restoration.
 16. Observe webhook replay/idempotency behavior.
+
+## Commerce Copilot Variant review
+
+Commerce Copilot can now review Product Variants in a read-only way for managers.
+
+Quick actions:
+- `Review Product variants`
+- `Explain activation requirements`
+- `Preview selected Variant`
+- `Configure size and colour`
+
+What Copilot can do:
+- summarize whether the Product has Product options / Variants
+- explain whether Variant selling is active, draft-only, or blocked
+- explain server-owned activation blockers and warnings
+- inspect one selected Variant
+- preview authoritative checkout totals for a selected Variant
+- explain the authoritative Seller Estimate for a selected Variant
+- open:
+  - Variant configuration
+  - Product checkout preview
+  - Product editor
+
+What Copilot cannot do:
+- activate Variant selling
+- pause Variant selling
+- create or edit options, values, or variants
+- change Variant SKU, Price, stock, or image assignments
+- refund or modify Product Orders
+
+Variant matching behavior:
+- Copilot may understand phrases such as `Black / Mini` or `Mini Black`
+- if more than one configured Variant matches, Copilot asks you to choose
+- Copilot never silently selects the first matching Variant
+
+Preview / estimate rules:
+- checkout preview and Seller Estimate remain server-authoritative
+- Copilot does not invent taxes, shipping, margin, duties, or Stripe fees
+- Product cost appears only inside the manager Seller Estimate view
 17. Test pause after adding the Variant to cart.
 18. Test runtime kill switch after cart creation.
 19. Verify Client and Manager order emails.

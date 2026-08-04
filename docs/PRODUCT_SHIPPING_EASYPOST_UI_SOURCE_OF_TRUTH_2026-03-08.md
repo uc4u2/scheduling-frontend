@@ -86,7 +86,7 @@ Current active-selling boundaries:
 - no per-Variant shipping fields
 - no per-Variant customs fields
 - no per-Variant cost
-- no Commerce Copilot Variant actions yet
+- no AI Variant write actions
 
 Manager preview UX:
 - `ProductCheckoutPreviewDialog.jsx` accepts both Simple Products and Variant Products
@@ -118,6 +118,16 @@ Seller Estimate UX:
 
 Remaining order surfaces:
 - Manager order items and refund/restock actions render immutable Variant label/SKU/options snapshots
+
+Commerce Copilot Variant review:
+- the drawer may show compact Product Variant summary cards
+- the drawer may show one selected Variant card with thumbnail, SKU, price source, and availability
+- the drawer may show a preview / Seller Estimate card sourced from the authoritative backend preview
+- manager quick actions may open:
+  - Variant configuration
+  - Product checkout preview
+  - Product editor
+- no Activate / Pause / stock / Price quick actions exist in Copilot
 - Client order detail/history renders immutable Variant label/SKU/options snapshots
 - line-level image/price text remains historical and does not query current live Variant state
 

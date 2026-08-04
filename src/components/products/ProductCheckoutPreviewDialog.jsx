@@ -29,6 +29,7 @@ import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 
 import api from "../../utils/api";
 import { formatCurrency } from "../../utils/formatters";
+import { getActiveCurrency } from "../../utils/currency";
 
 const defaultDestination = {
   address1: "",
@@ -56,7 +57,8 @@ const priceSourceLabel = {
   product_price: "Uses Product price",
 };
 
-const formatMoney = (value, currency) => formatCurrency(Number(value || 0), currency || "USD");
+const resolvedPreviewCurrency = (currency) => currency || getActiveCurrency();
+const formatMoney = (value, currency) => formatCurrency(Number(value || 0), resolvedPreviewCurrency(currency));
 const asArray = (value) => (Array.isArray(value) ? value : []);
 
 export const buildProductCheckoutPreviewSummary = (preview) => {
@@ -64,7 +66,7 @@ export const buildProductCheckoutPreviewSummary = (preview) => {
   const lines = [
     "Product checkout preview",
     "",
-    `Currency: ${preview.currency || "USD"}`,
+    `Currency: ${resolvedPreviewCurrency(preview.currency)}`,
     `Products: ${formatMoney(preview?.customer_view?.product_subtotal, preview.currency)}`,
   ];
   (preview?.product_lines || []).forEach((line) => {
@@ -99,7 +101,7 @@ export const buildProductCheckoutPreviewSummary = (preview) => {
 export const buildProductSellerEstimateSummary = (preview) => {
   const seller = preview?.seller_view;
   if (!preview || !seller) return "";
-  const currency = seller.currency || preview.currency || "USD";
+  const currency = resolvedPreviewCurrency(seller.currency || preview.currency);
   const lines = [
     "Seller estimate",
     "",
@@ -238,6 +240,7 @@ export default function ProductCheckoutPreviewDialog({
   token,
   products = [],
   initialProductId = null,
+  initialVariantId = null,
   globalDeliveryPolicy = null,
   title = "Preview customer checkout",
   onNotify,
@@ -332,6 +335,20 @@ export default function ProductCheckoutPreviewDialog({
     if (draftPreviewEnabled) return variantRows;
     return variantRows.filter((variant) => variant.is_active !== false);
   }, [draftPreviewEnabled, selectedProduct, variantRows]);
+
+  useEffect(() => {
+    if (!open || !initialVariantId || !variantOptions.length) return;
+    const matchedVariant = variantRows.find((variant) => Number(variant.id) === Number(initialVariantId));
+    if (!matchedVariant) {
+      setVariantSelection((current) => (Object.keys(current).length ? {} : current));
+      return;
+    }
+    const nextSelection = {};
+    asArray(matchedVariant.selection).forEach((row) => {
+      nextSelection[row.option_id] = row.value_id;
+    });
+    setVariantSelection(nextSelection);
+  }, [initialVariantId, open, variantOptions.length, variantRows]);
 
   useEffect(() => {
     if (!variantOptions.length) return;

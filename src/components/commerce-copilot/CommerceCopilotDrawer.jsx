@@ -33,6 +33,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../../utils/api";
+import { formatCurrency } from "../../utils/formatters";
 
 const QUICK_STARTS = [
   {
@@ -75,6 +76,11 @@ const QUICK_STARTS = [
     workflow: "explain_order",
     title: "Explain a product order",
     description: "Read the order state and explain the safest next manual step.",
+  },
+  {
+    workflow: "review_product_variants",
+    title: "Review Product variants",
+    description: "Explain Product options, activation blockers, selected Variant details, and preview-ready checkout facts.",
   },
 ];
 
@@ -258,6 +264,13 @@ const questionFieldLabel = (question) => {
   if (key === "currency") return "Currency";
   if (key === "business_selling_currency") return "Business selling currency";
   return humanizeFactKey(key) || "Your answer";
+};
+
+const formatVariantOptionSummary = (rows) => (Array.isArray(rows) ? rows.map((row) => `${row.option_name || row.option || "Option"}: ${row.value || ""}`).join(" • ") : "");
+const variantImageSrc = (image) => image?.url_public || image?.url || image?.src || "";
+const formatCopilotMoney = (value, currency, fallbackCurrency) => {
+  if (value == null || value === "") return "Not calculated";
+  return formatCurrency(Number(value), currency, { fallbackCurrency });
 };
 
 const questionPlaceholder = (question) => {
@@ -980,6 +993,7 @@ const inferWorkflowFromText = (message, { targetProductId, targetProductOrderId 
   const text = String(message || "").toLowerCase();
   if (!text.trim()) return null;
   if (targetProductOrderId || /\border\b|\btracking\b|\bpickup\b|\blabel\b/.test(text)) return "explain_order";
+  if (targetProductId && /\bvariant\b|\bvariants\b|\bcolour\b|\bcolor\b|\bsize\b|\bsku\b|\bactivate\b|\bactivation\b/.test(text)) return "review_product_variants";
   if (/\bpdf\b|\bdownload\b|\bdigital\b|\bebook\b|\bguide\b|\blicense\b|\bfile\b/.test(text)) return "create_digital_product";
   if (targetProductId && /\brepair\b|\bfix\b|\bmissing\b|\bready to ship\b/.test(text)) return "repair_product";
   if (/\btest shipping\b|\brate test\b|\bcarrier rate\b|\bshipping quote\b/.test(text)) return "test_shipping_setup";
@@ -995,8 +1009,12 @@ const CommerceCopilotDrawer = ({
   token,
   initialWorkflow = "",
   targetProductId = null,
+  targetVariantId = null,
   targetProductOrderId = null,
   onOpenProductCheckoutPreview = null,
+  onOpenProductVariantConfiguration = null,
+  onOpenProductEditor = null,
+  businessSellingCurrency = null,
 }) => {
   const auth = useMemo(() => (token ? { headers: { Authorization: `Bearer ${token}` } } : {}), [token]);
   const isMobile = typeof window !== "undefined" ? window.innerWidth < 900 : false;
@@ -1070,6 +1088,9 @@ const CommerceCopilotDrawer = ({
   const generationLocked = !chatAvailable;
   const executionLocked = !writeActionsAvailable || allowanceRemaining === 0;
   const latestAssistantMessage = [...messages].reverse().find((row) => row.role === "assistant");
+  const latestVariantCards = Array.isArray(latestAssistantMessage?.safe_metadata_json?.variant_cards)
+    ? latestAssistantMessage.safe_metadata_json.variant_cards
+    : [];
   const currentQuestions = useMemo(
     () => (Array.isArray(latestAssistantMessage?.safe_metadata_json?.questions)
       ? latestAssistantMessage.safe_metadata_json.questions.slice(0, 3)
@@ -1275,8 +1296,10 @@ const CommerceCopilotDrawer = ({
           workflow,
           mode: workflow === "explain_order" ? "guide" : "draft",
           target_product_id: effectiveProductId,
+          target_variant_id: options.variantId ?? targetVariantId ?? null,
           target_product_order_id: effectiveProductOrderId,
           initial_destination_country: options.initialDestinationCountry || null,
+          current_surface: options.currentSurface || null,
         },
         auth
       );
@@ -1300,7 +1323,27 @@ const CommerceCopilotDrawer = ({
     } finally {
       setBusy(false);
     }
-  }, [auth, targetProductId, targetProductOrderId]);
+  }, [auth, targetProductId, targetProductOrderId, targetVariantId]);
+
+  const runVariantCardAction = useCallback((action) => {
+    const type = String(action?.type || "");
+    const productId = action?.product_id ?? null;
+    if (type === "open_product_variant_configuration") {
+      onOpenProductVariantConfiguration?.(productId);
+      return;
+    }
+    if (type === "open_product_checkout_preview") {
+      if (action?.variant_id != null) {
+        onOpenProductCheckoutPreview?.(productId, { variantId: action.variant_id });
+      } else {
+        onOpenProductCheckoutPreview?.(productId);
+      }
+      return;
+    }
+    if (type === "open_product_editor") {
+      onOpenProductEditor?.(productId);
+    }
+  }, [onOpenProductCheckoutPreview, onOpenProductEditor, onOpenProductVariantConfiguration]);
 
   const generateContentPack = useCallback(async (sessionPublicId, payload = {}) => {
     setBusy(true);
@@ -2355,6 +2398,104 @@ const CommerceCopilotDrawer = ({
                     </Stack>
                   </CardContent>
                 </Card>
+              ) : null}
+
+              {latestVariantCards.length ? (
+                <Stack spacing={1.5}>
+                  {latestVariantCards.map((card, index) => (
+                    <Card key={`${card.type || "variant-card"}-${index}`} variant="outlined">
+                      <CardContent>
+                        <Stack spacing={1.25}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                              {card.product_name ? `${card.product_name}${card.title && card.title !== card.product_name ? ` — ${card.title}` : ""}` : card.title || "Product Variants"}
+                            </Typography>
+                            {card.mode ? (
+                              <Typography variant="body2" color="text.secondary">
+                                Variant mode: {humanizeStatus(card.mode, "none")}
+                              </Typography>
+                            ) : null}
+                          </Box>
+                          {card.type === "variant_summary" ? (
+                            <Stack spacing={0.5}>
+                              <Typography variant="body2">Options: {(card.option_names || []).join(" / ") || "None configured"}</Typography>
+                              <Typography variant="body2">
+                                Variants: {card.counts?.variants || 0} · Active: {card.counts?.active || 0} · Available: {card.counts?.available || 0} · Sold out: {card.counts?.sold_out || 0}
+                              </Typography>
+                              <Typography variant="body2">
+                                Price range: {card.price_summary?.minimum
+                                  ? card.price_summary?.varies
+                                    ? `${formatCopilotMoney(card.price_summary?.minimum, card.price_summary?.currency, businessSellingCurrency)} to ${formatCopilotMoney(card.price_summary?.maximum, card.price_summary?.currency, businessSellingCurrency)}`
+                                    : formatCopilotMoney(card.price_summary?.minimum || card.price_summary?.maximum, card.price_summary?.currency, businessSellingCurrency)
+                                  : "Not available"}
+                              </Typography>
+                              <Typography variant="body2">
+                                Activation readiness: {card.activation_readiness?.ready_for_activation ? "Ready" : "Blocked"}
+                              </Typography>
+                              {(card.activation_readiness?.blockers || []).length ? (
+                                <Alert severity="warning" sx={{ py: 0 }}>
+                                  {(card.activation_readiness.blockers || []).join(" ")}
+                                </Alert>
+                              ) : null}
+                            </Stack>
+                          ) : null}
+                          {card.type === "selected_variant" ? (
+                            <Stack spacing={0.5}>
+                              {variantImageSrc(card.image) ? (
+                                <Box
+                                  component="img"
+                                  src={variantImageSrc(card.image)}
+                                  alt={`${card.product_name || "Product"}${card.title ? ` ${card.title}` : ""} preview`}
+                                  sx={{ width: 72, height: 72, objectFit: "cover", borderRadius: 1.5, border: "1px solid", borderColor: "divider" }}
+                                />
+                              ) : null}
+                              <Typography variant="body2">Options: {formatVariantOptionSummary(card.selected_options)}</Typography>
+                              <Typography variant="body2">SKU: {card.sku || "—"}</Typography>
+                              <Typography variant="body2">Price: {card.effective_price != null && card.effective_price !== "" ? formatCopilotMoney(card.effective_price, card.currency, businessSellingCurrency) : "Not available"} · {card.price_source === "variant_override" ? "Variant price" : "Uses Product price"}</Typography>
+                              <Typography variant="body2">
+                                Availability: {card.available ? "Available" : card.out_of_stock ? "Out of stock" : "Not currently sellable"}
+                              </Typography>
+                              {card.image_source_label ? <Typography variant="caption" color="text.secondary">{card.image_source_label}</Typography> : null}
+                            </Stack>
+                          ) : null}
+                          {card.type === "variant_preview" ? (
+                            <Stack spacing={0.5}>
+                              {card.variant_label ? <Typography variant="body2">Variant: {card.variant_label}</Typography> : null}
+                              {card.variant_options?.length ? <Typography variant="body2">Options: {formatVariantOptionSummary(card.variant_options)}</Typography> : null}
+                              {card.variant_sku ? <Typography variant="body2">SKU: {card.variant_sku}</Typography> : null}
+                              <Typography variant="body2">Quantity: {card.quantity || 0}</Typography>
+                              <Typography variant="body2">Customer subtotal: {card.subtotal != null ? formatCopilotMoney(card.subtotal, card.currency, businessSellingCurrency) : "Not calculated"}</Typography>
+                              <Typography variant="body2">Shipping: {card.delivery_method === "shipping" && (card.shipping_amount == null || card.shipping_amount === "") ? "Requires destination" : formatCopilotMoney(card.shipping_amount, card.currency, businessSellingCurrency)}</Typography>
+                              <Typography variant="body2">Tax: {card.tax_message || "Not available"}</Typography>
+                              <Typography variant="body2">
+                                Estimated total: {card.final_total_status === "provider_calculated" ? "Finalized during checkout" : card.final_total != null ? formatCopilotMoney(card.final_total, card.currency, businessSellingCurrency) : card.known_amount_before_tax != null ? formatCopilotMoney(card.known_amount_before_tax, card.currency, businessSellingCurrency) : "Not calculated"}
+                              </Typography>
+                              {card.seller_view ? (
+                                <Typography variant="body2">
+                                  Seller estimate: {card.seller_view.status || "unavailable"}{card.seller_view?.margin?.estimated_order_contribution != null ? ` · Known margin ${formatCopilotMoney(card.seller_view.margin.estimated_order_contribution, card.seller_view.currency || card.currency, businessSellingCurrency)}` : ""}
+                                </Typography>
+                              ) : null}
+                              {(card.warnings || []).length ? (
+                                <Alert severity="info" sx={{ py: 0 }}>
+                                  {(card.warnings || []).join(" ")}
+                                </Alert>
+                              ) : null}
+                            </Stack>
+                          ) : null}
+                          {(card.actions || []).length ? (
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                              {(card.actions || []).map((action, actionIndex) => (
+                                <Button key={`${action.type || "action"}-${actionIndex}`} variant="outlined" onClick={() => runVariantCardAction(action)}>
+                                  {action.label || "Open"}
+                                </Button>
+                              ))}
+                            </Stack>
+                          ) : null}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Stack>
               ) : null}
 
               {isShippingTestWorkflow && shippingTest ? (

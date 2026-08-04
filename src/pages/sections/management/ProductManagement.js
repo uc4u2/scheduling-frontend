@@ -60,6 +60,7 @@ import CommerceCopilotDrawer from "../../../components/commerce-copilot/Commerce
 import ProductCheckoutPreviewDialog from "../../../components/products/ProductCheckoutPreviewDialog";
 import ProductVariantConfigurationDialog from "../../../components/products/ProductVariantConfigurationDialog";
 import useCompanyCurrencyContext from "../../../hooks/useCompanyCurrencyContext";
+import { getActiveCurrency } from "../../../utils/currency";
 
 const emptyForm = {
   sku: "",
@@ -339,6 +340,7 @@ const ProductManagement = ({ token }) => {
   const [copilotProductId, setCopilotProductId] = useState(null);
   const [checkoutPreviewOpen, setCheckoutPreviewOpen] = useState(false);
   const [checkoutPreviewInitialProductId, setCheckoutPreviewInitialProductId] = useState(null);
+  const [checkoutPreviewInitialVariantId, setCheckoutPreviewInitialVariantId] = useState(null);
   const [variantConfigOpen, setVariantConfigOpen] = useState(false);
   const [variantConfigProduct, setVariantConfigProduct] = useState(null);
   const [focusedSection, setFocusedSection] = useState("");
@@ -367,7 +369,7 @@ const ProductManagement = ({ token }) => {
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
   const compactLinkedInventorySnapshot = useMediaQuery((theme) => theme.breakpoints.down("sm"));
   const companyCurrencyContext = useCompanyCurrencyContext(companyCurrencyProfile);
-  const businessSellingCurrency = companyCurrencyContext.businessSellingCurrency || "USD";
+  const businessSellingCurrency = companyCurrencyContext.businessSellingCurrency || getActiveCurrency();
   const checkoutPreviewEditorFingerprint = useMemo(
     () => JSON.stringify({
       editingId: editing?.id || null,
@@ -406,8 +408,9 @@ const ProductManagement = ({ token }) => {
     setCopilotOpen(true);
   }, []);
 
-  const openCheckoutPreview = useCallback((productId = null) => {
+  const openCheckoutPreview = useCallback((productId = null, options = {}) => {
     setCheckoutPreviewInitialProductId(productId);
+    setCheckoutPreviewInitialVariantId(options?.variantId ?? null);
     setCheckoutPreviewOpen(true);
   }, []);
 
@@ -2348,6 +2351,15 @@ const ProductManagement = ({ token }) => {
         initialWorkflow={copilotWorkflow}
         targetProductId={copilotProductId}
         onOpenProductCheckoutPreview={openCheckoutPreview}
+        businessSellingCurrency={businessSellingCurrency}
+        onOpenProductVariantConfiguration={(productId) => {
+          const match = products.find((row) => String(row.id) === String(productId || ""));
+          if (match) openVariantConfiguration(match);
+        }}
+        onOpenProductEditor={(productId) => {
+          const match = products.find((row) => String(row.id) === String(productId || ""));
+          if (match) handleOpen(match);
+        }}
       />
       <ProductCheckoutPreviewDialog
         open={checkoutPreviewOpen}
@@ -2355,6 +2367,7 @@ const ProductManagement = ({ token }) => {
         token={token}
         products={products}
         initialProductId={checkoutPreviewInitialProductId}
+        initialVariantId={checkoutPreviewInitialVariantId}
         globalDeliveryPolicy={globalDeliveryPolicy}
         onNotify={notify}
         externalStateFingerprint={open ? checkoutPreviewEditorFingerprint : ""}

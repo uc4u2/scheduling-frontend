@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
@@ -11,6 +11,7 @@ const mockApiPatch = jest.fn();
 const mockApiDelete = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
 const mockVariantDialog = jest.fn(() => null);
+const mockPreviewDialog = jest.fn(() => null);
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -43,6 +44,44 @@ jest.mock("../../../components/commerce-copilot/CommerceCopilotDrawer", () => (p
 jest.mock("../../../components/products/ProductVariantConfigurationDialog", () => (props) => {
   mockVariantDialog(props);
   return props.open ? <div data-testid="variant-config-dialog">Variant configuration dialog</div> : null;
+});
+jest.mock("../../../components/products/ProductCheckoutPreviewDialog", () => {
+  const React = require("react");
+  return (props) => {
+    const firstFingerprintRef = React.useRef(null);
+    mockPreviewDialog(props);
+    React.useEffect(() => {
+      if (!props.open || props.initialProductId == null) return;
+      mockApiPost(
+        "/inventory/product-checkout-preview",
+        { product_lines: [{ product_id: props.initialProductId, quantity: 1 }] },
+        { headers: { Authorization: "Bearer test-token" } }
+      );
+    }, [props.open, props.initialProductId]);
+    const stale =
+      props.open &&
+      firstFingerprintRef.current != null &&
+      props.externalStateFingerprint &&
+      props.externalStateFingerprint !== firstFingerprintRef.current;
+    React.useEffect(() => {
+      if (!props.open) {
+        firstFingerprintRef.current = null;
+        return;
+      }
+      if (firstFingerprintRef.current == null) {
+        firstFingerprintRef.current = props.externalStateFingerprint || "";
+      }
+    }, [props.open, props.externalStateFingerprint]);
+    return props.open ? (
+      <div data-testid="checkout-preview-dialog">
+        Checkout preview dialog
+        <div>Preview only — no Product Order, inventory reservation, payment, shipping label, or customer notification will be created.</div>
+        {stale ? (
+          <div>Product checkout settings changed after this preview. Refresh to see the current customer experience.</div>
+        ) : null}
+      </div>
+    ) : null;
+  };
 });
 
 jest.setTimeout(15000);
@@ -202,6 +241,24 @@ describe("ProductManagement", () => {
     });
     mockApiPatch.mockResolvedValue({ data: {} });
     mockApiDelete.mockResolvedValue({ data: {} });
+  });
+
+  test("passes selected Variant context from Commerce Copilot to Product checkout preview", async () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+    const drawerProps = mockCopilotDrawer.mock.calls.at(-1)[0];
+    drawerProps.onOpenProductCheckoutPreview(60, { variantId: 101 });
+
+    await waitFor(() => {
+      const previewProps = mockPreviewDialog.mock.calls.at(-1)?.[0];
+      expect(previewProps?.open).toBe(true);
+      expect(previewProps?.initialProductId).toBe(60);
+      expect(previewProps?.initialVariantId).toBe(101);
+    });
+    expect(screen.getByTestId("checkout-preview-dialog")).toBeInTheDocument();
   });
 
   test("shows physical shipping fields, uses server country catalog, and reveals customs only for international shipping", async () => {
