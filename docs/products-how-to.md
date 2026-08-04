@@ -61,7 +61,7 @@ Rules:
 - `Specifications` uses label/value rows and is meant for customer-facing marketing/spec data
 - no Size/Colour variant support exists in PV1
 
-## Draft and active Product options and variants (PV2-B2A)
+## Draft and active Product options and variants
 
 Products now support both:
 
@@ -78,6 +78,37 @@ Current activation rules:
 - the Product must be active and physical
 - linked Materials & Supplies inventory must be removed first
 - the Variant configuration must pass server readiness
+
+Manager workflow:
+1. Open **Configure options** / **Configure size and colour**.
+2. Step 1: add valid option names and values.
+3. Step 2: review generated combinations and set SKU, stock, optional price, and optional image overrides.
+4. Step 3: review readiness, save the draft, and activate when the checklist is clear.
+
+Editor rules:
+- no phantom option/value rows are counted as configuration
+- counts use only valid nonblank values
+- unsaved edits show `Unsaved changes`
+- server activation readiness is authoritative only after Save
+- when edits are unsaved, the dialog shows `Save your changes to refresh the activation check.`
+- linked Materials & Supplies inventory is shown once inside the activation checklist, not repeated across the dialog
+
+Image workflow:
+- each value may use an existing Product gallery image or upload a new Product image directly from the dialog
+- uploading from the dialog creates a normal `ProductImage` owned by the Product, refreshes the gallery, and auto-assigns the uploaded image to the current value
+- removing a value image clears only the Variant configuration reference; it does not delete the gallery image
+- Variant image overrides are optional and sit above value-image inheritance
+
+Image inheritance:
+1. Variant-specific image override
+2. selected Colour / Color value image
+3. first selected Option Value image
+4. parent Product gallery fallback
+
+Visual choices:
+- Colour / Color style options may show a warning when a value has no image
+- this is a recommendation for clearer customer presentation, not a hard activation blocker
+- text-first options such as Size can still use the parent Product gallery image
 
 When Variant selling is active:
 - customers must choose a valid available option combination before adding to basket

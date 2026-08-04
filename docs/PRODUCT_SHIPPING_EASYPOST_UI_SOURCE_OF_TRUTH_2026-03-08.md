@@ -30,42 +30,48 @@ Public Product page additions:
   - `Shipping & returns`
 - mobile sticky purchase bar with effective price + `Add to basket`
 
-## Product Commerce PV2-A / PV2-B2A
+## Product Commerce Product variants
 
-As of Monday, August 3, 2026, the manager UI supports draft-only Product option and variant preparation with no public selling activation.
+As of Tuesday, August 4, 2026, the manager UI supports both draft configuration and active Variant selling for supported physical Products.
 
-Manager-only additions:
+Manager additions:
 - Product row `More actions` → `Configure options`
 - Product editor:
   - `Configure size and colour`
   - `Edit options and variants` when a draft already exists
 - `ProductVariantConfigurationDialog.jsx`
 
-Draft workflow contract:
-- warning shown inside the dialog:
-  - customers still see the current parent Product
-  - variant selling will be enabled in PV2-B
+Manager workflow contract:
+- Step 1: `Options and values`
+- Step 2: `Variants`
+- Step 3: `Review and activate`
+- `Close` is always available
+- `Discard changes` appears only when the draft differs from the saved server configuration
+- `Save draft` / `Save active changes` reload the authoritative server configuration and readiness
+- `Activate Variant selling` remains disabled until the saved server configuration is ready
+- `Pause Variant selling` preserves options, values, variants, and historical Orders
+
+Dialog behavior:
+- no blank preset row is counted as a real option
+- no empty value is counted as a real combination
+- one compact status header replaces repeated readiness/runtime alerts
+- saved server readiness is not shown as though it describes unsaved client edits
+- linked Materials & Supplies inventory is explained once inside the activation checklist
+- runtime-disabled environments show:
+  - `Activation is currently unavailable in this environment. You can continue editing and saving the Variant draft.`
 - at most 2 option groups
 - at most 20 values per option
 - at most 100 generated combinations
 - generic option names supported, with `Colour` and `Size` as the main presets
 
-Draft variant fields:
+Variant fields:
 - active / inactive
 - SKU
 - stock quantity
 - optional price override
 - optional gallery image
 
-PV2-A exclusions:
-- no public Product selectors
-- no cart changes
-- no checkout changes
-- no Product Order changes
-- no variant inventory decrement
-- no customer-facing variant payload
-
-PV2-B2A now adds:
+Current active-selling UI:
 - manager activation and pause for readiness-complete Variant Products
 - runtime-disabled activation messaging
 - public Product `Choose options` flow for active Variant Products
@@ -81,13 +87,18 @@ Current active-selling boundaries:
 - no per-Variant cost
 - no Commerce Copilot Variant actions yet
 
-Still excluded in earlier PV1-only behavior:
-- `ProductOption`
-- `ProductOptionValue`
-- `ProductVariant`
-- Colour/Size selectors
-- variant stock
-- variant order snapshots
+Manager media workflow:
+- value rows may choose from the Product gallery or upload a new Product image
+- dialog uploads reuse the normal Product image storage/validation path
+- uploaded images are auto-assigned to the current value after gallery refresh
+- removing a value image assignment does not delete the gallery image
+- Variant image overrides remain optional
+
+Image inheritance explanation:
+1. Variant-specific image override
+2. selected Colour / Color value image
+3. first selected Option Value image
+4. parent Product gallery fallback
 
 ## Commerce Copilot Note
 
