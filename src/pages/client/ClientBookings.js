@@ -74,6 +74,11 @@ const customerShippingStatusColor = (value) => {
   return "default";
 };
 
+const formatVariantOptions = (options) =>
+  (Array.isArray(options) ? options : [])
+    .map((row) => `${row.option_name}: ${row.value}`)
+    .join(" • ");
+
 export default function ClientBookings() {
   const [activeSlice, setActiveSlice] = useState(0);
 
@@ -541,7 +546,7 @@ export default function ClientBookings() {
               <Typography>
                 <b>Provider:</b> {selected.recruiter}
               </Typography>
-              <Typography>
+              <Typography component="div">
                 <b>Status:</b>{" "}
                 <Chip
                   label={selected.status}
@@ -549,7 +554,7 @@ export default function ClientBookings() {
                   size="small"
                 />
               </Typography>
-              <Typography sx={{ mt: 1 }}>
+              <Typography component="div" sx={{ mt: 1 }}>
                 <b>Payment:</b>{" "}
                 <Chip
                   label={selected.payment_status_label || toTitle(selected.payment_status)}
@@ -747,6 +752,21 @@ export default function ClientBookings() {
                     {(selectedOrder.items || []).map((item) => (
                       <Box key={item.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
                         <Typography sx={{ fontWeight: 700 }}>{item.name || "Item"}</Typography>
+                        {item.variant_label_snapshot ? (
+                          <Typography variant="body2" color="text.secondary">
+                            {item.variant_label_snapshot}
+                          </Typography>
+                        ) : null}
+                        {item.variant_options_snapshot?.length ? (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {formatVariantOptions(item.variant_options_snapshot)}
+                          </Typography>
+                        ) : null}
+                        {item.variant_sku_snapshot ? (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Variant SKU: {item.variant_sku_snapshot}
+                          </Typography>
+                        ) : null}
                         <Typography variant="body2" color="text.secondary">
                           Qty {item.quantity} • {money(item.unit_price, selectedOrder.currency)} each
                         </Typography>

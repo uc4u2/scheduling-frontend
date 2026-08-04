@@ -115,4 +115,97 @@ describe("ClientBookings", () => {
       )
     );
   });
+
+  test("renders variant snapshot details in the client order detail dialog", async () => {
+    api.get
+      .mockResolvedValueOnce({
+        data: {
+          bookings: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          orders: [
+            {
+              id: 51,
+              display_number: "#51",
+              created_at: "2026-08-03T13:00:00Z",
+              payment_status: "paid",
+              payment_status_label: "Paid",
+              fulfillment_status: "pending",
+              fulfillment_status_label: "Pending",
+              delivery_method: "shipping",
+              delivery_method_label: "Shipping",
+              total_amount: "158.00",
+              currency: "CAD",
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 51,
+          display_number: "#51",
+          created_at: "2026-08-03T13:00:00Z",
+          payment_status: "paid",
+          payment_status_label: "Paid",
+          fulfillment_status: "pending",
+          fulfillment_status_label: "Pending",
+          delivery_method: "shipping",
+          delivery_method_label: "Shipping",
+          total_amount: "158.00",
+          currency: "CAD",
+          shipping: {
+            name: "Ava Client",
+            address1: "10 Queen St",
+            city: "Toronto",
+            region: "ON",
+            postal_code: "M5H 2N2",
+            country: "CA",
+          },
+          items: [
+            {
+              id: 701,
+              name: "Carry Bag",
+              quantity: 2,
+              unit_price: "79.00",
+              total_price: "158.00",
+              variant_label_snapshot: "Black / Mini",
+              variant_sku_snapshot: "BAG-BLACK-MINI",
+              variant_options_snapshot: [
+                { option_name: "Colour", value: "Black" },
+                { option_name: "Size", value: "Mini" },
+              ],
+            },
+          ],
+          timeline: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          entitlements: [],
+        },
+      });
+
+    render(<ClientBookings />);
+
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        "/api/client/product-orders",
+        expect.objectContaining({
+          headers: expect.any(Object),
+          params: expect.objectContaining({ slug: "sale" }),
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: /orders/i }));
+    const viewButtons = await screen.findAllByRole("button", { name: /view/i });
+    fireEvent.click(viewButtons[0]);
+
+    expect(await screen.findByText(/black \/ mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/variant sku:\s*bag-black-mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/colour: black • size: mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/line total:\s*CA\$158\.00/i)).toBeInTheDocument();
+  });
 });

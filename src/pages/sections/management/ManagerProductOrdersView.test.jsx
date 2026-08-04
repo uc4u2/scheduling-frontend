@@ -423,6 +423,106 @@ describe("ManagerProductOrdersView", () => {
     expect(screen.getByText(/colour: black • size: mini/i)).toBeInTheDocument();
   });
 
+  test("shows variant-aware refund restock eligibility from immutable order snapshots", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (String(url) === "/inventory/product-orders") {
+        return Promise.resolve({
+          data: {
+            orders: [
+              {
+                id: 1,
+                client_name: "Client",
+                delivery_method: "shipping",
+                delivery_method_label: "Shipping",
+                fulfillment_status: "pending",
+                fulfillment_status_label: "Pending",
+                payment_status: "paid",
+                payment_status_label: "Paid",
+                total_amount: 120,
+                currency: "CAD",
+                refunded_cents: 0,
+              },
+            ],
+            pagination: { total: 1 },
+            company: { country_code: "CA" },
+          },
+        });
+      }
+      if (String(url) === "/inventory/shipping-settings") {
+        return Promise.resolve({ data: { package_profiles: [] } });
+      }
+      if (String(url) === "/inventory/product-orders/1") {
+        return Promise.resolve({
+          data: {
+            id: 1,
+            client_name: "Client",
+            client_email: "client@example.com",
+            delivery_method: "shipping",
+            delivery_method_label: "Shipping",
+            fulfillment_status: "pending",
+            fulfillment_status_label: "Pending",
+            payment_status: "paid",
+            payment_status_label: "Paid",
+            total_amount: 120,
+            currency: "CAD",
+            refunded_cents: 0,
+            inventory_committed: true,
+            items: [
+              {
+                id: 71,
+                product_id: 88,
+                name: "Carry Bag",
+                sku: "BAG-001",
+                quantity: 3,
+                unit_price: "79.00",
+                total_price: "237.00",
+                product_track_stock: true,
+                product_qty_on_hand: 2,
+                variant_label_snapshot: "Black / Mini",
+                variant_sku_snapshot: "BAG-BLACK-MINI",
+                variant_options_snapshot: [
+                  { option_name: "Colour", value: "Black" },
+                  { option_name: "Size", value: "Mini" },
+                ],
+              },
+            ],
+            extra_metadata: {
+              product_order_restocked_qty_by_item: {
+                "71": 1,
+              },
+            },
+            payments: [],
+            events: [],
+            company: { timezone: "America/Toronto" },
+            latest_shipment: null,
+            parcel_snapshot: null,
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ManagerProductOrdersView token="test-token" />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /view/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /actions/i }));
+    fireEvent.click(await screen.findByText(/^refund$/i));
+    fireEvent.click(await screen.findByRole("checkbox", { name: /show advanced refund options/i }));
+
+    expect(await screen.findByText(/carry bag — black \/ mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/variant sku:\s*bag-black-mini/i)).toBeInTheDocument();
+    expect(screen.getByText(/colour: black • size: mini/i)).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Already restocked: 1");
+    expect(document.body.textContent).toContain("Remaining eligible: 2");
+    expect(document.body.textContent).toContain("On hand: 2");
+    const quantityInput = screen.getByRole("spinbutton", { name: /quantity/i });
+    expect(quantityInput).toHaveAttribute("max", "2");
+  });
+
   test("opens Commerce Copilot order explanation in preview mode", async () => {
     render(
       <ThemeProvider theme={createTheme()}>

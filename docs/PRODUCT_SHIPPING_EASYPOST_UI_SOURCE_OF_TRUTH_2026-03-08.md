@@ -80,12 +80,46 @@ Current active-selling UI:
 - hosted/direct checkout `variant_id` payloads
 - storefront temporary-unavailable handling when the runtime kill switch is off
 - Manager Order and Client confirmation Variant snapshot rendering
+- manager Variant checkout preview and Seller Estimate rendering
 
 Current active-selling boundaries:
 - no per-Variant shipping fields
 - no per-Variant customs fields
 - no per-Variant cost
 - no Commerce Copilot Variant actions yet
+
+Manager preview UX:
+- `ProductCheckoutPreviewDialog.jsx` accepts both Simple Products and Variant Products
+- active Variant Products require a complete manager Variant selection before preview
+- draft Variant preview is manager-only and clearly labeled as not publicly sellable
+- preview shows authoritative:
+  - Variant label
+  - Variant SKU
+  - selected options
+  - selling price
+  - price source
+  - image source
+  - availability
+- preview totals continue to use the parent Product shipping/customs contract
+- preview remains side-effect free and does not create an Order, checkout session, reservation, or email
+
+Seller Estimate UX:
+- consumes the authoritative preview response
+- shows line-level Variant revenue and parent Product cost basis
+- uses:
+  - `Known estimate`
+  - `Partial estimate`
+  - `Estimate unavailable`
+- does not invent:
+  - Variant cost
+  - duties
+  - payment-processing fees
+  - FX
+
+Remaining order surfaces:
+- Manager order items and refund/restock actions render immutable Variant label/SKU/options snapshots
+- Client order detail/history renders immutable Variant label/SKU/options snapshots
+- line-level image/price text remains historical and does not query current live Variant state
 
 Manager media workflow:
 - value rows may choose from the Product gallery or upload a new Product image

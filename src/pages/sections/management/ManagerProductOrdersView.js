@@ -876,15 +876,22 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
             return provider === "stripe" && ["captured", "paid", "succeeded"].includes(status);
           }))
       );
+      const restockRegistry = data?.extra_metadata?.product_order_restocked_qty_by_item || {};
       const itemMap = {};
       (data?.items || []).forEach((item) => {
         const maxQuantity = Number(item?.quantity || 0);
+        const alreadyRestocked = Number(restockRegistry?.[String(item.id)] || 0);
         itemMap[item.id] = {
           id: item.id,
           productId: item.product_id,
           name: item.name,
+          variantLabel: item?.variant_label_snapshot || "",
+          variantSku: item?.variant_sku_snapshot || "",
+          variantOptions: Array.isArray(item?.variant_options_snapshot) ? item.variant_options_snapshot : [],
           maxQuantity,
-          quantity: maxQuantity,
+          remainingEligible: Math.max(maxQuantity - alreadyRestocked, 0),
+          alreadyRestocked,
+          quantity: Math.max(maxQuantity - alreadyRestocked, 0),
           selected: false,
           trackStock: Boolean(item?.product_track_stock),
           currentOnHand: item?.product_qty_on_hand,
@@ -1653,7 +1660,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         const items = { ...prev.items };
         const existing = items[itemId];
         if (!existing) return prev;
-        const max = existing.maxQuantity ?? existing.quantity ?? 0;
+        const max = existing.remainingEligible ?? existing.maxQuantity ?? existing.quantity ?? 0;
         const next = Math.max(0, Math.min(Number.isFinite(raw) ? Math.round(raw) : 0, max));
         items[itemId] = { ...existing, quantity: next };
         return { ...prev, items };
@@ -3071,7 +3078,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                       disabled={!item.trackStock}
                                     />
                                   }
-                                  label={`${item.name || "Item"}${item.trackStock ? "" : " (not tracked)"}`}
+                                  label={`${item.name || "Item"}${item.variantLabel ? ` — ${item.variantLabel}` : ""}${item.trackStock ? "" : " (not tracked)"}`}
                                 />
                                 <TextField
                                   size="small"
@@ -3079,16 +3086,30 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                   label="Quantity"
                                   value={item.quantity}
                                   onChange={handleRestockQuantityChange(item.id)}
-                                  inputProps={{ min: 0, max: item.maxQuantity }}
+                                  inputProps={{ min: 0, max: item.remainingEligible ?? item.maxQuantity }}
                                   disabled={!item.trackStock || !item.selected}
                                   sx={{ width: 140 }}
                                 />
-                                {item.trackStock && (
-                                  <Typography variant="caption" color="text.secondary" sx={{ ml: { xs: 0, sm: 2 } }}>
-                                    Sold: {item.maxQuantity}
-                                    {typeof item.currentOnHand === "number" ? ` | On hand: ${item.currentOnHand}` : ""}
-                                  </Typography>
-                                )}
+                                <Stack spacing={0.25} sx={{ ml: { xs: 0, sm: 2 } }}>
+                                  {item.variantSku ? (
+                                    <Typography variant="caption" color="text.secondary">
+                                      Variant SKU: {item.variantSku}
+                                    </Typography>
+                                  ) : null}
+                                  {item.variantOptions?.length ? (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {item.variantOptions.map((row) => `${row.option_name}: ${row.value}`).join(" • ")}
+                                    </Typography>
+                                  ) : null}
+                                  {item.trackStock ? (
+                                    <Typography variant="caption" color="text.secondary">
+                                      Purchased: {item.maxQuantity}
+                                      {` | Already restocked: ${item.alreadyRestocked || 0}`}
+                                      {` | Remaining eligible: ${item.remainingEligible ?? item.maxQuantity}`}
+                                      {typeof item.currentOnHand === "number" ? ` | On hand: ${item.currentOnHand}` : ""}
+                                    </Typography>
+                                  ) : null}
+                                </Stack>
                               </Stack>
                             ))}
                           </Stack>

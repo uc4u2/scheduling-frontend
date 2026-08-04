@@ -178,6 +178,57 @@ Refund/restock contract:
 - duplicate manual refund replays do not restore stock twice
 - simple Product refunds keep the existing parent-Product behavior
 
+## Product checkout preview and Seller Estimate
+
+Managers can now preview a Product checkout line without creating an Order or reserving stock.
+
+Entry points:
+- Product row action: **Preview customer checkout**
+- Product editor action: **Preview customer checkout**
+
+Preview rules:
+- Simple Products keep the current quantity + delivery workflow
+- active Variant Products require a complete Variant selection before preview
+- draft Variants may be previewed by managers only and are clearly marked as draft-only
+- the server returns the authoritative Product line, including Variant label, Variant SKU, selected options, price source, image source, delivery, tax state, and total inputs
+
+Preview labels:
+- `Draft Variant preview — customers cannot purchase this Variant yet.`
+- `Active selling preview`
+- `Variant selling is temporarily disabled by runtime configuration.` when the environment kill switch is off
+
+Preview image order:
+1. Variant image override
+2. selected Colour / Color value image
+3. first selected Option Value image
+4. Product gallery fallback
+
+Preview side-effect guarantee:
+- no Product Order
+- no payment session
+- no stock decrement
+- no stock reservation
+- no email
+
+Seller Estimate rules:
+- revenue uses the authoritative Product or Variant selling price from preview
+- Product cost uses the parent Product cost
+- no Variant-specific cost exists
+- shipping cost is included only when preview has a known shipping amount
+- duties, import taxes, packaging, labour, overhead, and payment-processing fees are not invented
+
+Estimate states:
+- `Known estimate`
+- `Partial estimate`
+- `Estimate unavailable`
+
+Partial estimate examples:
+- Product cost missing
+- shipping rate not selected
+- pickup with no carrier shipping cost
+- payment-processing fees not included
+- international duties/import taxes not included
+
 ### Specifications format
 
 Each specification row contains:
