@@ -591,6 +591,7 @@ export function CheckoutFormCore({
   paymentsEnabled,
   tipEnabled,
   cardOnFileEnabled,
+  productCheckout,
   displayCurrency,
   policy,
   holdMinutes,
@@ -653,17 +654,19 @@ export function CheckoutFormCore({
   };
   const navigate = useNavigate();
   const location = useLocation();
+  const productCheckoutEnabled = Boolean(productCheckout?.enabled ?? paymentsEnabled);
 
   const basePaymentMode = useMemo(() => {
-    const mode = (policy?.mode || "").toLowerCase();
-    if (paymentsEnabled) {
-      if (mode === "deposit") return "deposit";
-      return "pay";
-    }
+    const mode = String(policy?.booking_payment?.mode || policy?.mode || "").toLowerCase();
+    if (mode === "capture" && cardOnFileEnabled) return "capture";
+    if (mode === "deposit" && paymentsEnabled) return "deposit";
+    if (mode === "pay" && paymentsEnabled) return "pay";
+    if (mode === "off") return "off";
     if (cardOnFileEnabled) return "capture";
+    if (paymentsEnabled) return "pay";
     return "off";
-  }, [paymentsEnabled, cardOnFileEnabled, policy?.mode]);
-  const tipAllowedNow = paymentsEnabled && tipEnabled;
+  }, [paymentsEnabled, cardOnFileEnabled, policy]);
+  const tipAllowedNow = (basePaymentMode === "pay" || basePaymentMode === "deposit") && tipEnabled;
 
   // Resolve a reliable slug for API calls, even if props/params are missing
   const slugLocal = useMemo(() => {
@@ -1160,10 +1163,10 @@ export function CheckoutFormCore({
   const hasPackagePurchase = packageItems.length > 0;
   const effectivePaymentMode = useMemo(() => {
     if (productItems.length > 0 || packageItems.length > 0) {
-      return paymentsEnabled ? "pay" : "off";
+      return productCheckoutEnabled ? "pay" : "off";
     }
     return basePaymentMode;
-  }, [productItems.length, packageItems.length, paymentsEnabled, basePaymentMode]);
+  }, [productItems.length, packageItems.length, productCheckoutEnabled, basePaymentMode]);
   const showCaptureOption = effectivePaymentMode === "capture";
   const showPayOption = effectivePaymentMode === "pay" || effectivePaymentMode === "deposit";
   const showOnlinePayment = effectivePaymentMode !== "off";
@@ -2293,8 +2296,8 @@ export function CheckoutFormCore({
       setErr("Your cart is empty.");
       return;
     }
-    if (productItems.length > 0 && !paymentsEnabled) {
-      setErr("Online payments are disabled for this company. Products require online payment.");
+    if (productItems.length > 0 && !productCheckoutEnabled) {
+      setErr("This store is not currently accepting online Product payments.");
       return;
     }
     if (packageItems.length > 0) {
@@ -2349,7 +2352,7 @@ export function CheckoutFormCore({
     }
 
     if (!showPayOption) {
-      setErr("Immediate payment is not enabled for this company.");
+      setErr(productItems.length > 0 ? "This store is not currently accepting online Product payments." : "Immediate payment is not enabled for this company.");
       return;
     }
 
@@ -3984,6 +3987,7 @@ export default function Checkout(props) {
   const [tipEnabled, setTipEnabled] = useState(true);
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const [policy, setPolicy] = useState(null);
+  const [productCheckoutPolicy, setProductCheckoutPolicy] = useState(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
   const [companyContactEmail, setCompanyContactEmail] = useState("");
   const [companyContactPhone, setCompanyContactPhone] = useState("");
@@ -4009,16 +4013,29 @@ export default function Checkout(props) {
         const policyData = policyRes?.data || null;
         const reviewsData = reviewsRes?.data || null;
 
-        const payNow = !!info?.enable_stripe_payments;
-        const hasPublishable = Boolean(info?.stripe_publishable_key);
-        const policyMode = (policyData?.mode || '').toLowerCase();
-        const allowCardFlag = Boolean(info?.allow_card_on_file);
-        const cardOnFile = Boolean(hasPublishable && !payNow && (allowCardFlag || policyMode === 'capture'));
+        const legacyEnable = Boolean(info?.enable_stripe_payments);
+        const legacyAllowCard = Boolean(info?.allow_card_on_file);
+        const bookingMode = String(
+          policyData?.booking_payment?.mode ||
+          policyData?.mode ||
+          (legacyAllowCard ? "capture" : legacyEnable ? "pay" : "off")
+        ).toLowerCase();
+        const cardOnFile = bookingMode === "capture";
+        const payNow = bookingMode === "pay" || bookingMode === "deposit";
+        const productPolicy = policyData?.product_checkout && typeof policyData.product_checkout === "object"
+          ? policyData.product_checkout
+          : {
+              enabled: legacyEnable,
+              mode: "pay",
+              requires_payment_during_checkout: true,
+              card_on_file_supported: false,
+            };
         const hold = Number(info?.booking_hold_minutes ?? 0);
 
         setPaymentsEnabled(payNow);
         setCardOnFileEnabled(cardOnFile);
         setPolicy(policyData);
+        setProductCheckoutPolicy(productPolicy);
         setHoldMinutes(Number.isFinite(hold) && hold > 0 ? hold : null);
         setCompanyContactEmail(String(info?.contact_email || info?.email || "").trim());
         setCompanyContactPhone(String(info?.phone || "").trim());
@@ -4034,6 +4051,7 @@ export default function Checkout(props) {
         setPaymentsEnabled(false);
         setCardOnFileEnabled(false);
         setPolicy(null);
+        setProductCheckoutPolicy(null);
         setHoldMinutes(null);
         setTipEnabled(true);
       } finally {
@@ -4113,8 +4131,9 @@ export default function Checkout(props) {
       tipEnabled={tipEnabled}
       cardOnFileEnabled={cardOnFileEnabled}
       displayCurrency={displayCurrency}
-      policy={policy}
-      holdMinutes={holdMinutes}
+        policy={policy}
+        productCheckout={productCheckoutPolicy}
+        holdMinutes={holdMinutes}
       contactEmail={companyContactEmail}
       contactPhone={companyContactPhone}
     />

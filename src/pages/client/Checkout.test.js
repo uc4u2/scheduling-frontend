@@ -319,6 +319,89 @@ describe("CheckoutFormCore", () => {
     ).toBeInTheDocument();
   });
 
+  test("product-only carts ignore booking capture mode and continue with pay now", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "product-1",
+        type: "product",
+        product_id: 1,
+        name: "Pendant",
+        price: 85,
+        quantity: 1,
+      },
+    ]);
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        businessName="Vanda Orchid Jewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled
+        productCheckout={{ enabled: true, mode: "pay", requires_payment_during_checkout: true }}
+        displayCurrency="CAD"
+        policy={{ booking_payment: { mode: "capture" }, mode: "capture" }}
+        holdMinutes={3}
+      />
+    );
+
+    expect(await screen.findByRole("button", { name: /pay now/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/may securely save my card with Stripe/i)).not.toBeInTheDocument();
+  });
+
+  test("product-only carts show the product-specific disabled message", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "product-1",
+        type: "product",
+        product_id: 1,
+        name: "Pendant",
+        price: 85,
+        quantity: 1,
+      },
+    ]);
+    mockApiGet.mockImplementation((url) => {
+      if (String(url).includes("/delivery-methods")) {
+        return Promise.resolve({
+          data: {
+            delivery_enabled: true,
+            methods: [{ code: "pickup", label: "Pickup", enabled: true }],
+            effective_method_codes: ["pickup"],
+            allowed_methods: ["pickup"],
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        businessName="Vanda Orchid Jewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        productCheckout={{ enabled: false, mode: "pay", requires_payment_during_checkout: true }}
+        displayCurrency="CAD"
+        policy={{ booking_payment: { mode: "off" }, mode: "off" }}
+        holdMinutes={3}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText(/your name/i), {
+      target: { value: "Yousef Jalali" },
+    });
+    fireEvent.change(screen.getByLabelText(/your email/i), {
+      target: { value: "yousef@example.com" },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /place order/i })).not.toBeDisabled()
+    );
+    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+
+    expect(await screen.findByText(/not currently accepting online Product payments/i)).toBeInTheDocument();
+  });
+
   test("shows cross-border customs notice and safe international unavailability message", async () => {
     mockLoadCart.mockReturnValue([
       {

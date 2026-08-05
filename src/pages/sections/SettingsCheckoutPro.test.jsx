@@ -43,6 +43,18 @@ function renderSettings() {
   );
 }
 
+function mockCheckoutSettings({ companyProfile, paymentsPolicy }) {
+  mockApiGet.mockImplementation((url) => {
+    if (url === "/admin/company-profile") {
+      return Promise.resolve({ data: companyProfile });
+    }
+    if (url === "/admin/payments-policy") {
+      return Promise.resolve({ data: paymentsPolicy });
+    }
+    return Promise.reject(new Error(`Unhandled GET ${url}`));
+  });
+}
+
 describe("SettingsCheckoutPro", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,8 +63,8 @@ describe("SettingsCheckoutPro", () => {
   });
 
   test("shows resolved localized business currency and keeps the selling-currency field read-only", async () => {
-    mockApiGet.mockResolvedValue({
-      data: {
+    mockCheckoutSettings({
+      companyProfile: {
         enable_stripe_payments: false,
         allow_card_on_file: false,
         stripe_publishable_key: "pk_test_123",
@@ -69,6 +81,7 @@ describe("SettingsCheckoutPro", () => {
           currency_source: "tax_country",
         },
       },
+      paymentsPolicy: { mode: "off" },
     });
 
     renderSettings();
@@ -82,8 +95,8 @@ describe("SettingsCheckoutPro", () => {
 
   test("legacy Quebec tax-country context resolves to CAD and keeps the Quebec option", async () => {
     window.localStorage.setItem("company_currency", "USD");
-    mockApiGet.mockResolvedValue({
-      data: {
+    mockCheckoutSettings({
+      companyProfile: {
         enable_stripe_payments: false,
         allow_card_on_file: false,
         stripe_publishable_key: "pk_test_123",
@@ -100,6 +113,7 @@ describe("SettingsCheckoutPro", () => {
           currency_source: "tax_country",
         },
       },
+      paymentsPolicy: { mode: "off" },
     });
 
     renderSettings();
@@ -110,8 +124,8 @@ describe("SettingsCheckoutPro", () => {
 
   test("asks for confirmation before saving a changed fixed business currency", async () => {
     const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-    mockApiGet.mockResolvedValue({
-      data: {
+    mockCheckoutSettings({
+      companyProfile: {
         enable_stripe_payments: false,
         allow_card_on_file: false,
         stripe_publishable_key: "pk_test_123",
@@ -128,25 +142,34 @@ describe("SettingsCheckoutPro", () => {
           currency_source: "display_currency",
         },
       },
+      paymentsPolicy: { mode: "off" },
     });
-    mockApiPost.mockResolvedValue({
-      data: {
-        enable_stripe_payments: false,
-        allow_card_on_file: false,
-        stripe_publishable_key: "pk_test_123",
-        booking_hold_minutes: 3,
-        prices_include_tax: false,
-        charge_currency_mode: "PLATFORM_FIXED",
-        tax_country_code: "CA",
-        tax_region_code: "ON",
-        display_currency: "USD",
-        country_code: "CA",
-        currency_context: {
-          charge_currency_mode: "PLATFORM_FIXED",
-          business_selling_currency: "USD",
-          currency_source: "display_currency",
-        },
-      },
+    mockApiPost.mockImplementation((url) => {
+      if (url === "/admin/company-profile") {
+        return Promise.resolve({
+          data: {
+            enable_stripe_payments: false,
+            allow_card_on_file: false,
+            stripe_publishable_key: "pk_test_123",
+            booking_hold_minutes: 3,
+            prices_include_tax: false,
+            charge_currency_mode: "PLATFORM_FIXED",
+            tax_country_code: "CA",
+            tax_region_code: "ON",
+            display_currency: "USD",
+            country_code: "CA",
+            currency_context: {
+              charge_currency_mode: "PLATFORM_FIXED",
+              business_selling_currency: "USD",
+              currency_source: "display_currency",
+            },
+          },
+        });
+      }
+      if (url === "/admin/payments-policy") {
+        return Promise.resolve({ data: { saved: true, policy: { mode: "off" } } });
+      }
+      return Promise.resolve({ data: {} });
     });
 
     renderSettings();
@@ -198,6 +221,9 @@ describe("SettingsCheckoutPro", () => {
             },
           },
         });
+      }
+      if (url === "/admin/payments-policy") {
+        return Promise.resolve({ data: { mode: "capture" } });
       }
       if (url === "/booking/services?active=true") {
         return Promise.resolve({
@@ -271,13 +297,94 @@ describe("SettingsCheckoutPro", () => {
 
     renderSettings();
     await screen.findByText(/Current Product and Finance currency:/i);
+    const compatibilitySummary = screen.getAllByRole("alert").find((node) =>
+      node.textContent?.includes("Appointments: Card on file · Products: Paid during Checkout")
+    );
+    expect(compatibilitySummary).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /preview booking payment/i }));
 
     expect(await screen.findByRole("heading", { name: /preview customer payment/i })).toBeInTheDocument();
-    expect(await screen.findByText(/Current mode:/i)).toHaveTextContent("Pay during checkout");
+    expect(await screen.findByText(/Appointment mode:/i)).toHaveTextContent("Card on file");
     expect(await screen.findByText(/Subtotal before tax/i)).toBeInTheDocument();
     expect(await screen.findByText(/Calculated by Stripe/i)).toBeInTheDocument();
     expect(await screen.findByText(/Preview only — no Booking/i)).toBeInTheDocument();
+  });
+
+  test("saves appointment card-on-file mode without turning product payments off", async () => {
+    mockCheckoutSettings({
+      companyProfile: {
+        enable_stripe_payments: true,
+        allow_card_on_file: true,
+        stripe_publishable_key: "pk_test_123",
+        booking_hold_minutes: 3,
+        prices_include_tax: false,
+        charge_currency_mode: "PLATFORM_FIXED",
+        tax_country_code: "CA",
+        tax_region_code: "ON",
+        display_currency: "CAD",
+        country_code: "CA",
+        currency_context: {
+          charge_currency_mode: "PLATFORM_FIXED",
+          business_selling_currency: "CAD",
+          currency_source: "display_currency",
+        },
+      },
+      paymentsPolicy: { mode: "capture" },
+    });
+    mockApiPost.mockImplementation((url) => {
+      if (url === "/admin/company-profile") {
+        return Promise.resolve({
+          data: {
+            enable_stripe_payments: true,
+            allow_card_on_file: true,
+            stripe_publishable_key: "pk_test_123",
+            booking_hold_minutes: 3,
+            prices_include_tax: false,
+            charge_currency_mode: "PLATFORM_FIXED",
+            tax_country_code: "CA",
+            tax_region_code: "ON",
+            display_currency: "CAD",
+            country_code: "CA",
+            currency_context: {
+              charge_currency_mode: "PLATFORM_FIXED",
+              business_selling_currency: "CAD",
+              currency_source: "display_currency",
+            },
+          },
+        });
+      }
+      if (url === "/admin/payments-policy") {
+        return Promise.resolve({ data: { saved: true, policy: { mode: "capture" } } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderSettings();
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("alert").some((node) =>
+          node.textContent?.includes("Appointments: Card on file · Products: Paid during Checkout")
+        )
+      ).toBe(true)
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "settings.checkout.buttons.save" }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/admin/company-profile",
+        expect.objectContaining({
+          enable_stripe_payments: true,
+          allow_card_on_file: true,
+        }),
+        expect.any(Object)
+      )
+    );
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/admin/payments-policy",
+      { appointment_payment_mode: "capture" },
+      expect.any(Object)
+    );
   });
 });

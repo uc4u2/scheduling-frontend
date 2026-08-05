@@ -176,9 +176,12 @@ export const buildHostedCheckoutPayload = ({
   }
 
   const normalizedCurrency = normalizeCurrency(currency);
+  const effectivePolicyMode = productCount > 0 || packageCount > 0
+    ? "pay"
+    : normalizePolicyMode(policyMode);
   const payload = {
     items: itemsPayload,
-    policy: { mode: normalizePolicyMode(policyMode) },
+    policy: { mode: effectivePolicyMode },
   };
 
   if (normalizedCurrency) {

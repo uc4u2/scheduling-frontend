@@ -184,6 +184,7 @@ export default function SettingsStripeHub() {
     if (!profile) return null;
     const enable = Boolean(profile.enable_stripe_payments);
     const allow = Boolean(profile.allow_card_on_file);
+    if (enable && allow) return "hybrid";
     if (enable) return "pay_now";
     if (allow) return "card_on_file";
     return "offline";
@@ -362,10 +363,12 @@ export default function SettingsStripeHub() {
     ? connectStatus.requirements_due
     : [];
 
-  const modeLabel = t(
-    MODE_LABEL_KEY[paymentMode || "offline"] ||
-      MODE_LABEL_KEY.offline
-  );
+  const modeLabel = paymentMode === "hybrid"
+    ? "Appointments can save cards on file. Products and pay-now bookings use Checkout."
+    : t(
+        MODE_LABEL_KEY[paymentMode || "offline"] ||
+          MODE_LABEL_KEY.offline
+      );
 
   const publishableDisplay =
     publishableKey &&

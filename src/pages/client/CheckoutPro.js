@@ -55,6 +55,7 @@ function CheckoutShell({
   slug,
   paymentsEnabled,
   cardOnFileEnabled,
+  productCheckout,
   policy,
   contactEmail,
   contactPhone,
@@ -66,6 +67,7 @@ function CheckoutShell({
   const hasServiceItems = useMemo(() => cart.some((item) => (item?.type || CartTypes.SERVICE) === CartTypes.SERVICE), [cart]);
   const hasProductItems = useMemo(() => cart.some((item) => (item?.type || CartTypes.SERVICE) === CartTypes.PRODUCT), [cart]);
   const mixedCart = hasServiceItems && hasProductItems;
+  const productCheckoutEnabled = Boolean(productCheckout?.enabled ?? paymentsEnabled);
 
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
@@ -152,15 +154,18 @@ function CheckoutShell({
   };
 
   const defaultActive = useMemo(() => {
-    const mode = (policy?.mode || "pay").toLowerCase();
+    if (hasProductItems) {
+      return productCheckoutEnabled ? "pay" : "off";
+    }
+    const mode = String(policy?.booking_payment?.mode || policy?.mode || "pay").toLowerCase();
     if (mode === "off") return cardOnFileEnabled ? "capture" : "off";
     if (mode === "capture" && cardOnFileEnabled) return "capture";
     if (mode === "deposit" && paymentsEnabled) return "deposit";
     if (mode === "pay" && paymentsEnabled) return "pay";
-    if (paymentsEnabled) return "pay";
     if (cardOnFileEnabled) return "capture";
+    if (paymentsEnabled) return "pay";
     return "off";
-  }, [paymentsEnabled, cardOnFileEnabled, policy?.mode]);
+  }, [hasProductItems, productCheckoutEnabled, paymentsEnabled, cardOnFileEnabled, policy]);
 
   const [active, setActive] = useState(defaultActive);
 
@@ -867,6 +872,7 @@ export default function CheckoutPro({ companySlug: slug }) {
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [cardOnFileEnabled, setCardOnFileEnabled] = useState(false);
   const [policy, setPolicy] = useState(null);
+  const [productCheckoutPolicy, setProductCheckoutPolicy] = useState(null);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
 
@@ -881,14 +887,27 @@ export default function CheckoutPro({ companySlug: slug }) {
         if (!mounted) return;
         const cinfo = cinfoRes.data || {};
         const policyData = policyRes.data || null;
-        const payNow = Boolean(cinfo.enable_stripe_payments);
-        const policyMode = (policyData?.mode || "").toLowerCase();
-        const allowCardFlag = Boolean(cinfo.allow_card_on_file);
-        const hasPublishable = Boolean(cinfo.stripe_publishable_key);
-        const cardOnly = !payNow && (allowCardFlag || policyMode === "capture");
+        const legacyEnable = Boolean(cinfo.enable_stripe_payments);
+        const legacyAllowCard = Boolean(cinfo.allow_card_on_file);
+        const bookingMode = String(
+          policyData?.booking_payment?.mode ||
+          policyData?.mode ||
+          (legacyAllowCard ? "capture" : legacyEnable ? "pay" : "off")
+        ).toLowerCase();
+        const payNow = bookingMode === "pay" || bookingMode === "deposit";
+        const cardOnly = bookingMode === "capture";
+        const productPolicy = policyData?.product_checkout && typeof policyData.product_checkout === "object"
+          ? policyData.product_checkout
+          : {
+              enabled: legacyEnable,
+              mode: "pay",
+              requires_payment_during_checkout: true,
+              card_on_file_supported: false,
+            };
         setPaymentsEnabled(payNow);
-        setCardOnFileEnabled(cardOnly && hasPublishable);
+        setCardOnFileEnabled(cardOnly);
         setPolicy(policyData);
+        setProductCheckoutPolicy(productPolicy);
         setContactEmail(String(cinfo?.contact_email || cinfo?.email || "").trim());
         setContactPhone(String(cinfo?.phone || "").trim());
       } catch {
@@ -896,6 +915,7 @@ export default function CheckoutPro({ companySlug: slug }) {
         setPaymentsEnabled(false);
         setCardOnFileEnabled(false);
         setPolicy(null);
+        setProductCheckoutPolicy(null);
       } finally {
         if (mounted) setReady(true);
       }
@@ -912,13 +932,14 @@ export default function CheckoutPro({ companySlug: slug }) {
   }
 
   return (
-    <CheckoutShell
-      slug={slug}
-      paymentsEnabled={paymentsEnabled}
-      cardOnFileEnabled={cardOnFileEnabled}
-      policy={policy}
-      contactEmail={contactEmail}
-      contactPhone={contactPhone}
+      <CheckoutShell
+        slug={slug}
+        paymentsEnabled={paymentsEnabled}
+        cardOnFileEnabled={cardOnFileEnabled}
+        productCheckout={productCheckoutPolicy}
+        policy={policy}
+        contactEmail={contactEmail}
+        contactPhone={contactPhone}
       onBooked={() => {}}
     />
   );

@@ -238,6 +238,33 @@ Estimate states:
 - `Partial estimate`
 - `Estimate unavailable`
 
+## Product payment policy
+
+Product checkout now uses a Product-specific payment capability instead of
+reusing the appointment payment mode.
+
+Rules:
+- Products are always paid during Checkout
+- Products never use card-on-file / setup mode
+- appointment card-on-file policy does not block Product selling
+- a business may keep both appointment card-on-file and Product online payments
+  enabled at the same time
+
+Manager settings:
+- **Appointment payment policy** controls appointment booking only
+- **Accept online Product payments** controls Product sales only
+
+Customer checkout behavior:
+- Product-only carts read `product_checkout` from the public payments policy
+- legacy fallback treats older policy responses conservatively:
+  - Product checkout enabled only when `enable_stripe_payments = true`
+  - effective Product mode = `pay`
+  - card-on-file unsupported for Products
+
+Current mixed-cart boundary:
+- appointments and Products must still be completed separately
+- Products are never silently downgraded to card-on-file capture
+
 Partial estimate examples:
 - Product cost missing
 - shipping rate not selected

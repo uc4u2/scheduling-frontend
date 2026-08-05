@@ -121,7 +121,8 @@ export default function SettingsCheckoutPro() {
   const [msg, setMsg] = useState(null);
   const [msgSeverity, setMsgSeverity] = useState("info");
 
-  const [paymentMode, setPaymentMode] = useState("offline");
+  const [appointmentPaymentMode, setAppointmentPaymentMode] = useState("offline");
+  const [productPaymentsEnabled, setProductPaymentsEnabled] = useState(false);
   const [publishableKey, setPublishableKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [bookingHoldMinutes, setBookingHoldMinutes] = useState(3);
@@ -150,15 +151,17 @@ export default function SettingsCheckoutPro() {
   // 👇 Help drawer state
   const [guideOpen, setGuideOpen] = useState(false);
 
-  const enableStripe = paymentMode === "pay_now";
-  const allowCardOnFile = paymentMode !== "offline";
+  const appointmentNeedsCheckoutPayment =
+    appointmentPaymentMode === "pay_now" || appointmentPaymentMode === "deposit";
+  const enableStripe = productPaymentsEnabled || appointmentNeedsCheckoutPayment;
+  const allowCardOnFile = appointmentPaymentMode === "card_on_file";
   const isProdEnv = process.env.NODE_ENV === "production";
 
   const trimmedKey = (publishableKey || "").trim();
   const pkRegex = /^pk_(test|live)_[A-Za-z0-9]+/i;
   const secretLike = /^sk_|^whsec_/i.test(trimmedKey);
   let keyError = "";
-  const stripeKeyRequired = allowCardOnFile;
+  const stripeKeyRequired = enableStripe || allowCardOnFile;
   if (stripeKeyRequired) {
     if (!trimmedKey) {
       keyError = "Publishable key is required when Stripe payments are enabled.";
@@ -180,15 +183,35 @@ export default function SettingsCheckoutPro() {
 
     const load = async () => {
       try {
-        const { data } = await api.get(`/admin/company-profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const [companyRes, policyRes] = await Promise.all([
+          api.get(`/admin/company-profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          api.get(`/admin/payments-policy`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: null })),
+        ]);
         if (ignore) return;
+        const data = companyRes?.data || {};
+        const policyData = policyRes?.data || {};
 
         const enable = !!data.enable_stripe_payments;
         const allow = !!data.allow_card_on_file;
-        const mode = enable ? "pay_now" : allow ? "card_on_file" : "offline";
-        setPaymentMode(mode);
+        const rawMode = String(policyData?.mode || "").toLowerCase();
+        let mode = "offline";
+        if (rawMode === "capture" && allow) {
+          mode = "card_on_file";
+        } else if (rawMode === "deposit" && enable) {
+          mode = "deposit";
+        } else if (rawMode === "pay" && enable) {
+          mode = "pay_now";
+        } else if (allow) {
+          mode = "card_on_file";
+        } else if (enable) {
+          mode = "pay_now";
+        }
+        setAppointmentPaymentMode(mode);
+        setProductPaymentsEnabled(enable);
 
         const envPublishable = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
         setPublishableKey(data.stripe_publishable_key || envPublishable);
@@ -259,7 +282,7 @@ export default function SettingsCheckoutPro() {
     previewServiceId,
     previewAddonIds,
     previewSampleAmount,
-    paymentMode,
+    appointmentPaymentMode,
     pricesIncludeTax,
     resolvedBusinessCurrency,
     previewDialogOpen,
@@ -341,11 +364,24 @@ export default function SettingsCheckoutPro() {
     if (taxRegion && !taxRegionList.includes(taxRegion)) setTaxRegion("");
   }, [taxRegionList, taxRegion]);
 
-  const handleSaveSuccess = (data) => {
+  const handleSaveSuccess = (data, policyData) => {
     const enable = !!data.enable_stripe_payments;
     const allow = !!data.allow_card_on_file;
-    const mode = enable ? "pay_now" : allow ? "card_on_file" : "offline";
-    setPaymentMode(mode);
+    const rawMode = String(policyData?.mode || "").toLowerCase();
+    let mode = "offline";
+    if (rawMode === "capture" && allow) {
+      mode = "card_on_file";
+    } else if (rawMode === "deposit" && enable) {
+      mode = "deposit";
+    } else if (rawMode === "pay" && enable) {
+      mode = "pay_now";
+    } else if (allow) {
+      mode = "card_on_file";
+    } else if (enable) {
+      mode = "pay_now";
+    }
+    setAppointmentPaymentMode(mode);
+    setProductPaymentsEnabled(enable);
     setPricesIncludeTax(!!data.prices_include_tax);
     setChargeCurrencyMode((data.charge_currency_mode || "PLATFORM_FIXED").toUpperCase());
     setTaxCountry((data.tax_country_code || "").toUpperCase());
@@ -442,6 +478,14 @@ export default function SettingsCheckoutPro() {
     }
     setSaving(true);
     try {
+      const appointmentPolicyMode =
+        appointmentPaymentMode === "card_on_file"
+          ? "capture"
+          : appointmentPaymentMode === "deposit"
+            ? "deposit"
+            : appointmentPaymentMode === "pay_now"
+              ? "pay"
+              : "off";
       const payload = {
         enable_stripe_payments: enableStripe,
         allow_card_on_file: allowCardOnFile,
@@ -455,11 +499,22 @@ export default function SettingsCheckoutPro() {
         logo_url: logoUrl.trim(),
       };
 
-      const { data } = await api.post(`/admin/company-profile`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const [companySaveRes, policySaveRes] = await Promise.all([
+        api.post(`/admin/company-profile`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        api.post(
+          `/admin/payments-policy`,
+          { appointment_payment_mode: appointmentPolicyMode },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ),
+      ]);
 
-      if (data && typeof data === "object") handleSaveSuccess(data);
+      const data = companySaveRes?.data;
+      const savedPolicy = policySaveRes?.data?.policy || { mode: appointmentPolicyMode };
+      if (data && typeof data === "object") handleSaveSuccess(data, savedPolicy);
 
       setMsg(t("settings.checkout.saveSuccess"));
       setMsgSeverity("success");
@@ -527,11 +582,15 @@ export default function SettingsCheckoutPro() {
     );
   }
 
-  const alertMessage = enableStripe
-    ? t("settings.checkout.alerts.payNow")
-    : allowCardOnFile
-    ? t("settings.checkout.alerts.cardOnFile")
-    : t("settings.checkout.alerts.offline");
+  const appointmentSummaryLabel =
+    appointmentPaymentMode === "card_on_file"
+      ? "Card on file"
+      : appointmentPaymentMode === "deposit"
+        ? "Deposit during Checkout"
+        : appointmentPaymentMode === "pay_now"
+          ? "Pay during booking Checkout"
+          : "No online payment";
+  const productSummaryLabel = enableStripe ? "Paid during Checkout" : "Online Product payments are off";
 
   if (loading) {
     return (
@@ -581,8 +640,8 @@ export default function SettingsCheckoutPro() {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">{t("settings.checkout.modes.legend")}</FormLabel>
-                <RadioGroup value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)}>
+                <FormLabel component="legend">Appointment payment policy</FormLabel>
+                <RadioGroup value={appointmentPaymentMode} onChange={(e) => setAppointmentPaymentMode(e.target.value)}>
                   <FormControlLabel
                     value="offline"
                     control={<Radio />}
@@ -622,6 +681,25 @@ export default function SettingsCheckoutPro() {
                     }
                   />
                   <FormControlLabel
+                    value="deposit"
+                    control={<Radio />}
+                    label={
+                      <Stack spacing={0.5} alignItems="flex-start">
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Typography variant="body2">Deposit during Checkout</Typography>
+                          <Tooltip title={payNowTaxTooltip}>
+                            <IconButton size="small" aria-label="tax info">
+                              <InfoOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          Controls how customers pay when booking appointments.
+                        </Typography>
+                      </Stack>
+                    }
+                  />
+                  <FormControlLabel
                     value="pay_now"
                     control={<Radio />}
                     label={
@@ -645,10 +723,51 @@ export default function SettingsCheckoutPro() {
             </Grid>
 
             <Grid item xs={12}>
-              <Alert severity={enableStripe ? "info" : allowCardOnFile ? "warning" : "warning"}>
-                {alertMessage}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={enableStripe}
+                    onChange={(event) => setProductPaymentsEnabled(event.target.checked)}
+                    disabled={appointmentNeedsCheckoutPayment}
+                  />
+                }
+                label={
+                  <Stack spacing={0.5} alignItems="flex-start">
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Product payment settings
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Products are always paid during Checkout. This setting does not change your appointment payment policy.
+                    </Typography>
+                  </Stack>
+                }
+              />
+              {appointmentNeedsCheckoutPayment && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  Appointment pay-now and deposit modes require Checkout payments to stay enabled.
+                </Typography>
+              )}
+            </Grid>
+
+            <Grid item xs={12}>
+              <Alert severity="info">
+                Appointments: <strong>{appointmentSummaryLabel}</strong>
+                {" · "}
+                Products: <strong>{productSummaryLabel}</strong>
               </Alert>
             </Grid>
+
+            {enableStripe && !trimmedKey && (
+              <Grid item xs={12}>
+                <Alert severity="warning">Connect Stripe before accepting Product payments.</Alert>
+              </Grid>
+            )}
+
+            {allowCardOnFile && !trimmedKey && (
+              <Grid item xs={12}>
+                <Alert severity="warning">Connect Stripe before saving cards on file for appointment bookings.</Alert>
+              </Grid>
+            )}
 
             <Grid item xs={12}>
               <TextField
@@ -948,7 +1067,10 @@ export default function SettingsCheckoutPro() {
           )}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <Typography variant="body2">
-              Current mode: <strong>{paymentMode === "pay_now" ? "Pay during checkout" : paymentMode === "card_on_file" ? "Card on file" : "Offline payment"}</strong>
+              Appointment mode: <strong>{appointmentSummaryLabel}</strong>
+            </Typography>
+            <Typography variant="body2">
+              Product payments: <strong>{enableStripe ? "Paid during Checkout" : "Off"}</strong>
             </Typography>
             <Typography variant="body2">
               Currency: <strong>{resolvedBusinessCurrency}</strong>

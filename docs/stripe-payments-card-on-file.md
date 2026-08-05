@@ -11,16 +11,18 @@ later Manager off-session charges, refer to:
 
 - `backend/docs/VERIFIED_CARD_BOOKING_SOURCE_OF_TRUTH.md`
 
-This page controls how clients pay at checkout and how tax is applied.
+This page controls how clients pay for appointments and whether Products can be
+sold online.
 
 ## Where to find it
 - Manager Dashboard -> Settings -> Checkout Pro & Payments
 
-## Checkout mode
-Choose how clients pay:
-- **Offline booking**: No online payment. Collect outside Stripe.
-- **Card on file**: Client saves a card so you can charge later or apply no-show fees.
-- **Pay during checkout**: Client pays immediately.
+## Appointment payment policy
+Choose how clients pay when booking appointments:
+- **No online payment**: Collect outside Stripe.
+- **Save card on file**: Client saves a card so you can charge later or apply no-show fees.
+- **Deposit during Checkout**: Client pays only the configured deposit amount.
+- **Pay during booking Checkout**: Client pays immediately.
 
 Card on File uses hosted Stripe Checkout in secure setup mode. The booking is
 confirmed only after Schedulaa verifies the completed Stripe setup flow on the
@@ -30,6 +32,20 @@ Clients must now actively accept the card-saving authorization checkbox before
 the hosted Stripe flow starts. Schedulaa records the policy snapshot shown at
 acceptance time and later marks the card verified only after Stripe setup
 verification succeeds.
+
+## Product payment settings
+
+Products are configured separately from appointment policy.
+
+- **Accept online Product payments**: Products are always paid during Checkout.
+- Product checkout never uses card-on-file / setup mode.
+- Turning Product payments on does not force appointments to switch away from
+  card on file.
+
+Compatible example:
+
+- Appointments: Save card on file
+- Products: Paid during Checkout
 
 ## Stripe publishable key
 This is managed by Schedulaa when Stripe is connected. It is read-only.
@@ -64,6 +80,8 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 
 ## Tips
 - If you use card on file, make sure staff know how to charge from Payments.
+- Product checkout does not reuse card-on-file mode. Product purchases always
+  collect payment during Checkout.
 - If prices include tax, Stripe backs tax out automatically at checkout.
 - Saved-card charges remain amount-only. Automatic tax is not added later when a Manager enters a saved-card charge amount.
 - Use **Review amount and tax handling** in the saved-card charge dialog to confirm the entered amount, currency, and manual-tax rule before charging.
@@ -72,3 +90,5 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - Client and Manager saved-card views now show `Verified`, `Expiring soon`, `Expired`, `Update required`, or `No card` based on live Stripe expiry details plus Schedulaa's local verified-card status.
 - Managers cannot start a saved-card charge when the saved card is already expired or marked update required.
 - Client 360 now includes a **Request card update** action that emails the client a secure, time-limited Stripe-hosted update-card link.
+- No migration was required for this split because Schedulaa already stores the
+  Stripe-payments and card-on-file capabilities independently.
