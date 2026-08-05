@@ -42,6 +42,8 @@ const apiMessage = (err, fallback, map = ACTION_ERROR_COPY) => {
   return map[code] || err?.response?.data?.message || fallback;
 };
 
+const hasValue = (value) => value !== null && value !== undefined && value !== "";
+
 const FieldPhotosBillingModal = ({
   open,
   mode = "activate",
@@ -76,9 +78,9 @@ const FieldPhotosBillingModal = ({
   const recurringLabel = preview?.recurring_amount_formatted && preview?.interval
     ? `${preview.recurring_amount_formatted}/${preview.interval}`
     : preview?.recurring_amount_formatted || null;
-  const includedStorageLabel = preview?.included_storage_label || "5 GB";
-  const retentionDays = preview?.retention_days || 90;
-  const storageExpansionLabel = preview?.storage_expansion_label || "+10 GB";
+  const includedStorageLabel = hasValue(preview?.included_storage_label) ? preview.included_storage_label : "Included storage unavailable";
+  const retentionLabel = hasValue(preview?.retention_days) ? `${preview.retention_days}-day retention` : "Retention information unavailable";
+  const storageExpansionLabel = hasValue(preview?.storage_expansion_label) ? preview.storage_expansion_label : "Storage expansion information unavailable";
 
   const blocksConfirm = useMemo(() => {
     const code = preview?.error || "";
@@ -207,7 +209,7 @@ const FieldPhotosBillingModal = ({
             )}
             {!isStorage && (
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                Includes {includedStorageLabel} storage with {retentionDays}-day retention.
+                Includes {includedStorageLabel} · {retentionLabel}
               </Typography>
             )}
           </Box>

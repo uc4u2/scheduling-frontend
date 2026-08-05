@@ -51,10 +51,17 @@ If Stripe says the payment needs attention (past due/unpaid/incomplete), you’l
   It appears in its own add-on card with a compact free-launch status and usage summary. The detailed free-launch explanation is shown through the card’s help affordance instead of a full-width billing alert.
 
 - **How is Field Photos shown before activation?**
-  Field Photos appears in a separate add-on card. Before activation, the card shows the authoritative recurring starting price, included storage, retention, and a `View pricing & activate` action. No charge is created until the manager opens the confirmation modal and explicitly confirms the billing preview.
+  Field Photos appears in a separate add-on card. Before activation, the card shows the authoritative recurring starting price, included storage, retention, and a `View pricing & activate` action only when pricing is configured. It also keeps an `Open Field Photos` navigation path. No charge is created until the manager opens the confirmation modal and explicitly confirms the billing preview.
 
 - **What happens after Field Photos is active?**
   The card switches to an operational view with storage used, total storage, storage expansion count, retention, and management actions. Pricing and expansion details remain available through the card help and confirmation modal.
+
+- **What if pricing data is temporarily unavailable?**
+  The UI must prefer:
+  1. the Field Photos billing preview
+  2. already-loaded authoritative billing status
+  3. neutral unavailable copy
+  It must not show documentation defaults like `5 GB` or `90 days` as if they were live tenant pricing.
 
 - **When do Field Photos storage warnings appear?**
   Warning state is now server-authoritative. Managers see:
@@ -65,6 +72,14 @@ If Stripe says the payment needs attention (past due/unpaid/incomplete), you’l
 
 - **What happens if storage becomes full?**
   New employee uploads are blocked with the generic operational message to contact their manager. Managers can review storage upgrades, but Schedulaa never auto-purchases storage.
+
+- **Who receives storage threshold emails?**
+  Threshold emails go to one same-tenant billing-side recipient only, using this priority:
+  1. company billing/contact email
+  2. primary manager
+  3. company email
+  4. manager fallback
+  Employees do not receive storage billing notifications.
 
 - **What happens after storage is increased or files are removed?**
   The quota state recalculates automatically. If usage drops below quota, employee uploads resume without redeploying, restarting workers, or asking employees to do anything special.

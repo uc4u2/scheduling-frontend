@@ -43,6 +43,8 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
 import FieldPhotosHelpDrawer from "./FieldPhotosHelpDrawer";
 
+const CANONICAL_BILLING_SETTINGS_URL = "/manager/dashboard?view=settings&tab=billing";
+
 const formatDateTime = (value) => {
   if (!value) return "—";
   const date = new Date(value);
@@ -64,6 +66,20 @@ const formatBytes = (value) => {
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+
+const hasValue = (value) => value !== null && value !== undefined && value !== "";
+
+const resolveIncludedStorageLabel = (preview, summary) => {
+  if (hasValue(preview?.included_storage_label)) return preview.included_storage_label;
+  if (hasValue(summary?.storage_quota_bytes)) return formatBytes(summary.storage_quota_bytes);
+  return "Included storage unavailable";
+};
+
+const resolveRetentionLabel = (preview, summary) => {
+  if (hasValue(preview?.retention_days)) return `${preview.retention_days}-day retention`;
+  if (hasValue(summary?.retention_days)) return `${summary.retention_days}-day retention`;
+  return "Retention information unavailable";
 };
 
 const readableChipProps = (theme, tone = "neutral") => {
@@ -520,6 +536,8 @@ const FieldPhotos = () => {
 
   const summary = data.summary || billingStatus?.field_photos || {};
   const visible = Boolean(summary.addon_active || summary.read_only);
+  const includedStorageLabel = useMemo(() => resolveIncludedStorageLabel(fieldPhotosPreview, summary), [fieldPhotosPreview, summary]);
+  const retentionLabel = useMemo(() => resolveRetentionLabel(fieldPhotosPreview, summary), [fieldPhotosPreview, summary]);
   const quotaStateValue = storageState(summary);
   const rows = data.items || [];
   const photoGroups = useMemo(() => buildPhotoGroups(rows), [rows]);
@@ -733,10 +751,12 @@ const FieldPhotos = () => {
                           Starts at {fieldPhotosPreview?.recurring_amount_formatted ? `${fieldPhotosPreview.recurring_amount_formatted}/${fieldPhotosPreview.interval}` : "Pricing unavailable"}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Includes {fieldPhotosPreview?.included_storage_label || "5 GB"} · {fieldPhotosPreview?.retention_days || 90}-day retention
+                          Includes {includedStorageLabel} · {retentionLabel}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          No charge is created until you review and confirm the billing preview.
+                          {summary?.price_configured
+                            ? "No charge is created until you review and confirm the billing preview."
+                            : "Field Photos billing is not configured yet. Contact support to activate this add-on."}
                         </Typography>
                         {fieldPhotosPreviewError ? (
                           <Typography variant="body2" color="error">{fieldPhotosPreviewError}</Typography>
@@ -751,10 +771,12 @@ const FieldPhotos = () => {
                   </Box>
                 </Stack>
                 <Stack spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
-                  <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />} sx={{ alignSelf: { xs: "stretch", md: "center" }, px: 2.5 }}>
-                    View pricing & activate
-                  </Button>
-                  <Button variant="text" onClick={() => navigate("/manager/settings?tab=billing")} sx={{ alignSelf: { xs: "stretch", md: "center" } }}>
+                  {summary?.price_configured ? (
+                    <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />} sx={{ alignSelf: { xs: "stretch", md: "center" }, px: 2.5 }}>
+                      View pricing & activate
+                    </Button>
+                  ) : null}
+                  <Button variant="text" onClick={() => navigate(CANONICAL_BILLING_SETTINGS_URL)} sx={{ alignSelf: { xs: "stretch", md: "center" } }}>
                     Open billing settings
                   </Button>
                 </Stack>
@@ -781,7 +803,7 @@ const FieldPhotos = () => {
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>Photo storage</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {summary?.retention_days || 90} days.
+                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {hasValue(summary?.retention_days) ? summary.retention_days : "—"} days.
                       </Typography>
                     </Box>
                     {quotaStateValue !== "NORMAL" && <Button size="small" variant="outlined" onClick={() => setBillingModal("storage")}>Review storage upgrade</Button>}

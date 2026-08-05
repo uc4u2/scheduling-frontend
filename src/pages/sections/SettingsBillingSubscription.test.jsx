@@ -8,6 +8,7 @@ const mockRefetch = jest.fn();
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockOpenBillingPortal = jest.fn(() => Promise.resolve());
+const mockNavigate = jest.fn();
 
 let mockBillingState;
 
@@ -32,6 +33,10 @@ jest.mock("../../utils/mobileCompliance", () => ({
   isMobileComplianceMode: () => false,
   MOBILE_PAYMENTS_MESSAGE: "web only",
 }));
+
+jest.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+}), { virtual: true });
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -122,6 +127,7 @@ describe("SettingsBillingSubscription", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
+    mockNavigate.mockReset();
     mockBillingState = {
       status: buildStatus(),
       loading: false,
@@ -175,8 +181,71 @@ describe("SettingsBillingSubscription", () => {
     expect(screen.getByText(/Includes 5 GB · 90-day retention/i)).toBeInTheDocument();
     expect(screen.getByText(/No charge is created until you review and confirm the billing preview\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view pricing & activate/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open field photos/i })).toBeInTheDocument();
     expect(screen.queryByText(/Storage expansions:/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Storage:/i)).not.toBeInTheDocument();
+  });
+
+  it("uses canonical client navigation from Billing to Field Photos", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /open field photos/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/manager/field-photos");
+  });
+
+  it("shows support guidance when inactive pricing is not configured and still exposes Open Field Photos", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({
+        field_photos: {
+          addon_active: false,
+          read_only: false,
+          storage_quota_bytes: null,
+          retention_days: null,
+          price_configured: false,
+        },
+      }),
+    };
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/billing/field-photos/preview") {
+        return Promise.resolve({ data: {} });
+      }
+      if (String(url).startsWith("/billing/field-photos/storage/preview")) {
+        return Promise.resolve({ data: {} });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderPage();
+
+    expect(await screen.findByText(/Starts at Pricing unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes Included storage unavailable · Retention information unavailable/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Field Photos billing is not configured yet\. Contact support to activate this add-on\./i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /open field photos/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /view pricing & activate/i })).not.toBeInTheDocument();
+  });
+
+  it("does not show a duplicate Open Field Photos button when Field Photos is active", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({
+        field_photos: {
+          addon_active: true,
+          read_only: false,
+          storage_addon_qty: 2,
+          storage_used_bytes: 3 * 1024 * 1024 * 1024,
+          storage_quota_bytes: 5 * 1024 * 1024 * 1024,
+          retention_days: 90,
+          price_configured: true,
+        },
+      }),
+    };
+
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: /manage field photos/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /open field photos/i })).not.toBeInTheDocument();
   });
 
   it("opens the existing Field Photos billing modal without activating before confirmation", async () => {

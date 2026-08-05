@@ -57,7 +57,16 @@ describe("FieldPhotosBillingModal", () => {
     renderModal();
 
     expect(await screen.findByText(/29\.00 USD\/month/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes 5 GB storage with 90-day retention\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes 5 GB · 90-day retention/i)).toBeInTheDocument();
+  });
+
+  it("shows neutral unavailable copy when preview omits storage and retention values", async () => {
+    mockApiGet.mockResolvedValue({ data: {} });
+
+    renderModal();
+
+    expect(await screen.findByText(/Pricing unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes Included storage unavailable · Retention information unavailable/i)).toBeInTheDocument();
   });
 
   it("does not activate until the manager confirms", async () => {

@@ -1,10 +1,11 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 import FieldPhotos from "./FieldPhotos";
 
 const mockApiGet = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock("../../utils/api", () => ({
   __esModule: true,
@@ -32,7 +33,7 @@ jest.mock("../../components/billing/FieldPhotosBillingModal", () => ({
 
 jest.mock("react-router-dom", () => ({
   useLocation: () => ({ search: "" }),
-  useNavigate: () => jest.fn(),
+  useNavigate: () => mockNavigate,
 }), { virtual: true });
 
 const renderPage = () =>
@@ -45,6 +46,7 @@ const renderPage = () =>
 describe("FieldPhotos manager page", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockNavigate.mockReset();
     mockApiGet.mockImplementation((url) => {
       if (url === "/billing/status") {
         return Promise.resolve({
@@ -52,6 +54,7 @@ describe("FieldPhotos manager page", () => {
             field_photos: {
               addon_active: false,
               read_only: false,
+              price_configured: true,
               storage_addon_qty: 0,
               storage_used_bytes: 0,
               storage_quota_bytes: 5 * 1024 * 1024 * 1024,
@@ -79,6 +82,7 @@ describe("FieldPhotos manager page", () => {
             summary: {
               addon_active: false,
               read_only: false,
+              price_configured: true,
               storage_addon_qty: 0,
               storage_used_bytes: 0,
               storage_quota_bytes: 5 * 1024 * 1024 * 1024,
@@ -121,6 +125,83 @@ describe("FieldPhotos manager page", () => {
     expect(screen.getByRole("button", { name: /open billing settings/i })).toBeInTheDocument();
   });
 
+  it("uses canonical client navigation for opening billing settings", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /open billing settings/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/manager/dashboard?view=settings&tab=billing");
+  });
+
+  it("shows neutral unavailable copy instead of hardcoded commercial defaults when preview data is missing", async () => {
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/billing/status") {
+        return Promise.resolve({
+          data: {
+            field_photos: {
+              addon_active: false,
+              read_only: false,
+              storage_addon_qty: 0,
+              storage_used_bytes: 0,
+              storage_quota_bytes: null,
+              retention_days: null,
+              price_configured: false,
+              quota_status: {
+                used_bytes: 0,
+                quota_bytes: 0,
+                usage_percent: 0,
+                state: "NORMAL",
+                uploads_enabled: true,
+                next_threshold_percent: 80,
+                storage_expansion_quantity: 0,
+                can_manage_storage: true,
+              },
+            },
+          },
+        });
+      }
+      if (url === "/manager/field-photos") {
+        return Promise.resolve({
+          data: {
+            items: [],
+            context: { employees: [], departments: [] },
+            pagination: { total: 0, total_pages: 0, page: 1, page_size: 12 },
+            summary: {
+              addon_active: false,
+              read_only: false,
+              storage_addon_qty: 0,
+              storage_used_bytes: 0,
+              storage_quota_bytes: null,
+              retention_days: null,
+              price_configured: false,
+              quota_status: {
+                used_bytes: 0,
+                quota_bytes: 0,
+                usage_percent: 0,
+                state: "NORMAL",
+                uploads_enabled: true,
+                next_threshold_percent: 80,
+                storage_expansion_quantity: 0,
+                can_manage_storage: true,
+              },
+            },
+          },
+        });
+      }
+      if (url === "/billing/field-photos/preview") {
+        return Promise.resolve({ data: {} });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderPage();
+
+    expect(await screen.findByText(/Starts at Pricing unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes Included storage unavailable · Retention information unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Field Photos billing is not configured yet\. Contact support to activate this add-on\./i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /view pricing & activate/i })).not.toBeInTheDocument();
+  });
+
   it("shows authoritative full warning state on the manager page", async () => {
     mockApiGet.mockImplementation((url) => {
       if (url === "/billing/status") {
@@ -129,6 +210,7 @@ describe("FieldPhotos manager page", () => {
             field_photos: {
               addon_active: true,
               read_only: false,
+              price_configured: true,
               storage_addon_qty: 1,
               storage_used_bytes: 5 * 1024 * 1024 * 1024,
               storage_quota_bytes: 5 * 1024 * 1024 * 1024,
@@ -156,6 +238,7 @@ describe("FieldPhotos manager page", () => {
             summary: {
               addon_active: true,
               read_only: false,
+              price_configured: true,
               storage_addon_qty: 1,
               storage_used_bytes: 5 * 1024 * 1024 * 1024,
               storage_quota_bytes: 5 * 1024 * 1024 * 1024,

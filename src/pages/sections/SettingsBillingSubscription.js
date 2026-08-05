@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import SectionCard from "../../components/ui/SectionCard";
 import useBillingStatus from "../../components/billing/useBillingStatus";
 import { openBillingPortal } from "../../components/billing/billingHelpers";
@@ -51,9 +52,33 @@ const formatBytes = (value) => {
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 };
 
+const CANONICAL_BILLING_SETTINGS_URL = "/manager/dashboard?view=settings&tab=billing";
+const FIELD_PHOTOS_PAGE_URL = "/manager/field-photos";
+
+const hasValue = (value) => value !== null && value !== undefined && value !== "";
+
 const formatAmountInterval = (amount, interval) => {
-  if (!amount) return "Pricing unavailable";
+  if (!hasValue(amount)) return "Pricing unavailable";
   return interval ? `${amount}/${interval}` : amount;
+};
+
+const resolveIncludedStorageLabel = (preview, fieldPhotos) => {
+  if (hasValue(preview?.included_storage_label)) return preview.included_storage_label;
+  if (hasValue(fieldPhotos?.storage_quota_bytes)) return formatBytes(fieldPhotos.storage_quota_bytes);
+  return "Included storage unavailable";
+};
+
+const resolveRetentionLabel = (preview, fieldPhotos) => {
+  if (hasValue(preview?.retention_days)) return `${preview.retention_days}-day retention`;
+  if (hasValue(fieldPhotos?.retention_days)) return `${fieldPhotos.retention_days}-day retention`;
+  return "Retention information unavailable";
+};
+
+const resolveStorageExpansionLabel = (preview) => {
+  if (hasValue(preview?.storage_expansion_label) && hasValue(preview?.storage_expansion_amount_formatted)) {
+    return `${preview.storage_expansion_label} for ${formatAmountInterval(preview.storage_expansion_amount_formatted, preview.storage_expansion_interval)}`;
+  }
+  return "Storage expansion pricing unavailable";
 };
 
 const quotaUsagePercent = (fieldPhotos) => {
@@ -124,9 +149,9 @@ const resolveTrialDisplay = (status, now = new Date()) => {
 };
 
 const SettingsBillingSubscription = () => {
-  const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { status, loading, error, refetch } = useBillingStatus();
   const seatAllowed = Number(status?.seats_allowed || 0);
   const seatIncluded = Number(status?.seats_included || 0);
@@ -146,6 +171,18 @@ const SettingsBillingSubscription = () => {
   const mobileComplianceMode = isMobileComplianceMode();
   const fieldPhotos = status?.field_photos || {};
   const aiCommerce = status?.ai_commerce_copilot || {};
+  const fieldPhotosIncludedStorageLabel = useMemo(
+    () => resolveIncludedStorageLabel(fieldPhotosPreview, fieldPhotos),
+    [fieldPhotosPreview, fieldPhotos]
+  );
+  const fieldPhotosRetentionLabel = useMemo(
+    () => resolveRetentionLabel(fieldPhotosPreview, fieldPhotos),
+    [fieldPhotosPreview, fieldPhotos]
+  );
+  const fieldPhotosStorageExpansionLabel = useMemo(
+    () => resolveStorageExpansionLabel(fieldPhotosPreview),
+    [fieldPhotosPreview]
+  );
   const trialDisplay = useMemo(() => resolveTrialDisplay(status), [status]);
   const fieldPhotosUsagePercent = useMemo(() => quotaUsagePercent(fieldPhotos), [fieldPhotos]);
   const fieldPhotosQuotaState = quotaState(fieldPhotos);
@@ -329,7 +366,7 @@ const SettingsBillingSubscription = () => {
                 severity="warning"
                 onClose={handleModeMismatchDismiss}
                 action={
-                  <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
+                  <Button color="inherit" size="small" onClick={() => navigate(CANONICAL_BILLING_SETTINGS_URL)}>
                     {t("billing.actions.startPlan")}
                   </Button>
                 }
@@ -493,9 +530,9 @@ const SettingsBillingSubscription = () => {
               buttonLabel="About Field Photos pricing"
               lines={[
                 `Base recurring charge: ${formatAmountInterval(fieldPhotosPreview?.recurring_amount_formatted, fieldPhotosPreview?.interval)}.`,
-                `Included storage: ${fieldPhotosPreview?.included_storage_label || "5 GB"}.`,
-                `${fieldPhotosPreview?.retention_days || fieldPhotos.retention_days || 90}-day retention.`,
-                `Storage expansion: ${fieldPhotosPreview?.storage_expansion_label || "+10 GB"} for ${formatAmountInterval(fieldPhotosPreview?.storage_expansion_amount_formatted, fieldPhotosPreview?.storage_expansion_interval)}.`,
+                `Included storage: ${fieldPhotosIncludedStorageLabel}.`,
+                `${fieldPhotosRetentionLabel}.`,
+                `Storage expansion: ${fieldPhotosStorageExpansionLabel}.`,
                 "Exact taxes and proration, when applicable, are shown in the confirmation modal before activation.",
               ]}
             />
@@ -504,9 +541,14 @@ const SettingsBillingSubscription = () => {
         subtitle="Proof-of-work photo uploads for shift-based teams."
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {!fieldPhotos.addon_active && !fieldPhotos.read_only && (
+            {!fieldPhotos.addon_active && !fieldPhotos.read_only && fieldPhotos.price_configured && (
               <Button size="small" variant="contained" onClick={() => openFieldPhotosBilling("activate")}>
                 View pricing & activate
+              </Button>
+            )}
+            {!fieldPhotos.addon_active && !fieldPhotos.read_only && (
+              <Button size="small" variant="text" onClick={() => navigate(FIELD_PHOTOS_PAGE_URL)}>
+                Open Field Photos
               </Button>
             )}
             {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
@@ -520,7 +562,7 @@ const SettingsBillingSubscription = () => {
               </Button>
             )}
             {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
-              <Button size="small" variant="text" href="/manager/field-photos">
+              <Button size="small" variant="text" onClick={() => navigate(FIELD_PHOTOS_PAGE_URL)}>
                 Manage Field Photos
               </Button>
             )}
@@ -551,11 +593,17 @@ const SettingsBillingSubscription = () => {
                     Starts at {formatAmountInterval(fieldPhotosPreview?.recurring_amount_formatted, fieldPhotosPreview?.interval)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Includes {fieldPhotosPreview?.included_storage_label || "5 GB"} · {fieldPhotosPreview?.retention_days || 90}-day retention
+                    Includes {fieldPhotosIncludedStorageLabel} · {fieldPhotosRetentionLabel}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    No charge is created until you review and confirm the billing preview.
-                  </Typography>
+                  {fieldPhotos.price_configured ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No charge is created until you review and confirm the billing preview.
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Field Photos billing is not configured yet. Contact support to activate this add-on.
+                    </Typography>
+                  )}
                   {fieldPhotosPreviewError ? (
                     <Typography variant="body2" color="error">
                       {fieldPhotosPreviewError}
@@ -589,7 +637,7 @@ const SettingsBillingSubscription = () => {
                   <strong>Storage:</strong> {formatBytes(fieldPhotos.storage_used_bytes)} of {formatBytes(fieldPhotos.storage_quota_bytes)}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Retention:</strong> {fieldPhotos.retention_days || 90} days
+                  <strong>Retention:</strong> {hasValue(fieldPhotos.retention_days) ? `${fieldPhotos.retention_days} days` : "Retention information unavailable"}
                 </Typography>
                 {status.next_billing_date ? (
                   <Typography variant="body2">
