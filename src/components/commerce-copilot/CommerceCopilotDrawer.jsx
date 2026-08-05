@@ -1257,9 +1257,15 @@ const CommerceCopilotDrawer = ({
     setExpandedCompletionGuidance({});
     setContentProducts([]);
     setContentProductId(targetProductId || "");
-    setContentFieldSelections({});
+    setContentFieldDecisions({});
     setContentFieldEdits({});
+    setContentFieldEditBuffers({});
+    setContentFieldActivity({});
+    setContentFieldRegenerating({});
     setEditingContentField(null);
+    setContentFilter("all");
+    setUnsupportedContentOpen(false);
+    setToastMessage({ open: false, severity: "success", text: "" });
     setShippingTestForm(buildShippingTestForm(null, targetProductId));
     setInternationalExpansionForm(buildInternationalExpansionForm(null, targetProductId));
     questionSeedRef.current = {};
