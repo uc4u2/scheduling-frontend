@@ -2017,48 +2017,64 @@ describe("CommerceCopilotDrawer", () => {
                 value: "An elegant necklace presented in a protective jewelry box.",
                 reason: "Generated from confirmed product facts.",
                 status: "suggested",
+                capability_status: "suggestion_available",
+                actionable: true,
               },
               category: {
                 current_value: "Jewelry",
                 value: "Jewelry",
-                reason: "Use existing category \"Jewelry\".",
+                reason: "No category suggestion was generated.",
                 status: "suggested",
+                capability_status: "no_suggestion",
+                actionable: false,
               },
               sku: {
                 current_value: "NECKLACE-001",
                 value: "SMOKY-NECKLACE-JEWELRY",
                 reason: "Suggested from the product name and checked for tenant SKU uniqueness.",
                 status: "suggested",
+                capability_status: "suggestion_available",
+                actionable: true,
               },
               slug: {
                 current_value: "",
                 value: "smoky-lemon-quartz-necklace",
                 reason: "Generated from the product name and normalized with current URL rules.",
                 status: "suggested",
+                capability_status: "suggestion_available",
+                actionable: true,
               },
               meta_title: {
                 current_value: "",
                 value: "Smoky-Lemon Quartz Necklace | Demo",
                 reason: "Generated for search results.",
                 status: "suggested",
+                capability_status: "suggestion_available",
+                actionable: true,
               },
               meta_description: {
                 current_value: "",
                 value: "Explore the Smoky-Lemon Quartz Necklace and review the current product details.",
                 reason: "Generated for search results without unsupported claims.",
                 status: "suggested",
+                capability_status: "suggestion_available",
+                actionable: true,
               },
               short_storefront_copy: {
                 current_value: null,
                 value: null,
-                reason: "This storefront does not currently persist a separate short product summary field.",
+                reason: "This storefront does not currently store a separate short Product summary.",
                 status: "unavailable",
+                capability_status: "unsupported",
+                actionable: false,
               },
               image_alt_text: {
                 current_value: null,
                 value: null,
-                reason: "Image alt text is not managed by the current storefront product contract in this release.",
+                reason: "Image alt text is not currently editable from this Commerce Copilot workflow.",
                 status: "not_applicable",
+                capability_status: "not_applicable",
+                actionable: false,
               },
             },
           },
@@ -2105,9 +2121,10 @@ describe("CommerceCopilotDrawer", () => {
         expect(body.action_value_edits.act_content_1.product_payload).toEqual(
           expect.objectContaining({
             description: "An elegant necklace presented in a protective jewelry box.",
-            category: "Jewelry",
+            sku: "SMOKY-NECKLACE-JEWELRY",
           })
         );
+        expect(body.action_value_edits.act_content_1.product_payload.category).toBeUndefined();
         return Promise.resolve({
           data: {
             public_id: "approval_content_1",
@@ -2133,16 +2150,20 @@ describe("CommerceCopilotDrawer", () => {
     ));
     expect(await screen.findByText(/storefront content suggestions/i)).toBeInTheDocument();
     expect(screen.getByText(/content changes will remain hidden until you publish the product\./i)).toBeInTheDocument();
-    expect(screen.getByText(/use existing category "jewelry"\./i)).toBeInTheDocument();
+    expect(screen.getByText(/no category suggestion was generated\./i)).toBeInTheDocument();
+    expect(screen.getByText(/not managed by commerce copilot/i)).toBeInTheDocument();
+    expect(screen.queryByText(/image alt text is not currently editable from this commerce copilot workflow\./i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /i understand that the selected storefront content will be applied/i }));
-    await userEvent.click(screen.getByRole("button", { name: /approve selected content/i }));
+    await userEvent.click(screen.getByRole("button", { name: /use all suggestions/i }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /i reviewed the selected changes and understand they will update the live product when applied\./i }));
+    await userEvent.click(screen.getByRole("button", { name: /approve 5 selected fields/i }));
 
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
       "/inventory/commerce-copilot/plans/plan_content_1/approve",
       expect.objectContaining({ selected_action_ids: ["act_content_1"] }),
       expect.any(Object)
     ));
+    expect((await screen.findAllByText(/approved — 5 fields are ready to apply\./i)).length).toBeGreaterThan(0);
     expect(screen.queryByText(/proposed_input_json/i)).not.toBeInTheDocument();
   });
 });

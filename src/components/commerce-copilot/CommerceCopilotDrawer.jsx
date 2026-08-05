@@ -23,7 +23,10 @@ import {
   FormControlLabel,
   InputLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
+  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -179,6 +182,13 @@ const shippingTestStatusTone = (status) => {
 };
 
 const humanizeFactKey = (value) => HUMAN_LABELS[value] || String(value || "").replace(/_/g, " ");
+const humanizeContentCapabilityStatus = (value) => ({
+  suggestion_available: "Suggestion available",
+  no_suggestion: "Needs attention",
+  unsupported: "Not managed here",
+  not_applicable: "Not applicable",
+  generation_error: "Generation failed",
+}[String(value || "").trim().toLowerCase()] || "Needs review");
 const factKeyFromQuestion = (question) => String(question?.fact_key || question?.question_id || "");
 
 const PRODUCT_STEP_KEYS = new Set([
@@ -1049,9 +1059,15 @@ const CommerceCopilotDrawer = ({
   const [expandedCompletionGuidance, setExpandedCompletionGuidance] = useState({});
   const [contentProducts, setContentProducts] = useState([]);
   const [contentProductId, setContentProductId] = useState(targetProductId || "");
-  const [contentFieldSelections, setContentFieldSelections] = useState({});
+  const [contentFieldDecisions, setContentFieldDecisions] = useState({});
   const [contentFieldEdits, setContentFieldEdits] = useState({});
+  const [contentFieldEditBuffers, setContentFieldEditBuffers] = useState({});
+  const [contentFieldActivity, setContentFieldActivity] = useState({});
+  const [contentFieldRegenerating, setContentFieldRegenerating] = useState({});
   const [editingContentField, setEditingContentField] = useState(null);
+  const [contentFilter, setContentFilter] = useState("all");
+  const [unsupportedContentOpen, setUnsupportedContentOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState({ open: false, severity: "success", text: "" });
   const [shippingTestForm, setShippingTestForm] = useState(buildShippingTestForm(null, targetProductId));
   const [internationalExpansionForm, setInternationalExpansionForm] = useState(buildInternationalExpansionForm(null, targetProductId));
   const isMobileDialog = useMediaQuery((theme) => theme.breakpoints.down("sm"));
@@ -1466,20 +1482,6 @@ const CommerceCopilotDrawer = ({
     createSession(quickStartWorkflow);
   }, [open, capabilities, quickStartWorkflow, sessionData, availability.chat_available, createSession, startContentWorkflow, targetProductId]);
 
-  useEffect(() => {
-    if (!contentPack) return;
-    const suggestions = contentPack.suggestions || {};
-    setContentFieldSelections((prev) => {
-      const nextSelections = {};
-      Object.entries(suggestions).forEach(([key, row]) => {
-        if ((prev[key] === undefined) && row?.status === "suggested" && row?.value) {
-          nextSelections[key] = true;
-        }
-      });
-      return Object.keys(nextSelections).length ? { ...prev, ...nextSelections } : prev;
-    });
-  }, [contentPack]);
-
   const submitMessage = async () => {
     if (session?.public_id && String(messageText || "").trim()) {
       const next = String(messageText || "").trim();
@@ -1767,6 +1769,68 @@ const CommerceCopilotDrawer = ({
     () => (Array.isArray(contentPack?.supported_fields) ? contentPack.supported_fields : []),
     [contentPack?.supported_fields]
   );
+  const contentFields = useMemo(
+    () => Object.entries(contentSuggestions).map(([fieldKey, row]) => {
+      const proposedValue = contentFieldEdits[fieldKey] ?? row?.value ?? "";
+      const capabilityStatus = String(row?.capability_status || "").trim().toLowerCase()
+        || (contentSupportedFields.includes(fieldKey) ? "suggestion_available" : "unsupported");
+      const hasCommittedEdit = Object.prototype.hasOwnProperty.call(contentFieldEdits, fieldKey);
+      const actionable = Boolean(
+        hasCommittedEdit
+        || row?.actionable
+        || (capabilityStatus === "suggestion_available" && proposedValue !== "" && proposedValue != null)
+      );
+      return {
+        fieldKey,
+        ...row,
+        capability_status: capabilityStatus,
+        actionable,
+        proposed_value: proposedValue,
+        current_display: row?.current_value || "Empty",
+        suggested_display: proposedValue || null,
+        decision: contentFieldDecisions[fieldKey] || "",
+        activity: contentFieldActivity[fieldKey] || {},
+        is_regenerating: Boolean(contentFieldRegenerating[fieldKey]),
+        has_committed_edit: hasCommittedEdit,
+      };
+    }),
+    [contentFieldActivity, contentFieldDecisions, contentFieldEdits, contentFieldRegenerating, contentSuggestions, contentSupportedFields]
+  );
+  const actionableContentFields = useMemo(
+    () => contentFields.filter((row) => row.actionable && row.capability_status !== "generation_error"),
+    [contentFields]
+  );
+  const needsAttentionContentFields = useMemo(
+    () => contentFields.filter((row) => {
+      if (row.capability_status === "generation_error") return true;
+      if (row.capability_status !== "no_suggestion") return false;
+      return !row.has_committed_edit;
+    }),
+    [contentFields]
+  );
+  const unsupportedContentFields = useMemo(
+    () => contentFields.filter((row) => ["unsupported", "not_applicable"].includes(row.capability_status)),
+    [contentFields]
+  );
+  const selectedContentFields = useMemo(
+    () => actionableContentFields.filter((row) => row.decision === "selected_suggestion"),
+    [actionableContentFields]
+  );
+  const selectedContentCount = selectedContentFields.length;
+  const actionableSuggestionCount = actionableContentFields.length;
+  const approvedContentFields = useMemo(
+    () => contentFields.filter((row) => row.activity?.approved),
+    [contentFields]
+  );
+  const appliedContentFields = useMemo(
+    () => contentFields.filter((row) => row.activity?.applied),
+    [contentFields]
+  );
+  const contentFieldsForFilter = useMemo(() => {
+    if (contentFilter === "selected") return selectedContentFields;
+    if (contentFilter === "needs_attention") return [...needsAttentionContentFields];
+    return [...actionableContentFields, ...needsAttentionContentFields];
+  }, [actionableContentFields, contentFilter, needsAttentionContentFields, selectedContentFields]);
   const shippingTestProductOptions = useMemo(
     () => (Array.isArray(shippingTest?.product_options) ? shippingTest.product_options : []),
     [shippingTest?.product_options]
@@ -1820,10 +1884,108 @@ const CommerceCopilotDrawer = ({
   }, [selectedShippingTestPackage, selectedShippingTestProduct, shippingTestQuantity]);
   const internationalDestinationLimitReached = (internationalExpansionForm.destinations || []).length >= 10;
 
+  useEffect(() => {
+    const validKeys = new Set(Object.keys(contentSuggestions));
+    if (!validKeys.size) {
+      setContentFieldDecisions({});
+      setContentFieldEdits({});
+      setContentFieldEditBuffers({});
+      setContentFieldActivity({});
+      setContentFieldRegenerating({});
+      setEditingContentField(null);
+      return;
+    }
+    const prune = (previous) => Object.fromEntries(
+      Object.entries(previous || {}).filter(([key]) => validKeys.has(key))
+    );
+    setContentFieldDecisions((prev) => prune(prev));
+    setContentFieldEdits((prev) => prune(prev));
+    setContentFieldEditBuffers((prev) => prune(prev));
+    setContentFieldActivity((prev) => prune(prev));
+    setContentFieldRegenerating((prev) => prune(prev));
+    setEditingContentField((prev) => (prev && validKeys.has(prev) ? prev : null));
+  }, [contentSuggestions]);
+
+  const showToastMessage = useCallback((severity, text) => {
+    setToastMessage({ open: true, severity, text });
+  }, []);
+
+  const mergeContentFieldActivity = useCallback((field, patch) => {
+    setContentFieldActivity((prev) => ({
+      ...prev,
+      [field]: {
+        ...(prev[field] || {}),
+        ...patch,
+      },
+    }));
+  }, []);
+
+  const setContentDecision = useCallback((field, decision, options = {}) => {
+    setContentFieldDecisions((prev) => ({ ...prev, [field]: decision }));
+    if (decision === "selected_suggestion") {
+      mergeContentFieldActivity(field, { generationError: "", approved: false, applied: false });
+      if (options.announce !== false) {
+        const label = humanizeFactKey(field);
+        setStatusMessage({ type: "success", text: `${label} selected for application.` });
+        showToastMessage("success", `${label} selected for application.`);
+      }
+      return;
+    }
+    if (decision === "keeping_current") {
+      mergeContentFieldActivity(field, { approved: false, applied: false });
+      if (options.announce !== false) {
+        setStatusMessage({ type: "info", text: `${humanizeFactKey(field)} will keep the current Product value.` });
+      }
+      return;
+    }
+    mergeContentFieldActivity(field, { approved: false, applied: false });
+  }, [mergeContentFieldActivity, showToastMessage]);
+
+  const startEditingContentField = useCallback((field, row) => {
+    setContentFieldEditBuffers((prev) => ({
+      ...prev,
+      [field]: prev[field] ?? contentFieldEdits[field] ?? row?.value ?? "",
+    }));
+    setEditingContentField(field);
+  }, [contentFieldEdits]);
+
+  const cancelEditingContentField = useCallback((field) => {
+    setContentFieldEditBuffers((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setEditingContentField((prev) => (prev === field ? null : prev));
+  }, []);
+
+  const saveEditingContentField = useCallback((field) => {
+    const nextValue = String(contentFieldEditBuffers[field] ?? "").trim();
+    if (!nextValue) {
+      mergeContentFieldActivity(field, { generationError: "Enter a value before saving your edit." });
+      return;
+    }
+    setContentFieldEdits((prev) => ({ ...prev, [field]: nextValue }));
+    setContentFieldEditBuffers((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setEditingContentField((prev) => (prev === field ? null : prev));
+    mergeContentFieldActivity(field, {
+      edited: true,
+      generationError: "",
+      approved: false,
+      applied: false,
+    });
+    setContentDecision(field, "selected_suggestion", { announce: false });
+    setStatusMessage({ type: "success", text: `${humanizeFactKey(field)} edit selected for application.` });
+    showToastMessage("success", `${humanizeFactKey(field)} edited and selected for application.`);
+  }, [contentFieldEditBuffers, mergeContentFieldActivity, setContentDecision, showToastMessage]);
+
   const buildSelectedContentPayload = useCallback(() => {
     const productPayload = {};
     contentSupportedFields.forEach((field) => {
-      if (!contentFieldSelections[field]) return;
+      if (contentFieldDecisions[field] !== "selected_suggestion") return;
       const edited = contentFieldEdits[field];
       const suggestion = contentSuggestions[field];
       const finalValue = edited != null && edited !== "" ? edited : suggestion?.value;
@@ -1832,7 +1994,7 @@ const CommerceCopilotDrawer = ({
       }
     });
     return productPayload;
-  }, [contentFieldEdits, contentFieldSelections, contentSuggestions, contentSupportedFields]);
+  }, [contentFieldDecisions, contentFieldEdits, contentSuggestions, contentSupportedFields]);
 
   const approveSelectedChanges = async () => {
     if (!plan?.public_id) return;
@@ -1889,7 +2051,10 @@ const CommerceCopilotDrawer = ({
       );
       setApproval(data);
       setExecution(null);
-      setStatusMessage({ type: "success", text: "Storefront content approved. Apply it when you are ready." });
+      Object.keys(productPayload).forEach((field) => {
+        mergeContentFieldActivity(field, { approved: true, applied: false, generationError: "" });
+      });
+      setStatusMessage({ type: "success", text: `Approved — ${Object.keys(productPayload).length} field${Object.keys(productPayload).length === 1 ? "" : "s"} are ready to apply.` });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to approve this storefront content." });
     } finally {
@@ -1910,12 +2075,23 @@ const CommerceCopilotDrawer = ({
         auth
       );
       setExecution(data);
+      const approvedKeys = Object.keys(buildSelectedContentPayload());
+      if (data?.status === "completed") {
+        approvedKeys.forEach((field) => {
+          mergeContentFieldActivity(field, { applied: true, approved: false, generationError: "" });
+        });
+        setContentFieldDecisions({});
+        setContentFieldEdits({});
+        setContentFieldEditBuffers({});
+      }
       if (session?.public_id) {
         await loadSessionDetail(session.public_id);
       }
       setStatusMessage({
-        type: "success",
-        text: data?.status === "completed" ? "Approved changes were applied." : "Execution finished with follow-up items.",
+        type: data?.status === "completed" ? "success" : "warning",
+        text: data?.status === "completed"
+          ? `${approvedKeys.length} Product field${approvedKeys.length === 1 ? "" : "s"} were updated successfully.`
+          : "Approved changes finished with follow-up items.",
       });
     } catch (error) {
       setStatusMessage({ type: "error", text: error?.response?.data?.message || "Unable to apply approved changes." });
@@ -2105,16 +2281,60 @@ const CommerceCopilotDrawer = ({
 
   const regenerateContentField = async (field) => {
     if (!session?.public_id || !field) return;
+    setContentFieldRegenerating((prev) => ({ ...prev, [field]: true }));
+    mergeContentFieldActivity(field, { generationError: "", approved: false, applied: false });
     const loaded = await generateContentPack(session.public_id, { fields: [field] });
     if (loaded) {
+      setContentFieldDecisions((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
       setContentFieldEdits((prev) => {
         const next = { ...prev };
         delete next[field];
         return next;
       });
-      setStatusMessage({ type: "success", text: `A new ${humanizeFactKey(field).toLowerCase()} suggestion is ready.` });
+      mergeContentFieldActivity(field, {
+        regenerated: true,
+        regeneratedLabel: "Regenerated just now",
+        generationError: "",
+        edited: false,
+        approved: false,
+        applied: false,
+      });
+      setStatusMessage({ type: "success", text: "New suggestion generated." });
+      showToastMessage("success", `${humanizeFactKey(field)} regenerated successfully.`);
+    } else {
+      mergeContentFieldActivity(field, {
+        generationError: `Unable to regenerate ${humanizeFactKey(field).toLowerCase()} right now. Retry when you are ready.`,
+      });
     }
+    setContentFieldRegenerating((prev) => ({ ...prev, [field]: false }));
   };
+
+  const refreshContentReview = useCallback(async () => {
+    if (!session?.public_id) {
+      await loadCapabilities();
+      return;
+    }
+    const hasUnsavedContentReviewChanges = Boolean(
+      editingContentField
+      || Object.keys(contentFieldEditBuffers).length
+      || Object.keys(contentFieldEdits).length
+      || Object.values(contentFieldDecisions).some(Boolean)
+    );
+    if (hasUnsavedContentReviewChanges && typeof window !== "undefined") {
+      const confirmed = window.confirm("Refresh and discard unsaved content-review edits and selections?");
+      if (!confirmed) return;
+    }
+    setContentFieldDecisions({});
+    setContentFieldEdits({});
+    setContentFieldEditBuffers({});
+    setEditingContentField(null);
+    await loadSessionDetail(session.public_id);
+    setStatusMessage({ type: "success", text: "Content review refreshed." });
+  }, [contentFieldDecisions, contentFieldEditBuffers, contentFieldEdits, editingContentField, loadCapabilities, loadSessionDetail, session?.public_id]);
 
   const renderPrimaryBanner = () => {
     if (capabilityError) return <Alert severity="warning">{capabilityError}</Alert>;
@@ -2143,7 +2363,13 @@ const CommerceCopilotDrawer = ({
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1}>
-            <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={loadCapabilities} disabled={loadingCapabilities || busy}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={isContentWorkflow && session?.public_id ? refreshContentReview : loadCapabilities}
+              disabled={loadingCapabilities || busy}
+            >
               Refresh
             </Button>
             <Button size="small" onClick={onClose}>Close</Button>
@@ -2845,9 +3071,6 @@ const CommerceCopilotDrawer = ({
                           Review the current and suggested storefront content. Select only the fields you want to apply.
                         </Typography>
                       </Box>
-                      <Alert severity={contentPack?.product_state?.is_active ? "warning" : "info"}>
-                        {contentPack?.product_state?.visibility_message}
-                      </Alert>
                       {(contentPack?.warnings || []).map((warning) => (
                         <Alert key={warning} severity="warning" sx={{ py: 0 }}>{warning}</Alert>
                       ))}
@@ -2867,72 +3090,243 @@ const CommerceCopilotDrawer = ({
                           ) : null}
                         </CardContent>
                       </Card>
-                      {Object.entries(contentSuggestions).map(([fieldKey, row]) => (
-                        <Card key={fieldKey} variant="outlined">
-                          <CardContent>
-                            <Stack spacing={1}>
-                              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
-                                <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{humanizeFactKey(fieldKey)}</Typography>
-                                  <Typography variant="caption" color="text.secondary">{row?.reason}</Typography>
-                                </Stack>
-                                {contentSupportedFields.includes(fieldKey) ? (
-                                  <FormControlLabel
-                                    control={<Checkbox checked={Boolean(contentFieldSelections[fieldKey])} onChange={(event) => setContentFieldSelections((prev) => ({ ...prev, [fieldKey]: event.target.checked }))} />}
-                                    label="Use suggestion"
-                                    sx={{ mr: 0 }}
-                                  />
-                                ) : null}
-                              </Stack>
-                              <Typography variant="caption" color="text.secondary">Current</Typography>
-                              <Typography variant="body2" sx={{ whiteSpace: "pre-line", userSelect: "text", WebkitUserSelect: "text" }}>
-                                {row?.current_value || "Empty"}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">Suggested</Typography>
-                              {editingContentField === fieldKey ? (
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  multiline={fieldKey === "description" || fieldKey === "meta_description"}
-                                  minRows={fieldKey === "description" ? 4 : 2}
-                                  value={contentFieldEdits[fieldKey] ?? row?.value ?? ""}
-                                  onChange={(event) => setContentFieldEdits((prev) => ({ ...prev, [fieldKey]: event.target.value }))}
-                                />
-                              ) : (
-                                <Typography variant="body2" sx={{ whiteSpace: "pre-line", userSelect: "text", WebkitUserSelect: "text" }}>
-                                  {contentFieldEdits[fieldKey] ?? row?.value ?? row?.reason}
-                                </Typography>
-                              )}
-                              {contentSupportedFields.includes(fieldKey) ? (
-                                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                                  <Button size="small" variant="text" onClick={() => setContentFieldSelections((prev) => ({ ...prev, [fieldKey]: true }))}>
-                                    Use suggestion
-                                  </Button>
-                                  <Button size="small" variant="text" onClick={() => setContentFieldSelections((prev) => ({ ...prev, [fieldKey]: false }))}>
-                                    Keep current
-                                  </Button>
-                                  <Button size="small" variant="text" onClick={() => setEditingContentField((prev) => (prev === fieldKey ? null : fieldKey))}>
-                                    {editingContentField === fieldKey ? "Done editing" : "Edit"}
-                                  </Button>
-                                  <Button size="small" variant="text" onClick={() => regenerateContentField(fieldKey)} disabled={busy}>
-                                    Regenerate
-                                  </Button>
-                                </Stack>
-                              ) : null}
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Stack spacing={1.25}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Review summary</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {contentFields.length} content fields reviewed
+                        </Typography>
+                        <Alert severity={contentPack?.product_state?.is_active ? "warning" : "info"} sx={{ py: 0 }}>
+                          {contentPack?.product_state?.visibility_message}
+                        </Alert>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+                              <Chip size="small" label={`${actionableSuggestionCount} suggestions available`} />
+                              <Chip size="small" label={`${needsAttentionContentFields.length} needs attention`} />
+                              <Chip size="small" label={`${unsupportedContentFields.length} not managed here`} />
+                              <Chip size="small" color={selectedContentCount ? "success" : "default"} label={`Selected for application: ${selectedContentCount}`} />
                             </Stack>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                              <Button variant={contentFilter === "all" ? "contained" : "outlined"} size="small" onClick={() => setContentFilter("all")}>
+                                All
+                              </Button>
+                              <Button variant={contentFilter === "selected" ? "contained" : "outlined"} size="small" onClick={() => setContentFilter("selected")}>
+                                Selected
+                              </Button>
+                              <Button variant={contentFilter === "needs_attention" ? "contained" : "outlined"} size="small" onClick={() => setContentFilter("needs_attention")}>
+                                Needs attention
+                              </Button>
+                            </Stack>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                      {(contentFilter === "all" || contentFilter === "selected") && contentFieldsForFilter.filter((row) => row.actionable && row.capability_status !== "generation_error").length ? (
+                        <Stack spacing={1.25}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Actionable suggestions</Typography>
+                          {contentFieldsForFilter.filter((row) => row.actionable && row.capability_status !== "generation_error").map((row) => {
+                            const fieldStateChips = [
+                              row.decision === "selected_suggestion" ? { label: "Selected", color: "success" } : null,
+                              row.decision === "keeping_current" ? { label: "Keeping current", color: "default" } : null,
+                              row.activity?.edited ? { label: "Edited", color: "success" } : null,
+                              row.activity?.regenerated ? { label: "Regenerated", color: "success" } : null,
+                              row.activity?.approved ? { label: "Approved", color: "success" } : null,
+                              row.activity?.applied ? { label: "Applied", color: "success" } : null,
+                              row.activity?.generationError ? { label: "Failed", color: "error" } : null,
+                            ].filter(Boolean);
+                            return (
+                              <Card key={row.fieldKey} variant="outlined">
+                                <CardContent>
+                                  <Stack spacing={1}>
+                                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                                      <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{humanizeFactKey(row.fieldKey)}</Typography>
+                                        <Typography variant="caption" color="text.secondary">{row.reason}</Typography>
+                                      </Stack>
+                                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                        <Chip size="small" label={humanizeContentCapabilityStatus(row.capability_status)} />
+                                        {fieldStateChips.map((chip) => (
+                                          <Chip key={`${row.fieldKey}-${chip.label}`} size="small" color={chip.color} label={chip.label} />
+                                        ))}
+                                      </Stack>
+                                    </Stack>
+                                    <Typography variant="caption" color="text.secondary">Current</Typography>
+                                    <Typography variant="body2" sx={{ whiteSpace: "pre-line", userSelect: "text", WebkitUserSelect: "text" }}>
+                                      {row.current_display}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">Suggested</Typography>
+                                    {editingContentField === row.fieldKey ? (
+                                      <TextField
+                                        fullWidth
+                                        size="small"
+                                        multiline={row.fieldKey === "description" || row.fieldKey === "meta_description"}
+                                        minRows={row.fieldKey === "description" ? 4 : 2}
+                                        value={contentFieldEditBuffers[row.fieldKey] ?? row.proposed_value ?? ""}
+                                        onChange={(event) => setContentFieldEditBuffers((prev) => ({ ...prev, [row.fieldKey]: event.target.value }))}
+                                      />
+                                    ) : (
+                                      <Typography variant="body2" sx={{ whiteSpace: "pre-line", userSelect: "text", WebkitUserSelect: "text" }}>
+                                        {row.suggested_display || "No suggestion available"}
+                                      </Typography>
+                                    )}
+                                    <FormControl component="fieldset" size="small">
+                                      <Typography variant="caption" color="text.secondary">Review decision</Typography>
+                                      <RadioGroup
+                                        row
+                                        value={row.decision || ""}
+                                        onChange={(event) => setContentDecision(row.fieldKey, event.target.value)}
+                                      >
+                                        <FormControlLabel value="selected_suggestion" control={<Radio />} label="Use suggested value" />
+                                        <FormControlLabel value="keeping_current" control={<Radio />} label="Keep current value" />
+                                      </RadioGroup>
+                                    </FormControl>
+                                    {row.decision === "selected_suggestion" ? (
+                                      <Typography variant="caption" color="success.main">Selected for application.</Typography>
+                                    ) : null}
+                                    {row.activity?.regeneratedLabel ? (
+                                      <Typography variant="caption" color="success.main">{row.activity.regeneratedLabel}</Typography>
+                                    ) : null}
+                                    {row.activity?.generationError ? (
+                                      <Alert severity="error" sx={{ py: 0 }}>
+                                        {row.activity.generationError}
+                                      </Alert>
+                                    ) : null}
+                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                      {editingContentField === row.fieldKey ? (
+                                        <>
+                                          <Button size="small" variant="contained" onClick={() => saveEditingContentField(row.fieldKey)}>
+                                            Save edit
+                                          </Button>
+                                          <Button size="small" variant="text" onClick={() => cancelEditingContentField(row.fieldKey)}>
+                                            Cancel edit
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <Button size="small" variant="text" onClick={() => startEditingContentField(row.fieldKey, row)}>
+                                          Edit
+                                        </Button>
+                                      )}
+                                      <Button
+                                        size="small"
+                                        variant="text"
+                                        onClick={() => regenerateContentField(row.fieldKey)}
+                                        disabled={busy || row.is_regenerating || !row.can_regenerate}
+                                      >
+                                        {row.is_regenerating ? "Regenerating..." : "Regenerate"}
+                                      </Button>
+                                      {row.activity?.generationError ? (
+                                        <Button size="small" variant="text" onClick={() => regenerateContentField(row.fieldKey)} disabled={busy || row.is_regenerating}>
+                                          Retry
+                                        </Button>
+                                      ) : null}
+                                    </Stack>
+                                  </Stack>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </Stack>
+                      ) : null}
+                      {(contentFilter === "all" || contentFilter === "needs_attention") && needsAttentionContentFields.length ? (
+                        <Stack spacing={1.25}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Needs attention</Typography>
+                          {needsAttentionContentFields.map((row) => (
+                            <Card key={row.fieldKey} variant="outlined">
+                              <CardContent>
+                                <Stack spacing={1}>
+                                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                                    <Stack spacing={0.35}>
+                                      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{humanizeFactKey(row.fieldKey)}</Typography>
+                                      <Typography variant="caption" color="text.secondary">{row.reason}</Typography>
+                                    </Stack>
+                                    <Chip size="small" label={humanizeContentCapabilityStatus(row.capability_status)} />
+                                  </Stack>
+                                  {row.activity?.generationError ? (
+                                    <Alert severity="error" sx={{ py: 0 }}>{row.activity.generationError}</Alert>
+                                  ) : null}
+                                  {editingContentField === row.fieldKey ? (
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      multiline={row.fieldKey === "description" || row.fieldKey === "meta_description"}
+                                      minRows={row.fieldKey === "description" ? 4 : 2}
+                                      value={contentFieldEditBuffers[row.fieldKey] ?? ""}
+                                      onChange={(event) => setContentFieldEditBuffers((prev) => ({ ...prev, [row.fieldKey]: event.target.value }))}
+                                    />
+                                  ) : null}
+                                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                    {editingContentField === row.fieldKey ? (
+                                      <>
+                                        <Button size="small" variant="contained" onClick={() => saveEditingContentField(row.fieldKey)}>
+                                          Save edit
+                                        </Button>
+                                        <Button size="small" variant="text" onClick={() => cancelEditingContentField(row.fieldKey)}>
+                                          Cancel edit
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Button size="small" variant="text" onClick={() => startEditingContentField(row.fieldKey, row)} disabled={!row.can_edit_manually}>
+                                        Edit manually
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="small"
+                                      variant="text"
+                                      onClick={() => regenerateContentField(row.fieldKey)}
+                                      disabled={busy || row.is_regenerating || !row.can_regenerate}
+                                    >
+                                      {row.is_regenerating ? "Regenerating..." : "Regenerate"}
+                                    </Button>
+                                  </Stack>
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Stack>
+                      ) : null}
+                      {unsupportedContentFields.length ? (
+                        <Accordion
+                          expanded={unsupportedContentOpen}
+                          onChange={(_, expanded) => setUnsupportedContentOpen(expanded)}
+                          TransitionProps={{ unmountOnExit: true }}
+                        >
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Stack spacing={0.35}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Not managed by Commerce Copilot</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {unsupportedContentFields.length} field{unsupportedContentFields.length === 1 ? "" : "s"} are not editable from this workflow.
+                              </Typography>
+                            </Stack>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Stack spacing={1}>
+                              {unsupportedContentFields.map((row) => (
+                                <Card key={row.fieldKey} variant="outlined">
+                                  <CardContent>
+                                    <Stack spacing={0.5}>
+                                      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{humanizeFactKey(row.fieldKey)}</Typography>
+                                      <Typography variant="body2" color="text.secondary">{row.reason}</Typography>
+                                    </Stack>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
+                      ) : null}
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                         <Button
                           variant="outlined"
                           onClick={() => {
+                            if (!actionableContentFields.length) return;
                             const next = {};
-                            contentSupportedFields.forEach((field) => {
-                              if ((contentSuggestions[field] || {}).value) next[field] = true;
+                            actionableContentFields.forEach((field) => {
+                              next[field.fieldKey] = "selected_suggestion";
                             });
-                            setContentFieldSelections(next);
+                            setContentFieldDecisions(next);
+                            setStatusMessage({ type: "success", text: `${actionableContentFields.length} available suggestion${actionableContentFields.length === 1 ? "" : "s"} selected.` });
+                            showToastMessage("success", `${actionableContentFields.length} available suggestion${actionableContentFields.length === 1 ? "" : "s"} selected.`);
                           }}
+                          disabled={!actionableContentFields.length}
                         >
                           Use all suggestions
                         </Button>
@@ -2945,26 +3339,43 @@ const CommerceCopilotDrawer = ({
                       </Stack>
                       <Stack spacing={1.25}>
                         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Approve selected content</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedContentCount} field{selectedContentCount === 1 ? "" : "s"} selected and ready for review.
+                        </Typography>
+                        {selectedContentFields.length ? (
+                          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                            {selectedContentFields.map((row) => (
+                              <Chip key={`selected-${row.fieldKey}`} size="small" color="success" label={humanizeFactKey(row.fieldKey)} />
+                            ))}
+                          </Stack>
+                        ) : null}
                         {checkboxRequirements.map((requirement) => (
                           <FormControlLabel
                             key={requirement.requirement_id}
                             control={<Checkbox checked={Boolean(confirmationKeys[requirement.requirement_id])} onChange={(event) => toggleConfirmationKey(requirement.requirement_id, event.target.checked)} />}
-                            label={`Review and confirm ${requirement.label}${requirement.display_value ? `: ${requirement.display_value}` : ""}.`}
+                            label={`${requirement.label}: ${requirement.display_value || "Confirmation required."}`}
                           />
                         ))}
-                        <Alert severity="info" sx={{ py: 0 }}>
-                          I reviewed the selected storefront content and want to apply it.
-                        </Alert>
                         <FormControlLabel
                           control={<Checkbox checked={Boolean(confirmationKeys.__account_confirmed__)} onChange={(event) => toggleConfirmationKey("__account_confirmed__", event.target.checked)} disabled={busy} />}
-                          label="I understand that the selected storefront content will be applied to my Schedulaa account."
+                          label="I reviewed the selected changes and understand they will update the live Product when applied."
                         />
+                        {approvedContentFields.length ? (
+                          <Alert severity="success" sx={{ py: 0 }}>
+                            Approved — {approvedContentFields.length} field{approvedContentFields.length === 1 ? "" : "s"} are ready to apply.
+                          </Alert>
+                        ) : null}
+                        {appliedContentFields.length ? (
+                          <Alert severity="success" sx={{ py: 0 }}>
+                            {appliedContentFields.length} Product field{appliedContentFields.length === 1 ? "" : "s"} were updated successfully.
+                          </Alert>
+                        ) : null}
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                          <Button variant="contained" onClick={approveSelectedContent} disabled={busy || !confirmationKeys.__account_confirmed__}>
-                            Approve selected content
+                          <Button variant="contained" onClick={approveSelectedContent} disabled={busy || !confirmationKeys.__account_confirmed__ || !selectedContentCount}>
+                            {selectedContentCount ? `Approve ${selectedContentCount} selected field${selectedContentCount === 1 ? "" : "s"}` : "Approve selected content"}
                           </Button>
                           <Button variant="outlined" onClick={applyApprovedChanges} disabled={busy || !approval?.public_id || executionLocked}>
-                            Apply approved content
+                            {approvedContentFields.length ? `Apply ${approvedContentFields.length} approved change${approvedContentFields.length === 1 ? "" : "s"}` : "Apply approved content"}
                           </Button>
                           {completion?.links?.product ? (
                             <Button variant="text" component="a" href={completion.links.product}>
@@ -3961,6 +4372,20 @@ const CommerceCopilotDrawer = ({
           </>
         ) : null}
       </Stack>
+      <Snackbar
+        open={toastMessage.open}
+        autoHideDuration={3500}
+        onClose={() => setToastMessage((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={toastMessage.severity || "success"}
+          onClose={() => setToastMessage((prev) => ({ ...prev, open: false }))}
+          sx={{ width: "100%" }}
+        >
+          {toastMessage.text}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 
