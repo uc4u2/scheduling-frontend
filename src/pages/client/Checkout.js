@@ -4014,6 +4014,10 @@ export default function Checkout(props) {
         const reviewsData = reviewsRes?.data || null;
 
         const legacyEnable = Boolean(info?.enable_stripe_payments);
+        const legacyProductEnable =
+          info?.enable_product_payments == null
+            ? legacyEnable
+            : Boolean(info?.enable_product_payments);
         const legacyAllowCard = Boolean(info?.allow_card_on_file);
         const bookingMode = String(
           policyData?.booking_payment?.mode ||
@@ -4023,13 +4027,13 @@ export default function Checkout(props) {
         const cardOnFile = bookingMode === "capture";
         const payNow = bookingMode === "pay" || bookingMode === "deposit";
         const productPolicy = policyData?.product_checkout && typeof policyData.product_checkout === "object"
-          ? policyData.product_checkout
-          : {
-              enabled: legacyEnable,
-              mode: "pay",
-              requires_payment_during_checkout: true,
-              card_on_file_supported: false,
-            };
+              ? policyData.product_checkout
+              : {
+                  enabled: legacyProductEnable,
+                  mode: "pay",
+                  requires_payment_during_checkout: true,
+                  card_on_file_supported: false,
+                };
         const hold = Number(info?.booking_hold_minutes ?? 0);
 
         setPaymentsEnabled(payNow);

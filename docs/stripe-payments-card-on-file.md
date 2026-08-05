@@ -14,6 +14,16 @@ later Manager off-session charges, refer to:
 This page controls how clients pay for appointments and whether Products can be
 sold online.
 
+Since **Wednesday, August 5, 2026**, Product online payments use a dedicated
+company capability:
+
+- `enable_product_payments`
+
+This is separate from:
+
+- `enable_stripe_payments` for appointment pay-now / deposit
+- `allow_card_on_file` for appointment setup-mode / later capture
+
 ## Where to find it
 - Manager Dashboard -> Settings -> Checkout Pro & Payments
 
@@ -41,6 +51,7 @@ Products are configured separately from appointment policy.
 - Product checkout never uses card-on-file / setup mode.
 - Turning Product payments on does not force appointments to switch away from
   card on file.
+- Turning appointment pay-now or deposit on does not force Product payments on.
 
 Compatible example:
 
@@ -92,3 +103,6 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - Client 360 now includes a **Request card update** action that emails the client a secure, time-limited Stripe-hosted update-card link.
 - No migration was required for this split because Schedulaa already stores the
   Stripe-payments and card-on-file capabilities independently.
+- A later additive migration introduced `enable_product_payments` and backfilled
+  it from `enable_stripe_payments` so existing Product-selling tenants did not
+  lose online Product checkout unexpectedly.

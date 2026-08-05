@@ -124,11 +124,9 @@ describe("CheckoutFormCore", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /pay & book/i }));
 
-    await waitFor(() => expect(screen.getByRole("progressbar")).toBeInTheDocument());
+    await screen.findByRole("progressbar");
 
-    const deleteButtons = screen.getAllByRole("button");
-    const removeButton = deleteButtons.find((button) => button.querySelector('svg[data-testid="DeleteIcon"]'));
-    fireEvent.click(removeButton);
+    fireEvent.click(screen.getAllByRole("button")[0]);
 
     await waitFor(() => expect(onRequestAddService).toHaveBeenCalledTimes(1));
     expect(mockReleasePendingCheckout).toHaveBeenCalledWith({ slug: "vandaorchidjewels" });

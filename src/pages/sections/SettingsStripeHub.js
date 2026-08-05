@@ -189,6 +189,9 @@ export default function SettingsStripeHub() {
     if (allow) return "card_on_file";
     return "offline";
   }, [profile]);
+  const productPaymentsEnabled = Boolean(
+    profile?.enable_product_payments ?? profile?.enable_stripe_payments
+  );
 
   const publishableKey = profile?.stripe_publishable_key?.trim();
 
@@ -728,7 +731,12 @@ export default function SettingsStripeHub() {
               <Chip
                 size="small"
                 color={Boolean(profile?.enable_stripe_payments) ? "success" : "default"}
-                label={t("settings.payments.stripePayments") + ": " + (profile?.enable_stripe_payments ? t("settings.payments.allowed") : t("settings.payments.notSet"))}
+                label={"Appointment Checkout: " + (profile?.enable_stripe_payments ? t("settings.payments.allowed") : t("settings.payments.notSet"))}
+              />
+              <Chip
+                size="small"
+                color={productPaymentsEnabled ? "success" : "default"}
+                label={"Product payments: " + (productPaymentsEnabled ? t("settings.payments.allowed") : t("settings.payments.notSet"))}
               />
               <Chip
                 size="small"

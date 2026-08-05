@@ -35,6 +35,10 @@ Manager entry points:
 ## Currency clarification
 
 - Product selling price uses your business selling currency from **Checkout Pro & Payments**.
+- Product online checkout availability uses the dedicated `enable_product_payments`
+  capability from **Checkout Pro & Payments**.
+- Appointment pay-now, deposit, and card-on-file settings do not enable Product
+  checkout by themselves.
 - Legacy Quebec checkout storage still resolves to `CAD`.
 - `Customs declared-value currency` is separate and only affects international customs paperwork.
    - Price
@@ -159,6 +163,14 @@ Current boundaries:
 ### Customer storefront behavior
 
 Active Variant Products now show safe customer selectors on the public Product page.
+
+Payment-policy boundary:
+- Product purchases always pay during Checkout when online Product payments are on.
+- Product purchases never use setup mode or card-on-file.
+- Older frontend clients fall back conservatively:
+  1. `product_checkout.enabled` when present
+  2. `enable_product_payments` when present
+  3. `enable_stripe_payments` only for older backend compatibility
 
 Selector rules:
 - one or two option groups

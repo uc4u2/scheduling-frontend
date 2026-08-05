@@ -153,15 +153,16 @@ export default function SettingsCheckoutPro() {
 
   const appointmentNeedsCheckoutPayment =
     appointmentPaymentMode === "pay_now" || appointmentPaymentMode === "deposit";
-  const enableStripe = productPaymentsEnabled || appointmentNeedsCheckoutPayment;
   const allowCardOnFile = appointmentPaymentMode === "card_on_file";
+  const stripeNeeded =
+    productPaymentsEnabled || appointmentNeedsCheckoutPayment || allowCardOnFile;
   const isProdEnv = process.env.NODE_ENV === "production";
 
   const trimmedKey = (publishableKey || "").trim();
   const pkRegex = /^pk_(test|live)_[A-Za-z0-9]+/i;
   const secretLike = /^sk_|^whsec_/i.test(trimmedKey);
   let keyError = "";
-  const stripeKeyRequired = enableStripe || allowCardOnFile;
+  const stripeKeyRequired = stripeNeeded;
   if (stripeKeyRequired) {
     if (!trimmedKey) {
       keyError = "Publishable key is required when Stripe payments are enabled.";
@@ -197,6 +198,10 @@ export default function SettingsCheckoutPro() {
 
         const enable = !!data.enable_stripe_payments;
         const allow = !!data.allow_card_on_file;
+        const productEnabled =
+          data.enable_product_payments == null
+            ? enable
+            : !!data.enable_product_payments;
         const rawMode = String(policyData?.mode || "").toLowerCase();
         let mode = "offline";
         if (rawMode === "capture" && allow) {
@@ -211,7 +216,7 @@ export default function SettingsCheckoutPro() {
           mode = "pay_now";
         }
         setAppointmentPaymentMode(mode);
-        setProductPaymentsEnabled(enable);
+        setProductPaymentsEnabled(productEnabled);
 
         const envPublishable = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
         setPublishableKey(data.stripe_publishable_key || envPublishable);
@@ -367,6 +372,10 @@ export default function SettingsCheckoutPro() {
   const handleSaveSuccess = (data, policyData) => {
     const enable = !!data.enable_stripe_payments;
     const allow = !!data.allow_card_on_file;
+    const productEnabled =
+      data.enable_product_payments == null
+        ? enable
+        : !!data.enable_product_payments;
     const rawMode = String(policyData?.mode || "").toLowerCase();
     let mode = "offline";
     if (rawMode === "capture" && allow) {
@@ -381,7 +390,7 @@ export default function SettingsCheckoutPro() {
       mode = "pay_now";
     }
     setAppointmentPaymentMode(mode);
-    setProductPaymentsEnabled(enable);
+    setProductPaymentsEnabled(productEnabled);
     setPricesIncludeTax(!!data.prices_include_tax);
     setChargeCurrencyMode((data.charge_currency_mode || "PLATFORM_FIXED").toUpperCase());
     setTaxCountry((data.tax_country_code || "").toUpperCase());
@@ -487,7 +496,8 @@ export default function SettingsCheckoutPro() {
               ? "pay"
               : "off";
       const payload = {
-        enable_stripe_payments: enableStripe,
+        enable_stripe_payments: appointmentNeedsCheckoutPayment,
+        enable_product_payments: productPaymentsEnabled,
         allow_card_on_file: allowCardOnFile,
         stripe_publishable_key: publishableKey.trim(),
         booking_hold_minutes: Number(bookingHoldMinutes) || 0,
@@ -590,7 +600,7 @@ export default function SettingsCheckoutPro() {
         : appointmentPaymentMode === "pay_now"
           ? "Pay during booking Checkout"
           : "No online payment";
-  const productSummaryLabel = enableStripe ? "Paid during Checkout" : "Online Product payments are off";
+  const productSummaryLabel = productPaymentsEnabled ? "Paid during Checkout" : "Online Product payments are off";
 
   if (loading) {
     return (
@@ -726,9 +736,8 @@ export default function SettingsCheckoutPro() {
               <FormControlLabel
                 control={
                   <Switch
-                    checked={enableStripe}
+                    checked={productPaymentsEnabled}
                     onChange={(event) => setProductPaymentsEnabled(event.target.checked)}
-                    disabled={appointmentNeedsCheckoutPayment}
                   />
                 }
                 label={
@@ -742,11 +751,6 @@ export default function SettingsCheckoutPro() {
                   </Stack>
                 }
               />
-              {appointmentNeedsCheckoutPayment && (
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                  Appointment pay-now and deposit modes require Checkout payments to stay enabled.
-                </Typography>
-              )}
             </Grid>
 
             <Grid item xs={12}>
@@ -757,7 +761,7 @@ export default function SettingsCheckoutPro() {
               </Alert>
             </Grid>
 
-            {enableStripe && !trimmedKey && (
+            {productPaymentsEnabled && !trimmedKey && (
               <Grid item xs={12}>
                 <Alert severity="warning">Connect Stripe before accepting Product payments.</Alert>
               </Grid>
@@ -1070,7 +1074,7 @@ export default function SettingsCheckoutPro() {
               Appointment mode: <strong>{appointmentSummaryLabel}</strong>
             </Typography>
             <Typography variant="body2">
-              Product payments: <strong>{enableStripe ? "Paid during Checkout" : "Off"}</strong>
+              Product payments: <strong>{productPaymentsEnabled ? "Paid during Checkout" : "Off"}</strong>
             </Typography>
             <Typography variant="body2">
               Currency: <strong>{resolvedBusinessCurrency}</strong>

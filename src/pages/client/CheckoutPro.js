@@ -888,6 +888,10 @@ export default function CheckoutPro({ companySlug: slug }) {
         const cinfo = cinfoRes.data || {};
         const policyData = policyRes.data || null;
         const legacyEnable = Boolean(cinfo.enable_stripe_payments);
+        const legacyProductEnable =
+          cinfo.enable_product_payments == null
+            ? legacyEnable
+            : Boolean(cinfo.enable_product_payments);
         const legacyAllowCard = Boolean(cinfo.allow_card_on_file);
         const bookingMode = String(
           policyData?.booking_payment?.mode ||
@@ -899,7 +903,7 @@ export default function CheckoutPro({ companySlug: slug }) {
         const productPolicy = policyData?.product_checkout && typeof policyData.product_checkout === "object"
           ? policyData.product_checkout
           : {
-              enabled: legacyEnable,
+              enabled: legacyProductEnable,
               mode: "pay",
               requires_payment_during_checkout: true,
               card_on_file_supported: false,
