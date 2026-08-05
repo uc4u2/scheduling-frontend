@@ -17,6 +17,7 @@ import {
   Stack,
   CircularProgress,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import api from "../../utils/api";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { getUserTimezone } from "../../utils/timezone";
@@ -72,6 +73,76 @@ const customerShippingStatusColor = (value) => {
   if (["in_transit", "out_for_delivery", "pre_transit", "label_created"].includes(normalized)) return "info";
   if (["failure", "issue", "return_to_sender", "returning", "cancelled"].includes(normalized)) return "warning";
   return "default";
+};
+
+const readableChipSx = (color = "default") => (theme) => {
+  const palette = {
+    success: {
+      color: theme.palette.success.dark,
+      backgroundColor: alpha(theme.palette.success.main, 0.12),
+      borderColor: alpha(theme.palette.success.main, 0.34),
+    },
+    info: {
+      color: theme.palette.info.dark,
+      backgroundColor: alpha(theme.palette.info.main, 0.12),
+      borderColor: alpha(theme.palette.info.main, 0.34),
+    },
+    warning: {
+      color: theme.palette.warning.dark,
+      backgroundColor: alpha(theme.palette.warning.main, 0.14),
+      borderColor: alpha(theme.palette.warning.main, 0.36),
+    },
+    error: {
+      color: theme.palette.error.dark,
+      backgroundColor: alpha(theme.palette.error.main, 0.12),
+      borderColor: alpha(theme.palette.error.main, 0.34),
+    },
+    primary: {
+      color: theme.palette.primary.dark,
+      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+      borderColor: alpha(theme.palette.primary.main, 0.34),
+    },
+    default: {
+      color: theme.palette.text.primary,
+      backgroundColor: alpha(theme.palette.text.primary, 0.04),
+      borderColor: alpha(theme.palette.text.primary, 0.14),
+    },
+  };
+  const tone = palette[color] || palette.default;
+  return {
+    fontWeight: 600,
+    color: tone.color,
+    backgroundColor: tone.backgroundColor,
+    borderColor: tone.borderColor,
+    "& .MuiChip-label": {
+      color: "inherit",
+      fontWeight: 600,
+    },
+  };
+};
+
+const customerOrderTimelineLabel = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.]+/g, "_");
+  if (!normalized) return "Order update";
+  const map = {
+    checkout_session_completed: "Payment confirmed",
+    payment_intent_succeeded: "Payment confirmed",
+    inventory_committed: "Order confirmed",
+    order_created: "Order placed",
+    order_paid: "Payment confirmed",
+    fulfillment_pending: "Preparing your order",
+    ready_for_pickup: "Ready for pickup",
+    shipment_created: "Shipment created",
+    shipment_purchased: "Shipment purchased",
+    in_transit: "Package in transit",
+    delivered: "Delivered",
+    cancelled: "Order cancelled",
+    refunded: "Refund issued",
+  };
+  return map[normalized] || toTitle(normalized);
 };
 
 const formatVariantOptions = (options) =>
@@ -433,12 +504,14 @@ export default function ClientBookings() {
     {
       field: "payment_status",
       headerName: "Payment",
-      width: 130,
+      width: 190,
       renderCell: (params) => (
         <Chip
           label={params.row?.payment_status_label || toTitle(params.value)}
           size="small"
           color={paymentChipColor(params.value)}
+          variant="outlined"
+          sx={readableChipSx(paymentChipColor(params.value))}
         />
       ),
     },
@@ -451,6 +524,8 @@ export default function ClientBookings() {
           label={params.row?.fulfillment_status_label || toTitle(params.value)}
           size="small"
           color={fulfillmentChipColor(params.value)}
+          variant="outlined"
+          sx={readableChipSx(fulfillmentChipColor(params.value))}
         />
       ),
     },
@@ -734,7 +809,6 @@ export default function ClientBookings() {
                 <Chip label={`Payment: ${selectedOrder.payment_status_label || toTitle(selectedOrder.payment_status)}`} color={paymentChipColor(selectedOrder.payment_status)} size="small" />
                 <Chip label={`Fulfillment: ${selectedOrder.fulfillment_status_label || toTitle(selectedOrder.fulfillment_status)}`} color={fulfillmentChipColor(selectedOrder.fulfillment_status)} size="small" />
                 <Chip label={`Delivery: ${selectedOrder.delivery_method_label || toTitle(selectedOrder.delivery_method)}`} size="small" />
-                <Chip label={`Status: ${selectedOrder.status_label || "Processing"}`} size="small" variant="outlined" />
                 <Chip label={`Total: ${money(selectedOrder.total_amount, selectedOrder.currency)}`} size="small" />
               </Stack>
 
@@ -783,8 +857,10 @@ export default function ClientBookings() {
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Delivery</Typography>
                 {String(selectedOrder.delivery_method || "pickup").toLowerCase() === "pickup" ? (
                   <Typography variant="body2" color="text.secondary">
-                    Pickup order.
-                    {selectedOrder.pickup_instructions ? ` ${selectedOrder.pickup_instructions}` : ""}
+                    This order is marked for pickup.
+                    {selectedOrder.pickup_instructions
+                      ? ` ${selectedOrder.pickup_instructions}`
+                      : " We’ll update this page when it is ready."}
                   </Typography>
                 ) : (
                   <Typography variant="body2" color="text.secondary">
@@ -1003,7 +1079,7 @@ export default function ClientBookings() {
                   <Stack spacing={0.75} sx={{ mt: 1 }}>
                     {(selectedOrder.events || []).map((event) => (
                       <Box key={event.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
-                        <Typography sx={{ fontWeight: 700 }}>{toTitle(event.event_type)}</Typography>
+                        <Typography sx={{ fontWeight: 700 }}>{customerOrderTimelineLabel(event.event_type)}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                         </Typography>

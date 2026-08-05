@@ -131,7 +131,7 @@ describe("ClientBookings", () => {
               display_number: "#51",
               created_at: "2026-08-03T13:00:00Z",
               payment_status: "paid",
-              payment_status_label: "Paid",
+              payment_status_label: "Payment received",
               fulfillment_status: "pending",
               fulfillment_status_label: "Pending",
               delivery_method: "shipping",
@@ -148,7 +148,7 @@ describe("ClientBookings", () => {
           display_number: "#51",
           created_at: "2026-08-03T13:00:00Z",
           payment_status: "paid",
-          payment_status_label: "Paid",
+          payment_status_label: "Payment received",
           fulfillment_status: "pending",
           fulfillment_status_label: "Pending",
           delivery_method: "shipping",
@@ -178,7 +178,10 @@ describe("ClientBookings", () => {
               ],
             },
           ],
-          timeline: [],
+          events: [
+            { id: 1, event_type: "checkout.session.completed", created_at: "2026-08-03T13:00:30Z" },
+            { id: 2, event_type: "inventory.committed", created_at: "2026-08-03T13:01:00Z" },
+          ],
         },
       })
       .mockResolvedValueOnce({
@@ -200,6 +203,7 @@ describe("ClientBookings", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: /orders/i }));
+    expect(await screen.findByText(/payment received/i)).toBeInTheDocument();
     const viewButtons = await screen.findAllByRole("button", { name: /view/i });
     fireEvent.click(viewButtons[0]);
 
@@ -207,5 +211,68 @@ describe("ClientBookings", () => {
     expect(screen.getByText(/variant sku:\s*bag-black-mini/i)).toBeInTheDocument();
     expect(screen.getByText(/colour: black • size: mini/i)).toBeInTheDocument();
     expect(screen.getByText(/line total:\s*CA\$158\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/payment confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText(/order confirmed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/checkout\.session\.completed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/inventory\.committed/i)).not.toBeInTheDocument();
+  });
+
+  test("shows clearer pickup guidance when pickup instructions are not provided", async () => {
+    api.get
+      .mockResolvedValueOnce({ data: { bookings: [] } })
+      .mockResolvedValueOnce({
+        data: {
+          orders: [
+            {
+              id: 52,
+              display_number: "#52",
+              created_at: "2026-08-05T19:05:00Z",
+              payment_status: "paid",
+              payment_status_label: "Payment received",
+              fulfillment_status: "pending",
+              fulfillment_status_label: "Pending",
+              delivery_method: "pickup",
+              delivery_method_label: "Pickup",
+              total_amount: "1.00",
+              currency: "CAD",
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 52,
+          display_number: "#52",
+          created_at: "2026-08-05T19:05:00Z",
+          payment_status: "paid",
+          payment_status_label: "Payment received",
+          fulfillment_status: "pending",
+          fulfillment_status_label: "Pending",
+          delivery_method: "pickup",
+          delivery_method_label: "Pickup",
+          total_amount: "1.00",
+          currency: "CAD",
+          items: [
+            {
+              id: 702,
+              name: "Live QA Physical Product 2026-08-05",
+              quantity: 1,
+              unit_price: "1.00",
+              total_price: "1.00",
+            },
+          ],
+          events: [],
+        },
+      })
+      .mockResolvedValueOnce({ data: { entitlements: [] } });
+
+    render(<ClientBookings />);
+
+    fireEvent.click(await screen.findByRole("tab", { name: /orders/i }));
+    const viewButtons = await screen.findAllByRole("button", { name: /view/i });
+    fireEvent.click(viewButtons[0]);
+
+    expect(await screen.findByText(/this order is marked for pickup\./i)).toBeInTheDocument();
+    expect(screen.getByText(/we’ll update this page when it is ready\./i)).toBeInTheDocument();
   });
 });
