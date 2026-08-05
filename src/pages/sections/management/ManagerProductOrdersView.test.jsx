@@ -538,6 +538,7 @@ describe("ManagerProductOrdersView", () => {
       expect.objectContaining({
         open: true,
         initialWorkflow: "explain_order",
+        initialPromptText: "Explain order #1 and the safest next manual step.",
         targetProductOrderId: 1,
       })
     );

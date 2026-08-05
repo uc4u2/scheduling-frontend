@@ -1018,6 +1018,7 @@ const CommerceCopilotDrawer = ({
   onClose,
   token,
   initialWorkflow = "",
+  initialPromptText = "",
   targetProductId = null,
   targetVariantId = null,
   targetProductOrderId = null,
@@ -1076,6 +1077,7 @@ const CommerceCopilotDrawer = ({
   const shippingTestSeedRef = useRef("");
   const internationalExpansionSeedRef = useRef("");
   const completionRefreshPendingRef = useRef(false);
+  const quickStartPromptRef = useRef("");
 
   const session = sessionData?.session || null;
   const draft = sessionData?.draft || null;
@@ -1094,6 +1096,7 @@ const CommerceCopilotDrawer = ({
   const copilotBilling = capabilities?.billing?.ai_commerce_copilot || capabilities?.copilot || {};
   const progress = draft?.validation_results_json?.progress_percent ?? session?.context_summary_json?.progress_percent ?? 0;
   const quickStartWorkflow = initialWorkflow || "";
+  const quickStartPrompt = String(initialPromptText || "").trim();
   const quickStartRequiresProductSelection = quickStartWorkflow === "improve_product_content" && !targetProductId;
   const quickStartAutoStarts = Boolean(quickStartWorkflow) && !quickStartRequiresProductSelection;
   const monetizationMode = availability?.monetization_mode || copilotBilling?.monetization_mode || "free_launch";
@@ -1272,6 +1275,7 @@ const CommerceCopilotDrawer = ({
     shippingTestSeedRef.current = "";
     internationalExpansionSeedRef.current = "";
     completionRefreshPendingRef.current = false;
+    quickStartPromptRef.current = "";
   }, [targetProductId]);
 
   const loadCapabilities = useCallback(async () => {
@@ -1487,6 +1491,17 @@ const CommerceCopilotDrawer = ({
     }
     createSession(quickStartWorkflow);
   }, [open, capabilities, quickStartWorkflow, sessionData, availability.chat_available, createSession, startContentWorkflow, targetProductId]);
+
+  useEffect(() => {
+    if (!open || !session?.public_id || !quickStartPrompt || quickStartWorkflow !== "explain_order") return;
+    if (quickStartPromptRef.current === session.public_id) return;
+    if (messages.length) {
+      quickStartPromptRef.current = session.public_id;
+      return;
+    }
+    quickStartPromptRef.current = session.public_id;
+    pushSessionTurn(session.public_id, quickStartPrompt);
+  }, [open, session?.public_id, quickStartPrompt, quickStartWorkflow, messages.length, pushSessionTurn]);
 
   const submitMessage = async () => {
     if (session?.public_id && String(messageText || "").trim()) {

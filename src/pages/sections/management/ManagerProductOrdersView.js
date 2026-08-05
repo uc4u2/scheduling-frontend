@@ -2126,9 +2126,24 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                   <Paper sx={{ p: 2 }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Typography variant="subtitle1" fontWeight={600}>Financials</Typography>
-                      <Chip label={`Subtotal ${formatCurrencyFromCents(orderDetail.stripe_subtotal_cents, detailCurrency)}`} size="small" />
-                      <Chip label={`Tax ${formatCurrencyFromCents(orderDetail.stripe_tax_cents, detailCurrency)}`} size="small" />
-                      <Chip label={`Total ${formatCurrencyWithCode(orderDetail.total_amount, detailCurrency)}`} color="primary" size="small" />
+                      <Chip
+                        label={`Subtotal ${formatCurrencyFromCents(orderDetail.stripe_subtotal_cents, detailCurrency)}`}
+                        size="small"
+                        variant="outlined"
+                        sx={readableChipSx("default")}
+                      />
+                      <Chip
+                        label={`Tax ${formatCurrencyFromCents(orderDetail.stripe_tax_cents, detailCurrency)}`}
+                        size="small"
+                        variant="outlined"
+                        sx={readableChipSx("default")}
+                      />
+                      <Chip
+                        label={`Total ${formatCurrencyWithCode(orderDetail.total_amount, detailCurrency)}`}
+                        size="small"
+                        variant="outlined"
+                        sx={readableChipSx("primary")}
+                      />
                     </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                       {orderDetail.notes ? `Customer note: ${orderDetail.notes}` : "No customer notes provided."}
@@ -3377,6 +3392,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         onClose={() => setCopilotOpen(false)}
         token={token}
         initialWorkflow="explain_order"
+        initialPromptText={orderDetail?.id ? `Explain order #${orderDetail.id} and the safest next manual step.` : ""}
         targetProductOrderId={orderDetail?.id || null}
       />
       <Snackbar
