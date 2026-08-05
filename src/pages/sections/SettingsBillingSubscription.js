@@ -1,5 +1,19 @@
-import React, { useState } from "react";
-import { Alert, Box, Button, Divider, Stack, Typography } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
+  LinearProgress,
+  Popover,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
 import SectionCard from "../../components/ui/SectionCard";
 import useBillingStatus from "../../components/billing/useBillingStatus";
@@ -37,6 +51,67 @@ const formatBytes = (value) => {
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 };
 
+const formatAmountInterval = (amount, interval) => {
+  if (!amount) return "Pricing unavailable";
+  return interval ? `${amount}/${interval}` : amount;
+};
+
+const BillingInfoButton = ({ title, lines = [], buttonLabel = "More info" }) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  return (
+    <>
+      <Tooltip title={buttonLabel}>
+        <IconButton
+          size="small"
+          aria-label={buttonLabel}
+          aria-haspopup="dialog"
+          aria-expanded={open ? "true" : undefined}
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+        >
+          <InfoOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Popover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        PaperProps={{ sx: { p: 2, maxWidth: 340 } }}
+      >
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{title}</Typography>
+          {lines.map((line) => (
+            <Typography key={line} variant="body2" color="text.secondary">
+              {line}
+            </Typography>
+          ))}
+        </Stack>
+      </Popover>
+    </>
+  );
+};
+
+const resolveTrialDisplay = (status, now = new Date()) => {
+  const trialEndRaw = status?.trial_end;
+  if (!trialEndRaw) return null;
+  const trialEnd = new Date(trialEndRaw);
+  if (Number.isNaN(trialEnd.getTime())) return null;
+  const statusKey = String(status?.status || "").toLowerCase();
+  if (statusKey === "trialing" && trialEnd.getTime() > now.getTime()) {
+    return { label: "Trial ends", value: trialEndRaw };
+  }
+  if (statusKey === "active" && trialEnd.getTime() <= now.getTime()) {
+    return null;
+  }
+  if (trialEnd.getTime() <= now.getTime()) {
+    return { label: "Trial ended", value: trialEndRaw };
+  }
+  return null;
+};
+
 const SettingsBillingSubscription = () => {
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
@@ -52,11 +127,21 @@ const SettingsBillingSubscription = () => {
   const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
   const [fieldPhotosModal, setFieldPhotosModal] = useState(null);
   const [fieldPhotosNotice, setFieldPhotosNotice] = useState("");
+  const [fieldPhotosPreview, setFieldPhotosPreview] = useState(null);
+  const [fieldPhotosPreviewLoading, setFieldPhotosPreviewLoading] = useState(false);
+  const [fieldPhotosPreviewError, setFieldPhotosPreviewError] = useState("");
   const [aiCommerceBusy, setAiCommerceBusy] = useState(false);
   const [aiCommerceNotice, setAiCommerceNotice] = useState("");
   const mobileComplianceMode = isMobileComplianceMode();
   const fieldPhotos = status?.field_photos || {};
   const aiCommerce = status?.ai_commerce_copilot || {};
+  const trialDisplay = useMemo(() => resolveTrialDisplay(status), [status]);
+  const fieldPhotosUsagePercent = useMemo(() => {
+    const used = Number(fieldPhotos.storage_used_bytes || 0);
+    const quota = Number(fieldPhotos.storage_quota_bytes || 0);
+    if (!quota) return 0;
+    return Math.min(100, Math.round((used / quota) * 100));
+  }, [fieldPhotos.storage_quota_bytes, fieldPhotos.storage_used_bytes]);
 
   const handleAddSeats = () => {
     if (mobileComplianceMode) {
@@ -110,6 +195,31 @@ const SettingsBillingSubscription = () => {
       // The billing action already succeeded; avoid replacing the success state with a refresh warning.
     }
   };
+
+  useEffect(() => {
+    if (mobileComplianceMode || !status) return;
+    let active = true;
+    setFieldPhotosPreviewLoading(true);
+    setFieldPhotosPreviewError("");
+    api
+      .get("/billing/field-photos/preview")
+      .then((res) => {
+        if (!active) return;
+        setFieldPhotosPreview(res?.data || null);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setFieldPhotosPreview(null);
+        setFieldPhotosPreviewError(err?.response?.data?.message || "Field Photos pricing is unavailable right now.");
+      })
+      .finally(() => {
+        if (!active) return;
+        setFieldPhotosPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mobileComplianceMode, status]);
 
   const handleActivateAiCommerce = async () => {
     if (mobileComplianceMode) {
@@ -178,7 +288,7 @@ const SettingsBillingSubscription = () => {
   }
 
   return (
-    <Box>
+    <Stack spacing={2}>
       <SectionCard
         title={t("billing.title")}
         subtitle={t("billing.subtitle")}
@@ -247,36 +357,22 @@ const SettingsBillingSubscription = () => {
                 <strong>Risk status:</strong> {riskStatus}
               </Typography>
             </Stack>
-            {(() => {
-              const trialEnd = status.trial_end;
-              const trialEndDate = trialEnd ? new Date(trialEnd) : null;
-              const trialEndFuture =
-                trialEndDate && !Number.isNaN(trialEndDate.getTime())
-                  ? trialEndDate.getTime() > Date.now()
-                  : false;
-              const showTrial =
-                String(status.status || "").toLowerCase() === "trialing" || trialEndFuture;
-              const trialEndForLabel = showTrial ? null : status.trial_end;
-              return (
-                <Stack direction="row" spacing={3} flexWrap="wrap">
-                  {showTrial && (
-                    <Typography variant="body2">
-                      <strong>{t("billing.labels.trialEnds")}:</strong>{" "}
-                      {formatDate(status.trial_end, t)}
-                    </Typography>
-                  )}
-                  <Typography variant="body2">
-                    <strong>
-                      {formatBillingNextDateLabel({
-                        nextBillingDate: status.next_billing_date,
-                        trialEnd: trialEndForLabel,
-                        t,
-                      })}
-                    </strong>
-                  </Typography>
-                </Stack>
-              );
-            })()}
+            <Stack direction="row" spacing={3} flexWrap="wrap">
+              {trialDisplay && (
+                <Typography variant="body2">
+                  <strong>{trialDisplay.label}:</strong> {formatDate(trialDisplay.value, t)}
+                </Typography>
+              )}
+              <Typography variant="body2">
+                <strong>
+                  {formatBillingNextDateLabel({
+                    nextBillingDate: status.next_billing_date,
+                    trialEnd: null,
+                    t,
+                  })}
+                </strong>
+              </Typography>
+            </Stack>
             <Divider sx={{ my: 1 }} />
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
@@ -291,105 +387,6 @@ const SettingsBillingSubscription = () => {
               <Typography variant="body2">
                 <strong>{t("billing.labels.activeStaff")}:</strong> {activeStaff}
               </Typography>
-            </Stack>
-            <Divider sx={{ my: 1 }} />
-            <Stack spacing={1}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>AI Commerce Copilot</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Guided product creation, shipping setup, and manager-approved safe actions.
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.addon_active && aiCommerce.activation_available ? (
-                    <Button size="small" variant="contained" onClick={handleActivateAiCommerce} disabled={aiCommerceBusy}>
-                      {aiCommerceBusy ? "Activating..." : "Activate"}
-                    </Button>
-                  ) : null}
-                  <Button size="small" variant="outlined" onClick={handleManageBilling}>
-                    Manage billing
-                  </Button>
-                </Stack>
-              </Stack>
-              {aiCommerceNotice && (
-                <Alert severity={String(aiCommerceNotice || "").toLowerCase().includes("unable") ? "error" : "success"}>
-                  {aiCommerceNotice}
-                </Alert>
-              )}
-              {aiCommerce.monetization_mode === "free_launch" && (
-                <Alert severity="info">Included during free launch. Usage is recorded, but no additional charge currently applies.</Alert>
-              )}
-              {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.access_allowed && aiCommerce.current_plan === "starter" && (
-                <Alert severity="warning">Pro or Business is required before the Commerce Copilot add-on can be activated.</Alert>
-              )}
-              {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.addon_active && aiCommerce.activation_available && (
-                <Alert severity="warning">AI Commerce Copilot add-on required. Activate it to continue creating new Copilot sessions or applying approved changes.</Alert>
-              )}
-              {aiCommerce.warning && <Alert severity="warning">{aiCommerce.warning}</Alert>}
-              <Stack direction="row" spacing={3} flexWrap="wrap">
-                <Typography variant="body2">
-                  <strong>Status:</strong> {aiCommerce.addon_active ? "Active" : aiCommerce.monetization_mode === "free_launch" ? "Included during free launch" : "Inactive"}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Used:</strong> {Number(aiCommerce.successful_actions_used || 0)}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Remaining:</strong> {aiCommerce.successful_actions_remaining ?? "n/a"}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Allowance:</strong> {Number(aiCommerce.monthly_action_allowance || 0)}
-                </Typography>
-              </Stack>
-              {aiCommerce.grace_ends_at && (
-                <Typography variant="body2">
-                  <strong>Grace ends:</strong> {formatDate(aiCommerce.grace_ends_at, t)}
-                </Typography>
-              )}
-
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Field Photos</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Proof-of-work photo uploads for shift-based teams.
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {!fieldPhotos.addon_active && !fieldPhotos.read_only && (
-                    <Button size="small" variant="contained" onClick={() => openFieldPhotosBilling("activate")}>
-                      Activate
-                    </Button>
-                  )}
-                  {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
-                    <Button size="small" variant="outlined" onClick={() => openFieldPhotosBilling("storage")}>
-                      Add 10 GB
-                    </Button>
-                  )}
-                </Stack>
-              </Stack>
-              {fieldPhotosNotice && <Alert severity="success">{fieldPhotosNotice}</Alert>}
-              {fieldPhotos.read_only && (
-                <Alert severity="warning">
-                  Field Photos is read-only. New uploads are disabled; existing photos remain available during the grace period.
-                </Alert>
-              )}
-              <Stack direction="row" spacing={3} flexWrap="wrap">
-                <Typography variant="body2">
-                  <strong>Status:</strong> {fieldPhotos.addon_active ? "Active" : fieldPhotos.read_only ? "Read-only grace" : "Inactive"}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Storage expansions:</strong> {Number(fieldPhotos.storage_addon_qty || 0)}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Storage:</strong> {formatBytes(fieldPhotos.storage_used_bytes)} of {formatBytes(fieldPhotos.storage_quota_bytes)}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Retention:</strong> {fieldPhotos.retention_days || 90} days
-                </Typography>
-              </Stack>
-              {!fieldPhotos.price_configured && (
-                <Alert severity="info">Field Photos billing is not configured yet. Contact support to activate this add-on.</Alert>
-              )}
             </Stack>
             <Stack direction="row" spacing={1} flexWrap="wrap">
               {status.latest_invoice_url && (
@@ -408,6 +405,185 @@ const SettingsBillingSubscription = () => {
           </Stack>
         )}
       </SectionCard>
+
+      <SectionCard
+        title={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>AI Commerce Copilot</Typography>
+            <Chip
+              size="small"
+              variant="outlined"
+              label={aiCommerce.addon_active ? "Active" : aiCommerce.monetization_mode === "free_launch" ? "Included during free launch" : "Inactive"}
+            />
+            <BillingInfoButton
+              title="AI Commerce Copilot"
+              buttonLabel="About AI Commerce Copilot billing"
+              lines={[
+                "Included during the current free launch.",
+                "Usage is recorded.",
+                "No additional charge currently applies.",
+                "Allowance resets according to the current billing-period contract.",
+              ]}
+            />
+          </Stack>
+        }
+        subtitle="Guided product creation, shipping setup, and manager-approved safe actions."
+        actions={
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.addon_active && aiCommerce.activation_available ? (
+              <Button size="small" variant="contained" onClick={handleActivateAiCommerce} disabled={aiCommerceBusy}>
+                {aiCommerceBusy ? "Activating..." : "Activate"}
+              </Button>
+            ) : null}
+            {aiCommerce.monetization_mode !== "free_launch" ? (
+              <Button size="small" variant="outlined" onClick={handleManageBilling}>
+                Manage billing
+              </Button>
+            ) : null}
+          </Stack>
+        }
+      >
+        <Stack spacing={1.25}>
+          {aiCommerceNotice && (
+            <Alert severity={String(aiCommerceNotice || "").toLowerCase().includes("unable") ? "error" : "success"}>
+              {aiCommerceNotice}
+            </Alert>
+          )}
+          {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.access_allowed && aiCommerce.current_plan === "starter" && (
+            <Alert severity="warning">Pro or Business is required before the Commerce Copilot add-on can be activated.</Alert>
+          )}
+          {aiCommerce.monetization_mode === "paid_addon_required" && !aiCommerce.addon_active && aiCommerce.activation_available && (
+            <Alert severity="warning">AI Commerce Copilot add-on required. Activate it to continue creating new Copilot sessions or applying approved changes.</Alert>
+          )}
+          {aiCommerce.warning && <Alert severity="warning">{aiCommerce.warning}</Alert>}
+          <Stack spacing={0.5}>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              Used {Number(aiCommerce.successful_actions_used || 0)} of {Number(aiCommerce.monthly_action_allowance || 0)} successful actions
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {aiCommerce.successful_actions_remaining ?? "n/a"} remaining this billing period
+            </Typography>
+          </Stack>
+          {aiCommerce.grace_ends_at && (
+            <Typography variant="body2">
+              <strong>Grace ends:</strong> {formatDate(aiCommerce.grace_ends_at, t)}
+            </Typography>
+          )}
+        </Stack>
+      </SectionCard>
+
+      <SectionCard
+        title={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>Field Photos</Typography>
+            <Chip
+              size="small"
+              variant="outlined"
+              label={fieldPhotos.addon_active ? "Active" : fieldPhotos.read_only ? "Read-only grace" : "Inactive"}
+            />
+            <BillingInfoButton
+              title="Field Photos pricing"
+              buttonLabel="About Field Photos pricing"
+              lines={[
+                `Base recurring charge: ${formatAmountInterval(fieldPhotosPreview?.recurring_amount_formatted, fieldPhotosPreview?.interval)}.`,
+                `Included storage: ${fieldPhotosPreview?.included_storage_label || "5 GB"}.`,
+                `${fieldPhotosPreview?.retention_days || fieldPhotos.retention_days || 90}-day retention.`,
+                `Storage expansion: ${fieldPhotosPreview?.storage_expansion_label || "+10 GB"} for ${formatAmountInterval(fieldPhotosPreview?.storage_expansion_amount_formatted, fieldPhotosPreview?.storage_expansion_interval)}.`,
+                "Exact taxes and proration, when applicable, are shown in the confirmation modal before activation.",
+              ]}
+            />
+          </Stack>
+        }
+        subtitle="Proof-of-work photo uploads for shift-based teams."
+        actions={
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            {!fieldPhotos.addon_active && !fieldPhotos.read_only && (
+              <Button size="small" variant="contained" onClick={() => openFieldPhotosBilling("activate")}>
+                View pricing & activate
+              </Button>
+            )}
+            {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
+              <Button size="small" variant="outlined" onClick={() => openFieldPhotosBilling("storage")}>
+                Manage storage
+              </Button>
+            )}
+            {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
+              <Button size="small" variant="outlined" onClick={handleManageBilling}>
+                Manage billing
+              </Button>
+            )}
+          </Stack>
+        }
+      >
+        <Stack spacing={1.25}>
+          {fieldPhotosNotice && <Alert severity="success">{fieldPhotosNotice}</Alert>}
+          {fieldPhotos.read_only && (
+            <Alert severity="warning">
+              Field Photos is read-only. New uploads are disabled; existing photos remain available during the grace period.
+            </Alert>
+          )}
+          {!fieldPhotos.price_configured && (
+            <Alert severity="info">Field Photos billing is not configured yet. Contact support to activate this add-on.</Alert>
+          )}
+
+          {!fieldPhotos.addon_active && !fieldPhotos.read_only ? (
+            <Stack spacing={0.75}>
+              {fieldPhotosPreviewLoading ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={16} />
+                  <Typography variant="body2" color="text.secondary">Loading authoritative pricing...</Typography>
+                </Stack>
+              ) : (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    Starts at {formatAmountInterval(fieldPhotosPreview?.recurring_amount_formatted, fieldPhotosPreview?.interval)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Includes {fieldPhotosPreview?.included_storage_label || "5 GB"} · {fieldPhotosPreview?.retention_days || 90}-day retention
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    No charge is created until you review and confirm the billing preview.
+                  </Typography>
+                  {fieldPhotosPreviewError ? (
+                    <Typography variant="body2" color="error">
+                      {fieldPhotosPreviewError}
+                    </Typography>
+                  ) : null}
+                </>
+              )}
+            </Stack>
+          ) : (
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={3} flexWrap="wrap">
+                <Typography variant="body2">
+                  <strong>Storage expansions:</strong> {Number(fieldPhotos.storage_addon_qty || 0)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Storage:</strong> {formatBytes(fieldPhotos.storage_used_bytes)} of {formatBytes(fieldPhotos.storage_quota_bytes)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Retention:</strong> {fieldPhotos.retention_days || 90} days
+                </Typography>
+                {status.next_billing_date ? (
+                  <Typography variant="body2">
+                    <strong>Renewal:</strong> {formatDate(status.next_billing_date, t)}
+                  </Typography>
+                ) : null}
+              </Stack>
+              <Box sx={{ width: "100%", maxWidth: 320 }}>
+                <Typography id="field-photos-storage-progress" variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  Storage usage: {fieldPhotosUsagePercent}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={fieldPhotosUsagePercent}
+                  aria-labelledby="field-photos-storage-progress"
+                />
+              </Box>
+            </Stack>
+          )}
+        </Stack>
+      </SectionCard>
       <FieldPhotosBillingModal
         open={Boolean(fieldPhotosModal)}
         mode={fieldPhotosModal || "activate"}
@@ -418,7 +594,7 @@ const SettingsBillingSubscription = () => {
           fieldPhotosModal === "storage" ? "Field Photos storage updated." : "Field Photos activated."
         )}
       />
-    </Box>
+    </Stack>
   );
 };
 

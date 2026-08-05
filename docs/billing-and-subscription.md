@@ -47,6 +47,18 @@ If Stripe says the payment needs attention (past due/unpaid/incomplete), you’l
 - **Why does AI Commerce Copilot say “Included during free launch”?**
   The platform is still in Free Launch Mode. No separate Copilot add-on purchase is required in that mode.
 
+- **How is AI Commerce Copilot shown in Billing?**
+  It appears in its own add-on card with a compact free-launch status and usage summary. The detailed free-launch explanation is shown through the card’s help affordance instead of a full-width billing alert.
+
+- **How is Field Photos shown before activation?**
+  Field Photos appears in a separate add-on card. Before activation, the card shows the authoritative recurring starting price, included storage, retention, and a `View pricing & activate` action. No charge is created until the manager opens the confirmation modal and explicitly confirms the billing preview.
+
+- **What happens after Field Photos is active?**
+  The card switches to an operational view with storage used, total storage, storage expansion count, retention, and management actions. Pricing and expansion details remain available through the card help and confirmation modal.
+
+- **How should trial dates render?**
+  Show `Trial ends <date>` only when the subscription is actually `trialing` and the trial date is still in the future. Hide stale trial lines for active paid subscriptions. Use `Trial ended <date>` only when the historical date is still materially useful.
+
 - **Why does AI Commerce Copilot ask me to activate an add-on?**
   The platform admin has enabled Paid Add-on Mode. Pro and Business tenants must activate the recurring Copilot add-on before creating new Copilot sessions or applying approved changes.
 

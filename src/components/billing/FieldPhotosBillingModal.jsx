@@ -62,7 +62,6 @@ const FieldPhotosBillingModal = ({
   const targetStorageQty = Math.max(0, Number(currentStorageQty || 0)) + 1;
   const title = isStorage ? "Add Field Photos storage" : "Activate Field Photos";
   const itemLabel = isStorage ? "Field Photos Storage Expansion" : "Field Photos Add-on";
-  const monthlyLabel = isStorage ? "$10/month" : "$29/month";
   const modalSubtitle = isStorage
     ? "Expand storage for shift-linked proof photos."
     : "Enable secure, shift-linked proof photos for your team.";
@@ -74,6 +73,12 @@ const FieldPhotosBillingModal = ({
   const nextBillingLabel = formatBillingNextDateLabel({
     nextBillingDate: preview?.next_billing_date,
   });
+  const recurringLabel = preview?.recurring_amount_formatted && preview?.interval
+    ? `${preview.recurring_amount_formatted}/${preview.interval}`
+    : preview?.recurring_amount_formatted || null;
+  const includedStorageLabel = preview?.included_storage_label || "5 GB";
+  const retentionDays = preview?.retention_days || 90;
+  const storageExpansionLabel = preview?.storage_expansion_label || "+10 GB";
 
   const blocksConfirm = useMemo(() => {
     const code = preview?.error || "";
@@ -190,14 +195,19 @@ const FieldPhotosBillingModal = ({
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 950 }}>{itemLabel}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {itemDescription}
+                  {isStorage ? storageExpansionLabel : itemDescription}
                 </Typography>
               </Box>
-              <Chip label={monthlyLabel} color="primary" variant="outlined" sx={{ fontWeight: 900 }} />
+              <Chip label={recurringLabel || "Pricing unavailable"} color="primary" variant="outlined" sx={{ fontWeight: 900 }} />
             </Stack>
             {isStorage && (
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 Storage expansion total after this change: {targetStorageQty} pack{targetStorageQty === 1 ? "" : "s"}.
+              </Typography>
+            )}
+            {!isStorage && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                Includes {includedStorageLabel} storage with {retentionDays}-day retention.
               </Typography>
             )}
           </Box>
