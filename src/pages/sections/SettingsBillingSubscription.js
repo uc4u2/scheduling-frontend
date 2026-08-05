@@ -56,6 +56,17 @@ const formatAmountInterval = (amount, interval) => {
   return interval ? `${amount}/${interval}` : amount;
 };
 
+const quotaUsagePercent = (fieldPhotos) => {
+  const direct = Number(fieldPhotos?.quota_status?.usage_percent);
+  if (Number.isFinite(direct)) return Math.max(0, Math.min(100, Math.round(direct)));
+  const used = Number(fieldPhotos?.storage_used_bytes || 0);
+  const quota = Number(fieldPhotos?.storage_quota_bytes || 0);
+  if (!quota) return 0;
+  return Math.max(0, Math.min(100, Math.round((used / quota) * 100)));
+};
+
+const quotaState = (fieldPhotos) => String(fieldPhotos?.quota_status?.state || "NORMAL").toUpperCase();
+
 const BillingInfoButton = ({ title, lines = [], buttonLabel = "More info" }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -136,12 +147,8 @@ const SettingsBillingSubscription = () => {
   const fieldPhotos = status?.field_photos || {};
   const aiCommerce = status?.ai_commerce_copilot || {};
   const trialDisplay = useMemo(() => resolveTrialDisplay(status), [status]);
-  const fieldPhotosUsagePercent = useMemo(() => {
-    const used = Number(fieldPhotos.storage_used_bytes || 0);
-    const quota = Number(fieldPhotos.storage_quota_bytes || 0);
-    if (!quota) return 0;
-    return Math.min(100, Math.round((used / quota) * 100));
-  }, [fieldPhotos.storage_quota_bytes, fieldPhotos.storage_used_bytes]);
+  const fieldPhotosUsagePercent = useMemo(() => quotaUsagePercent(fieldPhotos), [fieldPhotos]);
+  const fieldPhotosQuotaState = quotaState(fieldPhotos);
 
   const handleAddSeats = () => {
     if (mobileComplianceMode) {
@@ -512,6 +519,11 @@ const SettingsBillingSubscription = () => {
                 Manage billing
               </Button>
             )}
+            {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
+              <Button size="small" variant="text" href="/manager/field-photos">
+                Manage Field Photos
+              </Button>
+            )}
           </Stack>
         }
       >
@@ -554,6 +566,21 @@ const SettingsBillingSubscription = () => {
             </Stack>
           ) : (
             <Stack spacing={1}>
+              {fieldPhotosQuotaState === "WARNING" && (
+                <Alert severity="warning" action={<Button size="small" onClick={() => openFieldPhotosBilling("storage")}>Review storage upgrade</Button>}>
+                  Field Photos storage is 80% used.
+                </Alert>
+              )}
+              {fieldPhotosQuotaState === "CRITICAL" && (
+                <Alert severity="warning" action={<Button size="small" onClick={() => openFieldPhotosBilling("storage")}>Review storage upgrade</Button>}>
+                  Storage is almost full. Add storage to prevent employee uploads from being interrupted.
+                </Alert>
+              )}
+              {fieldPhotosQuotaState === "FULL" && (
+                <Alert severity="error" action={<Button size="small" onClick={() => openFieldPhotosBilling("storage")}>Review storage upgrade</Button>}>
+                  Storage is full. Employee photo uploads are blocked until storage is increased or files are removed.
+                </Alert>
+              )}
               <Stack direction="row" spacing={3} flexWrap="wrap">
                 <Typography variant="body2">
                   <strong>Storage expansions:</strong> {Number(fieldPhotos.storage_addon_qty || 0)}

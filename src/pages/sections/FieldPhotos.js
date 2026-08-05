@@ -59,10 +59,11 @@ const formatDate = (value) => {
 
 const formatBytes = (value) => {
   const size = Number(value || 0);
-  if (!size) return "—";
+  if (!size) return "0 MB";
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 };
 
 const readableChipProps = (theme, tone = "neutral") => {
@@ -116,11 +117,15 @@ const fileStatusTone = (status) => {
 };
 
 const storagePercent = (summary) => {
+  const direct = Number(summary?.quota_status?.usage_percent);
+  if (Number.isFinite(direct)) return Math.max(0, Math.min(100, Math.round(direct)));
   const quota = Number(summary?.storage_quota_bytes || 0);
   const used = Number(summary?.storage_used_bytes || 0);
   if (!quota) return 0;
-  return Math.min(100, Math.round((used / quota) * 100));
+  return Math.max(0, Math.min(100, Math.round((used / quota) * 100)));
 };
+
+const storageState = (summary) => String(summary?.quota_status?.state || "NORMAL").toUpperCase();
 
 const statusLabel = (row) => row?.security_status_label || (row?.is_download_ready ? "Ready" : fileIsWaitingForScan(row) ? "Security check in progress" : "Blocked");
 
@@ -488,6 +493,9 @@ const FieldPhotos = () => {
   const initialParams = new URLSearchParams(location.search);
   const [data, setData] = useState({ items: [], context: {}, summary: {} });
   const [billingStatus, setBillingStatus] = useState(null);
+  const [fieldPhotosPreview, setFieldPhotosPreview] = useState(null);
+  const [fieldPhotosPreviewLoading, setFieldPhotosPreviewLoading] = useState(false);
+  const [fieldPhotosPreviewError, setFieldPhotosPreviewError] = useState("");
   const [previewUrls, setPreviewUrls] = useState({});
   const [selectedPhotoId, setSelectedPhotoId] = useState(null);
   const [selectedPhotoGroupKey, setSelectedPhotoGroupKey] = useState("");
@@ -512,6 +520,7 @@ const FieldPhotos = () => {
 
   const summary = data.summary || billingStatus?.field_photos || {};
   const visible = Boolean(summary.addon_active || summary.read_only);
+  const quotaStateValue = storageState(summary);
   const rows = data.items || [];
   const photoGroups = useMemo(() => buildPhotoGroups(rows), [rows]);
   const selectedGalleryRows = useMemo(() => {
@@ -563,6 +572,30 @@ const FieldPhotos = () => {
   };
 
   useEffect(() => { loadData(); }, [page, pageSize, readiness, locationStatus, departmentId, employeeId, archived, shiftId, workOrderId, dateRange.start_date, dateRange.end_date]);
+
+  useEffect(() => {
+    let active = true;
+    setFieldPhotosPreviewLoading(true);
+    setFieldPhotosPreviewError("");
+    api
+      .get("/billing/field-photos/preview")
+      .then((res) => {
+        if (!active) return;
+        setFieldPhotosPreview(res?.data || null);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setFieldPhotosPreview(null);
+        setFieldPhotosPreviewError(err?.response?.data?.message || "Field Photos pricing is unavailable right now.");
+      })
+      .finally(() => {
+        if (!active) return;
+        setFieldPhotosPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     rows.forEach((row) => {
@@ -689,6 +722,27 @@ const FieldPhotos = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.65, maxWidth: 660, lineHeight: 1.65 }}>
                       Enable shift-linked proof photos so managers can review uploaded work images securely in one place.
                     </Typography>
+                    {fieldPhotosPreviewLoading ? (
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.1 }}>
+                        <CircularProgress size={16} />
+                        <Typography variant="body2" color="text.secondary">Loading authoritative pricing...</Typography>
+                      </Stack>
+                    ) : (
+                      <Stack spacing={0.4} sx={{ mt: 1.1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          Starts at {fieldPhotosPreview?.recurring_amount_formatted ? `${fieldPhotosPreview.recurring_amount_formatted}/${fieldPhotosPreview.interval}` : "Pricing unavailable"}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Includes {fieldPhotosPreview?.included_storage_label || "5 GB"} · {fieldPhotosPreview?.retention_days || 90}-day retention
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          No charge is created until you review and confirm the billing preview.
+                        </Typography>
+                        {fieldPhotosPreviewError ? (
+                          <Typography variant="body2" color="error">{fieldPhotosPreviewError}</Typography>
+                        ) : null}
+                      </Stack>
+                    )}
                     <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1.25 }}>
                       {["Shift-linked", "Private storage", "Security checked"].map((label) => (
                         <Chip key={label} size="small" label={label} {...readableChipProps(theme, "primary")} />
@@ -696,9 +750,14 @@ const FieldPhotos = () => {
                     </Stack>
                   </Box>
                 </Stack>
-                <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />} sx={{ alignSelf: { xs: "stretch", md: "center" }, px: 2.5 }}>
-                  Activate Field Photos
-                </Button>
+                <Stack spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
+                  <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />} sx={{ alignSelf: { xs: "stretch", md: "center" }, px: 2.5 }}>
+                    View pricing & activate
+                  </Button>
+                  <Button variant="text" onClick={() => navigate("/manager/settings?tab=billing")} sx={{ alignSelf: { xs: "stretch", md: "center" } }}>
+                    Open billing settings
+                  </Button>
+                </Stack>
               </Stack>
             </CardContent>
           </Card>
@@ -725,11 +784,12 @@ const FieldPhotos = () => {
                         {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {summary?.retention_days || 90} days.
                       </Typography>
                     </Box>
-                    {storagePercent(summary) >= 80 && <Button size="small" variant="outlined" onClick={() => setBillingModal("storage")}>Add 10 GB</Button>}
+                    {quotaStateValue !== "NORMAL" && <Button size="small" variant="outlined" onClick={() => setBillingModal("storage")}>Review storage upgrade</Button>}
                   </Stack>
                   <LinearProgress variant="determinate" value={storagePercent(summary)} sx={{ height: 7, borderRadius: 1 }} />
-                  {storagePercent(summary) >= 100 && <Alert severity="error">Photo storage is full. New uploads are paused until storage is upgraded or older photos are removed.</Alert>}
-                  {storagePercent(summary) >= 80 && storagePercent(summary) < 100 && <Alert severity="warning">You are getting close to your included Field Photos storage.</Alert>}
+                  {quotaStateValue === "WARNING" && <Alert severity="warning">Field Photos storage is 80% used.</Alert>}
+                  {quotaStateValue === "CRITICAL" && <Alert severity="warning">Storage is almost full. Add storage to prevent employee uploads from being interrupted.</Alert>}
+                  {quotaStateValue === "FULL" && <Alert severity="error">Storage is full. Employee photo uploads are blocked until storage is increased or files are removed.</Alert>}
                   {summary?.read_only && <Alert severity="warning">Field Photos has been cancelled. New uploads are disabled. Existing photos remain available during the read-only grace period.</Alert>}
                 </Stack>
               </CardContent>

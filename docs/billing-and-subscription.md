@@ -56,6 +56,19 @@ If Stripe says the payment needs attention (past due/unpaid/incomplete), you’l
 - **What happens after Field Photos is active?**
   The card switches to an operational view with storage used, total storage, storage expansion count, retention, and management actions. Pricing and expansion details remain available through the card help and confirmation modal.
 
+- **When do Field Photos storage warnings appear?**
+  Warning state is now server-authoritative. Managers see:
+  - `Field Photos storage is 80% used.` at 80%+
+  - `Storage is almost full...` at 90%+
+  - `Storage is full...` at 100%+
+  These warnings appear in Billing & Subscription and on the Manager Field Photos page. Employees do not see pricing or billing warnings.
+
+- **What happens if storage becomes full?**
+  New employee uploads are blocked with the generic operational message to contact their manager. Managers can review storage upgrades, but Schedulaa never auto-purchases storage.
+
+- **What happens after storage is increased or files are removed?**
+  The quota state recalculates automatically. If usage drops below quota, employee uploads resume without redeploying, restarting workers, or asking employees to do anything special.
+
 - **How should trial dates render?**
   Show `Trial ends <date>` only when the subscription is actually `trialing` and the trial date is still in the future. Hide stale trial lines for active paid subscriptions. Use `Trial ended <date>` only when the historical date is still materially useful.
 
