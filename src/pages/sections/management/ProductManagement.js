@@ -128,6 +128,17 @@ const fieldLabelWithTooltip = (label, tooltip) => (
   </Stack>
 );
 
+const sectionHeadingWithTooltip = (label, tooltip) => (
+  <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+      {label}
+    </Typography>
+    <Tooltip title={tooltip} arrow>
+      <InfoOutlined sx={{ fontSize: 16, color: "text.secondary", cursor: "help" }} />
+    </Tooltip>
+  </Stack>
+);
+
 const centsToDisplayValue = (cents) => {
   const numeric = Number(cents);
   if (!Number.isFinite(numeric)) return "";
@@ -1485,7 +1496,6 @@ const ProductManagement = ({ token }) => {
                 value={form.sku}
                 onChange={handleChange("sku")}
                 fullWidth
-                helperText="Leave blank to auto-generate"
               />
               <TextField
                 label={fieldLabelWithTooltip(t("manager.product.labels.name"), "Customer-facing product name.")}
@@ -1514,12 +1524,10 @@ const ProductManagement = ({ token }) => {
             >
               <AccordionSummary expandIcon={<ExpandMore />}>
                 <Stack spacing={0.25}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    Product information
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Short Description stays near the title. These optional sections appear lower on the public product page.
-                  </Typography>
+                  {sectionHeadingWithTooltip(
+                    "Product information",
+                    "Short Description stays near the title. These optional sections appear lower on the public product page."
+                  )}
                 </Stack>
               </AccordionSummary>
               <AccordionDetails sx={{ pt: 0 }}>
@@ -1531,12 +1539,14 @@ const ProductManagement = ({ token }) => {
                     fullWidth
                     multiline
                     minRows={3}
+                    placeholder="Example: Hand-poured soy candle with a matte ceramic jar and a soft cedar scent."
                   />
                   <Stack spacing={1}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        Specifications
-                      </Typography>
+                      {sectionHeadingWithTooltip(
+                        "Specifications",
+                        "Add label/value rows for customer-facing specifications such as material, width, or made in."
+                      )}
                       <Button size="small" onClick={addSpecificationRow}>
                         Add specification
                       </Button>
@@ -1546,16 +1556,24 @@ const ProductManagement = ({ token }) => {
                         {form.specifications_json.map((row, index) => (
                           <Stack key={`spec-${index}`} direction={{ xs: "column", sm: "row" }} spacing={1}>
                             <TextField
-                              label="Label"
+                              label={fieldLabelWithTooltip(
+                                "Label",
+                                "The customer-facing specification name, such as Material, Width, Made in, or Capacity."
+                              )}
                               value={row?.label || ""}
                               onChange={(event) => updateSpecificationRow(index, "label", event.target.value)}
                               fullWidth
+                              placeholder="Example: Material"
                             />
                             <TextField
-                              label="Value"
+                              label={fieldLabelWithTooltip(
+                                "Value",
+                                "The customer-facing value for this specification, such as Sterling silver, 24 cm, or Made in Canada."
+                              )}
                               value={row?.value || ""}
                               onChange={(event) => updateSpecificationRow(index, "value", event.target.value)}
                               fullWidth
+                              placeholder="Example: Sterling silver"
                             />
                             <Button color="inherit" onClick={() => removeSpecificationRow(index)}>
                               Remove
@@ -1563,27 +1581,31 @@ const ProductManagement = ({ token }) => {
                           </Stack>
                         ))}
                       </Stack>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        Add label/value rows for customer-facing specifications such as material, width, or made in.
-                      </Typography>
-                    )}
+                    ) : null}
                   </Stack>
                   <TextField
-                    label="Materials & care"
+                    label={fieldLabelWithTooltip(
+                      "Materials & care",
+                      "Use this for care instructions or material notes customers should know before buying."
+                    )}
                     value={form.materials_care_text}
                     onChange={handleChange("materials_care_text")}
                     fullWidth
                     multiline
                     minRows={3}
+                    placeholder="Example: 100% cotton. Machine wash cold. Lay flat to dry."
                   />
                   <TextField
-                    label="Packaging"
+                    label={fieldLabelWithTooltip(
+                      "Packaging",
+                      "Describe what arrives with the Product, such as gift boxes, dust bags, inserts, or protective wrapping."
+                    )}
                     value={form.packaging_text}
                     onChange={handleChange("packaging_text")}
                     fullWidth
                     multiline
                     minRows={3}
+                    placeholder="Example: Packed in a recycled gift box with tissue paper and a care card."
                   />
                 </Stack>
               </AccordionDetails>
@@ -1595,10 +1617,11 @@ const ProductManagement = ({ token }) => {
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <CategoryAutocomplete
-                label={fieldLabelWithTooltip("Category", "Use categories to group and filter products.")}
+                label={fieldLabelWithTooltip("Category", "Use categories to group and filter products. Select an existing category or type a new one.")}
                 value={form.category}
                 onChange={(value) => setForm((prev) => ({ ...prev, category: value }))}
                 categories={productCategories}
+                helperText=""
                 fullWidth
               />
               <TextField
@@ -1639,7 +1662,7 @@ const ProductManagement = ({ token }) => {
               <TextField
                 label={fieldLabelWithTooltip(
                   "Selling price",
-                  "Selling price charged to customers in your business selling currency."
+                  `Selling price charged to customers in your business selling currency. This Product uses ${businessSellingCurrency} from Checkout Pro & Payments.`
                 )}
                 type="number"
                 value={form.price}
@@ -1649,15 +1672,6 @@ const ProductManagement = ({ token }) => {
                 InputProps={{
                   endAdornment: <InputAdornment position="end">{businessSellingCurrency}</InputAdornment>,
                 }}
-                FormHelperTextProps={{ component: "div" }}
-                helperText={(
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
-                    <span>This Product uses your business selling currency from Checkout Pro & Payments.</span>
-                    <Link href="/manager/dashboard?view=settings&tab=checkout" underline="hover">
-                      Manage currency settings
-                    </Link>
-                  </Stack>
-                )}
               />
               <TextField
                 label={fieldLabelWithTooltip(
@@ -1669,7 +1683,6 @@ const ProductManagement = ({ token }) => {
                 onChange={handleChange("cost")}
                 fullWidth
                 inputProps={{ step: "0.01" }}
-                helperText="Used only for Manager-side Seller estimates and Business Finance analysis. Customers never see this value."
               />
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -1894,9 +1907,14 @@ const ProductManagement = ({ token }) => {
                 )}
               />
               {!form.delivery_methods_override_enabled && (
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                  Override is off. This Product uses the workspace delivery settings from Products -> Delivery setup.
-                </Typography>
+                <Box sx={{ ml: 0.5 }}>
+                  <Tooltip
+                    title="Override is off. This Product uses the workspace delivery settings from Products -> Delivery setup."
+                    arrow
+                  >
+                    <Chip size="small" label="Using workspace delivery settings" variant="outlined" />
+                  </Tooltip>
+                </Box>
               )}
               {form.delivery_methods_override_enabled && (
                 <>
@@ -2061,9 +2079,10 @@ const ProductManagement = ({ token }) => {
               <Divider sx={{ my: 1 }} />
               <Stack spacing={1} ref={shippingDetailsRef} sx={sectionFocusSx(focusedSection === "shipping_details")}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                  <Typography variant="subtitle2" fontWeight={700}>
-                    Product weight and dimensions
-                  </Typography>
+                  {sectionHeadingWithTooltip(
+                    "Product weight and dimensions",
+                    "Enter the product itself without packaging. This form stores grams and millimetres. Commerce Copilot can accept mm, cm, or in and normalizes them safely. Configure the box or mailer under Products -> Delivery setup -> Package Profiles."
+                  )}
                   {!form.is_digital && editing?.shipping_readiness?.required && (
                     <Chip
                       size="small"
@@ -2073,9 +2092,6 @@ const ProductManagement = ({ token }) => {
                     />
                   )}
                 </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  Enter the product itself without packaging. This form stores grams and millimetres. Commerce Copilot can accept mm, cm, or in and normalizes them safely. Configure the box or mailer under Products -&gt; Delivery setup -&gt; Package Profiles.
-                </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <Button size="small" variant="text" onClick={() => setDeliverySetupOpen(true)}>
                     Configure package profiles
@@ -2098,7 +2114,6 @@ const ProductManagement = ({ token }) => {
                       )}
                       value={form.shipping_weight_grams}
                       onChange={handleChange("shipping_weight_grams")}
-                      helperText="Example: Necklace = 50 g"
                     />
                   </Grid>
                   <Grid item xs={12} md={3}>

@@ -316,7 +316,7 @@ describe("ProductManagement", () => {
     fireEvent.click(await screen.findByRole("button", { name: /manager\.product\.buttonadd/i }));
 
     expect(await screen.findByLabelText(/weight \(g\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Used only for Manager-side Seller estimates and Business Finance analysis\. Customers never see this value\./i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/cost/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/length \(mm\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/width \(mm\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/height \(mm\)/i)).toBeInTheDocument();
@@ -643,7 +643,7 @@ describe("ProductManagement", () => {
     fireEvent.change(screen.getByLabelText(/materials & care/i), {
       target: { value: "Wipe clean after wear" },
     });
-    fireEvent.change(screen.getByLabelText(/packaging/i), {
+    fireEvent.change(screen.getByRole("textbox", { name: /^packaging$/i }), {
       target: { value: "Gift box included" },
     });
 

@@ -892,6 +892,30 @@ describe("CommerceCopilotDrawer", () => {
     expect(screen.queryByDisplayValue(/usd 50/i)).not.toBeInTheDocument();
   });
 
+  test("does not flash the generic workflow chooser while an auto-start workflow is opening", async () => {
+    let resolveSession;
+    const pendingSession = new Promise((resolve) => {
+      resolveSession = resolve;
+    });
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) === "/inventory/commerce-copilot/sessions") {
+        return pendingSession;
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderDrawer({ initialWorkflow: "create_physical_product" });
+
+    expect(await screen.findByText(/opening commerce copilot/i)).toBeInTheDocument();
+    expect(screen.getByText(/create a physical product/i)).toBeInTheDocument();
+    expect(screen.queryByText(/what would you like help with\?/i)).not.toBeInTheDocument();
+
+    resolveSession({ data: guidedSession });
+
+    expect(await screen.findByText(/what name should customers see\?/i)).toBeInTheDocument();
+    expect(screen.queryByText(/opening commerce copilot/i)).not.toBeInTheDocument();
+  });
+
   test("opens explicit draft edit instead of showing missing facts as text fields", async () => {
     mockApiPost.mockResolvedValueOnce({ data: guidedSession });
 

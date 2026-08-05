@@ -1270,9 +1270,9 @@ export const ProductVariantConfigurationPanel = forwardRef(function ProductVaria
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
           <Stack spacing={2} alignItems="center">
             <Typography variant="h6">Add the choices customers need to make.</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Start with Colour, Size, or a custom option.
-            </Typography>
+            <Tooltip title="Start with Colour, Size, or a custom option." arrow>
+              <InfoOutlined sx={{ color: "text.secondary", cursor: "help" }} />
+            </Tooltip>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button variant="contained" onClick={() => setPresetOption("colour")}>
                 Add Colour

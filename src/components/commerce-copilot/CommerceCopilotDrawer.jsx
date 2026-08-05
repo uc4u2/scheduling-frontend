@@ -1078,6 +1078,8 @@ const CommerceCopilotDrawer = ({
   const copilotBilling = capabilities?.billing?.ai_commerce_copilot || capabilities?.copilot || {};
   const progress = draft?.validation_results_json?.progress_percent ?? session?.context_summary_json?.progress_percent ?? 0;
   const quickStartWorkflow = initialWorkflow || "";
+  const quickStartRequiresProductSelection = quickStartWorkflow === "improve_product_content" && !targetProductId;
+  const quickStartAutoStarts = Boolean(quickStartWorkflow) && !quickStartRequiresProductSelection;
   const monetizationMode = availability?.monetization_mode || copilotBilling?.monetization_mode || "free_launch";
   const writeActionsAvailable = Boolean(availability?.write_actions_available);
   const chatAvailable = Boolean(availability?.chat_available);
@@ -2168,7 +2170,25 @@ const CommerceCopilotDrawer = ({
         {copilotBilling?.warning ? <Alert severity="warning">{copilotBilling.warning}</Alert> : null}
         {statusMessage.text ? <Alert severity={statusMessage.type || "info"}>{statusMessage.text}</Alert> : null}
 
-        {!session && capabilities && overallAvailable ? (
+        {!session && capabilities && overallAvailable && quickStartAutoStarts ? (
+          <Card variant="outlined">
+            <CardContent>
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                <CircularProgress size={18} />
+                <Stack spacing={0.25}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                    Opening Commerce Copilot
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {workflowLabel(quickStartWorkflow)}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {!session && capabilities && overallAvailable && !quickStartAutoStarts ? (
           <Stack spacing={2}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>What would you like help with?</Typography>
