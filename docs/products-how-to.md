@@ -37,7 +37,7 @@ Manager entry points:
 - Product selling price uses your business selling currency from **Checkout Pro & Payments**.
 - Product online checkout availability uses the dedicated `enable_product_payments`
   capability from **Checkout Pro & Payments**.
-- Appointment pay-now, deposit, and card-on-file settings do not enable Product
+- Appointment pay-now and card-on-file settings do not enable Product
   checkout by themselves.
 - Legacy Quebec checkout storage still resolves to `CAD`.
 - `Customs declared-value currency` is separate and only affects international customs paperwork.

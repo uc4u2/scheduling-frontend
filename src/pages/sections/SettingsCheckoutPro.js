@@ -152,7 +152,7 @@ export default function SettingsCheckoutPro() {
   const [guideOpen, setGuideOpen] = useState(false);
 
   const appointmentNeedsCheckoutPayment =
-    appointmentPaymentMode === "pay_now" || appointmentPaymentMode === "deposit";
+    appointmentPaymentMode === "pay_now";
   const allowCardOnFile = appointmentPaymentMode === "card_on_file";
   const stripeNeeded =
     productPaymentsEnabled || appointmentNeedsCheckoutPayment || allowCardOnFile;
@@ -207,7 +207,7 @@ export default function SettingsCheckoutPro() {
         if (rawMode === "capture" && allow) {
           mode = "card_on_file";
         } else if (rawMode === "deposit" && enable) {
-          mode = "deposit";
+          mode = "pay_now";
         } else if (rawMode === "pay" && enable) {
           mode = "pay_now";
         } else if (allow) {
@@ -381,7 +381,7 @@ export default function SettingsCheckoutPro() {
     if (rawMode === "capture" && allow) {
       mode = "card_on_file";
     } else if (rawMode === "deposit" && enable) {
-      mode = "deposit";
+      mode = "pay_now";
     } else if (rawMode === "pay" && enable) {
       mode = "pay_now";
     } else if (allow) {
@@ -490,9 +490,7 @@ export default function SettingsCheckoutPro() {
       const appointmentPolicyMode =
         appointmentPaymentMode === "card_on_file"
           ? "capture"
-          : appointmentPaymentMode === "deposit"
-            ? "deposit"
-            : appointmentPaymentMode === "pay_now"
+          : appointmentPaymentMode === "pay_now"
               ? "pay"
               : "off";
       const payload = {
@@ -595,9 +593,7 @@ export default function SettingsCheckoutPro() {
   const appointmentSummaryLabel =
     appointmentPaymentMode === "card_on_file"
       ? "Card on file"
-      : appointmentPaymentMode === "deposit"
-        ? "Deposit during Checkout"
-        : appointmentPaymentMode === "pay_now"
+      : appointmentPaymentMode === "pay_now"
           ? "Pay during booking Checkout"
           : "No online payment";
   const productSummaryLabel = productPaymentsEnabled ? "Paid during Checkout" : "Online Product payments are off";
@@ -686,25 +682,6 @@ export default function SettingsCheckoutPro() {
                         </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {t("settings.checkout.modes.cardOnFile.description")}
-                        </Typography>
-                      </Stack>
-                    }
-                  />
-                  <FormControlLabel
-                    value="deposit"
-                    control={<Radio />}
-                    label={
-                      <Stack spacing={0.5} alignItems="flex-start">
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          <Typography variant="body2">Deposit during Checkout</Typography>
-                          <Tooltip title={payNowTaxTooltip}>
-                            <IconButton size="small" aria-label="tax info">
-                              <InfoOutlined fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                        <Typography variant="caption" color="text.secondary">
-                          Controls how customers pay when booking appointments.
                         </Typography>
                       </Stack>
                     }

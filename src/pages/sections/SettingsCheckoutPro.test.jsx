@@ -381,19 +381,77 @@ describe("SettingsCheckoutPro", () => {
     );
   });
 
+  test("shows exactly three appointment payment choices and no deposit option", async () => {
+    mockCheckoutSettings({
+      companyProfile: companyProfileDefaults(),
+      paymentsPolicy: { mode: "off" },
+    });
+
+    renderSettings();
+    await screen.findByText(/Current Product and Finance currency:/i);
+
+    expect(screen.queryByText("Deposit during Checkout")).not.toBeInTheDocument();
+    expect(screen.getByText("Appointment payment policy")).toBeInTheDocument();
+
+    const radioValues = screen.getAllByRole("radio").map((node) => node.getAttribute("value"));
+    expect(radioValues).toEqual(["offline", "card_on_file", "pay_now"]);
+  });
+
+  test("legacy deposit policy loads as pay now without auto-saving", async () => {
+    mockCheckoutSettings({
+      companyProfile: companyProfileDefaults({
+        enable_stripe_payments: true,
+        enable_product_payments: false,
+        allow_card_on_file: false,
+      }),
+      paymentsPolicy: { mode: "deposit" },
+    });
+    mockApiPost.mockImplementation((url, payload) => {
+      if (url === "/admin/company-profile") {
+        return Promise.resolve({
+          data: companyProfileDefaults({
+            enable_stripe_payments: payload.enable_stripe_payments,
+            enable_product_payments: payload.enable_product_payments,
+            allow_card_on_file: payload.allow_card_on_file,
+          }),
+        });
+      }
+      if (url === "/admin/payments-policy") {
+        return Promise.resolve({ data: { saved: true, policy: { mode: "pay" } } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    renderSettings();
+    await screen.findByText(/Current Product and Finance currency:/i);
+
+    expect(screen.queryByText("Deposit during Checkout")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /settings\.checkout\.modes\.payNow\.title/i })).toBeChecked();
+    expect(mockApiPost).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "settings.checkout.buttons.save" }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/admin/payments-policy",
+        { appointment_payment_mode: "pay" },
+        expect.any(Object)
+      )
+    );
+    expect(JSON.stringify(mockApiPost.mock.calls)).not.toContain("deposit");
+  });
+
   test.each([
     ["A", "capture", true, "Card on file", "Paid during Checkout"],
     ["B", "capture", false, "Card on file", "Online Product payments are off"],
     ["C", "pay", true, "Pay during booking Checkout", "Paid during Checkout"],
     ["D", "pay", false, "Pay during booking Checkout", "Online Product payments are off"],
-    ["E", "deposit", true, "Deposit during Checkout", "Paid during Checkout"],
-    ["F", "deposit", false, "Deposit during Checkout", "Online Product payments are off"],
-    ["G", "off", true, "No online payment", "Paid during Checkout"],
-    ["H", "off", false, "No online payment", "Online Product payments are off"],
+    ["E", "off", true, "No online payment", "Paid during Checkout"],
+    ["F", "off", false, "No online payment", "Online Product payments are off"],
   ])(
     "supports configuration matrix %s",
     async (_label, policyMode, productEnabled, appointmentLabel, productLabel) => {
-      const appointmentEnabled = policyMode === "pay" || policyMode === "deposit";
+      const appointmentEnabled = policyMode === "pay";
       const allowCard = policyMode === "capture";
       mockCheckoutSettings({
         companyProfile: companyProfileDefaults({
@@ -442,4 +500,70 @@ describe("SettingsCheckoutPro", () => {
       );
     }
   );
+
+  test("pay now saves the supported appointment policy only", async () => {
+    mockCheckoutSettings({
+      companyProfile: companyProfileDefaults({
+        enable_stripe_payments: true,
+        enable_product_payments: false,
+        allow_card_on_file: false,
+      }),
+      paymentsPolicy: { mode: "pay" },
+    });
+    mockApiPost.mockResolvedValue({ data: companyProfileDefaults({ enable_stripe_payments: true, enable_product_payments: false, allow_card_on_file: false }) });
+
+    renderSettings();
+    await screen.findByText(/Current Product and Finance currency:/i);
+    fireEvent.click(screen.getByRole("button", { name: "settings.checkout.buttons.save" }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/admin/company-profile",
+        expect.objectContaining({
+          enable_stripe_payments: true,
+          enable_product_payments: false,
+          allow_card_on_file: false,
+        }),
+        expect.any(Object)
+      )
+    );
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/admin/payments-policy",
+      { appointment_payment_mode: "pay" },
+      expect.any(Object)
+    );
+  });
+
+  test("offline saves the supported appointment policy only", async () => {
+    mockCheckoutSettings({
+      companyProfile: companyProfileDefaults({
+        enable_stripe_payments: false,
+        enable_product_payments: true,
+        allow_card_on_file: false,
+      }),
+      paymentsPolicy: { mode: "off" },
+    });
+    mockApiPost.mockResolvedValue({ data: companyProfileDefaults({ enable_stripe_payments: false, enable_product_payments: true, allow_card_on_file: false }) });
+
+    renderSettings();
+    await screen.findByText(/Current Product and Finance currency:/i);
+    fireEvent.click(screen.getByRole("button", { name: "settings.checkout.buttons.save" }));
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/admin/company-profile",
+        expect.objectContaining({
+          enable_stripe_payments: false,
+          enable_product_payments: true,
+          allow_card_on_file: false,
+        }),
+        expect.any(Object)
+      )
+    );
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/admin/payments-policy",
+      { appointment_payment_mode: "off" },
+      expect.any(Object)
+    );
+  });
 });

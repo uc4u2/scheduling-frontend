@@ -21,7 +21,7 @@ company capability:
 
 This is separate from:
 
-- `enable_stripe_payments` for appointment pay-now / deposit
+- `enable_stripe_payments` for appointment pay-now
 - `allow_card_on_file` for appointment setup-mode / later capture
 
 ## Where to find it
@@ -31,7 +31,6 @@ This is separate from:
 Choose how clients pay when booking appointments:
 - **No online payment**: Collect outside Stripe.
 - **Save card on file**: Client saves a card so you can charge later or apply no-show fees.
-- **Deposit during Checkout**: Client pays only the configured deposit amount.
 - **Pay during booking Checkout**: Client pays immediately.
 
 Card on File uses hosted Stripe Checkout in secure setup mode. The booking is
@@ -51,7 +50,7 @@ Products are configured separately from appointment policy.
 - Product checkout never uses card-on-file / setup mode.
 - Turning Product payments on does not force appointments to switch away from
   card on file.
-- Turning appointment pay-now or deposit on does not force Product payments on.
+- Turning appointment pay-now on does not force Product payments on.
 
 Compatible example:
 
@@ -106,3 +105,8 @@ Use the **Open Tax Help** button for the step-by-step Stripe Tax checklist:
 - A later additive migration introduced `enable_product_payments` and backfilled
   it from `enable_stripe_payments` so existing Product-selling tenants did not
   lose online Product checkout unexpectedly.
+
+Legacy note:
+- Deposit-related backend branches may still exist internally, but Deposit is
+  not currently Manager-configurable or advertised as a supported appointment
+  payment mode.
