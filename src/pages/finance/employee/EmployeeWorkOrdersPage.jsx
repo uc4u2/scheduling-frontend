@@ -39,7 +39,7 @@ const assignmentPreview = (assignments = [], timezone = "") => {
 
 export default function EmployeeWorkOrdersPage() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
   const location = useLocation();
   const role = typeof window !== "undefined" ? (localStorage.getItem("role") || "").toLowerCase() : "";
