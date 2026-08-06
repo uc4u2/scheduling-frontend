@@ -21,6 +21,14 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import ThemeRuntimeProvider from "./ThemeRuntimeProvider";
+import { WebsiteDesignProvider } from "./WebsiteDesignContext";
+import {
+  loadWebsiteFamilyModule,
+} from "./families/manifest";
+import {
+  normalizeWebsiteDesignMetadata,
+  resolveWebsiteDesignTokens,
+} from "./websiteDesign";
 import { SOCIAL_ICON_MAP, DEFAULT_SOCIAL_ICON } from "../../utils/socialIcons";
 import {
   cloneFooterColumns,
@@ -154,6 +162,19 @@ export default function SiteFrame({
     site?.website?.nav_style ||
     site?.website_setting?.settings?.nav_style ||
     {};
+  const designSource = useMemo(
+    () => ({
+      ...(site?.website_setting?.settings || {}),
+      ...(site?.settings || {}),
+      ...(site || {}),
+    }),
+    [site]
+  );
+  const design = useMemo(
+    () => normalizeWebsiteDesignMetadata(designSource),
+    [designSource]
+  );
+  const [familyModule, setFamilyModule] = useState(null);
   const navStyle = useMemo(() => normalizeNavStyle(rawNavStyle), [rawNavStyle]);
   const navButtonSx = useMemo(() => createNavButtonStyles(navStyle), [navStyle]);
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
@@ -233,6 +254,40 @@ export default function SiteFrame({
   const mobileDrawerTextColor = useMemo(() => {
     return "#111827";
   }, []);
+  useEffect(() => {
+    let alive = true;
+    if (design.design_family === "classic") {
+      setFamilyModule(null);
+      return () => {
+        alive = false;
+      };
+    }
+    loadWebsiteFamilyModule(design.design_family)
+      .then((mod) => {
+        if (alive) setFamilyModule(mod || null);
+      })
+      .catch(() => {
+        if (alive) setFamilyModule(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [design.design_family, design.design_family_version]);
+  const designContextValue = useMemo(
+    () => ({
+      design,
+      familyModule,
+      resolveTokens: ({ section = {}, familyTokens = {} } = {}) =>
+        resolveWebsiteDesignTokens({
+          section,
+          site: {
+            pageStyle: site?.theme_overrides || {},
+          },
+          familyTokens: familyTokens || familyModule?.tokens || {},
+        }),
+    }),
+    [design, familyModule, site]
+  );
   const mobileNavButtonStyling = useMemo(() => {
     return (active) => {
       const base = navButtonSx(active);
@@ -900,6 +955,31 @@ export default function SiteFrame({
     </>
   );
 
+  const FamilyHeaderComponent = familyModule?.shell?.HeaderComponent || null;
+  const familyHeaderActive =
+    Boolean(FamilyHeaderComponent) && design.design_family !== "classic";
+  const familyHeaderShell = {
+    slug,
+    site,
+    headerConfig,
+    nav,
+    navLinks,
+    pathname,
+    search,
+    isPreview,
+    resolveLinkProps,
+    reviewsHref,
+    loginHref,
+    myBookingsHref,
+    clientLoggedIn,
+    hasReviewsLink,
+    hasLoginLink,
+    hasMyBookingsLink,
+    isReviewsActive,
+    doLogout,
+    onPreviewOpenPage,
+  };
+
   const mobileNavButtons = (
     <Stack spacing={1} alignItems="stretch">
       {navLinks.map((item, idx) => {
@@ -934,7 +1014,7 @@ export default function SiteFrame({
     </Stack>
   );
 
-  const headerNode = headerConfig ? (
+  const defaultHeaderNode = headerConfig ? (
     <Box
       component="header"
       sx={{
@@ -1117,13 +1197,14 @@ export default function SiteFrame({
     footerConfig?.text_color ||
     themeOverrides?.footer?.text ||
     theme.palette.text.primary;
+  const footerLogoWidth = clampNumber(footerConfig?.logo_width ?? 160, 40, 360, 160);
   const footerLinkColor =
     footerConfig?.link_color ||
     footerTextColor ||
     linkColor;
   const footerHeadingColor = footerLinkColor;
 
-  const footerNode = footerConfig ? (
+  const defaultFooterNode = footerConfig ? (
     <Box
       component="footer"
       sx={{
@@ -1152,7 +1233,13 @@ export default function SiteFrame({
               component="img"
               src={footerLogo}
               alt={site?.company?.name || slug}
-              sx={{ height: 48, width: "auto", maxWidth: 200, objectFit: "contain" }}
+              sx={{
+                width: `${footerLogoWidth}px`,
+                height: "auto",
+                maxWidth: "100%",
+                maxHeight: 72,
+                objectFit: "contain",
+              }}
             />
             {isPreview && onRemoveFooterItem ? (
               <IconButton
@@ -1455,6 +1542,28 @@ export default function SiteFrame({
     </Box>
   ) : null;
 
+  const FamilyFooterComponent = familyModule?.shell?.FooterComponent || null;
+  const familyFooterActive =
+    Boolean(FamilyFooterComponent) && design.design_family !== "classic";
+  const familyFooterShell = {
+    slug,
+    site,
+    footerConfig,
+    resolveLinkProps,
+    isPreview,
+    onRemoveFooterItem,
+  };
+  const headerNode = familyHeaderActive ? (
+    <FamilyHeaderComponent shell={familyHeaderShell} />
+  ) : (
+    defaultHeaderNode
+  );
+  const footerNode = familyFooterActive ? (
+    <FamilyFooterComponent shell={familyFooterShell} />
+  ) : (
+    defaultFooterNode
+  );
+
   if (loading) {
     return (
       <Box sx={{ mt: 8, textAlign: "center" }}>
@@ -1480,9 +1589,15 @@ export default function SiteFrame({
 
   return (
     <ThemeRuntimeProvider themeOverrides={site?.theme_overrides || {}}>
-      <Box sx={{ "--site-header-overlap": `${headerOverlap}px` }}>
+      <WebsiteDesignProvider value={designContextValue}>
+      <Box
+        sx={{ "--site-header-overlap": `${headerOverlap}px` }}
+        data-design-family={design.design_family}
+        data-design-family-version={String(design.design_family_version)}
+        data-design-motion={design.motion_profile}
+      >
       {!hideHeader && headerNode}
-      {!hideHeader && (
+      {!hideHeader && !familyHeaderActive && (
         <Drawer
           anchor="top"
           open={mobileOpen}
@@ -1548,6 +1663,7 @@ export default function SiteFrame({
       )}
       {!hideFooter && footerNode}
       </Box>
+      </WebsiteDesignProvider>
     </ThemeRuntimeProvider>
   );
 }

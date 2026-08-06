@@ -3821,6 +3821,28 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     };
     return {
       slug: previewSlug,
+      design_family:
+        siteSettings?.design_family ||
+        siteSettings?.settings?.design_family ||
+        "classic",
+      design_schema_version:
+        siteSettings?.design_schema_version ||
+        siteSettings?.settings?.design_schema_version ||
+        1,
+      design_family_version:
+        siteSettings?.design_family_version ||
+        siteSettings?.settings?.design_family_version ||
+        1,
+      composition:
+        siteSettings?.composition ||
+        siteSettings?.settings?.composition ||
+        "default",
+      motion_profile:
+        siteSettings?.motion_profile ||
+        siteSettings?.settings?.motion_profile ||
+        "legacy",
+      design_family_feature_enabled:
+        siteSettings?.design_family_feature_enabled !== false,
       nav_overrides: navDraft?.nav_overrides || navOverridesWithDefault,
       nav_style: navStyle,
       theme_overrides: themeOverrides,

@@ -31,6 +31,9 @@ import ContactFormSection from "./ContactFormSection";
 import buildImgixUrl from "../../utils/imgix";
 import { safeHtml } from "../../utils/safeHtml";
 import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../utils/websiteRadius";
+import { useWebsiteDesign } from "./WebsiteDesignContext";
+import { resolveSectionRole } from "./roles/sectionRoleResolver";
+import { adaptSectionForRole } from "./adapters/sectionAdapters";
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
@@ -7145,6 +7148,29 @@ const registry = {
   bookingCtaBar: BookingCtaBar
 };
 
+export function partitionRuntimeSections(sections = []) {
+  const contentSections = Array.isArray(sections) ? sections : [];
+  return {
+    popupSections: contentSections.filter((section) => section?.type === "popupCta"),
+    flowSections: contentSections.filter((section) => section?.type !== "popupCta"),
+  };
+}
+
+function resolveSectionRenderer(section, familyModule) {
+  const role = resolveSectionRole(section);
+  const roleRenderers = familyModule?.roleRenderers || {};
+  const typeRenderers = familyModule?.typeRenderers || {};
+  return {
+    role,
+    Renderer:
+      roleRenderers[role] ||
+      typeRenderers[section?.type] ||
+      registry[section?.type] ||
+      null,
+    adapted: adaptSectionForRole(section),
+  };
+}
+
 // -----------------------------------------------------------------------------
 // Render
 // -----------------------------------------------------------------------------
@@ -7155,13 +7181,16 @@ function RenderSectionsInner({
   defaultGutterX,
   editorPreview = false,
 }) {
+  const { familyModule, resolveTokens } = useWebsiteDesign();
   const safeSections = Array.isArray(sections) ? sections : [];
   const [pageStyle, contentSections] = useMemo(
     () => pickPageStyle(safeSections),
     [safeSections]
   );
-  const popupSections = contentSections.filter((section) => section?.type === "popupCta");
-  const flowSections = contentSections.filter((section) => section?.type !== "popupCta");
+  const { popupSections, flowSections } = useMemo(
+    () => partitionRuntimeSections(contentSections),
+    [contentSections]
+  );
   const defGX = defaultGutterX ?? pageStyle.gutterX;
   const bottomSpacing = clamp(
     Number(pageStyle.pageBottomSpacing) || 0,
@@ -7272,9 +7301,19 @@ return (
     )}
     <Stack spacing={{ xs: 2.5, md: 4 }} sx={{ position: "relative", zIndex: 1 }}>
       {flowSections.map((s, i) => {
-        const Cmp = registry[s?.type];
+        const { Renderer: Cmp, role } = resolveSectionRenderer(s, familyModule);
         if (!Cmp) return null;
         const props = s.props || {};
+        const designTokens = resolveTokens?.({ section: s }) || {};
+        const adaptedSection = adaptSectionForRole(s);
+        const familyFrameConfig = familyModule?.frame || {};
+        const familyLayoutOverride =
+          familyFrameConfig?.roleLayoutOverrides?.[role] ||
+          familyFrameConfig?.typeLayoutOverrides?.[s?.type] ||
+          null;
+        const familyGutterOverride =
+          familyFrameConfig?.roleGutterOverrides?.[role] ??
+          familyFrameConfig?.typeGutterOverrides?.[s?.type];
 
          // Let page style provide fallbacks for width and gutter
      if (props.maxWidth == null && pageStyle.contentMaxWidth != null) {
@@ -7311,9 +7350,28 @@ return (
         return (
           <Section key={s?.id || i} id={s?.id} sx={perSectionSx}>
             {frame(
-              <Cmp {...effectiveProps} />,
-              fullBleedFrameTypes.has(s?.type)
-                ? { ...effectiveProps, layoutOverride: "full", gutterX: 0 }
+              <Cmp
+                {...effectiveProps}
+                websiteDesignTokens={designTokens}
+                websiteSectionRole={resolveSectionRole(s)}
+                websiteSectionAdapter={adaptedSection}
+              />,
+              fullBleedFrameTypes.has(s?.type) || familyLayoutOverride === "full"
+                ? {
+                    ...effectiveProps,
+                    layoutOverride: "full",
+                    gutterX:
+                      familyGutterOverride != null ? familyGutterOverride : 0,
+                  }
+                : familyLayoutOverride || familyGutterOverride != null
+                ? {
+                    ...effectiveProps,
+                    layoutOverride: familyLayoutOverride || effectiveProps.layoutOverride,
+                    gutterX:
+                      familyGutterOverride != null
+                        ? familyGutterOverride
+                        : effectiveProps.gutterX,
+                  }
                 : effectiveProps
             )}
           </Section>

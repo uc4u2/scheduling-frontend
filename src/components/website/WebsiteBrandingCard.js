@@ -1110,6 +1110,7 @@ function FooterPreview({ footer, theme, companySlug }) {
   const bg = footer.bg || theme.footer?.background || "#0b1120";
   const textColor = footer.text_color || theme.footer?.text || "#e2e8f0";
   const linkColor = footer.link_color || textColor;
+  const footerLogoWidth = clampValue(footer.logo_width ?? 160, 40, 360);
   const showCopyright = footer.show_copyright !== false;
   const copyrightSample = formatCopyrightText(footer.copyright_text, {
     company: companySlug,
@@ -1131,6 +1132,25 @@ function FooterPreview({ footer, theme, companySlug }) {
           a: { color: linkColor },
         }}
       >
+        <Box
+          sx={{
+            width: `${footerLogoWidth}px`,
+            height: 40,
+            maxWidth: "100%",
+            border: "1px dashed rgba(255,255,255,0.28)",
+            borderRadius: 1,
+            mb: 1.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            opacity: 0.9,
+          }}
+        >
+          Footer logo
+        </Box>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           Footer preview
         </Typography>
@@ -2007,6 +2027,37 @@ export default function WebsiteBrandingCard({
               uploading={uploading}
               disabled={!companyId}
             />
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Footer logo size</Typography>
+              <Slider
+                size="small"
+                min={LOGO_WIDTH_MIN}
+                max={LOGO_WIDTH_MAX}
+                value={footer.logo_width ?? 160}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" &&
+                  updateFooter({
+                    logo_width: clampValue(val, LOGO_WIDTH_MIN, LOGO_WIDTH_MAX),
+                  })
+                }
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Footer logo width (px)"
+                value={Math.round(footer.logo_width ?? 160)}
+                onChange={(e) =>
+                  updateFooter({
+                    logo_width: clampValue(
+                      e.target.value,
+                      LOGO_WIDTH_MIN,
+                      LOGO_WIDTH_MAX
+                    ),
+                  })
+                }
+              />
+            </Stack>
             <ColorTokenInput
               label="Footer background"
               value={footer.bg || themeOverrides.footer?.background}

@@ -1980,6 +1980,7 @@ const siteTitle = useMemo(() => {
     themeOverrides?.footer?.text ||
     "rgba(255,255,255,0.92)";
   const footerLinkColor = footerConfig?.link_color || footerTextColor;
+  const footerLogoWidth = clampNumber(footerConfig?.logo_width ?? 160, 40, 360, 160);
   const footerLogoUrl = resolveMediaUrl(
     footerConfig?.logo_asset,
     footerConfig?.logo_url || footerConfig?.logo_asset_url || null
@@ -3124,7 +3125,13 @@ const siteTitle = useMemo(() => {
                       component="img"
                       src={footerLogoUrl}
                       alt={siteTitle}
-                      sx={{ height: 40, width: "auto", maxWidth: 160, objectFit: "contain" }}
+                      sx={{
+                        width: `${footerLogoWidth}px`,
+                        height: "auto",
+                        maxWidth: "100%",
+                        maxHeight: 72,
+                        objectFit: "contain",
+                      }}
                     />
                   )}
                   <Typography variant="h6" sx={{ fontWeight: 700, color: footerLinkColor }}>

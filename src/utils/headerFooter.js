@@ -120,6 +120,7 @@ export const defaultHeaderConfig = () => ({
 export const defaultFooterConfig = () => ({
   logo_asset_id: null,
   logo_asset: null,
+  logo_width: 160,
   bg: "",
   text_color: "",
   link_color: "",
@@ -208,6 +209,7 @@ export const normalizeFooterConfig = (value, { preserveAssets = true } = {}) => 
     ...value,
     logo_asset_id: value.logo_asset_id ?? base.logo_asset_id,
     logo_asset: preserveAssets ? value.logo_asset || null : null,
+    logo_width: clampNumber(value.logo_width, 40, 360, base.logo_width),
     bg: value.bg ?? base.bg,
     text_color: value.text_color ?? base.text_color,
     link_color: value.link_color ?? base.link_color,
