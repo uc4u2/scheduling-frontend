@@ -235,7 +235,7 @@ const RowsPerPageSelect = ({ value, onChange }) => (
   <FormControl size="small" sx={{ minWidth: 118 }}>
     <InputLabel>Rows</InputLabel>
     <Select label="Rows" value={value} onChange={(event) => onChange(Number(event.target.value))}>
-      {[10, 12, 20, 50].map((size) => <MenuItem key={size} value={size}>{size} rows</MenuItem>)}
+      {[10, 20, 50].map((size) => <MenuItem key={size} value={size}>{size} rows</MenuItem>)}
     </Select>
   </FormControl>
 );
@@ -530,7 +530,7 @@ const FieldPhotos = () => {
   const [endDate, setEndDate] = useState("");
   const [archived, setArchived] = useState("active");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(20);
   const [shiftId, setShiftId] = useState(initialParams.get("shift_id") || "");
   const [workOrderId, setWorkOrderId] = useState(initialParams.get("work_order_id") || "");
 
