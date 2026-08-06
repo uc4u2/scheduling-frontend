@@ -57,6 +57,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DownloadIcon from "@mui/icons-material/Download";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import api from "../../utils/api";
 import { STATUS } from "../../utils/shiftSwap";
@@ -4150,30 +4151,55 @@ const polishedPanelSx = employeePolish
               </Alert>
             )}
             <Stack spacing={0.5} alignItems="flex-start">
-              <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={photoUploading}>
-                {photoUploadFiles.length ? `${photoUploadFiles.length} selected` : "Take photos or choose from gallery"}
-                <input
-                  hidden
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    const files = Array.from(event.target.files || []);
-                    event.target.value = "";
-                    setPhotoUploadFiles((prev) => {
-                      const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
-                      const next = [...prev];
-                      files.forEach((file) => {
-                        const key = `${file.name}-${file.size}-${file.lastModified}`;
-                        if (!existing.has(key)) next.push(file);
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: "100%" }}>
+                <Button variant="contained" component="label" startIcon={<PhotoCameraIcon />} disabled={photoUploading}>
+                  {photoUploadFiles.length ? `${photoUploadFiles.length} selected` : "Take photo"}
+                  <input
+                    hidden
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files || []);
+                      event.target.value = "";
+                      setPhotoUploadFiles((prev) => {
+                        const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+                        const next = [...prev];
+                        files.forEach((file) => {
+                          const key = `${file.name}-${file.size}-${file.lastModified}`;
+                          if (!existing.has(key)) next.push(file);
+                        });
+                        return next;
                       });
-                      return next;
-                    });
-                  }}
-                />
-              </Button>
+                    }}
+                  />
+                </Button>
+                <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={photoUploading}>
+                  {photoUploadFiles.length ? `${photoUploadFiles.length} selected` : "Choose from gallery"}
+                  <input
+                    hidden
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files || []);
+                      event.target.value = "";
+                      setPhotoUploadFiles((prev) => {
+                        const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+                        const next = [...prev];
+                        files.forEach((file) => {
+                          const key = `${file.name}-${file.size}-${file.lastModified}`;
+                          if (!existing.has(key)) next.push(file);
+                        });
+                        return next;
+                      });
+                    }}
+                  />
+                </Button>
+              </Stack>
               <Typography variant="caption" color="text.secondary">
-                Select one or more JPG, PNG, or WebP photos.
+                Use Take photo for camera-first capture, or choose existing JPG, PNG, or WebP photos from your device.
               </Typography>
             </Stack>
             {photoUploadFiles.length > 0 && (

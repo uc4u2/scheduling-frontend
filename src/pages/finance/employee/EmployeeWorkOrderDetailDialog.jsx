@@ -26,6 +26,7 @@ import { useTheme } from "@mui/material/styles";
 import RoomOutlinedIcon from "@mui/icons-material/RoomOutlined";
 import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer } from "react-leaflet";
 import { acceptEmployeeDispatchAcknowledgement, getEmployeeDispatchAcknowledgement, getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, previewMyWorkOrderDispatchRoute, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
@@ -619,15 +620,27 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                 </Stack>
                 {photoError ? <Alert severity="error">{photoError}</Alert> : null}
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
-                  <Button component="label" variant="outlined">
-                    {photoFile ? photoFile.name : "Choose photo"}
-                    <input
-                      hidden
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
-                    />
-                  </Button>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
+                    <Button component="label" variant="contained" startIcon={<PhotoCameraIcon />}>
+                      {photoFile ? photoFile.name : "Take photo"}
+                      <input
+                        hidden
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                      />
+                    </Button>
+                    <Button component="label" variant="outlined">
+                      {photoFile ? photoFile.name : "Choose from gallery"}
+                      <input
+                        hidden
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                      />
+                    </Button>
+                  </Stack>
                   <TextField
                     size="small"
                     label={isMobile ? "Note" : "Photo note"}
