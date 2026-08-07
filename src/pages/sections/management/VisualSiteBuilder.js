@@ -117,7 +117,11 @@ import {
 import ThemeDesigner from "../../../components/website/ThemeDesigner";
 import { SearchSnippetPreview, SocialCardPreview } from "../../../components/seo/SeoPreview";
 import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../../utils/websiteRadius";
-import { buildWebsiteStyleChoices } from "./websiteCatalogUi";
+import {
+  buildNextJsPreviewUrl,
+  buildWebsiteStyleChoices,
+  isNextJsStyle,
+} from "./websiteCatalogUi";
 
 /** UI wrappers per design system */
 import SectionCard from "../../../components/ui/SectionCard";
@@ -2466,11 +2470,15 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   );
 
   const [siteSettings, setSiteSettings] = useState(null);
+  const [websiteCatalog, setWebsiteCatalog] = useState(null);
+  const [websiteStatus, setWebsiteStatus] = useState(null);
   const [stylePreviewFamily, setStylePreviewFamily] = useState("");
   const [stylePreviewViewport, setStylePreviewViewport] = useState("desktop");
   const [styleSaving, setStyleSaving] = useState(false);
   const [styleMsg, setStyleMsg] = useState("");
   const [styleErr, setStyleErr] = useState("");
+  const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
+  const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
@@ -2557,7 +2565,25 @@ const [brandingErr, setBrandingErr] = useState("");
   );
 
   const hasDraftChanges = Boolean(siteSettings?.has_unpublished_changes);
-  const websiteStyleChoices = useMemo(() => buildWebsiteStyleChoices(), []);
+  const websiteStyleChoices = useMemo(
+    () => buildWebsiteStyleChoices({ catalog: websiteCatalog, status: websiteStatus }),
+    [websiteCatalog, websiteStatus]
+  );
+  const currentRendererEngine =
+    siteSettings?.renderer_engine ||
+    siteSettings?.settings?.renderer_engine ||
+    websiteStatus?.current_renderer_engine ||
+    "legacy-react";
+  const currentVisualThemeKey =
+    siteSettings?.visual_theme_key ||
+    siteSettings?.settings?.visual_theme_key ||
+    websiteStatus?.current_visual_theme_key ||
+    null;
+  const currentVisualThemeVersion =
+    siteSettings?.visual_theme_version ||
+    siteSettings?.settings?.visual_theme_version ||
+    websiteStatus?.current_visual_theme_version ||
+    1;
   const currentDesignFamily =
     siteSettings?.design_family ||
     siteSettings?.settings?.design_family ||
@@ -2566,13 +2592,23 @@ const [brandingErr, setBrandingErr] = useState("");
     siteSettings?.design_family_version ||
     siteSettings?.settings?.design_family_version ||
     1;
-  const effectivePreviewFamily = stylePreviewFamily || currentDesignFamily;
+  const currentStyleKey =
+    currentRendererEngine === "nextjs"
+      ? currentVisualThemeKey || ""
+      : "classic";
+  const currentStyleVersion =
+    currentRendererEngine === "nextjs"
+      ? Number(currentVisualThemeVersion || 1)
+      : 1;
+  const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
-      style.key === currentDesignFamily && style.version === currentDesignVersion
+      style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
   );
   const deprecatedStoredDesignFamily =
-    currentDesignFamily !== "classic" && !activeStyleChoice
+    currentRendererEngine !== "nextjs" &&
+    currentDesignFamily !== "classic" &&
+    !activeStyleChoice
       ? currentDesignFamily
       : "";
   const lastPublishedLabel = useMemo(() => {
@@ -2743,6 +2779,45 @@ useEffect(() => {
     boot();
     return () => { alive = false; };
   }, [companyId, slug, location?.key, applyBrandingFromServer, loadCheckpoints]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    (async () => {
+      try {
+        const [catalogRes, statusRes] = await Promise.all([
+          wb.getCatalog(companyId),
+          wb.getStatus(companyId),
+        ]);
+        if (!alive) return;
+        setWebsiteCatalog(catalogRes?.data || catalogRes || null);
+        setWebsiteStatus(statusRes?.data || statusRes || null);
+      } catch (e) {
+        console.warn("Website catalog/status load failed", e?.response?.data || e);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [companyId, location?.key]);
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      const data = event?.data;
+      if (!data || data.type !== "schedulaa:website-slot-select") return;
+      const slot = String(data.slot || "").trim();
+      const label = String(data.label || slot).trim();
+      setStyleMsg(`Selected editable slot: ${label}`);
+      if (slot.startsWith("page:")) {
+        setPageSettingsOpen(true);
+      } else {
+        setInspectorOpen(true);
+        setInspectorTab("content");
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
 
   // ---------- NEW (Step 3: preflight/auth guard needs these) ----------
@@ -3911,21 +3986,31 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       setStyleMsg("");
       setStyleErr("");
       try {
+        const payload = isNextJsStyle(style)
+          ? {
+              renderer_engine: "nextjs",
+              visual_theme_key: style.key,
+              visual_theme_version: style.version,
+            }
+          : {
+              renderer_engine: "legacy-react",
+              visual_theme_key: null,
+              visual_theme_version: null,
+            };
         await wb.saveSettings(
           companyId,
-          {
-            design_family: style.key,
-            design_family_version: style.version,
-            motion_profile: style.motion,
-          },
+          payload,
           { publish: false, draftOnly: true }
         );
-        const refreshed = await wb.getSettings(companyId).catch(() => null);
+        const [refreshed, statusRes] = await Promise.all([
+          wb.getSettings(companyId).catch(() => null),
+          wb.getStatus(companyId).catch(() => null),
+        ]);
         const next = refreshed?.data || refreshed || null;
-        if (next) {
-          setSiteSettings(next);
-        }
-        setStylePreviewFamily(style.key);
+        if (next) setSiteSettings(next);
+        const nextStatus = statusRes?.data || statusRes || null;
+        if (nextStatus) setWebsiteStatus(nextStatus);
+        setStylePreviewFamily(style.key || "classic");
         setStyleMsg(`${style.name} applied to draft. Publish to make it live.`);
       } catch (e) {
         setStyleErr(
@@ -3939,6 +4024,51 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       }
     },
     [companyId]
+  );
+
+  const currentPreviewPagePath = useMemo(() => {
+    const slug = String(editing?.slug || "").trim().replace(/^\/+|\/+$/g, "");
+    if (!slug || slug === "home") return [];
+    return [slug];
+  }, [editing?.slug]);
+
+  const refreshNextJsPreview = useCallback(
+    async (style = null) => {
+      const nextStyle =
+        style ||
+        websiteStyleChoices.find((item) => item.key === effectivePreviewFamily) ||
+        null;
+      if (!companyId || !nextStyle || !isNextJsStyle(nextStyle)) {
+        setNextJsPreviewToken("");
+        setNextJsPreviewUrl("");
+        return;
+      }
+      try {
+        const res = await wb.createPreviewSession(companyId, {
+          visual_theme_key: nextStyle.key,
+          page_path: currentPreviewPagePath,
+        });
+        const payload = res?.data || res || {};
+        const token = payload?.token || "";
+        setNextJsPreviewToken(token);
+        setNextJsPreviewUrl(
+          token
+            ? buildNextJsPreviewUrl({
+                token,
+                pagePath: currentPreviewPagePath,
+              })
+            : ""
+        );
+      } catch (e) {
+        setStyleErr(
+          e?.response?.data?.error ||
+            e?.response?.data?.message ||
+            e?.message ||
+            "Failed to create Next.js preview session."
+        );
+      }
+    },
+    [companyId, currentPreviewPagePath, effectivePreviewFamily, websiteStyleChoices]
   );
 
 
@@ -4277,35 +4407,12 @@ const autoProvisionIfEmpty = useCallback(
       const latestSettings = await wb.getSettings(companyId).catch(() => null);
       const latestPayload = latestSettings?.data || latestSettings || {};
       const draftSettings = latestPayload?.settings || {};
-      const selectedStyle =
-        websiteStyleChoices.find((style) => style.key === effectivePreviewFamily) ||
-        websiteStyleChoices.find(
-          (style) =>
-            style.key === currentDesignFamily &&
-            style.version === currentDesignVersion
-        ) ||
-        null;
       const publishPayload = {
         ...draftSettings,
         header: draftSettings.header || headerDraft,
         footer: draftSettings.footer || footerDraft,
         theme_overrides: draftSettings.theme_overrides || themeOverridesDraft,
         nav_overrides: draftSettings.nav_overrides || navOverridesWithDefault,
-        design_family:
-          selectedStyle?.key ||
-          latestPayload?.design_family ||
-          draftSettings.design_family ||
-          currentDesignFamily,
-        design_family_version:
-          selectedStyle?.version ||
-          latestPayload?.design_family_version ||
-          draftSettings.design_family_version ||
-          currentDesignVersion,
-        motion_profile:
-          selectedStyle?.motion ||
-          latestPayload?.motion_profile ||
-          draftSettings.motion_profile ||
-          "legacy",
       };
       const brandingRes = await wb.saveSettings(companyId, publishPayload, {
         publish: true,
@@ -5530,26 +5637,84 @@ const autoProvisionIfEmpty = useCallback(
     </CollapsibleSection>
   );
 
-  const StyleChooserBlock =
-    deprecatedStoredDesignFamily ? (
-      <CollapsibleSection
-        id="builder-style-chooser"
-        title="Website Style"
-        description="Deprecated non-classic design family detected"
-        expanded
-      >
-        <Alert severity="warning" variant="outlined">
-          This company is using the deprecated design family{" "}
-          <strong>{deprecatedStoredDesignFamily}</strong>. The runtime remains
-          available for safe legacy rendering, but this family is hidden from
-          normal style selection during the website catalog migration.
+  const StyleChooserBlock = (
+    <CollapsibleSection
+      id="builder-style-chooser"
+      title="Website Style"
+      description="Choose between the current classic renderer and approved Next.js themes."
+      expanded
+    >
+      <Stack spacing={1.5}>
+        {deprecatedStoredDesignFamily ? (
+          <Alert severity="warning" variant="outlined">
+            This company is using the deprecated design family{" "}
+            <strong>{deprecatedStoredDesignFamily}</strong>. The runtime remains
+            available for safe legacy rendering, but this family is hidden from
+            normal style selection during the website catalog migration.
+          </Alert>
+        ) : null}
+        {styleMsg ? <Alert severity="success">{styleMsg}</Alert> : null}
+        {styleErr ? <Alert severity="error">{styleErr}</Alert> : null}
+        {websiteStyleChoices.map((style) => {
+          const isCurrent =
+            style.key === currentStyleKey &&
+            Number(style.version) === Number(currentStyleVersion);
+          const isPreviewing = style.key === effectivePreviewFamily;
+          return (
+            <Paper key={style.key} variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      {style.name}
+                    </Typography>
+                    {style.beta ? <Chip size="small" label="Beta" color="warning" /> : null}
+                    {isCurrent ? <Chip size="small" label="Current draft" color="success" /> : null}
+                    {isPreviewing && !isCurrent ? <Chip size="small" label="Previewing" color="info" /> : null}
+                  </Stack>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  {style.description}
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Button
+                    size="small"
+                    variant={isPreviewing ? "contained" : "outlined"}
+                    disabled={styleSaving}
+                    onClick={async () => {
+                      setStylePreviewFamily(style.key);
+                      if (isNextJsStyle(style)) {
+                        await refreshNextJsPreview(style);
+                      } else {
+                        setNextJsPreviewToken("");
+                        setNextJsPreviewUrl("");
+                      }
+                    }}
+                  >
+                    Preview
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    disabled={styleSaving || isCurrent}
+                    onClick={() => applyWebsiteStyle(style)}
+                  >
+                    Apply Style
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
+          );
+        })}
+        <Alert severity="info" variant="outlined">
+          Modern themes use a curated layout. You can edit content, images, pages, and supported sections while the theme preserves the page composition.
         </Alert>
-      </CollapsibleSection>
-    ) : null;
+      </Stack>
+    </CollapsibleSection>
+  );
 
   const LeftColumn = (
     <Stack spacing={1.5}>
-      {StyleChooserBlock}
       <InspectorColumn />
       <CollapsibleSection
         id="builder-pages-list"
@@ -8041,9 +8206,121 @@ function InspectorColumn() {
     </Grid>
   );
 
+  const StyleTabContent = (
+    <Stack spacing={2}>
+      {StyleChooserBlock}
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.5}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", md: "center" }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              Theme Preview
+            </Typography>
+            <Chip
+              size="small"
+              label={
+                isNextJsStyle(
+                  websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
+                )
+                  ? "Next.js iframe"
+                  : "Classic canvas"
+              }
+            />
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={stylePreviewViewport}
+              onChange={(_, value) => value && setStylePreviewViewport(value)}
+            >
+              <ToggleButton value="desktop">Desktop</ToggleButton>
+              <ToggleButton value="tablet">Tablet</ToggleButton>
+              <ToggleButton value="mobile">Mobile</ToggleButton>
+            </ToggleButtonGroup>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RefreshIcon fontSize="small" />}
+              onClick={() => refreshNextJsPreview()}
+              disabled={
+                !isNextJsStyle(
+                  websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
+                )
+              }
+            >
+              Refresh preview
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<OpenInNewIcon fontSize="small" />}
+              component="a"
+              href={nextJsPreviewUrl || undefined}
+              target="_blank"
+              rel="noreferrer"
+              disabled={!nextJsPreviewUrl}
+            >
+              Open in new tab
+            </Button>
+          </Stack>
+        </Stack>
+        <Box sx={{ mt: 2 }}>
+          {isNextJsStyle(
+            websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
+          ) ? (
+            nextJsPreviewUrl ? (
+              <Box
+                sx={{
+                  width:
+                    stylePreviewViewport === "desktop"
+                      ? "100%"
+                      : stylePreviewViewport === "tablet"
+                      ? 834
+                      : 390,
+                  maxWidth: "100%",
+                  mx: "auto",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  bgcolor: "#fff",
+                }}
+              >
+                <Box
+                  component="iframe"
+                  title="Next.js website preview"
+                  src={nextJsPreviewUrl}
+                  sx={{
+                    width: "100%",
+                    height: stylePreviewViewport === "mobile" ? 844 : 980,
+                    border: 0,
+                    display: "block",
+                  }}
+                />
+              </Box>
+            ) : (
+              <Alert severity="info" variant="outlined">
+                Choose <strong>Modern Gradient</strong> and click Preview to open the draft Next.js theme.
+              </Alert>
+            )
+          ) : (
+            <Alert severity="info" variant="outlined">
+              Classic mode continues to use the existing React canvas in the Website Content tab.
+            </Alert>
+          )}
+        </Box>
+      </Paper>
+    </Stack>
+  );
+
 const tabs = [
   {
-    label: t("manager.visualBuilder.tabs.build"),
+    label: "Website Content",
     content: (
       <Stack spacing={2}>
         {ControlsCard}
@@ -8051,6 +8328,10 @@ const tabs = [
         {builderColumns}
       </Stack>
     ),
+  },
+  {
+    label: "Website Style",
+    content: StyleTabContent,
   },
 ];
 

@@ -930,21 +930,32 @@ export default function OperationsLauncher() {
         ((websiteCatalog?.recommended_content_pack?.seed_template_key || "") === selectedTemplateKey
           ? websiteCatalog?.recommended_content_pack
           : null);
-      await website.importTemplate(
-        {
-          key: selectedTemplateKey,
-          template_key: selectedTemplateKey,
-          clear_existing: true,
-          publish: false,
-          set_theme_from_template: true,
-          content_pack_key: selectedContentPack?.key || undefined,
-          content_pack_version: selectedContentPack?.version || undefined,
-        },
-        { companyId }
-      );
+      if (selectedContentPack?.key) {
+        await website.installContentPack(
+          selectedContentPack.key,
+          {
+            clear_existing: true,
+            publish: false,
+            install_mode: "replace",
+            expected_version: selectedContentPack.version,
+          },
+          { companyId }
+        );
+      } else {
+        await website.importTemplate(
+          {
+            key: selectedTemplateKey,
+            template_key: selectedTemplateKey,
+            clear_existing: true,
+            publish: false,
+            set_theme_from_template: true,
+          },
+          { companyId }
+        );
+      }
       setBanner({
         type: "success",
-        message: "Template applied to your website draft. Review it in the visual builder before publishing.",
+        message: "Website content installed to your draft. Choose a website style separately in the visual builder before publishing.",
       });
       navigate(`/manage/website/builder?company_id=${encodeURIComponent(companyId)}`);
     } catch (error) {

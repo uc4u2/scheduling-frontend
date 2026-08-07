@@ -959,6 +959,26 @@ export const website = {
       )
       .then((r) => r.data),
 
+  installContentPack: (contentPackKey, body = {}, { companyId } = {}) =>
+    api
+      .post(
+        `/api/website/content-packs/${encodeURIComponent(contentPackKey)}/install`,
+        body,
+        {
+          ...withCompany(companyId),
+          params: companyId ? { company_id: companyId } : {},
+        }
+      )
+      .then((r) => r.data),
+
+  createPreviewSession: (body = {}, { companyId } = {}) =>
+    api
+      .post("/api/website/preview-session", body, {
+        ...withCompany(companyId),
+        params: companyId ? { company_id: companyId } : {},
+      })
+      .then((r) => r.data),
+
   // Media library (WebsiteMedia-backed)
   listMedia: ({ offset = 0, limit = 30, companyId } = {}) =>
     api
@@ -1651,6 +1671,8 @@ export const wb = {
   getStatus: async (companyId) => ({ data: await website.getStatus({ companyId }) }),
   getTemplate:   async (key, version) => ({ data: await website.getTemplate(key, version) }),
   importTemplate: async (companyId, body) => ({ data: await website.importTemplate(body, { companyId }) }),
+  installContentPack: async (companyId, contentPackKey, body = {}) => ({ data: await website.installContentPack(contentPackKey, body, { companyId }) }),
+  createPreviewSession: async (companyId, body = {}) => ({ data: await website.createPreviewSession(body, { companyId }) }),
 
   // MEDIA
   mediaList:   async (companyId, { offset = 0, limit = 50 } = {}) => ({ data: await website.listMedia({ offset, limit, companyId }) }),
