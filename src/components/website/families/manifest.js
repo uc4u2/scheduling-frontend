@@ -5,6 +5,8 @@ import {
 
 const PLACEHOLDER_LOADER = () => import("./nonClassicPlaceholder");
 const INDUSTRIAL_BLUEPRINT_LOADER = () => import("./industrial-blueprint");
+const HVAC_CINEMATIC_DARK_LOADER = () => import("./hvac-cinematic-dark");
+const HVAC_CLEAN_CORPORATE_LOADER = () => import("./hvac-clean-corporate");
 
 export const WEBSITE_FAMILY_MANIFEST = Object.freeze({
   classic: {
@@ -16,6 +18,16 @@ export const WEBSITE_FAMILY_MANIFEST = Object.freeze({
     family: "industrial-blueprint",
     version: WEBSITE_FAMILY_ALLOWLIST["industrial-blueprint"].defaultVersion,
     load: INDUSTRIAL_BLUEPRINT_LOADER,
+  },
+  "hvac-cinematic-dark": {
+    family: "hvac-cinematic-dark",
+    version: WEBSITE_FAMILY_ALLOWLIST["hvac-cinematic-dark"].defaultVersion,
+    load: HVAC_CINEMATIC_DARK_LOADER,
+  },
+  "hvac-clean-corporate": {
+    family: "hvac-clean-corporate",
+    version: WEBSITE_FAMILY_ALLOWLIST["hvac-clean-corporate"].defaultVersion,
+    load: HVAC_CLEAN_CORPORATE_LOADER,
   },
   "luxury-editorial": {
     family: "luxury-editorial",
