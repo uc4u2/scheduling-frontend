@@ -35,6 +35,7 @@ import { PROFESSION_OPTIONS } from "../../../constants/professions";
 import { ensureCompanyId } from "../../../utils/company";
 import { settingsApi, website } from "../../../utils/api";
 import { buildProgressChecklist } from "./operationsLauncherLogic";
+import { executeTemplateInstallAction } from "./operationsLauncherInstall";
 import {
   PROFESSION_TEMPLATE_MAP,
   getFriendlyTemplateName,
@@ -923,36 +924,12 @@ export default function OperationsLauncher() {
     }
     setTemplateApplying(true);
     try {
-      const selectedContentPack =
-        (websiteCatalog?.available_content_packs || []).find(
-          (item) => item.seed_template_key === selectedTemplateKey
-        ) ||
-        ((websiteCatalog?.recommended_content_pack?.seed_template_key || "") === selectedTemplateKey
-          ? websiteCatalog?.recommended_content_pack
-          : null);
-      if (selectedContentPack?.key) {
-        await website.installContentPack(
-          selectedContentPack.key,
-          {
-            clear_existing: true,
-            publish: false,
-            install_mode: "replace",
-            expected_version: selectedContentPack.version,
-          },
-          { companyId }
-        );
-      } else {
-        await website.importTemplate(
-          {
-            key: selectedTemplateKey,
-            template_key: selectedTemplateKey,
-            clear_existing: true,
-            publish: false,
-            set_theme_from_template: true,
-          },
-          { companyId }
-        );
-      }
+      await executeTemplateInstallAction({
+        companyId,
+        selectedTemplateKey,
+        websiteCatalog,
+        websiteApi: website,
+      });
       setBanner({
         type: "success",
         message: "Website content installed to your draft. Choose a website style separately in the visual builder before publishing.",

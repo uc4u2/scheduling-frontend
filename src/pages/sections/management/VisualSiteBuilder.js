@@ -121,6 +121,7 @@ import {
   buildNextJsPreviewUrl,
   buildWebsiteStyleChoices,
   isNextJsStyle,
+  TENANT_WEB_NEXT_BASE_URL,
 } from "./websiteCatalogUi";
 
 /** UI wrappers per design system */
@@ -2479,6 +2480,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [styleErr, setStyleErr] = useState("");
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
+  const nextJsPreviewIframeRef = useRef(null);
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
@@ -2491,6 +2493,13 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
       {},
     [siteSettings]
   );
+  const nextJsPreviewOrigin = useMemo(() => {
+    try {
+      return new URL(TENANT_WEB_NEXT_BASE_URL).origin;
+    } catch (_err) {
+      return "";
+    }
+  }, []);
 
   const navOverridesWithDefault = useMemo(() => {
     const base = { ...(rawNavOverrides || {}) };
@@ -2803,6 +2812,13 @@ useEffect(() => {
 
   useEffect(() => {
     const handleMessage = (event) => {
+      if (!nextJsPreviewOrigin || event.origin !== nextJsPreviewOrigin) return;
+      if (
+        nextJsPreviewIframeRef.current?.contentWindow &&
+        event.source !== nextJsPreviewIframeRef.current.contentWindow
+      ) {
+        return;
+      }
       const data = event?.data;
       if (!data || data.type !== "schedulaa:website-slot-select") return;
       const slot = String(data.slot || "").trim();
@@ -2817,7 +2833,7 @@ useEffect(() => {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [nextJsPreviewOrigin]);
 
 
   // ---------- NEW (Step 3: preflight/auth guard needs these) ----------
@@ -3996,6 +4012,9 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
               renderer_engine: "legacy-react",
               visual_theme_key: null,
               visual_theme_version: null,
+              design_family: "classic",
+              design_family_version: 1,
+              motion_profile: "legacy",
             };
         await wb.saveSettings(
           companyId,
@@ -4027,10 +4046,13 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   );
 
   const currentPreviewPagePath = useMemo(() => {
-    const slug = String(editing?.slug || "").trim().replace(/^\/+|\/+$/g, "");
-    if (!slug || slug === "home") return [];
-    return [slug];
-  }, [editing?.slug]);
+    const pathValue =
+      String(editing?.path || editing?.canonical_path || editing?.slug || "")
+        .trim()
+        .replace(/^\/+|\/+$/g, "");
+    if (!pathValue || pathValue === "home") return [];
+    return pathValue.split("/").filter(Boolean);
+  }, [editing?.canonical_path, editing?.path, editing?.slug]);
 
   const refreshNextJsPreview = useCallback(
     async (style = null) => {
@@ -8293,8 +8315,11 @@ function InspectorColumn() {
               >
                 <Box
                   component="iframe"
+                  ref={nextJsPreviewIframeRef}
                   title="Next.js website preview"
                   src={nextJsPreviewUrl}
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                   sx={{
                     width: "100%",
                     height: stylePreviewViewport === "mobile" ? 844 : 980,
