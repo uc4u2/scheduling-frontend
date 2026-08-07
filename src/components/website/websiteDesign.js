@@ -31,6 +31,20 @@ export const WEBSITE_FAMILY_ALLOWLIST = Object.freeze({
     motionProfiles: ["none", "corporate"],
     compositions: ["default"],
   },
+  "hvac-bold-dispatch": {
+    defaultVersion: 1,
+    versions: [1],
+    defaultMotionProfile: "dispatch",
+    motionProfiles: ["none", "dispatch"],
+    compositions: ["default"],
+  },
+  "hvac-home-comfort-modern": {
+    defaultVersion: 1,
+    versions: [1],
+    defaultMotionProfile: "comfort",
+    motionProfiles: ["none", "comfort"],
+    compositions: ["default"],
+  },
   "luxury-editorial": {
     defaultVersion: 1,
     versions: [1],

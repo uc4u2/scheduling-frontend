@@ -10,6 +10,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import MenuIcon from "@mui/icons-material/Menu";
 import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
@@ -36,15 +37,35 @@ export default function CinematicHeader({ shell = {}, tokens }) {
     hasMyBookingsLink,
     isReviewsActive,
     doLogout,
+    onTogglePageMenu,
+    onPreviewOpenPage,
   } = shell;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const hasOwn = (key) =>
+    Object.prototype.hasOwnProperty.call(headerConfig || {}, key);
   const headerLogo =
     headerConfig?.logo_asset?.url ||
     headerConfig?.logo_url ||
     site?.company?.logo_url ||
     null;
-  const brandName = site?.company?.name || slug || "Schedulaa";
-  const utilityText = headerConfig?.text || site?.company?.contact_email || "Trusted HVAC support";
+  const showBrandText = headerConfig?.show_brand_text !== false;
+  const brandName =
+    (headerConfig?.text || "").trim() ||
+    site?.company?.name ||
+    slug ||
+    "Schedulaa";
+  const brandTagline = (headerConfig?.tagline || "").trim();
+  const utilityLeftText = hasOwn("utility_left_text")
+    ? String(headerConfig?.utility_left_text || "").trim()
+    : String(site?.company?.contact_email || "").trim();
+  const utilityRightText = hasOwn("utility_right_text")
+    ? String(headerConfig?.utility_right_text || "").trim()
+    : "Heating · Cooling · Service";
+  const showUtilityBar = Boolean(utilityLeftText || utilityRightText);
+  const logoWidth = Math.max(
+    42,
+    Math.min(140, Number(headerConfig?.logo_width || 54) || 54)
+  );
   const ctaLabel = headerConfig?.scroll_cta_label || "Request Service";
   const ctaHref = headerConfig?.scroll_cta_href || `/${slug}?page=contact`;
 
@@ -52,6 +73,8 @@ export default function CinematicHeader({ shell = {}, tokens }) {
     () => [
       ...navLinks.map((item) => ({
         key: `${item.id || item.label}-${item.href}`,
+        id: item.id,
+        rawItem: item,
         label: item.label || "Link",
         linkProps: resolveLinkProps(item.href),
         active:
@@ -113,28 +136,32 @@ export default function CinematicHeader({ shell = {}, tokens }) {
 
   return (
     <>
-      <Box
-        sx={{
-          display: { xs: "none", md: "block" },
-          bgcolor: "rgba(4,8,13,0.92)",
-          borderBottom: `1px solid ${tokens.colors.line}`,
-          color: tokens.colors.textSoft,
-        }}
-      >
-        <Container maxWidth={false} sx={{ maxWidth: `${tokens.layout.shellMax}px`, px: { md: 4 } }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ minHeight: 42 }}>
-            <Stack direction="row" spacing={1.2} alignItems="center">
-              <PhoneInTalkIcon sx={{ fontSize: 16, color: tokens.colors.accent }} />
-              <Typography sx={{ fontSize: "0.76rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-                {utilityText}
-              </Typography>
+      {showUtilityBar ? (
+        <Box
+          sx={{
+            display: { xs: "none", md: "block" },
+            bgcolor: "rgba(4,8,13,0.92)",
+            borderBottom: `1px solid ${tokens.colors.line}`,
+            color: tokens.colors.textSoft,
+          }}
+        >
+          <Container maxWidth={false} sx={{ maxWidth: `${tokens.layout.shellMax}px`, px: { md: 4 } }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ minHeight: 42 }}>
+              <Stack direction="row" spacing={1.2} alignItems="center">
+                <PhoneInTalkIcon sx={{ fontSize: 16, color: tokens.colors.accent }} />
+                <Typography sx={{ fontSize: "0.76rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  {utilityLeftText}
+                </Typography>
+              </Stack>
+              {utilityRightText ? (
+                <Typography sx={{ fontSize: "0.76rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  {utilityRightText}
+                </Typography>
+              ) : <Box />}
             </Stack>
-            <Typography sx={{ fontSize: "0.76rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-              {site?.company?.contact_email || "Heating · Cooling · Service"}
-            </Typography>
-          </Stack>
-        </Container>
-      </Box>
+          </Container>
+        </Box>
+      ) : null}
       <AppBar
         position="sticky"
         elevation={0}
@@ -150,8 +177,8 @@ export default function CinematicHeader({ shell = {}, tokens }) {
             <Stack direction="row" spacing={1.8} alignItems="center" sx={{ flex: { xs: 1, md: "0 0 auto" } }}>
               <Box
                 sx={{
-                  width: { xs: 44, md: 54 },
-                  height: { xs: 44, md: 54 },
+                  width: { xs: Math.max(42, Math.min(72, logoWidth * 0.72)), md: logoWidth },
+                  height: { xs: Math.max(42, Math.min(72, logoWidth * 0.72)), md: logoWidth },
                   borderRadius: "50%",
                   border: `1px solid ${alpha(tokens.colors.accent, 0.38)}`,
                   bgcolor: alpha(tokens.colors.accent, 0.08),
@@ -168,47 +195,91 @@ export default function CinematicHeader({ shell = {}, tokens }) {
                   </Typography>
                 )}
               </Box>
-              <Box>
-                <Typography sx={{ fontFamily: tokens.typography.headingFont, fontWeight: 900, fontSize: { xs: "1rem", md: "1.2rem" }, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                  {brandName}
-                </Typography>
-                <Typography sx={{ display: { xs: "none", md: "block" }, color: tokens.colors.textSoft, fontSize: "0.78rem", letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                  HVAC / Field Service
-                </Typography>
-              </Box>
+              {showBrandText ? (
+                <Box>
+                  <Typography sx={{ fontFamily: tokens.typography.headingFont, fontWeight: 900, fontSize: { xs: "1rem", md: "1.2rem" }, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    {brandName}
+                  </Typography>
+                  {brandTagline ? (
+                    <Typography sx={{ display: { xs: "none", md: "block" }, color: tokens.colors.textSoft, fontSize: "0.78rem", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+                      {brandTagline}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ) : null}
             </Stack>
 
             <Stack direction="row" spacing={1.2} alignItems="center" sx={{ display: { xs: "none", md: "flex" }, ml: "auto", mr: 2 }}>
               {navEntries.map((entry) => (
-                <Button
+                <Box
                   key={entry.key}
-                  {...(entry.linkProps || {})}
-                  onClick={entry.onClick}
                   sx={{
-                    color: entry.active ? tokens.colors.text : tokens.colors.textSoft,
-                    px: 1.35,
-                    py: 0.9,
-                    fontFamily: tokens.typography.headingFont,
-                    fontWeight: 800,
-                    fontSize: "0.86rem",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
                     position: "relative",
-                    "&::after": entry.active
-                      ? {
-                          content: '""',
-                          position: "absolute",
-                          left: 12,
-                          right: 12,
-                          bottom: 4,
-                          height: 2,
-                          background: `linear-gradient(90deg, ${tokens.colors.accent}, transparent)`,
-                        }
-                      : undefined,
+                    "&:hover .nav-remove": isPreview ? { opacity: 1, pointerEvents: "auto" } : undefined,
                   }}
                 >
-                  {entry.label}
-                </Button>
+                  <Button
+                    {...(entry.linkProps || {})}
+                    onClick={
+                      isPreview && entry.id && onPreviewOpenPage
+                        ? (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onPreviewOpenPage(entry.rawItem || { id: entry.id, label: entry.label });
+                          }
+                        : entry.onClick
+                    }
+                    sx={{
+                      color: entry.active ? tokens.colors.text : tokens.colors.textSoft,
+                      px: 1.35,
+                      py: 0.9,
+                      fontFamily: tokens.typography.headingFont,
+                      fontWeight: 800,
+                      fontSize: "0.86rem",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      position: "relative",
+                      "&::after": entry.active
+                        ? {
+                            content: '""',
+                            position: "absolute",
+                            left: 12,
+                            right: 12,
+                            bottom: 4,
+                            height: 2,
+                            background: `linear-gradient(90deg, ${tokens.colors.accent}, transparent)`,
+                          }
+                        : undefined,
+                    }}
+                  >
+                    {entry.label}
+                  </Button>
+                  {isPreview && onTogglePageMenu && entry.id ? (
+                    <IconButton
+                      size="small"
+                      className="nav-remove"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onTogglePageMenu(entry.id);
+                      }}
+                      sx={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        bgcolor: "background.paper",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        boxShadow: 1,
+                        opacity: 0,
+                        pointerEvents: "none",
+                        "&:hover": { bgcolor: "background.default" },
+                      }}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                </Box>
               ))}
             </Stack>
 
@@ -221,12 +292,15 @@ export default function CinematicHeader({ shell = {}, tokens }) {
                 minHeight: 52,
                 px: 2.5,
                 borderRadius: 999,
+                minWidth: "max-content",
+                whiteSpace: "nowrap",
                 background: `linear-gradient(135deg, ${tokens.colors.accent} 0%, #ffb65c 100%)`,
                 color: "#061019",
                 fontFamily: tokens.typography.headingFont,
                 fontWeight: 900,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
+                flexShrink: 0,
                 boxShadow: "0 20px 40px rgba(245,138,31,0.22)",
                 "&:hover": {
                   background: `linear-gradient(135deg, ${tokens.colors.accent} 0%, #ffb65c 100%)`,

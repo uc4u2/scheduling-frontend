@@ -42,6 +42,7 @@ import { api, wb, API_BASE_URL, publicSite } from "../../utils/api";
 import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
+import SiteFrame from "../../components/website/SiteFrame";
 import PublicReviewList from "./PublicReviewList";
 import GoogleReviewCta from "../../components/public/GoogleReviewCta";
 import { resolveSiteHref, transformLinksDeep } from "../../components/website/linking";
@@ -1301,9 +1302,55 @@ export default function CompanyPublic({
     if (!isManagerForCompany || !company?.id) return;
     setPublishing(true);
     try {
-      const res = await wb.publish(company.id, true);
-      const payload = res?.data || res || null;
-      if (payload) setSettings(payload);
+      const draftSettings = settings?.settings || {};
+      const publishPayload = {
+        ...draftSettings,
+        design_family:
+          settings?.design_family ||
+          settings?.settings?.design_family ||
+          sitePayload?.design_family ||
+          sitePayload?.website_setting?.settings?.design_family ||
+          "classic",
+        design_family_version:
+          settings?.design_family_version ||
+          settings?.settings?.design_family_version ||
+          sitePayload?.design_family_version ||
+          sitePayload?.website_setting?.settings?.design_family_version ||
+          1,
+        motion_profile:
+          settings?.motion_profile ||
+          settings?.settings?.motion_profile ||
+          sitePayload?.motion_profile ||
+          sitePayload?.website_setting?.settings?.motion_profile ||
+          "legacy",
+      };
+      const saveRes = await wb.saveSettings(company.id, publishPayload, {
+        publish: true,
+      });
+      const savePayload = saveRes?.data || saveRes || null;
+      if (savePayload) setSettings(savePayload);
+
+      await wb.publish(company.id, true);
+      const refreshed = isCustomDomain
+        ? await publicSite.getByHost().catch(() => publicSite.getBySlug(slug))
+        : await publicSite.getBySlug(slug);
+      if (refreshed) {
+        setSitePayload(refreshed);
+        setCompany(refreshed?.company || null);
+        const pageList = Array.isArray(refreshed?.pages)
+          ? refreshed.pages
+          : Array.isArray(refreshed?.pages_meta)
+          ? refreshed.pages_meta
+          : [];
+        const normalized = pageList.map((p) => ({
+          ...p,
+          content: Array.isArray(p?.content?.sections) ? p.content : { sections: [] },
+        }));
+        const cleaned = normalized.filter(
+          (p) => String(p.slug || "").toLowerCase() !== "services"
+        );
+        setPages(cleaned);
+      }
       setToolbarMsg("Published");
       setPublishSnack("Site published");
     } catch {
@@ -1337,6 +1384,42 @@ export default function CompanyPublic({
     const fromPayload = cloneStyle(sitePayload?.website_setting?.settings?.page_style_default);
     if (fromPayload && Object.keys(fromPayload).length) return fromPayload;
     return null;
+  }, [settings, sitePayload]);
+
+  const activeDesignFamily =
+    settings?.design_family ||
+    settings?.settings?.design_family ||
+    sitePayload?.design_family ||
+    sitePayload?.website_setting?.settings?.design_family ||
+    "classic";
+  const useFamilyShell = activeDesignFamily !== "classic";
+  const familySitePayload = useMemo(() => {
+    const base = sitePayload || {};
+    const draftSettings = settings?.settings || {};
+    const payloadSettings = base?.website_setting?.settings || base?.settings || {};
+    return {
+      ...base,
+      header: settings?.header || base?.header,
+      footer: settings?.footer || base?.footer,
+      nav_overrides: settings?.nav_overrides || base?.nav_overrides,
+      nav_style: settings?.nav_style || base?.nav_style,
+      theme_overrides: settings?.theme_overrides || base?.theme_overrides,
+      design_family: settings?.design_family || base?.design_family,
+      design_family_version:
+        settings?.design_family_version || base?.design_family_version,
+      motion_profile: settings?.motion_profile || base?.motion_profile,
+      settings: {
+        ...payloadSettings,
+        ...draftSettings,
+      },
+      website_setting: {
+        ...(base?.website_setting || {}),
+        settings: {
+          ...payloadSettings,
+          ...draftSettings,
+        },
+      },
+    };
   }, [settings, sitePayload]);
 
   // Prefer live manager settings when available to reflect changes immediately.
@@ -2623,6 +2706,65 @@ const siteTitle = useMemo(() => {
     );
   }
 
+  const pageContentNode = (
+    <Box sx={{ "--site-header-overlap": `${headerOverlap}px` }}>
+      <Box
+        sx={{
+          pt: shouldRenderPublicReviews ? 0 : { xs: 1, md: 1.25 },
+          pb: 0,
+        }}
+      >
+        {overrideContent ? (
+          <>
+            {overrideLeadSections.length > 0 && (
+              <Container
+                maxWidth={pageLayout === "full" ? false : "lg"}
+                sx={{ pt: 0, pb: 0 }}
+              >
+                <RenderSections sections={overrideLeadSections} page={currentPage} layout={pageLayout} />
+              </Container>
+            )}
+            {overrideContent}
+          </>
+        ) : (
+          <Container
+            maxWidth={pageLayout === "full" ? false : "lg"}
+            sx={{ pt: 0, pb: 0 }}
+          >
+            {currentPage ? (
+              <>
+                {bodySections.length > 0 && (
+                  <RenderSections sections={bodySections} page={currentPage} layout={pageLayout} />
+                )}
+                {shouldRenderPublicReviews && (
+                  <Box sx={{ mt: 0 }}>
+                    <PublicReviewList slug={slug} disableShell compact />
+                  </Box>
+                )}
+                {postReviewSections.length > 0 && (
+                  <Box sx={{ mt: 0 }}>
+                    <RenderSections sections={postReviewSections} page={currentPage} layout={pageLayout} />
+                  </Box>
+                )}
+                {footerSections.length > 0 && (
+                  <RenderSections sections={footerSections} page={currentPage} layout={pageLayout} />
+                )}
+              </>
+            ) : (
+              <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: `${clampWebsiteRadius(2)}px`, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
+                <Typography variant="h3" fontWeight={800} gutterBottom>Welcome to {company?.name ?? "our business"}</Typography>
+                <Typography variant="body1" color="text.secondary">We’re getting our site ready. In the meantime, you can browse and book services.</Typography>
+                <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 3 }}>
+                  <Button size="large" variant="contained" component={RouterLink} to={servicesHref()}>Book now</Button>
+                </Stack>
+              </Box>
+            )}
+          </Container>
+        )}
+      </Box>
+    </Box>
+  );
+
   return (
     <ThemeRuntimeProvider overrides={runtimeOverrides}>
       <>
@@ -2733,6 +2875,17 @@ const siteTitle = useMemo(() => {
         </AppBar>
       )}
 
+      {useFamilyShell ? (
+        <SiteFrame
+          slug={slug}
+          initialSite={familySitePayload}
+          disableFetch
+          wrapChildrenInContainer={false}
+        >
+          {pageContentNode}
+        </SiteFrame>
+      ) : (
+      <>
       {/* PUBLIC NAV */}
       <Box
         className="site-nav"
@@ -3001,61 +3154,9 @@ const siteTitle = useMemo(() => {
       </Drawer>
 
       {/* PAGE CONTENT */}
-      <Box sx={{ "--site-header-overlap": `${headerOverlap}px` }}>
-      <Box
-        sx={{
-          pt: shouldRenderPublicReviews ? 0 : { xs: 1, md: 1.25 },
-          pb: 0,
-        }}
-      >
-        {overrideContent ? (
-          <>
-            {overrideLeadSections.length > 0 && (
-              <Container
-                maxWidth={pageLayout === "full" ? false : "lg"}
-                sx={{ pt: 0, pb: 0 }}
-              >
-                <RenderSections sections={overrideLeadSections} layout={pageLayout} />
-              </Container>
-            )}
-            {overrideContent}
-          </>
-        ) : (
-          <Container
-            maxWidth={pageLayout === "full" ? false : "lg"}
-            sx={{ pt: 0, pb: 0 }}
-          >
-            {currentPage ? (
-              <>
-                {bodySections.length > 0 && (
-                  <RenderSections sections={bodySections} layout={pageLayout} />
-                )}
-                {shouldRenderPublicReviews && (
-                  <Box sx={{ mt: 0 }}>
-                    <PublicReviewList slug={slug} disableShell compact />
-                  </Box>
-                )}
-                {postReviewSections.length > 0 && (
-                  <Box sx={{ mt: 0 }}>
-                    <RenderSections sections={postReviewSections} layout={pageLayout} />
-                  </Box>
-                )}
-                {footerSections.length > 0 && (
-                  <RenderSections sections={footerSections} layout={pageLayout} />
-                )}
-              </>
-            ) : (
-              <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: `${clampWebsiteRadius(2)}px`, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
-                <Typography variant="h3" fontWeight={800} gutterBottom>Welcome to {company?.name ?? "our business"}</Typography>
-                <Typography variant="body1" color="text.secondary">We’re getting our site ready. In the meantime, you can browse and book services.</Typography>
-                <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 3 }}>
-                  <Button size="large" variant="contained" component={RouterLink} to={servicesHref()}>Book now</Button>
-                </Stack>
-              </Box>
-            )}
-          </Container>
-        )}
-      </Box>
+      {pageContentNode}
+      </>
+      )}
 
       <ClientLoginDialog
         open={loginDialogOpen}
@@ -3105,7 +3206,7 @@ const siteTitle = useMemo(() => {
         </Dialog>
       )}
 
-      {footerConfig && (
+      {!useFamilyShell && footerConfig && (
         <Box
           component="footer"
           sx={{
@@ -3244,7 +3345,6 @@ const siteTitle = useMemo(() => {
           </Container>
         </Box>
       )}
-      </Box>
       <Snackbar
         open={Boolean(publishSnack)}
         autoHideDuration={4000}

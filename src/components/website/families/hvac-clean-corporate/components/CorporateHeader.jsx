@@ -10,6 +10,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import MenuIcon from "@mui/icons-material/Menu";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { Link as RouterLink } from "react-router-dom";
@@ -35,14 +36,26 @@ export default function CorporateHeader({ shell = {}, tokens }) {
     hasMyBookingsLink,
     isReviewsActive,
     doLogout,
+    onTogglePageMenu,
+    onPreviewOpenPage,
   } = shell;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const brandName = site?.company?.name || slug || "Schedulaa";
+  const showBrandText = headerConfig?.show_brand_text !== false;
+  const brandName =
+    (headerConfig?.text || "").trim() ||
+    site?.company?.name ||
+    slug ||
+    "Schedulaa";
+  const brandTagline = (headerConfig?.tagline || "").trim();
   const logo =
     headerConfig?.logo_asset?.url ||
     headerConfig?.logo_url ||
     site?.company?.logo_url ||
     "";
+  const logoWidth = Math.max(
+    68,
+    Math.min(220, Number(headerConfig?.logo_width || 140) || 140)
+  );
   const ctaLabel = headerConfig?.scroll_cta_label || "Request Service";
   const ctaHref = headerConfig?.scroll_cta_href || `/${slug}?page=contact`;
 
@@ -50,6 +63,8 @@ export default function CorporateHeader({ shell = {}, tokens }) {
     () => [
       ...navLinks.map((item) => ({
         key: `${item.id || item.label}-${item.href}`,
+        id: item.id,
+        rawItem: item,
         label: item.label || "Link",
         linkProps: resolveLinkProps(item.href),
         active:
@@ -128,7 +143,7 @@ export default function CorporateHeader({ shell = {}, tokens }) {
                 sx={{
                   px: 1.5,
                   py: 1,
-                  minWidth: 68,
+                  minWidth: Math.max(68, Math.min(160, logoWidth)),
                   borderRadius: 2,
                   background: "linear-gradient(135deg, #ffffff 0%, #eaf2f8 100%)",
                   border: `1px solid ${tokens.colors.line}`,
@@ -137,21 +152,25 @@ export default function CorporateHeader({ shell = {}, tokens }) {
                 }}
               >
                 {logo ? (
-                  <Box component="img" src={logo} alt={brandName} sx={{ maxWidth: 140, width: "100%", maxHeight: 42, objectFit: "contain" }} />
+                  <Box component="img" src={logo} alt={brandName} sx={{ maxWidth: logoWidth, width: "100%", maxHeight: 56, objectFit: "contain" }} />
                 ) : (
                   <Typography sx={{ fontFamily: tokens.typography.headingFont, fontWeight: 800, color: tokens.colors.navy }}>
                     {brandName}
                   </Typography>
                 )}
               </Box>
-              <Box sx={{ display: { xs: "none", md: "block" } }}>
-                <Typography sx={{ fontFamily: tokens.typography.headingFont, fontWeight: 800, fontSize: "1.05rem" }}>
-                  {brandName}
-                </Typography>
-                <Typography sx={{ color: tokens.colors.textMuted, fontSize: "0.88rem" }}>
-                  Heating, cooling, maintenance and field response
-                </Typography>
-              </Box>
+              {showBrandText ? (
+                <Box sx={{ display: { xs: "none", md: "block" } }}>
+                  <Typography sx={{ fontFamily: tokens.typography.headingFont, fontWeight: 800, fontSize: "1.05rem" }}>
+                    {brandName}
+                  </Typography>
+                  {brandTagline ? (
+                    <Typography sx={{ color: tokens.colors.textMuted, fontSize: "0.88rem" }}>
+                      {brandTagline}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ) : null}
             </Stack>
 
             <Stack
@@ -161,22 +180,62 @@ export default function CorporateHeader({ shell = {}, tokens }) {
               sx={{ display: { xs: "none", md: "flex" }, ml: "auto" }}
             >
               {navEntries.map((entry) => (
-                <Button
+                <Box
                   key={entry.key}
-                  {...(entry.linkProps || {})}
-                  onClick={entry.onClick}
                   sx={{
-                    px: 1.5,
-                    py: 0.8,
-                    color: entry.active ? tokens.colors.navy : tokens.colors.textSoft,
-                    fontFamily: tokens.typography.headingFont,
-                    fontWeight: entry.active ? 800 : 700,
-                    borderBottom: entry.active ? `2px solid ${tokens.colors.teal}` : "2px solid transparent",
-                    borderRadius: 0,
+                    position: "relative",
+                    "&:hover .nav-remove": isPreview ? { opacity: 1, pointerEvents: "auto" } : undefined,
                   }}
                 >
-                  {entry.label}
-                </Button>
+                  <Button
+                    {...(entry.linkProps || {})}
+                    onClick={
+                      isPreview && entry.id && onPreviewOpenPage
+                        ? (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onPreviewOpenPage(entry.rawItem || { id: entry.id, label: entry.label });
+                          }
+                        : entry.onClick
+                    }
+                    sx={{
+                      px: 1.5,
+                      py: 0.8,
+                      color: entry.active ? tokens.colors.navy : tokens.colors.textSoft,
+                      fontFamily: tokens.typography.headingFont,
+                      fontWeight: entry.active ? 800 : 700,
+                      borderBottom: entry.active ? `2px solid ${tokens.colors.teal}` : "2px solid transparent",
+                      borderRadius: 0,
+                    }}
+                  >
+                    {entry.label}
+                  </Button>
+                  {isPreview && onTogglePageMenu && entry.id ? (
+                    <IconButton
+                      size="small"
+                      className="nav-remove"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onTogglePageMenu(entry.id);
+                      }}
+                      sx={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        bgcolor: "background.paper",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        boxShadow: 1,
+                        opacity: 0,
+                        pointerEvents: "none",
+                        "&:hover": { bgcolor: "background.default" },
+                      }}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                </Box>
               ))}
             </Stack>
 
@@ -190,10 +249,13 @@ export default function CorporateHeader({ shell = {}, tokens }) {
                 minHeight: 48,
                 px: 2.5,
                 borderRadius: 999,
+                minWidth: "max-content",
+                whiteSpace: "nowrap",
                 background: `linear-gradient(135deg, ${tokens.colors.teal} 0%, ${tokens.colors.sky} 100%)`,
                 color: "#ffffff",
                 fontFamily: tokens.typography.headingFont,
                 fontWeight: 800,
+                flexShrink: 0,
                 boxShadow: "0 18px 36px rgba(19,125,134,0.18)",
               }}
             />

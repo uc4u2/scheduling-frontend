@@ -1730,6 +1730,27 @@ export default function WebsiteBrandingCard({
               onChange={(e) => updateHeader({ text: e.target.value })}
               helperText="Used for brand headline."
             />
+            <TextField
+              label="Header subtitle"
+              size="small"
+              value={header.tagline || ""}
+              onChange={(e) => updateHeader({ tagline: e.target.value })}
+              helperText="Optional small line under the brand name for compatible website styles."
+            />
+            <TextField
+              label="Utility bar left text"
+              size="small"
+              value={header.utility_left_text || ""}
+              onChange={(e) => updateHeader({ utility_left_text: e.target.value })}
+              helperText="Shown in template utility strips when supported. Leave blank to hide."
+            />
+            <TextField
+              label="Utility bar right text"
+              size="small"
+              value={header.utility_right_text || ""}
+              onChange={(e) => updateHeader({ utility_right_text: e.target.value })}
+              helperText="Shown on the right side of template utility strips when supported."
+            />
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
               <FormControlLabel
                 control={

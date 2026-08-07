@@ -185,6 +185,78 @@ export function useCountUp(text, active = true, duration = 1200) {
   return display;
 }
 
+export function useRailSlider({
+  itemCount = 0,
+  autoplay = false,
+  intervalMs = 4200,
+} = {}) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const touchStartX = useRef(null);
+
+  useEffect(() => {
+    if (active > Math.max(0, itemCount - 1)) {
+      setActive(0);
+    }
+  }, [active, itemCount]);
+
+  useEffect(() => {
+    if (!autoplay || prefersReducedMotion || paused || itemCount < 2) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      setActive((current) => (current + 1) % itemCount);
+    }, Math.max(1800, intervalMs || 4200));
+    return () => window.clearInterval(timer);
+  }, [autoplay, intervalMs, itemCount, paused, prefersReducedMotion]);
+
+  const next = () => setActive((current) => (current + 1) % Math.max(1, itemCount));
+  const prev = () =>
+    setActive((current) =>
+      current === 0 ? Math.max(0, itemCount - 1) : current - 1
+    );
+
+  const interactionProps = {
+    onMouseEnter: () => setPaused(true),
+    onMouseLeave: () => setPaused(false),
+    onFocusCapture: () => setPaused(true),
+    onBlurCapture: () => setPaused(false),
+    onKeyDown: (event) => {
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        next();
+      }
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        prev();
+      }
+    },
+    onTouchStart: (event) => {
+      touchStartX.current = event.touches?.[0]?.clientX ?? null;
+    },
+    onTouchEnd: (event) => {
+      const endX = event.changedTouches?.[0]?.clientX ?? null;
+      if (touchStartX.current == null || endX == null) return;
+      const delta = endX - touchStartX.current;
+      if (Math.abs(delta) > 36) {
+        if (delta < 0) next();
+        if (delta > 0) prev();
+      }
+      touchStartX.current = null;
+    },
+  };
+
+  return {
+    active,
+    setActive,
+    next,
+    prev,
+    prefersReducedMotion,
+    interactionProps,
+  };
+}
+
 export function FamilyLinkButton({
   href,
   label,

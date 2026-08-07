@@ -217,11 +217,13 @@ export function CinematicHero({ websiteSectionAdapter: adapter = {} }) {
                 }}
               >
                 <Typography sx={{ fontFamily: cinematicTokens.typography.headingFont, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: "0.74rem", color: cinematicTokens.colors.textMuted }}>
-                  Field story
+                  {slide.supportCardTitle || "Field story"}
                 </Typography>
-                <Typography sx={{ mt: 1, color: cinematicTokens.colors.textSoft, lineHeight: 1.7 }}>
-                  {stripHtml(slide.subheading).slice(0, 120)}
-                </Typography>
+                {slide.supportCardBody ? (
+                  <Typography sx={{ mt: 1, color: cinematicTokens.colors.textSoft, lineHeight: 1.7 }}>
+                    {slide.supportCardBody.slice(0, 120)}
+                  </Typography>
+                ) : null}
               </Box>
             </Box>
           </Grid>

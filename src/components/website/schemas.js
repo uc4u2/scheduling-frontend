@@ -31,6 +31,8 @@ export const SCHEMA_REGISTRY = {
       { name: "ctaLink",           type: "string",     label: "Primary button link (URL)" },
       { name: "secondaryCtaText",  type: "richinline", label: "Secondary button text" },
       { name: "secondaryCtaLink",  type: "string",     label: "Secondary button link (URL)" },
+      { name: "supportCardTitle",  type: "richinline", label: "Hero side card label" },
+      { name: "supportCardBody",   type: "richtext",   label: "Hero side card text", minRows: 3 },
 
       // Alignment & sizing
       { name: "align",            type: "select", label: "Content alignment", labelKey: "manager.visualBuilder.schemas.shared.contentAlignment", options: ["left","center","right"], default: "center" },
@@ -230,6 +232,46 @@ export const SCHEMA_REGISTRY = {
       { name: "intervalMs", type: "number", label: "Autoplay interval (ms)", min: 1500, max: 12000, step: 100 },
       { name: "maxWidth", type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
       { name: "gutterX", type: "number", label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft", type: "boolean", label: "Bleed left" },
+      { name: "bleedRight", type: "boolean", label: "Bleed right" },
+    ],
+  },
+
+  featureShowcaseSlider: {
+    title: "Feature Showcase Slider",
+    fields: [
+      { name: "eyebrow", type: "richinline", label: "Eyebrow" },
+      { name: "title", type: "richinline", label: "Title" },
+      { name: "subtitle", type: "richtext", label: "Subtitle", minRows: 2 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Slides",
+        fields: [
+          { name: "image", type: "image", label: "Image" },
+          { name: "title", type: "richinline", label: "Title" },
+          { name: "description", type: "text", label: "Description", minRows: 2 },
+          { name: "badge", type: "text", label: "Badge" },
+          { name: "ctaText", type: "text", label: "CTA text" },
+          { name: "ctaLink", type: "string", label: "CTA link (URL)" },
+        ],
+      },
+      { name: "autoplay", type: "boolean", label: "Autoplay", default: false },
+      { name: "intervalMs", type: "number", label: "Autoplay interval (ms)", min: 1500, max: 12000, step: 100, default: 4200 },
+      { name: "showArrows", type: "boolean", label: "Show arrows", default: true },
+      { name: "showDots", type: "boolean", label: "Show dots", default: true },
+      {
+        name: "cardsPerView",
+        type: "object",
+        label: "Cards per view",
+        fields: [
+          { name: "desktop", type: "number", label: "Desktop", min: 1, max: 4, step: 1, default: 3 },
+          { name: "tablet", type: "number", label: "Tablet", min: 1, max: 3, step: 1, default: 2 },
+          { name: "mobile", type: "number", label: "Mobile", min: 1, max: 2, step: 1, default: 1 },
+        ],
+      },
+      { name: "maxWidth", type: "select", label: "Max width", options: ["xs", "sm", "md", "lg", "xl", "full"], default: "full" },
+      { name: "gutterX", type: "number", label: "Inner gutter (px)", min: 0, max: 120, step: 2 },
       { name: "bleedLeft", type: "boolean", label: "Bleed left" },
       { name: "bleedRight", type: "boolean", label: "Bleed right" },
     ],
@@ -760,7 +802,9 @@ export const SCHEMA_REGISTRY = {
           { name: "ctaText",            type: "richinline", label: "Primary CTA" },
           { name: "ctaLink",            type: "string",     label: "Primary CTA link" },
           { name: "secondaryCtaText",   type: "richinline", label: "Secondary CTA" },
-          { name: "secondaryCtaLink",   type: "string",     label: "Secondary CTA link" }
+          { name: "secondaryCtaLink",   type: "string",     label: "Secondary CTA link" },
+          { name: "supportCardTitle",   type: "richinline", label: "Hero side card label" },
+          { name: "supportCardBody",    type: "richtext",   label: "Hero side card text", minRows: 3 }
         ]
       }
     ]

@@ -132,6 +132,7 @@ export default function TemplatePreviewPane({ template }) {
                   </Typography>
                   <RenderSections
                     sections={currentPage?.content?.sections || []}
+                    page={currentPage}
                     layout={layout}
                     sectionSpacing={sectionSpacing}
                     defaultGutterX={defaultGutterX}

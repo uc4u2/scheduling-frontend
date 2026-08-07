@@ -38,6 +38,28 @@ describe("hvac family modules", () => {
     expect(mod.shell.FooterComponent).toBeTruthy();
   });
 
+  it("lazy-loads the bold dispatch family module", async () => {
+    const mod = await loadWebsiteFamilyModule("hvac-bold-dispatch");
+    expect(mod).toBeTruthy();
+    expect(mod.family).toBe("hvac-bold-dispatch");
+    expect(mod.familyVersion).toBe(1);
+    expect(mod.roleRenderers["hero.primary"]).toBeTruthy();
+    expect(mod.typeRenderers.featureShowcaseSlider).toBeTruthy();
+    expect(mod.shell.HeaderComponent).toBeTruthy();
+    expect(mod.shell.FooterComponent).toBeTruthy();
+  });
+
+  it("lazy-loads the home comfort family module", async () => {
+    const mod = await loadWebsiteFamilyModule("hvac-home-comfort-modern");
+    expect(mod).toBeTruthy();
+    expect(mod.family).toBe("hvac-home-comfort-modern");
+    expect(mod.familyVersion).toBe(1);
+    expect(mod.roleRenderers["hero.primary"]).toBeTruthy();
+    expect(mod.typeRenderers.featureShowcaseSlider).toBeTruthy();
+    expect(mod.shell.HeaderComponent).toBeTruthy();
+    expect(mod.shell.FooterComponent).toBeTruthy();
+  });
+
   it("adapts the same canonical content payload for both families", () => {
     const heroSection = {
       props: {

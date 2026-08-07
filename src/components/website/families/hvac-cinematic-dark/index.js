@@ -21,9 +21,12 @@ import {
 import {
   CinematicBookingBar,
   CinematicContact,
+  CinematicFeatureShowcaseSlider,
   CinematicFAQ,
   CinematicGallery,
+  CinematicLogoCloud,
   CinematicMap,
+  CinematicMetricShowcase,
   CinematicRichText,
 } from "./components/CinematicContentBlocks";
 
@@ -62,6 +65,8 @@ const familyModule = {
     pricingTable: CinematicStats,
     richText: CinematicRichText,
     faq: CinematicFAQ,
+    logoCloud: CinematicLogoCloud,
+    featureShowcaseSlider: CinematicFeatureShowcaseSlider,
     bookingCtaBar: CinematicBookingBar,
     testimonials: CinematicReviews,
     reviewEditorialGrid: CinematicReviews,

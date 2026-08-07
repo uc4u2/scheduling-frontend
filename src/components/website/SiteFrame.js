@@ -978,6 +978,8 @@ export default function SiteFrame({
     hasMyBookingsLink,
     isReviewsActive,
     doLogout,
+    onTogglePageMenu,
+    onRemoveHeaderItem,
     onPreviewOpenPage,
   };
 

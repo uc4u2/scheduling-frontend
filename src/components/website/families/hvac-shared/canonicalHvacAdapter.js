@@ -13,6 +13,16 @@ export function getHeroData(adapter = {}) {
     ctaLink: slide?.ctaLink || props.ctaLink || "",
     secondaryCtaText: slide?.secondaryCtaText || props.secondaryCtaText || "",
     secondaryCtaLink: slide?.secondaryCtaLink || props.secondaryCtaLink || "",
+    supportCardTitle:
+      slide?.supportCardTitle || slide?.mediaTitle || props.supportCardTitle || props.mediaTitle || "",
+    supportCardBody:
+      stripHtml(
+        slide?.supportCardBody ||
+          slide?.mediaBody ||
+          props.supportCardBody ||
+          props.mediaBody ||
+          ""
+      ),
   }));
   if (slides.length) {
     return {
@@ -36,6 +46,8 @@ export function getHeroData(adapter = {}) {
         ctaLink: adapter?.primaryCta?.href || props.ctaLink || "",
         secondaryCtaText: adapter?.secondaryCta?.label || props.secondaryCtaText || "",
         secondaryCtaLink: adapter?.secondaryCta?.href || props.secondaryCtaLink || "",
+        supportCardTitle: props.supportCardTitle || props.mediaTitle || "",
+        supportCardBody: stripHtml(props.supportCardBody || props.mediaBody || ""),
       },
     ],
     autoplay: false,
@@ -50,7 +62,7 @@ export function getShowcaseItems(props = {}) {
     description: stripHtml(item?.description || item?.body || ""),
     image: item?.image || item?.imageUrl || "",
     link: item?.link || item?.href || "",
-    linkText: item?.linkText || item?.ctaText || "Explore",
+    linkText: item?.linkText || item?.ctaText || "View service",
     badge: item?.badge || "",
   }));
 }
@@ -72,6 +84,7 @@ export function getServiceCards(adapter = {}) {
     description: stripHtml(item?.description || item?.body || ""),
     image: item?.image || item?.imageUrl || "",
     link: item?.link || item?.href || "",
+    ctaText: item?.ctaText || item?.linkText || "View service",
     badge: item?.badge || item?.price || "",
     meta: item?.meta || item?.subtitle || "",
   }));
@@ -203,5 +216,69 @@ export function getBookingBarData(adapter = {}) {
     title: props.text || adapter.body || "",
     buttonText: props.buttonText || adapter?.button?.label || "",
     buttonLink: props.buttonLink || adapter?.button?.href || "",
+  };
+}
+
+export function getLogoCloudData(props = {}) {
+  return {
+    title: props.title || "",
+    caption: props.caption || "",
+    supportingText: props.supportingText || "",
+    logos: toArray(props.logos).map((item, idx) => ({
+      id: item?.id || `logo-${idx}`,
+      src: item?.src || item?.image || "",
+      alt: item?.alt || item?.label || `Logo ${idx + 1}`,
+      label: item?.label || "",
+      caption: item?.caption || "",
+      meta: item?.meta || "",
+      description: stripHtml(item?.description || ""),
+      features: toArray(item?.features).map((feature) => stripHtml(feature)).filter(Boolean),
+      ctaText: item?.ctaText || "",
+      ctaLink: item?.ctaLink || "",
+      highlight: Boolean(item?.highlight),
+    })),
+  };
+}
+
+export function getMetricItems(props = {}) {
+  return {
+    title: props.title || "",
+    subtitle: stripHtml(props.subtitle || ""),
+    items: toArray(props.items).map((item, idx) => ({
+      id: item?.id || `metric-${idx}`,
+      value: item?.value || "",
+      label: item?.label || "",
+      caption: stripHtml(item?.caption || ""),
+    })),
+  };
+}
+
+export function getFeatureShowcaseSliderData(props = {}) {
+  const cardsPerView = props.cardsPerView || props.perView || {};
+  return {
+    eyebrow: props.eyebrow || "",
+    title: props.title || "",
+    subtitle: stripHtml(props.subtitle || ""),
+    autoplay: props.autoplay === true,
+    intervalMs: Number(props.intervalMs) || 4200,
+    showArrows: props.showArrows !== false,
+    showDots: props.showDots !== false,
+    cardsPerView: {
+      desktop: Number(cardsPerView.desktop || props.cardsDesktop || 3) || 3,
+      tablet: Number(cardsPerView.tablet || props.cardsTablet || 2) || 2,
+      mobile: Number(cardsPerView.mobile || props.cardsMobile || 1) || 1,
+    },
+    items: toArray(props.items).map((item, idx) => ({
+      id: item?.id || `feature-slide-${idx}`,
+      image: item?.image || item?.imageUrl || "",
+      title: item?.title || item?.name || `Feature ${idx + 1}`,
+      description: stripHtml(item?.description || item?.body || ""),
+      badge: item?.badge || item?.meta || "",
+      ctaText:
+        item?.ctaText ||
+        item?.linkText ||
+        (idx === 0 ? "Request estimate" : "View service"),
+      ctaLink: item?.ctaLink || item?.link || item?.href || "",
+    })),
   };
 }

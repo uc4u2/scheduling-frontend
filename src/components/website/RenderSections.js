@@ -7116,6 +7116,7 @@ const registry = {
   serviceGrid: ServiceGrid,
   serviceHoverSlider: ServiceHoverSlider,
   collectionShowcase: CollectionShowcase,
+  featureShowcaseSlider: CollectionShowcase,
   serviceGridSmart: SmartServiceGrid,
   gallery: Gallery,
   videoStorySplit: VideoStorySplit,
@@ -7176,12 +7177,13 @@ function resolveSectionRenderer(section, familyModule) {
 // -----------------------------------------------------------------------------
 function RenderSectionsInner({
   sections = [],
+  page = null,
   layout = "boxed",
   sectionSpacing = 6,
   defaultGutterX,
   editorPreview = false,
 }) {
-  const { familyModule, resolveTokens } = useWebsiteDesign();
+  const { familyModule, resolveTokens, site } = useWebsiteDesign();
   const safeSections = Array.isArray(sections) ? sections : [];
   const [pageStyle, contentSections] = useMemo(
     () => pickPageStyle(safeSections),
@@ -7191,6 +7193,12 @@ function RenderSectionsInner({
     () => partitionRuntimeSections(contentSections),
     [contentSections]
   );
+  const FamilyPageComposer = familyModule?.pageComposer || null;
+  const shouldUseFamilyPageComposer =
+    Boolean(FamilyPageComposer) &&
+    Boolean(page) &&
+    typeof familyModule?.supportsPage === "function" &&
+    familyModule.supportsPage(page);
   const defGX = defaultGutterX ?? pageStyle.gutterX;
   const bottomSpacing = clamp(
     Number(pageStyle.pageBottomSpacing) || 0,
@@ -7300,7 +7308,9 @@ return (
       />
     )}
     <Stack spacing={{ xs: 2.5, md: 4 }} sx={{ position: "relative", zIndex: 1 }}>
-      {flowSections.map((s, i) => {
+      {shouldUseFamilyPageComposer ? (
+        <FamilyPageComposer page={page} sections={flowSections} site={site} />
+      ) : flowSections.map((s, i) => {
         const { Renderer: Cmp, role } = resolveSectionRenderer(s, familyModule);
         if (!Cmp) return null;
         const props = s.props || {};

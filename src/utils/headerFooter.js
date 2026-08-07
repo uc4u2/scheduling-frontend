@@ -105,6 +105,9 @@ export const defaultHeaderConfig = () => ({
   bg: "",
   text_color: "",
   text: "",
+  tagline: "",
+  utility_left_text: "",
+  utility_right_text: "",
   nav_items: [],
   social_links: [],
   logo_width: 140,
@@ -179,6 +182,18 @@ export const normalizeHeaderConfig = (value, { preserveAssets = true } = {}) => 
     bg: value.bg ?? base.bg,
     text_color: value.text_color ?? base.text_color,
     text: value.text ?? base.text,
+    tagline:
+      typeof value.tagline === "string"
+        ? value.tagline
+        : base.tagline,
+    utility_left_text:
+      typeof value.utility_left_text === "string"
+        ? value.utility_left_text
+        : base.utility_left_text,
+    utility_right_text:
+      typeof value.utility_right_text === "string"
+        ? value.utility_right_text
+        : base.utility_right_text,
     nav_items: cleanLinks(value.nav_items, 8),
     social_links: cleanSocial(value.social_links, 6),
     logo_width: clampNumber(value.logo_width, 40, 360, base.logo_width),

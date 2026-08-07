@@ -290,7 +290,7 @@ export default function WebsiteViewer() {
       </AppBar>
 
       {sectionsPatched.length ? (
-        <RenderSections sections={sectionsPatched} layout={pageLayout} />
+        <RenderSections sections={sectionsPatched} page={activePage} layout={pageLayout} />
       ) : (
         <Container maxWidth="lg" sx={{ my: 6 }}>
           <Paper sx={{ p: 3 }}>

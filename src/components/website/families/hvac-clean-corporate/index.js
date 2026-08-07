@@ -3,7 +3,13 @@ import corporateTokens from "./tokens";
 import CorporateHeader from "./components/CorporateHeader";
 import CorporateFooter from "./components/CorporateFooter";
 import { CorporateHero, CorporateTrustLogos } from "./components/CorporateHero";
-import { CorporateBenefits, CorporateServices, CorporateStats } from "./components/CorporateServices";
+import {
+  CorporateBenefits,
+  CorporatePlans,
+  CorporateProblemSelector,
+  CorporateServices,
+  CorporateStats,
+} from "./components/CorporateServices";
 import CorporateProjectCaseStudy from "./components/CorporateProjectCaseStudy";
 import CorporateProcess from "./components/CorporateProcess";
 import CorporateReviews from "./components/CorporateReviews";
@@ -11,11 +17,16 @@ import CorporateFinalCTA from "./components/CorporateCTA";
 import {
   CorporateBookingBar,
   CorporateContact,
+  CorporateFeatureShowcaseSlider,
   CorporateFAQ,
   CorporateGallery,
+  CorporateLogoCloud,
   CorporateMap,
+  CorporateMetricShowcase,
   CorporateRichText,
 } from "./components/CorporateContentBlocks";
+import CorporatePageComposer from "./pages/CorporatePageComposer";
+import { isCorporateFlagshipSlug } from "../hvac-shared/canonicalHvacPageModel";
 
 const withTokens =
   (Component) =>
@@ -28,6 +39,8 @@ const familyModule = {
   familyVersion: 1,
   defaultMotionProfile: "corporate",
   tokens: corporateTokens,
+  pageComposer: CorporatePageComposer,
+  supportsPage: (page) => isCorporateFlagshipSlug(page?.slug),
   shell: {
     HeaderComponent: withTokens(CorporateHeader),
     FooterComponent: withTokens(CorporateFooter),
@@ -35,7 +48,7 @@ const familyModule = {
   roleRenderers: {
     "hero.primary": CorporateHero,
     "hero.carousel": CorporateHero,
-    "services.slider": CorporateBenefits,
+    "services.slider": CorporateProblemSelector,
     "social_proof.testimonials": CorporateReviews,
     "cta.booking_bar": CorporateFinalCTA,
     "contact.form": CorporateContact,
@@ -48,10 +61,12 @@ const familyModule = {
   },
   typeRenderers: {
     collectionShowcase: CorporateServices,
-    serviceHoverSlider: CorporateBenefits,
-    pricingTable: CorporateStats,
+    serviceHoverSlider: CorporateProblemSelector,
+    pricingTable: CorporatePlans,
     richText: CorporateRichText,
     faq: CorporateFAQ,
+    logoCloud: CorporateLogoCloud,
+    featureShowcaseSlider: CorporateFeatureShowcaseSlider,
     bookingCtaBar: CorporateBookingBar,
     testimonials: CorporateReviews,
     reviewEditorialGrid: CorporateReviews,

@@ -2582,6 +2582,30 @@ const [brandingErr, setBrandingErr] = useState("");
         mobileGradient:
           "linear-gradient(180deg, #ffffff 0%, #edf4f9 100%)",
       },
+      {
+        key: "hvac-bold-dispatch",
+        version: 1,
+        motion: "dispatch",
+        name: "HVAC Bold Dispatch",
+        description:
+          "Urgent, blocky contractor presentation with stronger phone and quote hierarchy.",
+        desktopGradient:
+          "linear-gradient(135deg, #191816 0%, #312820 58%, #e5642b 100%)",
+        mobileGradient:
+          "linear-gradient(180deg, #231f1b 0%, #5a2a1b 100%)",
+      },
+      {
+        key: "hvac-home-comfort-modern",
+        version: 1,
+        motion: "comfort",
+        name: "HVAC Home Comfort Modern",
+        description:
+          "Warm residential presentation with curved media, softer trust framing, and homeowner-friendly comfort storytelling.",
+        desktopGradient:
+          "linear-gradient(135deg, #fffdf9 0%, #eef8fb 58%, #d8ece7 100%)",
+        mobileGradient:
+          "linear-gradient(180deg, #fffefb 0%, #eef8fb 100%)",
+      },
     ],
     []
   );
@@ -4856,6 +4880,7 @@ const autoProvisionIfEmpty = useCallback(
     ["featureZigzagModern", "manager.visualBuilder.sections.add.featureZigzagModern"],
     ["discoverStory", "manager.visualBuilder.sections.add.discoverStory"],
     ["logoCloud", "manager.visualBuilder.sections.add.logoCloud"],
+    ["trustedBrandsRail", "Trusted brands rail"],
     ["workshopsCommissions", "manager.visualBuilder.sections.add.workshopsCommissions"],
     ["pricingTable", "manager.visualBuilder.sections.add.pricingTable"],
     ["pricingTableModern", "Landing Page Pricing"],
@@ -4865,6 +4890,7 @@ const autoProvisionIfEmpty = useCallback(
     ["faq", "manager.visualBuilder.sections.add.faq"],
     ["serviceGrid", "manager.visualBuilder.sections.add.services"],
     ["serviceHoverSlider", "manager.visualBuilder.sections.add.serviceHoverSlider"],
+    ["featureShowcaseSlider", "Feature Showcase Slider"],
     ["serviceGridSmart", "manager.visualBuilder.sections.add.serviceGridSmart"],
     ["teamGrid", "manager.visualBuilder.sections.add.teamGrid"],
     ["teamMetrics", "manager.visualBuilder.sections.add.teamMetrics"],
@@ -6802,6 +6828,7 @@ const CanvasColumn = (
           {fullPreview ? (
             <RenderSections
               sections={safeSections(editing)}
+              page={editingPreview}
               layout={editingPreview.layout || "boxed"}
               sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
               defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
