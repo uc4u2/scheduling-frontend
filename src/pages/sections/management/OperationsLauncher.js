@@ -33,7 +33,8 @@ import { useNavigate } from "react-router-dom";
 import ProfessionSettings from "../ProfessionSetting";
 import { PROFESSION_OPTIONS } from "../../../constants/professions";
 import { ensureCompanyId } from "../../../utils/company";
-import api, { settingsApi, website } from "../../../utils/api";
+import { settingsApi, website } from "../../../utils/api";
+import { buildProgressChecklist } from "./operationsLauncherLogic";
 import {
   PROFESSION_TEMPLATE_MAP,
   getFriendlyTemplateName,
@@ -532,7 +533,12 @@ const getTemplateRank = (template, profession) => {
 };
 
 const getTemplateDisplayName = (template) =>
-  getFriendlyTemplateName(template, template?.name || template?.key || "Template");
+  getFriendlyTemplateName(
+    template,
+    template?.display_name || template?.name || template?.key || "Template"
+  );
+
+const getTemplateKey = (template) => template?.key || template?.template_key || "";
 
 const getTemplateRecommendationLabel = (profession) => {
   const mappedLabel = PROFESSION_TEMPLATE_MAP[profession]?.label;
@@ -607,53 +613,6 @@ const getBusinessMode = (profession, answers) => {
               ? "Prioritize template choice and public website polish first."
               : "Prioritize staff setup and operational readiness first.",
   };
-};
-
-const buildProgressChecklist = ({ profession, answers, selectedTemplateKey, companySlug }) => {
-  const items = [
-    {
-      key: "industry",
-      label: "Company industry chosen",
-      done: profession && profession !== "general",
-    },
-    {
-      key: "team",
-      label: "Team mode chosen",
-      done: Boolean(answers.team_size),
-    },
-    {
-      key: "goal",
-      label: "Main workflow chosen",
-      done: Boolean(answers.primary_goal),
-    },
-    {
-      key: "booking",
-      label: "Booking plan decided",
-      done: answers.booking_now === "yes" || answers.booking_now === "no",
-    },
-    {
-      key: "products",
-      label: "Product mode decided",
-      done: answers.sells_products === "yes" || answers.sells_products === "no",
-    },
-    {
-      key: "template",
-      label: "Website template selected",
-      done: Boolean(selectedTemplateKey),
-    },
-    {
-      key: "public_site",
-      label: "Public website link available",
-      done: Boolean(companySlug),
-    },
-  ];
-  const doneCount = items.filter((item) => item.done).length;
-  const score = Math.round((doneCount / items.length) * 100);
-  let label = "Getting started";
-  if (score >= 85) label = "Launch-ready";
-  else if (score >= 60) label = "Strong setup";
-  else if (score >= 40) label = "Setup in progress";
-  return { items, doneCount, total: items.length, score, label };
 };
 
 const getPriorityStrip = ({ recommendedActionKeys, profession }) => {
@@ -739,6 +698,8 @@ export default function OperationsLauncher() {
   const navigate = useNavigate();
   const [companyId, setCompanyId] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [websiteCatalog, setWebsiteCatalog] = useState(null);
+  const [websiteStatus, setWebsiteStatus] = useState(null);
   const [companySlug, setCompanySlug] = useState("");
   const [answers, setAnswers] = useState(DEFAULT_ANSWERS);
   const [activeTab, setActiveTab] = useState("setup");
@@ -747,21 +708,20 @@ export default function OperationsLauncher() {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templateApplying, setTemplateApplying] = useState(false);
+  const [catalogFallbackUsed, setCatalogFallbackUsed] = useState(false);
   const [banner, setBanner] = useState({ type: "", message: "" });
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const [settingsData, resolvedCompanyId, companyProfileResponse] = await Promise.all([
+        const [settingsData, resolvedCompanyId] = await Promise.all([
           settingsApi.get(),
           ensureCompanyId(),
-          api.get("/admin/company-profile").catch(() => null),
         ]);
         if (!mounted) return;
         setSettings(settingsData || null);
         setCompanyId(resolvedCompanyId || null);
-        setCompanySlug(String(companyProfileResponse?.data?.slug || "").trim());
         setAnswers(loadStoredAnswers(resolvedCompanyId || null));
       } catch (error) {
         if (!mounted) return;
@@ -786,22 +746,41 @@ export default function OperationsLauncher() {
   }, [companyId, answers]);
 
   useEffect(() => {
+    if (!companyId) return undefined;
     let mounted = true;
     (async () => {
       setLoadingTemplates(true);
       try {
-        const data = await website.listTemplates();
-        const list = Array.isArray(data) ? data : [];
+        const [catalogData, statusData, templateData] = await Promise.all([
+          website.getCatalog({}, { companyId }),
+          website.getStatus({ companyId }),
+          website.listTemplates(),
+        ]);
         if (!mounted) return;
-        setTemplates(list);
+        setWebsiteCatalog(catalogData || null);
+        setWebsiteStatus(statusData || null);
+        setCompanySlug(String(statusData?.company_slug || "").trim());
+        setTemplates(Array.isArray(templateData) ? templateData : []);
+        setCatalogFallbackUsed(false);
       } catch (error) {
-        if (!mounted) return;
-        setBanner({
-          type: "error",
-          message:
-            error?.response?.data?.error ||
-            "Unable to load website templates.",
-        });
+        try {
+          const data = await website.listTemplates();
+          const list = Array.isArray(data) ? data : [];
+          if (!mounted) return;
+          setTemplates(list);
+          setCatalogFallbackUsed(true);
+          console.warn(
+            "[OperationsLauncher] backend website catalog unavailable; using legacy frontend fallback"
+          );
+        } catch (templateError) {
+          if (!mounted) return;
+          setBanner({
+            type: "error",
+            message:
+              templateError?.response?.data?.error ||
+              "Unable to load website templates.",
+          });
+        }
       } finally {
         if (mounted) setLoadingTemplates(false);
       }
@@ -809,11 +788,15 @@ export default function OperationsLauncher() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [companyId]);
 
   const effectiveProfession = useMemo(
-    () => settings?.default_profession || settings?.effective_profession || "general",
-    [settings]
+    () =>
+      websiteCatalog?.effective_profession ||
+      settings?.default_profession ||
+      settings?.effective_profession ||
+      "general",
+    [settings, websiteCatalog]
   );
 
   const rankedTemplates = useMemo(() => {
@@ -822,14 +805,36 @@ export default function OperationsLauncher() {
     return list;
   }, [templates, effectiveProfession]);
 
-  const topRecommendedTemplates = useMemo(() => rankedTemplates.slice(0, 3), [rankedTemplates]);
-  const secondaryTemplates = useMemo(() => rankedTemplates.slice(3, 8), [rankedTemplates]);
+  const catalogRecommendedTemplates = useMemo(
+    () =>
+      Array.isArray(websiteCatalog?.legacy_template_recommendations)
+        ? websiteCatalog.legacy_template_recommendations
+        : [],
+    [websiteCatalog]
+  );
+
+  const topRecommendedTemplates = useMemo(
+    () =>
+      catalogRecommendedTemplates.length
+        ? catalogRecommendedTemplates.slice(0, 3)
+        : rankedTemplates.slice(0, 3),
+    [catalogRecommendedTemplates, rankedTemplates]
+  );
+  const secondaryTemplates = useMemo(
+    () =>
+      catalogRecommendedTemplates.length
+        ? catalogRecommendedTemplates.slice(3, 8)
+        : rankedTemplates.slice(3, 8),
+    [catalogRecommendedTemplates, rankedTemplates]
+  );
 
   useEffect(() => {
-    if (!selectedTemplateKey && rankedTemplates.length) {
-      setSelectedTemplateKey(rankedTemplates[0].key);
+    const preferredKey =
+      topRecommendedTemplates[0]?.template_key || topRecommendedTemplates[0]?.key;
+    if (!selectedTemplateKey && preferredKey) {
+      setSelectedTemplateKey(preferredKey);
     }
-  }, [rankedTemplates, selectedTemplateKey]);
+  }, [topRecommendedTemplates, selectedTemplateKey]);
 
   const recommendedActionKeys = useMemo(
     () =>
@@ -856,10 +861,9 @@ export default function OperationsLauncher() {
       buildProgressChecklist({
         profession: effectiveProfession,
         answers,
-        selectedTemplateKey,
-        companySlug,
+        websiteStatus,
       }),
-    [effectiveProfession, answers, selectedTemplateKey, companySlug]
+    [effectiveProfession, answers, websiteStatus]
   );
   const priorityStrip = useMemo(
     () =>
@@ -919,6 +923,13 @@ export default function OperationsLauncher() {
     }
     setTemplateApplying(true);
     try {
+      const selectedContentPack =
+        (websiteCatalog?.available_content_packs || []).find(
+          (item) => item.seed_template_key === selectedTemplateKey
+        ) ||
+        ((websiteCatalog?.recommended_content_pack?.seed_template_key || "") === selectedTemplateKey
+          ? websiteCatalog?.recommended_content_pack
+          : null);
       await website.importTemplate(
         {
           key: selectedTemplateKey,
@@ -926,6 +937,8 @@ export default function OperationsLauncher() {
           clear_existing: true,
           publish: false,
           set_theme_from_template: true,
+          content_pack_key: selectedContentPack?.key || undefined,
+          content_pack_version: selectedContentPack?.version || undefined,
         },
         { companyId }
       );
@@ -997,6 +1010,11 @@ export default function OperationsLauncher() {
         <Alert severity="info">
           This launcher only opens the current source-of-truth tools. It does not replace your existing booking, website, product, or finance workflows.
         </Alert>
+        {catalogFallbackUsed ? (
+          <Alert severity="warning">
+            Backend website catalog is unavailable, so Operations Launcher is temporarily using the legacy frontend template map as an emergency fallback.
+          </Alert>
+        ) : null}
 
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}>
@@ -1401,13 +1419,13 @@ export default function OperationsLauncher() {
                                 />
                                 {topRecommendedTemplates.map((template) => (
                                   <Chip
-                                    key={template.key}
-                                    label={getTemplateDisplayName(template)}
-                                    onClick={() => setSelectedTemplateKey(template.key)}
-                                    color={selectedTemplateKey === template.key ? "primary" : "default"}
-                                    variant={selectedTemplateKey === template.key ? "filled" : "outlined"}
+                                    key={getTemplateKey(template)}
+                                    label={getTemplateDisplayName({ ...template, key: getTemplateKey(template) })}
+                                    onClick={() => setSelectedTemplateKey(getTemplateKey(template))}
+                                    color={selectedTemplateKey === getTemplateKey(template) ? "primary" : "default"}
+                                    variant={selectedTemplateKey === getTemplateKey(template) ? "filled" : "outlined"}
                                     sx={
-                                      selectedTemplateKey === template.key
+                                      selectedTemplateKey === getTemplateKey(template)
                                         ? launcherChipSelectedSx
                                         : launcherChipSx
                                     }
@@ -1423,9 +1441,9 @@ export default function OperationsLauncher() {
                                 <Stack direction="row" spacing={1} flexWrap="wrap">
                                   {secondaryTemplates.map((template) => (
                                     <Chip
-                                      key={template.key}
-                                      label={getTemplateDisplayName(template)}
-                                      onClick={() => setSelectedTemplateKey(template.key)}
+                                      key={getTemplateKey(template)}
+                                      label={getTemplateDisplayName({ ...template, key: getTemplateKey(template) })}
+                                      onClick={() => setSelectedTemplateKey(getTemplateKey(template))}
                                       variant="outlined"
                                       sx={launcherChipSx}
                                     />
@@ -1440,9 +1458,11 @@ export default function OperationsLauncher() {
                                 value={selectedTemplateKey}
                                 onChange={(event) => setSelectedTemplateKey(event.target.value)}
                               >
-                                {rankedTemplates.map((template) => (
-                                  <MenuItem key={template.key} value={template.key}>
-                                    {getTemplateDisplayName(template)}
+                                {(catalogRecommendedTemplates.length
+                                  ? catalogRecommendedTemplates
+                                  : rankedTemplates).map((template) => (
+                                  <MenuItem key={getTemplateKey(template)} value={getTemplateKey(template)}>
+                                    {getTemplateDisplayName({ ...template, key: getTemplateKey(template) })}
                                   </MenuItem>
                                 ))}
                               </Select>
@@ -1450,10 +1470,16 @@ export default function OperationsLauncher() {
                             {selectedTemplateKey ? (
                               <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: "background.default", border: "1px solid", borderColor: "divider" }}>
                                 <Typography variant="subtitle2" fontWeight={700}>
-                                  {getTemplateDisplayName(rankedTemplates.find((template) => template.key === selectedTemplateKey) || { key: selectedTemplateKey })}
+                                  {getTemplateDisplayName(
+                                    [...catalogRecommendedTemplates, ...rankedTemplates].find(
+                                      (template) => getTemplateKey(template) === selectedTemplateKey
+                                    ) || { key: selectedTemplateKey }
+                                  )}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                  {rankedTemplates.find((template) => template.key === selectedTemplateKey)?.description || "This template can be applied to your website draft and then adjusted in the builder."}
+                                  {[...catalogRecommendedTemplates, ...rankedTemplates].find(
+                                    (template) => getTemplateKey(template) === selectedTemplateKey
+                                  )?.description || "This template can be applied to your website draft and then adjusted in the builder."}
                                 </Typography>
                               </Box>
                             ) : null}

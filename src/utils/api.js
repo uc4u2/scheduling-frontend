@@ -928,6 +928,17 @@ export const isStripeOnboardingIncomplete = (err) =>
 /* ------------------------------ WEBSITE (public/admin) ------------------------------ */
 export const website = {
   listTemplates: () => api.get("/api/website/templates").then((r) => r.data),
+  getCatalog: (params = {}, { companyId } = {}) =>
+    api
+      .get("/api/website/catalog", {
+        params,
+        ...withCompany(companyId),
+      })
+      .then((r) => r.data),
+  getStatus: ({ companyId } = {}) =>
+    api
+      .get("/api/website/status", withCompany(companyId))
+      .then((r) => r.data),
 
   getTemplate: (key, version) =>
     api
@@ -1636,6 +1647,8 @@ export const wb = {
 
   // TEMPLATES
   listTemplates: async () => ({ data: await website.listTemplates() }),
+  getCatalog: async (companyId, params = {}) => ({ data: await website.getCatalog(params, { companyId }) }),
+  getStatus: async (companyId) => ({ data: await website.getStatus({ companyId }) }),
   getTemplate:   async (key, version) => ({ data: await website.getTemplate(key, version) }),
   importTemplate: async (companyId, body) => ({ data: await website.importTemplate(body, { companyId }) }),
 

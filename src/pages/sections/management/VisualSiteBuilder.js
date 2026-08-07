@@ -117,6 +117,7 @@ import {
 import ThemeDesigner from "../../../components/website/ThemeDesigner";
 import { SearchSnippetPreview, SocialCardPreview } from "../../../components/seo/SeoPreview";
 import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../../utils/websiteRadius";
+import { buildWebsiteStyleChoices } from "./websiteCatalogUi";
 
 /** UI wrappers per design system */
 import SectionCard from "../../../components/ui/SectionCard";
@@ -2556,59 +2557,7 @@ const [brandingErr, setBrandingErr] = useState("");
   );
 
   const hasDraftChanges = Boolean(siteSettings?.has_unpublished_changes);
-  const websiteStyleChoices = useMemo(
-    () => [
-      {
-        key: "hvac-cinematic-dark",
-        version: 1,
-        motion: "cinematic",
-        name: "HVAC Cinematic Dark",
-        description:
-          "Dramatic, image-led, charcoal presentation with oversized typography and stronger emergency emphasis.",
-        desktopGradient:
-          "linear-gradient(135deg, #05080d 0%, #0b1119 55%, #143047 100%)",
-        mobileGradient:
-          "linear-gradient(180deg, #0b1119 0%, #1a2b39 100%)",
-      },
-      {
-        key: "hvac-clean-corporate",
-        version: 1,
-        motion: "corporate",
-        name: "HVAC Clean Corporate",
-        description:
-          "Bright, structured, quote-panel driven presentation with restrained trust-first framing.",
-        desktopGradient:
-          "linear-gradient(135deg, #ffffff 0%, #edf4f9 62%, #dfeff7 100%)",
-        mobileGradient:
-          "linear-gradient(180deg, #ffffff 0%, #edf4f9 100%)",
-      },
-      {
-        key: "hvac-bold-dispatch",
-        version: 1,
-        motion: "dispatch",
-        name: "HVAC Bold Dispatch",
-        description:
-          "Urgent, blocky contractor presentation with stronger phone and quote hierarchy.",
-        desktopGradient:
-          "linear-gradient(135deg, #191816 0%, #312820 58%, #e5642b 100%)",
-        mobileGradient:
-          "linear-gradient(180deg, #231f1b 0%, #5a2a1b 100%)",
-      },
-      {
-        key: "hvac-home-comfort-modern",
-        version: 1,
-        motion: "comfort",
-        name: "HVAC Home Comfort Modern",
-        description:
-          "Warm residential presentation with curved media, softer trust framing, and homeowner-friendly comfort storytelling.",
-        desktopGradient:
-          "linear-gradient(135deg, #fffdf9 0%, #eef8fb 58%, #d8ece7 100%)",
-        mobileGradient:
-          "linear-gradient(180deg, #fffefb 0%, #eef8fb 100%)",
-      },
-    ],
-    []
-  );
+  const websiteStyleChoices = useMemo(() => buildWebsiteStyleChoices(), []);
   const currentDesignFamily =
     siteSettings?.design_family ||
     siteSettings?.settings?.design_family ||
@@ -2622,6 +2571,10 @@ const [brandingErr, setBrandingErr] = useState("");
     (style) =>
       style.key === currentDesignFamily && style.version === currentDesignVersion
   );
+  const deprecatedStoredDesignFamily =
+    currentDesignFamily !== "classic" && !activeStyleChoice
+      ? currentDesignFamily
+      : "";
   const lastPublishedLabel = useMemo(() => {
     const ts = siteSettings?.branding_published_at;
     if (!ts) return null;
@@ -5577,273 +5530,22 @@ const autoProvisionIfEmpty = useCallback(
     </CollapsibleSection>
   );
 
-  const StyleChooserBlock = (
-    <CollapsibleSection
-      id="builder-style-chooser"
-      title={
-        <Stack spacing={0.75}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            alignItems={{ xs: "flex-start", sm: "center" }}
-          >
-            <Typography variant="h5" fontWeight={800}>
-              Choose Website Style
-            </Typography>
-            <Chip
-              size="small"
-              color="primary"
-              label={activeStyleChoice?.name || "Classic"}
-              sx={{ fontWeight: 700 }}
-            />
-          </Stack>
-          <Typography variant="body1" color="text.secondary">
-            Switch the full website look while keeping the same pages, copy,
-            services, contact details, and reviews.
-          </Typography>
-        </Stack>
-      }
-      description={
-        <Typography variant="body2" color="text.secondary">
-          Preview is temporary. Apply Style saves only draft design metadata.
-          Publish makes the selected style live.
-        </Typography>
-      }
-      expanded
-    >
-      <Stack spacing={2}>
-        <Paper
-          variant="outlined"
-          sx={{
-            p: { xs: 2, md: 2.5 },
-            borderRadius: 3,
-            borderColor: "rgba(244,109,56,0.28)",
-            background:
-              "linear-gradient(135deg, rgba(255,246,240,0.96) 0%, rgba(255,236,226,0.92) 100%)",
-            boxShadow: "0 18px 40px rgba(244,109,56,0.10)",
-          }}
-        >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={1.5}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
-          >
-            <Box>
-              <Typography variant="overline" sx={{ letterSpacing: "0.16em", color: "primary.main", fontWeight: 800 }}>
-                Website Product Control
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 800, mt: 0.25 }}>
-                Current draft style: {activeStyleChoice?.name || "Classic"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
-                You can preview a second style without touching content. When you
-                are ready, apply it to draft or publish the current preview
-                directly.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-              {stylePreviewFamily && stylePreviewFamily !== currentDesignFamily ? (
-                <Chip
-                  color="warning"
-                  variant="filled"
-                  label="Preview only: not saved yet"
-                  sx={{ fontWeight: 700 }}
-                />
-              ) : (
-                <Chip
-                  color="success"
-                  variant="filled"
-                  label="Draft style synced"
-                  sx={{ fontWeight: 700 }}
-                />
-              )}
-            </Stack>
-          </Stack>
-        </Paper>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", md: "center" }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            Preview viewport
-          </Typography>
-          <Stack direction="row" spacing={0.5}>
-            {["desktop", "tablet", "mobile"].map((viewport) => (
-              <Button
-                key={viewport}
-                size="medium"
-                variant={stylePreviewViewport === viewport ? "contained" : "outlined"}
-                onClick={() => setStylePreviewViewport(viewport)}
-                sx={{ minWidth: 96, fontWeight: 700 }}
-              >
-                {viewport}
-              </Button>
-            ))}
-          </Stack>
-        </Stack>
-        {styleMsg ? <Alert severity="success">{styleMsg}</Alert> : null}
-        {styleErr ? <Alert severity="error">{styleErr}</Alert> : null}
-        {stylePreviewFamily && stylePreviewFamily !== currentDesignFamily ? (
-          <Alert
-            severity="warning"
-            variant="outlined"
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => setStylePreviewFamily("")}
-                sx={{ fontWeight: 700 }}
-              >
-                Return to draft
-              </Button>
-            }
-          >
-            You are previewing a different style than the saved draft. Apply
-            Style to save it to draft, or Publish now to make this previewed
-            style live.
-          </Alert>
-        ) : null}
-        <Grid container spacing={2}>
-          {websiteStyleChoices.map((style) => {
-            const isApplied =
-              currentDesignFamily === style.key &&
-              currentDesignVersion === style.version;
-            const isPreviewing = effectivePreviewFamily === style.key;
-            return (
-              <Grid item xs={12} key={style.key}>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: { xs: 2, md: 2.5 },
-                    borderRadius: 3,
-                    borderColor: isPreviewing
-                      ? "primary.main"
-                      : isApplied
-                      ? "success.main"
-                      : "divider",
-                    boxShadow: isPreviewing
-                      ? "0 20px 48px rgba(244,109,56,0.16)"
-                      : isApplied
-                      ? "0 18px 42px rgba(46,125,50,0.12)"
-                      : "0 10px 28px rgba(15,23,42,0.06)",
-                    background:
-                      isPreviewing || isApplied
-                        ? "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,240,0.74) 100%)"
-                        : "#fff",
-                  }}
-                >
-                  <Stack spacing={1.5}>
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      justifyContent="space-between"
-                      alignItems={{ xs: "flex-start", sm: "center" }}
-                      spacing={1}
-                    >
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                          {style.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {style.description}
-                        </Typography>
-                      </Box>
-                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                        {isApplied ? (
-                          <Chip size="small" color="success" label="Current draft" sx={{ fontWeight: 700 }} />
-                        ) : null}
-                        {isPreviewing ? (
-                          <Chip size="small" color="primary" label="Previewing" sx={{ fontWeight: 700 }} />
-                        ) : null}
-                      </Stack>
-                    </Stack>
-                    <Grid container spacing={1.25}>
-                      <Grid item xs={8}>
-                        <Box
-                          sx={{
-                            height: 168,
-                            borderRadius: 2.5,
-                            border: "1px solid",
-                            borderColor: "divider",
-                            background: style.desktopGradient,
-                            position: "relative",
-                            overflow: "hidden",
-                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
-                            "&::before": {
-                              content: '""',
-                              position: "absolute",
-                              inset: 12,
-                              borderRadius: 1.5,
-                              border: "1px solid rgba(255,255,255,0.2)",
-                            },
-                            "&::after": {
-                              content: '""',
-                              position: "absolute",
-                              left: 20,
-                              right: 20,
-                              top: 28,
-                              height: 20,
-                              borderRadius: 999,
-                              background:
-                                style.key === "hvac-cinematic-dark"
-                                  ? "linear-gradient(90deg, rgba(245,138,31,0.9), rgba(255,182,92,0.65))"
-                                  : "linear-gradient(90deg, rgba(18,61,99,0.9), rgba(19,125,134,0.55))",
-                            },
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <Box
-                          sx={{
-                            height: 168,
-                            borderRadius: 2.5,
-                            border: "1px solid",
-                            borderColor: "divider",
-                            background: style.mobileGradient,
-                            position: "relative",
-                            overflow: "hidden",
-                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
-                            "&::before": {
-                              content: '""',
-                              position: "absolute",
-                              inset: 12,
-                              borderRadius: 1.5,
-                              border: "1px solid rgba(255,255,255,0.18)",
-                            },
-                          }}
-                        />
-                      </Grid>
-                    </Grid>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                      <Button
-                        size="medium"
-                        variant={isPreviewing ? "contained" : "outlined"}
-                        onClick={() => setStylePreviewFamily(style.key)}
-                        sx={{ minWidth: 148, fontWeight: 700 }}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        size="medium"
-                        variant="contained"
-                        disabled={styleSaving}
-                        onClick={() => applyWebsiteStyle(style)}
-                        sx={{ minWidth: 148, fontWeight: 800 }}
-                      >
-                        Apply Style
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              </Grid>
-            );
-          })}
-        </Grid>
-      </Stack>
-    </CollapsibleSection>
-  );
+  const StyleChooserBlock =
+    deprecatedStoredDesignFamily ? (
+      <CollapsibleSection
+        id="builder-style-chooser"
+        title="Website Style"
+        description="Deprecated non-classic design family detected"
+        expanded
+      >
+        <Alert severity="warning" variant="outlined">
+          This company is using the deprecated design family{" "}
+          <strong>{deprecatedStoredDesignFamily}</strong>. The runtime remains
+          available for safe legacy rendering, but this family is hidden from
+          normal style selection during the website catalog migration.
+        </Alert>
+      </CollapsibleSection>
+    ) : null;
 
   const LeftColumn = (
     <Stack spacing={1.5}>

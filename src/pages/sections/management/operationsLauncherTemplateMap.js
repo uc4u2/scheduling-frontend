@@ -9,7 +9,7 @@ export const PROFESSION_TEMPLATE_MAP = {
   },
   spa_medspa: {
     label: "Spa & medspa",
-    recommended: ["enterprise-medspa-elite-pro", "enterprise-medspa-ystanbeauty-premium", "enterprise-beauty-velvetglow"],
+    recommended: ["enterprise-medspa-elite-pro-with-pro-contact-contact-fix", "enterprise-medspa-ystanbeauty-premium", "enterprise-beauty-velvetglow"],
   },
   barbershop: {
     label: "Barbershop",
@@ -17,35 +17,35 @@ export const PROFESSION_TEMPLATE_MAP = {
   },
   fitness: {
     label: "Fitness",
-    recommended: ["enterprise-fitness-momentum-flow-pro", "enterprise-gym-coach-pro-minimal"],
+    recommended: ["enterprise-fitness-momentum-flow-pro-with-enterprise-contact-contact-fix", "enterprise-gym-coach-pro-minimal"],
   },
   yoga_pilates: {
     label: "Yoga & Pilates",
-    recommended: ["enterprise-yoga-pilates-sanctuary-pro", "enterprise-fitness-momentum-flow-pro", "enterprise-gym-coach-pro-minimal"],
+    recommended: ["enterprise-yoga-pilates-sanctuary-pro", "enterprise-fitness-momentum-flow-pro-with-enterprise-contact-contact-fix", "enterprise-gym-coach-pro-minimal"],
   },
   wellness: {
     label: "Wellness",
-    recommended: ["enterprise-therapy-counselor-serene-pro", "enterprise-medspa-elite-pro", "enterprise-fitness-momentum-flow-pro"],
+    recommended: ["enterprise-therapy-counselor-serene-pro-with-pro-contact-contact-fix", "enterprise-medspa-elite-pro-with-pro-contact-contact-fix", "enterprise-fitness-momentum-flow-pro-with-enterprise-contact-contact-fix"],
   },
   therapy: {
     label: "Therapy & counseling",
-    recommended: ["enterprise-therapy-sleek-v2", "therapist-calm-strict-v5", "enterprise-therapy-counselor-serene-pro"],
+    recommended: ["enterprise-therapy-sleek-v2-with-pro-contact-contact-fix", "therapist-calm-strict-v5", "enterprise-therapy-counselor-serene-pro-with-pro-contact-contact-fix"],
   },
   medical_clinic: {
     label: "Medical clinic",
-    recommended: ["enterprise-medical-carepoint-pro", "enterprise-physio-omnicare"],
+    recommended: ["enterprise-medical-carepoint-pro-with-pro-contact-contact-fix", "enterprise-physio-omnicare"],
   },
   dental: {
     label: "Dental",
-    recommended: ["enterprise-dental-smilecraft-pro", "enterprise-medical-carepoint-pro", "enterprise-physio-omnicare"],
+    recommended: ["enterprise-dental-smilecraft-pro", "enterprise-medical-carepoint-pro-with-pro-contact-contact-fix", "enterprise-physio-omnicare"],
   },
   chiropractic: {
     label: "Chiropractic",
-    recommended: ["enterprise-chiropractic-alignment-pro", "enterprise-physio-omnicare", "enterprise-therapy-sleek-v2"],
+    recommended: ["enterprise-chiropractic-alignment-pro", "enterprise-physio-omnicare", "enterprise-therapy-sleek-v2-with-pro-contact-contact-fix"],
   },
   physiotherapy: {
     label: "Physiotherapy",
-    recommended: ["enterprise-physio-omnicare", "enterprise-medical-carepoint-pro"],
+    recommended: ["enterprise-physio-omnicare", "enterprise-medical-carepoint-pro-with-pro-contact-contact-fix"],
   },
   tattoo_piercing: {
     label: "Tattoo & piercing",
@@ -53,19 +53,19 @@ export const PROFESSION_TEMPLATE_MAP = {
   },
   photography: {
     label: "Photography & creative",
-    recommended: ["enterprise-photography-lumenstudio-v2", "tenant-photography-gallery-neutral-en-v1", "enterprise-gallery"],
+    recommended: ["photography-lumenstudio-pro-contact-fix", "tenant-photography-gallery-neutral-en-v1", "enterprise-gallery-with-pro-contact-contact-fix"],
   },
   event_planning: {
     label: "Events",
-    recommended: ["enterprise-events-aurora", "enterprise-gallery"],
+    recommended: ["enterprise-events-aurora-contact-fix", "enterprise-gallery-with-pro-contact-contact-fix"],
   },
   education_tutoring: {
     label: "Education & tutoring",
-    recommended: ["enterprise-education-brightpath", "enterprise-tutor-star", "enterprise-education-bridgeparent-v2"],
+    recommended: ["enterprise-education-brightpath-contact-fix", "enterprise-tutor-star", "education-bridgeparent-pro-slider-v3"],
   },
   music_lessons: {
     label: "Music & arts lessons",
-    recommended: ["enterprise-music-lessons-harmonic-pro", "enterprise-tutor-star", "enterprise-education-brightpath"],
+    recommended: ["enterprise-music-lessons-harmonic-pro", "enterprise-tutor-star", "enterprise-education-brightpath-contact-fix"],
   },
   home_services: {
     label: "Home services & trades",
@@ -73,7 +73,7 @@ export const PROFESSION_TEMPLATE_MAP = {
       "enterprise-hvac-climateflow-pro",
       "enterprise-plumbing-pipecraft-pro",
       "enterprise-electrical-voltworks-pro",
-      "enterprise-trades-forgeworks",
+      "enterprise-trades-forgeworks-contact-fix",
       "enterprise-cabinet-forge-pro",
     ],
   },
@@ -81,41 +81,41 @@ export const PROFESSION_TEMPLATE_MAP = {
     label: "Cleaning services",
     recommended: [
       "enterprise-cleaning-purehaven-pro",
-      "enterprise-trades-forgeworks",
+      "enterprise-trades-forgeworks-contact-fix",
       "minimal-studio",
     ],
   },
   real_estate: {
     label: "Real estate",
-    recommended: ["enterprise-realestate-harborkey"],
+    recommended: ["enterprise-realestate-harborkey-contact-fix"],
   },
   legal: {
     label: "Legal services",
-    recommended: ["enterprise-legal-lexon"],
+    recommended: ["enterprise-legal-lexon-contact-fix"],
   },
   tax_accounting: {
     label: "Tax & accounting",
-    recommended: ["enterprise-tax-ledgerwise", "enterprise-ledger-clarity"],
+    recommended: ["enterprise-tax-ledgerwise-contact-fix", "enterprise-ledger-clarity"],
   },
   finance_advisory: {
     label: "Finance & advisory",
-    recommended: ["enterprise-finance-northbridge", "enterprise-consulting-stratacore-v2"],
+    recommended: ["enterprise-finance-northbridge-contact-fix", "consulting-stratacore-pro-slider-v3"],
   },
   consulting: {
     label: "Consulting",
-    recommended: ["enterprise-consulting-stratacore-v2", "enterprise-consulting-stratacore"],
+    recommended: ["consulting-stratacore-pro-slider-v3", "consulting-stratacore-contact-fix"],
   },
   it_services: {
     label: "IT services",
-    recommended: ["enterprise-it-services-circuitcore-pro", "enterprise-consulting-stratacore-v2", "minimal-studio"],
+    recommended: ["enterprise-it-services-circuitcore-pro", "consulting-stratacore-pro-slider-v3", "minimal-studio"],
   },
   hr_recruiting: {
     label: "HR & recruiting",
-    recommended: ["enterprise-recruiter-talentforge-v2", "schedulaa-premium-staffing"],
+    recommended: ["recruiter-talentforge-pro-contact-fix", "schedulaa-premium-staffing"],
   },
   auto_services: {
     label: "Auto services",
-    recommended: ["enterprise-automotive-autocare-nexus"],
+    recommended: ["enterprise-automotive-autocare-nexus-with-enterprise-contact-contact-fix"],
   },
   pet_care: {
     label: "Pet care",
@@ -127,11 +127,11 @@ export const PROFESSION_TEMPLATE_MAP = {
   },
   coaching: {
     label: "Coaching",
-    recommended: ["enterprise-coaching-elevation-pro", "enterprise-consulting-stratacore-v2", "enterprise-therapy-counselor-serene-pro"],
+    recommended: ["enterprise-coaching-elevation-pro", "consulting-stratacore-pro-slider-v3", "enterprise-therapy-counselor-serene-pro-with-pro-contact-contact-fix"],
   },
   notary: {
     label: "Notary & admin",
-    recommended: ["enterprise-notary-signature-pro", "enterprise-legal-lexon", "enterprise-consulting-stratacore"],
+    recommended: ["enterprise-notary-signature-pro", "enterprise-legal-lexon-contact-fix", "consulting-stratacore-contact-fix"],
   },
 };
 

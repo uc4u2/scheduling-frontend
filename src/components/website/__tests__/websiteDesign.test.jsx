@@ -138,4 +138,20 @@ describe("website design phase 1 infrastructure", () => {
 
     expect(loadWebsiteFamilyModule).not.toHaveBeenCalled();
   });
+
+  it("continues normalizing stored deprecated family values without crashing classic fallback logic", () => {
+    expect(
+      normalizeWebsiteDesignMetadata({
+        design_family: "hvac-clean-corporate",
+        design_family_version: 1,
+        motion_profile: "corporate",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        design_family: "hvac-clean-corporate",
+        design_family_version: 1,
+        motion_profile: "corporate",
+      })
+    );
+  });
 });
