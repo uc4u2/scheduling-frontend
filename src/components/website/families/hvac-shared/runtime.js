@@ -194,8 +194,8 @@ export function FamilyLinkButton({
   children,
   ...rest
 }) {
-  if (!label && !children) return null;
   const { site } = useWebsiteDesign();
+  if (!label && !children) return null;
   const resolvedHref = resolveFamilyHref(href, site);
   const linkProps = isExternalHref(resolvedHref)
     ? {

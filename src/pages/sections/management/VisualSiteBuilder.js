@@ -4300,12 +4300,35 @@ const autoProvisionIfEmpty = useCallback(
       const latestSettings = await wb.getSettings(companyId).catch(() => null);
       const latestPayload = latestSettings?.data || latestSettings || {};
       const draftSettings = latestPayload?.settings || {};
+      const selectedStyle =
+        websiteStyleChoices.find((style) => style.key === effectivePreviewFamily) ||
+        websiteStyleChoices.find(
+          (style) =>
+            style.key === currentDesignFamily &&
+            style.version === currentDesignVersion
+        ) ||
+        null;
       const publishPayload = {
         ...draftSettings,
         header: draftSettings.header || headerDraft,
         footer: draftSettings.footer || footerDraft,
         theme_overrides: draftSettings.theme_overrides || themeOverridesDraft,
         nav_overrides: draftSettings.nav_overrides || navOverridesWithDefault,
+        design_family:
+          selectedStyle?.key ||
+          latestPayload?.design_family ||
+          draftSettings.design_family ||
+          currentDesignFamily,
+        design_family_version:
+          selectedStyle?.version ||
+          latestPayload?.design_family_version ||
+          draftSettings.design_family_version ||
+          currentDesignVersion,
+        motion_profile:
+          selectedStyle?.motion ||
+          latestPayload?.motion_profile ||
+          draftSettings.motion_profile ||
+          "legacy",
       };
       const brandingRes = await wb.saveSettings(companyId, publishPayload, {
         publish: true,
@@ -4320,6 +4343,7 @@ const autoProvisionIfEmpty = useCallback(
       }
       applyBrandingFromServer(brandingPayload);
       setSiteSettings(brandingPayload);
+      setStylePreviewFamily("");
 
       await wb.publish(companyId, true);
       publicSite.invalidate(
@@ -4341,7 +4365,26 @@ const autoProvisionIfEmpty = useCallback(
     } finally {
       setBusy(false);
     }
-  }, [applyBrandingFromServer, companyId, editing, setEditing, setPages, setSelectedId, setSiteSettings, t]);
+  }, [
+    applyBrandingFromServer,
+    companyId,
+    currentDesignFamily,
+    currentDesignVersion,
+    editing,
+    effectivePreviewFamily,
+    headerDraft,
+    navOverridesWithDefault,
+    previewSlug,
+    setEditing,
+    setPages,
+    setSelectedId,
+    setSiteSettings,
+    siteSettings?.company?.slug,
+    t,
+    themeOverridesDraft,
+    websiteStyleChoices,
+    footerDraft,
+  ]);
 
   const onUnpublish = useCallback(async () => {
     if (!companyId) return;
@@ -5508,147 +5551,278 @@ const autoProvisionIfEmpty = useCallback(
     </CollapsibleSection>
   );
 
-  const LeftColumn = (
-    <Stack spacing={1.5}>
-      <InspectorColumn />
-      <CollapsibleSection
-        id="builder-style-chooser"
-        title="Choose Website Style"
-        description="Preview or apply a visual style without changing your existing page content."
-      >
-        <Stack spacing={1.5}>
-          <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-            <Typography variant="body2" color="text.secondary">
-              Current draft style: {activeStyleChoice?.name || "Classic"}
+  const StyleChooserBlock = (
+    <CollapsibleSection
+      id="builder-style-chooser"
+      title={
+        <Stack spacing={0.75}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            <Typography variant="h5" fontWeight={800}>
+              Choose Website Style
             </Typography>
-            <Stack direction="row" spacing={0.5}>
-              {["desktop", "tablet", "mobile"].map((viewport) => (
-                <Button
-                  key={viewport}
-                  size="small"
-                  variant={stylePreviewViewport === viewport ? "contained" : "outlined"}
-                  onClick={() => setStylePreviewViewport(viewport)}
-                >
-                  {viewport}
-                </Button>
-              ))}
+            <Chip
+              size="small"
+              color="primary"
+              label={activeStyleChoice?.name || "Classic"}
+              sx={{ fontWeight: 700 }}
+            />
+          </Stack>
+          <Typography variant="body1" color="text.secondary">
+            Switch the full website look while keeping the same pages, copy,
+            services, contact details, and reviews.
+          </Typography>
+        </Stack>
+      }
+      description={
+        <Typography variant="body2" color="text.secondary">
+          Preview is temporary. Apply Style saves only draft design metadata.
+          Publish makes the selected style live.
+        </Typography>
+      }
+      expanded
+    >
+      <Stack spacing={2}>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 3,
+            borderColor: "rgba(244,109,56,0.28)",
+            background:
+              "linear-gradient(135deg, rgba(255,246,240,0.96) 0%, rgba(255,236,226,0.92) 100%)",
+            boxShadow: "0 18px 40px rgba(244,109,56,0.10)",
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={1.5}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "center" }}
+          >
+            <Box>
+              <Typography variant="overline" sx={{ letterSpacing: "0.16em", color: "primary.main", fontWeight: 800 }}>
+                Website Product Control
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800, mt: 0.25 }}>
+                Current draft style: {activeStyleChoice?.name || "Classic"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
+                You can preview a second style without touching content. When you
+                are ready, apply it to draft or publish the current preview
+                directly.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              {stylePreviewFamily && stylePreviewFamily !== currentDesignFamily ? (
+                <Chip
+                  color="warning"
+                  variant="filled"
+                  label="Preview only: not saved yet"
+                  sx={{ fontWeight: 700 }}
+                />
+              ) : (
+                <Chip
+                  color="success"
+                  variant="filled"
+                  label="Draft style synced"
+                  sx={{ fontWeight: 700 }}
+                />
+              )}
             </Stack>
           </Stack>
-          {styleMsg ? <Alert severity="success">{styleMsg}</Alert> : null}
-          {styleErr ? <Alert severity="error">{styleErr}</Alert> : null}
-          {stylePreviewFamily && stylePreviewFamily !== currentDesignFamily ? (
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => setStylePreviewFamily("")}
-              sx={{ alignSelf: "flex-start" }}
-            >
-              Return to saved draft style
-            </Button>
-          ) : null}
-          <Grid container spacing={1.5}>
-            {websiteStyleChoices.map((style) => {
-              const isApplied =
-                currentDesignFamily === style.key &&
-                currentDesignVersion === style.version;
-              const isPreviewing = effectivePreviewFamily === style.key;
-              return (
-                <Grid item xs={12} key={style.key}>
-                  <Paper variant="outlined" sx={{ p: 1.5 }}>
-                    <Stack spacing={1.25}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Box>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                            {style.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {style.description}
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" color={isApplied ? "success.main" : "text.secondary"}>
-                          {isApplied ? "Current" : isPreviewing ? "Previewing" : ""}
+        </Paper>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Preview viewport
+          </Typography>
+          <Stack direction="row" spacing={0.5}>
+            {["desktop", "tablet", "mobile"].map((viewport) => (
+              <Button
+                key={viewport}
+                size="medium"
+                variant={stylePreviewViewport === viewport ? "contained" : "outlined"}
+                onClick={() => setStylePreviewViewport(viewport)}
+                sx={{ minWidth: 96, fontWeight: 700 }}
+              >
+                {viewport}
+              </Button>
+            ))}
+          </Stack>
+        </Stack>
+        {styleMsg ? <Alert severity="success">{styleMsg}</Alert> : null}
+        {styleErr ? <Alert severity="error">{styleErr}</Alert> : null}
+        {stylePreviewFamily && stylePreviewFamily !== currentDesignFamily ? (
+          <Alert
+            severity="warning"
+            variant="outlined"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => setStylePreviewFamily("")}
+                sx={{ fontWeight: 700 }}
+              >
+                Return to draft
+              </Button>
+            }
+          >
+            You are previewing a different style than the saved draft. Apply
+            Style to save it to draft, or Publish now to make this previewed
+            style live.
+          </Alert>
+        ) : null}
+        <Grid container spacing={2}>
+          {websiteStyleChoices.map((style) => {
+            const isApplied =
+              currentDesignFamily === style.key &&
+              currentDesignVersion === style.version;
+            const isPreviewing = effectivePreviewFamily === style.key;
+            return (
+              <Grid item xs={12} key={style.key}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: { xs: 2, md: 2.5 },
+                    borderRadius: 3,
+                    borderColor: isPreviewing
+                      ? "primary.main"
+                      : isApplied
+                      ? "success.main"
+                      : "divider",
+                    boxShadow: isPreviewing
+                      ? "0 20px 48px rgba(244,109,56,0.16)"
+                      : isApplied
+                      ? "0 18px 42px rgba(46,125,50,0.12)"
+                      : "0 10px 28px rgba(15,23,42,0.06)",
+                    background:
+                      isPreviewing || isApplied
+                        ? "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,240,0.74) 100%)"
+                        : "#fff",
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      justifyContent="space-between"
+                      alignItems={{ xs: "flex-start", sm: "center" }}
+                      spacing={1}
+                    >
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                          {style.name}
                         </Typography>
-                      </Stack>
-                      <Grid container spacing={1}>
-                        <Grid item xs={8}>
-                          <Box
-                            sx={{
-                              height: 120,
-                              borderRadius: 2,
-                              border: "1px solid",
-                              borderColor: "divider",
-                              background: style.desktopGradient,
-                              position: "relative",
-                              overflow: "hidden",
-                              "&::before": {
-                                content: '""',
-                                position: "absolute",
-                                inset: 10,
-                                borderRadius: 1.5,
-                                border: "1px solid rgba(255,255,255,0.2)",
-                              },
-                              "&::after": {
-                                content: '""',
-                                position: "absolute",
-                                left: 18,
-                                right: 18,
-                                top: 26,
-                                height: 18,
-                                borderRadius: 999,
-                                background:
-                                  style.key === "hvac-cinematic-dark"
-                                    ? "linear-gradient(90deg, rgba(245,138,31,0.9), rgba(255,182,92,0.65))"
-                                    : "linear-gradient(90deg, rgba(18,61,99,0.9), rgba(19,125,134,0.55))",
-                              },
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={4}>
-                          <Box
-                            sx={{
-                              height: 120,
-                              borderRadius: 2,
-                              border: "1px solid",
-                              borderColor: "divider",
-                              background: style.mobileGradient,
-                              position: "relative",
-                              overflow: "hidden",
-                              "&::before": {
-                                content: '""',
-                                position: "absolute",
-                                inset: 10,
-                                borderRadius: 1.5,
-                                border: "1px solid rgba(255,255,255,0.18)",
-                              },
-                            }}
-                          />
-                        </Grid>
-                      </Grid>
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                        <Button
-                          size="small"
-                          variant={isPreviewing ? "contained" : "outlined"}
-                          onClick={() => setStylePreviewFamily(style.key)}
-                        >
-                          Preview
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          disabled={styleSaving}
-                          onClick={() => applyWebsiteStyle(style)}
-                        >
-                          Apply Style
-                        </Button>
+                        <Typography variant="body2" color="text.secondary">
+                          {style.description}
+                        </Typography>
+                      </Box>
+                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                        {isApplied ? (
+                          <Chip size="small" color="success" label="Current draft" sx={{ fontWeight: 700 }} />
+                        ) : null}
+                        {isPreviewing ? (
+                          <Chip size="small" color="primary" label="Previewing" sx={{ fontWeight: 700 }} />
+                        ) : null}
                       </Stack>
                     </Stack>
-                  </Paper>
-                </Grid>
-              );
-            })}
-          </Grid>
-        </Stack>
-      </CollapsibleSection>
+                    <Grid container spacing={1.25}>
+                      <Grid item xs={8}>
+                        <Box
+                          sx={{
+                            height: 168,
+                            borderRadius: 2.5,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            background: style.desktopGradient,
+                            position: "relative",
+                            overflow: "hidden",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+                            "&::before": {
+                              content: '""',
+                              position: "absolute",
+                              inset: 12,
+                              borderRadius: 1.5,
+                              border: "1px solid rgba(255,255,255,0.2)",
+                            },
+                            "&::after": {
+                              content: '""',
+                              position: "absolute",
+                              left: 20,
+                              right: 20,
+                              top: 28,
+                              height: 20,
+                              borderRadius: 999,
+                              background:
+                                style.key === "hvac-cinematic-dark"
+                                  ? "linear-gradient(90deg, rgba(245,138,31,0.9), rgba(255,182,92,0.65))"
+                                  : "linear-gradient(90deg, rgba(18,61,99,0.9), rgba(19,125,134,0.55))",
+                            },
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={4}>
+                        <Box
+                          sx={{
+                            height: 168,
+                            borderRadius: 2.5,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            background: style.mobileGradient,
+                            position: "relative",
+                            overflow: "hidden",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+                            "&::before": {
+                              content: '""',
+                              position: "absolute",
+                              inset: 12,
+                              borderRadius: 1.5,
+                              border: "1px solid rgba(255,255,255,0.18)",
+                            },
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button
+                        size="medium"
+                        variant={isPreviewing ? "contained" : "outlined"}
+                        onClick={() => setStylePreviewFamily(style.key)}
+                        sx={{ minWidth: 148, fontWeight: 700 }}
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        size="medium"
+                        variant="contained"
+                        disabled={styleSaving}
+                        onClick={() => applyWebsiteStyle(style)}
+                        sx={{ minWidth: 148, fontWeight: 800 }}
+                      >
+                        Apply Style
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              </Grid>
+            );
+          })}
+        </Grid>
+      </Stack>
+    </CollapsibleSection>
+  );
+
+  const LeftColumn = (
+    <Stack spacing={1.5}>
+      {StyleChooserBlock}
+      <InspectorColumn />
       <CollapsibleSection
         id="builder-pages-list"
         title={t("manager.visualBuilder.pages.title")}
