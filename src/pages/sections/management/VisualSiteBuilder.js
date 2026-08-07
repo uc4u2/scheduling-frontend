@@ -2465,6 +2465,11 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   );
 
   const [siteSettings, setSiteSettings] = useState(null);
+  const [stylePreviewFamily, setStylePreviewFamily] = useState("");
+  const [stylePreviewViewport, setStylePreviewViewport] = useState("desktop");
+  const [styleSaving, setStyleSaving] = useState(false);
+  const [styleMsg, setStyleMsg] = useState("");
+  const [styleErr, setStyleErr] = useState("");
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
@@ -2551,6 +2556,48 @@ const [brandingErr, setBrandingErr] = useState("");
   );
 
   const hasDraftChanges = Boolean(siteSettings?.has_unpublished_changes);
+  const websiteStyleChoices = useMemo(
+    () => [
+      {
+        key: "hvac-cinematic-dark",
+        version: 1,
+        motion: "cinematic",
+        name: "HVAC Cinematic Dark",
+        description:
+          "Dramatic, image-led, charcoal presentation with oversized typography and stronger emergency emphasis.",
+        desktopGradient:
+          "linear-gradient(135deg, #05080d 0%, #0b1119 55%, #143047 100%)",
+        mobileGradient:
+          "linear-gradient(180deg, #0b1119 0%, #1a2b39 100%)",
+      },
+      {
+        key: "hvac-clean-corporate",
+        version: 1,
+        motion: "corporate",
+        name: "HVAC Clean Corporate",
+        description:
+          "Bright, structured, quote-panel driven presentation with restrained trust-first framing.",
+        desktopGradient:
+          "linear-gradient(135deg, #ffffff 0%, #edf4f9 62%, #dfeff7 100%)",
+        mobileGradient:
+          "linear-gradient(180deg, #ffffff 0%, #edf4f9 100%)",
+      },
+    ],
+    []
+  );
+  const currentDesignFamily =
+    siteSettings?.design_family ||
+    siteSettings?.settings?.design_family ||
+    "classic";
+  const currentDesignVersion =
+    siteSettings?.design_family_version ||
+    siteSettings?.settings?.design_family_version ||
+    1;
+  const effectivePreviewFamily = stylePreviewFamily || currentDesignFamily;
+  const activeStyleChoice = websiteStyleChoices.find(
+    (style) =>
+      style.key === currentDesignFamily && style.version === currentDesignVersion
+  );
   const lastPublishedLabel = useMemo(() => {
     const ts = siteSettings?.branding_published_at;
     if (!ts) return null;
@@ -3821,15 +3868,14 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     };
     return {
       slug: previewSlug,
-      design_family:
-        siteSettings?.design_family ||
-        siteSettings?.settings?.design_family ||
-        "classic",
+      design_family: effectivePreviewFamily || "classic",
       design_schema_version:
         siteSettings?.design_schema_version ||
         siteSettings?.settings?.design_schema_version ||
         1,
       design_family_version:
+        websiteStyleChoices.find((style) => style.key === effectivePreviewFamily)
+          ?.version ||
         siteSettings?.design_family_version ||
         siteSettings?.settings?.design_family_version ||
         1,
@@ -3838,6 +3884,8 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         siteSettings?.settings?.composition ||
         "default",
       motion_profile:
+        websiteStyleChoices.find((style) => style.key === effectivePreviewFamily)
+          ?.motion ||
         siteSettings?.motion_profile ||
         siteSettings?.settings?.motion_profile ||
         "legacy",
@@ -3871,11 +3919,50 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     footerDraft,
     previewPagesMeta,
     previewSlug,
+    effectivePreviewFamily,
     editing,
     navDraft,
     navOverridesWithDefault,
     navStyleState,
+    websiteStyleChoices,
   ]);
+
+  const applyWebsiteStyle = useCallback(
+    async (style) => {
+      if (!companyId || !style) return;
+      setStyleSaving(true);
+      setStyleMsg("");
+      setStyleErr("");
+      try {
+        await wb.saveSettings(
+          companyId,
+          {
+            design_family: style.key,
+            design_family_version: style.version,
+            motion_profile: style.motion,
+          },
+          { publish: false, draftOnly: true }
+        );
+        const refreshed = await wb.getSettings(companyId).catch(() => null);
+        const next = refreshed?.data || refreshed || null;
+        if (next) {
+          setSiteSettings(next);
+        }
+        setStylePreviewFamily(style.key);
+        setStyleMsg(`${style.name} applied to draft. Publish to make it live.`);
+      } catch (e) {
+        setStyleErr(
+          e?.response?.data?.message ||
+            e?.response?.data?.error ||
+            e?.message ||
+            "Failed to apply website style."
+        );
+      } finally {
+        setStyleSaving(false);
+      }
+    },
+    [companyId]
+  );
 
 
 // choose a template and import it for this company (MUST send X-Company-Id)
@@ -5425,6 +5512,144 @@ const autoProvisionIfEmpty = useCallback(
     <Stack spacing={1.5}>
       <InspectorColumn />
       <CollapsibleSection
+        id="builder-style-chooser"
+        title="Choose Website Style"
+        description="Preview or apply a visual style without changing your existing page content."
+      >
+        <Stack spacing={1.5}>
+          <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              Current draft style: {activeStyleChoice?.name || "Classic"}
+            </Typography>
+            <Stack direction="row" spacing={0.5}>
+              {["desktop", "tablet", "mobile"].map((viewport) => (
+                <Button
+                  key={viewport}
+                  size="small"
+                  variant={stylePreviewViewport === viewport ? "contained" : "outlined"}
+                  onClick={() => setStylePreviewViewport(viewport)}
+                >
+                  {viewport}
+                </Button>
+              ))}
+            </Stack>
+          </Stack>
+          {styleMsg ? <Alert severity="success">{styleMsg}</Alert> : null}
+          {styleErr ? <Alert severity="error">{styleErr}</Alert> : null}
+          {stylePreviewFamily && stylePreviewFamily !== currentDesignFamily ? (
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setStylePreviewFamily("")}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              Return to saved draft style
+            </Button>
+          ) : null}
+          <Grid container spacing={1.5}>
+            {websiteStyleChoices.map((style) => {
+              const isApplied =
+                currentDesignFamily === style.key &&
+                currentDesignVersion === style.version;
+              const isPreviewing = effectivePreviewFamily === style.key;
+              return (
+                <Grid item xs={12} key={style.key}>
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Stack spacing={1.25}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Box>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                            {style.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {style.description}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color={isApplied ? "success.main" : "text.secondary"}>
+                          {isApplied ? "Current" : isPreviewing ? "Previewing" : ""}
+                        </Typography>
+                      </Stack>
+                      <Grid container spacing={1}>
+                        <Grid item xs={8}>
+                          <Box
+                            sx={{
+                              height: 120,
+                              borderRadius: 2,
+                              border: "1px solid",
+                              borderColor: "divider",
+                              background: style.desktopGradient,
+                              position: "relative",
+                              overflow: "hidden",
+                              "&::before": {
+                                content: '""',
+                                position: "absolute",
+                                inset: 10,
+                                borderRadius: 1.5,
+                                border: "1px solid rgba(255,255,255,0.2)",
+                              },
+                              "&::after": {
+                                content: '""',
+                                position: "absolute",
+                                left: 18,
+                                right: 18,
+                                top: 26,
+                                height: 18,
+                                borderRadius: 999,
+                                background:
+                                  style.key === "hvac-cinematic-dark"
+                                    ? "linear-gradient(90deg, rgba(245,138,31,0.9), rgba(255,182,92,0.65))"
+                                    : "linear-gradient(90deg, rgba(18,61,99,0.9), rgba(19,125,134,0.55))",
+                              },
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={4}>
+                          <Box
+                            sx={{
+                              height: 120,
+                              borderRadius: 2,
+                              border: "1px solid",
+                              borderColor: "divider",
+                              background: style.mobileGradient,
+                              position: "relative",
+                              overflow: "hidden",
+                              "&::before": {
+                                content: '""',
+                                position: "absolute",
+                                inset: 10,
+                                borderRadius: 1.5,
+                                border: "1px solid rgba(255,255,255,0.18)",
+                              },
+                            }}
+                          />
+                        </Grid>
+                      </Grid>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button
+                          size="small"
+                          variant={isPreviewing ? "contained" : "outlined"}
+                          onClick={() => setStylePreviewFamily(style.key)}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={styleSaving}
+                          onClick={() => applyWebsiteStyle(style)}
+                        >
+                          Apply Style
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Stack>
+      </CollapsibleSection>
+      <CollapsibleSection
         id="builder-pages-list"
         title={t("manager.visualBuilder.pages.title")}
         expanded={pagesListOpen}
@@ -6319,6 +6544,19 @@ const CanvasColumn = (
       >
         <Box
           sx={{
+            width:
+              stylePreviewViewport === "desktop"
+                ? "100%"
+                : stylePreviewViewport === "tablet"
+                ? 834
+                : 390,
+            maxWidth: "100%",
+            mx: "auto",
+            transition: "width 0.2s ease",
+          }}
+        >
+        <Box
+          sx={{
             maxHeight:
               fullPreview || canvasMaxHeight === "none" ? "none" : canvasMaxHeight,
             overflow:
@@ -6609,6 +6847,7 @@ const CanvasColumn = (
             </SectionCard>
           )}
           </Box>
+        </Box>
         </Box>
       </SiteFrame>
     </Box>

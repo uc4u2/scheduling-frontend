@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { alpha, Box, Container, Grid, Stack, Typography } from "@mui/material";
-import BoltIcon from "@mui/icons-material/Bolt";
 import cinematicTokens from "../tokens";
 import { useCinematicReveal } from "../motion";
 import { FamilyLinkButton, useCountUp } from "../../hvac-shared/runtime";

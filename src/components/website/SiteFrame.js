@@ -276,6 +276,7 @@ export default function SiteFrame({
   const designContextValue = useMemo(
     () => ({
       design,
+      site,
       familyModule,
       resolveTokens: ({ section = {}, familyTokens = {} } = {}) =>
         resolveWebsiteDesignTokens({

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { resolveSiteHref } from "../../linking";
+import { useWebsiteDesign } from "../../WebsiteDesignContext";
 
 export const isExternalHref = (href = "") => /^https?:\/\//i.test(String(href || "").trim());
 
@@ -17,6 +19,53 @@ export function htmlToParagraphs(value) {
 
 export function toArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+export function resolveFamilyHref(href = "", site = null) {
+  const raw = String(href || "").trim();
+  if (!raw) {
+    return site?.slug ? `/${site.slug}` : "/";
+  }
+  if (
+    /^(https?:)?\/\//i.test(raw) ||
+    raw.startsWith("mailto:") ||
+    raw.startsWith("tel:")
+  ) {
+    return raw;
+  }
+
+  const slug = String(site?.slug || "").trim();
+  const pages = Array.isArray(site?.pages)
+    ? site.pages
+    : Array.isArray(site?.pages_meta)
+    ? site.pages_meta
+    : [];
+  const lower = raw.toLowerCase();
+
+  if (raw.startsWith("?")) {
+    return slug ? `/${slug}${raw}` : raw;
+  }
+  if (raw.startsWith("#")) {
+    return slug ? `/${slug}${raw}` : raw;
+  }
+  if (lower === "login" || lower === "/login") {
+    return "/login";
+  }
+  if (
+    lower === "my-bookings" ||
+    lower === "/my-bookings" ||
+    lower === "dashboard" ||
+    lower === "/dashboard"
+  ) {
+    return slug ? `/${slug}?page=my-bookings` : "/dashboard";
+  }
+  if (lower === "reviews" || lower === "/reviews") {
+    return slug ? `/${slug}?page=reviews` : "/?page=reviews";
+  }
+  if (raw.startsWith("/")) {
+    return resolveSiteHref(slug, raw, pages);
+  }
+  return resolveSiteHref(slug, raw, pages);
 }
 
 export function usePrefersReducedMotion() {
@@ -146,15 +195,17 @@ export function FamilyLinkButton({
   ...rest
 }) {
   if (!label && !children) return null;
-  const linkProps = isExternalHref(href)
+  const { site } = useWebsiteDesign();
+  const resolvedHref = resolveFamilyHref(href, site);
+  const linkProps = isExternalHref(resolvedHref)
     ? {
         component: "a",
-        href,
+        href: resolvedHref,
         target: "_blank",
         rel: "noreferrer noopener",
       }
-    : href
-    ? { component: RouterLink, to: href }
+    : resolvedHref
+    ? { component: RouterLink, to: resolvedHref }
     : {};
   return (
     <Button {...linkProps} {...rest} variant={variant} endIcon={endIcon} sx={sx}>

@@ -8,6 +8,7 @@ const defaultDesign = normalizeWebsiteDesignMetadata({});
 
 const WebsiteDesignContext = createContext({
   design: defaultDesign,
+  site: null,
   familyModule: null,
   resolveTokens: () => resolveWebsiteDesignTokens(),
 });
