@@ -121,6 +121,12 @@ import {
   WEBSITE_THEME_MODULE_MANIFESTS,
 } from "../../../utils/websiteThemeModules";
 import {
+  buildNextJsPageStyleFromDraft,
+  getSupportedThemeOverrideFields,
+  NEXTJS_THEME_OVERRIDE_FIELDS,
+  sanitizeThemeOverrideDraft,
+} from "../../../utils/websiteThemeOverrides";
+import {
   defaultHeaderConfig,
   defaultFooterConfig,
   normalizeHeaderConfig,
@@ -1148,6 +1154,10 @@ function PageStyleCard({
   canResetToSiteTheme,
   onOpenAdvanced,
   companyId,
+  isNextJsMode = false,
+  nextJsThemeKey = "",
+  nextJsThemeOverrides = {},
+  onChangeNextJsThemeOverrides,
 }) {
   const { t } = useTranslation();
 
@@ -1359,6 +1369,207 @@ function PageStyleCard({
       />
     );
   };
+
+  if (isNextJsMode) {
+    const supportedFields = getSupportedThemeOverrideFields(nextJsThemeKey);
+    const supportedFieldSet = new Set(supportedFields);
+    const sanitizedOverrides = sanitizeThemeOverrideDraft(
+      nextJsThemeKey,
+      nextJsThemeOverrides || {}
+    );
+    const updateOverride = (fieldKey, fieldValue) => {
+      onChangeNextJsThemeOverrides?.({
+        ...sanitizedOverrides,
+        [fieldKey]: fieldValue,
+      });
+    };
+    const unsupportedFieldLabels = Object.entries(NEXTJS_THEME_OVERRIDE_FIELDS)
+      .filter(([fieldKey]) => !supportedFieldSet.has(fieldKey))
+      .map(([, meta]) => meta.label);
+
+    return (
+      <Stack id="page-style-card" spacing={1.5}>
+        <Alert severity="info" variant="outlined">
+          This website style keeps its composition fixed. Page Style only exposes
+          safe theme overrides supported by {nextJsThemeKey || "the active theme"}.
+        </Alert>
+
+        <Stack spacing={1.25}>
+          {supportedFieldSet.has("heroMediaUrl") ? (
+            <ImageField
+              label={NEXTJS_THEME_OVERRIDE_FIELDS.heroMediaUrl.label}
+              value={sanitizedOverrides.heroMediaUrl || ""}
+              onChange={(url) => updateOverride("heroMediaUrl", url)}
+              companyId={companyId}
+            />
+          ) : null}
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {supportedFieldSet.has("brandPrimaryColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.brandPrimaryColor.label,
+                  value: sanitizedOverrides.brandPrimaryColor || "#6366f1",
+                  onChange: (val) => updateOverride("brandPrimaryColor", val),
+                })
+              : null}
+            {supportedFieldSet.has("accentColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.accentColor.label,
+                  value: sanitizedOverrides.accentColor || "#f59e0b",
+                  onChange: (val) => updateOverride("accentColor", val),
+                })
+              : null}
+          </Stack>
+
+          {supportedFieldSet.has("pageBackground")
+            ? colorField({
+                label: NEXTJS_THEME_OVERRIDE_FIELDS.pageBackground.label,
+                value: sanitizedOverrides.pageBackground || "#ffffff",
+                onChange: (val) => updateOverride("pageBackground", val),
+              })
+            : null}
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {supportedFieldSet.has("surfaceTone") ? (
+              <FormControl size="small" fullWidth>
+                <InputLabel>{NEXTJS_THEME_OVERRIDE_FIELDS.surfaceTone.label}</InputLabel>
+                <Select
+                  label={NEXTJS_THEME_OVERRIDE_FIELDS.surfaceTone.label}
+                  value={sanitizedOverrides.surfaceTone || "auto"}
+                  onChange={(event) => updateOverride("surfaceTone", event.target.value)}
+                >
+                  {NEXTJS_THEME_OVERRIDE_FIELDS.surfaceTone.options.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
+            {supportedFieldSet.has("lightDarkPreference") ? (
+              <FormControl size="small" fullWidth>
+                <InputLabel>{NEXTJS_THEME_OVERRIDE_FIELDS.lightDarkPreference.label}</InputLabel>
+                <Select
+                  label={NEXTJS_THEME_OVERRIDE_FIELDS.lightDarkPreference.label}
+                  value={sanitizedOverrides.lightDarkPreference || "auto"}
+                  onChange={(event) =>
+                    updateOverride("lightDarkPreference", event.target.value)
+                  }
+                >
+                  {NEXTJS_THEME_OVERRIDE_FIELDS.lightDarkPreference.options.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
+          </Stack>
+
+          {supportedFieldSet.has("buttonTreatment") ? (
+            <FormControl size="small" fullWidth>
+              <InputLabel>{NEXTJS_THEME_OVERRIDE_FIELDS.buttonTreatment.label}</InputLabel>
+              <Select
+                label={NEXTJS_THEME_OVERRIDE_FIELDS.buttonTreatment.label}
+                value={sanitizedOverrides.buttonTreatment || "solid"}
+                onChange={(event) => updateOverride("buttonTreatment", event.target.value)}
+              >
+                {NEXTJS_THEME_OVERRIDE_FIELDS.buttonTreatment.options.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
+
+          {supportedFieldSet.has("gradientAccent") ? (
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(sanitizedOverrides.gradientAccent)}
+                  onChange={(_, checked) => updateOverride("gradientAccent", checked)}
+                />
+              }
+              label={NEXTJS_THEME_OVERRIDE_FIELDS.gradientAccent.label}
+            />
+          ) : null}
+
+          {supportedFieldSet.has("sectionSpacing") ? (
+            <Stack spacing={1}>
+              <Typography variant="caption" color="text.secondary">
+                {NEXTJS_THEME_OVERRIDE_FIELDS.sectionSpacing.label}
+              </Typography>
+              <Slider
+                size="small"
+                min={0}
+                max={5}
+                step={1}
+                value={sanitizedOverrides.sectionSpacing ?? 3}
+                valueLabelDisplay="auto"
+                onChange={(_, value) =>
+                  typeof value === "number" &&
+                  updateOverride("sectionSpacing", value)
+                }
+              />
+            </Stack>
+          ) : null}
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {supportedFieldSet.has("buttonRadius") ? (
+              <TextField
+                size="small"
+                type="number"
+                label={NEXTJS_THEME_OVERRIDE_FIELDS.buttonRadius.label}
+                value={sanitizedOverrides.buttonRadius ?? 2}
+                onChange={(event) =>
+                  updateOverride("buttonRadius", Number(event.target.value || 0))
+                }
+                inputProps={{ min: 0, max: 4, step: 1 }}
+                fullWidth
+              />
+            ) : null}
+            {supportedFieldSet.has("typographyScale") ? (
+              <TextField
+                size="small"
+                type="number"
+                label={NEXTJS_THEME_OVERRIDE_FIELDS.typographyScale.label}
+                value={sanitizedOverrides.typographyScale ?? 1}
+                onChange={(event) =>
+                  updateOverride(
+                    "typographyScale",
+                    Number(event.target.value || 1)
+                  )
+                }
+                inputProps={{ min: 0.9, max: 1.2, step: 0.05 }}
+                fullWidth
+              />
+            ) : null}
+          </Stack>
+        </Stack>
+
+        {unsupportedFieldLabels.length ? (
+          <Alert severity="info" variant="outlined">
+            Not available for this website style yet:{" "}
+            {unsupportedFieldLabels.join(", ")}.
+          </Alert>
+        ) : null}
+
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => onChangeNextJsThemeOverrides?.(sanitizeThemeOverrideDraft(nextJsThemeKey, {}))}
+          >
+            Reset overrides
+          </Button>
+          <Button size="small" variant="contained" onClick={onApplyNow} disabled={!onApplyNow}>
+            Apply now
+          </Button>
+        </Stack>
+      </Stack>
+    );
+  }
 
   const [pageStyleTab, setPageStyleTab] = useState("style");
   const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
@@ -2516,6 +2727,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const stylePreviewAreaRef = useRef(null);
   const [builderTabIndex, setBuilderTabIndex] = useState(getBuilderTabDefaultIndex(location?.search || ""));
   const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [selectedModuleFieldPath, setSelectedModuleFieldPath] = useState("");
   const [unsupportedModuleWarning, setUnsupportedModuleWarning] = useState("");
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
@@ -2884,6 +3096,7 @@ useEffect(() => {
       if (!data || data.type !== "schedulaa:website-slot-select") return;
       const slot = String(data.slot || "").trim();
       const label = String(data.label || slot).trim();
+      const fieldPath = String(data.fieldPath || "").trim();
       setStyleMsg(`Selected editable slot: ${label}`);
       setBuilderTabIndex(0);
       if (data.pageId) {
@@ -2906,14 +3119,19 @@ useEffect(() => {
       }
       if (data.moduleId) {
         setSelectedModuleId(String(data.moduleId));
+        setSelectedModuleFieldPath(fieldPath);
       } else if (slot) {
         const availableModules = safeModules(editing || {});
         const slotMatch = availableModules.find((module) => module.slot === slot);
         if (slotMatch) {
           setSelectedModuleId(slotMatch.id);
+          setSelectedModuleFieldPath(fieldPath);
         } else {
           const heroMatch = slot === "home.hero" ? availableModules.find((module) => module.type === "hero") : null;
-          if (heroMatch) setSelectedModuleId(heroMatch.id);
+          if (heroMatch) {
+            setSelectedModuleId(heroMatch.id);
+            setSelectedModuleFieldPath(fieldPath);
+          }
         }
       }
       if (slot.startsWith("page:")) {
@@ -6684,26 +6902,51 @@ const autoProvisionIfEmpty = useCallback(
         {isNextJsContentMode ? (
           <Stack spacing={1}>
             {semanticModules.map((module, index) => (
-              <Button
+              <Paper
                 key={module.id}
-                size="small"
-                variant={module.id === selectedModuleId ? "contained" : "outlined"}
-                onClick={() => {
-                  setSelectedModuleId(module.id);
-                  setInspectorOpen(true);
-                  setInspectorTab("content");
+                variant="outlined"
+                sx={{
+                  p: 1,
+                  borderRadius: 1,
+                  borderColor: module.id === selectedModuleId ? "primary.main" : "divider",
                 }}
-                sx={{ justifyContent: "flex-start", textAlign: "left", px: 1.25, py: 1 }}
-                fullWidth
               >
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
-                  <Chip size="small" label={module.slot || "section"} />
-                  <Box sx={{ minWidth: 0 }}>
-                    {index + 1}. {SEMANTIC_MODULE_LABELS[module.type] || module.type}
-                  </Box>
-                  {module.enabled === false ? <Chip size="small" label="Hidden" /> : null}
+                <Stack spacing={1}>
+                  <Button
+                    size="small"
+                    variant={module.id === selectedModuleId ? "contained" : "outlined"}
+                    onClick={() => {
+                      setSelectedModuleId(module.id);
+                      setInspectorOpen(true);
+                      setInspectorTab("content");
+                    }}
+                    sx={{ justifyContent: "flex-start", textAlign: "left", px: 1.25, py: 1 }}
+                    fullWidth
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
+                      <Chip size="small" label={module.slot || "section"} />
+                      <Box sx={{ minWidth: 0 }}>
+                        {index + 1}. {SEMANTIC_MODULE_LABELS[module.type] || module.type}
+                      </Box>
+                      {module.enabled === false ? <Chip size="small" label="Hidden" /> : null}
+                    </Stack>
+                  </Button>
+                  <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+                    <Button size="small" onClick={() => moveSemanticModule(module.id, "up")}>
+                      Up
+                    </Button>
+                    <Button size="small" onClick={() => moveSemanticModule(module.id, "down")}>
+                      Down
+                    </Button>
+                    <Button size="small" onClick={() => duplicateSemanticModule(module.id)}>
+                      Duplicate
+                    </Button>
+                    <Button size="small" color="error" onClick={() => deleteSemanticModule(module.id)}>
+                      Delete
+                    </Button>
+                  </Stack>
                 </Stack>
-              </Button>
+              </Paper>
             ))}
             {!semanticModules.length ? (
               <Alert severity="info">
@@ -6977,6 +7220,45 @@ const deleteSemanticModule = useCallback(
     if (selectedModuleId === moduleId) setSelectedModuleId("");
   },
   [selectedModuleId, updateSemanticModules]
+);
+
+const duplicateSemanticModule = useCallback(
+  (moduleId) => {
+    updateSemanticModules((currentModules) => {
+      const source = currentModules.find((module) => module.id === moduleId);
+      if (!source) return currentModules;
+      const copy = {
+        ...JSON.parse(JSON.stringify(source)),
+        id: createSemanticModule(source.type, editing, source.slot).id,
+        enabled: source.enabled !== false,
+      };
+      const nextModules = [...currentModules];
+      const index = nextModules.findIndex((module) => module.id === moduleId);
+      nextModules.splice(index + 1, 0, copy);
+      setSelectedModuleId(copy.id);
+      return nextModules;
+    });
+  },
+  [editing, updateSemanticModules]
+);
+
+const moveSemanticModule = useCallback(
+  (moduleId, direction) => {
+    updateSemanticModules((currentModules) => {
+      const index = currentModules.findIndex((module) => module.id === moduleId);
+      if (index < 0) return currentModules;
+      const module = currentModules[index];
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= currentModules.length) return currentModules;
+      const target = currentModules[targetIndex];
+      if ((target?.slot || "") !== (module?.slot || "")) return currentModules;
+      const nextModules = [...currentModules];
+      nextModules[index] = target;
+      nextModules[targetIndex] = module;
+      return nextModules.map((item, order) => ({ ...item, order }));
+    });
+  },
+  [updateSemanticModules]
 );
 
 const updateSemanticModule = useCallback(
@@ -7571,6 +7853,18 @@ function InspectorColumn() {
 
   const selectedBlockObj = safeSections(editing)[selectedBlock] || {};
   const selectedSemanticModule = selectedModule;
+  useEffect(() => {
+    if (!selectedModuleFieldPath) return;
+    const timer = window.setTimeout(() => {
+      const field = document.querySelector(
+        `[data-module-field-path="${selectedModuleFieldPath}"] input, [data-module-field-path="${selectedModuleFieldPath}"] textarea, [data-module-field-path="${selectedModuleFieldPath}"] button`
+      );
+      if (field && typeof field.focus === "function") {
+        field.focus();
+      }
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [selectedModuleFieldPath, selectedSemanticModule?.id]);
   const selectedProps = selectedBlockObj?.props || {};
   const themeResettableTypes = useMemo(
     () =>
@@ -7848,6 +8142,8 @@ function InspectorColumn() {
             value={content.heading || ""}
             onChange={(event) => updateSelectedSemanticModuleContent({ heading: event.target.value })}
             fullWidth
+            autoFocus={selectedModuleFieldPath === "heading"}
+            inputProps={{ "data-module-field-path": "heading" }}
           />
         ) : null}
         {selectedSemanticModule.type === "hero" ? (
@@ -7858,6 +8154,7 @@ function InspectorColumn() {
               value={content.eyebrow || ""}
               onChange={(event) => updateSelectedSemanticModuleContent({ eyebrow: event.target.value })}
               fullWidth
+              inputProps={{ "data-module-field-path": "eyebrow" }}
             />
             <TextField
               size="small"
@@ -7867,13 +8164,16 @@ function InspectorColumn() {
               fullWidth
               multiline
               minRows={3}
+              inputProps={{ "data-module-field-path": "subheading" }}
             />
-            <ImageField
-              label="Hero image"
-              value={content.imageUrl || ""}
-              onChange={(url) => updateSelectedSemanticModuleContent({ imageUrl: url })}
-              companyId={companyId}
-            />
+            <Box data-module-field-path="image">
+              <ImageField
+                label="Hero image"
+                value={content.imageUrl || ""}
+                onChange={(url) => updateSelectedSemanticModuleContent({ imageUrl: url })}
+                companyId={companyId}
+              />
+            </Box>
             <TextField
               size="small"
               label="Primary CTA label"
@@ -7884,6 +8184,7 @@ function InspectorColumn() {
                 })
               }
               fullWidth
+              inputProps={{ "data-module-field-path": "primaryCta.label" }}
             />
             <TextField
               size="small"
@@ -7895,6 +8196,7 @@ function InspectorColumn() {
                 })
               }
               fullWidth
+              inputProps={{ "data-module-field-path": "primaryCta.href" }}
             />
           </>
         ) : null}
@@ -7990,22 +8292,47 @@ function InspectorColumn() {
           </>
         ) : null}
         <Stack direction="row" justifyContent="space-between">
-          <Button
-            size="small"
-            color="warning"
-            variant="outlined"
-            onClick={() =>
-              updateSemanticModule(selectedSemanticModule.id, (module) => ({
-                ...module,
-                enabled: module.enabled === false,
-              }))
-            }
-          >
-            {selectedSemanticModule.enabled === false ? "Show section" : "Hide section"}
-          </Button>
-          <Button size="small" color="error" variant="outlined" onClick={() => deleteSemanticModule(selectedSemanticModule.id)}>
-            Remove section
-          </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => moveSemanticModule(selectedSemanticModule.id, "up")}
+            >
+              Move up
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => moveSemanticModule(selectedSemanticModule.id, "down")}
+            >
+              Move down
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => duplicateSemanticModule(selectedSemanticModule.id)}
+            >
+              Duplicate
+            </Button>
+          </Stack>
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              color="warning"
+              variant="outlined"
+              onClick={() =>
+                updateSemanticModule(selectedSemanticModule.id, (module) => ({
+                  ...module,
+                  enabled: module.enabled === false,
+                }))
+              }
+            >
+              {selectedSemanticModule.enabled === false ? "Show section" : "Hide section"}
+            </Button>
+            <Button size="small" color="error" variant="outlined" onClick={() => deleteSemanticModule(selectedSemanticModule.id)}>
+              Remove section
+            </Button>
+          </Stack>
         </Stack>
       </Stack>
     );
@@ -8031,6 +8358,36 @@ function InspectorColumn() {
           editing?.content?.style ||
           {}
         }
+        isNextJsMode={isNextJsContentMode}
+        nextJsThemeKey={currentStyleKey}
+        nextJsThemeOverrides={
+          (
+            readPageStyleProps(editing) ||
+            editing?.content?.meta?.pageStyle ||
+            editing?.content?.style ||
+            {}
+          )?.themeOverrides || {}
+        }
+        onChangeNextJsThemeOverrides={(draft) => {
+          const nextDraft = buildNextJsPageStyleFromDraft(currentStyleKey, draft);
+          setEditing((cur) => {
+            const content = { ...(cur.content || {}) };
+            const currentPageStyle =
+              readPageStyleProps(cur) ||
+              content?.meta?.pageStyle ||
+              content?.style ||
+              {};
+            const next = {
+              ...currentPageStyle,
+              ...nextDraft,
+            };
+            content.meta = { ...(content.meta || {}), pageStyle: next };
+            content.style = { ...(content.style || {}), ...next };
+            let updated = { ...cur, content };
+            updated = writePageStyleProps(updated, next);
+            return withLiftedLayout(updated);
+          });
+        }}
         onChange={(next) => {
           setEditing((cur) => {
             const content = { ...(cur.content || {}) };
