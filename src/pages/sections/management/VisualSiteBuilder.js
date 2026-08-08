@@ -126,6 +126,10 @@ import {
   TENANT_WEB_NEXT_BASE_URL,
 } from "./websiteCatalogUi";
 import {
+  buildPublishedWebsiteUrl,
+  getPublishedRendererSelection,
+} from "../../../utils/publicWebsite";
+import {
   getBuilderTabDefaultIndex,
   buildWebsiteStyleApplyPayload,
   isAcceptedPreviewMessage,
@@ -2623,6 +2627,18 @@ const [brandingErr, setBrandingErr] = useState("");
     currentRendererEngine === "nextjs"
       ? Number(currentVisualThemeVersion || 1)
       : 1;
+  const publishedRendererSelection = useMemo(
+    () => getPublishedRendererSelection(websiteStatus || {}),
+    [websiteStatus]
+  );
+  const liveStyleKey =
+    publishedRendererSelection.rendererEngine === "nextjs"
+      ? publishedRendererSelection.visualThemeKey || ""
+      : "classic";
+  const liveStyleVersion =
+    publishedRendererSelection.rendererEngine === "nextjs"
+      ? Number(publishedRendererSelection.visualThemeVersion || 1)
+      : 1;
   const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
@@ -3859,21 +3875,22 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   }, [siteSettings, companyProfileSlug]);
 
   const liveSiteUrl = useMemo(() => {
-    const rawDomain =
-      siteSettings?.custom_domain ||
-      siteSettings?.settings?.custom_domain ||
-      "";
-    const domain = String(rawDomain || "").trim();
-    if (domain) {
-      if (domain.startsWith("http://") || domain.startsWith("https://")) {
-        return domain;
-      }
-      return `https://${domain}`;
-    }
+    const pagePath = normalizePreviewPagePath(editing);
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    if (liveSlug) return `${origin}/${liveSlug}`;
-    return previewSlug ? `${origin}/${previewSlug}` : origin;
-  }, [siteSettings, liveSlug, previewSlug]);
+    return buildPublishedWebsiteUrl({
+      status: websiteStatus || {
+        company_slug: liveSlug || previewSlug,
+        is_live: Boolean(siteSettings?.is_live),
+        custom_domain:
+          siteSettings?.custom_domain ||
+          siteSettings?.settings?.custom_domain ||
+          "",
+        published_renderer_engine: "legacy-react",
+      },
+      pagePath: Array.isArray(pagePath) ? pagePath.join("/") : "",
+      currentOrigin: origin,
+    });
+  }, [editing, liveSlug, previewSlug, siteSettings, websiteStatus]);
 
   const seoPreviewTitle = useMemo(() => {
     return (
@@ -4458,6 +4475,10 @@ const autoProvisionIfEmpty = useCallback(
       setStylePreviewFamily("");
 
       await wb.publish(companyId, true);
+      const refreshedStatus = await wb.getStatus(companyId).catch(() => null);
+      if (refreshedStatus?.data || refreshedStatus) {
+        setWebsiteStatus(refreshedStatus?.data || refreshedStatus);
+      }
       publicSite.invalidate(
         (siteSettings?.company?.slug || previewSlug || "").toString()
       );
@@ -4506,9 +4527,13 @@ const autoProvisionIfEmpty = useCallback(
     try {
       await wb.publish(companyId, false);
       const latestSettings = await wb.getSettings(companyId).catch(() => null);
+      const latestStatus = await wb.getStatus(companyId).catch(() => null);
       const latestPayload = latestSettings?.data || latestSettings || {};
       applyBrandingFromServer(latestPayload);
       setSiteSettings(latestPayload);
+      if (latestStatus?.data || latestStatus) {
+        setWebsiteStatus(latestStatus?.data || latestStatus);
+      }
       publicSite.invalidate(
         (siteSettings?.company?.slug || previewSlug || "").toString()
       );
@@ -5701,9 +5726,12 @@ const autoProvisionIfEmpty = useCallback(
           {websiteStyleChoices
             .filter((style) => style.key !== "classic")
             .map((style) => {
-              const isCurrent =
+              const isCurrentDraft =
                 style.key === currentStyleKey &&
                 Number(style.version) === Number(currentStyleVersion);
+              const isCurrentLive =
+                style.key === liveStyleKey &&
+                Number(style.version) === Number(liveStyleVersion);
               const isPreviewing = style.key === effectivePreviewFamily;
               return (
                 <Paper
@@ -5712,9 +5740,9 @@ const autoProvisionIfEmpty = useCallback(
                   sx={{
                     p: 2,
                     borderRadius: 1.5,
-                    borderColor: isCurrent ? "success.main" : "divider",
+                    borderColor: isCurrentDraft ? "success.main" : "divider",
                     bgcolor: "background.paper",
-                    boxShadow: isCurrent ? 2 : 0,
+                    boxShadow: isCurrentDraft ? 2 : 0,
                   }}
                 >
                   <Stack spacing={1.5}>
@@ -5779,10 +5807,10 @@ const autoProvisionIfEmpty = useCallback(
                             }}
                           />
                         ) : null}
-                        {isCurrent ? (
+                        {isCurrentDraft ? (
                           <Chip
                             size="small"
-                            label="Current draft"
+                            label="Draft"
                             sx={{
                               borderRadius: 1.5,
                               color: "success.dark",
@@ -5792,7 +5820,20 @@ const autoProvisionIfEmpty = useCallback(
                             }}
                           />
                         ) : null}
-                        {isPreviewing && !isCurrent ? (
+                        {isCurrentLive ? (
+                          <Chip
+                            size="small"
+                            label="Live"
+                            sx={{
+                              borderRadius: 1.5,
+                              color: "info.dark",
+                              bgcolor: "info.50",
+                              border: "1px solid",
+                              borderColor: "info.200",
+                            }}
+                          />
+                        ) : null}
+                        {isPreviewing && !isCurrentDraft ? (
                           <Chip
                             size="small"
                             label="Previewing"
@@ -5837,7 +5878,7 @@ const autoProvisionIfEmpty = useCallback(
                       <Button
                         size="small"
                         variant="contained"
-                        disabled={styleSaving || isCurrent}
+                        disabled={styleSaving || isCurrentDraft}
                         onClick={() => applyWebsiteStyle(style)}
                         sx={{ borderRadius: 1.5 }}
                       >
@@ -5852,25 +5893,41 @@ const autoProvisionIfEmpty = useCallback(
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
           {(() => {
             const style = websiteStyleChoices.find((item) => item.key === "classic");
-            const isCurrent =
+            const isCurrentDraft =
               style?.key === currentStyleKey &&
               Number(style?.version || 1) === Number(currentStyleVersion);
+            const isCurrentLive =
+              style?.key === liveStyleKey &&
+              Number(style?.version || 1) === Number(liveStyleVersion);
             return (
               <Stack spacing={1.25}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                     Keep Current Classic Design
                   </Typography>
-                  {isCurrent ? (
+                  {isCurrentDraft ? (
                     <Chip
                       size="small"
-                      label="Current draft"
+                      label="Draft"
                       sx={{
                         borderRadius: 1.5,
                         color: "success.dark",
                         bgcolor: "success.50",
                         border: "1px solid",
                         borderColor: "success.200",
+                      }}
+                    />
+                  ) : null}
+                  {isCurrentLive ? (
+                    <Chip
+                      size="small"
+                      label="Live"
+                      sx={{
+                        borderRadius: 1.5,
+                        color: "info.dark",
+                        bgcolor: "info.50",
+                        border: "1px solid",
+                        borderColor: "info.200",
                       }}
                     />
                   ) : null}
@@ -5901,7 +5958,7 @@ const autoProvisionIfEmpty = useCallback(
                   <Button
                     size="small"
                     variant="contained"
-                    disabled={styleSaving || isCurrent || !style}
+                    disabled={styleSaving || isCurrentDraft || !style}
                     onClick={() => style && applyWebsiteStyle(style)}
                     sx={{ borderRadius: 1.5 }}
                   >
@@ -5915,6 +5972,16 @@ const autoProvisionIfEmpty = useCallback(
         <Alert severity="info" variant="outlined">
           Modern themes use a curated layout. You can edit content, images, pages, and supported sections while the theme preserves the page composition.
         </Alert>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5, bgcolor: "background.paper" }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "flex-start", md: "center" }}>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              Draft style: {activeStyleChoice?.name || "Classic"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Live style: {websiteStyleChoices.find((item) => item.key === liveStyleKey)?.name || "Keep Current Classic Design"}
+            </Typography>
+          </Stack>
+        </Paper>
       </Stack>
     </CollapsibleSection>
   );
@@ -8424,7 +8491,7 @@ function InspectorColumn() {
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              Theme Preview
+              {`Theme Preview — ${websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)?.name || "Website Style"}`}
             </Typography>
             <Chip
               size="small"
@@ -8432,7 +8499,7 @@ function InspectorColumn() {
                 isNextJsStyle(
                   websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
                 )
-                  ? "Next.js iframe"
+                  ? "Draft preview"
                   : "Classic canvas"
               }
             />
@@ -8492,7 +8559,7 @@ function InspectorColumn() {
                   mx: "auto",
                   border: "1px solid",
                   borderColor: "divider",
-                  borderRadius: 2,
+                  borderRadius: 1.5,
                   overflow: "hidden",
                   bgcolor: "#fff",
                 }}
@@ -8506,7 +8573,12 @@ function InspectorColumn() {
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                   sx={{
                     width: "100%",
-                    height: stylePreviewViewport === "mobile" ? 844 : 980,
+                    height:
+                      stylePreviewViewport === "desktop"
+                        ? 680
+                        : stylePreviewViewport === "tablet"
+                        ? 700
+                        : 780,
                     border: 0,
                     display: "block",
                   }}
@@ -8514,7 +8586,9 @@ function InspectorColumn() {
               </Box>
             ) : (
               <Alert severity="info" variant="outlined">
-                Choose <strong>Modern Gradient</strong> and click Preview to open the draft Next.js theme.
+                {stylePreviewFamily
+                  ? `Preview ${websiteStyleChoices.find((item) => item.key === stylePreviewFamily)?.name || "this website style"} to see your current website content in this design.`
+                  : "Choose a website style above and click Preview."}
               </Alert>
             )
           ) : (

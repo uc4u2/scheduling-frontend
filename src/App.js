@@ -22,6 +22,11 @@ import {
 
 import { getTenantHostMode, normalizeDomain } from "./utils/tenant";
 import api, { publicSite, API_BASE_URL } from "./utils/api";
+import {
+  buildPublishedWebsiteUrl,
+  inferPagePathFromLocation,
+  shouldUseNextJsPublicRenderer,
+} from "./utils/publicWebsite";
 
 // Components
 import MainNav from "./landing/components/MainNav";
@@ -521,6 +526,43 @@ const AppContent = ({ token, setToken }) => {
   const chatbotSlug = isCustomDomain
     ? tenantSlug
     : (slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate) ? slugCandidate : null);
+  const publicTenantSlug = isCustomDomain ? tenantSlug : chatbotSlug;
+  const publicPagePath = useMemo(
+    () =>
+      inferPagePathFromLocation({
+        pathname: location.pathname,
+        search: location.search,
+        slug: publicTenantSlug,
+        isCustomDomain,
+      }),
+    [isCustomDomain, location.pathname, location.search, publicTenantSlug]
+  );
+  const publicRouteRoot = useMemo(() => {
+    const normalized = String(publicPagePath || "").trim();
+    return normalized ? normalized.split("/")[0].toLowerCase() : "";
+  }, [publicPagePath]);
+  const publicRendererBypassRoots = new Set([
+    "book",
+    "booking-confirmation",
+    "cancel-booking",
+    "appointment-cancel",
+    "appointment-reschedule",
+    "pay",
+    "meet",
+    "review",
+    "tip",
+    "checkout",
+    "basket",
+    "products",
+    "jobs",
+    "estimate",
+    "login",
+    "register",
+    "forgot-password",
+    "my-bookings",
+  ]);
+  const requiresPublicRendererResolution = Boolean(publicTenantSlug) && !publicRendererBypassRoots.has(publicRouteRoot);
+  const [publicRendererReady, setPublicRendererReady] = useState(() => !requiresPublicRendererResolution);
   // Use robust embed config from embed context / storage
   const { isEmbed, primary, text } = useEmbedConfig();
 
@@ -605,6 +647,86 @@ const AppContent = ({ token, setToken }) => {
     };
   }, [chatbotSlug, isCustomDomain, tenantLoaded, tenantSlug]);
 
+  useEffect(() => {
+    if (!requiresPublicRendererResolution) {
+      setPublicRendererReady(true);
+      return;
+    }
+    if (isCustomDomain && !tenantLoaded) {
+      setPublicRendererReady(false);
+      return;
+    }
+    let alive = true;
+    setPublicRendererReady(false);
+    const request = isCustomDomain
+      ? publicSite.getWebsiteShellByHost().catch(() => {
+          if (!publicTenantSlug) throw new Error("tenant_slug_unavailable");
+          return publicSite.getWebsiteShell(publicTenantSlug);
+        })
+      : publicSite.getWebsiteShell(publicTenantSlug);
+
+    request
+      .then((payload) => {
+        if (!alive) return;
+        const websiteSetting = payload?.website_setting || {};
+        const liveStatus = {
+          company_slug:
+            payload?.slug ||
+            payload?.company?.slug ||
+            publicTenantSlug,
+          custom_domain:
+            payload?.custom_domain ||
+            websiteSetting?.custom_domain ||
+            "",
+          is_live:
+            typeof websiteSetting?.is_live === "boolean"
+              ? websiteSetting.is_live
+              : true,
+          published_renderer_engine:
+            payload?.renderer_engine ||
+            payload?.website_setting?.settings?.renderer_engine ||
+            "legacy-react",
+          published_visual_theme_key:
+            payload?.visual_theme_key ||
+            payload?.website_setting?.settings?.visual_theme_key ||
+            null,
+          published_visual_theme_version:
+            payload?.visual_theme_version ||
+            payload?.website_setting?.settings?.visual_theme_version ||
+            null,
+        };
+        const targetUrl = buildPublishedWebsiteUrl({
+          status: liveStatus,
+          pagePath: publicPagePath,
+          currentOrigin: window.location.origin,
+          search: location.search || "",
+        });
+        if (shouldUseNextJsPublicRenderer(liveStatus) && targetUrl) {
+          const currentHref = `${window.location.origin}${window.location.pathname}${window.location.search || ""}`;
+          if (targetUrl !== currentHref) {
+            window.location.replace(targetUrl);
+            return;
+          }
+        }
+        setPublicRendererReady(true);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setPublicRendererReady(true);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [
+    isCustomDomain,
+    location.search,
+    publicPagePath,
+    publicTenantSlug,
+    requiresPublicRendererResolution,
+    tenantLoaded,
+  ]);
+
   const [chatbotSuppressedByOverlay, setChatbotSuppressedByOverlay] = useState(false);
   useEffect(() => {
     capturePredictionReferralFromSearch(location.search);
@@ -629,6 +751,14 @@ const AppContent = ({ token, setToken }) => {
 
   if (isCustomDomain && !tenantLoaded) {
     return null;
+  }
+
+  if (requiresPublicRendererResolution && !publicRendererReady) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Typography color="text.secondary">Loading website…</Typography>
+      </Box>
+    );
   }
 
   const marketingChatbot = MARKETING_PATHS.includes(location.pathname);
