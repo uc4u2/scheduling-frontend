@@ -107,6 +107,20 @@ import {
   safeSections,
 } from "../../../components/website/BuilderPageUtils";
 import {
+  SEMANTIC_MODULE_LABELS,
+  createSemanticModule,
+  inferPageKind,
+  normalizeSemanticModules,
+  normalizePageContent,
+  withNormalizedModules,
+} from "../../../utils/websiteSemanticModules";
+import {
+  getCompatibleModuleChoices,
+  getPageManifest,
+  resolveFallbackSlot,
+  WEBSITE_THEME_MODULE_MANIFESTS,
+} from "../../../utils/websiteThemeModules";
+import {
   defaultHeaderConfig,
   defaultFooterConfig,
   normalizeHeaderConfig,
@@ -299,10 +313,14 @@ const withLiftedLayout = (p) => {
 };
 
 const serializePage = (p) => {
-  const content = p?.content || {};
+  const content = normalizePageContent(p?.content || {});
   const meta = content.meta || {};
   const layout = p?.layout ?? meta.layout ?? "boxed";
-  return { ...p, layout, content: { ...content, meta: { ...meta, layout } } };
+  const nextPage = {
+    ...p,
+    content: { ...content, meta: { ...meta, layout } },
+  };
+  return withNormalizedModules({ ...nextPage, layout });
 };
 
 const buildCanonicalUrl = (page, canonicalBase, fallbackBase) => {
@@ -327,11 +345,13 @@ const ensureSectionIds = (page) => {
   const sections = safeSections(page).map((s) =>
     s?.id ? s : { ...s, id: uid() }
   );
-  return withLiftedLayout({
+  return withNormalizedModules(withLiftedLayout({
     ...page,
-    content: { ...(page.content || {}), sections },
-  });
+    content: { ...normalizePageContent(page.content || {}), sections },
+  }));
 };
+
+const safeModules = (page) => normalizeSemanticModules(page || {});
 
 const LEGACY_REVIEWS_PAGE_SLUG = "reviews";
 
@@ -2494,6 +2514,9 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
   const nextJsPreviewIframeRef = useRef(null);
   const stylePreviewAreaRef = useRef(null);
+  const [builderTabIndex, setBuilderTabIndex] = useState(getBuilderTabDefaultIndex(location?.search || ""));
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [unsupportedModuleWarning, setUnsupportedModuleWarning] = useState("");
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
@@ -2640,6 +2663,11 @@ const [brandingErr, setBrandingErr] = useState("");
       ? Number(publishedRendererSelection.visualThemeVersion || 1)
       : 1;
   const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
+  const isNextJsContentMode = currentRendererEngine === "nextjs" && Boolean(currentStyleKey);
+  const activeNextThemeManifest = useMemo(
+    () => (isNextJsContentMode ? getPageManifest(currentStyleKey, inferPageKind(editing || {})) : null),
+    [currentStyleKey, editing, isNextJsContentMode]
+  );
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
       style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
@@ -2857,6 +2885,37 @@ useEffect(() => {
       const slot = String(data.slot || "").trim();
       const label = String(data.label || slot).trim();
       setStyleMsg(`Selected editable slot: ${label}`);
+      setBuilderTabIndex(0);
+      if (data.pageId) {
+        const matchById = pages.find((page) => String(page.id) === String(data.pageId));
+        if (matchById) {
+          const lifted = ensureSectionIds(withLiftedLayout(matchById));
+          setSelectedId(lifted.id);
+          setEditing(lifted);
+        }
+      } else if (data.pagePath) {
+        const normalizedPath = String(data.pagePath).replace(/^\/+/, "");
+        const matchByPath = pages.find(
+          (page) => normalizePreviewPagePath(page).join("/") === normalizedPath
+        );
+        if (matchByPath) {
+          const lifted = ensureSectionIds(withLiftedLayout(matchByPath));
+          setSelectedId(lifted.id);
+          setEditing(lifted);
+        }
+      }
+      if (data.moduleId) {
+        setSelectedModuleId(String(data.moduleId));
+      } else if (slot) {
+        const availableModules = safeModules(editing || {});
+        const slotMatch = availableModules.find((module) => module.slot === slot);
+        if (slotMatch) {
+          setSelectedModuleId(slotMatch.id);
+        } else {
+          const heroMatch = slot === "home.hero" ? availableModules.find((module) => module.type === "hero") : null;
+          if (heroMatch) setSelectedModuleId(heroMatch.id);
+        }
+      }
       if (slot.startsWith("page:")) {
         setPageSettingsOpen(true);
       } else {
@@ -2866,7 +2925,7 @@ useEffect(() => {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [nextJsPreviewOrigin]);
+  }, [nextJsPreviewOrigin, pages, setEditing]);
 
 
   // ---------- NEW (Step 3: preflight/auth guard needs these) ----------
@@ -4295,6 +4354,9 @@ const autoProvisionIfEmpty = useCallback(
         if (applyPageStyleToAll) {
           await applyStyleToAllPagesNow();
         }
+        if (isNextJsContentMode && nextJsPreviewUrl) {
+          await refreshNextJsPreview();
+        }
       } else {
         const r = await wb.createPage(companyId, payload);
         const created = ensureSectionIds(
@@ -4304,6 +4366,9 @@ const autoProvisionIfEmpty = useCallback(
         setSelectedId(created.id);
         setEditing(created);
         setMsg(t("manager.visualBuilder.messages.created"));
+        if (isNextJsContentMode && nextJsPreviewUrl) {
+          await refreshNextJsPreview();
+        }
       }
     } catch (e) {
       console.error(e);
@@ -4320,6 +4385,9 @@ const autoProvisionIfEmpty = useCallback(
     setPages,
     setSelectedId,
     t,
+    isNextJsContentMode,
+    nextJsPreviewUrl,
+    refreshNextJsPreview,
   ]);
 
   const importLabSettingsFromServer = useCallback(async () => {
@@ -5164,6 +5232,9 @@ const autoProvisionIfEmpty = useCallback(
         setSelectedPageIds([]);
         setMsg(t("manager.visualBuilder.messages.pageSettingsSaved"));
         setPageSettingsDirty(false);
+        if (isNextJsContentMode && nextJsPreviewUrl) {
+          await refreshNextJsPreview();
+        }
       } else {
         await onSavePage();
         setPageSettingsDirty(false);
@@ -6610,84 +6681,146 @@ const autoProvisionIfEmpty = useCallback(
           }
         }}
       >
-        {/* Section list (pageStyle hidden) */}
-        <Stack spacing={1}>
-          {(() => {
-            const all = safeSections(editing);
-            const visible = all.filter((s) => s.type !== "pageStyle"); // hide pageStyle from the list
-            return visible.map((blk, i) => {
-              // find its real index in the full sections array so selection stays correct
-              const realIndex = all.findIndex((s) => s.id === blk.id);
-              return (
-                <Tooltip
-                  key={blk.id || i}
-                  title={t("manager.visualBuilder.sections.tooltip")}
-                  placement="right"
-                >
-                  <Button
-                    size="small"
-                    variant={realIndex === selectedBlock ? "contained" : "outlined"}
-                    onClick={() => {
-                      setSelectedBlock(realIndex);
-                      requestAnimationFrame(() => scrollCanvasToSection(realIndex));
-                    }}
-                    sx={{
-                      justifyContent: "flex-start",
-                      textAlign: "left",
-                      px: 1.25,
-                      py: 1,
-                    }}
-                    fullWidth
+        {isNextJsContentMode ? (
+          <Stack spacing={1}>
+            {semanticModules.map((module, index) => (
+              <Button
+                key={module.id}
+                size="small"
+                variant={module.id === selectedModuleId ? "contained" : "outlined"}
+                onClick={() => {
+                  setSelectedModuleId(module.id);
+                  setInspectorOpen(true);
+                  setInspectorTab("content");
+                }}
+                sx={{ justifyContent: "flex-start", textAlign: "left", px: 1.25, py: 1 }}
+                fullWidth
+              >
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
+                  <Chip size="small" label={module.slot || "section"} />
+                  <Box sx={{ minWidth: 0 }}>
+                    {index + 1}. {SEMANTIC_MODULE_LABELS[module.type] || module.type}
+                  </Box>
+                  {module.enabled === false ? <Chip size="small" label="Hidden" /> : null}
+                </Stack>
+              </Button>
+            ))}
+            {!semanticModules.length ? (
+              <Alert severity="info">
+                This page does not have any semantic sections yet. Use Add Section to attach theme-compatible content modules.
+              </Alert>
+            ) : null}
+          </Stack>
+        ) : (
+          <Stack spacing={1}>
+            {(() => {
+              const all = safeSections(editing);
+              const visible = all.filter((s) => s.type !== "pageStyle");
+              return visible.map((blk, i) => {
+                const realIndex = all.findIndex((s) => s.id === blk.id);
+                return (
+                  <Tooltip
+                    key={blk.id || i}
+                    title={t("manager.visualBuilder.sections.tooltip")}
+                    placement="right"
                   >
-                    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: "100%" }}>
-                      {SECTION_TYPE_THUMBNAILS[blk.type] ? (
-                        <Box
-                          component="img"
-                          src={SECTION_TYPE_THUMBNAILS[blk.type]}
-                          alt={`${blk.type} preview`}
-                          sx={{
-                            width: 64,
-                            height: 44,
-                            objectFit: "cover",
-                            borderRadius: 1,
-                            border: "1px solid",
-                            borderColor: "divider",
-                            flexShrink: 0,
-                          }}
-                        />
-                      ) : null}
-                      <Box sx={{ minWidth: 0 }}>
-                        {i + 1}. {t(`manager.visualBuilder.sections.types.${blk.type}`, { defaultValue: blk.type })}
-                      </Box>
-                    </Stack>
-                  </Button>
-                </Tooltip>
-              );
-            });
-          })()}
-        </Stack>
+                    <Button
+                      size="small"
+                      variant={realIndex === selectedBlock ? "contained" : "outlined"}
+                      onClick={() => {
+                        setSelectedBlock(realIndex);
+                        requestAnimationFrame(() => scrollCanvasToSection(realIndex));
+                      }}
+                      sx={{
+                        justifyContent: "flex-start",
+                        textAlign: "left",
+                        px: 1.25,
+                        py: 1,
+                      }}
+                      fullWidth
+                    >
+                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: "100%" }}>
+                        {SECTION_TYPE_THUMBNAILS[blk.type] ? (
+                          <Box
+                            component="img"
+                            src={SECTION_TYPE_THUMBNAILS[blk.type]}
+                            alt={`${blk.type} preview`}
+                            sx={{
+                              width: 64,
+                              height: 44,
+                              objectFit: "cover",
+                              borderRadius: 1,
+                              border: "1px solid",
+                              borderColor: "divider",
+                              flexShrink: 0,
+                            }}
+                          />
+                        ) : null}
+                        <Box sx={{ minWidth: 0 }}>
+                          {i + 1}. {t(`manager.visualBuilder.sections.types.${blk.type}`, { defaultValue: blk.type })}
+                        </Box>
+                      </Stack>
+                    </Button>
+                  </Tooltip>
+                );
+              });
+            })()}
+          </Stack>
+        )}
 
         <Divider sx={{ my: 2 }} />
 
         <CollapsibleSection
           id="builder-add-blocks"
-          title="Add new blocks"
-          description="Click a preview to see the block, then add it to the page."
+          title={isNextJsContentMode ? "Add Section" : "Add new blocks"}
+          description={
+            isNextJsContentMode
+              ? "Choose from the semantic sections supported by the current page and website style."
+              : "Click a preview to see the block, then add it to the page."
+          }
           defaultExpanded={false}
         >
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))",
-              gap: 1.5,
-              alignItems: "start",
-            }}
-          >
-            {ADD_BLOCK_ORDER.map(([type, labelKey]) =>
-              renderAddBlockButton(type, labelKey)
-            )}
-          </Box>
+          {isNextJsContentMode ? (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                gap: 1.5,
+                alignItems: "start",
+              }}
+            >
+              {semanticModuleChoices.map((choice) => (
+                <Button
+                  key={`${choice.slot}-${choice.type}`}
+                  variant="outlined"
+                  onClick={() => addSemanticModule(choice.type, choice.slot)}
+                  sx={{ justifyContent: "flex-start", minHeight: 72, textAlign: "left", borderRadius: 1 }}
+                >
+                  <Stack spacing={0.5} alignItems="flex-start">
+                    <Typography variant="subtitle2">{choice.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {choice.slot}
+                    </Typography>
+                  </Stack>
+                </Button>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))",
+                gap: 1.5,
+                alignItems: "start",
+              }}
+            >
+              {ADD_BLOCK_ORDER.map(([type, labelKey]) =>
+                renderAddBlockButton(type, labelKey)
+              )}
+            </Box>
+          )}
         </CollapsibleSection>
+        {unsupportedModuleWarning ? <Alert severity="warning" sx={{ mt: 2 }}>{unsupportedModuleWarning}</Alert> : null}
       </CollapsibleSection>
       {SeoSettingsSection}
     </Stack>
@@ -6791,6 +6924,73 @@ function scrollCanvasToSection(idx) {
 const renderableSections = safeSections(editing)
   .map((section, idx) => ({ section, idx }))
   .filter(({ section }) => section.type !== "pageStyle");
+const semanticModules = safeModules(editing);
+const editingPageKind = inferPageKind(editing || {});
+const semanticModuleChoices = isNextJsContentMode
+  ? getCompatibleModuleChoices(currentStyleKey, editingPageKind, semanticModules)
+  : [];
+const selectedModuleIndex = semanticModules.findIndex((module) => module.id === selectedModuleId);
+const selectedModule = selectedModuleIndex >= 0 ? semanticModules[selectedModuleIndex] : null;
+
+const updateSemanticModules = useCallback(
+  (updater) => {
+    setEditing((cur) => {
+      const normalized = withNormalizedModules(cur || {});
+      const currentModules = safeModules(normalized);
+      const nextModules = typeof updater === "function" ? updater(currentModules, normalized) : updater;
+      const content = normalizePageContent(normalized.content || {});
+      return withNormalizedModules({
+        ...normalized,
+        content: {
+          ...content,
+          modules: Array.isArray(nextModules) ? nextModules : currentModules,
+        },
+      });
+    });
+    setPageSettingsDirty(true);
+  },
+  [setEditing]
+);
+
+const addSemanticModule = useCallback(
+  (moduleType, slot) => {
+    if (!isNextJsContentMode) return;
+    const manifest = getPageManifest(currentStyleKey, editingPageKind);
+    const nextSlot = slot || resolveFallbackSlot(currentStyleKey, editingPageKind, moduleType, slot) || null;
+    if (!manifest || !nextSlot) {
+      setUnsupportedModuleWarning("This section is not supported for the selected website style.");
+      return;
+    }
+    const created = createSemanticModule(moduleType, editing, nextSlot);
+    updateSemanticModules((currentModules) => [...currentModules, created]);
+    setSelectedModuleId(created.id);
+    setInspectorOpen(true);
+    setInspectorTab("content");
+    setUnsupportedModuleWarning("");
+  },
+  [currentStyleKey, editing, editingPageKind, isNextJsContentMode, updateSemanticModules]
+);
+
+const deleteSemanticModule = useCallback(
+  (moduleId) => {
+    updateSemanticModules((currentModules) => currentModules.filter((module) => module.id !== moduleId));
+    if (selectedModuleId === moduleId) setSelectedModuleId("");
+  },
+  [selectedModuleId, updateSemanticModules]
+);
+
+const updateSemanticModule = useCallback(
+  (moduleId, updater) => {
+    updateSemanticModules((currentModules) =>
+      currentModules.map((module) => {
+        if (module.id !== moduleId) return module;
+        const nextModule = typeof updater === "function" ? updater(module) : updater;
+        return nextModule;
+      })
+    );
+  },
+  [updateSemanticModules]
+);
 
 const openBuilderPage = useCallback(
   async (pageLike) => {
@@ -7370,6 +7570,7 @@ function InspectorColumn() {
   };
 
   const selectedBlockObj = safeSections(editing)[selectedBlock] || {};
+  const selectedSemanticModule = selectedModule;
   const selectedProps = selectedBlockObj?.props || {};
   const themeResettableTypes = useMemo(
     () =>
@@ -7597,6 +7798,219 @@ function InspectorColumn() {
     ? Number(selectedProps.brightness)
     : 1;
 
+  const updateSelectedSemanticModuleContent = (patch) => {
+    if (!selectedSemanticModule) return;
+    updateSemanticModule(selectedSemanticModule.id, (module) => ({
+      ...module,
+      content: { ...(module.content || {}), ...patch },
+    }));
+  };
+
+  const updateSelectedSemanticModuleItems = (items) => {
+    updateSelectedSemanticModuleContent({ items });
+  };
+
+  const renderSemanticModuleEditor = () => {
+    if (!selectedSemanticModule) {
+      return (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Select a section to edit its semantic content.
+        </Alert>
+      );
+    }
+    const content = selectedSemanticModule.content || {};
+    const items = Array.isArray(content.items) ? content.items : [];
+    const updateItem = (index, patch) => {
+      const nextItems = items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item
+      );
+      updateSelectedSemanticModuleItems(nextItems);
+    };
+    const removeItem = (index) => {
+      updateSelectedSemanticModuleItems(items.filter((_, itemIndex) => itemIndex !== index));
+    };
+    const addItem = () => {
+      updateSelectedSemanticModuleItems([
+        ...items,
+        { id: nanoOrShortId(), title: "", body: "", imageUrl: "", href: "", features: [] },
+      ]);
+    };
+    return (
+      <Stack spacing={2} sx={{ mt: 1 }}>
+        <Alert severity="info">
+          Editing {SEMANTIC_MODULE_LABELS[selectedSemanticModule.type] || selectedSemanticModule.type}
+          {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
+        </Alert>
+        {["hero", "richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "cta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio"].includes(selectedSemanticModule.type) ? (
+          <TextField
+            size="small"
+            label="Heading"
+            value={content.heading || ""}
+            onChange={(event) => updateSelectedSemanticModuleContent({ heading: event.target.value })}
+            fullWidth
+          />
+        ) : null}
+        {selectedSemanticModule.type === "hero" ? (
+          <>
+            <TextField
+              size="small"
+              label="Eyebrow"
+              value={content.eyebrow || ""}
+              onChange={(event) => updateSelectedSemanticModuleContent({ eyebrow: event.target.value })}
+              fullWidth
+            />
+            <TextField
+              size="small"
+              label="Subheading"
+              value={content.subheading || ""}
+              onChange={(event) => updateSelectedSemanticModuleContent({ subheading: event.target.value })}
+              fullWidth
+              multiline
+              minRows={3}
+            />
+            <ImageField
+              label="Hero image"
+              value={content.imageUrl || ""}
+              onChange={(url) => updateSelectedSemanticModuleContent({ imageUrl: url })}
+              companyId={companyId}
+            />
+            <TextField
+              size="small"
+              label="Primary CTA label"
+              value={content.primaryCta?.label || ""}
+              onChange={(event) =>
+                updateSelectedSemanticModuleContent({
+                  primaryCta: { ...(content.primaryCta || {}), label: event.target.value },
+                })
+              }
+              fullWidth
+            />
+            <TextField
+              size="small"
+              label="Primary CTA link"
+              value={content.primaryCta?.href || ""}
+              onChange={(event) =>
+                updateSelectedSemanticModuleContent({
+                  primaryCta: { ...(content.primaryCta || {}), href: event.target.value },
+                })
+              }
+              fullWidth
+            />
+          </>
+        ) : null}
+        {selectedSemanticModule.type === "richText" || selectedSemanticModule.type === "cta" ? (
+          <TextField
+            size="small"
+            label={selectedSemanticModule.type === "cta" ? "Body" : "Body"}
+            value={content.body || content.intro || ""}
+            onChange={(event) => updateSelectedSemanticModuleContent({ body: event.target.value, intro: event.target.value })}
+            fullWidth
+            multiline
+            minRows={4}
+          />
+        ) : null}
+        {selectedSemanticModule.type === "map" ? (
+          <>
+            <TextField
+              size="small"
+              label="Address / query"
+              value={content.query || ""}
+              onChange={(event) => updateSelectedSemanticModuleContent({ query: event.target.value })}
+              fullWidth
+            />
+            <TextField
+              size="small"
+              label="Embed URL"
+              value={content.embedUrl || ""}
+              onChange={(event) => updateSelectedSemanticModuleContent({ embedUrl: event.target.value })}
+              fullWidth
+            />
+          </>
+        ) : null}
+        {selectedSemanticModule.type === "contactForm" ? (
+          <TextField
+            size="small"
+            label="Form key"
+            value={content.formKey || "contact"}
+            onChange={(event) => updateSelectedSemanticModuleContent({ formKey: event.target.value })}
+            fullWidth
+          />
+        ) : null}
+        {["services", "reviews", "faq", "gallery", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio"].includes(selectedSemanticModule.type) ? (
+          <>
+            <TextField
+              size="small"
+              label="Intro"
+              value={content.intro || ""}
+              onChange={(event) => updateSelectedSemanticModuleContent({ intro: event.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+            <Stack spacing={1}>
+              {items.map((item, index) => (
+                <Paper key={item.id || index} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                  <Stack spacing={1}>
+                    <TextField
+                      size="small"
+                      label="Title"
+                      value={item.title || item.label || item.author || ""}
+                      onChange={(event) => updateItem(index, { title: event.target.value, label: event.target.value })}
+                      fullWidth
+                    />
+                    <TextField
+                      size="small"
+                      label={selectedSemanticModule.type === "reviews" ? "Quote / body" : "Body"}
+                      value={item.body || item.quote || ""}
+                      onChange={(event) => updateItem(index, { body: event.target.value, quote: event.target.value })}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                    />
+                    {["gallery", "team", "portfolio", "beforeAfter", "services"].includes(selectedSemanticModule.type) ? (
+                      <ImageField
+                        label="Image"
+                        value={item.imageUrl || ""}
+                        onChange={(url) => updateItem(index, { imageUrl: url })}
+                        companyId={companyId}
+                      />
+                    ) : null}
+                    <Stack direction="row" justifyContent="flex-end">
+                      <Button color="error" size="small" onClick={() => removeItem(index)}>
+                        Remove item
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem}>
+                Add item
+              </Button>
+            </Stack>
+          </>
+        ) : null}
+        <Stack direction="row" justifyContent="space-between">
+          <Button
+            size="small"
+            color="warning"
+            variant="outlined"
+            onClick={() =>
+              updateSemanticModule(selectedSemanticModule.id, (module) => ({
+                ...module,
+                enabled: module.enabled === false,
+              }))
+            }
+          >
+            {selectedSemanticModule.enabled === false ? "Show section" : "Hide section"}
+          </Button>
+          <Button size="small" color="error" variant="outlined" onClick={() => deleteSemanticModule(selectedSemanticModule.id)}>
+            Remove section
+          </Button>
+        </Stack>
+      </Stack>
+    );
+  };
+
   return (
     <Stack spacing={1.5}>
     <CollapsibleSection
@@ -7700,6 +8114,8 @@ function InspectorColumn() {
           Inline inspector is active — edit controls are shown directly below the
           selected section on the canvas.
         </Alert>
+      ) : isNextJsContentMode ? (
+        renderSemanticModuleEditor()
       ) : (
         <>
           <Tabs
@@ -8621,7 +9037,7 @@ const tabs = [
   },
 ];
 
-const builderTabDefaultIndex = getBuilderTabDefaultIndex(location?.search || "");
+const builderTabDefaultIndex = builderTabIndex;
 
 const disablePublish = busy || !companyId;
 const floatingPublishText = hasDraftChanges
@@ -8668,6 +9084,7 @@ if (authError) {
   return (
     <>
       <TabShell
+        key={`builder-tab-${builderTabDefaultIndex}`}
         title={t("manager.visualBuilder.shell.title")}
         description={t("manager.visualBuilder.shell.description")}
         tabs={tabs}

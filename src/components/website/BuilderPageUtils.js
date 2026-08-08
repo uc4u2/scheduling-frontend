@@ -16,7 +16,7 @@ export const emptyPage = () => ({
   og_image_url: "",
   canonical_path: "",
   noindex: false,
-  content: { sections: [] },
+  content: { sections: [], modules: [], meta: {} },
 });
 
 export function normalizePage(p = {}) {
@@ -43,7 +43,14 @@ export function normalizePage(p = {}) {
     canonical_path: p.canonical_path || "",
     noindex: Boolean(p.noindex ?? false),
     content:
-      p.content && typeof p.content === "object" ? p.content : { sections: [] },
+      p.content && typeof p.content === "object"
+        ? {
+            ...p.content,
+            sections: Array.isArray(p.content.sections) ? p.content.sections : [],
+            modules: Array.isArray(p.content.modules) ? p.content.modules : [],
+            meta: p.content.meta && typeof p.content.meta === "object" ? p.content.meta : {},
+          }
+        : { sections: [], modules: [], meta: {} },
   };
 }
 
