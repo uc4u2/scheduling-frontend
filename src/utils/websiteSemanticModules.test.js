@@ -34,6 +34,8 @@ describe("website semantic modules", () => {
     const choices = getCompatibleModuleChoices("modern-gradient", "home", []);
     expect(choices.some((choice) => choice.type === "gallery")).toBe(true);
     expect(choices.some((choice) => choice.type === "map")).toBe(true);
+    expect(choices.some((choice) => choice.type === "featureStory")).toBe(true);
+    expect(choices.some((choice) => choice.group === "BUSINESS")).toBe(true);
   });
 
   it("resolves fallback slots when a module is moved across theme/page slot contracts", () => {
@@ -51,5 +53,6 @@ describe("website semantic modules", () => {
   it("infers canonical page kinds from legacy page slugs", () => {
     expect(inferPageKind({ slug: "services-classic" })).toBe("services");
     expect(inferPageKind({ slug: "service-areas" })).toBe("service-areas");
+    expect(inferPageKind({ slug: "service-detail-facial" })).toBe("service-detail");
   });
 });

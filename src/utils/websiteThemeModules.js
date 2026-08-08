@@ -1,51 +1,62 @@
-import { SEMANTIC_MODULE_LABELS } from "./websiteSemanticModules";
+import { SEMANTIC_MODULE_GROUPS, SEMANTIC_MODULE_LABELS } from "./websiteSemanticModules";
 
 const SHARED_PAGES = {
   home: {
     slotRules: {
       "home.hero": { allowedModuleTypes: ["hero"], maxInstances: 1, required: true },
-      "home.afterHero": { allowedModuleTypes: ["richText", "stats", "trustRail", "cta"], maxInstances: 2, fallbackSlot: "home.primaryContent" },
-      "home.primaryContent": { allowedModuleTypes: ["services", "reviews", "gallery", "faq", "stats", "trustRail", "team", "pricing"], maxInstances: 6, required: true },
-      "home.afterServices": { allowedModuleTypes: ["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio", "richText"], maxInstances: 6, fallbackSlot: "home.primaryContent" },
-      "home.beforeContact": { allowedModuleTypes: ["map", "contactForm", "cta", "richText"], maxInstances: 4, fallbackSlot: "home.afterServices" },
-      "home.finalCta": { allowedModuleTypes: ["cta", "contactForm"], maxInstances: 2, fallbackSlot: "home.beforeContact" },
+      "home.afterHero": { allowedModuleTypes: ["richText", "stats", "trustRail", "process", "featureStory", "cta"], maxInstances: 4, fallbackSlot: "home.primaryContent" },
+      "home.primaryContent": { allowedModuleTypes: ["services", "reviews", "pricing", "team", "stats", "trustRail"], maxInstances: 6, required: true },
+      "home.afterServices": { allowedModuleTypes: ["reviews", "faq", "gallery", "portfolio", "beforeAfter", "serviceAreas", "proofBand", "reviewSummary"], maxInstances: 6, fallbackSlot: "home.primaryContent" },
+      "home.beforeContact": { allowedModuleTypes: ["contactIntro", "contactDetails", "map", "hoursLocation", "locations", "contactForm", "bookingCta", "cta"], maxInstances: 6, fallbackSlot: "home.afterServices" },
+      "home.finalCta": { allowedModuleTypes: ["cta", "contactForm", "bookingCta"], maxInstances: 2, fallbackSlot: "home.beforeContact" },
     },
   },
   about: {
     slotRules: {
-      "about.story": { allowedModuleTypes: ["hero", "richText", "gallery", "stats"], maxInstances: 4 },
+      "about.story": { allowedModuleTypes: ["richText", "featureStory", "gallery", "process", "stats"], maxInstances: 4, required: true },
       "about.team": { allowedModuleTypes: ["team", "trustRail", "serviceAreas"], maxInstances: 3, fallbackSlot: "about.story" },
-      "about.reviews": { allowedModuleTypes: ["reviews", "cta"], maxInstances: 3, fallbackSlot: "about.story" },
+      "about.reviews": { allowedModuleTypes: ["reviews", "faq", "cta"], maxInstances: 3, fallbackSlot: "about.story" },
     },
   },
   services: {
     slotRules: {
-      "services.intro": { allowedModuleTypes: ["hero", "richText"], maxInstances: 2 },
-      "services.list": { allowedModuleTypes: ["services", "pricing", "trustRail"], maxInstances: 4, fallbackSlot: "services.intro" },
-      "services.afterList": { allowedModuleTypes: ["faq", "reviews", "gallery", "cta", "serviceAreas"], maxInstances: 5, fallbackSlot: "services.list" },
+      "services.intro": { allowedModuleTypes: ["richText", "featureStory", "hero"], maxInstances: 2 },
+      "services.list": { allowedModuleTypes: ["services"], maxInstances: 2, required: true },
+      "services.afterList": { allowedModuleTypes: ["pricing", "reviews", "faq", "cta", "process", "featureStory", "gallery", "trustRail"], maxInstances: 6, fallbackSlot: "services.intro" },
+    },
+  },
+  "service-detail": {
+    slotRules: {
+      "service-detail.primaryContent": { allowedModuleTypes: ["richText", "featureStory", "process"], maxInstances: 3, required: true },
+      "service-detail.afterContent": { allowedModuleTypes: ["reviews", "faq", "cta", "gallery", "beforeAfter", "team"], maxInstances: 5, fallbackSlot: "service-detail.primaryContent" },
     },
   },
   contact: {
     slotRules: {
-      "contact.intro": { allowedModuleTypes: ["hero", "richText", "cta"], maxInstances: 3 },
-      "contact.form": { allowedModuleTypes: ["contactForm"], maxInstances: 1, fallbackSlot: "contact.intro" },
-      "contact.map": { allowedModuleTypes: ["map", "serviceAreas"], maxInstances: 2, fallbackSlot: "contact.form" },
+      "contact.intro": { allowedModuleTypes: ["contactIntro", "richText", "cta"], maxInstances: 2 },
+      "contact.details": { allowedModuleTypes: ["contactDetails"], maxInstances: 2, fallbackSlot: "contact.intro" },
+      "contact.form": { allowedModuleTypes: ["contactForm"], maxInstances: 1, required: true, fallbackSlot: "contact.intro" },
+      "contact.map": { allowedModuleTypes: ["map"], maxInstances: 1, fallbackSlot: "contact.form" },
+      "contact.hours": { allowedModuleTypes: ["hoursLocation"], maxInstances: 1, fallbackSlot: "contact.details" },
+      "contact.locations": { allowedModuleTypes: ["locations", "serviceAreas"], maxInstances: 2, fallbackSlot: "contact.map" },
+      "contact.booking": { allowedModuleTypes: ["bookingCta", "faq"], maxInstances: 2, fallbackSlot: "contact.form" },
     },
   },
-  reviews: { slotRules: { "reviews.primaryContent": { allowedModuleTypes: ["reviews", "cta", "richText"], maxInstances: 4 } } },
-  faq: { slotRules: { "faq.primaryContent": { allowedModuleTypes: ["faq", "cta", "richText"], maxInstances: 4 } } },
-  "service-areas": {
-    slotRules: { "service-areas.primaryContent": { allowedModuleTypes: ["serviceAreas", "map", "cta", "richText"], maxInstances: 4 } },
+  reviews: {
+    slotRules: {
+      "reviews.primaryContent": { allowedModuleTypes: ["reviews"], maxInstances: 2, required: true },
+      "reviews.supporting": { allowedModuleTypes: ["stats", "trustRail", "cta", "reviewSummary"], maxInstances: 4, fallbackSlot: "reviews.primaryContent" },
+    },
   },
   projects: {
-    slotRules: { "projects.primaryContent": { allowedModuleTypes: ["gallery", "portfolio", "reviews", "cta", "richText"], maxInstances: 5 } },
+    slotRules: {
+      "projects.primaryContent": { allowedModuleTypes: ["portfolio"], maxInstances: 2, required: true },
+      "projects.supporting": { allowedModuleTypes: ["reviews", "gallery", "cta"], maxInstances: 4, fallbackSlot: "projects.primaryContent" },
+    },
   },
   generic: {
     slotRules: {
-      "generic.primaryContent": {
-        allowedModuleTypes: ["hero", "richText", "gallery", "faq", "reviews", "cta", "map", "contactForm", "stats", "trustRail", "team", "pricing"],
-        maxInstances: 8,
-      },
+      "generic.primaryContent": { allowedModuleTypes: ["richText", "faq", "gallery", "map", "cta", "reviews", "contactForm", "featureStory"], maxInstances: 8, required: true },
     },
   },
 };
@@ -88,10 +99,11 @@ export function getCompatibleModuleChoices(themeKey, pageKind, modules = []) {
         slot,
         type: moduleType,
         label: SEMANTIC_MODULE_LABELS[moduleType] || moduleType,
+        group: SEMANTIC_MODULE_GROUPS[moduleType] || "OTHER",
       });
     });
   });
-  return choices.sort((a, b) => a.label.localeCompare(b.label));
+  return choices.sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
 }
 
 export function resolveFallbackSlot(themeKey, pageKind, moduleType, currentSlot) {
@@ -102,4 +114,3 @@ export function resolveFallbackSlot(themeKey, pageKind, moduleType, currentSlot)
   const direct = Object.entries(slotRules).find(([, rule]) => (rule.allowedModuleTypes || []).includes(moduleType));
   return direct?.[0] || null;
 }
-

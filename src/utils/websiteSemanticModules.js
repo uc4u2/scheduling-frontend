@@ -2,22 +2,88 @@ import { nanoid } from "nanoid";
 
 export const SEMANTIC_MODULE_LABELS = {
   hero: "Hero",
-  richText: "Rich Text",
+  richText: "Text",
   services: "Services",
   reviews: "Reviews",
   faq: "FAQ",
   gallery: "Gallery",
   map: "Map",
   contactForm: "Contact Form",
-  cta: "Call To Action",
+  contactIntro: "Contact Intro",
+  contactDetails: "Contact Details",
+  hoursLocation: "Hours",
+  locations: "Locations",
+  cta: "CTA",
+  bookingCta: "Booking CTA",
   video: "Video",
   team: "Team",
-  pricing: "Pricing",
+  pricing: "Pricing / Packages",
   stats: "Stats",
-  trustRail: "Trust Rail",
+  trustRail: "Trust Logos",
   serviceAreas: "Service Areas",
   beforeAfter: "Before / After",
   portfolio: "Portfolio",
+  process: "Process",
+  featureStory: "Feature / Story",
+  proofBand: "Proof / Results",
+  reviewSummary: "Review Summary",
+  schedule: "Schedule",
+  programs: "Programs",
+  results: "Results",
+  classes: "Classes",
+  memberships: "Memberships",
+  treatments: "Treatments",
+  providers: "Providers",
+  visitProcess: "Visit Process",
+  practiceAreas: "Practice Areas",
+  attorneys: "Attorneys",
+  listings: "Listings",
+  propertyGallery: "Property Gallery",
+  inquiry: "Inquiry",
+  priceMenu: "Price Menu",
+};
+
+export const SEMANTIC_MODULE_GROUPS = {
+  hero: "ESSENTIAL",
+  richText: "ESSENTIAL",
+  cta: "ESSENTIAL",
+  bookingCta: "ESSENTIAL",
+  services: "BUSINESS",
+  team: "BUSINESS",
+  pricing: "BUSINESS",
+  stats: "BUSINESS",
+  process: "BUSINESS",
+  featureStory: "BUSINESS",
+  reviews: "TRUST",
+  trustRail: "TRUST",
+  faq: "TRUST",
+  proofBand: "TRUST",
+  reviewSummary: "TRUST",
+  gallery: "MEDIA",
+  video: "MEDIA",
+  beforeAfter: "MEDIA",
+  portfolio: "MEDIA",
+  contactForm: "LOCATION & CONTACT",
+  contactIntro: "LOCATION & CONTACT",
+  contactDetails: "LOCATION & CONTACT",
+  map: "LOCATION & CONTACT",
+  hoursLocation: "LOCATION & CONTACT",
+  serviceAreas: "LOCATION & CONTACT",
+  locations: "LOCATION & CONTACT",
+  schedule: "PROFESSION",
+  programs: "PROFESSION",
+  treatments: "PROFESSION",
+  practiceAreas: "PROFESSION",
+  listings: "PROFESSION",
+  memberships: "PROFESSION",
+  results: "PROFESSION",
+  classes: "PROFESSION",
+  providers: "PROFESSION",
+  visitProcess: "PROFESSION",
+  attorneys: "PROFESSION",
+  propertyGallery: "PROFESSION",
+  inquiry: "PROFESSION",
+  priceMenu: "PROFESSION",
 };
 
 export const OLD_BLOCK_MIGRATION_STATUS = {
@@ -45,6 +111,7 @@ export const OLD_BLOCK_MIGRATION_STATUS = {
   stats: "normalized",
   logoCloud: "normalized",
   logoCarousel: "normalized",
+  processSteps: "normalized",
   bookingCtaBar: "normalized",
   popupCta: "normalized",
   pageStyle: "classic-only",
@@ -69,9 +136,9 @@ export const OLD_BLOCK_TO_MODULE = {
   contact: "contactForm",
   contactForm: "contactForm",
   richText: "richText",
-  featureZigzag: "richText",
-  featureZigzagModern: "richText",
-  featurePillars: "richText",
+  featureZigzag: "featureStory",
+  featureZigzagModern: "featureStory",
+  featurePillars: "featureStory",
   pricingTable: "pricing",
   team: "team",
   teamGrid: "team",
@@ -79,6 +146,7 @@ export const OLD_BLOCK_TO_MODULE = {
   stats: "stats",
   logoCloud: "trustRail",
   logoCarousel: "trustRail",
+  processSteps: "process",
 };
 
 export const GLOBAL_FEATURE_TYPES = {
@@ -96,8 +164,9 @@ export function inferPageKind(page = {}) {
   const slug = String(page?.slug || "").trim().toLowerCase();
   if (page?.is_homepage || slug === "home") return "home";
   if (["services", "services-classic", "pricing"].includes(slug)) return "services";
+  if (slug.startsWith("service-") && slug !== "service-areas") return "service-detail";
   if (["about", "team", "our-team"].includes(slug)) return "about";
-  if (["gallery", "projects", "fleet"].includes(slug)) return "projects";
+  if (["gallery", "projects", "portfolio", "fleet"].includes(slug)) return "projects";
   if (slug === "reviews") return "reviews";
   if (["contact", "request-quote", "request-service"].includes(slug)) return "contact";
   if (["locations", "service-areas"].includes(slug)) return "service-areas";
@@ -122,22 +191,34 @@ export function defaultSlotForModule(pageKind, moduleType) {
   const page = String(pageKind || "generic");
   if (moduleType === "hero") return `${page}.hero`;
   if (page === "contact") {
-    if (moduleType === "map") return "contact.map";
+    if (moduleType === "contactIntro") return "contact.intro";
+    if (moduleType === "contactDetails") return "contact.details";
     if (moduleType === "contactForm") return "contact.form";
+    if (moduleType === "map") return "contact.map";
+    if (moduleType === "hoursLocation") return "contact.hours";
+    if (moduleType === "locations") return "contact.locations";
+    if (moduleType === "serviceAreas") return "contact.serviceAreas";
+    if (moduleType === "bookingCta") return "contact.booking";
     return "contact.afterIntro";
   }
   if (page === "services") {
     if (moduleType === "services") return "services.list";
-    return "services.afterList";
+    if (["pricing", "trustRail", "process", "featureStory"].includes(moduleType)) return "services.afterList";
+    return "services.intro";
+  }
+  if (page === "service-detail") {
+    if (["richText", "featureStory", "process"].includes(moduleType)) return "service-detail.primaryContent";
+    if (["reviews", "faq", "cta", "gallery", "beforeAfter", "team"].includes(moduleType)) return "service-detail.afterContent";
+    return "service-detail.primaryContent";
   }
   if (page === "about") {
     if (moduleType === "team") return "about.team";
     return "about.story";
   }
   if (page === "home") {
-    if (["services", "stats", "trustRail"].includes(moduleType)) return "home.primaryContent";
-    if (["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio"].includes(moduleType)) return "home.afterServices";
-    if (["cta", "contactForm", "map"].includes(moduleType)) return "home.beforeContact";
+    if (["services", "stats", "trustRail", "pricing"].includes(moduleType)) return "home.primaryContent";
+    if (["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio", "proofBand", "reviewSummary"].includes(moduleType)) return "home.afterServices";
+    if (["cta", "contactForm", "contactIntro", "contactDetails", "map", "hoursLocation", "locations", "bookingCta"].includes(moduleType)) return "home.beforeContact";
     return "home.afterHero";
   }
   return `${page}.primaryContent`;
@@ -162,22 +243,23 @@ function normalizeRepeaterItems(items = []) {
       return [{ id: nanoid(10), title: item.trim(), body: "" }];
     }
     if (!item || typeof item !== "object") return [];
-    return [
-      {
-        id: String(item.id || nanoid(10)),
-        title: item.title || item.name || item.label || item.question || item.author || "",
-        body: item.body || item.description || item.answer || item.quote || item.caption || "",
-        imageUrl: item.imageUrl || item.image || "",
-        quote: item.quote || "",
-        author: item.author || "",
-        role: item.role || "",
-        rating: item.rating ?? "",
-        price: item.price || "",
-        features: Array.isArray(item.features) ? item.features : [],
-        href: item.href || item.link || "",
-        order: index,
-      },
-    ];
+    return [{
+      id: String(item.id || nanoid(10)),
+      title: item.title || item.name || item.label || item.question || item.author || "",
+      body: item.body || item.description || item.answer || item.quote || item.caption || "",
+      imageUrl: item.imageUrl || item.image || "",
+      quote: item.quote || "",
+      author: item.author || "",
+      role: item.role || "",
+      rating: item.rating ?? "",
+      price: item.price || "",
+      value: item.value || "",
+      features: Array.isArray(item.features) ? item.features : [],
+      href: item.href || item.link || "",
+      location: item.location || "",
+      tagline: item.tagline || "",
+      order: index,
+    }];
   });
 }
 
@@ -189,14 +271,12 @@ function normalizeGalleryItems(items = []) {
     if (!item || typeof item !== "object") return [];
     const imageUrl = item.imageUrl || item.image || item.src || item.url || "";
     if (!imageUrl) return [];
-    return [
-      {
-        id: String(item.id || nanoid(10)),
-        imageUrl,
-        caption: item.caption || item.title || item.label || "",
-        href: item.href || item.link || "",
-      },
-    ];
+    return [{
+      id: String(item.id || nanoid(10)),
+      imageUrl,
+      caption: item.caption || item.title || item.label || "",
+      href: item.href || item.link || "",
+    }];
   });
 }
 
@@ -219,6 +299,7 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
       normalizationStatus: OLD_BLOCK_MIGRATION_STATUS[rawType] || "deprecated",
     },
   };
+
   switch (type) {
     case "hero":
       base.content = {
@@ -236,14 +317,23 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
     case "team":
     case "stats":
     case "trustRail":
+    case "serviceAreas":
+    case "process":
+    case "contactDetails":
+    case "hoursLocation":
+    case "locations":
+    case "proofBand":
+    case "reviewSummary":
       base.content = {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
-        items: normalizeRepeaterItems(props.items || props.plans || props.logos || props.members || props.team || []),
+        items: normalizeRepeaterItems(props.items || props.plans || props.logos || props.members || props.team || props.steps || props.locations || []),
         source: type === "reviews" ? "marketing" : undefined,
       };
       break;
     case "gallery":
+    case "portfolio":
+    case "beforeAfter":
       base.content = {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
@@ -266,10 +356,20 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         formKey: props.formKey || props.key || "contact",
       };
       break;
+    case "contactIntro":
+      base.content = {
+        heading: props.title || props.heading || "",
+        intro: props.subtitle || props.description || "",
+        body: props.body || props.text || "",
+      };
+      break;
+    case "featureStory":
     case "richText":
       base.content = {
         heading: props.title || props.heading || "",
+        intro: props.subtitle || props.description || "",
         body: props.body || props.description || props.text || "",
+        imageUrl: props.image || props.imageUrl || "",
         ...normalizeCta(props, false),
       };
       break;
@@ -336,6 +436,7 @@ export function createSemanticModule(moduleType, page = {}, slot) {
     content: {},
     settings: { createdInBuilder: true },
   };
+
   switch (moduleType) {
     case "hero":
       base.content = {
@@ -350,6 +451,27 @@ export function createSemanticModule(moduleType, page = {}, slot) {
     case "richText":
       base.content = { heading: "Section heading", body: "Add supporting copy here.", primaryCta: { label: "", href: "" } };
       break;
+    case "contactIntro":
+      base.content = { heading: "Get in touch", intro: "Introduce this page.", body: "" };
+      break;
+    case "contactForm":
+      base.content = { heading: "Contact us", intro: "", formKey: "contact" };
+      break;
+    case "cta":
+      base.content = { heading: "Ready to get started?", body: "", primaryCta: { label: "Get in touch", href: "/contact" } };
+      break;
+    case "bookingCta":
+      base.content = { heading: "Book now", body: "", primaryCta: { label: "Book an appointment", href: "/contact" } };
+      break;
+    case "map":
+      base.content = { heading: "Find us", intro: "", query: "", embedUrl: "", zoom: "" };
+      break;
+    case "video":
+      base.content = { heading: "Video", body: "", videoUrl: "", posterUrl: "" };
+      break;
+    case "featureStory":
+      base.content = { heading: "Feature story", intro: "", body: "", imageUrl: "", primaryCta: { label: "", href: "" } };
+      break;
     case "services":
     case "reviews":
     case "faq":
@@ -361,23 +483,18 @@ export function createSemanticModule(moduleType, page = {}, slot) {
     case "serviceAreas":
     case "beforeAfter":
     case "portfolio":
+    case "process":
+    case "contactDetails":
+    case "hoursLocation":
+    case "locations":
+    case "proofBand":
+    case "reviewSummary":
       base.content = { heading: SEMANTIC_MODULE_LABELS[moduleType], intro: "", items: [] };
       if (moduleType === "reviews") base.content.source = "marketing";
-      break;
-    case "map":
-      base.content = { heading: "Find us", intro: "", query: "", embedUrl: "", zoom: "" };
-      break;
-    case "contactForm":
-      base.content = { heading: "Contact us", intro: "", formKey: "contact" };
-      break;
-    case "cta":
-      base.content = { heading: "Ready to get started?", body: "", primaryCta: { label: "Get in touch", href: "/contact" } };
-      break;
-    case "video":
-      base.content = { heading: "Video", body: "", videoUrl: "" };
       break;
     default:
       break;
   }
+
   return base;
 }

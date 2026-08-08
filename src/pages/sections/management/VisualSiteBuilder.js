@@ -7024,30 +7024,41 @@ const autoProvisionIfEmpty = useCallback(
           defaultExpanded={false}
         >
           {isNextJsContentMode ? (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-                gap: 1.5,
-                alignItems: "start",
-              }}
-            >
-              {semanticModuleChoices.map((choice) => (
-                <Button
-                  key={`${choice.slot}-${choice.type}`}
-                  variant="outlined"
-                  onClick={() => addSemanticModule(choice.type, choice.slot)}
-                  sx={{ justifyContent: "flex-start", minHeight: 72, textAlign: "left", borderRadius: 1 }}
-                >
-                  <Stack spacing={0.5} alignItems="flex-start">
-                    <Typography variant="subtitle2">{choice.label}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {choice.slot}
-                    </Typography>
-                  </Stack>
-                </Button>
+            <Stack spacing={1.5}>
+              {Array.from(new Set(semanticModuleChoices.map((choice) => choice.group))).map((group) => (
+                <Box key={group}>
+                  <Typography variant="overline" sx={{ display: "block", mb: 1, color: "text.secondary" }}>
+                    {group}
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                      gap: 1.25,
+                      alignItems: "start",
+                    }}
+                  >
+                    {semanticModuleChoices
+                      .filter((choice) => choice.group === group)
+                      .map((choice) => (
+                        <Button
+                          key={`${choice.slot}-${choice.type}`}
+                          variant="outlined"
+                          onClick={() => addSemanticModule(choice.type, choice.slot)}
+                          sx={{ justifyContent: "flex-start", minHeight: 72, textAlign: "left", borderRadius: 0.75 }}
+                        >
+                          <Stack spacing={0.5} alignItems="flex-start">
+                            <Typography variant="subtitle2">{choice.label}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {choice.slot}
+                            </Typography>
+                          </Stack>
+                        </Button>
+                      ))}
+                  </Box>
+                </Box>
               ))}
-            </Box>
+            </Stack>
           ) : (
             <Box
               sx={{
@@ -8135,7 +8146,7 @@ function InspectorColumn() {
           Editing {SEMANTIC_MODULE_LABELS[selectedSemanticModule.type] || selectedSemanticModule.type}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
-        {["hero", "richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "cta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio"].includes(selectedSemanticModule.type) ? (
+        {["hero", "richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Heading"
@@ -8200,10 +8211,10 @@ function InspectorColumn() {
             />
           </>
         ) : null}
-        {selectedSemanticModule.type === "richText" || selectedSemanticModule.type === "cta" ? (
+        {["richText", "cta", "bookingCta", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
-            label={selectedSemanticModule.type === "cta" ? "Body" : "Body"}
+            label="Body"
             value={content.body || content.intro || ""}
             onChange={(event) => updateSelectedSemanticModuleContent({ body: event.target.value, intro: event.target.value })}
             fullWidth
@@ -8238,7 +8249,15 @@ function InspectorColumn() {
             fullWidth
           />
         ) : null}
-        {["services", "reviews", "faq", "gallery", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio"].includes(selectedSemanticModule.type) ? (
+        {selectedSemanticModule.type === "featureStory" ? (
+          <ImageField
+            label="Feature image"
+            value={content.imageUrl || ""}
+            onChange={(url) => updateSelectedSemanticModuleContent({ imageUrl: url })}
+            companyId={companyId}
+          />
+        ) : null}
+        {["services", "reviews", "faq", "gallery", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <>
             <TextField
               size="small"
