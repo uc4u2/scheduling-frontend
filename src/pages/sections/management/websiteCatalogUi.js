@@ -1,37 +1,31 @@
-function resolveLocalNextJsThemeBaseUrl() {
-  if (typeof window === "undefined") return "http://127.0.0.1:3401";
-  const hostname = String(window.location?.hostname || "").trim().toLowerCase();
-  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-  if (!isLocalHost) return "http://127.0.0.1:3401";
-  // Phase 2 local bridge runs the standalone Next public renderer on 3402.
-  return "http://127.0.0.1:3402";
+const configuredNextBaseUrl = process.env.REACT_APP_TENANT_WEB_NEXT_URL || "";
+
+export const TENANT_WEB_NEXT_BASE_URL = String(configuredNextBaseUrl || "").replace(/\/$/, "");
+export const NEXTJS_THEME_PREVIEW_CONFIG_ERROR =
+  "Next.js website preview service is not configured.";
+
+export function hasConfiguredNextJsThemeBaseUrl() {
+  return Boolean(TENANT_WEB_NEXT_BASE_URL);
 }
 
-const NEXTJS_THEME_BASE_URL =
-  (typeof process !== "undefined" && process.env?.REACT_APP_TENANT_WEB_NEXT_URL) ||
-  resolveLocalNextJsThemeBaseUrl();
-
-export const TENANT_WEB_NEXT_BASE_URL = String(NEXTJS_THEME_BASE_URL).replace(/\/$/, "");
+function absolutizeThemePreview(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(String(path))) return String(path);
+  if (String(path).startsWith("/")) {
+    return String(path);
+  }
+  return `/${String(path).replace(/^\/+/, "")}`;
+}
 
 export function buildWebsiteStyleChoices({
   catalog = null,
   status = null,
 } = {}) {
-  const currentContentPackKey =
-    status?.current_content_pack_key ||
-    null;
+  const currentContentPackKey = status?.current_content_pack_key || null;
 
   const compatibleThemes = Array.isArray(catalog?.compatible_visual_themes)
     ? catalog.compatible_visual_themes
     : [];
-
-  const modernGradient = compatibleThemes.find(
-    (theme) =>
-      theme?.key === "modern-gradient" &&
-      theme?.renderer_engine === "nextjs" &&
-      theme?.status !== "deprecated" &&
-      theme?.status !== "hidden"
-  );
 
   const styles = [
     {
@@ -45,20 +39,37 @@ export function buildWebsiteStyleChoices({
     },
   ];
 
-  if (modernGradient) {
+  compatibleThemes.forEach((theme) => {
+    const key = String(theme?.key || "").trim();
+    if (!key || key === "classic") return;
+    if (theme?.renderer_engine !== "nextjs") return;
+    if (theme?.status === "deprecated" || theme?.status === "hidden") return;
+    if (theme?.hidden) return;
+
     styles.push({
-      key: "modern-gradient",
-      version: Number(modernGradient.version || 1),
+      key,
+      version: Number(theme.version || 1),
       renderer_engine: "nextjs",
-      name: modernGradient.label || "Modern Gradient",
+      name: theme.label || key,
       description:
-        modernGradient.description ||
-        "Modern Gradient beta theme rendered through the standalone Next.js public renderer.",
+        theme.description ||
+        `${theme.label || key} rendered through the standalone Next.js public renderer.`,
       selectable: true,
-      beta: true,
+      beta: theme.status === "beta",
+      badgeLabel:
+        theme.status === "beta"
+          ? "Beta"
+          : null,
+      previewAssets:
+        typeof theme.preview_assets === "object" && theme.preview_assets
+          ? {
+              desktop: absolutizeThemePreview(theme.preview_assets.desktop || null),
+              mobile: absolutizeThemePreview(theme.preview_assets.mobile || null),
+            }
+          : {},
       currentContentPackKey,
     });
-  }
+  });
 
   return styles;
 }
@@ -68,6 +79,9 @@ export function isNextJsStyle(style) {
 }
 
 export function buildNextJsPreviewUrl({ token, pagePath = [] }) {
+  if (!hasConfiguredNextJsThemeBaseUrl()) {
+    throw new Error(NEXTJS_THEME_PREVIEW_CONFIG_ERROR);
+  }
   const cleanPath = Array.isArray(pagePath)
     ? pagePath.filter(Boolean).map((item) => String(item).replace(/^\/+|\/+$/g, ""))
     : [];

@@ -120,7 +120,9 @@ import { clampWebsiteRadius, toWebsiteRadiusPx } from "../../../utils/websiteRad
 import {
   buildNextJsPreviewUrl,
   buildWebsiteStyleChoices,
+  hasConfiguredNextJsThemeBaseUrl,
   isNextJsStyle,
+  NEXTJS_THEME_PREVIEW_CONFIG_ERROR,
   TENANT_WEB_NEXT_BASE_URL,
 } from "./websiteCatalogUi";
 import {
@@ -2487,6 +2489,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
   const nextJsPreviewIframeRef = useRef(null);
+  const stylePreviewAreaRef = useRef(null);
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
@@ -2500,6 +2503,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
     [siteSettings]
   );
   const nextJsPreviewOrigin = useMemo(() => {
+    if (!hasConfiguredNextJsThemeBaseUrl()) return "";
     try {
       return new URL(TENANT_WEB_NEXT_BASE_URL).origin;
     } catch (_err) {
@@ -2581,7 +2585,11 @@ const [brandingErr, setBrandingErr] = useState("");
 
   const hasDraftChanges = Boolean(siteSettings?.has_unpublished_changes);
   const websiteStyleChoices = useMemo(
-    () => buildWebsiteStyleChoices({ catalog: websiteCatalog, status: websiteStatus }),
+    () =>
+      buildWebsiteStyleChoices({
+        catalog: websiteCatalog,
+        status: websiteStatus,
+      }),
     [websiteCatalog, websiteStatus]
   );
   const currentRendererEngine =
@@ -4056,6 +4064,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         setNextJsPreviewUrl("");
         return;
       }
+      if (!hasConfiguredNextJsThemeBaseUrl()) {
+        setStyleErr(NEXTJS_THEME_PREVIEW_CONFIG_ERROR);
+        setNextJsPreviewToken("");
+        setNextJsPreviewUrl("");
+        return;
+      }
       try {
         const res = await wb.createPreviewSession(companyId, {
           visual_theme_key: nextStyle.key,
@@ -4072,6 +4086,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
               })
             : ""
         );
+        setStyleErr("");
       } catch (e) {
         setStyleErr(
           e?.response?.data?.error ||
@@ -5668,57 +5683,235 @@ const autoProvisionIfEmpty = useCallback(
         ) : null}
         {styleMsg ? <Alert severity="success">{styleMsg}</Alert> : null}
         {styleErr ? <Alert severity="error">{styleErr}</Alert> : null}
-        {websiteStyleChoices.map((style) => {
-          const isCurrent =
-            style.key === currentStyleKey &&
-            Number(style.version) === Number(currentStyleVersion);
-          const isPreviewing = style.key === effectivePreviewFamily;
-          return (
-            <Paper key={style.key} variant="outlined" sx={{ p: 2 }}>
-              <Stack spacing={1}>
-                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      {style.name}
-                    </Typography>
-                    {style.beta ? <Chip size="small" label="Beta" color="warning" /> : null}
-                    {isCurrent ? <Chip size="small" label="Current draft" color="success" /> : null}
-                    {isPreviewing && !isCurrent ? <Chip size="small" label="Previewing" color="info" /> : null}
+        {!hasConfiguredNextJsThemeBaseUrl() ? (
+          <Alert severity="warning" variant="outlined">
+            {NEXTJS_THEME_PREVIEW_CONFIG_ERROR}
+          </Alert>
+        ) : null}
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2,
+            gridTemplateColumns: {
+              xs: "1fr",
+              lg: "repeat(2, minmax(0, 1fr))",
+            },
+          }}
+        >
+          {websiteStyleChoices
+            .filter((style) => style.key !== "classic")
+            .map((style) => {
+              const isCurrent =
+                style.key === currentStyleKey &&
+                Number(style.version) === Number(currentStyleVersion);
+              const isPreviewing = style.key === effectivePreviewFamily;
+              return (
+                <Paper
+                  key={style.key}
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 1.5,
+                    borderColor: isCurrent ? "success.main" : "divider",
+                    bgcolor: "background.paper",
+                    boxShadow: isCurrent ? 2 : 0,
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gap: 1.25,
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          sm: "minmax(0, 1fr) 92px",
+                        },
+                        alignItems: "start",
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={style.previewAssets?.desktop || ""}
+                        alt={`${style.name} desktop preview`}
+                        sx={{
+                          width: "100%",
+                          minHeight: { xs: 180, sm: 210 },
+                          borderRadius: 1.5,
+                          border: "1px solid",
+                          borderColor: "divider",
+                          bgcolor: "background.default",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                      <Box
+                        component="img"
+                        src={style.previewAssets?.mobile || ""}
+                        alt={`${style.name} mobile preview`}
+                        sx={{
+                          width: { xs: 120, sm: "100%" },
+                          mx: { xs: "auto", sm: 0 },
+                          minHeight: { xs: 180, sm: 210 },
+                          borderRadius: 1.5,
+                          border: "1px solid",
+                          borderColor: "divider",
+                          bgcolor: "background.default",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </Box>
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                          {style.name}
+                        </Typography>
+                        {style.badgeLabel ? (
+                          <Chip
+                            size="small"
+                            label={style.badgeLabel}
+                            sx={{
+                              borderRadius: 1.5,
+                              color: "warning.dark",
+                              bgcolor: "warning.50",
+                              border: "1px solid",
+                              borderColor: "warning.200",
+                            }}
+                          />
+                        ) : null}
+                        {isCurrent ? (
+                          <Chip
+                            size="small"
+                            label="Current draft"
+                            sx={{
+                              borderRadius: 1.5,
+                              color: "success.dark",
+                              bgcolor: "success.50",
+                              border: "1px solid",
+                              borderColor: "success.200",
+                            }}
+                          />
+                        ) : null}
+                        {isPreviewing && !isCurrent ? (
+                          <Chip
+                            size="small"
+                            label="Previewing"
+                            sx={{
+                              borderRadius: 1.5,
+                              color: "info.dark",
+                              bgcolor: "info.50",
+                              border: "1px solid",
+                              borderColor: "info.200",
+                            }}
+                          />
+                        ) : null}
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary">
+                        {style.description}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      <Button
+                        size="small"
+                        variant={isPreviewing ? "contained" : "outlined"}
+                        disabled={styleSaving}
+                        onClick={async () => {
+                          setStylePreviewFamily(style.key);
+                          if (isNextJsStyle(style)) {
+                            await refreshNextJsPreview(style);
+                            setTimeout(() => {
+                              stylePreviewAreaRef.current?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "start",
+                              });
+                            }, 50);
+                          } else {
+                            setNextJsPreviewToken("");
+                            setNextJsPreviewUrl("");
+                          }
+                        }}
+                        sx={{ borderRadius: 1.5 }}
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={styleSaving || isCurrent}
+                        onClick={() => applyWebsiteStyle(style)}
+                        sx={{ borderRadius: 1.5 }}
+                      >
+                        Apply Style
+                      </Button>
+                    </Stack>
                   </Stack>
+                </Paper>
+              );
+            })}
+        </Box>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
+          {(() => {
+            const style = websiteStyleChoices.find((item) => item.key === "classic");
+            const isCurrent =
+              style?.key === currentStyleKey &&
+              Number(style?.version || 1) === Number(currentStyleVersion);
+            return (
+              <Stack spacing={1.25}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Keep Current Classic Design
+                  </Typography>
+                  {isCurrent ? (
+                    <Chip
+                      size="small"
+                      label="Current draft"
+                      sx={{
+                        borderRadius: 1.5,
+                        color: "success.dark",
+                        bgcolor: "success.50",
+                        border: "1px solid",
+                        borderColor: "success.200",
+                      }}
+                    />
+                  ) : null}
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  {style.description}
+                  Stay on the current React/MUI public website renderer and legacy template path.
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap">
                   <Button
                     size="small"
-                    variant={isPreviewing ? "contained" : "outlined"}
+                    variant="outlined"
                     disabled={styleSaving}
-                    onClick={async () => {
-                      setStylePreviewFamily(style.key);
-                      if (isNextJsStyle(style)) {
-                        await refreshNextJsPreview(style);
-                      } else {
-                        setNextJsPreviewToken("");
-                        setNextJsPreviewUrl("");
-                      }
+                    onClick={() => {
+                      setStylePreviewFamily("classic");
+                      setNextJsPreviewToken("");
+                      setNextJsPreviewUrl("");
+                      setTimeout(() => {
+                        stylePreviewAreaRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }, 50);
                     }}
+                    sx={{ borderRadius: 1.5 }}
                   >
                     Preview
                   </Button>
                   <Button
                     size="small"
                     variant="contained"
-                    disabled={styleSaving || isCurrent}
-                    onClick={() => applyWebsiteStyle(style)}
+                    disabled={styleSaving || isCurrent || !style}
+                    onClick={() => style && applyWebsiteStyle(style)}
+                    sx={{ borderRadius: 1.5 }}
                   >
                     Apply Style
                   </Button>
                 </Stack>
               </Stack>
-            </Paper>
-          );
-        })}
+            );
+          })()}
+        </Paper>
         <Alert severity="info" variant="outlined">
           Modern themes use a curated layout. You can edit content, images, pages, and supported sections while the theme preserves the page composition.
         </Alert>
@@ -8222,7 +8415,7 @@ function InspectorColumn() {
   const StyleTabContent = (
     <Stack spacing={2}>
       {StyleChooserBlock}
-      <Paper variant="outlined" sx={{ p: 2 }}>
+      <Paper ref={stylePreviewAreaRef} variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={1.5}

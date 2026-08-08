@@ -9,4 +9,41 @@ describe("website catalog UI helpers", () => {
     expect(keys).not.toContain("hvac-bold-dispatch");
     expect(keys).not.toContain("hvac-home-comfort-modern");
   });
+
+  it("shows all tenant-selectable nextjs themes for compatible companies", () => {
+    const keys = buildWebsiteStyleChoices({
+      catalog: {
+        compatible_visual_themes: [
+          { key: "classic", renderer_engine: "legacy-react", status: "production" },
+          { key: "modern-gradient", renderer_engine: "nextjs", status: "beta", label: "Modern Gradient" },
+          { key: "eldora-dark", renderer_engine: "nextjs", status: "beta", label: "Eldora Dark" },
+          { key: "motion-editorial", renderer_engine: "nextjs", status: "beta", label: "Motion Editorial" },
+          { key: "finwise", renderer_engine: "nextjs", status: "beta", label: "Finwise" },
+        ],
+      },
+    }).map((item) => item.key);
+    expect(keys).toEqual(["classic", "modern-gradient", "eldora-dark", "motion-editorial", "finwise"]);
+  });
+
+  it("hydrates preview thumbnails and beta badges for registered nextjs themes", () => {
+    const choices = buildWebsiteStyleChoices({
+      catalog: {
+        compatible_visual_themes: [
+          {
+            key: "finwise",
+            renderer_engine: "nextjs",
+            status: "beta",
+            label: "Finwise",
+            preview_assets: {
+              desktop: "/theme-previews/finwise-desktop.png",
+              mobile: "/theme-previews/finwise-mobile.png",
+            },
+          },
+        ],
+      },
+    });
+    expect(choices.map((item) => item.key)).toContain("finwise");
+    expect(choices.find((item) => item.key === "finwise")?.badgeLabel).toBe("Beta");
+    expect(choices.find((item) => item.key === "finwise")?.previewAssets?.desktop).toMatch(/finwise-desktop\.png$/);
+  });
 });

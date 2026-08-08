@@ -46,12 +46,7 @@ const inferBase = () => {
       (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname) ||
         window.location.hostname.endsWith(".local"))
     ) {
-      // The isolated Next.js theme bridge stack runs the manager frontend on
-      // port 3002 against a dedicated backend on port 5001.
-      if (String(window.location.port || "") === "3002") {
-        return "http://127.0.0.1:5001";
-      }
-      return "http://localhost:5000";
+      return "http://127.0.0.1:5001";
     }
     if (
       typeof window !== "undefined" &&
