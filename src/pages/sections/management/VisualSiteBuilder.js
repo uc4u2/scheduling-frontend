@@ -123,6 +123,12 @@ import {
   isNextJsStyle,
   TENANT_WEB_NEXT_BASE_URL,
 } from "./websiteCatalogUi";
+import {
+  getBuilderTabDefaultIndex,
+  buildWebsiteStyleApplyPayload,
+  isAcceptedPreviewMessage,
+  normalizePreviewPagePath,
+} from "./websiteStyleBridge";
 
 /** UI wrappers per design system */
 import SectionCard from "../../../components/ui/SectionCard";
@@ -2812,10 +2818,13 @@ useEffect(() => {
 
   useEffect(() => {
     const handleMessage = (event) => {
-      if (!nextJsPreviewOrigin || event.origin !== nextJsPreviewOrigin) return;
       if (
-        nextJsPreviewIframeRef.current?.contentWindow &&
-        event.source !== nextJsPreviewIframeRef.current.contentWindow
+        !isAcceptedPreviewMessage({
+          eventOrigin: event.origin,
+          expectedOrigin: nextJsPreviewOrigin,
+          eventSource: event.source,
+          expectedSource: nextJsPreviewIframeRef.current?.contentWindow,
+        })
       ) {
         return;
       }
@@ -4002,20 +4011,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       setStyleMsg("");
       setStyleErr("");
       try {
-        const payload = isNextJsStyle(style)
-          ? {
-              renderer_engine: "nextjs",
-              visual_theme_key: style.key,
-              visual_theme_version: style.version,
-            }
-          : {
-              renderer_engine: "legacy-react",
-              visual_theme_key: null,
-              visual_theme_version: null,
-              design_family: "classic",
-              design_family_version: 1,
-              motion_profile: "legacy",
-            };
+        const payload = buildWebsiteStyleApplyPayload(style);
         await wb.saveSettings(
           companyId,
           payload,
@@ -4046,12 +4042,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   );
 
   const currentPreviewPagePath = useMemo(() => {
-    const pathValue =
-      String(editing?.path || editing?.canonical_path || editing?.slug || "")
-        .trim()
-        .replace(/^\/+|\/+$/g, "");
-    if (!pathValue || pathValue === "home") return [];
-    return pathValue.split("/").filter(Boolean);
+    return normalizePreviewPagePath(editing);
   }, [editing?.canonical_path, editing?.path, editing?.slug]);
 
   const refreshNextJsPreview = useCallback(
@@ -8360,6 +8351,8 @@ const tabs = [
   },
 ];
 
+const builderTabDefaultIndex = getBuilderTabDefaultIndex(location?.search || "");
+
 const disablePublish = busy || !companyId;
 const floatingPublishText = hasDraftChanges
   ? t(
@@ -8408,7 +8401,7 @@ if (authError) {
         title={t("manager.visualBuilder.shell.title")}
         description={t("manager.visualBuilder.shell.description")}
         tabs={tabs}
-        defaultIndex={0}
+        defaultIndex={builderTabDefaultIndex}
       />
 
       {pageSettingsDirty && (

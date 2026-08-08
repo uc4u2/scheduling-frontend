@@ -1,0 +1,64 @@
+import { isNextJsStyle } from "./websiteCatalogUi";
+
+export function buildClassicRestorePayload() {
+  return {
+    renderer_engine: "legacy-react",
+    visual_theme_key: null,
+    visual_theme_version: null,
+    design_family: "classic",
+    design_family_version: 1,
+    motion_profile: "legacy",
+  };
+}
+
+export function buildWebsiteStyleApplyPayload(style) {
+  if (isNextJsStyle(style)) {
+    return {
+      renderer_engine: "nextjs",
+      visual_theme_key: style.key,
+      visual_theme_version: style.version,
+    };
+  }
+  return buildClassicRestorePayload();
+}
+
+export function normalizePreviewPagePath(editing) {
+  const pathValue = String(
+    editing?.path || editing?.canonical_path || editing?.slug || ""
+  )
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+  if (!pathValue || pathValue === "home") return [];
+  return pathValue.split("/").filter(Boolean);
+}
+
+export function isAcceptedPreviewMessage({
+  eventOrigin,
+  expectedOrigin,
+  eventSource,
+  expectedSource,
+}) {
+  return (
+    Boolean(expectedOrigin) &&
+    eventOrigin === expectedOrigin &&
+    Boolean(expectedSource) &&
+    eventSource === expectedSource
+  );
+}
+
+export function getBuilderTabDefaultIndex(search = "") {
+  try {
+    const value = new URLSearchParams(search || "").get("builder_tab");
+    return String(value || "").trim().toLowerCase() === "style" ? 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function buildWebsiteBuilderUrl(companyId, { tab } = {}) {
+  const params = new URLSearchParams();
+  if (companyId) params.set("company_id", String(companyId));
+  if (tab === "style") params.set("builder_tab", "style");
+  const query = params.toString();
+  return `/manage/website/builder${query ? `?${query}` : ""}`;
+}

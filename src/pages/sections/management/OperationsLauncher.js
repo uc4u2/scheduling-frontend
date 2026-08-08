@@ -36,6 +36,7 @@ import { ensureCompanyId } from "../../../utils/company";
 import { settingsApi, website } from "../../../utils/api";
 import { buildProgressChecklist } from "./operationsLauncherLogic";
 import { executeTemplateInstallAction } from "./operationsLauncherInstall";
+import { buildWebsiteBuilderUrl } from "./websiteStyleBridge";
 import {
   PROFESSION_TEMPLATE_MAP,
   getFriendlyTemplateName,
@@ -901,6 +902,14 @@ export default function OperationsLauncher() {
       return;
     }
     if (action.kind === "route") {
+      if (action.path === "/manage/website/builder") {
+        navigate(
+          buildWebsiteBuilderUrl(companyId, {
+            tab: websiteStatus?.content_installed ? "style" : undefined,
+          })
+        );
+        return;
+      }
       navigate(action.path);
     }
   };
@@ -934,7 +943,7 @@ export default function OperationsLauncher() {
         type: "success",
         message: "Website content installed to your draft. Choose a website style separately in the visual builder before publishing.",
       });
-      navigate(`/manage/website/builder?company_id=${encodeURIComponent(companyId)}`);
+      navigate(buildWebsiteBuilderUrl(companyId, { tab: "style" }));
     } catch (error) {
       setBanner({
         type: "error",

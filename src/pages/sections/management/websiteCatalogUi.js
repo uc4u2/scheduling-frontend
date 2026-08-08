@@ -1,6 +1,8 @@
 const NEXTJS_THEME_BASE_URL =
   (typeof process !== "undefined" && process.env?.REACT_APP_TENANT_WEB_NEXT_URL) ||
-  "http://127.0.0.1:3401";
+  (typeof window !== "undefined" && String(window.location?.port || "") === "3002"
+    ? "http://127.0.0.1:3402"
+    : "http://127.0.0.1:3401");
 
 export const TENANT_WEB_NEXT_BASE_URL = String(NEXTJS_THEME_BASE_URL).replace(/\/$/, "");
 
