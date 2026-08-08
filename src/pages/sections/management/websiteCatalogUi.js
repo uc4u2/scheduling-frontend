@@ -1,8 +1,15 @@
+function resolveLocalNextJsThemeBaseUrl() {
+  if (typeof window === "undefined") return "http://127.0.0.1:3401";
+  const hostname = String(window.location?.hostname || "").trim().toLowerCase();
+  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
+  if (!isLocalHost) return "http://127.0.0.1:3401";
+  // Phase 2 local bridge runs the standalone Next public renderer on 3402.
+  return "http://127.0.0.1:3402";
+}
+
 const NEXTJS_THEME_BASE_URL =
   (typeof process !== "undefined" && process.env?.REACT_APP_TENANT_WEB_NEXT_URL) ||
-  (typeof window !== "undefined" && String(window.location?.port || "") === "3002"
-    ? "http://127.0.0.1:3402"
-    : "http://127.0.0.1:3401");
+  resolveLocalNextJsThemeBaseUrl();
 
 export const TENANT_WEB_NEXT_BASE_URL = String(NEXTJS_THEME_BASE_URL).replace(/\/$/, "");
 
