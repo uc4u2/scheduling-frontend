@@ -5716,7 +5716,7 @@ const autoProvisionIfEmpty = useCallback(
         <Box
           sx={{
             display: "grid",
-            gap: 2,
+            gap: 1.5,
             gridTemplateColumns: {
               xs: "1fr",
               lg: "repeat(2, minmax(0, 1fr))",
@@ -5745,14 +5745,14 @@ const autoProvisionIfEmpty = useCallback(
                     boxShadow: isCurrentDraft ? 2 : 0,
                   }}
                 >
-                  <Stack spacing={1.5}>
+                  <Stack spacing={1.25}>
                     <Box
                       sx={{
                         display: "grid",
-                        gap: 1.25,
+                        gap: 1,
                         gridTemplateColumns: {
-                          xs: "1fr",
-                          sm: "minmax(0, 1fr) 92px",
+                          xs: "minmax(0, 1fr) 68px",
+                          sm: "minmax(0, 1fr) 78px",
                         },
                         alignItems: "start",
                       }}
@@ -5763,7 +5763,9 @@ const autoProvisionIfEmpty = useCallback(
                         alt={`${style.name} desktop preview`}
                         sx={{
                           width: "100%",
-                          minHeight: { xs: 180, sm: 210 },
+                          aspectRatio: "16 / 10",
+                          minHeight: { xs: 132, sm: 154 },
+                          maxHeight: { xs: 160, sm: 176 },
                           borderRadius: 1.5,
                           border: "1px solid",
                           borderColor: "divider",
@@ -5777,9 +5779,10 @@ const autoProvisionIfEmpty = useCallback(
                         src={style.previewAssets?.mobile || ""}
                         alt={`${style.name} mobile preview`}
                         sx={{
-                          width: { xs: 120, sm: "100%" },
-                          mx: { xs: "auto", sm: 0 },
-                          minHeight: { xs: 180, sm: 210 },
+                          width: "100%",
+                          aspectRatio: "10 / 21",
+                          minHeight: { xs: 132, sm: 154 },
+                          maxHeight: { xs: 160, sm: 176 },
                           borderRadius: 1.5,
                           border: "1px solid",
                           borderColor: "divider",
@@ -5851,7 +5854,7 @@ const autoProvisionIfEmpty = useCallback(
                         {style.description}
                       </Typography>
                     </Stack>
-                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ pt: 0.25 }}>
                       <Button
                         size="small"
                         variant={isPreviewing ? "contained" : "outlined"}
