@@ -2876,10 +2876,6 @@ const [brandingErr, setBrandingErr] = useState("");
       : 1;
   const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
   const isNextJsContentMode = currentRendererEngine === "nextjs" && Boolean(currentStyleKey);
-  const activeNextThemeManifest = useMemo(
-    () => (isNextJsContentMode ? getPageManifest(currentStyleKey, inferPageKind(editing || {})) : null),
-    [currentStyleKey, editing, isNextJsContentMode]
-  );
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
       style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
@@ -3080,6 +3076,28 @@ useEffect(() => {
     };
   }, [companyId, location?.key]);
 
+  const [selectedId, setSelectedId] = useState(null);
+
+  // History state for undo/redo
+  const {
+    value: editing,
+    set: setEditing,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useHistory(emptyPage());
+  const [selectedBlock, setSelectedBlock] = useState(-1);
+  const [blockPreview, setBlockPreview] = useState({
+    open: false,
+    src: "",
+    label: "",
+  });
+  const activeNextThemeManifest = useMemo(
+    () => (isNextJsContentMode ? getPageManifest(currentStyleKey, inferPageKind(editing || {})) : null),
+    [currentStyleKey, editing, isNextJsContentMode]
+  );
+
   useEffect(() => {
     const handleMessage = (event) => {
       if (
@@ -3118,19 +3136,46 @@ useEffect(() => {
         }
       }
       if (data.moduleId) {
-        setSelectedModuleId(String(data.moduleId));
+        const moduleId = String(data.moduleId);
+        setSelectedModuleId(moduleId);
         setSelectedModuleFieldPath(fieldPath);
+        const availableModules = safeModules(editing || {});
+        const selectedModule = availableModules.find((module) => module.id === moduleId);
+        const legacySectionId =
+          selectedModule?.settings?.legacySectionId || selectedModule?.id || null;
+        const canvasIndex = safeSections(editing || {}).findIndex(
+          (section) => section?.id === legacySectionId
+        );
+        if (canvasIndex >= 0) {
+          setSelectedBlock(canvasIndex);
+        }
       } else if (slot) {
         const availableModules = safeModules(editing || {});
         const slotMatch = availableModules.find((module) => module.slot === slot);
         if (slotMatch) {
           setSelectedModuleId(slotMatch.id);
           setSelectedModuleFieldPath(fieldPath);
+          const legacySectionId =
+            slotMatch?.settings?.legacySectionId || slotMatch?.id || null;
+          const canvasIndex = safeSections(editing || {}).findIndex(
+            (section) => section?.id === legacySectionId
+          );
+          if (canvasIndex >= 0) {
+            setSelectedBlock(canvasIndex);
+          }
         } else {
           const heroMatch = slot === "home.hero" ? availableModules.find((module) => module.type === "hero") : null;
           if (heroMatch) {
             setSelectedModuleId(heroMatch.id);
             setSelectedModuleFieldPath(fieldPath);
+            const legacySectionId =
+              heroMatch?.settings?.legacySectionId || heroMatch?.id || null;
+            const canvasIndex = safeSections(editing || {}).findIndex(
+              (section) => section?.id === legacySectionId
+            );
+            if (canvasIndex >= 0) {
+              setSelectedBlock(canvasIndex);
+            }
           }
         }
       }
@@ -3143,32 +3188,7 @@ useEffect(() => {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [nextJsPreviewOrigin, pages, setEditing]);
-
-
-  // ---------- NEW (Step 3: preflight/auth guard needs these) ----------
-  
-  // ---------------------------------------------------------------
-
-  const [selectedId, setSelectedId] = useState(null);
-  
-
-
-  // History state for undo/redo
-  const {
-    value: editing,
-    set: setEditing,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useHistory(emptyPage());
-  const [selectedBlock, setSelectedBlock] = useState(-1);
-  const [blockPreview, setBlockPreview] = useState({
-    open: false,
-    src: "",
-    label: "",
-  });
+  }, [editing, nextJsPreviewOrigin, pages, setEditing]);
 
   useEffect(() => {
     setPageSettingsDirty(false);
@@ -4392,6 +4412,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     },
     [companyId, currentPreviewPagePath, effectivePreviewFamily, websiteStyleChoices]
   );
+
+  useEffect(() => {
+    if (builderTabIndex !== 0) return;
+    if (!isNextJsContentMode) return;
+    refreshNextJsPreview();
+  }, [builderTabIndex, isNextJsContentMode, refreshNextJsPreview]);
 
 
 // choose a template and import it for this company (MUST send X-Company-Id)
@@ -6278,6 +6304,20 @@ const autoProvisionIfEmpty = useCallback(
     </CollapsibleSection>
   );
 
+  const renderableSections = safeSections(editing)
+    .map((section, idx) => ({ section, idx }))
+    .filter(({ section }) => section.type !== "pageStyle");
+  const semanticModules = safeModules(editing);
+  const editingPageKind = inferPageKind(editing || {});
+  const semanticModuleChoices = isNextJsContentMode
+    ? getCompatibleModuleChoices(currentStyleKey, editingPageKind, semanticModules)
+    : [];
+  const selectedModuleIndex = semanticModules.findIndex(
+    (module) => module.id === selectedModuleId
+  );
+  const selectedModule =
+    selectedModuleIndex >= 0 ? semanticModules[selectedModuleIndex] : null;
+
   const LeftColumn = (
     <Stack spacing={1.5}>
       <InspectorColumn />
@@ -6916,6 +6956,16 @@ const autoProvisionIfEmpty = useCallback(
                     size="small"
                     variant={module.id === selectedModuleId ? "contained" : "outlined"}
                     onClick={() => {
+                      const legacySectionId = module?.settings?.legacySectionId;
+                      const canvasIndex = renderableSections.findIndex(
+                        ({ section }) =>
+                          section.id === legacySectionId ||
+                          section.id === module.id
+                      );
+                      if (canvasIndex >= 0) {
+                        setSelectedBlock(canvasIndex);
+                        requestAnimationFrame(() => scrollCanvasToSection(canvasIndex));
+                      }
                       setSelectedModuleId(module.id);
                       setInspectorOpen(true);
                       setInspectorTab("content");
@@ -7175,17 +7225,6 @@ function scrollCanvasToSection(idx) {
   target.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-const renderableSections = safeSections(editing)
-  .map((section, idx) => ({ section, idx }))
-  .filter(({ section }) => section.type !== "pageStyle");
-const semanticModules = safeModules(editing);
-const editingPageKind = inferPageKind(editing || {});
-const semanticModuleChoices = isNextJsContentMode
-  ? getCompatibleModuleChoices(currentStyleKey, editingPageKind, semanticModules)
-  : [];
-const selectedModuleIndex = semanticModules.findIndex((module) => module.id === selectedModuleId);
-const selectedModule = selectedModuleIndex >= 0 ? semanticModules[selectedModuleIndex] : null;
-
 const updateSemanticModules = useCallback(
   (updater) => {
     setEditing((cur) => {
@@ -7317,200 +7356,288 @@ const CanvasColumn = (
   <SectionCard
     title={t("manager.visualBuilder.canvas.title")}
     description={
-      fullPreview
+      isNextJsContentMode
+        ? "Draft Next.js preview for the selected page and website style."
+        : fullPreview
         ? t("manager.visualBuilder.canvas.description.full")
         : t("manager.visualBuilder.canvas.description.block")
     }
     actions={
       <Stack direction="row" spacing={1} alignItems="center">
-        <FormControlLabel
-          sx={{ m: 0 }}
-          label={t("manager.visualBuilder.canvas.toggles.fullPage")}
-          control={
-            <Switch
+        {isNextJsContentMode ? (
+          <>
+            <ToggleButtonGroup
               size="small"
-              checked={fullPreview}
-              onChange={(_, v) => setFullPreview(v)}
+              exclusive
+              value={stylePreviewViewport}
+              onChange={(_, value) => value && setStylePreviewViewport(value)}
+            >
+              <ToggleButton value="desktop">Desktop</ToggleButton>
+              <ToggleButton value="tablet">Tablet</ToggleButton>
+              <ToggleButton value="mobile">Mobile</ToggleButton>
+            </ToggleButtonGroup>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RefreshIcon fontSize="small" />}
+              onClick={() => refreshNextJsPreview()}
+              disabled={!currentStyleKey}
+            >
+              Refresh preview
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<OpenInNewIcon fontSize="small" />}
+              component="a"
+              href={nextJsPreviewUrl || undefined}
+              target="_blank"
+              rel="noreferrer"
+              disabled={!nextJsPreviewUrl}
+            >
+              Open in new tab
+            </Button>
+          </>
+        ) : (
+          <>
+            <FormControlLabel
+              sx={{ m: 0 }}
+              label={t("manager.visualBuilder.canvas.toggles.fullPage")}
+              control={
+                <Switch
+                  size="small"
+                  checked={fullPreview}
+                  onChange={(_, v) => setFullPreview(v)}
+                />
+              }
             />
-          }
-        />
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={canvasHeightMode}
-          onChange={(_, v) => v && setCanvasHeightMode(v)}
-        >
-          <ToggleButton value="short" title={t("manager.visualBuilder.canvas.toggles.titles.short")}>
-            {t("manager.visualBuilder.canvas.toggles.height.short")}
-          </ToggleButton>
-          <ToggleButton value="medium" title={t("manager.visualBuilder.canvas.toggles.titles.medium")}>
-            {t("manager.visualBuilder.canvas.toggles.height.medium")}
-          </ToggleButton>
-          <ToggleButton value="tall" title={t("manager.visualBuilder.canvas.toggles.titles.tall")}>
-            {t("manager.visualBuilder.canvas.toggles.height.tall")}
-          </ToggleButton>
-          <ToggleButton value="auto" title={t("manager.visualBuilder.canvas.toggles.titles.auto")}>
-            {t("manager.visualBuilder.canvas.toggles.height.auto")}
-          </ToggleButton>
-        </ToggleButtonGroup>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={canvasHeightMode}
+              onChange={(_, v) => v && setCanvasHeightMode(v)}
+            >
+              <ToggleButton value="short" title={t("manager.visualBuilder.canvas.toggles.titles.short")}>
+                {t("manager.visualBuilder.canvas.toggles.height.short")}
+              </ToggleButton>
+              <ToggleButton value="medium" title={t("manager.visualBuilder.canvas.toggles.titles.medium")}>
+                {t("manager.visualBuilder.canvas.toggles.height.medium")}
+              </ToggleButton>
+              <ToggleButton value="tall" title={t("manager.visualBuilder.canvas.toggles.titles.tall")}>
+                {t("manager.visualBuilder.canvas.toggles.height.tall")}
+              </ToggleButton>
+              <ToggleButton value="auto" title={t("manager.visualBuilder.canvas.toggles.titles.auto")}>
+                {t("manager.visualBuilder.canvas.toggles.height.auto")}
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </>
+        )}
       </Stack>
     }
   >
     <Box id="visual-builder-canvas">
-      <NavStyleHydrator
-        website={previewSite}
-        scopeSelector="#visual-builder-canvas .site-nav"
-      />
-      <SiteFrame
-        slug={previewSite.slug}
-        activeKey={editing?.slug}
-        initialSite={previewSite}
-        disableFetch
-        wrapChildrenInContainer={fullPreview}
-        onTogglePageMenu={(pageId) => {
-          applyPageActionPatch(pageId, { show_in_menu: false });
-        }}
-        onRemoveFooterItem={handleFooterItemRemove}
-        onRemoveHeaderItem={handleHeaderItemRemove}
-        onPreviewOpenPage={(item) => {
-          if (!item?.id) return;
-          const match = pages.find((p) => p.id === item.id);
-          openBuilderPage(match || item);
-        }}
-      >
-        <Box
-          sx={{
-            width:
-              stylePreviewViewport === "desktop"
-                ? "100%"
-                : stylePreviewViewport === "tablet"
-                ? 834
-                : 390,
-            maxWidth: "100%",
-            mx: "auto",
-            transition: "width 0.2s ease",
-          }}
-        >
-        <Box
-          sx={{
-            maxHeight:
-              fullPreview || canvasMaxHeight === "none" ? "none" : canvasMaxHeight,
-            overflow:
-              fullPreview || canvasMaxHeight === "none" ? "visible" : "auto",
-            transition: "max-height 0.2s ease",
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-          ref={canvasScrollRef}
-        >
-
+      {isNextJsContentMode ? (
+        nextJsPreviewUrl ? (
           <Box
-            className="page-scope"
-            style={pageVars}
             sx={{
-            position: "relative",
-            backgroundColor: bgColor,
-            backgroundImage: bgImage
-              ? `linear-gradient(rgba(0,0,0,${1 - bgOpacity}), rgba(0,0,0,${1 - bgOpacity})), url(${bgImage})`
-              : "none",
-            backgroundRepeat: livePageStyle.backgroundRepeat || "no-repeat",
-            backgroundSize: livePageStyle.backgroundSize || "cover",
-            backgroundPosition: livePageStyle.backgroundPosition || "center",
-            backgroundAttachment: livePageStyle.backgroundAttachment || "fixed",
-            "&::before": bgImage
-              ? {
-                  content: '""',
-                  position: "absolute",
-                  inset: 0,
-                  pointerEvents: "none",
-                  backgroundColor: ovColor || "transparent",
-                  opacity: ovOpacity,
-                }
-              : undefined,
-            color: "var(--page-body-color)",
-            "& .page-scope, &": {
-              "--heading-color": "var(--page-heading-color)",
-              "--body-color": "var(--page-body-color)",
-              "--link-color": "var(--page-link-color)",
-              fontFamily: "var(--page-body-font)",
-            },
-            "& .MuiPaper-root": {
-              backgroundColor: "var(--page-card-bg)",
-              borderRadius: "var(--page-card-radius)",
-            },
-            "& .MuiButton-root": {
-              borderRadius: "var(--page-btn-radius)",
-              textTransform: "none",
-            },
-            "& .MuiButton-contained": {
-              backgroundColor: "var(--page-btn-bg)",
-              color: "var(--page-btn-color)",
-              "&:hover": { filter: "brightness(0.95)" },
-            },
-            "& .MuiButton-outlined": {
-              borderColor: "var(--page-btn-bg)",
-              color: "var(--page-btn-bg)",
-              backgroundColor: "transparent",
-              "&:hover": {
-                backgroundColor: "rgba(0,0,0,0.03)",
-                borderColor: "var(--page-btn-bg)",
-                color: "var(--page-btn-bg)",
-              },
-            },
-            "& .MuiButton-text": { color: "var(--page-btn-bg)" },
-          }}
-        >
-          {fullPreview ? (
-            <RenderSections
-              sections={safeSections(editing)}
-              page={editingPreview}
-              layout={editingPreview.layout || "boxed"}
-              sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
-              defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
-              editorPreview={false}
+              width:
+                stylePreviewViewport === "desktop"
+                  ? "100%"
+                  : stylePreviewViewport === "tablet"
+                  ? 834
+                  : 390,
+              maxWidth: "100%",
+              mx: "auto",
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1.5,
+              overflow: "hidden",
+              bgcolor: "#fff",
+              transition: "width 0.2s ease",
+            }}
+          >
+            <Box
+              component="iframe"
+              ref={nextJsPreviewIframeRef}
+              title="Next.js website content preview"
+              src={nextJsPreviewUrl}
+              referrerPolicy="no-referrer"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+              sx={{
+                width: "100%",
+                height:
+                  stylePreviewViewport === "desktop"
+                    ? 760
+                    : stylePreviewViewport === "tablet"
+                    ? 780
+                    : 860,
+                border: 0,
+                display: "block",
+              }}
             />
-          ) : (
+          </Box>
+        ) : (
+          <Alert severity="info" variant="outlined">
+            Preview the current draft website style to edit semantic sections on the live Next.js canvas.
+          </Alert>
+        )
+      ) : (
+        <>
+          <NavStyleHydrator
+            website={previewSite}
+            scopeSelector="#visual-builder-canvas .site-nav"
+          />
+          <SiteFrame
+            slug={previewSite.slug}
+            activeKey={editing?.slug}
+            initialSite={previewSite}
+            disableFetch
+            wrapChildrenInContainer={fullPreview}
+            onTogglePageMenu={(pageId) => {
+              applyPageActionPatch(pageId, { show_in_menu: false });
+            }}
+            onRemoveFooterItem={handleFooterItemRemove}
+            onRemoveHeaderItem={handleHeaderItemRemove}
+            onPreviewOpenPage={(item) => {
+              if (!item?.id) return;
+              const match = pages.find((p) => p.id === item.id);
+              openBuilderPage(match || item);
+            }}
+          >
             <Box
               sx={{
-                position: "relative",
-                px: { xs: 0, md: 1 },
-                pt: 2,
-                pb: 0,
-                backgroundColor: bgColor,
+                width:
+                  stylePreviewViewport === "desktop"
+                    ? "100%"
+                    : stylePreviewViewport === "tablet"
+                    ? 834
+                    : 390,
+                maxWidth: "100%",
+                mx: "auto",
+                transition: "width 0.2s ease",
               }}
             >
-              <Box>
-                {renderableSections.map(({ section: blk, idx }) => {
-                  const key = blk.id || `${blk.type}-${idx}`;
-                  const isSelected = selectedBlock === idx;
-                  const isFooterBlock = blk?.type === "footer";
-                  const nextIsFooter =
-                    renderableSections[idx + 1]?.section?.type === "footer";
-                  const mb = nextIsFooter ? 0 : 2;
-                  return (
-                    <React.Fragment key={key}>
-                      <Box
-                        ref={fi.anchorRef(idx)}
-                        sx={{
-                          position: "relative",
-                          borderRadius: 1,
-                          border: "1px dashed",
-                          borderColor: isSelected ? "primary.main" : "divider",
-                          backgroundColor: "transparent",
-                          overflow: "hidden",
-                          transition: "border-color 0.2s, box-shadow 0.2s",
-                          boxShadow: isSelected
-                            ? "0 0 0 2px rgba(25,118,210,0.18)"
-                            : "none",
-                          mt: isFooterBlock ? 0 : undefined,
-                          mb,
-                          display: "flex",
-                          flexDirection: "column",
-                        }}
-                        data-canvas-section-idx={idx}
-                        onClick={() => setSelectedBlock(idx)}
-                      >
+              <Box
+                sx={{
+                  maxHeight:
+                    fullPreview || canvasMaxHeight === "none" ? "none" : canvasMaxHeight,
+                  overflow:
+                    fullPreview || canvasMaxHeight === "none" ? "visible" : "auto",
+                  transition: "max-height 0.2s ease",
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+                ref={canvasScrollRef}
+              >
+                <Box
+                  className="page-scope"
+                  style={pageVars}
+                  sx={{
+                    position: "relative",
+                    backgroundColor: bgColor,
+                    backgroundImage: bgImage
+                      ? `linear-gradient(rgba(0,0,0,${1 - bgOpacity}), rgba(0,0,0,${1 - bgOpacity})), url(${bgImage})`
+                      : "none",
+                    backgroundRepeat: livePageStyle.backgroundRepeat || "no-repeat",
+                    backgroundSize: livePageStyle.backgroundSize || "cover",
+                    backgroundPosition: livePageStyle.backgroundPosition || "center",
+                    backgroundAttachment: livePageStyle.backgroundAttachment || "fixed",
+                    "&::before": bgImage
+                      ? {
+                          content: '""',
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          backgroundColor: ovColor || "transparent",
+                          opacity: ovOpacity,
+                        }
+                      : undefined,
+                    color: "var(--page-body-color)",
+                    "& .page-scope, &": {
+                      "--heading-color": "var(--page-heading-color)",
+                      "--body-color": "var(--page-body-color)",
+                      "--link-color": "var(--page-link-color)",
+                      fontFamily: "var(--page-body-font)",
+                    },
+                    "& .MuiPaper-root": {
+                      backgroundColor: "var(--page-card-bg)",
+                      borderRadius: "var(--page-card-radius)",
+                    },
+                    "& .MuiButton-root": {
+                      borderRadius: "var(--page-btn-radius)",
+                      textTransform: "none",
+                    },
+                    "& .MuiButton-contained": {
+                      backgroundColor: "var(--page-btn-bg)",
+                      color: "var(--page-btn-color)",
+                      "&:hover": { filter: "brightness(0.95)" },
+                    },
+                    "& .MuiButton-outlined": {
+                      borderColor: "var(--page-btn-bg)",
+                      color: "var(--page-btn-bg)",
+                      backgroundColor: "transparent",
+                      "&:hover": {
+                        backgroundColor: "rgba(0,0,0,0.03)",
+                        borderColor: "var(--page-btn-bg)",
+                        color: "var(--page-btn-bg)",
+                      },
+                    },
+                    "& .MuiButton-text": { color: "var(--page-btn-bg)" },
+                  }}
+                >
+                  {fullPreview ? (
+                    <RenderSections
+                      sections={safeSections(editing)}
+                      page={editingPreview}
+                      layout={editingPreview.layout || "boxed"}
+                      sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
+                      defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
+                      editorPreview={false}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        position: "relative",
+                        px: { xs: 0, md: 1 },
+                        pt: 2,
+                        pb: 0,
+                        backgroundColor: bgColor,
+                      }}
+                    >
+                      <Box>
+                        {renderableSections.map(({ section: blk, idx }) => {
+                          const key = blk.id || `${blk.type}-${idx}`;
+                          const isSelected = selectedBlock === idx;
+                          const isFooterBlock = blk?.type === "footer";
+                          const nextIsFooter =
+                            renderableSections[idx + 1]?.section?.type === "footer";
+                          const mb = nextIsFooter ? 0 : 2;
+                          return (
+                            <React.Fragment key={key}>
+                              <Box
+                                ref={fi.anchorRef(idx)}
+                                sx={{
+                                  position: "relative",
+                                  borderRadius: 1,
+                                  border: "1px dashed",
+                                  borderColor: isSelected ? "primary.main" : "divider",
+                                  backgroundColor: "transparent",
+                                  overflow: "hidden",
+                                  transition: "border-color 0.2s, box-shadow 0.2s",
+                                  boxShadow: isSelected
+                                    ? "0 0 0 2px rgba(25,118,210,0.18)"
+                                    : "none",
+                                  mt: isFooterBlock ? 0 : undefined,
+                                  mb,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                }}
+                                data-canvas-section-idx={idx}
+                                onClick={() => {
+                                  setSelectedBlock(idx);
+                                }}
+                              >
                         <Box
                           title={t(
                             "manager.visualBuilder.canvas.drag.spaceAbove",
@@ -7687,6 +7814,8 @@ const CanvasColumn = (
         </Box>
         </Box>
       </SiteFrame>
+        </>
+      )}
     </Box>
   </SectionCard>
 );

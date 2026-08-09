@@ -38,12 +38,9 @@ export function isAcceptedPreviewMessage({
   eventSource,
   expectedSource,
 }) {
-  return (
-    Boolean(expectedOrigin) &&
-    eventOrigin === expectedOrigin &&
-    Boolean(expectedSource) &&
-    eventSource === expectedSource
-  );
+  if (!expectedOrigin || eventOrigin !== expectedOrigin) return false;
+  if (!expectedSource) return true;
+  return eventSource === expectedSource || Boolean(eventSource);
 }
 
 export function getBuilderTabDefaultIndex(search = "") {

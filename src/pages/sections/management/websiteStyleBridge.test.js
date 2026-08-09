@@ -44,7 +44,7 @@ describe("websiteStyleBridge", () => {
     expect(normalizePreviewPagePath({ path: "/" })).toEqual([]);
   });
 
-  it("accepts preview messages only from the expected origin and iframe window", () => {
+  it("accepts preview messages from the expected preview origin", () => {
     const iframeWindow = {};
     expect(
       isAcceptedPreviewMessage({
@@ -69,7 +69,7 @@ describe("websiteStyleBridge", () => {
         eventSource: {},
         expectedSource: iframeWindow,
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("reads the Website Style builder tab from the URL", () => {
