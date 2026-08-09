@@ -121,7 +121,6 @@ import {
   WEBSITE_THEME_MODULE_MANIFESTS,
 } from "../../../utils/websiteThemeModules";
 import {
-  buildNextJsPageStyleFromDraft,
   getSupportedThemeOverrideFields,
   NEXTJS_THEME_OVERRIDE_FIELDS,
   sanitizeThemeOverrideDraft,
@@ -1321,6 +1320,7 @@ function PageStyleCard({
     onChange: onColorChange,
     helperText,
     disabled,
+    testId,
   }) => {
     const normalized = normalizeHexColor(value) || "#000000";
     return (
@@ -1332,6 +1332,9 @@ function PageStyleCard({
         helperText={helperText}
         disabled={disabled}
         fullWidth
+        inputProps={{
+          "data-testid": testId,
+        }}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -1390,7 +1393,7 @@ function PageStyleCard({
       .map(([, meta]) => meta.label);
 
     return (
-      <Stack id="page-style-card" spacing={1.5}>
+      <Stack id="page-style-card" data-testid="page-style-panel" spacing={1.5}>
         <Alert severity="info" variant="outlined">
           This website style keeps its composition fixed. Page Style only exposes
           safe theme overrides supported by {nextJsThemeKey || "the active theme"}.
@@ -1403,6 +1406,7 @@ function PageStyleCard({
               value={sanitizedOverrides.heroMediaUrl || ""}
               onChange={(url) => updateOverride("heroMediaUrl", url)}
               companyId={companyId}
+              data-testid="page-style-hero-media"
             />
           ) : null}
 
@@ -1412,6 +1416,7 @@ function PageStyleCard({
                   label: NEXTJS_THEME_OVERRIDE_FIELDS.brandPrimaryColor.label,
                   value: sanitizedOverrides.brandPrimaryColor || "#6366f1",
                   onChange: (val) => updateOverride("brandPrimaryColor", val),
+                  testId: "page-style-brand-primary",
                 })
               : null}
             {supportedFieldSet.has("accentColor")
@@ -1419,6 +1424,7 @@ function PageStyleCard({
                   label: NEXTJS_THEME_OVERRIDE_FIELDS.accentColor.label,
                   value: sanitizedOverrides.accentColor || "#f59e0b",
                   onChange: (val) => updateOverride("accentColor", val),
+                  testId: "page-style-accent-color",
                 })
               : null}
           </Stack>
@@ -1428,6 +1434,7 @@ function PageStyleCard({
                 label: NEXTJS_THEME_OVERRIDE_FIELDS.pageBackground.label,
                 value: sanitizedOverrides.pageBackground || "#ffffff",
                 onChange: (val) => updateOverride("pageBackground", val),
+                testId: "page-style-page-background",
               })
             : null}
 
@@ -1436,6 +1443,7 @@ function PageStyleCard({
               <FormControl size="small" fullWidth>
                 <InputLabel>{NEXTJS_THEME_OVERRIDE_FIELDS.surfaceTone.label}</InputLabel>
                 <Select
+                  data-testid="page-style-surface-tone"
                   label={NEXTJS_THEME_OVERRIDE_FIELDS.surfaceTone.label}
                   value={sanitizedOverrides.surfaceTone || "auto"}
                   onChange={(event) => updateOverride("surfaceTone", event.target.value)}
@@ -1452,6 +1460,7 @@ function PageStyleCard({
               <FormControl size="small" fullWidth>
                 <InputLabel>{NEXTJS_THEME_OVERRIDE_FIELDS.lightDarkPreference.label}</InputLabel>
                 <Select
+                  data-testid="page-style-light-dark"
                   label={NEXTJS_THEME_OVERRIDE_FIELDS.lightDarkPreference.label}
                   value={sanitizedOverrides.lightDarkPreference || "auto"}
                   onChange={(event) =>
@@ -1472,6 +1481,7 @@ function PageStyleCard({
             <FormControl size="small" fullWidth>
               <InputLabel>{NEXTJS_THEME_OVERRIDE_FIELDS.buttonTreatment.label}</InputLabel>
               <Select
+                data-testid="page-style-button-treatment"
                 label={NEXTJS_THEME_OVERRIDE_FIELDS.buttonTreatment.label}
                 value={sanitizedOverrides.buttonTreatment || "solid"}
                 onChange={(event) => updateOverride("buttonTreatment", event.target.value)}
@@ -1489,6 +1499,7 @@ function PageStyleCard({
             <FormControlLabel
               control={
                 <Switch
+                  inputProps={{ "data-testid": "page-style-gradient-accent" }}
                   checked={Boolean(sanitizedOverrides.gradientAccent)}
                   onChange={(_, checked) => updateOverride("gradientAccent", checked)}
                 />
@@ -1503,6 +1514,7 @@ function PageStyleCard({
                 {NEXTJS_THEME_OVERRIDE_FIELDS.sectionSpacing.label}
               </Typography>
               <Slider
+                data-testid="page-style-section-spacing"
                 size="small"
                 min={0}
                 max={5}
@@ -1528,6 +1540,7 @@ function PageStyleCard({
                   updateOverride("buttonRadius", Number(event.target.value || 0))
                 }
                 inputProps={{ min: 0, max: 4, step: 1 }}
+                data-testid="page-style-button-radius"
                 fullWidth
               />
             ) : null}
@@ -1544,6 +1557,7 @@ function PageStyleCard({
                   )
                 }
                 inputProps={{ min: 0.9, max: 1.2, step: 0.05 }}
+                data-testid="page-style-typography-scale"
                 fullWidth
               />
             ) : null}
@@ -2761,6 +2775,10 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   }, [rawNavOverrides]);
   const [navStyleState, setNavStyleState] = useState(null);
   const [themeOverridesDraft, setThemeOverridesDraft] = useState(defaultThemeOverrides);
+  const themeOverridesPersistedKeyRef = useRef(
+    JSON.stringify(defaultThemeOverrides || {})
+  );
+  const nextJsThemeOverrideSaveTimerRef = useRef(null);
   const [pages, setPages] = useState([]);
   const [checkpoints, setCheckpoints] = useState([]);
   const [checkpointName, setCheckpointName] = useState("");
@@ -2820,6 +2838,9 @@ const [brandingErr, setBrandingErr] = useState("");
       setHeaderDraft(headerFromServer);
       setFooterDraft(footerFromServer);
       setThemeOverridesDraft(themeOverrides || defaultThemeOverrides);
+      themeOverridesPersistedKeyRef.current = JSON.stringify(
+        themeOverrides || defaultThemeOverrides || {}
+      );
     },
     [defaultThemeOverrides]
   );
@@ -3789,7 +3810,13 @@ const saveNavSettings = useCallback(
       setNavSaving(false);
     }
   },
-  [companyId, setSiteSettings, navStyleState, navOverridesWithDefault, t]
+  [
+    companyId,
+    navOverridesWithDefault,
+    navStyleState,
+    setSiteSettings,
+    t,
+  ]
 );
 
 async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
@@ -3902,6 +3929,12 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
       });
       applyBrandingFromServer(rootWithNav);
       setSiteSettings(rootWithNav);
+      themeOverridesPersistedKeyRef.current = JSON.stringify(
+        rootWithNav?.theme_overrides ||
+          rootWithNav?.settings?.theme_overrides ||
+          themePayload ||
+          {}
+      );
       const draftSavedMsg = t(
         "manager.visualBuilder.messages.brandingDraftSaved",
         "Branding draft saved. Publish to go live."
@@ -4418,6 +4451,83 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     if (!isNextJsContentMode) return;
     refreshNextJsPreview();
   }, [builderTabIndex, isNextJsContentMode, refreshNextJsPreview]);
+
+  const saveNavSettingsWithPreviewRefresh = useCallback(
+    async (draft) => {
+      await saveNavSettings(draft);
+      if (isNextJsContentMode) {
+        await refreshNextJsPreview();
+      }
+    },
+    [isNextJsContentMode, refreshNextJsPreview, saveNavSettings]
+  );
+
+  const saveBrandingSettingsWithPreviewRefresh = useCallback(
+    async (payload) => {
+      await saveBrandingSettings(payload);
+      if (isNextJsContentMode) {
+        await refreshNextJsPreview();
+      }
+    },
+    [isNextJsContentMode, refreshNextJsPreview, saveBrandingSettings]
+  );
+
+  const saveNextJsThemeOverrides = useCallback(async () => {
+    if (!isNextJsContentMode || !currentStyleKey) return;
+    const nextDraft = sanitizeThemeOverrideDraft(
+      currentStyleKey,
+      themeOverridesDraft || {}
+    );
+    await saveBrandingSettings({ theme_overrides: nextDraft });
+    themeOverridesPersistedKeyRef.current = JSON.stringify(nextDraft);
+    await refreshNextJsPreview();
+  }, [
+    currentStyleKey,
+    isNextJsContentMode,
+    refreshNextJsPreview,
+    saveBrandingSettings,
+    themeOverridesDraft,
+  ]);
+
+  useEffect(() => {
+    if (!isNextJsContentMode || !companyId || !currentStyleKey) return undefined;
+    const nextDraft = sanitizeThemeOverrideDraft(
+      currentStyleKey,
+      themeOverridesDraft || {}
+    );
+    const serialized = JSON.stringify(nextDraft);
+    if (serialized === themeOverridesPersistedKeyRef.current) {
+      return undefined;
+    }
+    if (nextJsThemeOverrideSaveTimerRef.current) {
+      clearTimeout(nextJsThemeOverrideSaveTimerRef.current);
+    }
+    nextJsThemeOverrideSaveTimerRef.current = setTimeout(() => {
+      saveNextJsThemeOverrides().catch((error) => {
+        console.error("Failed to autosave Next.js page style overrides", error);
+      });
+    }, 700);
+    return () => {
+      if (nextJsThemeOverrideSaveTimerRef.current) {
+        clearTimeout(nextJsThemeOverrideSaveTimerRef.current);
+      }
+    };
+  }, [
+    companyId,
+    currentStyleKey,
+    isNextJsContentMode,
+    saveNextJsThemeOverrides,
+    themeOverridesDraft,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (nextJsThemeOverrideSaveTimerRef.current) {
+        clearTimeout(nextJsThemeOverrideSaveTimerRef.current);
+      }
+    },
+    []
+  );
 
 
 // choose a template and import it for this company (MUST send X-Company-Id)
@@ -6464,6 +6574,13 @@ const autoProvisionIfEmpty = useCallback(
         expanded={pageSettingsOpen}
         onChange={(next) => setPageSettingsOpen(next)}
       >
+        {isNextJsContentMode ? (
+          <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+            Modern themes keep the page composition fixed. Page metadata still
+            applies, but layout-specific controls are handled by the selected
+            website style.
+          </Alert>
+        ) : null}
         <Stack spacing={1}>
           <TextField
             label={t("manager.visualBuilder.pages.settings.fields.slug")}
@@ -6492,6 +6609,7 @@ const autoProvisionIfEmpty = useCallback(
               label="Services heading"
               size="small"
               value={editing?.content?.meta?.servicesHeading || ""}
+              disabled={isNextJsContentMode}
               onChange={(e) => {
                 const value = e.target.value;
                 setEditing((cur) => {
@@ -6503,7 +6621,11 @@ const autoProvisionIfEmpty = useCallback(
                   });
                 });
               }}
-              helperText="Shown as the title on the Services page."
+              helperText={
+                isNextJsContentMode
+                  ? "Not available for this website style."
+                  : "Shown as the title on the Services page."
+              }
               fullWidth
             />
           )}
@@ -6513,6 +6635,7 @@ const autoProvisionIfEmpty = useCallback(
                 label="Products heading"
                 size="small"
                 value={editing?.content?.meta?.productsHeading || ""}
+                disabled={isNextJsContentMode}
                 onChange={(e) => {
                   const value = e.target.value;
                   setEditing((cur) => {
@@ -6524,13 +6647,18 @@ const autoProvisionIfEmpty = useCallback(
                     });
                   });
                 }}
-                helperText="Shown as the title on the Products page."
+                helperText={
+                  isNextJsContentMode
+                    ? "Not available for this website style."
+                    : "Shown as the title on the Products page."
+                }
                 fullWidth
               />
               <TextField
                 label="Products subheading"
                 size="small"
                 value={editing?.content?.meta?.productsSubheading || ""}
+                disabled={isNextJsContentMode}
                 onChange={(e) => {
                   const value = e.target.value;
                   setEditing((cur) => {
@@ -6542,7 +6670,11 @@ const autoProvisionIfEmpty = useCallback(
                     });
                   });
                 }}
-                helperText="Shown below the Products heading."
+                helperText={
+                  isNextJsContentMode
+                    ? "Not available for this website style."
+                    : "Shown below the Products heading."
+                }
                 fullWidth
                 multiline
                 minRows={2}
@@ -6569,11 +6701,17 @@ const autoProvisionIfEmpty = useCallback(
               size="small"
               fullWidth
               value={editing.layout || "boxed"}
+              disabled={isNextJsContentMode}
               onChange={(e) => updatePageMeta({ layout: e.target.value })}
             >
               <MenuItem value="boxed">{t("manager.visualBuilder.pages.settings.layout.boxed")}</MenuItem>
               <MenuItem value="full">{t("manager.visualBuilder.pages.settings.layout.full")}</MenuItem>
             </Select>
+            {isNextJsContentMode ? (
+              <FormHelperText>
+                This setting is controlled by the selected website style.
+              </FormHelperText>
+            ) : null}
           </Box>
 
           {/* Global section spacing (space between blocks) */}
@@ -6587,6 +6725,7 @@ const autoProvisionIfEmpty = useCallback(
                 min={0}
                 max={12}
                 step={1}
+                disabled={isNextJsContentMode}
                 value={Number(editing?.content?.meta?.sectionSpacing ?? 6)}
                 valueLabelDisplay="auto"
                 onChange={(_, v) =>
@@ -6604,6 +6743,7 @@ const autoProvisionIfEmpty = useCallback(
               <TextField
                 size="small"
                 type="number"
+                disabled={isNextJsContentMode}
                 inputProps={{ min: 0, max: 12 }}
                 value={Number(editing?.content?.meta?.sectionSpacing ?? 6)}
                 onChange={(e) => {
@@ -6621,7 +6761,9 @@ const autoProvisionIfEmpty = useCallback(
               />
             </Stack>
             <Typography variant="caption" color="text.secondary">
-              {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
+              {isNextJsContentMode
+                ? "This setting is controlled by the selected website style."
+                : t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
             </Typography>
           </Box>
 
@@ -6852,7 +6994,7 @@ const autoProvisionIfEmpty = useCallback(
             }
           }
           onChange={handleNavDraftChange}
-          onSave={saveNavSettings}
+          onSave={saveNavSettingsWithPreviewRefresh}
           saving={navSaving}
           message={navMsg}
           error={navErr}
@@ -6902,7 +7044,7 @@ const autoProvisionIfEmpty = useCallback(
           onChangeHeader={handleHeaderDraftChange}
           onChangeFooter={handleFooterDraftChange}
           onChangeThemeOverrides={handleThemeOverridesDraftChange}
-          onSave={saveBrandingSettings}
+          onSave={saveBrandingSettingsWithPreviewRefresh}
           saving={brandingSaving}
           message={brandingMsg}
           error={brandingErr}
@@ -8508,34 +8650,8 @@ function InspectorColumn() {
         }
         isNextJsMode={isNextJsContentMode}
         nextJsThemeKey={currentStyleKey}
-        nextJsThemeOverrides={
-          (
-            readPageStyleProps(editing) ||
-            editing?.content?.meta?.pageStyle ||
-            editing?.content?.style ||
-            {}
-          )?.themeOverrides || {}
-        }
-        onChangeNextJsThemeOverrides={(draft) => {
-          const nextDraft = buildNextJsPageStyleFromDraft(currentStyleKey, draft);
-          setEditing((cur) => {
-            const content = { ...(cur.content || {}) };
-            const currentPageStyle =
-              readPageStyleProps(cur) ||
-              content?.meta?.pageStyle ||
-              content?.style ||
-              {};
-            const next = {
-              ...currentPageStyle,
-              ...nextDraft,
-            };
-            content.meta = { ...(content.meta || {}), pageStyle: next };
-            content.style = { ...(content.style || {}), ...next };
-            let updated = { ...cur, content };
-            updated = writePageStyleProps(updated, next);
-            return withLiftedLayout(updated);
-          });
-        }}
+        nextJsThemeOverrides={themeOverridesDraft || {}}
+        onChangeNextJsThemeOverrides={handleThemeOverridesDraftChange}
         onChange={(next) => {
           setEditing((cur) => {
             const content = { ...(cur.content || {}) };
@@ -8565,7 +8681,9 @@ function InspectorColumn() {
         }}
         applyToAll={applyPageStyleToAll}
         onToggleApplyToAll={setApplyPageStyleToAll}
-        onApplyNow={applyStyleToAllPagesNow}
+        onApplyNow={
+          isNextJsContentMode ? saveNextJsThemeOverrides : applyStyleToAllPagesNow
+        }
         onApplyThemePreset={applyThemePreset}
         onApplyButtonStylePreset={applyButtonStylePreset}
         onApplyIndustryStarterPack={applyIndustryStarterPack}
