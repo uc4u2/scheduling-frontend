@@ -4,7 +4,9 @@ import {
   buildWebsiteStyleApplyPayload,
   getBuilderTabDefaultIndex,
   isAcceptedPreviewMessage,
+  isNextJsBuilderMode,
   normalizePreviewPagePath,
+  resolveBuilderRendererMode,
 } from "./websiteStyleBridge";
 
 describe("websiteStyleBridge", () => {
@@ -76,6 +78,15 @@ describe("websiteStyleBridge", () => {
     expect(getBuilderTabDefaultIndex("?builder_tab=style")).toBe(1);
     expect(getBuilderTabDefaultIndex("?builder_tab=content")).toBe(0);
     expect(getBuilderTabDefaultIndex("")).toBe(0);
+  });
+
+  it("centralizes Builder renderer mode resolution", () => {
+    expect(resolveBuilderRendererMode({ renderer_engine: "nextjs" })).toBe("nextjs");
+    expect(resolveBuilderRendererMode({ settings: { renderer_engine: "nextjs" } })).toBe("nextjs");
+    expect(resolveBuilderRendererMode({ current_renderer_engine: "nextjs" })).toBe("nextjs");
+    expect(resolveBuilderRendererMode({ renderer_engine: "legacy-react" })).toBe("legacy-react");
+    expect(isNextJsBuilderMode("nextjs")).toBe(true);
+    expect(isNextJsBuilderMode("legacy-react")).toBe(false);
   });
 
   it("builds a builder URL with company and style-tab context", () => {

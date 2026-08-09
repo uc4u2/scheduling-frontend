@@ -22,6 +22,23 @@ export function buildWebsiteStyleApplyPayload(style) {
   return buildClassicRestorePayload();
 }
 
+export function resolveBuilderRendererMode(input = null) {
+  const renderer =
+    (typeof input === "string" ? input : null) ||
+    input?.rendererEngine ||
+    input?.renderer_engine ||
+    input?.current_renderer_engine ||
+    input?.settings?.renderer_engine ||
+    "";
+  return String(renderer).trim().toLowerCase() === "nextjs"
+    ? "nextjs"
+    : "legacy-react";
+}
+
+export function isNextJsBuilderMode(mode) {
+  return resolveBuilderRendererMode(mode) === "nextjs";
+}
+
 export function normalizePreviewPagePath(editing) {
   const pathValue = String(
     editing?.path || editing?.canonical_path || editing?.slug || ""

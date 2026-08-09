@@ -152,8 +152,10 @@ import {
 import {
   getBuilderTabDefaultIndex,
   buildWebsiteStyleApplyPayload,
+  isNextJsBuilderMode,
   isAcceptedPreviewMessage,
   normalizePreviewPagePath,
+  resolveBuilderRendererMode,
 } from "./websiteStyleBridge";
 
 /** UI wrappers per design system */
@@ -2831,11 +2833,12 @@ const [brandingErr, setBrandingErr] = useState("");
       }),
     [websiteCatalog, websiteStatus]
   );
-  const currentRendererEngine =
-    siteSettings?.renderer_engine ||
-    siteSettings?.settings?.renderer_engine ||
-    websiteStatus?.current_renderer_engine ||
-    "legacy-react";
+  const builderRendererMode = resolveBuilderRendererMode({
+    renderer_engine: siteSettings?.renderer_engine,
+    settings: siteSettings?.settings,
+    current_renderer_engine: websiteStatus?.current_renderer_engine,
+  });
+  const currentRendererEngine = builderRendererMode;
   const currentVisualThemeKey =
     siteSettings?.visual_theme_key ||
     siteSettings?.settings?.visual_theme_key ||
@@ -2855,33 +2858,30 @@ const [brandingErr, setBrandingErr] = useState("");
     siteSettings?.settings?.design_family_version ||
     1;
   const currentStyleKey =
-    currentRendererEngine === "nextjs"
-      ? currentVisualThemeKey || ""
-      : "classic";
+    isNextJsBuilderMode(builderRendererMode) ? currentVisualThemeKey || "" : "classic";
   const currentStyleVersion =
-    currentRendererEngine === "nextjs"
-      ? Number(currentVisualThemeVersion || 1)
-      : 1;
+    isNextJsBuilderMode(builderRendererMode) ? Number(currentVisualThemeVersion || 1) : 1;
   const publishedRendererSelection = useMemo(
     () => getPublishedRendererSelection(websiteStatus || {}),
     [websiteStatus]
   );
   const liveStyleKey =
-    publishedRendererSelection.rendererEngine === "nextjs"
+    isNextJsBuilderMode(publishedRendererSelection.rendererEngine)
       ? publishedRendererSelection.visualThemeKey || ""
       : "classic";
   const liveStyleVersion =
-    publishedRendererSelection.rendererEngine === "nextjs"
+    isNextJsBuilderMode(publishedRendererSelection.rendererEngine)
       ? Number(publishedRendererSelection.visualThemeVersion || 1)
       : 1;
   const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
-  const isNextJsContentMode = currentRendererEngine === "nextjs" && Boolean(currentStyleKey);
+  const isNextJsContentMode =
+    isNextJsBuilderMode(builderRendererMode) && Boolean(currentStyleKey);
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
       style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
   );
   const deprecatedStoredDesignFamily =
-    currentRendererEngine !== "nextjs" &&
+    !isNextJsBuilderMode(builderRendererMode) &&
     currentDesignFamily !== "classic" &&
     !activeStyleChoice
       ? currentDesignFamily
