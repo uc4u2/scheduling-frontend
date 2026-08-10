@@ -73,7 +73,7 @@ describe("tenantTransactionalBranding", () => {
         brandingContract: contract,
         fallbackPagePath: "products",
       })
-    ).toBe("https://next.example.com/products");
+    ).toBe("https://next.example.com/site/uc-jalali/products");
   });
 
   it("keeps unsafe return targets out of the shell", () => {
@@ -87,7 +87,7 @@ describe("tenantTransactionalBranding", () => {
         returnTo: "https://evil.example.com/phish",
         fallbackPagePath: "services",
       })
-    ).toBe("https://next.example.com/services");
+    ).toBe("https://next.example.com/site/uc-jalali/services");
   });
 
   it("resolves theme tokens for known integrated themes", () => {

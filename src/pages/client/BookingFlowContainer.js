@@ -32,16 +32,16 @@ import { api } from "../../utils/api";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 
-export default function BookingFlowContainer({ companySlug, preselect }) {
+export default function BookingFlowContainer({ companySlug, preselect, initialServiceId = null }) {
   /* ─────────────────────────── state ─────────────────────────── */
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => (preselect || initialServiceId ? 0 : 1));
   const [service, setService] = useState(null);
   const [artist, setArtist] = useState(null);
   const [slot, setSlot] = useState(null);
   const [appointmentId, setAppointmentId] = useState(null);
   const [cancelToken, setCancelToken] = useState(null);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(preselect || initialServiceId));
   const [error, setError] = useState(null);
 
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -85,6 +85,31 @@ export default function BookingFlowContainer({ companySlug, preselect }) {
       }
     })();
   }, [companySlug, preselect]);
+
+  useEffect(() => {
+    if (!companySlug || !initialServiceId || preselect || service) return;
+
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: svc } = await api.get(`/public/${companySlug}/service/${initialServiceId}`);
+        if (cancelled) return;
+        setService(svc);
+        setStep(2);
+      } catch {
+        if (cancelled) return;
+        setError("Unable to load the selected service. Please choose manually.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companySlug, initialServiceId, preselect, service]);
 
   /* ──────────────────────── step helpers ──────────────────────── */
   const goToStep = (target) => {

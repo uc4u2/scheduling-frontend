@@ -1286,7 +1286,6 @@ const AppContent = ({ token, setToken }) => {
           {/* Marketing landing shortcuts to services */}
           <Route path="/:slug/vip" element={<MarketingCouponBridge to="?page=services-classic" />} />
           <Route path="/:slug/anniversary" element={<MarketingCouponBridge to="?page=services-classic" />} />
-          <Route path="/:slug/book" element={<MarketingCouponBridge to="?page=services-classic" />} />
 
           {/* Admin / Payroll */}
           <Route path="/admin/CompanyProfile" element={<CompanyProfile />} />

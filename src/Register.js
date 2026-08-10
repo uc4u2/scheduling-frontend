@@ -516,11 +516,13 @@ const Register = ({ slugOverride = "" }) => {
                   Log in
                 </MuiLink>
               </Typography>
-              <Typography variant="body2" color="text.secondary" textAlign="center">
-                <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
-                  Back to website
-                </MuiLink>
-              </Typography>
+              {!clientSite ? (
+                <Typography variant="body2" color="text.secondary" textAlign="center">
+                  <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
+                    Back to website
+                  </MuiLink>
+                </Typography>
+              ) : null}
             </Stack>
           </Box>
     </AuthCardShell>

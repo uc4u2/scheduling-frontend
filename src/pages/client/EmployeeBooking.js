@@ -40,7 +40,11 @@ const EmployeeBooking = ({ slugOverride }) => {
         py: isEmbed ? { xs: 2, md: 3 } : { xs: 4, md: 8 },
       }}
     >
-      <BookingFlowContainer companySlug={slug} preselect={preselect} />
+      <BookingFlowContainer
+        companySlug={slug}
+        preselect={preselect}
+        initialServiceId={service_id || null}
+      />
     </Box>
   );
 
@@ -52,7 +56,7 @@ const EmployeeBooking = ({ slugOverride }) => {
     <TenantTransactionalShell
       slugOverride={slug}
       activeKey="__services"
-      pagePath={service_id ? `services/${service_id}` : "services"}
+      pagePath="services"
       returnTo={searchParams.get("return_to") || searchParams.get("returnTo") || ""}
       legacyShell={(node) => (
         <PublicPageShell activeKey="__services" slugOverride={slug}>

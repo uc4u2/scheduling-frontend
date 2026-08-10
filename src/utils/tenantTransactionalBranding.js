@@ -249,7 +249,8 @@ export function resolveTransactionalReturnTo({
     const fallback = normalizeWebsitePath(fallbackPagePath);
     if (fallback) {
       try {
-        return new URL(`/${fallback}`, brandingContract.rootSiteUrl).toString();
+        const base = String(brandingContract.rootSiteUrl || "").replace(/\/?$/, "/");
+        return new URL(fallback, base).toString();
       } catch {
         // ignore
       }

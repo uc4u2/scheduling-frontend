@@ -715,11 +715,13 @@ const Login = ({ setToken, slugOverride = "" }) => {
               </Stack>
             </Box>
           )}
-          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 2.5 }}>
-            <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
-              Back to website
-            </MuiLink>
-          </Typography>
+          {!effectiveSite ? (
+            <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 2.5 }}>
+              <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
+                Back to website
+              </MuiLink>
+            </Typography>
+          ) : null}
     </AuthCardShell>
   );
 };

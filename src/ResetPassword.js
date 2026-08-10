@@ -23,6 +23,7 @@ const ResetPassword = () => {
   const searchParams = new URLSearchParams(location.search);
   const resetToken = searchParams.get("token");
   const resetType = searchParams.get("type") || "client";
+  const siteParam = (searchParams.get("site") || "").trim();
   const isTokenReset = Boolean(resetToken);
   const currentPasswordFromState = location.state?.currentPassword || "";
 
@@ -199,11 +200,13 @@ const ResetPassword = () => {
           </MuiLink>
         </Stack>
 
-        <Typography variant="body2" color="text.secondary" textAlign="center">
-          <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
-            Back to website
-          </MuiLink>
-        </Typography>
+        {!siteParam ? (
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
+              Back to website
+            </MuiLink>
+          </Typography>
+        ) : null}
       </Stack>
     </AuthCardShell>
   );
