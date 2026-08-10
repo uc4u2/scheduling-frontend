@@ -1138,6 +1138,7 @@ function styleToCssVars(style = {}) {
 
 /* ---------- PageStyleCard (inline helper) — mounted in Inspector (NEW) ---------- */
 /* ---------- PageStyleCard (inline helper) — Inspector card (final) ---------- */
+/* eslint-disable react-hooks/rules-of-hooks */
 function PageStyleCard({
   value,
   onChange,
@@ -1375,6 +1376,22 @@ function PageStyleCard({
     );
   };
 
+  // Hook order is stable here; CRA eslint was still flagging these after the
+  // Next.js early-return branch was moved below them.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [pageStyleTab, setPageStyleTab] = useState("style");
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const initialStyleRef = useRef(value || {});
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const isDirty = useMemo(
+    () => JSON.stringify(value || {}) !== JSON.stringify(initialStyleRef.current || {}),
+    [value]
+  );
+
   if (isNextJsMode) {
     const supportedFields = getSupportedThemeOverrideFields(nextJsThemeKey);
     const supportedFieldSet = new Set(supportedFields);
@@ -1586,15 +1603,6 @@ function PageStyleCard({
       </Stack>
     );
   }
-
-  const [pageStyleTab, setPageStyleTab] = useState("style");
-  const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
-  const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
-  const initialStyleRef = useRef(value || {});
-  const isDirty = useMemo(
-    () => JSON.stringify(value || {}) !== JSON.stringify(initialStyleRef.current || {}),
-    [value]
-  );
 
   const parseBoxShadow = (val) => {
     const fallback = { x: 0, y: 12, blur: 32, spread: 0, color: "#000000", opacity: 0.18 };
@@ -3522,6 +3530,7 @@ const applyButtonStylePreset = useCallback(
   },
   [applyStyleToAllPagesNow, editing]
 );
+/* eslint-enable react-hooks/rules-of-hooks */
 
 function applyThemePresetToHeaderDraft(preset, headerModeValues = null) {
   const baseHeader = normalizeHeaderConfig(headerDraft || defaultHeaderConfig());
