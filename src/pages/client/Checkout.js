@@ -655,6 +655,10 @@ export function CheckoutFormCore({
   };
   const navigate = useNavigate();
   const location = useLocation();
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search || ""),
+    [location.search]
+  );
   const productCheckoutEnabled = Boolean(productCheckout?.enabled ?? paymentsEnabled);
 
   const basePaymentMode = useMemo(() => {
@@ -3964,6 +3968,11 @@ export function CheckoutFormCore({
 export default function Checkout(props) {
   const { disableShell = false, slugOverride } = props;
   const params = useParams();
+  const location = useLocation();
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search || ""),
+    [location.search]
+  );
   const urlPathFirst = (() => {
     try {
       const seg = (window.location.pathname || '').split('/').filter(Boolean)[0];
@@ -4110,7 +4119,7 @@ export default function Checkout(props) {
         slugOverride={companySlug}
         activeKey="__basket"
         pagePath="products"
-        returnTo={new URLSearchParams(location.search).get("return_to") || new URLSearchParams(location.search).get("returnTo") || ""}
+        returnTo={searchParams.get("return_to") || searchParams.get("returnTo") || ""}
         legacyShell={(child) => (
           <SiteFrame
             slug={companySlug}
