@@ -2,6 +2,7 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 import ClientDashboard from "../ClientDashboard"; // adjust if your dashboard path differs
 
 export default function DashboardShellGate() {
@@ -16,8 +17,17 @@ export default function DashboardShellGate() {
 
   // Site-wrapped dashboard (keeps menu + theme)
   return (
-    <PublicPageShell slugOverride={siteSlug} activeKey="__mybookings">
+    <TenantTransactionalShell
+      slugOverride={siteSlug}
+      activeKey="__mybookings"
+      pagePath=""
+      legacyShell={(node) => (
+        <PublicPageShell slugOverride={siteSlug} activeKey="__mybookings">
+          {node}
+        </PublicPageShell>
+      )}
+    >
       <ClientDashboard />
-    </PublicPageShell>
+    </TenantTransactionalShell>
   );
 }

@@ -48,6 +48,7 @@ import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
 import TimezoneSelect from "../../components/TimezoneSelect";
 import { getUserTimezone, formatTimezoneLabel } from "../../utils/timezone";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 const stashProductOrder = (order, sessionId) => {
   if (!order) return;
@@ -4105,15 +4106,25 @@ export default function Checkout(props) {
       return node;
     }
     return (
-      <SiteFrame
-        slug={companySlug}
+      <TenantTransactionalShell
+        slugOverride={companySlug}
         activeKey="__basket"
-        initialSite={sitePayload || undefined}
-        disableFetch={Boolean(sitePayload)}
-        wrapChildrenInContainer={false}
+        pagePath="products"
+        returnTo={new URLSearchParams(location.search).get("return_to") || new URLSearchParams(location.search).get("returnTo") || ""}
+        legacyShell={(child) => (
+          <SiteFrame
+            slug={companySlug}
+            activeKey="__basket"
+            initialSite={sitePayload || undefined}
+            disableFetch={Boolean(sitePayload)}
+            wrapChildrenInContainer={false}
+          >
+            {child}
+          </SiteFrame>
+        )}
       >
         {node}
-      </SiteFrame>
+      </TenantTransactionalShell>
     );
   };
 

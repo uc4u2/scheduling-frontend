@@ -26,6 +26,7 @@ import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import CloseIcon from "@mui/icons-material/Close";
 import SiteFrame from "../../components/website/SiteFrame";
 import Checkout from "./Checkout";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
 import { api as apiClient, publicSite } from "../../utils/api";
@@ -762,15 +763,25 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const renderShell = (node) => {
     if (!slug) return node;
     return (
-      <SiteFrame
-        slug={slug}
-        activeKey="basket"
-        initialSite={sitePayload || undefined}
-        disableFetch={Boolean(sitePayload)}
-        wrapChildrenInContainer={false}
+      <TenantTransactionalShell
+        slugOverride={slug}
+        activeKey="__basket"
+        pagePath="products"
+        returnTo={searchParams.get("return_to") || searchParams.get("returnTo") || ""}
+        legacyShell={(child) => (
+          <SiteFrame
+            slug={slug}
+            activeKey="basket"
+            initialSite={sitePayload || undefined}
+            disableFetch={Boolean(sitePayload)}
+            wrapChildrenInContainer={false}
+          >
+            {child}
+          </SiteFrame>
+        )}
       >
         {node}
-      </SiteFrame>
+      </TenantTransactionalShell>
     );
   };
 

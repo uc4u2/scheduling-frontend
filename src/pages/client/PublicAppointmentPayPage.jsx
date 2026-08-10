@@ -14,6 +14,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { api } from "../../utils/api";
 import { formatCurrency } from "../../utils/formatters";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 const PaymentForm = ({ onPaid }) => {
   const stripe = useStripe();
@@ -95,6 +96,17 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
   const [success, setSuccess] = useState(false);
   const [details, setDetails] = useState(null);
 
+  const wrapInTransactionalShell = (node) => (
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__services"
+      pagePath="services"
+      legacyShell={(child) => <>{child}</>}
+    >
+      {node}
+    </TenantTransactionalShell>
+  );
+
   const stripePromise = useMemo(() => {
     if (!stripePublicKey || !details?.stripe_account_id) return null;
     return loadStripe(stripePublicKey, { stripeAccount: details.stripe_account_id });
@@ -154,7 +166,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
   };
 
   if (!stripePublicKey) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">Stripe public key is not configured.</Alert>
       </Container>
@@ -162,7 +174,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
   }
 
   if (loading) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
         <CircularProgress />
         <Typography sx={{ mt: 2 }}>Loading payment page...</Typography>
@@ -171,7 +183,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
   }
 
   if (error) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">{error}</Alert>
       </Container>
@@ -179,7 +191,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
   }
 
   if (!details) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">Payment details not found.</Alert>
       </Container>
@@ -188,7 +200,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
 
   const amountLabel = formatCurrency(Number(details.amount_cents || 0) / 100, details.currency || "USD");
 
-  return (
+  return wrapInTransactionalShell(
     <Container maxWidth="sm" sx={{ mt: 6, mb: 8 }}>
       <Paper sx={{ p: 3, borderRadius: 3 }}>
         <Typography variant="h5" fontWeight={700} gutterBottom>

@@ -178,6 +178,7 @@ import StripeConnectReturn from "./pages/sections/management/StripeConnectReturn
 import CompanyPublic from "./pages/client/CompanyPublic";
 import PublicClientAuth from "./pages/client/PublicClientAuth";
 import PublicPageShell from "./pages/client/PublicPageShell";
+import TenantTransactionalShell from "./pages/client/TenantTransactionalShell";
 import ServiceList from "./pages/client/ServiceList";
 import ServiceDetails from "./pages/client/ServiceDetails";
 import EmployeeList from "./pages/client/EmployeeList";
@@ -846,25 +847,52 @@ const AppContent = ({ token, setToken }) => {
               <Route
                 path="/login"
                 element={
-                  <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                  <TenantTransactionalShell
+                    slugOverride={tenantSlug}
+                    activeKey="__login"
+                    pagePath=""
+                    legacyShell={(node) => (
+                      <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                        {node}
+                      </PublicPageShell>
+                    )}
+                  >
                     <PublicClientAuth slug={tenantSlug} />
-                  </PublicPageShell>
+                  </TenantTransactionalShell>
                 }
               />
               <Route
                 path="/register"
                 element={
-                  <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                  <TenantTransactionalShell
+                    slugOverride={tenantSlug}
+                    activeKey="__login"
+                    pagePath=""
+                    legacyShell={(node) => (
+                      <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                        {node}
+                      </PublicPageShell>
+                    )}
+                  >
                     <PublicClientAuth slug={tenantSlug} />
-                  </PublicPageShell>
+                  </TenantTransactionalShell>
                 }
               />
               <Route
                 path="/forgot-password"
                 element={
-                  <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                  <TenantTransactionalShell
+                    slugOverride={tenantSlug}
+                    activeKey="__login"
+                    pagePath=""
+                    legacyShell={(node) => (
+                      <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                        {node}
+                      </PublicPageShell>
+                    )}
+                  >
                     <ForgotPassword slugOverride={tenantSlug} />
-                  </PublicPageShell>
+                  </TenantTransactionalShell>
                 }
               />
               <Route path="/" element={<CompanyPublic slugOverride={tenantSlug} />} />
@@ -976,11 +1004,32 @@ const AppContent = ({ token, setToken }) => {
             </>
           )}
           {/* Auth */}
-          <Route path="/login" element={<Login setToken={setToken} slugOverride={tenantSlug} />} />
+          <Route
+            path="/login"
+            element={
+              <TenantTransactionalShell activeKey="__login" pagePath="">
+                <Login setToken={setToken} slugOverride={tenantSlug} />
+              </TenantTransactionalShell>
+            }
+          />
           <Route path="/signup" element={<Navigate to="/register" replace />} />
-          <Route path="/register" element={<Register slugOverride={tenantSlug} />} />
+          <Route
+            path="/register"
+            element={
+              <TenantTransactionalShell activeKey="__login" pagePath="">
+                <Register slugOverride={tenantSlug} />
+              </TenantTransactionalShell>
+            }
+          />
           <Route path="/upgrade" element={<UpgradeBridgePage />} />
-          <Route path="/forgot-password" element={<ForgotPassword slugOverride={tenantSlug} />} />
+          <Route
+            path="/forgot-password"
+            element={
+              <TenantTransactionalShell activeKey="__login" pagePath="">
+                <ForgotPassword slugOverride={tenantSlug} />
+              </TenantTransactionalShell>
+            }
+          />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/reset-password/temp" element={<ResetPassword />} />
@@ -1042,13 +1091,55 @@ const AppContent = ({ token, setToken }) => {
 
           {/* Client portal */}
           <Route path="/dashboard" element={<DashboardShellGate />} />
-          <Route path="/client/bookings" element={<ClientBookingHistory />} />
-          <Route path="/client/payments" element={<ClientPaymentMethods />} />
+          <Route
+            path="/client/bookings"
+            element={
+              <TenantTransactionalShell activeKey="__mybookings" pagePath="">
+                <ClientBookingHistory />
+              </TenantTransactionalShell>
+            }
+          />
+          <Route
+            path="/client/payments"
+            element={
+              <TenantTransactionalShell activeKey="__mybookings" pagePath="">
+                <ClientPaymentMethods />
+              </TenantTransactionalShell>
+            }
+          />
           <Route path="/card-on-file/update/:token" element={<ClientUpdateCardPage />} />
-          <Route path="/client/packages" element={<ClientPackages />} />
-          <Route path="/client/profile" element={<ClientProfileSettings />} />
-          <Route path="/client/reviews" element={<ClientReviews />} />
-          <Route path="/client/support" element={<ClientSupport />} />
+          <Route
+            path="/client/packages"
+            element={
+              <TenantTransactionalShell activeKey="__mybookings" pagePath="">
+                <ClientPackages />
+              </TenantTransactionalShell>
+            }
+          />
+          <Route
+            path="/client/profile"
+            element={
+              <TenantTransactionalShell activeKey="__mybookings" pagePath="">
+                <ClientProfileSettings />
+              </TenantTransactionalShell>
+            }
+          />
+          <Route
+            path="/client/reviews"
+            element={
+              <TenantTransactionalShell activeKey="__reviews" pagePath="reviews">
+                <ClientReviews />
+              </TenantTransactionalShell>
+            }
+          />
+          <Route
+            path="/client/support"
+            element={
+              <TenantTransactionalShell activeKey="__mybookings" pagePath="">
+                <ClientSupport />
+              </TenantTransactionalShell>
+            }
+          />
 
           {/* Manager / Recruiter */}
           <Route path="/manager/website/inline" element={<InlineSiteEditor />} /> {/* Inline editor */}

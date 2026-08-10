@@ -23,6 +23,7 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { api } from "../../utils/api";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 const isPrerenderBrowser = () => {
   if (typeof window === "undefined") return false;
@@ -142,6 +143,17 @@ export default function PublicTip({ slugOverride }) {
 
   // NEW: external review URL from settings
   const [extUrl, setExtUrl] = useState("");
+
+  const wrapInTransactionalShell = (node) => (
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__reviews"
+      pagePath="reviews"
+      legacyShell={(child) => <>{child}</>}
+    >
+      {node}
+    </TenantTransactionalShell>
+  );
 
   const stripePromise = useMemo(
     () =>
@@ -269,7 +281,7 @@ export default function PublicTip({ slugOverride }) {
 
   /* ----------------------------- Render ----------------------------- */
   if (!STRIPE_PK && !prerenderMode) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">
           Missing <code>REACT_APP_STRIPE_PUBLIC_KEY</code>. Set it in your
@@ -280,7 +292,7 @@ export default function PublicTip({ slugOverride }) {
   }
 
   if (loading) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
         <CircularProgress />
         <Typography sx={{ mt: 2 }}>Loading…</Typography>
@@ -289,7 +301,7 @@ export default function PublicTip({ slugOverride }) {
   }
 
   if (error) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">{error}</Alert>
       </Container>
@@ -297,14 +309,14 @@ export default function PublicTip({ slugOverride }) {
   }
 
   if (!resolved) {
-    return (
+    return wrapInTransactionalShell(
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">Appointment not found.</Alert>
       </Container>
     );
   }
 
-  return (
+  return wrapInTransactionalShell(
     <Container maxWidth="sm" sx={{ mt: 6 }}>
       <Paper sx={{ p: 3, borderRadius: 3 }}>
         <Typography variant="h5" fontWeight={700} gutterBottom>

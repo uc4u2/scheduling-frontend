@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 /* ---------- helpers ---------- */
 const buildDisplay = (slot, fallbackTz) => {
@@ -71,6 +72,17 @@ const ClientCancelBooking = ({ slugOverride }) => {
   const [status,  setStatus]    = useState("idle"); // idle | cancelled
   const [err,     setErr]       = useState("");
 
+  const wrapInTransactionalShell = (node) => (
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__mybookings"
+      pagePath="services"
+      legacyShell={(child) => <>{child}</>}
+    >
+      {node}
+    </TenantTransactionalShell>
+  );
+
   /* ───────── fetch appointment ───────── */
   useEffect(() => { (async () => {
     if (!bookingId || !qsToken || !slug) {
@@ -121,12 +133,10 @@ const ClientCancelBooking = ({ slugOverride }) => {
 
   /* ───────── ui states ───────── */
   if (err) {
-    return (
-      <Box p={3}><Alert severity="error">{err}</Alert></Box>
-    );
+    return wrapInTransactionalShell(<Box p={3}><Alert severity="error">{err}</Alert></Box>);
   }
   if (!display) {
-    return (
+    return wrapInTransactionalShell(
       <Box p={3} textAlign="center">
         <CircularProgress/>
         <Typography sx={{ mt: 2 }}>Loading booking…</Typography>
@@ -134,7 +144,7 @@ const ClientCancelBooking = ({ slugOverride }) => {
     );
   }
   if (status === "cancelled") {
-    return (
+    return wrapInTransactionalShell(
       <Box p={3}>
         <Alert severity="success">Booking cancelled successfully.</Alert>
         <Button sx={{ mt: 2 }} onClick={() => navigate(rootPath)}>
@@ -147,7 +157,7 @@ const ClientCancelBooking = ({ slugOverride }) => {
   /* ───────── render form ───────── */
   const dt = buildDisplay(display, userTz);
 
-  return (
+  return wrapInTransactionalShell(
     <Box p={3} maxWidth="540px" mx="auto">
       <Typography variant="h5" gutterBottom>Cancel Booking</Typography>
 

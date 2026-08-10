@@ -42,6 +42,7 @@ import { getTenantHostMode } from "../../utils/tenant";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 
 import PublicPageShell from "./PublicPageShell";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 /* ---------- helpers ---------- */
 
@@ -1608,8 +1609,18 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
   }
 
   return (
-    <PublicPageShell activeKey="__services" slugOverride={slugOverride}>
+    <TenantTransactionalShell
+      slugOverride={slugOverride}
+      activeKey="__services"
+      pagePath="services"
+      returnTo={searchParams.get("return_to") || searchParams.get("returnTo") || ""}
+      legacyShell={(node) => (
+        <PublicPageShell activeKey="__services" slugOverride={slugOverride}>
+          {node}
+        </PublicPageShell>
+      )}
+    >
       {content}
-    </PublicPageShell>
+    </TenantTransactionalShell>
   );
 }

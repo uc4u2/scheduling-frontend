@@ -16,6 +16,7 @@ import { api } from "../../utils/api"; // ✅ named import (axios instance)
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 /* ───────────────── helpers ────────────────── */
 const ymd = (d) =>
@@ -64,6 +65,17 @@ export default function ClientRescheduleBooking({ slugOverride }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(""); // "HH:MM"
   const [saving, setSaving] = useState(false);
+
+  const wrapInTransactionalShell = (node) => (
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__mybookings"
+      pagePath="services"
+      legacyShell={(child) => <>{child}</>}
+    >
+      {node}
+    </TenantTransactionalShell>
+  );
 
   /* ------------ load appointment ------------ */
   useEffect(() => {
@@ -248,14 +260,14 @@ export default function ClientRescheduleBooking({ slugOverride }) {
 
   /* ------------ UI guards ------------ */
   if (loading)
-    return (
+    return wrapInTransactionalShell(
       <Box p={3} textAlign="center">
         <CircularProgress />
       </Box>
     );
 
   if (err || !svc)
-    return (
+    return wrapInTransactionalShell(
       <Box p={3}>
         <Alert severity="error">{err || "Unknown error"}</Alert>
       </Box>
@@ -264,7 +276,7 @@ export default function ClientRescheduleBooking({ slugOverride }) {
   const disp = buildDisplay(svc, userTz);
 
   /* ------------ JSX ------------ */
-  return (
+  return wrapInTransactionalShell(
     <Box p={3} maxWidth="620px" mx="auto">
       <Typography variant="h5" gutterBottom>
         Reschedule — {svc.name}

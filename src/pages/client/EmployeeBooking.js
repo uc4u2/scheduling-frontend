@@ -4,6 +4,7 @@ import { useSearchParams, useParams } from "react-router-dom";
 import { Box } from "@mui/material";
 import BookingFlowContainer from "./BookingFlowContainer";
 import PublicPageShell from "./PublicPageShell";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 const EmployeeBooking = ({ slugOverride }) => {
   const { slug: routeSlug } = useParams(); // e.g. company slug in route, if present
@@ -48,9 +49,19 @@ const EmployeeBooking = ({ slugOverride }) => {
   }
 
   return (
-    <PublicPageShell activeKey="__services" slugOverride={slug}>
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__services"
+      pagePath={service_id ? `services/${service_id}` : "services"}
+      returnTo={searchParams.get("return_to") || searchParams.get("returnTo") || ""}
+      legacyShell={(node) => (
+        <PublicPageShell activeKey="__services" slugOverride={slug}>
+          {node}
+        </PublicPageShell>
+      )}
+    >
       {content}
-    </PublicPageShell>
+    </TenantTransactionalShell>
   );
 };
 

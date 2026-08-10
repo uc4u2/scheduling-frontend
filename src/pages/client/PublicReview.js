@@ -20,6 +20,22 @@ import RateReviewIcon from "@mui/icons-material/RateReview";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
 import { api } from "../../utils/api";
+import TenantTransactionalShell from "./TenantTransactionalShell";
+
+const wrapInTransactionalShell = (slug, node) => (
+  <TenantTransactionalShell
+    slugOverride={slug}
+    activeKey="__reviews"
+    pagePath="reviews"
+    legacyShell={(child) => (
+      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
+        {child}
+      </PublicPageShell>
+    )}
+  >
+    {node}
+  </TenantTransactionalShell>
+);
 
 function hostLabel(url) {
   try {
@@ -138,33 +154,30 @@ export default function PublicReview({ slugOverride }) {
 
   // ---------------- UI ----------------
   if (loading) {
-    return (
-      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
-        <Container maxWidth="sm" sx={{ mt: 2, textAlign: "center" }}>
-          <CircularProgress />
-          <Typography sx={{ mt: 2 }}>Loading…</Typography>
-        </Container>
-      </PublicPageShell>
+    return wrapInTransactionalShell(
+      slug,
+      <Container maxWidth="sm" sx={{ mt: 2, textAlign: "center" }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>Loading…</Typography>
+      </Container>
     );
   }
 
   if (error) {
-    return (
-      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
-        <Container maxWidth="sm" sx={{ mt: 2 }}>
-          <Alert severity="error">{error}</Alert>
-        </Container>
-      </PublicPageShell>
+    return wrapInTransactionalShell(
+      slug,
+      <Container maxWidth="sm" sx={{ mt: 2 }}>
+        <Alert severity="error">{error}</Alert>
+      </Container>
     );
   }
 
   if (!resolved) {
-    return (
-      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
-        <Container maxWidth="sm" sx={{ mt: 2 }}>
-          <Alert severity="error">Appointment not found.</Alert>
-        </Container>
-      </PublicPageShell>
+    return wrapInTransactionalShell(
+      slug,
+      <Container maxWidth="sm" sx={{ mt: 2 }}>
+        <Alert severity="error">Appointment not found.</Alert>
+      </Container>
     );
   }
 
@@ -284,9 +297,5 @@ export default function PublicReview({ slugOverride }) {
     </Container>
   );
 
-  return (
-    <PublicPageShell activeKey="__reviews" slugOverride={slug}>
-      {page}
-    </PublicPageShell>
-  );
+  return wrapInTransactionalShell(slug, page);
 }
