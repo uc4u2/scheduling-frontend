@@ -1,0 +1,17 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#F7F1EC"/>
+  <circle cx="196" cy="158" r="164" fill="#E6D4CD"/>
+  <circle cx="1228" cy="726" r="210" fill="#D8E3D8"/>
+  <rect x="86" y="86" width="188" height="28" rx="14" fill="#E8D8D0"/>
+  <rect x="86" y="172" width="562" height="116" rx="16" fill="#4A3B43"/>
+  <rect x="86" y="314" width="468" height="30" rx="15" fill="#A58A95"/>
+  <rect x="86" y="362" width="412" height="30" rx="15" fill="#B49CA6"/>
+  <rect x="86" y="430" width="192" height="52" rx="26" fill="#8F667A"/>
+  <rect x="302" y="430" width="176" height="52" rx="26" stroke="#D7C7C0" stroke-width="2"/>
+  <rect x="764" y="104" width="488" height="468" rx="40" fill="#E9DFD8"/>
+  <rect x="690" y="180" width="224" height="390" rx="100" fill="#E3D2CA"/>
+  <rect x="872" y="520" width="278" height="158" rx="30" fill="white"/>
+  <rect x="104" y="618" width="388" height="200" rx="32" fill="white"/>
+  <rect x="526" y="618" width="388" height="200" rx="32" fill="white"/>
+  <rect x="948" y="618" width="388" height="200" rx="32" fill="white"/>
+</svg>
