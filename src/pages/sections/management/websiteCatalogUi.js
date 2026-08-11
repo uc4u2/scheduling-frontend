@@ -67,6 +67,11 @@ export function buildWebsiteStyleChoices({
               mobile: absolutizeThemePreview(theme.preview_assets.mobile || null),
             }
           : {},
+      recommended: Boolean(theme.recommended_for_profession),
+      recommendedProfessions: Array.isArray(theme.recommended_professions)
+        ? theme.recommended_professions
+        : [],
+      designTags: Array.isArray(theme.design_tags) ? theme.design_tags : [],
       currentContentPackKey,
     });
   });

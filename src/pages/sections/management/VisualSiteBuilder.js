@@ -2854,6 +2854,14 @@ const [brandingErr, setBrandingErr] = useState("");
       }),
     [websiteCatalog, websiteStatus]
   );
+  const nextJsWebsiteStyleChoices = useMemo(
+    () => websiteStyleChoices.filter((style) => style.key !== "classic"),
+    [websiteStyleChoices]
+  );
+  const recommendedWebsiteStyleChoices = useMemo(
+    () => nextJsWebsiteStyleChoices.filter((style) => style.recommended),
+    [nextJsWebsiteStyleChoices]
+  );
   const builderRendererMode = resolveBuilderRendererMode({
     renderer_engine: siteSettings?.renderer_engine,
     settings: siteSettings?.settings,
@@ -2901,6 +2909,186 @@ const [brandingErr, setBrandingErr] = useState("");
     (style) =>
       style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
   );
+  const renderWebsiteStyleCard = (style) => {
+    const isCurrentDraft =
+      style.key === currentStyleKey &&
+      Number(style.version) === Number(currentStyleVersion);
+    const isCurrentLive =
+      style.key === liveStyleKey &&
+      Number(style.version) === Number(liveStyleVersion);
+    const isPreviewing = style.key === effectivePreviewFamily;
+    return (
+      <Paper
+        key={style.key}
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: 1.5,
+          borderColor: isCurrentDraft ? "success.main" : "divider",
+          bgcolor: "background.paper",
+          boxShadow: isCurrentDraft ? 2 : 0,
+        }}
+      >
+        <Stack spacing={1.25}>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 1,
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr) 68px",
+                sm: "minmax(0, 1fr) 78px",
+              },
+              alignItems: "start",
+            }}
+          >
+            <Box
+              component="img"
+              src={style.previewAssets?.desktop || ""}
+              alt={`${style.name} desktop preview`}
+              sx={{
+                width: "100%",
+                aspectRatio: "16 / 10",
+                minHeight: { xs: 132, sm: 154 },
+                maxHeight: { xs: 160, sm: 176 },
+                borderRadius: 1.5,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.default",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+            <Box
+              component="img"
+              src={style.previewAssets?.mobile || ""}
+              alt={`${style.name} mobile preview`}
+              sx={{
+                width: "100%",
+                aspectRatio: "10 / 21",
+                minHeight: { xs: 132, sm: 154 },
+                maxHeight: { xs: 160, sm: 176 },
+                borderRadius: 1.5,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.default",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          </Box>
+          <Stack spacing={0.75}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                {style.name}
+              </Typography>
+              {style.badgeLabel ? (
+                <Chip
+                  size="small"
+                  label={style.badgeLabel}
+                  sx={{
+                    borderRadius: 1.5,
+                    color: "warning.dark",
+                    bgcolor: "warning.50",
+                    border: "1px solid",
+                    borderColor: "warning.200",
+                  }}
+                />
+              ) : null}
+              {style.recommended ? (
+                <Chip
+                  size="small"
+                  label="Recommended"
+                  sx={{
+                    borderRadius: 1.5,
+                    color: "primary.dark",
+                    bgcolor: "primary.50",
+                    border: "1px solid",
+                    borderColor: "primary.200",
+                  }}
+                />
+              ) : null}
+              {isCurrentDraft ? (
+                <Chip
+                  size="small"
+                  label="Draft"
+                  sx={{
+                    borderRadius: 1.5,
+                    color: "success.dark",
+                    bgcolor: "success.50",
+                    border: "1px solid",
+                    borderColor: "success.200",
+                  }}
+                />
+              ) : null}
+              {isCurrentLive ? (
+                <Chip
+                  size="small"
+                  label="Live"
+                  sx={{
+                    borderRadius: 1.5,
+                    color: "info.dark",
+                    bgcolor: "info.50",
+                    border: "1px solid",
+                    borderColor: "info.200",
+                  }}
+                />
+              ) : null}
+              {isPreviewing && !isCurrentDraft ? (
+                <Chip
+                  size="small"
+                  label="Previewing"
+                  sx={{
+                    borderRadius: 1.5,
+                    color: "info.dark",
+                    bgcolor: "info.50",
+                    border: "1px solid",
+                    borderColor: "info.200",
+                  }}
+                />
+              ) : null}
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {style.description}
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ pt: 0.25 }}>
+            <Button
+              size="small"
+              variant={isPreviewing ? "contained" : "outlined"}
+              disabled={styleSaving}
+              onClick={async () => {
+                setStylePreviewFamily(style.key);
+                if (isNextJsStyle(style)) {
+                  await refreshNextJsPreview(style);
+                  setTimeout(() => {
+                    stylePreviewAreaRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }, 50);
+                } else {
+                  setNextJsPreviewToken("");
+                  setNextJsPreviewUrl("");
+                }
+              }}
+              sx={{ borderRadius: 1.5 }}
+            >
+              Preview
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={styleSaving || isCurrentDraft}
+              onClick={() => applyWebsiteStyle(style)}
+              sx={{ borderRadius: 1.5 }}
+            >
+              Apply Style
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+    );
+  };
   const deprecatedStoredDesignFamily =
     !isNextJsBuilderMode(builderRendererMode) &&
     currentDesignFamily !== "classic" &&
@@ -6138,6 +6326,9 @@ const autoProvisionIfEmpty = useCallback(
             {NEXTJS_THEME_PREVIEW_CONFIG_ERROR}
           </Alert>
         ) : null}
+        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em", pt: 0.5 }}>
+          Recommended for your business
+        </Typography>
         <Box
           sx={{
             display: "grid",
@@ -6148,175 +6339,27 @@ const autoProvisionIfEmpty = useCallback(
             },
           }}
         >
-          {websiteStyleChoices
-            .filter((style) => style.key !== "classic")
-            .map((style) => {
-              const isCurrentDraft =
-                style.key === currentStyleKey &&
-                Number(style.version) === Number(currentStyleVersion);
-              const isCurrentLive =
-                style.key === liveStyleKey &&
-                Number(style.version) === Number(liveStyleVersion);
-              const isPreviewing = style.key === effectivePreviewFamily;
-              return (
-                <Paper
-                  key={style.key}
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 1.5,
-                    borderColor: isCurrentDraft ? "success.main" : "divider",
-                    bgcolor: "background.paper",
-                    boxShadow: isCurrentDraft ? 2 : 0,
-                  }}
-                >
-                  <Stack spacing={1.25}>
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gap: 1,
-                        gridTemplateColumns: {
-                          xs: "minmax(0, 1fr) 68px",
-                          sm: "minmax(0, 1fr) 78px",
-                        },
-                        alignItems: "start",
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={style.previewAssets?.desktop || ""}
-                        alt={`${style.name} desktop preview`}
-                        sx={{
-                          width: "100%",
-                          aspectRatio: "16 / 10",
-                          minHeight: { xs: 132, sm: 154 },
-                          maxHeight: { xs: 160, sm: 176 },
-                          borderRadius: 1.5,
-                          border: "1px solid",
-                          borderColor: "divider",
-                          bgcolor: "background.default",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                      <Box
-                        component="img"
-                        src={style.previewAssets?.mobile || ""}
-                        alt={`${style.name} mobile preview`}
-                        sx={{
-                          width: "100%",
-                          aspectRatio: "10 / 21",
-                          minHeight: { xs: 132, sm: 154 },
-                          maxHeight: { xs: 160, sm: 176 },
-                          borderRadius: 1.5,
-                          border: "1px solid",
-                          borderColor: "divider",
-                          bgcolor: "background.default",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    </Box>
-                    <Stack spacing={0.75}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                          {style.name}
-                        </Typography>
-                        {style.badgeLabel ? (
-                          <Chip
-                            size="small"
-                            label={style.badgeLabel}
-                            sx={{
-                              borderRadius: 1.5,
-                              color: "warning.dark",
-                              bgcolor: "warning.50",
-                              border: "1px solid",
-                              borderColor: "warning.200",
-                            }}
-                          />
-                        ) : null}
-                        {isCurrentDraft ? (
-                          <Chip
-                            size="small"
-                            label="Draft"
-                            sx={{
-                              borderRadius: 1.5,
-                              color: "success.dark",
-                              bgcolor: "success.50",
-                              border: "1px solid",
-                              borderColor: "success.200",
-                            }}
-                          />
-                        ) : null}
-                        {isCurrentLive ? (
-                          <Chip
-                            size="small"
-                            label="Live"
-                            sx={{
-                              borderRadius: 1.5,
-                              color: "info.dark",
-                              bgcolor: "info.50",
-                              border: "1px solid",
-                              borderColor: "info.200",
-                            }}
-                          />
-                        ) : null}
-                        {isPreviewing && !isCurrentDraft ? (
-                          <Chip
-                            size="small"
-                            label="Previewing"
-                            sx={{
-                              borderRadius: 1.5,
-                              color: "info.dark",
-                              bgcolor: "info.50",
-                              border: "1px solid",
-                              borderColor: "info.200",
-                            }}
-                          />
-                        ) : null}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">
-                        {style.description}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ pt: 0.25 }}>
-                      <Button
-                        size="small"
-                        variant={isPreviewing ? "contained" : "outlined"}
-                        disabled={styleSaving}
-                        onClick={async () => {
-                          setStylePreviewFamily(style.key);
-                          if (isNextJsStyle(style)) {
-                            await refreshNextJsPreview(style);
-                            setTimeout(() => {
-                              stylePreviewAreaRef.current?.scrollIntoView({
-                                behavior: "smooth",
-                                block: "start",
-                              });
-                            }, 50);
-                          } else {
-                            setNextJsPreviewToken("");
-                            setNextJsPreviewUrl("");
-                          }
-                        }}
-                        sx={{ borderRadius: 1.5 }}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        disabled={styleSaving || isCurrentDraft}
-                        onClick={() => applyWebsiteStyle(style)}
-                        sx={{ borderRadius: 1.5 }}
-                      >
-                        Apply Style
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              );
-            })}
+          {recommendedWebsiteStyleChoices.map((style) => renderWebsiteStyleCard(style))}
+        </Box>
+        {!recommendedWebsiteStyleChoices.length ? (
+          <Alert severity="info" variant="outlined">
+            No profession-specific recommendation is active for this business yet. All approved website styles remain available below.
+          </Alert>
+        ) : null}
+        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em", pt: 1 }}>
+          All Website Styles
+        </Typography>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 1.5,
+            gridTemplateColumns: {
+              xs: "1fr",
+              lg: "repeat(2, minmax(0, 1fr))",
+            },
+          }}
+        >
+          {nextJsWebsiteStyleChoices.map((style) => renderWebsiteStyleCard(style))}
         </Box>
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
           {(() => {
