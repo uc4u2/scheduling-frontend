@@ -19,10 +19,13 @@ describe("website catalog UI helpers", () => {
           { key: "eldora-dark", renderer_engine: "nextjs", status: "beta", label: "Eldora Dark" },
           { key: "motion-editorial", renderer_engine: "nextjs", status: "beta", label: "Motion Editorial" },
           { key: "finwise", renderer_engine: "nextjs", status: "beta", label: "Finwise" },
+          { key: "iron-ember", renderer_engine: "nextjs", status: "beta", label: "Iron Ember" },
+          { key: "clear-clinic", renderer_engine: "nextjs", status: "beta", label: "Clear Clinic" },
+          { key: "harbor-line", renderer_engine: "nextjs", status: "beta", label: "Harbor Line" },
         ],
       },
     }).map((item) => item.key);
-    expect(keys).toEqual(["classic", "modern-gradient", "eldora-dark", "motion-editorial", "finwise"]);
+    expect(keys).toEqual(["classic", "modern-gradient", "eldora-dark", "motion-editorial", "finwise", "iron-ember", "clear-clinic", "harbor-line"]);
   });
 
   it("hydrates preview thumbnails and beta badges for registered nextjs themes", () => {
@@ -45,5 +48,26 @@ describe("website catalog UI helpers", () => {
     expect(choices.map((item) => item.key)).toContain("finwise");
     expect(choices.find((item) => item.key === "finwise")?.badgeLabel).toBe("Beta");
     expect(choices.find((item) => item.key === "finwise")?.previewAssets?.desktop).toMatch(/finwise-desktop\.png$/);
+  });
+
+  it("preserves recommendation metadata for builder grouping", () => {
+    const choices = buildWebsiteStyleChoices({
+      catalog: {
+        compatible_visual_themes: [
+          {
+            key: "clear-clinic",
+            renderer_engine: "nextjs",
+            status: "beta",
+            label: "Clear Clinic",
+            recommended_for_profession: true,
+            recommended_professions: ["dental", "medical_clinic"],
+            design_tags: ["clinical", "clean"],
+          },
+        ],
+      },
+    });
+    expect(choices.find((item) => item.key === "clear-clinic")?.recommended).toBe(true);
+    expect(choices.find((item) => item.key === "clear-clinic")?.recommendedProfessions).toContain("dental");
+    expect(choices.find((item) => item.key === "clear-clinic")?.designTags).toContain("clinical");
   });
 });

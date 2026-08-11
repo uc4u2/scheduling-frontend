@@ -127,6 +127,48 @@ export const NEXTJS_THEME_OVERRIDE_CONTRACT = {
       buttonTreatment: "soft",
     },
   },
+  "iron-ember": {
+    acceptedFields: [
+      "accentColor",
+      "sectionSpacing",
+      "buttonRadius",
+      "heroMediaUrl",
+      "lightDarkPreference",
+    ],
+    defaults: {
+      ...SHARED_FIELD_DEFAULTS,
+      lightDarkPreference: "dark",
+    },
+  },
+  "clear-clinic": {
+    acceptedFields: [
+      "brandPrimaryColor",
+      "accentColor",
+      "sectionSpacing",
+      "buttonRadius",
+      "heroMediaUrl",
+      "lightDarkPreference",
+    ],
+    defaults: {
+      ...SHARED_FIELD_DEFAULTS,
+      lightDarkPreference: "light",
+    },
+  },
+  "harbor-line": {
+    acceptedFields: [
+      "accentColor",
+      "sectionSpacing",
+      "buttonRadius",
+      "heroMediaUrl",
+      "lightDarkPreference",
+      "typographyScale",
+    ],
+    defaults: {
+      ...SHARED_FIELD_DEFAULTS,
+      lightDarkPreference: "dark",
+      typographyScale: 1.05,
+    },
+  },
 };
 
 function clampNumber(value, min, max, fallback) {

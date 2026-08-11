@@ -66,6 +66,9 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "eldora-dark": { themeKey: "eldora-dark", pages: SHARED_PAGES },
   "motion-editorial": { themeKey: "motion-editorial", pages: SHARED_PAGES },
   finwise: { themeKey: "finwise", pages: SHARED_PAGES },
+  "iron-ember": { themeKey: "iron-ember", pages: SHARED_PAGES },
+  "clear-clinic": { themeKey: "clear-clinic", pages: SHARED_PAGES },
+  "harbor-line": { themeKey: "harbor-line", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

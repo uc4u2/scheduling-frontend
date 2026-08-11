@@ -1,7 +1,7 @@
 import { buildPublishedWebsiteUrl, normalizeWebsitePath } from "./publicWebsite";
 
-const LIGHT_THEME_KEYS = new Set(["modern-gradient", "finwise"]);
-const DARK_THEME_KEYS = new Set(["eldora-dark"]);
+const LIGHT_THEME_KEYS = new Set(["modern-gradient", "finwise", "clear-clinic"]);
+const DARK_THEME_KEYS = new Set(["eldora-dark", "iron-ember", "harbor-line"]);
 
 const DEFAULT_THEME_TOKENS = {
   "modern-gradient": {
@@ -51,6 +51,42 @@ const DEFAULT_THEME_TOKENS = {
     accent: "#13b1a8",
     buttonText: "#ffffff",
     radius: 12,
+  },
+  "iron-ember": {
+    background: "#120d0b",
+    surface: "#1a1411",
+    surfaceAlt: "#241b17",
+    text: "#f5ead8",
+    textMuted: "#c8b7a1",
+    border: "rgba(215,171,126,0.16)",
+    primary: "#b77947",
+    accent: "#d39a68",
+    buttonText: "#120d0b",
+    radius: 8,
+  },
+  "clear-clinic": {
+    background: "#eef7fb",
+    surface: "#ffffff",
+    surfaceAlt: "#f5fbff",
+    text: "#163049",
+    textMuted: "#5d748c",
+    border: "rgba(22,48,73,0.10)",
+    primary: "#1b5f93",
+    accent: "#74b8de",
+    buttonText: "#ffffff",
+    radius: 18,
+  },
+  "harbor-line": {
+    background: "#0c1014",
+    surface: "#121820",
+    surfaceAlt: "#1b222b",
+    text: "#f6f1ea",
+    textMuted: "#c8bfb3",
+    border: "rgba(246,241,234,0.12)",
+    primary: "#b99a6b",
+    accent: "#e7d2ae",
+    buttonText: "#0c1014",
+    radius: 10,
   },
   classic: {
     background: "#f7f7f8",
