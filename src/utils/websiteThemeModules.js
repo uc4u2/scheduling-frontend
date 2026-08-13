@@ -69,6 +69,9 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "iron-ember": { themeKey: "iron-ember", pages: SHARED_PAGES },
   "clear-clinic": { themeKey: "clear-clinic", pages: SHARED_PAGES },
   "harbor-line": { themeKey: "harbor-line", pages: SHARED_PAGES },
+  "still-bloom": { themeKey: "still-bloom", pages: SHARED_PAGES },
+  "black-letter": { themeKey: "black-letter", pages: SHARED_PAGES },
+  "circuit-north": { themeKey: "circuit-north", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

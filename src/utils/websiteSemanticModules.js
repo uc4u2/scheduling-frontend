@@ -187,6 +187,47 @@ export function normalizePageContent(content = {}) {
   };
 }
 
+export function normalizeSemanticFieldPath(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  let next = raw.replace(/^content\./, "");
+  if (next.startsWith("people.")) {
+    next = next.replace(/^people\./, "items.");
+  }
+  next = next.replace(/^items\.(\d+)\.question$/, "items.$1.title");
+  next = next.replace(/^items\.(\d+)\.answer$/, "items.$1.body");
+  next = next.replace(/^items\.(\d+)\.name$/, "items.$1.title");
+  next = next.replace(/^items\.(\d+)\.bio$/, "items.$1.body");
+  return next;
+}
+
+export function candidateSemanticFieldPaths(value) {
+  const normalized = normalizeSemanticFieldPath(value);
+  if (!normalized) return [];
+  const candidates = new Set([normalized, `content.${normalized}`]);
+  const match = normalized.match(/^items\.(\d+)\.(.+)$/);
+  if (match) {
+    const [, index, field] = match;
+    if (field === "title") {
+      candidates.add(`content.items.${index}.question`);
+      candidates.add(`content.items.${index}.name`);
+      candidates.add(`content.people.${index}.name`);
+    }
+    if (field === "body") {
+      candidates.add(`content.items.${index}.answer`);
+      candidates.add(`content.items.${index}.bio`);
+      candidates.add(`content.people.${index}.bio`);
+    }
+    if (field === "image") {
+      candidates.add(`content.people.${index}.image`);
+    }
+    if (field === "role") {
+      candidates.add(`content.people.${index}.role`);
+    }
+  }
+  return Array.from(candidates);
+}
+
 export function defaultSlotForModule(pageKind, moduleType) {
   const page = String(pageKind || "generic");
   if (moduleType === "hero") return `${page}.hero`;
@@ -237,17 +278,58 @@ function normalizeCta(props = {}, includeSecondary = false) {
   return next;
 }
 
+function pickMediaUrl(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function normalizeMediaItem(item = {}) {
+  const image = pickMediaUrl(item.image, item.imageUrl, item.src, item.url);
+  const avatar = pickMediaUrl(item.avatar, item.avatarUrl);
+  const beforeImage = pickMediaUrl(item.beforeImage, item.beforeImageUrl, item.before, item.beforeUrl);
+  const afterImage = pickMediaUrl(item.afterImage, item.afterImageUrl, item.after, item.afterUrl);
+  const secondaryImage = pickMediaUrl(item.secondaryImage, item.secondaryImageUrl);
+  return {
+    image,
+    imageUrl: image,
+    imageAlt: item.imageAlt || item.alt || "",
+    avatar,
+    avatarAlt: item.avatarAlt || "",
+    beforeImage,
+    afterImage,
+    beforeLabel: item.beforeLabel || item.beforeText || "",
+    afterLabel: item.afterLabel || item.afterText || "",
+    secondaryImage,
+    secondaryImageAlt: item.secondaryImageAlt || "",
+    backgroundImage: pickMediaUrl(item.backgroundImage, item.backgroundImageUrl, item.backgroundUrl),
+  };
+}
+
 function normalizeRepeaterItems(items = []) {
   return (Array.isArray(items) ? items : []).flatMap((item, index) => {
     if (typeof item === "string" && item.trim()) {
       return [{ id: nanoid(10), title: item.trim(), body: "" }];
     }
     if (!item || typeof item !== "object") return [];
+    const media = normalizeMediaItem(item);
     return [{
       id: String(item.id || nanoid(10)),
       title: item.title || item.name || item.label || item.question || item.author || "",
       body: item.body || item.description || item.answer || item.quote || item.caption || "",
-      imageUrl: item.imageUrl || item.image || "",
+      image: media.image,
+      imageUrl: media.imageUrl,
+      imageAlt: media.imageAlt,
+      avatar: media.avatar,
+      avatarAlt: media.avatarAlt,
+      beforeImage: media.beforeImage,
+      afterImage: media.afterImage,
+      beforeLabel: media.beforeLabel,
+      afterLabel: media.afterLabel,
+      secondaryImage: media.secondaryImage,
+      secondaryImageAlt: media.secondaryImageAlt,
+      backgroundImage: media.backgroundImage,
       quote: item.quote || "",
       author: item.author || "",
       role: item.role || "",
@@ -256,8 +338,11 @@ function normalizeRepeaterItems(items = []) {
       value: item.value || "",
       features: Array.isArray(item.features) ? item.features : [],
       href: item.href || item.link || "",
+      link: item.link || item.href || "",
       location: item.location || "",
       tagline: item.tagline || "",
+      caption: item.caption || "",
+      name: item.name || "",
       order: index,
     }];
   });
@@ -266,16 +351,22 @@ function normalizeRepeaterItems(items = []) {
 function normalizeGalleryItems(items = []) {
   return (Array.isArray(items) ? items : []).flatMap((item) => {
     if (typeof item === "string" && item.trim()) {
-      return [{ id: nanoid(10), imageUrl: item.trim(), caption: "", href: "" }];
+      return [{ id: nanoid(10), image: item.trim(), imageUrl: item.trim(), imageAlt: "", caption: "", href: "", link: "" }];
     }
     if (!item || typeof item !== "object") return [];
-    const imageUrl = item.imageUrl || item.image || item.src || item.url || "";
+    const media = normalizeMediaItem(item);
+    const imageUrl = media.imageUrl;
     if (!imageUrl) return [];
     return [{
       id: String(item.id || nanoid(10)),
+      image: media.image,
       imageUrl,
+      imageAlt: media.imageAlt,
       caption: item.caption || item.title || item.label || "",
       href: item.href || item.link || "",
+      link: item.link || item.href || "",
+      title: item.title || item.label || "",
+      body: item.body || item.description || "",
     }];
   });
 }
@@ -302,13 +393,24 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
 
   switch (type) {
     case "hero":
+      {
+        const image = pickMediaUrl(props.image, props.imageUrl, props.backgroundUrl);
+        const secondaryImages = Array.isArray(props.secondaryImages)
+          ? props.secondaryImages
+              .map((value) => (typeof value === "string" ? value.trim() : ""))
+              .filter(Boolean)
+          : [];
       base.content = {
         eyebrow: props.eyebrow || "",
         heading: props.heading || props.title || "",
         subheading: props.subheading || props.description || "",
-        imageUrl: props.image || props.backgroundUrl || "",
+        image,
+        imageUrl: image,
+        imageAlt: props.imageAlt || props.alt || "",
+        secondaryImages,
         ...normalizeCta(props, true),
       };
+      }
       break;
     case "services":
     case "reviews":
@@ -324,6 +426,7 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
     case "locations":
     case "proofBand":
     case "reviewSummary":
+    case "beforeAfter":
       base.content = {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
@@ -333,7 +436,6 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
       break;
     case "gallery":
     case "portfolio":
-    case "beforeAfter":
       base.content = {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
@@ -347,6 +449,7 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         query: props.query || props.address || "",
         embedUrl: props.embedUrl || "",
         zoom: props.zoom || "",
+        address: props.address || "",
       };
       break;
     case "contactForm":
@@ -361,17 +464,28 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
         body: props.body || props.text || "",
+        image: pickMediaUrl(props.image, props.imageUrl),
+        imageUrl: pickMediaUrl(props.image, props.imageUrl),
+        imageAlt: props.imageAlt || props.alt || "",
       };
       break;
     case "featureStory":
     case "richText":
+      {
+        const image = pickMediaUrl(props.image, props.imageUrl);
+        const secondaryImage = pickMediaUrl(props.secondaryImage, props.secondaryImageUrl);
       base.content = {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
         body: props.body || props.description || props.text || "",
-        imageUrl: props.image || props.imageUrl || "",
+        image,
+        imageUrl: image,
+        imageAlt: props.imageAlt || props.alt || "",
+        secondaryImage,
+        secondaryImageAlt: props.secondaryImageAlt || "",
         ...normalizeCta(props, false),
       };
+      }
       break;
     default:
       break;
@@ -443,34 +557,71 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         eyebrow: "",
         heading: page?.title || "",
         subheading: "",
+        image: "",
         imageUrl: "",
+        imageAlt: "",
+        secondaryImages: [],
         primaryCta: { label: "Learn more", href: "#" },
         secondaryCta: { label: "", href: "" },
       };
       break;
     case "richText":
-      base.content = { heading: "Section heading", body: "Add supporting copy here.", primaryCta: { label: "", href: "" } };
+      base.content = {
+        heading: "Section heading",
+        body: "Add supporting copy here.",
+        image: "",
+        imageUrl: "",
+        imageAlt: "",
+        primaryCta: { label: "", href: "" },
+      };
       break;
     case "contactIntro":
-      base.content = { heading: "Get in touch", intro: "Introduce this page.", body: "" };
+      base.content = {
+        heading: "Get in touch",
+        intro: "Introduce this page.",
+        body: "",
+        image: "",
+        imageUrl: "",
+        imageAlt: "",
+      };
       break;
     case "contactForm":
       base.content = { heading: "Contact us", intro: "", formKey: "contact" };
       break;
     case "cta":
-      base.content = { heading: "Ready to get started?", body: "", primaryCta: { label: "Get in touch", href: "/contact" } };
+      base.content = {
+        heading: "Ready to get started?",
+        body: "",
+        backgroundImage: "",
+        primaryCta: { label: "Get in touch", href: "/contact" },
+      };
       break;
     case "bookingCta":
-      base.content = { heading: "Book now", body: "", primaryCta: { label: "Book an appointment", href: "/contact" } };
+      base.content = {
+        heading: "Book now",
+        body: "",
+        backgroundImage: "",
+        primaryCta: { label: "Book an appointment", href: "/contact" },
+      };
       break;
     case "map":
-      base.content = { heading: "Find us", intro: "", query: "", embedUrl: "", zoom: "" };
+      base.content = { heading: "Find us", intro: "", query: "", address: "", embedUrl: "", zoom: "" };
       break;
     case "video":
-      base.content = { heading: "Video", body: "", videoUrl: "", posterUrl: "" };
+      base.content = { heading: "Video", body: "", videoUrl: "", posterImage: "", posterUrl: "" };
       break;
     case "featureStory":
-      base.content = { heading: "Feature story", intro: "", body: "", imageUrl: "", primaryCta: { label: "", href: "" } };
+      base.content = {
+        heading: "Feature story",
+        intro: "",
+        body: "",
+        image: "",
+        imageUrl: "",
+        imageAlt: "",
+        secondaryImage: "",
+        secondaryImageAlt: "",
+        primaryCta: { label: "", href: "" },
+      };
       break;
     case "services":
     case "reviews":

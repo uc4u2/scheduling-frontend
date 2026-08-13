@@ -107,9 +107,11 @@ import {
   safeSections,
 } from "../../../components/website/BuilderPageUtils";
 import {
+  candidateSemanticFieldPaths,
   SEMANTIC_MODULE_LABELS,
   createSemanticModule,
   inferPageKind,
+  normalizeSemanticFieldPath,
   normalizeSemanticModules,
   normalizePageContent,
   withNormalizedModules,
@@ -3323,7 +3325,7 @@ useEffect(() => {
       if (!data || data.type !== "schedulaa:website-slot-select") return;
       const slot = String(data.slot || "").trim();
       const label = String(data.label || slot).trim();
-      const fieldPath = String(data.fieldPath || "").trim();
+      const fieldPath = normalizeSemanticFieldPath(data.fieldPath);
       setStyleMsg(`Selected editable slot: ${label}`);
       setBuilderTabIndex(0);
       if (data.pageId) {
@@ -8181,10 +8183,18 @@ function InspectorColumn() {
   useEffect(() => {
     if (!selectedModuleFieldPath) return;
     const timer = window.setTimeout(() => {
-      const field = document.querySelector(
-        `[data-module-field-path="${selectedModuleFieldPath}"] input, [data-module-field-path="${selectedModuleFieldPath}"] textarea, [data-module-field-path="${selectedModuleFieldPath}"] button`
-      );
+      const selector = candidateSemanticFieldPaths(selectedModuleFieldPath)
+        .map(
+          (fieldPath) =>
+            `[data-module-field-path="${fieldPath}"] input, [data-module-field-path="${fieldPath}"] textarea, [data-module-field-path="${fieldPath}"] button`
+        )
+        .join(", ");
+      const field = selector ? document.querySelector(selector) : null;
       if (field && typeof field.focus === "function") {
+        field.closest("[data-module-field-path]")?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
         field.focus();
       }
     }, 60);
@@ -8439,36 +8449,117 @@ function InspectorColumn() {
     }
     const content = selectedSemanticModule.content || {};
     const items = Array.isArray(content.items) ? content.items : [];
+    const syncPrimaryImagePatch = (patch = {}) => {
+      const next = { ...patch };
+      if (Object.prototype.hasOwnProperty.call(next, "image")) {
+        next.imageUrl = next.image;
+      }
+      if (Object.prototype.hasOwnProperty.call(next, "imageUrl") && !Object.prototype.hasOwnProperty.call(next, "image")) {
+        next.image = next.imageUrl;
+      }
+      return next;
+    };
     const updateItem = (index, patch) => {
       const nextItems = items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...patch } : item
+        itemIndex === index ? { ...item, ...syncPrimaryImagePatch(patch) } : item
       );
       updateSelectedSemanticModuleItems(nextItems);
     };
     const removeItem = (index) => {
       updateSelectedSemanticModuleItems(items.filter((_, itemIndex) => itemIndex !== index));
     };
+    const moveItem = (index, direction) => {
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= items.length) return;
+      const nextItems = [...items];
+      const [moved] = nextItems.splice(index, 1);
+      nextItems.splice(targetIndex, 0, moved);
+      updateSelectedSemanticModuleItems(nextItems);
+    };
+    const createEmptyItem = () => {
+      switch (selectedSemanticModule.type) {
+        case "faq":
+          return { id: nanoOrShortId(), title: "", body: "" };
+        case "reviews":
+          return { id: nanoOrShortId(), title: "", author: "", role: "", body: "", quote: "", avatar: "", avatarAlt: "" };
+        case "pricing":
+          return { id: nanoOrShortId(), title: "", price: "", body: "", features: [], href: "" };
+        case "stats":
+          return { id: nanoOrShortId(), title: "", value: "", body: "" };
+        case "trustRail":
+          return { id: nanoOrShortId(), title: "", body: "", image: "", imageUrl: "", imageAlt: "", href: "" };
+        case "beforeAfter":
+          return {
+            id: nanoOrShortId(),
+            title: "",
+            body: "",
+            beforeImage: "",
+            afterImage: "",
+            beforeLabel: "",
+            afterLabel: "",
+          };
+        case "gallery":
+        case "portfolio":
+          return { id: nanoOrShortId(), title: "", caption: "", body: "", image: "", imageUrl: "", imageAlt: "", href: "" };
+        case "team":
+          return { id: nanoOrShortId(), title: "", role: "", body: "", image: "", imageUrl: "", imageAlt: "" };
+        default:
+          return { id: nanoOrShortId(), title: "", body: "", image: "", imageUrl: "", imageAlt: "", href: "", features: [] };
+      }
+    };
     const addItem = () => {
       updateSelectedSemanticModuleItems([
         ...items,
-        { id: nanoOrShortId(), title: "", body: "", imageUrl: "", href: "", features: [] },
+        createEmptyItem(),
       ]);
     };
+    const updateSelectedContent = (patch) =>
+      updateSelectedSemanticModuleContent(syncPrimaryImagePatch(patch));
+    const contentPath = (field) => `content.${field}`;
+    const itemPath = (index, field) => `content.items.${index}.${field}`;
+    const renderPrimaryCtaFields = () => (
+      <>
+        <TextField
+          size="small"
+          label="Primary CTA label"
+          value={content.primaryCta?.label || ""}
+          onChange={(event) =>
+            updateSelectedContent({
+              primaryCta: { ...(content.primaryCta || {}), label: event.target.value },
+            })
+          }
+          fullWidth
+          inputProps={{ "data-module-field-path": contentPath("primaryCta.label") }}
+        />
+        <TextField
+          size="small"
+          label="Primary CTA link"
+          value={content.primaryCta?.href || ""}
+          onChange={(event) =>
+            updateSelectedContent({
+              primaryCta: { ...(content.primaryCta || {}), href: event.target.value },
+            })
+          }
+          fullWidth
+          inputProps={{ "data-module-field-path": contentPath("primaryCta.href") }}
+        />
+      </>
+    );
     return (
       <Stack spacing={2} sx={{ mt: 1 }}>
         <Alert severity="info">
           Editing {SEMANTIC_MODULE_LABELS[selectedSemanticModule.type] || selectedSemanticModule.type}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
-        {["hero", "richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {["hero", "richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Heading"
             value={content.heading || ""}
-            onChange={(event) => updateSelectedSemanticModuleContent({ heading: event.target.value })}
+            onChange={(event) => updateSelectedContent({ heading: event.target.value })}
             fullWidth
-            autoFocus={selectedModuleFieldPath === "heading"}
-            inputProps={{ "data-module-field-path": "heading" }}
+            autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "heading"}
+            inputProps={{ "data-module-field-path": contentPath("heading") }}
           />
         ) : null}
         {selectedSemanticModule.type === "hero" ? (
@@ -8477,64 +8568,147 @@ function InspectorColumn() {
               size="small"
               label="Eyebrow"
               value={content.eyebrow || ""}
-              onChange={(event) => updateSelectedSemanticModuleContent({ eyebrow: event.target.value })}
+              onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })}
               fullWidth
-              inputProps={{ "data-module-field-path": "eyebrow" }}
+              inputProps={{ "data-module-field-path": contentPath("eyebrow") }}
             />
             <TextField
               size="small"
               label="Subheading"
               value={content.subheading || ""}
-              onChange={(event) => updateSelectedSemanticModuleContent({ subheading: event.target.value })}
+              onChange={(event) => updateSelectedContent({ subheading: event.target.value })}
               fullWidth
               multiline
               minRows={3}
-              inputProps={{ "data-module-field-path": "subheading" }}
+              inputProps={{ "data-module-field-path": contentPath("subheading") }}
             />
-            <Box data-module-field-path="image">
+            <Box data-module-field-path={contentPath("image")}>
               <ImageField
                 label="Hero image"
-                value={content.imageUrl || ""}
-                onChange={(url) => updateSelectedSemanticModuleContent({ imageUrl: url })}
+                value={content.image || content.imageUrl || ""}
+                onChange={(url) => updateSelectedContent({ image: url })}
                 companyId={companyId}
               />
             </Box>
             <TextField
               size="small"
-              label="Primary CTA label"
-              value={content.primaryCta?.label || ""}
+              label="Hero image alt text"
+              value={content.imageAlt || ""}
+              onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("imageAlt") }}
+            />
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Secondary images</Typography>
+              {(Array.isArray(content.secondaryImages) ? content.secondaryImages : []).map((url, index, secondaryImages) => (
+                <Stack key={`${url}-${index}`} direction="row" spacing={1} alignItems="center">
+                  <Box sx={{ flex: 1 }} data-module-field-path={contentPath(`secondaryImages.${index}`)}>
+                    <ImageField
+                      label={`Secondary image ${index + 1}`}
+                      value={url || ""}
+                      onChange={(nextUrl) => updateSelectedContent({ secondaryImages: secondaryImages.map((value, itemIndex) => itemIndex === index ? nextUrl : value) })}
+                      companyId={companyId}
+                    />
+                  </Box>
+                  <Button size="small" onClick={() => updateSelectedContent({ secondaryImages: secondaryImages.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Button>
+                </Stack>
+              ))}
+              <Button size="small" variant="outlined" onClick={() => updateSelectedContent({ secondaryImages: [...(Array.isArray(content.secondaryImages) ? content.secondaryImages : []), ""] })}>
+                Add secondary image
+              </Button>
+            </Stack>
+            {renderPrimaryCtaFields()}
+            <TextField
+              size="small"
+              label="Secondary CTA label"
+              value={content.secondaryCta?.label || ""}
               onChange={(event) =>
-                updateSelectedSemanticModuleContent({
-                  primaryCta: { ...(content.primaryCta || {}), label: event.target.value },
+                updateSelectedContent({
+                  secondaryCta: { ...(content.secondaryCta || {}), label: event.target.value },
                 })
               }
               fullWidth
-              inputProps={{ "data-module-field-path": "primaryCta.label" }}
+              inputProps={{ "data-module-field-path": contentPath("secondaryCta.label") }}
             />
             <TextField
               size="small"
-              label="Primary CTA link"
-              value={content.primaryCta?.href || ""}
+              label="Secondary CTA link"
+              value={content.secondaryCta?.href || ""}
               onChange={(event) =>
-                updateSelectedSemanticModuleContent({
-                  primaryCta: { ...(content.primaryCta || {}), href: event.target.value },
+                updateSelectedContent({
+                  secondaryCta: { ...(content.secondaryCta || {}), href: event.target.value },
                 })
               }
               fullWidth
-              inputProps={{ "data-module-field-path": "primaryCta.href" }}
+              inputProps={{ "data-module-field-path": contentPath("secondaryCta.href") }}
             />
           </>
         ) : null}
-        {["richText", "cta", "bookingCta", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) ? (
+        {["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Body"
             value={content.body || content.intro || ""}
-            onChange={(event) => updateSelectedSemanticModuleContent({ body: event.target.value, intro: event.target.value })}
+            onChange={(event) => updateSelectedContent({ body: event.target.value, intro: event.target.value })}
             fullWidth
             multiline
             minRows={4}
+            inputProps={{ "data-module-field-path": contentPath("body") }}
           />
+        ) : null}
+        {["richText", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) ? (
+          <>
+            <Box data-module-field-path={contentPath("image")}>
+              <ImageField
+                label={selectedSemanticModule.type === "featureStory" ? "Feature image" : "Section image"}
+                value={content.image || content.imageUrl || ""}
+                onChange={(url) => updateSelectedContent({ image: url })}
+                companyId={companyId}
+              />
+            </Box>
+            <TextField
+              size="small"
+              label="Image alt text"
+              value={content.imageAlt || ""}
+              onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("imageAlt") }}
+            />
+          </>
+        ) : null}
+        {selectedSemanticModule.type === "featureStory" ? (
+          <>
+            <Box data-module-field-path={contentPath("secondaryImage")}>
+              <ImageField
+                label="Secondary image"
+                value={content.secondaryImage || ""}
+                onChange={(url) => updateSelectedContent({ secondaryImage: url })}
+                companyId={companyId}
+              />
+            </Box>
+            <TextField
+              size="small"
+              label="Secondary image alt text"
+              value={content.secondaryImageAlt || ""}
+              onChange={(event) => updateSelectedContent({ secondaryImageAlt: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("secondaryImageAlt") }}
+            />
+            {renderPrimaryCtaFields()}
+          </>
+        ) : null}
+        {["cta", "bookingCta"].includes(selectedSemanticModule.type) ? (
+          <>
+            {renderPrimaryCtaFields()}
+            <Box data-module-field-path={contentPath("backgroundImage")}>
+              <ImageField
+                label="Background image"
+                value={content.backgroundImage || ""}
+                onChange={(url) => updateSelectedContent({ backgroundImage: url })}
+                companyId={companyId}
+              />
+            </Box>
+          </>
         ) : null}
         {selectedSemanticModule.type === "map" ? (
           <>
@@ -8542,15 +8716,25 @@ function InspectorColumn() {
               size="small"
               label="Address / query"
               value={content.query || ""}
-              onChange={(event) => updateSelectedSemanticModuleContent({ query: event.target.value })}
+              onChange={(event) => updateSelectedContent({ query: event.target.value })}
               fullWidth
+              inputProps={{ "data-module-field-path": contentPath("query") }}
+            />
+            <TextField
+              size="small"
+              label="Display address"
+              value={content.address || ""}
+              onChange={(event) => updateSelectedContent({ address: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("address") }}
             />
             <TextField
               size="small"
               label="Embed URL"
               value={content.embedUrl || ""}
-              onChange={(event) => updateSelectedSemanticModuleContent({ embedUrl: event.target.value })}
+              onChange={(event) => updateSelectedContent({ embedUrl: event.target.value })}
               fullWidth
+              inputProps={{ "data-module-field-path": contentPath("embedUrl") }}
             />
           </>
         ) : null}
@@ -8559,17 +8743,30 @@ function InspectorColumn() {
             size="small"
             label="Form key"
             value={content.formKey || "contact"}
-            onChange={(event) => updateSelectedSemanticModuleContent({ formKey: event.target.value })}
+            onChange={(event) => updateSelectedContent({ formKey: event.target.value })}
             fullWidth
+            inputProps={{ "data-module-field-path": contentPath("formKey") }}
           />
         ) : null}
-        {selectedSemanticModule.type === "featureStory" ? (
-          <ImageField
-            label="Feature image"
-            value={content.imageUrl || ""}
-            onChange={(url) => updateSelectedSemanticModuleContent({ imageUrl: url })}
-            companyId={companyId}
-          />
+        {selectedSemanticModule.type === "video" ? (
+          <>
+            <TextField
+              size="small"
+              label="Video URL"
+              value={content.videoUrl || ""}
+              onChange={(event) => updateSelectedContent({ videoUrl: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("videoUrl") }}
+            />
+            <Box data-module-field-path={contentPath("posterImage")}>
+              <ImageField
+                label="Poster image"
+                value={content.posterImage || content.posterUrl || ""}
+                onChange={(url) => updateSelectedContent({ posterImage: url, posterUrl: url })}
+                companyId={companyId}
+              />
+            </Box>
+          </>
         ) : null}
         {["services", "reviews", "faq", "gallery", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <>
@@ -8577,10 +8774,11 @@ function InspectorColumn() {
               size="small"
               label="Intro"
               value={content.intro || ""}
-              onChange={(event) => updateSelectedSemanticModuleContent({ intro: event.target.value })}
+              onChange={(event) => updateSelectedContent({ intro: event.target.value })}
               fullWidth
               multiline
               minRows={2}
+              inputProps={{ "data-module-field-path": contentPath("intro") }}
             />
             <Stack spacing={1}>
               {items.map((item, index) => (
@@ -8588,29 +8786,183 @@ function InspectorColumn() {
                   <Stack spacing={1}>
                     <TextField
                       size="small"
-                      label="Title"
+                      label={selectedSemanticModule.type === "reviews" ? "Name / heading" : "Title"}
                       value={item.title || item.label || item.author || ""}
-                      onChange={(event) => updateItem(index, { title: event.target.value, label: event.target.value })}
+                      onChange={(event) =>
+                        updateItem(index, {
+                          title: event.target.value,
+                          label: event.target.value,
+                          ...(selectedSemanticModule.type === "reviews" ? { author: event.target.value } : {}),
+                        })
+                      }
                       fullWidth
+                      inputProps={{ "data-module-field-path": itemPath(index, "title") }}
                     />
+                    {["team", "reviews", "services", "locations", "hoursLocation", "contactDetails", "serviceAreas", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+                      <TextField
+                        size="small"
+                        label={selectedSemanticModule.type === "reviews" ? "Role" : "Supporting label"}
+                        value={item.role || item.tagline || item.location || ""}
+                        onChange={(event) => updateItem(index, { role: event.target.value, tagline: event.target.value, location: event.target.value })}
+                        fullWidth
+                        inputProps={{ "data-module-field-path": itemPath(index, "role") }}
+                      />
+                    ) : null}
                     <TextField
                       size="small"
-                      label={selectedSemanticModule.type === "reviews" ? "Quote / body" : "Body"}
+                      label={selectedSemanticModule.type === "reviews" ? "Quote / body" : selectedSemanticModule.type === "faq" ? "Answer" : "Body"}
                       value={item.body || item.quote || ""}
                       onChange={(event) => updateItem(index, { body: event.target.value, quote: event.target.value })}
                       fullWidth
                       multiline
                       minRows={2}
+                      inputProps={{ "data-module-field-path": itemPath(index, "body") }}
                     />
-                    {["gallery", "team", "portfolio", "beforeAfter", "services"].includes(selectedSemanticModule.type) ? (
-                      <ImageField
-                        label="Image"
-                        value={item.imageUrl || ""}
-                        onChange={(url) => updateItem(index, { imageUrl: url })}
-                        companyId={companyId}
+                    {selectedSemanticModule.type === "pricing" ? (
+                      <>
+                        <TextField
+                          size="small"
+                          label="Price"
+                          value={item.price || ""}
+                          onChange={(event) => updateItem(index, { price: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "price") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="Features"
+                          helperText="One feature per line."
+                          value={Array.isArray(item.features) ? item.features.join("\n") : ""}
+                          onChange={(event) =>
+                            updateItem(index, {
+                              features: event.target.value
+                                .split("\n")
+                                .map((value) => value.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          inputProps={{ "data-module-field-path": itemPath(index, "features") }}
+                        />
+                      </>
+                    ) : null}
+                    {selectedSemanticModule.type === "stats" ? (
+                      <TextField
+                        size="small"
+                        label="Value"
+                        value={item.value || ""}
+                        onChange={(event) => updateItem(index, { value: event.target.value })}
+                        fullWidth
+                        inputProps={{ "data-module-field-path": itemPath(index, "value") }}
                       />
                     ) : null}
-                    <Stack direction="row" justifyContent="flex-end">
+                    {["gallery", "team", "portfolio", "services", "trustRail"].includes(selectedSemanticModule.type) ? (
+                      <>
+                        <Box data-module-field-path={itemPath(index, "image")}>
+                          <ImageField
+                            label="Image"
+                            value={item.image || item.imageUrl || ""}
+                            onChange={(url) => updateItem(index, { image: url })}
+                            companyId={companyId}
+                          />
+                        </Box>
+                        <TextField
+                          size="small"
+                          label="Image alt text"
+                          value={item.imageAlt || ""}
+                          onChange={(event) => updateItem(index, { imageAlt: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "imageAlt") }}
+                        />
+                      </>
+                    ) : null}
+                    {selectedSemanticModule.type === "reviews" ? (
+                      <>
+                        <Box data-module-field-path={itemPath(index, "avatar")}>
+                          <ImageField
+                            label="Avatar"
+                            value={item.avatar || ""}
+                            onChange={(url) => updateItem(index, { avatar: url })}
+                            companyId={companyId}
+                          />
+                        </Box>
+                        <TextField
+                          size="small"
+                          label="Avatar alt text"
+                          value={item.avatarAlt || ""}
+                          onChange={(event) => updateItem(index, { avatarAlt: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "avatarAlt") }}
+                        />
+                      </>
+                    ) : null}
+                    {selectedSemanticModule.type === "beforeAfter" ? (
+                      <>
+                        <Box data-module-field-path={itemPath(index, "beforeImage")}>
+                          <ImageField
+                            label="Before image"
+                            value={item.beforeImage || ""}
+                            onChange={(url) => updateItem(index, { beforeImage: url })}
+                            companyId={companyId}
+                          />
+                        </Box>
+                        <Box data-module-field-path={itemPath(index, "afterImage")}>
+                          <ImageField
+                            label="After image"
+                            value={item.afterImage || ""}
+                            onChange={(url) => updateItem(index, { afterImage: url })}
+                            companyId={companyId}
+                          />
+                        </Box>
+                        <TextField
+                          size="small"
+                          label="Before label"
+                          value={item.beforeLabel || ""}
+                          onChange={(event) => updateItem(index, { beforeLabel: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "beforeLabel") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="After label"
+                          value={item.afterLabel || ""}
+                          onChange={(event) => updateItem(index, { afterLabel: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "afterLabel") }}
+                        />
+                      </>
+                    ) : null}
+                    {["gallery", "portfolio"].includes(selectedSemanticModule.type) ? (
+                      <>
+                        <TextField
+                          size="small"
+                          label="Caption"
+                          value={item.caption || ""}
+                          onChange={(event) => updateItem(index, { caption: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "caption") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="Link"
+                          value={item.href || item.link || ""}
+                          onChange={(event) => updateItem(index, { href: event.target.value, link: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "href") }}
+                        />
+                      </>
+                    ) : null}
+                    <Stack direction="row" justifyContent="space-between">
+                      <Stack direction="row" spacing={1}>
+                        <Button size="small" variant="outlined" onClick={() => moveItem(index, "up")} disabled={index === 0}>
+                          Move up
+                        </Button>
+                        <Button size="small" variant="outlined" onClick={() => moveItem(index, "down")} disabled={index === items.length - 1}>
+                          Move down
+                        </Button>
+                      </Stack>
                       <Button color="error" size="small" onClick={() => removeItem(index)}>
                         Remove item
                       </Button>
