@@ -39,6 +39,12 @@ export function isNextJsBuilderMode(mode) {
   return resolveBuilderRendererMode(mode) === "nextjs";
 }
 
+// Classic retains its floating/inline inspector modes. Semantic Next.js editing
+// always belongs in the Builder's contextual left inspector.
+export function usesDockedSemanticInspector(mode) {
+  return isNextJsBuilderMode(mode);
+}
+
 export function normalizePreviewPagePath(editing) {
   const pathValue = String(
     editing?.path || editing?.canonical_path || editing?.slug || ""

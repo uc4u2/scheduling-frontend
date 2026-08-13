@@ -154,6 +154,7 @@ import {
   getBuilderTabDefaultIndex,
   buildWebsiteStyleApplyPayload,
   isNextJsBuilderMode,
+  usesDockedSemanticInspector,
   isAcceptedPreviewMessage,
   normalizePreviewPagePath,
   resolveBuilderRendererMode,
@@ -2907,6 +2908,7 @@ const [brandingErr, setBrandingErr] = useState("");
   const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
   const isNextJsContentMode =
     isNextJsBuilderMode(builderRendererMode) && Boolean(currentStyleKey);
+  const usesSemanticDockedInspector = usesDockedSemanticInspector(builderRendererMode);
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
       style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
@@ -3352,13 +3354,15 @@ useEffect(() => {
         setSelectedModuleFieldPath(fieldPath);
         const availableModules = safeModules(editing || {});
         const selectedModule = availableModules.find((module) => module.id === moduleId);
-        const legacySectionId =
-          selectedModule?.settings?.legacySectionId || selectedModule?.id || null;
-        const canvasIndex = safeSections(editing || {}).findIndex(
-          (section) => section?.id === legacySectionId
-        );
-        if (canvasIndex >= 0) {
-          setSelectedBlock(canvasIndex);
+        if (!isNextJsContentMode) {
+          const legacySectionId =
+            selectedModule?.settings?.legacySectionId || selectedModule?.id || null;
+          const canvasIndex = safeSections(editing || {}).findIndex(
+            (section) => section?.id === legacySectionId
+          );
+          if (canvasIndex >= 0) {
+            setSelectedBlock(canvasIndex);
+          }
         }
       } else if (slot) {
         const availableModules = safeModules(editing || {});
@@ -3366,26 +3370,30 @@ useEffect(() => {
         if (slotMatch) {
           setSelectedModuleId(slotMatch.id);
           setSelectedModuleFieldPath(fieldPath);
-          const legacySectionId =
-            slotMatch?.settings?.legacySectionId || slotMatch?.id || null;
-          const canvasIndex = safeSections(editing || {}).findIndex(
-            (section) => section?.id === legacySectionId
-          );
-          if (canvasIndex >= 0) {
-            setSelectedBlock(canvasIndex);
+          if (!isNextJsContentMode) {
+            const legacySectionId =
+              slotMatch?.settings?.legacySectionId || slotMatch?.id || null;
+            const canvasIndex = safeSections(editing || {}).findIndex(
+              (section) => section?.id === legacySectionId
+            );
+            if (canvasIndex >= 0) {
+              setSelectedBlock(canvasIndex);
+            }
           }
         } else {
           const heroMatch = slot === "home.hero" ? availableModules.find((module) => module.type === "hero") : null;
           if (heroMatch) {
             setSelectedModuleId(heroMatch.id);
             setSelectedModuleFieldPath(fieldPath);
-            const legacySectionId =
-              heroMatch?.settings?.legacySectionId || heroMatch?.id || null;
-            const canvasIndex = safeSections(editing || {}).findIndex(
-              (section) => section?.id === legacySectionId
-            );
-            if (canvasIndex >= 0) {
-              setSelectedBlock(canvasIndex);
+            if (!isNextJsContentMode) {
+              const legacySectionId =
+                heroMatch?.settings?.legacySectionId || heroMatch?.id || null;
+              const canvasIndex = safeSections(editing || {}).findIndex(
+                (section) => section?.id === legacySectionId
+              );
+              if (canvasIndex >= 0) {
+                setSelectedBlock(canvasIndex);
+              }
             }
           }
         }
@@ -3399,7 +3407,7 @@ useEffect(() => {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [editing, nextJsPreviewOrigin, pages, setEditing]);
+  }, [editing, isNextJsContentMode, nextJsPreviewOrigin, pages, setEditing]);
 
   useEffect(() => {
     setPageSettingsDirty(false);
@@ -4220,6 +4228,13 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
   // - Advanced mode: docked/left inspector flow
   // Keep existing internals unchanged to avoid behavioral regressions.
   useEffect(() => {
+    if (usesSemanticDockedInspector) {
+      // Next.js modules have their own semantic inspector. A stored Classic
+      // Simple-mode preference must not create a competing floating editor.
+      if (fi.inspectorMode !== "dock") fi.setInspectorMode("dock");
+      if (mode !== "advanced") setMode("advanced");
+      return;
+    }
     const modeChanged = prevModeRef.current !== mode;
     prevModeRef.current = mode;
 
@@ -4244,6 +4259,8 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
     fi.setInspectorMode,
     fi.setPanelOffset,
     fi.setFollowSelection,
+    usesSemanticDockedInspector,
+    setMode,
   ]);
 
   useEffect(() => {
@@ -6141,7 +6158,7 @@ const autoProvisionIfEmpty = useCallback(
           {t("manager.visualBuilder.controls.buttons.redo")}
         </Button>
 
-        <FormControlLabel
+        {!isNextJsContentMode && <FormControlLabel
           sx={{ ml: 1 }}
           label={t("manager.visualBuilder.controls.toggles.simpleMode")}
           control={
@@ -6150,8 +6167,8 @@ const autoProvisionIfEmpty = useCallback(
               onChange={(_, v) => setMode(v ? "simple" : "advanced")}
             />
           }
-        />
-        <Tooltip
+        />}
+        {!isNextJsContentMode && <Tooltip
           title={t(
             "manager.visualBuilder.controls.tooltips.simpleModeFloating",
             "Simple mode: click any section on the canvas to open the floating editor. Drag the editor header to move it. Use X to close, then click a section to reopen."
@@ -6160,7 +6177,7 @@ const autoProvisionIfEmpty = useCallback(
           <IconButton size="small" aria-label="Simple mode help">
             <HelpOutlineIcon fontSize="small" />
           </IconButton>
-        </Tooltip>
+        </Tooltip>}
 
         {/*
           Phase 1: hide dock/inline/float/follow controls from end users.
@@ -8550,7 +8567,7 @@ function InspectorColumn() {
           Editing {SEMANTIC_MODULE_LABELS[selectedSemanticModule.type] || selectedSemanticModule.type}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
-        {["hero", "richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {["richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Heading"
@@ -8563,40 +8580,17 @@ function InspectorColumn() {
         ) : null}
         {selectedSemanticModule.type === "hero" ? (
           <>
-            <TextField
-              size="small"
-              label="Eyebrow"
-              value={content.eyebrow || ""}
-              onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })}
-              fullWidth
-              inputProps={{ "data-module-field-path": contentPath("eyebrow") }}
-            />
-            <TextField
-              size="small"
-              label="Subheading"
-              value={content.subheading || ""}
-              onChange={(event) => updateSelectedContent({ subheading: event.target.value })}
-              fullWidth
-              multiline
-              minRows={3}
-              inputProps={{ "data-module-field-path": contentPath("subheading") }}
-            />
-            <Box data-module-field-path={contentPath("image")}>
-              <ImageField
-                label="Hero image"
-                value={content.image || content.imageUrl || ""}
-                onChange={(url) => updateSelectedContent({ image: url })}
-                companyId={companyId}
-              />
-            </Box>
-            <TextField
-              size="small"
-              label="Hero image alt text"
-              value={content.imageAlt || ""}
-              onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })}
-              fullWidth
-              inputProps={{ "data-module-field-path": contentPath("imageAlt") }}
-            />
+            <Stack spacing={1.5}>
+              <Typography variant="overline" color="text.secondary">Content</Typography>
+              <TextField size="small" label="Eyebrow" value={content.eyebrow || ""} onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("eyebrow") }} />
+              <TextField size="small" label="Heading" value={content.heading || ""} onChange={(event) => updateSelectedContent({ heading: event.target.value })} fullWidth autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "heading"} inputProps={{ "data-module-field-path": contentPath("heading") }} />
+              <TextField size="small" label="Subheading" value={content.subheading || ""} onChange={(event) => updateSelectedContent({ subheading: event.target.value })} fullWidth multiline minRows={3} inputProps={{ "data-module-field-path": contentPath("subheading") }} />
+            </Stack>
+            <Stack spacing={1.5}>
+              <Typography variant="overline" color="text.secondary">Media</Typography>
+              <Box data-module-field-path={contentPath("image")}><ImageField label="Hero image" value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} /></Box>
+              <TextField size="small" label="Hero image alt text" value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
+            </Stack>
             <Stack spacing={1}>
               <Typography variant="subtitle2">Secondary images</Typography>
               {(Array.isArray(content.secondaryImages) ? content.secondaryImages : []).map((url, index, secondaryImages) => (
@@ -8616,7 +8610,9 @@ function InspectorColumn() {
                 Add secondary image
               </Button>
             </Stack>
-            {renderPrimaryCtaFields()}
+            <Stack spacing={1.5}>
+              <Typography variant="overline" color="text.secondary">Buttons</Typography>
+              {renderPrimaryCtaFields()}
             <TextField
               size="small"
               label="Secondary CTA label"
@@ -8641,6 +8637,7 @@ function InspectorColumn() {
               fullWidth
               inputProps={{ "data-module-field-path": contentPath("secondaryCta.href") }}
             />
+            </Stack>
           </>
         ) : null}
         {["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) ? (
@@ -8769,6 +8766,7 @@ function InspectorColumn() {
         ) : null}
         {["services", "reviews", "faq", "gallery", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <>
+            <Typography variant="overline" color="text.secondary">Content</Typography>
             <TextField
               size="small"
               label="Intro"
@@ -8780,6 +8778,9 @@ function InspectorColumn() {
               inputProps={{ "data-module-field-path": contentPath("intro") }}
             />
             <Stack spacing={1}>
+              <Typography variant="overline" color="text.secondary">
+                {selectedSemanticModule.type === "team" ? "People" : selectedSemanticModule.type === "gallery" ? "Media" : selectedSemanticModule.type === "faq" ? "Questions" : "Items"}
+              </Typography>
               {items.map((item, index) => (
                 <Paper key={item.id || index} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                   <Stack spacing={1}>
@@ -9104,7 +9105,7 @@ function InspectorColumn() {
       />
     </CollapsibleSection>
 
-    {mode !== "simple" && (
+    {(isNextJsContentMode || mode !== "simple") && (
     <CollapsibleSection
       id="inspector-block"
       title={t("manager.visualBuilder.inspector.title")}
@@ -9120,7 +9121,9 @@ function InspectorColumn() {
         </Tooltip>
       }
     >
-      {selectedBlock < 0 ? (
+      {isNextJsContentMode ? (
+        renderSemanticModuleEditor()
+      ) : selectedBlock < 0 ? (
         <Box sx={{ color: "text.secondary" }}>
           <Typography variant="body2">
             {t("manager.visualBuilder.sections.hint")}
@@ -9131,8 +9134,6 @@ function InspectorColumn() {
           Inline inspector is active — edit controls are shown directly below the
           selected section on the canvas.
         </Alert>
-      ) : isNextJsContentMode ? (
-        renderSemanticModuleEditor()
       ) : (
         <>
           <Tabs
@@ -10230,7 +10231,7 @@ if (authError) {
       )}
 
       {/* Floating panel (single instance) */}
-      <FloatingInspector.Panel
+      {!isNextJsContentMode && <FloatingInspector.Panel
         fi={fi}
         selectedIndex={selectedBlock}
         selectedBlockObj={selectedBlockObj}
@@ -10247,7 +10248,7 @@ if (authError) {
             companyId={companyId}
           />
         )}
-      />
+      />}
 
       <Drawer
         anchor="right"

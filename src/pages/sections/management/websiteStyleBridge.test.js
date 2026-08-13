@@ -5,6 +5,7 @@ import {
   getBuilderTabDefaultIndex,
   isAcceptedPreviewMessage,
   isNextJsBuilderMode,
+  usesDockedSemanticInspector,
   normalizePreviewPagePath,
   resolveBuilderRendererMode,
 } from "./websiteStyleBridge";
@@ -87,6 +88,8 @@ describe("websiteStyleBridge", () => {
     expect(resolveBuilderRendererMode({ renderer_engine: "legacy-react" })).toBe("legacy-react");
     expect(isNextJsBuilderMode("nextjs")).toBe(true);
     expect(isNextJsBuilderMode("legacy-react")).toBe(false);
+    expect(usesDockedSemanticInspector("nextjs")).toBe(true);
+    expect(usesDockedSemanticInspector("legacy-react")).toBe(false);
   });
 
   it("builds a builder URL with company and style-tab context", () => {

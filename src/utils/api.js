@@ -2,6 +2,7 @@
 import axios from "axios";
 import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
+import { canonicalWebsitePagePath } from "./websitePageApi";
 
 /* ------------------------------ Base URL ------------------------------ */
 const viteBase =
@@ -1757,7 +1758,9 @@ export const navSettings = {
 
   async updatePage(companyId, pageId, payload, config = {}) {
     const res = await putWithFallback(
-      `/admin/pages/${pageId}/nav`,
+      // The nav endpoint accepts only nav metadata and silently ignores `content`.
+      // WebsitePage is the canonical persistence API for Builder page edits.
+      canonicalWebsitePagePath(pageId),
       payload,
       {
         ...withCompany(companyId),
