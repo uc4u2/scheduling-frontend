@@ -7648,7 +7648,6 @@ const CanvasColumn = (
               ref={nextJsPreviewIframeRef}
               title="Next.js website content preview"
               src={nextJsPreviewUrl}
-              referrerPolicy="no-referrer"
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
               sx={{
                 width: "100%",
@@ -10006,7 +10005,6 @@ function InspectorColumn() {
                   ref={nextJsPreviewIframeRef}
                   title="Next.js website preview"
                   src={nextJsPreviewUrl}
-                  referrerPolicy="no-referrer"
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                   sx={{
                     width: "100%",
