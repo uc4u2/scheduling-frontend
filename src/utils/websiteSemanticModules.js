@@ -116,7 +116,7 @@ export const OLD_BLOCK_MIGRATION_STATUS = {
   popupCta: "normalized",
   pageStyle: "classic-only",
   footer: "classic-only",
-  videoStorySplit: "unsupported",
+  videoStorySplit: "normalized",
   videoGallery: "unsupported",
   blogList: "deprecated",
 };
@@ -147,6 +147,8 @@ export const OLD_BLOCK_TO_MODULE = {
   logoCloud: "trustRail",
   logoCarousel: "trustRail",
   processSteps: "process",
+  collectionShowcase: "portfolio",
+  videoStorySplit: "video",
 };
 
 export const GLOBAL_FEATURE_TYPES = {
@@ -487,6 +489,22 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
       };
       }
       break;
+    case "video":
+      {
+        const poster = pickMediaUrl(props.poster, props.posterUrl, props.image, props.imageUrl);
+        base.content = {
+          heading: props.title || props.heading || "",
+          intro: props.subtitle || props.description || "",
+          body: props.body || props.text || props.description || "",
+          videoUrl: props.videoUrl || props.video || props.url || props.embedUrl || "",
+          embedUrl: props.videoUrl || props.video || props.url || props.embedUrl || "",
+          posterImage: poster,
+          posterUrl: poster,
+          posterAlt: props.posterAlt || props.imageAlt || props.alt || "",
+          ...normalizeCta(props, false),
+        };
+      }
+      break;
     default:
       break;
   }
@@ -608,7 +626,7 @@ export function createSemanticModule(moduleType, page = {}, slot) {
       base.content = { heading: "Find us", intro: "", query: "", address: "", embedUrl: "", zoom: "" };
       break;
     case "video":
-      base.content = { heading: "Video", body: "", videoUrl: "", posterImage: "", posterUrl: "" };
+      base.content = { heading: "Video", body: "", videoUrl: "", embedUrl: "", posterImage: "", posterUrl: "", posterAlt: "" };
       break;
     case "featureStory":
       base.content = {

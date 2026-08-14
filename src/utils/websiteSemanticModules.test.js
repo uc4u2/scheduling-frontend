@@ -117,6 +117,24 @@ describe("website semantic modules", () => {
     expect(story.content.secondaryImage).toBe("https://cdn.example.com/story-2.jpg");
   });
 
+  it("normalizes legacy collection and video story content into existing semantic schemas", () => {
+    const modules = normalizeSemanticModules({
+      slug: "home",
+      is_homepage: true,
+      content: {
+        sections: [
+          { id: "collection", type: "collectionShowcase", props: { title: "Work", items: [{ title: "Project", image: "https://cdn.example.com/project.jpg" }] } },
+          { id: "video", type: "videoStorySplit", props: { title: "Watch", videoUrl: "https://video.example/embed", poster: "https://cdn.example.com/poster.jpg" } },
+        ],
+      },
+    });
+    const portfolio = modules.find((module) => module.type === "portfolio");
+    const video = modules.find((module) => module.type === "video");
+    expect(portfolio.content.items[0].image).toBe("https://cdn.example.com/project.jpg");
+    expect(video.content.videoUrl).toBe("https://video.example/embed");
+    expect(video.content.posterUrl).toBe("https://cdn.example.com/poster.jpg");
+  });
+
   it("normalizes canonical and aliased semantic field paths for builder focus", () => {
     expect(normalizeSemanticFieldPath("content.heading")).toBe("heading");
     expect(normalizeSemanticFieldPath("content.items.0.question")).toBe("items.0.title");
