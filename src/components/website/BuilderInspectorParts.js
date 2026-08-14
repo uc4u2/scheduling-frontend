@@ -16,6 +16,7 @@ import {
 import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import { website } from "../../utils/api";
 import { useTranslation } from "react-i18next";
+import MediaLibraryDialog from "./MediaLibraryDialog";
 
 /* ---------- NEW: Raw JSON props editor that actually writes back ---------- */
 // A tiny editor that writes back into section.props
@@ -138,6 +139,7 @@ export function ImageField({ label, value, onChange, companyId }) {
   const [dragOver, setDragOver] = useState(false);
   const [inputUrl, setInputUrl] = useState(value || "");
   const [broken, setBroken] = useState(false);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
 
   useEffect(() => {
     setInputUrl(value || "");
@@ -272,6 +274,9 @@ export function ImageField({ label, value, onChange, companyId }) {
       )}
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+        <Button size="small" variant="outlined" onClick={() => setMediaLibraryOpen(true)}>
+          Media library
+        </Button>
         <Button size="small" variant="outlined" component="label">
           {t("manager.visualBuilder.inspector.imageField.upload")}
           <input
@@ -287,6 +292,15 @@ export function ImageField({ label, value, onChange, companyId }) {
           </Button>
         )}
       </Stack>
+      <MediaLibraryDialog
+        open={mediaLibraryOpen}
+        companyId={companyId}
+        onClose={() => setMediaLibraryOpen(false)}
+        onPick={(media) => {
+          applyUrl(media?.url || media?.url_public || "");
+          setMediaLibraryOpen(false);
+        }}
+      />
     </Box>
   );
 }
