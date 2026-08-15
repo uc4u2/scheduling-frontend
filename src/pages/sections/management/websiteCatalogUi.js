@@ -22,7 +22,6 @@ export function buildWebsiteStyleChoices({
   status = null,
 } = {}) {
   const currentContentPackKey = status?.current_content_pack_key || null;
-
   const compatibleThemes = Array.isArray(catalog?.compatible_visual_themes)
     ? catalog.compatible_visual_themes
     : [];
@@ -45,7 +44,6 @@ export function buildWebsiteStyleChoices({
     if (theme?.renderer_engine !== "nextjs") return;
     if (theme?.status === "deprecated" || theme?.status === "hidden") return;
     if (theme?.hidden) return;
-
     styles.push({
       key,
       version: Number(theme.version || 1),
@@ -73,6 +71,7 @@ export function buildWebsiteStyleChoices({
         : [],
       designTags: Array.isArray(theme.design_tags) ? theme.design_tags : [],
       currentContentPackKey,
+      starterContentPackKey: theme.starter_content_pack_key || currentContentPackKey || null,
     });
   });
 

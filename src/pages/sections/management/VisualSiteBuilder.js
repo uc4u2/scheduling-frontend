@@ -3235,7 +3235,16 @@ useEffect(() => {
         setNavMsg("");
         setNavErr("");
 
-        if (!pagesList.length) {
+        const nextJsWebsite = isNextJsBuilderMode(
+          resolveBuilderRendererMode({
+            renderer_engine: settingsPayload?.renderer_engine,
+            settings: settingsPayload?.settings,
+          })
+        );
+        // A blank Next.js site is intentionally blank until its selected theme
+        // installs a canonical starter blueprint. The Classic import path stays
+        // exactly as it was for legacy-react websites.
+        if (!pagesList.length && !nextJsWebsite) {
           try {
             const { data: all } = await wb.listTemplates();
             const templates = Array.isArray(all)
@@ -4626,6 +4635,30 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         if (next) setSiteSettings(next);
         const nextStatus = statusRes?.data || statusRes || null;
         if (nextStatus) setWebsiteStatus(nextStatus);
+        // A theme is a real template only for a new/empty site when it also
+        // initializes its canonical WebsitePage starter content. Existing
+        // sites deliberately skip this path so switching themes never
+        // overwrites tenant content.
+        if (
+          style.key === "iron-ember" &&
+          !pages.length &&
+          style.starterContentPackKey
+        ) {
+          await wb.installContentPack(companyId, style.starterContentPackKey, {
+            install_mode: "merge",
+            visual_theme_key: "iron-ember",
+          });
+          const installedPagesRes = await wb.listPages(companyId);
+          const installedPages = (installedPagesRes?.data || [])
+            .map(normalizePage)
+            .map((page) => ensureSectionIds(withLiftedLayout(page)));
+          setPages(installedPages);
+          const home = installedPages.find((page) => page.is_homepage) || installedPages[0];
+          if (home) {
+            setSelectedId(home.id);
+            setEditing(home);
+          }
+        }
         setStylePreviewFamily(style.key || "classic");
         setStyleMsg(`${style.name} applied to draft. Publish to make it live.`);
       } catch (e) {
@@ -4639,7 +4672,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         setStyleSaving(false);
       }
     },
-    [companyId]
+    [companyId, pages.length, setEditing]
   );
 
   const currentPreviewPagePath = useMemo(() => {
@@ -4691,6 +4724,25 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     },
     [companyId, currentPreviewPagePath, effectivePreviewFamily, websiteStyleChoices]
   );
+
+  // The iframe reports an expired/invalid signed preview token after a local
+  // backend restart. Mint a replacement automatically; this is intentionally
+  // limited to the configured tenant-renderer origin and current iframe.
+  useEffect(() => {
+    const recoverPreviewToken = (event) => {
+      if (!isAcceptedPreviewMessage({
+        eventOrigin: event.origin,
+        expectedOrigin: nextJsPreviewOrigin,
+        eventSource: event.source,
+        expectedSource: nextJsPreviewIframeRef.current?.contentWindow,
+      })) return;
+      if (event?.data?.type === "schedulaa:preview-token-invalid") {
+        refreshNextJsPreview();
+      }
+    };
+    window.addEventListener("message", recoverPreviewToken);
+    return () => window.removeEventListener("message", recoverPreviewToken);
+  }, [nextJsPreviewOrigin, refreshNextJsPreview]);
 
   useEffect(() => {
     if (builderTabIndex !== 0) return;
@@ -4871,7 +4923,13 @@ const autoProvisionIfEmpty = useCallback(
     let pgRaw = (res.data || []).map(normalizePage);
 
     // 3) if empty → import real template first, then reload pages
-    if (!pgRaw.length) {
+    const nextJsWebsite = isNextJsBuilderMode(
+      resolveBuilderRendererMode({
+        renderer_engine: settingsObj?.renderer_engine,
+        settings: settingsObj?.settings,
+      })
+    );
+    if (!pgRaw.length && !nextJsWebsite) {
       try {
         await autoProvisionIfEmpty(cid, settingsObj);
         res = await wb.listPages(cid);
@@ -5107,11 +5165,40 @@ const autoProvisionIfEmpty = useCallback(
         setEditing(snapshot);
         setPages((prev) => prev.map((p) => (p.id === payload.id ? snapshot : p)));
       } else {
-        const r = await wb.createPage(companyId, payload);
-        const created = ensureSectionIds(withLiftedLayout(normalizePage(r.data)));
-        setPages((prev) => [created, ...prev]);
-        setSelectedId(created.id);
-        setEditing(created);
+        try {
+          const r = await wb.createPage(companyId, payload);
+          const created = ensureSectionIds(withLiftedLayout(normalizePage(r.data)));
+          setPages((prev) => [created, ...prev]);
+          setSelectedId(created.id);
+          setEditing(created);
+        } catch (createError) {
+          const duplicateSlug =
+            createError?.response?.status === 409 &&
+            String(createError?.response?.data?.error || "").toLowerCase().includes("duplicate slug");
+          if (!duplicateSlug) throw createError;
+
+          // A backend restart or a second Builder tab can leave an unsaved
+          // local page without its id even though the same slug was already
+          // created. Reconcile it and continue publishing rather than forcing
+          // the manager to discard their current edit.
+          const listed = await wb.listPages(companyId);
+          const candidates = Array.isArray(listed?.data) ? listed.data : [];
+          const existing = candidates.find(
+            (page) => String(page?.slug || "").trim().toLowerCase() ===
+              String(payload.slug || "").trim().toLowerCase()
+          );
+          if (!existing?.id) throw createError;
+          const recoveredPayload = { ...payload, id: existing.id };
+          const updated = await wb.updatePage(companyId, existing.id, recoveredPayload);
+          const recovered = ensureSectionIds(withLiftedLayout(normalizePage(updated?.data || recoveredPayload)));
+          setPages((prev) => {
+            const withoutRecovered = prev.filter((page) => String(page.id) !== String(recovered.id));
+            return [...withoutRecovered, recovered];
+          });
+          setSelectedId(recovered.id);
+          setEditing(recovered);
+          setMsg("Recovered the existing page and continued publishing.");
+        }
       }
 
       const latestSettings = await wb.getSettings(companyId).catch(() => null);
@@ -5156,6 +5243,7 @@ const autoProvisionIfEmpty = useCallback(
         t("manager.visualBuilder.errors.publishFailed", {
           reason:
             e?.response?.data?.message ||
+            e?.response?.data?.error ||
             e.message ||
             t("manager.visualBuilder.errors.unknown"),
         })
