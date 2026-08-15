@@ -4871,30 +4871,27 @@ const autoProvisionIfEmpty = useCallback(
     }
 
     setSelectedBlock(-1);
+  } catch (e) {
+    // `loadAll` is also used by manual refresh and post-import flows.  Keep a
+    // failed request inside the Builder state instead of letting an Axios
+    // rejection escape React and turn an expired/unauthorised session into a
+    // runtime overlay.
+    const code = e?.response?.status;
+    if (code === 401 || code === 403) {
+      setAuthError({ code, slug, cid });
+      setPages([]);
+    }
+    setErr(
+      e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Unable to refresh the website builder."
+    );
+    console.warn("[VisualSiteBuilder] refresh failed", e?.response?.data || e);
   } finally {
     setBusy(false);
   }
 };
-
-
-  useEffect(() => {
-    if (!companyId) return;
-    // initial load
-    loadAll(companyId);
-
-    // follow-up reload if we had postImportReload
-    if (location?.state?.postImportReload) {
-      setTimeout(() => loadAll(companyId), 300);
-      if (window?.history?.replaceState) {
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname + window.location.search
-        );
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, loadCheckpoints]);
 
   /* ----- save & publish (HOISTED) ----- */
   const onSavePage = useCallback(async () => {
