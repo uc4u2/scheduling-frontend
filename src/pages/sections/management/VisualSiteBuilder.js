@@ -3189,6 +3189,30 @@ useEffect(() => {
       setLoading(true);
       setAuthError(null);
       try {
+        // A local backend restart can leave a browser with a company id from a
+        // previous session. Resolve the signed-in manager without sending that
+        // stale company header before requesting website data. Explicit parent
+        // and query contexts still win for support/admin flows.
+        const queryCompanyId = new URLSearchParams(location?.search || "").get("company_id") ||
+          new URLSearchParams(location?.search || "").get("cid");
+        if (!companyIdProp && !queryCompanyId) {
+          const identity = await api.get("/auth/me", { noCompanyHeader: true }).catch(() => null);
+          const authenticatedCompanyId = Number(
+            identity?.data?.company_id ??
+              identity?.data?.company?.id ??
+              identity?.data?.user?.company_id
+          );
+          if (
+            Number.isFinite(authenticatedCompanyId) &&
+            authenticatedCompanyId > 0 &&
+            authenticatedCompanyId !== Number(companyId)
+          ) {
+            localStorage.setItem("company_id", String(authenticatedCompanyId));
+            setCompanyId(authenticatedCompanyId);
+            setLoading(false);
+            return;
+          }
+        }
         const [settingsRes, pagesRes, profileRes] = await Promise.all([
           wb.getSettings(companyId),
           wb.listPages(companyId),
@@ -3243,9 +3267,24 @@ useEffect(() => {
         );
         if (!alive) return;
         const finalSettings = normalizedLegacy.settings || settingsPayload;
+        const normalizedPages = (normalizedLegacy.pages || pagesList).map((page) =>
+          ensureSectionIds(withLiftedLayout(normalizePage(page)))
+        );
         setSiteSettings(finalSettings);
         setNavDraft(deriveNavDraft(finalSettings));
-        setPages(normalizedLegacy.pages || pagesList);
+        setPages(normalizedPages);
+        // Boot must select an actual persisted page. Without this the preview
+        // URL retains emptyPage()'s `new-page` slug, which is not a WebsitePage
+        // and produces a 400/blank Next.js canvas after reload.
+        const home =
+          normalizedPages.find((page) => page.is_homepage) ||
+          normalizedPages.find((page) => String(page.slug || "").toLowerCase() === "home") ||
+          normalizedPages.find((page) => Number(page.sort_order) === 0) ||
+          normalizedPages[0];
+        if (home) {
+          setSelectedId(home.id);
+          setEditing(home);
+        }
         await loadCheckpoints(companyId);
         setLoading(false);
       } catch (e) {
