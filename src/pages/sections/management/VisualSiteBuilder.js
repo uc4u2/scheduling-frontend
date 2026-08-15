@@ -3213,10 +3213,11 @@ useEffect(() => {
             return;
           }
         }
-        const [settingsRes, pagesRes, profileRes] = await Promise.all([
+        const [settingsRes, pagesRes, profileRes, statusRes] = await Promise.all([
           wb.getSettings(companyId),
           wb.listPages(companyId),
           api.get("/admin/company-profile").catch(() => null),
+          wb.getStatus(companyId).catch(() => null),
         ]);
 
         const pagesList =
@@ -3224,6 +3225,7 @@ useEffect(() => {
           (pagesRes?.data?.items || []);
 
         const settingsPayload = settingsRes?.data ?? settingsRes ?? null;
+        const statusPayload = statusRes?.data ?? statusRes ?? null;
         setSiteSettings(settingsPayload);
         const profileSlug =
           profileRes?.data?.slug ||
@@ -3235,10 +3237,18 @@ useEffect(() => {
         setNavMsg("");
         setNavErr("");
 
+        const selectedWebsiteSettings =
+          settingsPayload?.settings_draft ||
+          settingsPayload?.draft ||
+          settingsPayload?.settings ||
+          settingsPayload || {};
         const nextJsWebsite = isNextJsBuilderMode(
           resolveBuilderRendererMode({
-            renderer_engine: settingsPayload?.renderer_engine,
-            settings: settingsPayload?.settings,
+            renderer_engine:
+              statusPayload?.draft_renderer_engine ||
+              statusPayload?.current_renderer_engine ||
+              selectedWebsiteSettings.renderer_engine,
+            settings: selectedWebsiteSettings,
           })
         );
         // A blank Next.js site is intentionally blank until its selected theme
@@ -4923,10 +4933,20 @@ const autoProvisionIfEmpty = useCallback(
     let pgRaw = (res.data || []).map(normalizePage);
 
     // 3) if empty → import real template first, then reload pages
+    const selectedWebsiteSettings =
+      settingsObj?.settings_draft ||
+      settingsObj?.draft ||
+      settingsObj?.settings ||
+      settingsObj || {};
+    const statusForEmptySite = await wb.getStatus(cid).catch(() => null);
+    const statusPayload = statusForEmptySite?.data || statusForEmptySite || null;
     const nextJsWebsite = isNextJsBuilderMode(
       resolveBuilderRendererMode({
-        renderer_engine: settingsObj?.renderer_engine,
-        settings: settingsObj?.settings,
+        renderer_engine:
+          statusPayload?.draft_renderer_engine ||
+          statusPayload?.current_renderer_engine ||
+          selectedWebsiteSettings.renderer_engine,
+        settings: selectedWebsiteSettings,
       })
     );
     if (!pgRaw.length && !nextJsWebsite) {
