@@ -71,6 +71,37 @@ describe("buildHostedCheckoutPayload", () => {
     expect(payload.card_on_file_consent.accepted_at).toBeUndefined();
   });
 
+  test("preserves canonical slot timestamps for service lines", () => {
+    const payload = buildHostedCheckoutPayload({
+      cartItems: [
+        {
+          type: "service",
+          service_id: 7,
+          artist_id: 16,
+          date: "2026-07-30",
+          start_time: "10:00",
+          start_utc: "2026-07-30T14:00:00Z",
+          price: 120,
+        },
+      ],
+      policyMode: "pay",
+      currency: "cad",
+      clientName: "Jamie Buyer",
+      clientEmail: "jamie@example.com",
+    });
+
+    expect(payload.items).toEqual([
+      expect.objectContaining({
+        type: "service",
+        service_id: 7,
+        artist_id: 16,
+        date: "2026-07-30",
+        start_time: "10:00",
+        start_utc: "2026-07-30T14:00:00Z",
+      }),
+    ]);
+  });
+
   test("does not include card-on-file consent for pay mode", () => {
     const payload = buildHostedCheckoutPayload({
       cartItems: [

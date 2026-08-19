@@ -116,6 +116,7 @@ export const buildHostedCheckoutPayload = ({
     const artistId = coerceNumber(item?.artist_id);
     const date = item?.date || item?.local_date;
     const startTime = item?.start_time || item?.local_time || item?.time;
+    const startUtc = typeof item?.start_utc === "string" ? item.start_utc.trim() : "";
 
     if (!serviceId || !artistId || !date || !startTime) {
       throw new Error("Service items must include service, provider, date, and start time.");
@@ -128,6 +129,9 @@ export const buildHostedCheckoutPayload = ({
       date,
       start_time: startTime,
     };
+    if (startUtc) {
+      entry.start_utc = startUtc;
+    }
     const clientPackageId = coerceNumber(item?.client_package_id);
     if (clientPackageId) {
       entry.client_package_id = clientPackageId;
