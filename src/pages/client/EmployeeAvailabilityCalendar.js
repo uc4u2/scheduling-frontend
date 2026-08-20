@@ -506,12 +506,17 @@ export default function EmployeeAvailabilityCalendar({
       alert("Pick a date & time first.");
       return;
     }
+    const matchedSlot = slots.find((s) => s.start_time === selectedTime) || null;
     const chosen = {
       date: selectedDate,
       start_time: selectedTime,
+      end_time: matchedSlot?.end_time || null,
+      start_utc: matchedSlot?.start_utc || null,
+      end_utc: matchedSlot?.end_utc || null,
+      availability_id: matchedSlot?.id || null,
       timezone:
         userTz ||
-        slots.find((s) => s.start_time === selectedTime)?.timezone ||
+        matchedSlot?.timezone ||
         displayTimezone,
     };
 

@@ -74,6 +74,9 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
           date: preselect.date,
           start_time: preselect.start_time,
           end_time: preselect.end_time || null,
+          start_utc: preselect.start_utc || null,
+          end_utc: preselect.end_utc || null,
+          availability_id: preselect.availability_id || null,
           type: preselect.type || "available",
           timezone: preselect.timezone || artist?.timezone || userTz,
         });
@@ -134,6 +137,9 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
       date: slot.date,           // send raw API value, do not transform
       start_time: slot.start_time, // send raw API value
       end_time: slot.end_time,     // send raw API value, if used
+      start_utc: slot.start_utc || null,
+      end_utc: slot.end_utc || null,
+      timezone: slot.timezone || userTz,
       addon_ids: slot.addon_ids || [],  // ✅ include add-on IDs here!
       client_name: "",
       client_email: "",
