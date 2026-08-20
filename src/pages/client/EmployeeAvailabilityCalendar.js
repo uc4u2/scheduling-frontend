@@ -513,11 +513,14 @@ export default function EmployeeAvailabilityCalendar({
       end_time: matchedSlot?.end_time || null,
       start_utc: matchedSlot?.start_utc || null,
       end_utc: matchedSlot?.end_utc || null,
-      availability_id: matchedSlot?.id || null,
+      availability_id:
+        matchedSlot?.availability_id ??
+        matchedSlot?.id ??
+        null,
       timezone:
-        userTz ||
         matchedSlot?.timezone ||
-        displayTimezone,
+        displayTimezone ||
+        userTz,
     };
 
     if (typeof onSlotSelect === "function") {

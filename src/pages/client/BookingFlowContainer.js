@@ -78,7 +78,7 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
           end_utc: preselect.end_utc || null,
           availability_id: preselect.availability_id || null,
           type: preselect.type || "available",
-          timezone: preselect.timezone || artist?.timezone || userTz,
+          timezone: preselect.timezone || emp?.timezone || userTz,
         });
         setStep(4);
       } catch {
@@ -139,6 +139,7 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
       end_time: slot.end_time,     // send raw API value, if used
       start_utc: slot.start_utc || null,
       end_utc: slot.end_utc || null,
+      availability_id: slot.availability_id ?? slot.id ?? null,
       timezone: slot.timezone || userTz,
       addon_ids: slot.addon_ids || [],  // ✅ include add-on IDs here!
       client_name: "",
@@ -191,6 +192,10 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
       agent,
       date: slot?.date || agent.date,
       start_time: slot?.start_time || agent.start_time,
+      end_time: slot?.end_time || agent.end_time || null,
+      start_utc: slot?.start_utc || agent.start_utc || null,
+      end_utc: slot?.end_utc || agent.end_utc || null,
+      availability_id: slot?.availability_id ?? agent?.availability_id ?? agent?.id ?? null,
       timezone: slot?.timezone || agent.timezone || userTz,
     };
     setBookingCart([...bookingCart, newBooking]);

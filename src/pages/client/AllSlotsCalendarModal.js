@@ -438,7 +438,10 @@ const fetchSlotsForDate = useCallback(
       start_utc: selectedSlot.start_utc || null,
       end_utc: selectedSlot.end_utc || null,
       timezone: selectedSlot.timezone || backendTimezone || userTz,
-      availability_id: selectedSlot.id || null,
+      availability_id:
+        selectedSlot.availability_id ??
+        selectedSlot.id ??
+        null,
       artist_id: artist.id,
       artist_name: artist.full_name,
       service_id: serviceId,

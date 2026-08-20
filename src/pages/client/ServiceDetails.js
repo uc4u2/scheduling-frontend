@@ -113,6 +113,178 @@ const timeHMInTZ = (startUtc, tz) => {
   }); // "HH:MM"
 };
 
+const normalizeAvailabilityId = (slotLike) =>
+  slotLike?.availability_id ?? slotLike?.id ?? null;
+
+export const aggregateAvailabilityByUTC = (
+  selectedDateStr,
+  results,
+  serviceId,
+) => {
+  const map = new Map(); // key = start_utc
+  for (const { emp, slots } of results) {
+    for (const s of slots) {
+      const tz = s.timezone || "UTC";
+      const startUtc =
+        s.start_utc ||
+        (s.date && s.start_time ? isoFromPartsTz(s.date, s.start_time, tz) : null);
+      if (!startUtc) continue;
+
+      const key = startUtc;
+      const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
+      const profileImage = emp.profile_image_url || s.profile_image_url || "";
+      const mode = s.mode || "one_to_one";
+      const seatsLeft = resolveSeatsLeft(s);
+      const isGroup = mode === "group";
+      const isUnavailable = isGroup
+        ? (Number.isFinite(seatsLeft) ? seatsLeft <= 0 : s.type === "booked")
+        : s.type === "booked";
+      const isAvailable = !isUnavailable;
+      const providerEntry = {
+        id: emp.id,
+        full_name: emp.full_name,
+        timezone: tz,
+        start_time_local: startLocal,
+        start_time: s.start_time || startLocal,
+        end_time: s.end_time || null,
+        start_utc: startUtc,
+        end_utc: s.end_utc || null,
+        availability_id: normalizeAvailabilityId(s),
+        date: s.date || selectedDateStr,
+        service_id: s.service_id || serviceId,
+        profile_image_url: profileImage,
+        mode,
+        seats_left: seatsLeft,
+        type: isUnavailable ? "booked" : "available",
+      };
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          date: s.date || selectedDateStr,
+          start_utc: startUtc,
+          end_utc: s.end_utc || null,
+          end_time: s.end_time || null,
+          availability_id: normalizeAvailabilityId(s),
+          timezone: tz,
+          type: isUnavailable ? "booked" : "available",
+          mode,
+          seats_left: Number.isFinite(seatsLeft) ? seatsLeft : null,
+          has_available: isAvailable,
+          providers: [providerEntry],
+        });
+      } else {
+        const curr = map.get(key);
+        if (isGroup) {
+          curr.mode = "group";
+        }
+        if (isAvailable) {
+          curr.has_available = true;
+        }
+        if (Number.isFinite(seatsLeft) && isAvailable) {
+          if (!Number.isFinite(curr.seats_left)) {
+            curr.seats_left = seatsLeft;
+          } else {
+            curr.seats_left = Math.max(curr.seats_left, seatsLeft);
+          }
+        }
+        if (!curr.end_utc && s.end_utc) {
+          curr.end_utc = s.end_utc;
+        }
+        if (!curr.end_time && s.end_time) {
+          curr.end_time = s.end_time;
+        }
+        if (curr.availability_id == null) {
+          curr.availability_id = normalizeAvailabilityId(s);
+        }
+        if (!curr.providers.some((p) => p.id === emp.id)) {
+          curr.providers.push(providerEntry);
+        }
+      }
+    }
+  }
+  return Array.from(map.values())
+    .map((x) => {
+      const anyAvailable = Boolean(x.has_available);
+      return { ...x, type: anyAvailable ? "available" : "booked", count: x.providers.length };
+    })
+    .sort((a, b) => a.start_utc.localeCompare(b.start_utc));
+};
+
+export const buildServiceDetailsBookingParams = ({
+  slot,
+  artist,
+  serviceId,
+  departmentId,
+}) => {
+  if (!slot || !artist) return null;
+
+  const providerSlot = Array.isArray(slot.providers)
+    ? slot.providers.find((provider) => String(provider.id) === String(artist.id)) || null
+    : null;
+
+  const provTz =
+    providerSlot?.timezone ||
+    artist.timezone ||
+    slot.timezone ||
+    "UTC";
+
+  const startUtc =
+    providerSlot?.start_utc ||
+    slot.start_utc ||
+    null;
+
+  const provDate =
+    providerSlot?.date ||
+    (startUtc ? dateYMDInTZ(startUtc, provTz) : slot.date);
+
+  const provTime =
+    providerSlot?.start_time ||
+    (startUtc ? timeHMInTZ(startUtc, provTz) : slot.start_time);
+
+  const endTime =
+    providerSlot?.end_time ||
+    slot.end_time ||
+    null;
+
+  const endUtc =
+    providerSlot?.end_utc ||
+    slot.end_utc ||
+    null;
+
+  const availabilityId =
+    providerSlot?.availability_id ??
+    slot.availability_id ??
+    (Array.isArray(slot.providers) ? null : slot.id);
+
+  if (!provDate || !provTime) return null;
+
+  const params = new URLSearchParams({
+    employee_id: String(artist.id),
+    service_id: String(serviceId),
+    date: provDate,
+    start_time: provTime,
+    timezone: provTz,
+  });
+
+  if (startUtc) {
+    params.set("start_utc", startUtc);
+  }
+  if (endUtc) {
+    params.set("end_utc", endUtc);
+  }
+  if (endTime) {
+    params.set("end_time", endTime);
+  }
+  if (availabilityId != null) {
+    params.set("availability_id", String(availabilityId));
+  }
+  if (departmentId) {
+    params.set("department_id", String(departmentId));
+  }
+
+  return params;
+};
+
 export const mergeAvailabilityResponse = (data, serviceDurationMinutes = 0) => {
   const slots = Array.isArray(data?.slots)
     ? data.slots
@@ -596,93 +768,6 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
   }, [slug, serviceId]);
 
   /* helper: aggregate by start_utc (so TZ display is always correct) */
-  const aggregateByUTC = (selectedDateStr, results) => {
-    const map = new Map(); // key = start_utc
-    for (const { emp, slots } of results) {
-      for (const s of slots) {
-        const tz = s.timezone || "UTC";
-        const startUtc =
-          s.start_utc ||
-          (s.date && s.start_time ? isoFromPartsTz(s.date, s.start_time, tz) : null);
-        if (!startUtc) continue;
-
-        const key = startUtc;
-        const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
-        const profileImage = emp.profile_image_url || s.profile_image_url || "";
-        const mode = s.mode || "one_to_one";
-        const seatsLeft = resolveSeatsLeft(s);
-        const isGroup = mode === "group";
-        const isUnavailable = isGroup
-          ? (Number.isFinite(seatsLeft) ? seatsLeft <= 0 : s.type === "booked")
-          : s.type === "booked";
-        const isAvailable = !isUnavailable;
-        if (!map.has(key)) {
-          map.set(key, {
-            key,
-            date: s.date || selectedDateStr,
-            start_utc: startUtc,
-            timezone: tz,
-            type: isUnavailable ? "booked" : "available",
-            mode,
-            seats_left: Number.isFinite(seatsLeft) ? seatsLeft : null,
-            has_available: isAvailable,
-            providers: [
-              {
-                id: emp.id,
-                full_name: emp.full_name,
-                timezone: tz,
-                start_time_local: startLocal,
-                start_time: s.start_time || startLocal,
-                date: s.date || selectedDateStr,
-                service_id: s.service_id || serviceId,
-                profile_image_url: profileImage,
-                mode,
-                seats_left: seatsLeft,
-                type: isUnavailable ? "booked" : "available",
-              },
-            ],
-          });
-        } else {
-          const curr = map.get(key);
-          if (isGroup) {
-            curr.mode = "group";
-          }
-          if (isAvailable) {
-            curr.has_available = true;
-          }
-          if (Number.isFinite(seatsLeft) && isAvailable) {
-            if (!Number.isFinite(curr.seats_left)) {
-              curr.seats_left = seatsLeft;
-            } else {
-              curr.seats_left = Math.max(curr.seats_left, seatsLeft);
-            }
-          }
-            if (!curr.providers.some((p) => p.id === emp.id)) {
-              curr.providers.push({
-                id: emp.id,
-                full_name: emp.full_name,
-                timezone: tz,
-                start_time_local: startLocal,
-                start_time: s.start_time || startLocal,
-                date: s.date || selectedDateStr,
-                service_id: s.service_id || serviceId,
-                profile_image_url: profileImage,
-                mode,
-                seats_left: seatsLeft,
-                type: isUnavailable ? "booked" : "available",
-              });
-            }
-        }
-      }
-    }
-    return Array.from(map.values())
-      .map((x) => {
-        const anyAvailable = Boolean(x.has_available);
-        return { ...x, type: anyAvailable ? "available" : "booked", count: x.providers.length };
-      })
-      .sort((a, b) => a.start_utc.localeCompare(b.start_utc));
-  };
-
   /* prefetch availability only for the currently selected date (avoid request spam) */
   useEffect(() => {
     if (!calendarOpen || !debouncedDate || !activeArtistId) return;
@@ -741,7 +826,7 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
             slots: await fetchAvail(emp.id, debouncedDate, controller?.signal),
           }))
         );
-        const unique = aggregateByUTC(debouncedDate, results);
+        const unique = aggregateAvailabilityByUTC(debouncedDate, results, serviceId);
 
         if (!cancelled && fetchVersionRef.current === version) {
           setDaySlots(unique || []);
@@ -772,22 +857,13 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
 
   const navigateToSlot = useCallback(
     (slot, artist) => {
-      if (!slot || !artist) return false;
-      const provTz = artist.timezone || "UTC";
-      const provDate = dateYMDInTZ(slot.start_utc, provTz);
-      const provTime = timeHMInTZ(slot.start_utc, provTz);
-      const params = new URLSearchParams({
-        employee_id: String(artist.id),
-        service_id: String(serviceId),
-        date: provDate,
-        start_time: provTime,
-        timezone: provTz,
+      const params = buildServiceDetailsBookingParams({
+        slot,
+        artist,
+        serviceId,
+        departmentId,
       });
-      if (slot.start_utc) params.set("start_utc", slot.start_utc);
-      if (slot.end_utc) params.set("end_utc", slot.end_utc);
-      if (slot.end_time) params.set("end_time", slot.end_time);
-      if (slot.id) params.set("availability_id", String(slot.id));
-      if (departmentId) params.set("department_id", String(departmentId));
+      if (!params) return false;
 
       setProviderSheetOpen(false);
       navigate({
