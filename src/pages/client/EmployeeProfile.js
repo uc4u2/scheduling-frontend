@@ -20,18 +20,7 @@ import { isNativeRuntime } from "../../utils/runtime";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
 import { getTenantHostMode } from "../../utils/tenant";
-
-const PRESERVED_QUERY_KEYS = [
-  "embed",
-  "primary",
-  "text",
-  "h",
-  "b",
-  "link",
-  "hfont",
-  "bfont",
-  "cardbg",
-];
+import { buildEmployeeProfileBookingParams } from "../../utils/employeeBookingParams";
 
 const EmployeeProfile = ({ slugOverride }) => {
   const { slug: routeSlug, employeeId, serviceId: routeServiceId } = useParams();
@@ -110,22 +99,14 @@ const EmployeeProfile = ({ slugOverride }) => {
 
   const handleSlotSelected = (slot) => {
     if (!slot || !serviceId || !effectiveSlug) return;
-
-    const qs = new URLSearchParams();
-    PRESERVED_QUERY_KEYS.forEach((key) => {
-      const val = searchParams.get(key);
-      if (val) {
-        qs.set(key, val);
-      }
+    const qs = buildEmployeeProfileBookingParams({
+      searchParams,
+      employeeId,
+      serviceId,
+      slot,
+      departmentId,
     });
-    qs.set("employee_id", employeeId);
-    qs.set("service_id", serviceId);
-    qs.set("date", slot.date);
-    qs.set("start_time", slot.start_time);
-    if (slot.timezone) {
-      qs.set("timezone", slot.timezone);
-    }
-
+    if (!qs) return;
     navigate(`${basePath}/book?${qs.toString()}`);
   };
 
