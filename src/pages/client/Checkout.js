@@ -901,6 +901,7 @@ export function CheckoutFormCore({
       end_time: slot.end_time,
       start_utc: slot.start_utc || null,
       end_utc: slot.end_utc || null,
+      availability_id: slot.availability_id ?? slot.id ?? null,
       timezone: slot.timezone || null,
       addon_ids: slot.addon_ids || [],
       addons: slot.addons || [],

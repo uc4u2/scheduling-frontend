@@ -294,6 +294,69 @@ describe("CheckoutFormCore", () => {
     expect(payload.__payloadArgs.selectedRateId).toBe("rate_1");
   });
 
+  test("service hosted checkout preserves the selected availability row in cart payload", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "107-2026-07-30-10:00",
+        type: "service",
+        service_id: 107,
+        service_name: "Studio rental",
+        price: 320,
+        allow_packages: false,
+        artist_name: "Vanda Orchid",
+        artist_id: 16,
+        date: "2026-07-30",
+        start_time: "10:00",
+        end_time: "16:00",
+        start_utc: "2026-07-30T14:00:00Z",
+        end_utc: "2026-07-30T20:00:00Z",
+        availability_id: 991,
+        timezone: "America/Toronto",
+        addon_ids: [],
+        addons: [],
+        tip_mode: "percent",
+        tip_value: 0,
+        tip_amount: 0,
+        quantity: 1,
+        hold_started_at: new Date().toISOString(),
+      },
+    ]);
+    mockStartHostedCheckout.mockResolvedValue({ sessionId: "cs_test" });
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "pay" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText(/your name/i), {
+      target: { value: "Yousef Jalali" },
+    });
+    fireEvent.change(screen.getByLabelText(/your email/i), {
+      target: { value: "yousef@example.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /pay & book/i }));
+
+    await waitFor(() => expect(mockStartHostedCheckout).toHaveBeenCalled());
+    const [{ payload }] = mockStartHostedCheckout.mock.calls.slice(-1)[0];
+    expect(payload.__payloadArgs.cartItems).toEqual([
+      expect.objectContaining({
+        service_id: 107,
+        start_utc: "2026-07-30T14:00:00Z",
+        end_utc: "2026-07-30T20:00:00Z",
+        availability_id: 991,
+        timezone: "America/Toronto",
+      }),
+    ]);
+  });
+
   test("renders card-on-file consent copy without crashing when capture mode is enabled", async () => {
     render(
       <CheckoutFormCore
