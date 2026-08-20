@@ -2059,11 +2059,28 @@ export function CheckoutFormCore({
     const useBatchBooking = serviceItems.length > 1;
 
     const compactCart = serviceItems.map(
-      ({ service_id, artist_id, date, start_time, addon_ids, client_package_id }) => ({
+      ({
         service_id,
         artist_id,
         date,
         start_time,
+        end_time,
+        start_utc,
+        end_utc,
+        availability_id,
+        timezone,
+        addon_ids,
+        client_package_id,
+      }) => ({
+        service_id,
+        artist_id,
+        date,
+        start_time,
+        end_time: end_time || null,
+        start_utc: start_utc || null,
+        end_utc: end_utc || null,
+        availability_id: availability_id ?? null,
+        timezone: timezone || null,
         addon_ids,
         client_package_id: client_package_id ?? null,
       })
@@ -2086,6 +2103,11 @@ export function CheckoutFormCore({
           service_id: it.service_id,
           date: it.date,
           start_time: it.start_time,
+          end_time: it.end_time || null,
+          start_utc: it.start_utc || null,
+          end_utc: it.end_utc || null,
+          availability_id: it.availability_id ?? null,
+          timezone: it.timezone || null,
           addon_ids: getAddonIds(it),
           ...(it.client_package_id ? { client_package_id: it.client_package_id } : {}),
           ...(it.couponApplied && it.coupon ? { coupon_code: it.coupon.code } : {}),
@@ -2140,6 +2162,11 @@ export function CheckoutFormCore({
         artist_id: it.artist_id,
         date: it.date,
         start_time: it.start_time,
+        end_time: it.end_time || null,
+        start_utc: it.start_utc || null,
+        end_utc: it.end_utc || null,
+        availability_id: it.availability_id ?? null,
+        timezone: it.timezone || null,
         addon_ids: getAddonIds(it),
         client_name: client?.full_name || guest.name,
         client_email: client?.email || guest.email,
