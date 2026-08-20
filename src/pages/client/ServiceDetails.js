@@ -776,17 +776,23 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
       const provTz = artist.timezone || "UTC";
       const provDate = dateYMDInTZ(slot.start_utc, provTz);
       const provTime = timeHMInTZ(slot.start_utc, provTz);
+      const params = new URLSearchParams({
+        employee_id: String(artist.id),
+        service_id: String(serviceId),
+        date: provDate,
+        start_time: provTime,
+        timezone: provTz,
+      });
+      if (slot.start_utc) params.set("start_utc", slot.start_utc);
+      if (slot.end_utc) params.set("end_utc", slot.end_utc);
+      if (slot.end_time) params.set("end_time", slot.end_time);
+      if (slot.id) params.set("availability_id", String(slot.id));
+      if (departmentId) params.set("department_id", String(departmentId));
 
       setProviderSheetOpen(false);
       navigate({
         pathname: `${basePath || ""}/book`,
-        search:
-          `?employee_id=${artist.id}` +
-          `&service_id=${serviceId}` +
-          `&date=${provDate}` +
-          `&start_time=${provTime}` +
-          `&timezone=${encodeURIComponent(provTz)}` +
-          (departmentId ? `&department_id=${departmentId}` : ""),
+        search: `?${params.toString()}`,
       });
       setCalendarOpen(false);
       return true;

@@ -528,9 +528,19 @@ export default function EmployeeAvailabilityCalendar({
     // Default navigation to public booking page (manager-side preview flows can override via onSlotSelect)
     setSaving(true);
     try {
+      const params = new URLSearchParams({
+        employee_id: String(artistId),
+        service_id: String(serviceId),
+        date: chosen.date,
+        start_time: chosen.start_time,
+      });
+      if (chosen.end_time) params.set("end_time", chosen.end_time);
+      if (chosen.start_utc) params.set("start_utc", chosen.start_utc);
+      if (chosen.end_utc) params.set("end_utc", chosen.end_utc);
+      if (chosen.availability_id) params.set("availability_id", String(chosen.availability_id));
+      if (chosen.timezone) params.set("timezone", chosen.timezone);
       navigate(
-        `/${companySlug}/book?employee_id=${artistId}&service_id=${serviceId}` +
-          `&date=${chosen.date}&start_time=${chosen.start_time}`
+        `/${companySlug}/book?${params.toString()}`
       );
     } finally {
       setSaving(false);

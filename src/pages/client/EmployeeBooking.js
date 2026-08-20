@@ -17,6 +17,11 @@ const EmployeeBooking = ({ slugOverride }) => {
   const service_id = searchParams.get("service_id");
   const date = searchParams.get("date");
   const start_time = searchParams.get("start_time");
+  const end_time = searchParams.get("end_time");
+  const start_utc = searchParams.get("start_utc");
+  const end_utc = searchParams.get("end_utc");
+  const availability_id = searchParams.get("availability_id");
+  const timezone = searchParams.get("timezone");
 
   // Preselection info for BookingFlowContainer
   const preselect = (employee_id && service_id && date && start_time)
@@ -25,6 +30,11 @@ const EmployeeBooking = ({ slugOverride }) => {
         service_id,
         date,
         start_time,
+        end_time,
+        start_utc,
+        end_utc,
+        availability_id,
+        timezone,
       }
     : null;
 
