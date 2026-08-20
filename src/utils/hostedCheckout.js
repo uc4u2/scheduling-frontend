@@ -116,7 +116,11 @@ export const buildHostedCheckoutPayload = ({
     const artistId = coerceNumber(item?.artist_id);
     const date = item?.date || item?.local_date;
     const startTime = item?.start_time || item?.local_time || item?.time;
+    const endTime = typeof item?.end_time === "string" ? item.end_time.trim() : "";
     const startUtc = typeof item?.start_utc === "string" ? item.start_utc.trim() : "";
+    const endUtc = typeof item?.end_utc === "string" ? item.end_utc.trim() : "";
+    const availabilityId = coerceNumber(item?.availability_id);
+    const timezone = typeof item?.timezone === "string" ? item.timezone.trim() : "";
 
     if (!serviceId || !artistId || !date || !startTime) {
       throw new Error("Service items must include service, provider, date, and start time.");
@@ -129,8 +133,20 @@ export const buildHostedCheckoutPayload = ({
       date,
       start_time: startTime,
     };
+    if (endTime) {
+      entry.end_time = endTime;
+    }
     if (startUtc) {
       entry.start_utc = startUtc;
+    }
+    if (endUtc) {
+      entry.end_utc = endUtc;
+    }
+    if (availabilityId != null) {
+      entry.availability_id = availabilityId;
+    }
+    if (timezone) {
+      entry.timezone = timezone;
     }
     const clientPackageId = coerceNumber(item?.client_package_id);
     if (clientPackageId) {

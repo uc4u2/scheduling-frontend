@@ -80,7 +80,11 @@ describe("buildHostedCheckoutPayload", () => {
           artist_id: 16,
           date: "2026-07-30",
           start_time: "10:00",
+          end_time: "11:30",
           start_utc: "2026-07-30T14:00:00Z",
+          end_utc: "2026-07-30T15:30:00Z",
+          availability_id: 987,
+          timezone: "America/Toronto",
           price: 120,
         },
       ],
@@ -97,7 +101,11 @@ describe("buildHostedCheckoutPayload", () => {
         artist_id: 16,
         date: "2026-07-30",
         start_time: "10:00",
+        end_time: "11:30",
         start_utc: "2026-07-30T14:00:00Z",
+        end_utc: "2026-07-30T15:30:00Z",
+        availability_id: 987,
+        timezone: "America/Toronto",
       }),
     ]);
   });
