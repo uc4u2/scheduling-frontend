@@ -28,13 +28,19 @@ const UserAgreementPage = () => (
           Schedulaa User Agreement
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: March 2, 2026
+          Last updated: August 22, 2026
         </Typography>
         <Typography variant="body1" color="text.secondary">
           This User Agreement (“Agreement”) governs your access to and use of Schedulaa, operated by Photo Artisto Corp.,
           171 Harbord Street, Toronto, Ontario M5S 1H3 (“Schedulaa,” “we,” “our,” “us”). By creating an account or using
           the Services, you agree to this Agreement and to our Terms of Service, Privacy Policy, Cookie Policy, and Data
           Processing Addendum (collectively, the “Policies”).
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          This Agreement is the primary contract for registered customers, tenants, managers, employees, and other account
+          holders using the Services for business operations. If this Agreement conflicts with a shorter public-facing Terms
+          of Service page, this Agreement controls. If you sign an Order Form, enterprise addendum, or written SLA with
+          Schedulaa, that signed document controls only to the extent of the direct conflict.
         </Typography>
       </Stack>
 
@@ -111,6 +117,19 @@ const UserAgreementPage = () => (
             "Schedulaa aims for high availability but provides the Services “as is” and “as available.” Maintenance, updates, or outages may occur without liability. Enterprise customers may request specific SLAs.",
         },
         {
+          title: "10A. Booking, Commerce, Messaging, and Operational Errors",
+          body:
+            "You acknowledge that software and third-party infrastructure may occasionally produce interruptions, delays, duplicate actions, stale data, or failed transactions. Without limiting any disclaimer or liability cap in this Agreement, Schedulaa is not responsible for missed or delayed bookings, duplicate bookings, failed reminders, failed SMS or email delivery, failed checkouts, failed product purchases, inventory mismatches, payment processor interruptions, calendar sync issues, DNS or domain errors, website unavailability, customer no-shows, lost leads, or other business losses arising from platform errors, third-party outages, internet failures, browser/device issues, or customer-side misuse of the Services.",
+        },
+        {
+          title: "10B. Customer Operational Responsibility",
+          list: [
+            "You remain solely responsible for supervising your business operations and verifying whether appointments, orders, payments, cancellations, reminders, inventory, staff availability, and public website content are correct.",
+            "You must maintain your own reasonable business continuity procedures, including backup contact methods, offline records where appropriate, and independent exports or backups of critical data.",
+            "Before relying on automated reminders, public booking flows, product checkout, payroll outputs, or published pages, you must evaluate whether the configuration matches your operational and legal requirements.",
+          ],
+        },
+        {
           title: "11. No Professional Advice",
           body:
             "Schedulaa does not provide legal, tax, accounting, payroll, HR, or employment advice. Outputs, templates, or calculations are informational only. Consult qualified professionals before relying on them.",
@@ -124,6 +143,11 @@ const UserAgreementPage = () => (
           title: "13. Limitation of Liability",
           body:
             "To the maximum extent permitted under Canadian law, Schedulaa’s total liability for any claim is limited to the fees you paid in the 12 months preceding the claim. We are not liable for indirect, incidental, special, consequential, or punitive damages (including lost profits, data, business, or goodwill), whether in contract, tort, negligence, or statute.",
+        },
+        {
+          title: "13A. Sole and Exclusive Remedy for Availability and Performance Complaints",
+          body:
+            "Unless Schedulaa expressly agrees otherwise in a signed enterprise SLA or written service-credit commitment, your sole and exclusive remedy for dissatisfaction with service availability, booking flow behavior, product checkout behavior, website uptime, notification failures, or other platform performance issues is to stop using the affected Service and cancel your subscription or renewal. Schedulaa is not obligated to reimburse lost revenue, replacement staff costs, customer claims, reputational harm, advertising spend, or other business losses arising from such issues.",
         },
         {
           title: "14. Data Loss & System Failures",
@@ -186,7 +210,7 @@ const UserAgreementPage = () => (
         {
           title: "21. Governing Law & Jurisdiction",
           body:
-            "This Agreement is governed by the laws of the Province of Ontario and the federal laws of Canada. Disputes will be resolved exclusively in the courts of Toronto, Ontario. Both parties waive jury trial and class-action rights to the extent permitted by law.",
+            "This Agreement is governed by the laws of the Province of Ontario and the federal laws of Canada. Disputes will be resolved exclusively in the courts of Toronto, Ontario. To the extent permitted by law, each party waives any right to participate in a class action, class arbitration, or representative proceeding against the other.",
         },
         {
           title: "22. Modifications",

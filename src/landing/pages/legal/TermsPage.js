@@ -15,13 +15,16 @@ const TermsPage = () => (
           Terms of Service
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: March 2, 2026
+          Last updated: August 22, 2026
         </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">1. Overview</Typography>
         <Typography variant="body1" color="text.secondary">
           These Terms of Service ("Terms") govern access to and use of schedulaa.com, the Schedulaa web app, APIs, and any related services operated by Photo Artisto Corp. ("Schedulaa", "we", "us"). By using the Services you agree to these Terms and to our Privacy Policy.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          These Terms are a short public-facing summary. If you create an account, subscribe, run a tenant workspace, or otherwise use Schedulaa as a registered customer, the Schedulaa User Agreement is the primary contract and controls over these Terms in the event of any conflict.
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -80,6 +83,9 @@ const TermsPage = () => (
         <Typography variant="body1" color="text.secondary">
           We aim for high availability but do not guarantee uninterrupted service. Scheduled maintenance and unscheduled outages may occur. For enterprise SLAs, contact support@schedulaa.com.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Platform interruptions, booking errors, product checkout failures, failed reminders, domain or DNS problems, third-party provider outages, and similar operational issues are addressed more specifically in the Schedulaa User Agreement.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">8. Third-party services</Typography>
@@ -91,6 +97,9 @@ const TermsPage = () => (
         <Typography variant="h5" component="h2">9. Limitation of liability</Typography>
         <Typography variant="body1" color="text.secondary">
           To the maximum extent allowed by law, Photo Artisto Corp. is not liable for indirect, incidental, or consequential damages arising from use of the Services. Our total liability is limited to the amount paid to Schedulaa in the 12 months prior to the claim.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          For registered customers, the more detailed disclaimers, operational responsibility terms, and remedy limitations in the Schedulaa User Agreement also apply.
         </Typography>
       </Stack>
       <Stack spacing={2}>

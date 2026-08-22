@@ -233,6 +233,12 @@ export const ThemeModeContext = createContext({
 });
 
 const APP_MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
+const APP_MARKETING_TERMS_URL = buildMarketingUrl("/en/terms");
+const APP_MARKETING_USER_AGREEMENT_URL = buildMarketingUrl("/en/user-agreement");
+const APP_MARKETING_PRIVACY_URL = buildMarketingUrl("/en/privacy");
+const APP_MARKETING_COOKIE_URL = buildMarketingUrl("/en/cookie");
+const APP_MARKETING_ACCEPTABLE_USE_URL = buildMarketingUrl("/en/acceptable-use");
+const APP_MARKETING_DATA_PROCESSING_URL = buildMarketingUrl("/en/data-processing");
 const SHOW_LOCAL_PRICING_PREVIEW = process.env.NODE_ENV !== "production";
 
 const ExternalRedirect = ({ to }) => {
@@ -992,12 +998,12 @@ const AppContent = ({ token, setToken }) => {
                 <Route path="/account-deletion" element={<AccountDeletionPage />} />
                 <Route path="/demo" element={<DemoPage />} />
                 <Route path="/faq" element={<FAQPage />} />
-                <Route path="/terms" element={<TermsPage />} />
-                <Route path="/user-agreement" element={<UserAgreementPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/cookie" element={<CookiePolicyPage />} />
-                <Route path="/acceptable-use" element={<AcceptableUsePage />} />
-                <Route path="/data-processing" element={<DataProcessingAddendumPage />} />
+                <Route path="/terms" element={<ExternalRedirect to={APP_MARKETING_TERMS_URL} />} />
+                <Route path="/user-agreement" element={<ExternalRedirect to={APP_MARKETING_USER_AGREEMENT_URL} />} />
+                <Route path="/privacy" element={<ExternalRedirect to={APP_MARKETING_PRIVACY_URL} />} />
+                <Route path="/cookie" element={<ExternalRedirect to={APP_MARKETING_COOKIE_URL} />} />
+                <Route path="/acceptable-use" element={<ExternalRedirect to={APP_MARKETING_ACCEPTABLE_USE_URL} />} />
+                <Route path="/data-processing" element={<ExternalRedirect to={APP_MARKETING_DATA_PROCESSING_URL} />} />
                 <Route path="/security" element={<SecurityPage />} />
                 <Route path="/legal/support-access-consent" element={<SupportAccessConsentPage />} />
               </Route>

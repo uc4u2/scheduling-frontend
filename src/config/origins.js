@@ -5,7 +5,10 @@ const trimOrigin = (value, fallback) => {
 
 export const MARKETING_ORIGIN = trimOrigin(
   process.env.REACT_APP_MARKETING_ORIGIN,
-  "https://www.schedulaa.com"
+  typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1"].includes((window.location.hostname || "").toLowerCase())
+    ? `${window.location.protocol}//${window.location.hostname}:3001`
+    : "https://www.schedulaa.com"
 );
 
 export const APP_ORIGIN = trimOrigin(
@@ -16,4 +19,9 @@ export const APP_ORIGIN = trimOrigin(
 export const buildMarketingUrl = (path = "/") => {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${MARKETING_ORIGIN}${cleanPath}`;
+};
+
+export const buildMarketingLegalUrl = (path = "/") => {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return buildMarketingUrl(`/en${cleanPath}`);
 };

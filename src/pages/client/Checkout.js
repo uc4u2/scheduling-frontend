@@ -49,6 +49,9 @@ import { publicSite } from "../../utils/api";
 import TimezoneSelect from "../../components/TimezoneSelect";
 import { getUserTimezone, formatTimezoneLabel } from "../../utils/timezone";
 import TenantTransactionalShell from "./TenantTransactionalShell";
+import { buildMarketingLegalUrl } from "../../config/origins";
+
+const USER_AGREEMENT_URL = buildMarketingLegalUrl("/user-agreement");
 
 const stashProductOrder = (order, sessionId) => {
   if (!order) return;
@@ -532,7 +535,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
               <span>
                 I agree to the{" "}
                 <Link
-                  href={`${(typeof window !== "undefined" && window.location.origin) || "https://www.schedulaa.com"}/terms`}
+                  href={USER_AGREEMENT_URL}
                   target="_blank"
                   rel="noopener"
                 >

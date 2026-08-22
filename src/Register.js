@@ -23,7 +23,7 @@ import TimezoneSelect from "./components/TimezoneSelect";
 import RoleSelect from "./components/RoleSelect";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
-import { buildMarketingUrl } from "./config/origins";
+import { buildMarketingLegalUrl, buildMarketingUrl } from "./config/origins";
 import { getUserTimezone, formatTimezoneLabel } from "./utils/timezone";
 
 const ROLE_OPTIONS = [
@@ -45,6 +45,10 @@ const getRoleMeta = (value) =>
   ROLE_OPTIONS.find((option) => option.value === value) || ROLE_OPTIONS[1];
 
 const AGREEMENT_VERSION = "2025-11";
+const USER_AGREEMENT_URL = buildMarketingLegalUrl("/user-agreement");
+const TERMS_URL = buildMarketingLegalUrl("/terms");
+const PRIVACY_URL = buildMarketingLegalUrl("/privacy");
+const DATA_PROCESSING_URL = buildMarketingLegalUrl("/data-processing");
 
 const Register = ({ slugOverride = "" }) => {
   const [firstName, setFirstName] = useState("");
@@ -460,19 +464,19 @@ const Register = ({ slugOverride = "" }) => {
                     sx={{ fontSize: isMobile ? "0.94rem" : undefined, lineHeight: isMobile ? 1.55 : undefined }}
                   >
                     I agree to the{" "}
-                    <MuiLink component={RouterLink} to="/user-agreement" target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
+                    <MuiLink href={USER_AGREEMENT_URL} target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
                       User Agreement
                     </MuiLink>
                     ,{" "}
-                    <MuiLink component={RouterLink} to="/terms" target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
+                    <MuiLink href={TERMS_URL} target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
                       Terms of Service
                     </MuiLink>
                     ,{" "}
-                    <MuiLink component={RouterLink} to="/privacy" target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
+                    <MuiLink href={PRIVACY_URL} target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
                       Privacy Policy
                     </MuiLink>
                     , and{" "}
-                    <MuiLink component={RouterLink} to="/data-processing" target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
+                    <MuiLink href={DATA_PROCESSING_URL} target="_blank" rel="noopener" sx={{ fontWeight: 600 }}>
                       Data Processing Addendum
                     </MuiLink>
                     .

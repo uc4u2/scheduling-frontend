@@ -7,6 +7,7 @@ import { getTenantHostMode } from "../../utils/tenant";
 import TimezoneSelect from "../../components/TimezoneSelect";
 import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
+import { buildMarketingLegalUrl } from "../../config/origins";
 
 const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
   <Stack spacing={1} sx={{ mt: 1 }}>
@@ -22,6 +23,7 @@ const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
 );
 
 export default function PublicClientAuth({ slug }) {
+  const userAgreementUrl = buildMarketingLegalUrl("/user-agreement");
   const [tab, setTab] = useState("login");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -182,7 +184,7 @@ export default function PublicClientAuth({ slug }) {
                 <span>
                   I agree to the{" "}
                   <Link
-                    href={`${(typeof window !== "undefined" && window.location.origin) || "https://www.schedulaa.com"}/terms`}
+                    href={userAgreementUrl}
                     target="_blank"
                     rel="noopener"
                   >
