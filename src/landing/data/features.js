@@ -35,7 +35,7 @@ export const featurePillars = [
     description: [
       "Canada + 45 U.S. states supported, with EI, CPP, automated stat holiday pay, and year-end forms (W-2 / T4) plus ROE export.",
       "Pay-rate assignment per employee, overtime tiers, province/state holiday rules, and smart deductions.",
-      "Export payroll journals or plug into remittance APIs for hands-free filing.",
+      "Export payroll journals or connect remittance workflows to reduce manual filing work.",
       "Employee onboarding, time tracking, and performance workflows in one place.",
     ],
   },
@@ -76,7 +76,7 @@ export const featurePillars = [
       "Role-based access control for managers, admins, recruiters, and employees.",
       "Secure data storage with encryption, audit logs, and automated backups.",
       "Multi-location, multi-branch support with centralized oversight.",
-      "Compliance with regional payroll and privacy regulations out of the box.",
+      "Built to support regional payroll and privacy workflows with configurable controls.",
     ],
   },
   {

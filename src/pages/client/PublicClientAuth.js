@@ -24,7 +24,11 @@ const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
 
 export default function PublicClientAuth({ slug }) {
   const userAgreementUrl = buildMarketingLegalUrl("/user-agreement");
-  const [tab, setTab] = useState("login");
+  const [tab, setTab] = useState(() => (
+    typeof window !== "undefined" && new URLSearchParams(window.location.search || "").get("tab") === "register"
+      ? "register"
+      : "login"
+  ));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -47,13 +51,27 @@ export default function PublicClientAuth({ slug }) {
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [phone, setPhone] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const finish = (token) => {
     localStorage.setItem("token", token);
     localStorage.setItem("role", "client");
     if (slug) localStorage.setItem("site", slug);
+    // Next public pages live on a different origin from this legacy iframe.
+    // Notify only the presentation shell that a client session now exists;
+    // authentication remains entirely in the existing legacy client flow.
+    window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: true }, "*");
+    const embedded =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search || "").get("embed") === "1";
     const target =
-      getTenantHostMode() === "custom"
+      // A Next transactional bridge frames the established client login.
+      // Return to DashboardShellGate, the mounted client-panel route used by
+      // the Next bridge, instead of a tenant-prefixed URL that custom-domain
+      // public routing can treat as a marketing page.
+      embedded && slug
+        ? `/dashboard?site=${encodeURIComponent(slug)}&embed=1&dialog=1`
+        : getTenantHostMode() === "custom"
         ? "/?page=my-bookings"
         : slug
           ? `/dashboard?site=${encodeURIComponent(slug)}`
@@ -86,6 +104,11 @@ export default function PublicClientAuth({ slug }) {
       setBusy(false);
       return;
     }
+    if (password !== passwordConfirm) {
+      setError("Passwords do not match.");
+      setBusy(false);
+      return;
+    }
     try {
       await api.post(`/register`, {
         first_name: first,
@@ -93,6 +116,9 @@ export default function PublicClientAuth({ slug }) {
         email,
         phone,
         password,
+        // The established client registration handler requires this exact
+        // confirmation field before it creates the account or queues email.
+        password_confirm: passwordConfirm,
         timezone,
         role: "client",
         company_slug: slug || undefined,
@@ -112,7 +138,12 @@ export default function PublicClientAuth({ slug }) {
             "You already have an account on the Schedulaa platform used by this business. Please log in to continue, or use Forgot password."
         );
       } else {
-        setError(data?.error || "Registration failed.");
+        const fieldErrors = data?.field_errors;
+        const firstFieldError =
+          fieldErrors && typeof fieldErrors === "object"
+            ? Object.values(fieldErrors).find(Boolean)
+            : "";
+        setError(firstFieldError || data?.message || data?.error || "Registration failed.");
       }
     } finally { setBusy(false); }
   };
@@ -161,6 +192,15 @@ export default function PublicClientAuth({ slug }) {
             <TextField label="Phone" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} fullWidth />
           )}
           <TextField label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} fullWidth />
+          {tab === "register" && (
+            <TextField
+              label="Confirm password"
+              type="password"
+              value={passwordConfirm}
+              onChange={e => setPasswordConfirm(e.target.value)}
+              fullWidth
+            />
+          )}
           {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
           {showTimezoneSelect ? (
             <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />

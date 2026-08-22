@@ -5,7 +5,7 @@ const blogPosts = [
     slug: "secure-hiring-resume-upload-onboarding",
     title: "Modern Hiring, Resume Uploads, and Secure Document Requests - All in One Platform",
     description:
-      "Schedulaa is an all-in-one hiring and onboarding platform with secure resume uploads, antivirus scanning, job postings, document requests, and employee onboarding for modern HR teams. It also includes a structured public job board, candidate dashboards, AI-assisted applicant ranking, and compliance-ready hiring workflows for growing teams.",
+      "Schedulaa is an all-in-one hiring and onboarding platform with secure resume uploads, antivirus scanning, job postings, document requests, and employee onboarding for modern HR teams. It also includes a structured public job board, candidate dashboards, AI-assisted applicant ranking, and configurable hiring workflows for growing teams.",
     datePublished: "2025-12-22T12:00:00Z",
     dateModified: "2025-12-22T12:00:00Z",
     category: "Hiring",
@@ -489,7 +489,7 @@ const blogPosts = [
     slug: "fix-scheduling-chaos",
     title: "How Service Teams Can Finally Fix Scheduling Chaos (Without Using 5 Different Apps)",
     description:
-      "When booking, shifts, breaks, and payroll live in different tools, mistakes are guaranteed. Here's how Schedulaa keeps them in one flow.",
+      "When booking, shifts, breaks, and payroll live in different tools, mistakes become more likely. Here's how Schedulaa keeps them in one flow.",
     datePublished: "2025-03-01",
     dateModified: "2025-03-01",
     category: "Operations",

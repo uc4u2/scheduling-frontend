@@ -10,37 +10,42 @@ const SecurityPage = () => (
       canonical="https://www.schedulaa.com/security"
     />
     <Stack spacing={3}>
-      <Typography variant="h3" component="h1" fontWeight={800}>
-        Security at Schedulaa
-      </Typography>
+      <Stack spacing={1}>
+        <Typography variant="h3" component="h1" fontWeight={800}>
+          Security at Schedulaa
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Last updated: August 22, 2026
+        </Typography>
+      </Stack>
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">1. Infrastructure</Typography>
         <Typography variant="body1" color="text.secondary">
-          Hosted on AWS with network segmentation and firewalls. Data encryption at rest (AES-256) and in transit (TLS 1.2+).
+          Schedulaa runs on managed cloud infrastructure and uses layered network and access controls appropriate to the service. We use encryption in transit and apply encryption-at-rest protections where supported by the relevant storage or infrastructure layer.
         </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">2. Application security</Typography>
         <Typography variant="body1" color="text.secondary">
-          Role-based access control, optional multi-factor authentication, and regular vulnerability scanning and dependency patching.
+          Security controls may include role-based access controls, authentication controls, logging, dependency maintenance, administrative review workflows, and vulnerability-management practices appropriate to the product and environment.
         </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">3. Data protection</Typography>
         <Typography variant="body1" color="text.secondary">
-          Automated backups with point-in-time recovery, logging and monitoring for unusual activity, and secure handling of payroll and PII data.
+          We use backup, logging, monitoring, and operational recovery measures designed to support service continuity and incident investigation. Backup scope, retention, recovery objectives, and recovery methods may vary by system, environment, and subscription context.
         </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">4. Compliance</Typography>
         <Typography variant="body1" color="text.secondary">
-          Aligns with GDPR principles, SOC 2 controls (roadmap), and local payroll regulations.
+          Schedulaa is designed to support privacy, security, payroll, and recordkeeping workflows, but this page is descriptive only and is not a certification, guarantee, legal opinion, or commitment that your use of the service will satisfy every regulatory obligation. Formal compliance commitments, if any, are governed by your contract and the applicable legal terms.
         </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">5. Incident response</Typography>
         <Typography variant="body1" color="text.secondary">
-          24/7 monitoring, breach notifications within 72 hours where required, and dedicated security@schedulaa.com reporting channel.
+          We maintain incident-response and escalation processes for security events and operational issues. Where applicable law requires notice, we aim to provide breach or incident notifications within the legally required timeframe after confirming the relevant facts. Security concerns can be reported to security@schedulaa.com.
         </Typography>
       </Stack>
     </Stack>

@@ -15,7 +15,7 @@ const PrivacyPage = () => (
           Privacy Policy
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: March 2, 2026
+          Last updated: August 22, 2026
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -34,6 +34,21 @@ const PrivacyPage = () => (
         <Typography variant="h5">3. How we use information</Typography>
         <Typography variant="body1" color="text.secondary">
           We provide, maintain, and improve Schedulaa features; process bookings, payroll, payments, and website publishing; communicate about services, updates, and marketing (with opt-out); ensure security and compliance; and aggregate analytics for product insights.
+        </Typography>
+      </Stack>
+      <Stack spacing={2}>
+        <Typography variant="h5">3B. AI features and automated processing</Typography>
+        <Typography variant="body1" color="text.secondary">
+          If you use AI-assisted or automated features, we may process prompts, instructions, uploaded files, product facts, website content, lead or contact details, call transcripts, draft messages, and related workspace context to generate, summarize, classify, validate, route, or improve requested outputs and workflows.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          This may include AI website-copy generation, commerce or product-draft assistance, AI sales-development or call-flow tools, draft suggestions, and future assistant or copilot features. Depending on the feature, inputs and outputs may be processed by Photo Artisto Corp. and by contracted service providers that supply model, hosting, routing, transcription, or related infrastructure.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Unless we expressly state otherwise in feature-specific documentation or an enterprise agreement, AI-related inputs and outputs are processed to deliver the requested feature and to support safety, abuse prevention, debugging, incident response, customer support, quality assurance, and service reliability. They are not provided as professional advice, and you remain responsible for reviewing and approving AI-generated outputs before publishing, sending, or relying on them.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Unless we expressly state otherwise in writing for a specific feature or customer arrangement, we describe these AI-related uses as supporting inference and service delivery rather than as a general authorization for third-party model providers to use your workspace data for their own general-purpose model improvement. If that position changes for a specific feature, we will address it in the applicable product notice, documentation, or contract.
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -62,6 +77,9 @@ const PrivacyPage = () => (
         <Typography variant="body1" color="text.secondary">
           We share data with service providers (hosting, Imgix, Stripe, support tools), comply with legal processes, and may transfer data in the event of a merger subject to safeguards.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          For AI-assisted and automated features, this may include contracted providers that support model inference, transcription, communications delivery, hosting, safety review, abuse prevention, and workflow execution.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">6. International transfers</Typography>
@@ -79,6 +97,9 @@ const PrivacyPage = () => (
         </Typography>
         <Typography variant="body1" color="text.secondary">
           As operational defaults, selected risk and telemetry logs are typically retained for limited windows (for example, roughly 30 to 180 days), unless a longer period is required for active investigations, legal holds, billing disputes, or regulatory compliance.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          AI-related prompts, transcripts, generated drafts, and workflow outputs may also be retained for reasonable operational periods when needed to deliver the feature, preserve workspace history, support troubleshooting, review safety or abuse concerns, validate billing, resolve disputes, or satisfy compliance obligations.
         </Typography>
       </Stack>
       <Stack spacing={2}>

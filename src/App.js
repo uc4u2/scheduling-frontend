@@ -100,14 +100,8 @@ import SalesRepPayoutsPage from "./sales/pages/SalesPayoutsPage";
 import SalesLeadQueuePage from "./sales/pages/SalesLeadQueuePage";
 import SalesInboundWorkspacePage from "./sales/pages/SalesInboundWorkspacePage";
 import SalesRepProfilePage from "./admin/pages/SalesRepProfilePage";
-import TermsPage from "./landing/pages/legal/TermsPage";
-import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import AccountDeletionPage from "./landing/pages/legal/AccountDeletionPage";
-import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
-import AcceptableUsePage from "./landing/pages/legal/AcceptableUsePage";
-import DataProcessingAddendumPage from "./landing/pages/legal/DataProcessingAddendumPage";
 import SecurityPage from "./landing/pages/legal/SecurityPage";
-import UserAgreementPage from "./landing/pages/legal/UserAgreementPage";
 import SupportAccessConsentPage from "./landing/pages/legal/SupportAccessConsentPage";
 import PayrollOverviewPage from "./landing/pages/payroll/PayrollOverviewPage";
 import CanadaPayrollPage from "./landing/pages/payroll/CanadaPayrollPage";
@@ -162,11 +156,13 @@ import EmployeeProfileForm from "./pages/Payroll/EmployeeProfileForm";
 import PayrollDownloadPage from "./pages/sections/PayrollDownloadPage";
 import EmployeePayslipPortal from "./pages/sections/EmployeePayslipPortal";
 import DashboardShellGate from "./pages/client/DashboardShellGate";
+import ClientDashboard from "./pages/ClientDashboard";
 
 // Website management
 import WebsiteBuilder from "./pages/sections/management/WebsiteBuilder";
 import WebsiteManager from "./pages/sections/management/WebsiteManager";
 import AutoSiteBuilder from "./pages/sections/management/AutoSiteBuilder";
+import LegacyWebsitePagesRedirect from "./pages/sections/management/LegacyWebsitePagesRedirect";
 import WebsiteTemplates from "./pages/sections/management/WebsiteTemplates";
 import InlineSiteEditor from "./pages/sections/management/InlineSiteEditor";
 import ServiceManagement from "./pages/sections/management/ServiceManagement";
@@ -482,6 +478,50 @@ const LegacyReviewsRedirect = ({ slugOverride = "" }) => {
   return <Navigate to={`${basePath}?${nextSearch}`} replace />;
 };
 
+// Thin tenant-scoped aliases for existing public client components. They keep
+// Next public-site bridges out of the platform-wide login/dashboard routes.
+const TenantScopedClientLogin = () => {
+  const { slug } = useParams();
+  return (
+    <TenantTransactionalShell slugOverride={slug} activeKey="__login" pagePath="">
+      <PublicClientAuth slug={slug} />
+    </TenantTransactionalShell>
+  );
+};
+
+const TenantScopedClientAccount = () => {
+  const { slug } = useParams();
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
+  const role = typeof localStorage !== "undefined" ? localStorage.getItem("role") : "";
+  const clientLoggedIn = Boolean(token && role === "client");
+  return (
+    <TenantTransactionalShell slugOverride={slug} activeKey="__mybookings" pagePath="">
+      {clientLoggedIn ? <ClientDashboard /> : <PublicClientAuth slug={slug} />}
+    </TenantTransactionalShell>
+  );
+};
+
+// Root login remains the platform entry by default. The Next public bridge
+// opts into this existing client-only variant with ?client=1&site=<slug>.
+const ClientAwareLoginRoute = ({ setToken }) => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search || "");
+  const clientMode = params.get("client") === "1";
+  const slug = String(params.get("site") || "").trim();
+  if (clientMode && slug) {
+    return (
+      <TenantTransactionalShell slugOverride={slug} activeKey="__login" pagePath="">
+        <PublicClientAuth slug={slug} />
+      </TenantTransactionalShell>
+    );
+  }
+  return (
+    <TenantTransactionalShell activeKey="__login" pagePath="">
+      <Login setToken={setToken} slugOverride={slug} />
+    </TenantTransactionalShell>
+  );
+};
+
 const AppContent = ({ token, setToken }) => {
   const nativeRuntime = isNativeRuntime();
   const hasToken = Boolean(localStorage.getItem("token"));
@@ -568,7 +608,17 @@ const AppContent = ({ token, setToken }) => {
     "forgot-password",
     "my-bookings",
   ]);
-  const requiresPublicRendererResolution = Boolean(publicTenantSlug) && !publicRendererBypassRoots.has(publicRouteRoot);
+  // Embedded service entry routes are transactional legacy surfaces.  They
+  // must reach ServiceDetails / EmployeeProfile so those components retain
+  // ownership of the calendars and the subsequent /book handoff.  A normal
+  // public services URL still resolves to the published Next renderer.
+  const isEmbeddedLegacyServiceRoute =
+    publicRouteRoot === "services" &&
+    new URLSearchParams(location.search || "").get("embed") === "1";
+  const requiresPublicRendererResolution =
+    Boolean(publicTenantSlug) &&
+    !isEmbeddedLegacyServiceRoute &&
+    !publicRendererBypassRoots.has(publicRouteRoot);
   const [publicRendererReady, setPublicRendererReady] = useState(() => !requiresPublicRendererResolution);
   // Use robust embed config from embed context / storage
   const { isEmbed, primary, text } = useEmbedConfig();
@@ -901,13 +951,19 @@ const AppContent = ({ token, setToken }) => {
                   </TenantTransactionalShell>
                 }
               />
+              {/* Next public bridges use these tenant-scoped aliases. They
+                  mount the existing client auth/account components, and are
+                  required here too because localhost/custom-host mode would
+                  otherwise send /:slug/* through the public-site fallback. */}
+              <Route path="/:slug/login" element={<TenantScopedClientLogin />} />
+              <Route path="/:slug/client/bookings" element={<TenantScopedClientAccount />} />
               <Route path="/" element={<CompanyPublic slugOverride={tenantSlug} />} />
               <Route path="/jobs" element={<PublicJobsListPage slugOverride={tenantSlug} />} />
               <Route path="/jobs/:jobSlug" element={<PublicJobDetailPage slugOverride={tenantSlug} />} />
               <Route path="/services" element={<ServiceList slugOverride={tenantSlug} />} />
-              <Route path="/services/:serviceId" element={<ServiceDetails slugOverride={tenantSlug} />} />
+              <Route path="/services/:serviceId" element={<TenantTransactionalShell slugOverride={tenantSlug} activeKey="__services" pagePath="services"><ServiceDetails slugOverride={tenantSlug} /></TenantTransactionalShell>} />
               <Route path="/services/:serviceId/employees" element={<EmployeeList slugOverride={tenantSlug} />} />
-              <Route path="/services/:serviceId/employees/:employeeId" element={<EmployeeProfile slugOverride={tenantSlug} />} />
+              <Route path="/services/:serviceId/employees/:employeeId" element={<TenantTransactionalShell slugOverride={tenantSlug} activeKey="__services" pagePath="services"><EmployeeProfile slugOverride={tenantSlug} /></TenantTransactionalShell>} />
               <Route path="/products" element={<ProductList slugOverride={tenantSlug} />} />
               <Route path="/products/:productId" element={<ProductDetails slugOverride={tenantSlug} />} />
               <Route path="/basket" element={<MyBasket slugOverride={tenantSlug} />} />
@@ -1012,11 +1068,7 @@ const AppContent = ({ token, setToken }) => {
           {/* Auth */}
           <Route
             path="/login"
-            element={
-              <TenantTransactionalShell activeKey="__login" pagePath="">
-                <Login setToken={setToken} slugOverride={tenantSlug} />
-              </TenantTransactionalShell>
-            }
+            element={<ClientAwareLoginRoute setToken={setToken} />}
           />
           <Route path="/signup" element={<Navigate to="/register" replace />} />
           <Route
@@ -1058,9 +1110,11 @@ const AppContent = ({ token, setToken }) => {
 
               {/* Client Public Booking Flow - specific routes first */}
               <Route path="/:slug/services" element={<ServiceList />} />
-              <Route path="/:slug/services/:serviceId" element={<ServiceDetails />} />
+              <Route path="/:slug/login" element={<TenantScopedClientLogin />} />
+              <Route path="/:slug/client/bookings" element={<TenantScopedClientAccount />} />
+              <Route path="/:slug/services/:serviceId" element={<TenantTransactionalShell activeKey="__services" pagePath="services"><ServiceDetails /></TenantTransactionalShell>} />
               <Route path="/:slug/services/:serviceId/employees" element={<EmployeeList />} />
-              <Route path="/:slug/services/:serviceId/employees/:employeeId" element={<EmployeeProfile />} />
+              <Route path="/:slug/services/:serviceId/employees/:employeeId" element={<TenantTransactionalShell activeKey="__services" pagePath="services"><EmployeeProfile /></TenantTransactionalShell>} />
 
               <Route path="/:slug/products" element={<ProductList />} />
 
@@ -1149,6 +1203,8 @@ const AppContent = ({ token, setToken }) => {
 
           {/* Manager / Recruiter */}
           <Route path="/manager/website/inline" element={<InlineSiteEditor />} /> {/* Inline editor */}
+          <Route path="/manager/website_pages" element={<LegacyWebsitePagesRedirect />} />
+          <Route path="/manager/website-pages" element={<LegacyWebsitePagesRedirect />} />
           <Route path="/manage/website/builder" element={<AutoSiteBuilder />} />
           <Route path="/recruiter/invitations" element={<RecruiterInvitationsPage token={token} />} />
           <Route path="/employee/invitations" element={<RecruiterInvitationsPage token={token} />} />

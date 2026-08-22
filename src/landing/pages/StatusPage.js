@@ -294,7 +294,7 @@ const StatusPage = () => {
               </Table>
             </TableContainer>
             <Typography variant="body2" color="text.secondary" mt={1.5}>
-              Schedulaa guarantees a minimum 99.9% uptime SLA across all services.
+              Availability targets and any service-level commitments depend on the applicable plan and contract terms.
             </Typography>
           </Box>
 

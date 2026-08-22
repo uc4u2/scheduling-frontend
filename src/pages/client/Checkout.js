@@ -780,6 +780,14 @@ export function CheckoutFormCore({
   const companyContactEmail = contactEmail || "";
   const companyContactPhone = contactPhone || "";
 
+  // A tenant's billing status is an internal concern. Public checkout must not
+  // expose the API error key or plan requirements to the tenant's client.
+  const showPublicBookingUnavailable = () => {
+    setErr("");
+    setPublicUpgradeMessage("");
+    setPublicUpgradeOpen(true);
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -2138,7 +2146,9 @@ export function CheckoutFormCore({
         }));
       } catch (err) {
         const data = err?.response?.data;
-        if (data?.error_code === "CLIENT_BOOKING_BLOCKED") {
+        if (err?.response?.status === 402 && data?.error === "subscription_required") {
+          showPublicBookingUnavailable();
+        } else if (data?.error_code === "CLIENT_BOOKING_BLOCKED") {
           setErr(CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE);
         } else if (err?.response?.status === 409 && data) {
           const conflicts = Array.isArray(data.conflicts)
@@ -2190,7 +2200,9 @@ export function CheckoutFormCore({
         results.push(res);
       } catch (err) {
         const data = err?.response?.data;
-        if (data?.error_code === "CLIENT_BOOKING_BLOCKED") {
+        if (err?.response?.status === 402 && data?.error === "subscription_required") {
+          showPublicBookingUnavailable();
+        } else if (data?.error_code === "CLIENT_BOOKING_BLOCKED") {
           setErr(CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE);
         } else if (err?.response?.status === 409 && data) {
           const conflicts = Array.isArray(data.conflicts)
@@ -2370,8 +2382,7 @@ export function CheckoutFormCore({
     } catch (ex) {
       const data = ex?.response?.data || {};
       if (ex?.response?.status === 402 && data?.error === "subscription_required") {
-        setPublicUpgradeMessage(data?.message || "");
-        setPublicUpgradeOpen(true);
+        showPublicBookingUnavailable();
         return;
       }
       setErr(ex.message || "Booking failed");
@@ -2460,8 +2471,7 @@ export function CheckoutFormCore({
     } catch (ex) {
       const data = ex?.response?.data || {};
       if (ex?.response?.status === 402 && data?.error === "subscription_required") {
-        setPublicUpgradeMessage(data?.message || "");
-        setPublicUpgradeOpen(true);
+        showPublicBookingUnavailable();
         setLoading(false);
         return;
       }
@@ -2557,8 +2567,7 @@ export function CheckoutFormCore({
     } catch (ex) {
       const data = ex?.response?.data || {};
       if (ex?.response?.status === 402 && data?.error === "subscription_required") {
-        setPublicUpgradeMessage(data?.message || "");
-        setPublicUpgradeOpen(true);
+        showPublicBookingUnavailable();
         setLoading(false);
         return;
       }

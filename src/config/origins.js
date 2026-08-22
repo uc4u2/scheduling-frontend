@@ -3,12 +3,19 @@ const trimOrigin = (value, fallback) => {
   return String(source).replace(/\/+$/, "");
 };
 
+const resolveMarketingOriginFallback = () => {
+  if (typeof window !== "undefined") {
+    const host = (window.location.hostname || "").toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") {
+      return `${window.location.protocol}//${host}:3001`;
+    }
+  }
+  return "https://www.schedulaa.com";
+};
+
 export const MARKETING_ORIGIN = trimOrigin(
   process.env.REACT_APP_MARKETING_ORIGIN,
-  typeof window !== "undefined" &&
-    ["localhost", "127.0.0.1"].includes((window.location.hostname || "").toLowerCase())
-    ? `${window.location.protocol}//${window.location.hostname}:3001`
-    : "https://www.schedulaa.com"
+  resolveMarketingOriginFallback()
 );
 
 export const APP_ORIGIN = trimOrigin(
