@@ -1549,6 +1549,15 @@ function PageStyleCard({
   if (isNextJsMode) {
     const supportedFields = getSupportedThemeOverrideFields(nextJsThemeKey);
     const supportedFieldSet = new Set(supportedFields);
+    const normalizedNextThemeKey = String(nextJsThemeKey || "").trim().toLowerCase();
+    const isIronEmberTheme = normalizedNextThemeKey === "iron-ember";
+    const nextSiteThemeSettings = readSiteThemeSettings(siteThemeSettings);
+    const activeNextPresetKey = nextSiteThemeSettings.themePresetKey || "";
+    const nextPresetChoices = THEME_PRESET_LIBRARY.filter((preset) =>
+      ["modern-noir", "blush-spa", "forest-calm", "champagne-luxe", "ocean-clean"].includes(
+        preset.key
+      )
+    );
     const sanitizedOverrides = sanitizeThemeOverrideDraft(
       nextJsThemeKey,
       nextJsThemeOverrides || {}
@@ -1569,6 +1578,120 @@ function PageStyleCard({
           This website style keeps its composition fixed. Page Style only exposes
           safe theme overrides supported by {nextJsThemeKey || "the active theme"}.
         </Alert>
+
+        {isIronEmberTheme ? (
+          <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1, borderColor: "divider" }}>
+            <Stack spacing={1.25}>
+              <Box>
+                <Typography variant="subtitle2">Iron Ember color presets</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Choose a complete color direction for this template. The preset updates
+                  Iron Ember&apos;s semantic palette; its layout and booking flows stay unchanged.
+                </Typography>
+              </Box>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                justifyContent="space-between"
+              >
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={nextSiteThemeSettings.syncChrome !== false}
+                      onChange={(_, checked) => onToggleSyncChrome?.(checked)}
+                    />
+                  }
+                  label="Keep header/footer/menu colors synced"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(applyToAll)}
+                      onChange={(_, checked) => onToggleApplyToAll?.(checked)}
+                    />
+                  }
+                  label="Apply this preset to all pages"
+                />
+              </Stack>
+              {activeNextPresetKey ? (
+                <Chip
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  label={`Active preset: ${
+                    THEME_PRESET_LIBRARY.find((preset) => preset.key === activeNextPresetKey)
+                      ?.label || activeNextPresetKey
+                  }`}
+                  sx={{ alignSelf: "flex-start" }}
+                />
+              ) : null}
+              <Grid container spacing={1}>
+                {nextPresetChoices.map((preset) => (
+                  <Grid item xs={12} sm={6} key={preset.key}>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 1.1,
+                        height: "100%",
+                        borderRadius: 1,
+                        borderColor:
+                          activeNextPresetKey === preset.key ? "primary.main" : "divider",
+                        background:
+                          preset.pageStyle.secondaryBackground ||
+                          preset.pageStyle.backgroundColor ||
+                          "background.paper",
+                      }}
+                    >
+                      <Stack spacing={0.8}>
+                        <Stack direction="row" spacing={0.5}>
+                          {[
+                            preset.pageStyle.backgroundColor,
+                            preset.pageStyle.headingColor,
+                            preset.pageStyle.btnBg || preset.accent,
+                          ]
+                            .filter(Boolean)
+                            .map((swatch, index) => (
+                              <Box
+                                key={`${preset.key}-${index}`}
+                                sx={{
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: "50%",
+                                  border: "1px solid rgba(15,23,42,0.2)",
+                                  background: swatch,
+                                }}
+                              />
+                            ))}
+                        </Stack>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {preset.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {preset.description}
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant={activeNextPresetKey === preset.key ? "contained" : "outlined"}
+                          onClick={() =>
+                            onApplyThemePreset?.(preset, { applyToAll: Boolean(applyToAll) })
+                          }
+                        >
+                          {activeNextPresetKey === preset.key ? "Reapply preset" : "Apply preset"}
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+              <Stack direction="row" justifyContent="flex-end">
+                <Button size="small" variant="text" onClick={onReapplyThemeToChrome}>
+                  Reapply colors to header/footer/menu
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        ) : null}
 
         <Stack spacing={1.25}>
           {supportedFieldSet.has("heroMediaUrl") ? (
