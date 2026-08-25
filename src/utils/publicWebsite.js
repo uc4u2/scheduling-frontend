@@ -1,12 +1,28 @@
 const configuredNextBaseUrl = process.env.REACT_APP_TENANT_WEB_NEXT_URL || "";
 
-export const TENANT_WEB_NEXT_PUBLIC_BASE_URL = String(configuredNextBaseUrl || "").replace(/\/$/, "");
-
 const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)$/i;
 
 export function isLocalHostname(hostname = "") {
   return LOCAL_HOST_PATTERN.test(String(hostname || "").trim());
 }
+
+export function normalizeLoopbackBaseUrl(baseUrl = "") {
+  const trimmed = String(baseUrl || "").trim().replace(/\/$/, "");
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    if (isLocalHostname(parsed.hostname)) {
+      parsed.hostname = "localhost";
+      return parsed.toString().replace(/\/$/, "");
+    }
+  } catch {
+    return trimmed;
+  }
+  return trimmed;
+}
+
+export const TENANT_WEB_NEXT_PUBLIC_BASE_URL =
+  normalizeLoopbackBaseUrl(configuredNextBaseUrl);
 
 export function normalizeWebsitePath(pathValue = "") {
   const raw = String(pathValue || "").trim();
@@ -82,12 +98,20 @@ export function buildPublishedWebsiteUrl({
   const query = String(search || "").trim();
   const customDomain = String(status?.custom_domain || "").trim().replace(/^https?:\/\//i, "");
   const live = Boolean(status?.is_live);
+  const normalizedNextBaseUrl = normalizeLoopbackBaseUrl(nextBaseUrl);
   if (!live) return null;
+  const safeOrigin = String(currentOrigin || "").replace(/\/$/, "");
+  let isLocalCurrentOrigin = false;
+  try {
+    isLocalCurrentOrigin = Boolean(safeOrigin) && isLocalHostname(new URL(safeOrigin).hostname);
+  } catch {
+    isLocalCurrentOrigin = false;
+  }
 
   const selection = getPublishedRendererSelection(status);
   if (selection.rendererEngine === "nextjs") {
-    if (nextBaseUrl) {
-      return `${String(nextBaseUrl || "").replace(/\/$/, "")}/site/${encodeURIComponent(slug)}${suffix}${query}`;
+    if (normalizedNextBaseUrl) {
+      return `${normalizedNextBaseUrl}/site/${encodeURIComponent(slug)}${suffix}${query}`;
     }
     if (customDomain && !isLocalHostname(customDomain)) {
       return `https://${customDomain}${suffix}${query}`;
@@ -95,11 +119,16 @@ export function buildPublishedWebsiteUrl({
     return null;
   }
 
+  // A local manager frontend must stay on its local Classic renderer even when
+  // the tenant has a production custom domain saved in its website settings.
+  if (isLocalCurrentOrigin) {
+    return `${safeOrigin}/${encodeURIComponent(slug)}${suffix}${query}`;
+  }
+
   if (customDomain && !isLocalHostname(customDomain)) {
     return `https://${customDomain}${suffix}${query}`;
   }
 
-  const safeOrigin = String(currentOrigin || "").replace(/\/$/, "");
   if (!safeOrigin) return slug ? `/${slug}${suffix}${query}` : null;
   return `${safeOrigin}/${encodeURIComponent(slug)}${suffix}${query}`;
 }

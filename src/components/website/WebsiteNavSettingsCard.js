@@ -173,6 +173,8 @@ const normalizeNavOverrides = (raw = {}) => ({
   login_tab_label: String(raw?.login_tab_label || "Login").trim() || "Login",
   show_my_bookings_tab: raw?.show_my_bookings_tab !== false,
   my_bookings_tab_label: String(raw?.my_bookings_tab_label || "My Bookings").trim() || "My Bookings",
+  show_basket_tab: raw?.show_basket_tab !== false,
+  basket_tab_label: String(raw?.basket_tab_label || "My Basket").trim() || "My Basket",
   mobile_menu_safe_dark: raw?.mobile_menu_safe_dark === true,
 });
 
@@ -424,6 +426,10 @@ const handleSave = () => {
       myBookings: {
         slug: `/${slugPreview}?page=my-bookings`,
         custom: "/?page=my-bookings",
+      },
+      basket: {
+        slug: `/${slugPreview}/basket`,
+        custom: "/basket",
       },
     }),
     [slugPreview]
@@ -741,6 +747,40 @@ const handleSave = () => {
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           Custom domain: {systemRoutes.myBookings.custom}
+                        </Typography>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(navOverrides.show_basket_tab)}
+                            onChange={(e) => updateNavOverrideField("show_basket_tab", e.target.checked)}
+                          />
+                        }
+                        label="Show My Basket"
+                      />
+                      <TextField
+                        size="small"
+                        label="My Basket label"
+                        value={navOverrides.basket_tab_label}
+                        onChange={(e) => updateNavOverrideField("basket_tab_label", e.target.value)}
+                      />
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" color="text.secondary">
+                          Public URL preview:
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Slug site: {systemRoutes.basket.slug}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Custom domain: {systemRoutes.basket.custom}
                         </Typography>
                       </Stack>
                     </Stack>

@@ -47,7 +47,10 @@ const inferBase = () => {
       (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname) ||
         window.location.hostname.endsWith(".local"))
     ) {
-      return "http://127.0.0.1:5001";
+      // `backend/run.py` binds the normal local Flask server to port 5000.
+      // Keep the no-env fallback aligned with that command so a local login
+      // cannot silently target an unused development port.
+      return "http://127.0.0.1:5000";
     }
     if (
       typeof window !== "undefined" &&
@@ -1082,7 +1085,17 @@ export const websiteAdmin = {
 
   publish: (is_live = true, { companyId } = {}) => {
     if (is_live) {
-      return api.post(`/admin/website/publish`, {}, withCompany(companyId));
+      return api
+        .post(`/api/website/publish`, { publish: true }, withCompany(companyId))
+        .catch(async (error) => {
+          if (
+            error?.response?.status === 404 ||
+            error?.response?.status === 405
+          ) {
+            return api.post(`/admin/website/publish`, {}, withCompany(companyId));
+          }
+          throw error;
+        });
     }
     const body = { is_live: false, _draft_only: true, _publish_now: false };
     return api.put(`/api/website/settings`, body, withCompany(companyId));

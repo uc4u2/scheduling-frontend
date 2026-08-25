@@ -44,6 +44,10 @@ import { wb } from "../../utils/api"; // <-- add to verify public viewer
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import TimezoneSelect from "../../components/TimezoneSelect";
 import { getUserTimezone, normalizeTimezoneValue } from "../../utils/timezone";
+import {
+  buildPublishedWebsiteUrl,
+  shouldUseNextJsPublicRenderer,
+} from "../../utils/publicWebsite";
 import { PAYROLL_PROVIDER_OPTIONS } from "../../utils/locationProfile";
 import {
   getCurrencyOptions,
@@ -249,6 +253,7 @@ export default function CompanyProfile({ token }) {
   const [viewerCheckMsg, setViewerCheckMsg] = useState("");
   const [viewerCheckSeverity, setViewerCheckSeverity] = useState("info");
   const [viewerCheckBusy, setViewerCheckBusy] = useState(false);
+  const [websiteStatus, setWebsiteStatus] = useState(null);
   const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [contactFormId, setContactFormId] = useState(null);
@@ -382,6 +387,25 @@ export default function CompanyProfile({ token }) {
     loadPayrollSetupProfile();
     loadWorkLocations();
   }, [token]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const { data } = await wb.getStatus();
+        if (!ignore) {
+          setWebsiteStatus(data || null);
+        }
+      } catch {
+        if (!ignore) {
+          setWebsiteStatus(null);
+        }
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const startEditDepartment = (dept) => {
     setEditingDepartmentId(dept.id);
@@ -918,7 +942,54 @@ export default function CompanyProfile({ token }) {
   }, [form.country_code, newWorkLocation.country, profileLoaded]);
   /* ---------- viewer helpers ---------- */
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const viewerUrl = form.slug ? `${origin}/${form.slug}` : "";
+  const localNextBaseUrl =
+    typeof window !== "undefined" &&
+    /^(localhost|127\\.0\\.0\\.1)$/i.test(window.location.hostname)
+      ? "http://127.0.0.1:3402"
+      : undefined;
+  const effectiveWebsiteStatus = useMemo(() => {
+    if (!websiteStatus) return null;
+    return {
+      ...websiteStatus,
+      company_slug: websiteStatus.company_slug || form.slug,
+    };
+  }, [form.slug, websiteStatus]);
+  const nextJsPublicSite = shouldUseNextJsPublicRenderer(effectiveWebsiteStatus || {});
+  const viewerUrl = useMemo(() => {
+    if (!form.slug) return "";
+    return (
+      buildPublishedWebsiteUrl({
+        status: effectiveWebsiteStatus || { company_slug: form.slug, is_live: true },
+        currentOrigin: origin,
+        nextBaseUrl: localNextBaseUrl,
+      }) || `${origin}/${form.slug}`
+    );
+  }, [effectiveWebsiteStatus, form.slug, localNextBaseUrl, origin]);
+  const servicesViewerUrl = useMemo(() => {
+    if (!form.slug) return "";
+    return (
+      buildPublishedWebsiteUrl({
+        status: effectiveWebsiteStatus || { company_slug: form.slug, is_live: true },
+        pagePath: "services",
+        currentOrigin: origin,
+        nextBaseUrl: localNextBaseUrl,
+      }) || `${origin}/${form.slug}?page=services-classic`
+    );
+  }, [effectiveWebsiteStatus, form.slug, localNextBaseUrl, origin]);
+  const reviewsViewerUrl = useMemo(() => {
+    if (!form.slug) return "";
+    return (
+      buildPublishedWebsiteUrl({
+        status: effectiveWebsiteStatus || { company_slug: form.slug, is_live: true },
+        pagePath: "reviews",
+        currentOrigin: origin,
+        nextBaseUrl: localNextBaseUrl,
+      }) || `${origin}/${form.slug}/reviews`
+    );
+  }, [effectiveWebsiteStatus, form.slug, localNextBaseUrl, origin]);
+  const editorUrl = nextJsPublicSite
+    ? `${origin}/manage/website/builder`
+    : `/${form.slug}?edit=1`;
   const snackbarMessage = snackbar.messageKey ? t(snackbar.messageKey) : snackbar.fallback || '';
 
   const checkPublicViewer = async () => {
@@ -1939,25 +2010,25 @@ export default function CompanyProfile({ token }) {
                 </Button>
                 <Button
                   variant="contained"
-                  href={`/${form.slug}`}
+                  href={viewerUrl}
                 >
                   {t("manager.companyProfile.public.openViewer")}
                 </Button>
                 <Button
                   variant="outlined"
-                  href={`/${form.slug}?edit=1`}
+                  href={editorUrl}
                 >
                   {t("manager.companyProfile.public.openEditor")}
                 </Button>
                 <Button
                   variant="text"
-                  href={`/${form.slug}?page=services-classic`}
+                  href={servicesViewerUrl}
                 >
                   {t("manager.companyProfile.public.services")}
                 </Button>
                 <Button
                   variant="text"
-                  href={`/${form.slug}/reviews`}
+                  href={reviewsViewerUrl}
                 >
                   {t("manager.companyProfile.public.reviews")}
                 </Button>

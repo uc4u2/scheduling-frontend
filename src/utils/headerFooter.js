@@ -24,6 +24,13 @@ export const SOCIAL_ICON_OPTIONS = [
   { value: "rss", label: "RSS" },
 ];
 
+export const SOCIAL_PLACEMENT_OPTIONS = [
+  { value: "footer", label: "Footer only" },
+  { value: "header", label: "Header only" },
+  { value: "both", label: "Header and footer" },
+  { value: "hidden", label: "Hidden" },
+];
+
 const clampNumber = (value, min, max, fallback) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return fallback;
@@ -50,6 +57,15 @@ const alignChoice = (value, fallback = "left") => {
 
 const socialPositionChoice = (value, fallback = "inline") => {
   const allowed = new Set(["inline", "above", "below", "after"]);
+  if (typeof value === "string") {
+    const candidate = value.trim().toLowerCase();
+    if (allowed.has(candidate)) return candidate;
+  }
+  return fallback;
+};
+
+const socialPlacementChoice = (value, fallback = "footer") => {
+  const allowed = new Set(["footer", "header", "both", "hidden"]);
   if (typeof value === "string") {
     const candidate = value.trim().toLowerCase();
     if (allowed.has(candidate)) return candidate;
@@ -131,6 +147,7 @@ export const defaultFooterConfig = () => ({
   columns: [],
   legal_links: [],
   social_links: [],
+  social_placement: "footer",
   show_copyright: true,
   copyright_text: DEFAULT_COPYRIGHT_TEXT,
 });
@@ -232,6 +249,7 @@ export const normalizeFooterConfig = (value, { preserveAssets = true } = {}) => 
     columns: cleanColumns(value.columns, 4, 6),
     legal_links: cleanLinks(value.legal_links, 6),
     social_links: cleanSocial(value.social_links, 6),
+    social_placement: socialPlacementChoice(value.social_placement, base.social_placement),
     show_copyright:
       value.show_copyright === undefined
         ? base.show_copyright

@@ -1,5 +1,5 @@
 // src/pages/sections/management/WebsiteManager.js
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import api, { wb, chatbot } from "../../../utils/api";
 import {
@@ -57,18 +57,20 @@ const EMPTY_FORM = {
 
 const CHATBOT_MAX_CHARS = 20000;
 
-const WebsiteManager = ({ companyId: companyIdProp }) => {
+const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
   const autoCompanyId = useCompanyId();
   const companyId = companyIdProp ?? autoCompanyId;
+  const shouldFocusSeo = focusSeo || (typeof window !== "undefined" && window.location.hash === "#seo");
 
   // top-level data
   const [company, setCompany] = useState(null); // { id, slug, name, ... }
   const [themes, setThemes] = useState([]);
   const [settings, setSettings] = useState(null);
+  const seoSettingsRef = useRef(null);
   const [pages, setPages] = useState([]);
 
   // page editor
@@ -210,6 +212,14 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     },
     [companyId, t, applySettingsPayload, settings]
   );
+
+  useEffect(() => {
+    if (!shouldFocusSeo || loading) return;
+    const frame = window.requestAnimationFrame(() => {
+      seoSettingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [shouldFocusSeo, loading]);
 
   // computed
   const slugPath = useMemo(() => {
@@ -743,17 +753,19 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         onDomainChange={handleDomainSnapshotUpdate}
       />
 
-      <SeoSettingsCard
-        companyId={companyId}
-        companySlug={company?.slug}
-        domainStatus={domainSnapshot.status}
-        customDomain={domainSnapshot.domain || settings?.custom_domain}
-        primaryHost={settings?.primary_host}
-        settings={settings}
-        companyLogoUrl={companyLogoUrl}
-        hasDraftChanges={hasDraftChanges}
-        onSave={handleSeoSave}
-      />
+      <Box id="seo" ref={seoSettingsRef} tabIndex={-1} sx={{ scrollMarginTop: 16 }}>
+        <SeoSettingsCard
+          companyId={companyId}
+          companySlug={company?.slug}
+          domainStatus={domainSnapshot.status}
+          customDomain={domainSnapshot.domain || settings?.custom_domain}
+          primaryHost={settings?.primary_host}
+          settings={settings}
+          companyLogoUrl={companyLogoUrl}
+          hasDraftChanges={hasDraftChanges}
+          onSave={handleSeoSave}
+        />
+      </Box>
 
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack spacing={2}>

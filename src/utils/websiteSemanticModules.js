@@ -166,10 +166,15 @@ export function inferPageKind(page = {}) {
   const slug = String(page?.slug || "").trim().toLowerCase();
   if (page?.is_homepage || slug === "home") return "home";
   if (["services", "services-classic", "pricing"].includes(slug)) return "services";
+  if (["products", "products-classic"].includes(slug)) return "products";
+  if (slug === "product-detail") return "product-detail";
   if (slug.startsWith("service-") && slug !== "service-areas") return "service-detail";
   if (["about", "team", "our-team"].includes(slug)) return "about";
   if (["gallery", "projects", "portfolio", "fleet"].includes(slug)) return "projects";
+  if (["blog", "journal", "news"].includes(slug)) return "blog";
   if (slug === "reviews") return "reviews";
+  if (slug === "jobs") return "jobs";
+  if (slug === "job-detail") return "job-detail";
   if (["contact", "request-quote", "request-service"].includes(slug)) return "contact";
   if (["locations", "service-areas"].includes(slug)) return "service-areas";
   if (slug === "faq") return "faq";
@@ -189,6 +194,73 @@ export function normalizePageContent(content = {}) {
   };
 }
 
+/**
+ * WebsiteMedia is owned by the existing backend/media library.  The media
+ * picker returns an absolute URL for immediate browser preview, but storing a
+ * local origin in canonical Next.js page content makes that content portable
+ * only to that one machine.  Keep the established stable media-file reference
+ * in semantic modules; tenant-web-next resolves it against its configured
+ * backend origin at render time.
+ *
+ * This intentionally leaves external starter/CDN URLs untouched and is used
+ * only by the Next.js semantic editing path (not the Classic section model).
+ */
+export function normalizeWebsiteMediaReference(value) {
+  if (typeof value !== "string") return value;
+  const raw = value.trim();
+  if (!raw) return value;
+
+  const canonicalizeMediaPath = (pathname, suffix = "") => {
+    const directMatch = pathname.match(/^\/api\/website\/media\/file\/(\d+)\/(.+)$/i);
+    if (directMatch) {
+      const [, companyId, storedNamePath] = directMatch;
+      const nestedMatch = String(storedNamePath || "").match(
+        /(?:^|\/)company\/\d+\/website-media\/([^/?#]+)$/i
+      );
+      const storedName = nestedMatch ? nestedMatch[1] : storedNamePath;
+      return `/api/website/media/file/${companyId}/${storedName}${suffix}`;
+    }
+
+    const legacyMatch = pathname.match(
+      /(?:^|\/)company\/(\d+)\/website-media\/([^/?#]+)$/i
+    );
+    if (legacyMatch) {
+      const [, companyId, storedName] = legacyMatch;
+      return `/api/website/media/file/${companyId}/${storedName}${suffix}`;
+    }
+
+    return `${pathname}${suffix}`;
+  };
+
+  try {
+    const url = new URL(raw);
+    if (
+      url.pathname.startsWith("/api/website/media/file/") ||
+      /(?:^|\/)company\/\d+\/website-media\//i.test(url.pathname)
+    ) {
+      return canonicalizeMediaPath(url.pathname, `${url.search}${url.hash}`);
+    }
+  } catch (_) {
+    if (
+      raw.startsWith("/api/website/media/file/") ||
+      /(?:^|\/)company\/\d+\/website-media\//i.test(raw)
+    ) {
+      return canonicalizeMediaPath(raw);
+    }
+    // Relative media references and non-URL text are already canonical.
+  }
+  return value;
+}
+
+export function normalizeSemanticModuleMediaReferences(value) {
+  if (typeof value === "string") return normalizeWebsiteMediaReference(value);
+  if (Array.isArray(value)) return value.map(normalizeSemanticModuleMediaReferences);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, normalizeSemanticModuleMediaReferences(entry)])
+  );
+}
+
 export function normalizeSemanticFieldPath(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -196,10 +268,6 @@ export function normalizeSemanticFieldPath(value) {
   if (next.startsWith("people.")) {
     next = next.replace(/^people\./, "items.");
   }
-  next = next.replace(/^items\.(\d+)\.question$/, "items.$1.title");
-  next = next.replace(/^items\.(\d+)\.answer$/, "items.$1.body");
-  next = next.replace(/^items\.(\d+)\.name$/, "items.$1.title");
-  next = next.replace(/^items\.(\d+)\.bio$/, "items.$1.body");
   return next;
 }
 
@@ -210,12 +278,14 @@ export function candidateSemanticFieldPaths(value) {
   const match = normalized.match(/^items\.(\d+)\.(.+)$/);
   if (match) {
     const [, index, field] = match;
-    if (field === "title") {
+    if (field === "title" || field === "question" || field === "name") {
+      candidates.add(`content.items.${index}.title`);
       candidates.add(`content.items.${index}.question`);
       candidates.add(`content.items.${index}.name`);
       candidates.add(`content.people.${index}.name`);
     }
-    if (field === "body") {
+    if (field === "body" || field === "answer" || field === "bio") {
+      candidates.add(`content.items.${index}.body`);
       candidates.add(`content.items.${index}.answer`);
       candidates.add(`content.items.${index}.bio`);
       candidates.add(`content.people.${index}.bio`);
@@ -253,6 +323,19 @@ export function defaultSlotForModule(pageKind, moduleType) {
     if (["richText", "featureStory", "process"].includes(moduleType)) return "service-detail.primaryContent";
     if (["reviews", "faq", "cta", "gallery", "beforeAfter", "team"].includes(moduleType)) return "service-detail.afterContent";
     return "service-detail.primaryContent";
+  }
+  if (page === "products") {
+    if (["faq", "reviews", "cta", "trustRail"].includes(moduleType)) return "products.supporting";
+    return "products.intro";
+  }
+  if (page === "jobs") {
+    if (["faq", "reviews", "cta", "trustRail"].includes(moduleType)) return "jobs.supporting";
+    return "jobs.intro";
+  }
+  if (page === "reviews") {
+    if (moduleType === "reviews" || moduleType === "reviewSummary") return "reviews.list";
+    if (["stats", "trustRail", "cta"].includes(moduleType)) return "reviews.supporting";
+    return "reviews.intro";
   }
   if (page === "about") {
     if (moduleType === "team") return "about.team";
@@ -319,7 +402,7 @@ function normalizeRepeaterItems(items = []) {
     return [{
       id: String(item.id || nanoid(10)),
       title: item.title || item.name || item.label || item.question || item.author || "",
-      body: item.body || item.description || item.answer || item.quote || item.caption || "",
+      body: item.body || item.description || item.answer || item.quote || item.text || item.caption || "",
       image: media.image,
       imageUrl: media.imageUrl,
       imageAlt: media.imageAlt,
@@ -335,6 +418,8 @@ function normalizeRepeaterItems(items = []) {
       quote: item.quote || "",
       author: item.author || "",
       role: item.role || "",
+      badge: item.badge || "",
+      ratingLabel: item.ratingLabel || "",
       rating: item.rating ?? "",
       price: item.price || "",
       value: item.value || "",
@@ -406,6 +491,10 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         eyebrow: props.eyebrow || "",
         heading: props.heading || props.title || "",
         subheading: props.subheading || props.description || "",
+        signaturePanelEyebrow: props.signaturePanelEyebrow || "",
+        signaturePanelBody: props.signaturePanelBody || "",
+        marqueeTopItems: Array.isArray(props.marqueeTopItems) ? props.marqueeTopItems : [],
+        marqueeBottomItems: Array.isArray(props.marqueeBottomItems) ? props.marqueeBottomItems : [],
         image,
         imageUrl: image,
         imageAlt: props.imageAlt || props.alt || "",
@@ -415,7 +504,6 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
       }
       break;
     case "services":
-    case "reviews":
     case "faq":
     case "pricing":
     case "team":
@@ -434,6 +522,21 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         intro: props.subtitle || props.description || "",
         items: normalizeRepeaterItems(props.items || props.plans || props.logos || props.members || props.team || props.steps || props.locations || []),
         source: type === "reviews" ? "marketing" : undefined,
+      };
+      break;
+    case "reviews":
+      base.content = {
+        heading: props.title || props.heading || "",
+        intro: props.subtitle || props.description || "",
+        // reviewEditorialGrid uses entries rather than items. Retain those
+        // existing WebsitePage-owned testimonials during semantic conversion.
+        items: normalizeRepeaterItems(props.items || props.entries || props.testimonials || []),
+        source: "marketing",
+        reviewCountLabel: props.reviewCountLabel || "",
+        platformLabel: props.platformLabel || "",
+        titleAlign: props.titleAlign || "center",
+        maxWidth: props.maxWidth || "xl",
+        ...normalizeCta(props),
       };
       break;
     case "gallery":
@@ -529,7 +632,10 @@ export function normalizeSemanticModules(page = {}) {
       slot: module.slot || defaultSlotForModule(pageKind, module.type),
       order: module.order ?? null,
       variant: module.variant || null,
-      content: module.content && typeof module.content === "object" ? module.content : {},
+      content:
+        module.content && typeof module.content === "object"
+          ? normalizeSemanticModuleMediaReferences(module.content)
+          : {},
       settings: module.settings && typeof module.settings === "object" ? module.settings : {},
     });
   });
@@ -575,6 +681,22 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         eyebrow: "",
         heading: page?.title || "",
         subheading: "",
+        signaturePanelEyebrow: "",
+        signaturePanelBody: "",
+        marqueeTopItems: [
+          "Cut Rituals",
+          "Fade Detail",
+          "Beard Architecture",
+          "Consultation First",
+          "Queen West Studio",
+        ],
+        marqueeBottomItems: [
+          "Measured barbering",
+          "Sharp finishing",
+          "Texture work",
+          "Low-noise appointments",
+          "Routine-ready shape",
+        ],
         image: "",
         imageUrl: "",
         imageAlt: "",
@@ -642,7 +764,6 @@ export function createSemanticModule(moduleType, page = {}, slot) {
       };
       break;
     case "services":
-    case "reviews":
     case "faq":
     case "gallery":
     case "team":
@@ -659,7 +780,19 @@ export function createSemanticModule(moduleType, page = {}, slot) {
     case "proofBand":
     case "reviewSummary":
       base.content = { heading: SEMANTIC_MODULE_LABELS[moduleType], intro: "", items: [] };
-      if (moduleType === "reviews") base.content.source = "marketing";
+      break;
+    case "reviews":
+      base.content = {
+        heading: SEMANTIC_MODULE_LABELS[moduleType],
+        intro: "",
+        items: [],
+        source: "marketing",
+        reviewCountLabel: "",
+        platformLabel: "",
+        titleAlign: "center",
+        maxWidth: "xl",
+        primaryCta: { label: "", href: "" },
+      };
       break;
     default:
       break;

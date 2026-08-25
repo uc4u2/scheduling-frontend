@@ -2,6 +2,7 @@ import {
   buildPublishedWebsiteUrl,
   getPublishedRendererSelection,
   inferPagePathFromLocation,
+  normalizeLoopbackBaseUrl,
   shouldUseNextJsPublicRenderer,
 } from "./publicWebsite";
 
@@ -17,6 +18,19 @@ describe("public website resolver", () => {
       currentOrigin: "http://localhost:3000",
     });
     expect(url).toBe("http://localhost:3000/acme-spa/contact");
+  });
+
+  it("keeps Classic View live on localhost despite a saved production custom domain", () => {
+    const url = buildPublishedWebsiteUrl({
+      status: {
+        company_slug: "acme-spa",
+        is_live: true,
+        custom_domain: "www.acme-spa.example",
+        published_renderer_engine: "legacy-react",
+      },
+      currentOrigin: "http://localhost:3000",
+    });
+    expect(url).toBe("http://localhost:3000/acme-spa");
   });
 
   it("builds a nextjs live URL for every published nextjs theme", () => {
@@ -88,5 +102,26 @@ describe("public website resolver", () => {
         published_renderer_engine: "legacy-react",
       })
     ).toBe(false);
+  });
+
+  it("normalizes local nextjs loopback bases to localhost", () => {
+    expect(normalizeLoopbackBaseUrl("http://localhost:3402")).toBe(
+      "http://localhost:3402"
+    );
+    expect(normalizeLoopbackBaseUrl("http://127.0.0.1:3402")).toBe(
+      "http://localhost:3402"
+    );
+    expect(
+      buildPublishedWebsiteUrl({
+        status: {
+          company_slug: "acme-spa",
+          is_live: true,
+          published_renderer_engine: "nextjs",
+          published_visual_theme_key: "iron-ember",
+        },
+        currentOrigin: "http://localhost:3001",
+        nextBaseUrl: "http://localhost:3402",
+      })
+    ).toBe("http://localhost:3402/site/acme-spa");
   });
 });

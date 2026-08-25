@@ -2368,6 +2368,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
   const viewToPath = (viewKey) => {
     if (!viewKey || viewKey === "__landing__") return "/manager/dashboard";
+    // Website & Pages is a dashboard workspace, not the legacy AutoSiteBuilder
+    // deep link. Keep the manager in the suite so it can choose Manager,
+    // Editor, Templates, Builder, or SEO before opening a tool.
+    if (viewKey === "website-pages") return "/manager/dashboard?view=website-pages";
     return `/manager/${viewKey}`;
   };
 

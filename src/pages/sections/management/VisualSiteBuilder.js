@@ -85,6 +85,7 @@ import { RenderSections } from "../../../components/website/RenderSections";
 import SiteFrame from "../../../components/website/SiteFrame";
 import useCompanyId from "../../../hooks/useCompanyId";
 import useHistory from "../../../hooks/useHistory";
+import { parsePositiveCompanyId } from "../../../utils/authedCompany";
 import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
 import WebsiteBrandingCard from "../../../components/website/WebsiteBrandingCard";
 import NavStyleHydrator from "../../../components/website/NavStyleHydrator";
@@ -108,16 +109,17 @@ import {
 } from "../../../components/website/BuilderPageUtils";
 import {
   candidateSemanticFieldPaths,
-  SEMANTIC_MODULE_LABELS,
   createSemanticModule,
   inferPageKind,
   normalizeSemanticFieldPath,
   normalizeSemanticModules,
   normalizePageContent,
+  normalizeSemanticModuleMediaReferences,
   withNormalizedModules,
 } from "../../../utils/websiteSemanticModules";
 import {
   getCompatibleModuleChoices,
+  getThemeModuleDisplayLabel,
   getPageManifest,
   resolveFallbackSlot,
   WEBSITE_THEME_MODULE_MANIFESTS,
@@ -364,6 +366,159 @@ const ensureSectionIds = (page) => {
 const safeModules = (page) => normalizeSemanticModules(page || {});
 
 const LEGACY_REVIEWS_PAGE_SLUG = "reviews";
+
+// Next public list pages use the same persisted WebsitePage model as Contact
+// and the other Builder pages. Detail layouts stay in Advanced Management and
+// are deliberately not represented by WebsitePage rows.
+const NEXT_PUBLIC_BUILDER_PAGE_TARGETS = [
+  { key: "services", slug: "services", title: "Services", show_in_menu: true },
+  { key: "products", slug: "products", title: "Products", show_in_menu: true },
+  { key: "reviews", slug: "reviews", title: "Reviews", show_in_menu: true },
+  { key: "jobs", slug: "jobs", title: "Jobs", show_in_menu: true },
+];
+
+// These are editable starter content for a WebsitePage-owned testimonial
+// section. They are not Review records and never replace the published review
+// workspace; managers can replace or remove every item in the Builder.
+const REVIEW_EDITORIAL_STARTERS = [
+  { id: "testimonial-1", title: "Alyssa M.", role: "Verified client", body: "Clear communication, thoughtful care, and an experience that felt considered from start to finish.", image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=1200&auto=format&fit=crop", imageAlt: "Client review highlight one" },
+  { id: "testimonial-2", title: "Daniel R.", role: "Verified client", body: "Every detail had a purpose, and the result made the next step feel simple and confident.", image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=1200&auto=format&fit=crop", imageAlt: "Client review highlight two" },
+  { id: "testimonial-3", title: "Priya S.", role: "Verified client", body: "The process was calm, organized, and tailored to exactly what I needed.", image: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?q=80&w=1200&auto=format&fit=crop", imageAlt: "Client review highlight three" },
+  { id: "testimonial-4", title: "Marcus T.", role: "Returning client", body: "A polished experience with a result I would gladly recommend to friends and family.", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1200&auto=format&fit=crop", imageAlt: "Client review highlight four" },
+];
+
+const makeNextPublicBuilderModules = (entry) => {
+  const page = { slug: entry.slug, title: entry.title };
+  const intro = (heading, introText, body) => ({
+    ...createSemanticModule("richText", page, `${entry.key}.intro`),
+    content: {
+      heading,
+      intro: introText,
+      body,
+      image: "",
+      imageUrl: "",
+      imageAlt: "",
+      primaryCta: { label: "", href: "" },
+    },
+  });
+  const cta = (heading, label, href) => ({
+    ...createSemanticModule("cta", page, `${entry.key}.supporting`),
+    content: {
+      heading,
+      body: "",
+      backgroundImage: "",
+      primaryCta: { label, href },
+    },
+  });
+
+  if (entry.key === "services") {
+    return [
+      intro("The service menu.", "Choose a service, then make it your own.", "Current pricing, duration, and booking remain connected to Schedulaa Services."),
+      { ...createSemanticModule("services", page, "services.list"), content: { heading: "Made for you.", intro: "", source: "operational" } },
+      cta("Find your next appointment.", "Book now", "/services"),
+    ];
+  }
+  if (entry.key === "products") {
+    return [
+      intro("The product collection.", "Explore products available from this business.", "Product details, availability, and purchase continue through the existing commerce flow."),
+      cta("Find the right product.", "Explore products", "/products"),
+    ];
+  }
+  if (entry.key === "jobs") {
+    return [
+      intro("Join the team.", "Explore current opportunities.", "Role details and applications remain connected to the existing jobs workspace and application flow."),
+      cta("See open roles.", "View opportunities", "/jobs"),
+    ];
+  }
+  if (entry.key === "reviews") {
+    return [
+      {
+        ...createSemanticModule("reviews", page, "reviews.list"),
+        content: {
+          heading: "What clients are saying",
+          intro: "Use this editable testimonial section to feature client stories alongside published reviews.",
+          reviewCountLabel: "Rated 5 stars by recent clients",
+          platformLabel: "Client reviews",
+          source: "marketing",
+          items: REVIEW_EDITORIAL_STARTERS,
+        },
+      },
+    ];
+  }
+  return [];
+};
+
+const hasMeaningfulEditorialReviewItems = (module) =>
+  Array.isArray(module?.content?.items) &&
+  module.content.items.some((item) =>
+    [item?.title, item?.author, item?.body, item?.quote, item?.image, item?.imageUrl]
+      .some((value) => String(value || "").trim())
+  );
+
+// A short-lived pre-semantic Reviews implementation created a reviews.list
+// module with empty repeater rows while displaying canonical Review records.
+// Those rows have no manager content to preserve, so upgrade them to the same
+// four editable starters that brand-new Reviews pages receive. This is a
+// one-time repair of a broken composition, not a replacement for real Review
+// workspace records or a mutation of already-authored testimonial content.
+const seedBlankReviewsEditorialModule = (page) => {
+  const modules = safeModules(page);
+  const existing = modules.find(
+    (module) => module?.type === "reviews" && module?.slot === "reviews.list"
+  );
+  if (existing && hasMeaningfulEditorialReviewItems(existing)) return page;
+
+  const starter = makeNextPublicBuilderModules(
+    NEXT_PUBLIC_BUILDER_PAGE_TARGETS.find((target) => target.key === "reviews")
+  )[0];
+  const nextModules = existing
+    ? modules.map((module) =>
+        module?.id === existing.id
+          ? {
+              ...module,
+              type: "reviews",
+              slot: "reviews.list",
+              content: { ...module.content, ...starter.content },
+            }
+          : module
+      )
+    : [...modules, starter];
+
+  return {
+    ...page,
+    content: {
+      ...normalizePageContent(page?.content || {}),
+      modules: nextModules,
+    },
+  };
+};
+
+const makeNextPublicBuilderPage = (entry, pagesList = []) => ({
+  slug: entry.slug,
+  path: entry.slug,
+  title: entry.title,
+  menu_title: entry.title,
+  show_in_menu: entry.show_in_menu,
+  sort_order:
+    (pagesList || []).reduce(
+      (max, page) => Math.max(max, Number(page?.sort_order || 0)),
+      0
+    ) + 1,
+  published: true,
+  is_homepage: false,
+  content: {
+    sections: [],
+    modules: makeNextPublicBuilderModules(entry),
+    meta: { layout: "boxed" },
+  },
+});
+
+const findNextPublicBuilderPage = (pagesList, entry) => {
+  return (pagesList || []).find((page) => {
+    const kind = inferPageKind(page);
+    return kind === entry.key;
+  });
+};
 
 const parseLegacyPageSlugFromHref = (href) => {
   const raw = String(href || "").trim().toLowerCase();
@@ -1378,6 +1533,18 @@ function PageStyleCard({
     );
   };
 
+  // Keep every hook above the Next.js early return. PageStyleCard is also used
+  // for the classic inspector, but the Next.js-only inspector must not change
+  // this component's hook order when it is toggled at runtime.
+  const [pageStyleTab, setPageStyleTab] = useState("style");
+  const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
+  const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
+  const initialStyleRef = useRef(value || {});
+  const isDirty = useMemo(
+    () => JSON.stringify(value || {}) !== JSON.stringify(initialStyleRef.current || {}),
+    [value]
+  );
+
   if (isNextJsMode) {
     const supportedFields = getSupportedThemeOverrideFields(nextJsThemeKey);
     const supportedFieldSet = new Set(supportedFields);
@@ -1589,15 +1756,6 @@ function PageStyleCard({
       </Stack>
     );
   }
-
-  const [pageStyleTab, setPageStyleTab] = useState("style");
-  const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
-  const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
-  const initialStyleRef = useRef(value || {});
-  const isDirty = useMemo(
-    () => JSON.stringify(value || {}) !== JSON.stringify(initialStyleRef.current || {}),
-    [value]
-  );
 
   const parseBoxShadow = (val) => {
     const fallback = { x: 0, y: 12, blur: 32, spread: 0, color: "#000000", opacity: 0.18 };
@@ -2700,24 +2858,28 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const theme = useTheme();
   const isLgDown = useMediaQuery(theme.breakpoints.down("lg"));
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const normalizedCompanyIdProp = useMemo(
+    () => parsePositiveCompanyId(companyIdProp),
+    [companyIdProp]
+  );
   const [companyId, setCompanyId] = useState(     // ✅ local state
-    companyIdProp ?? detectedCompanyId ?? ""
+    normalizedCompanyIdProp ?? detectedCompanyId ?? ""
   );
   const supportQuery = useMemo(() => {
     const params = new URLSearchParams(location.search || "");
     const supportSession = params.get("support_session");
     if (!supportSession) return "";
     const cid =
-      params.get("company_id") ||
-      params.get("cid") ||
+      parsePositiveCompanyId(params.get("company_id")) ||
+      parsePositiveCompanyId(params.get("cid")) ||
       companyId ||
-      companyIdProp ||
+      normalizedCompanyIdProp ||
       detectedCompanyId;
     const out = new URLSearchParams();
     out.set("support_session", supportSession);
     if (cid) out.set("company_id", String(cid));
     return `?${out.toString()}`;
-  }, [location.search, companyId, companyIdProp, detectedCompanyId]);
+  }, [location.search, companyId, normalizedCompanyIdProp, detectedCompanyId]);
 
   // local state the component already uses elsewhere
   const defaultThemeOverrides = useMemo(
@@ -2742,7 +2904,11 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [styleErr, setStyleErr] = useState("");
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
-  const nextJsPreviewIframeRef = useRef(null);
+  // The content Canvas is an editing surface. Keep its frame identity distinct
+  // from the read-only style-gallery preview so postMessage selection events
+  // cannot be checked against the wrong iframe after a tab change.
+  const nextJsContentPreviewIframeRef = useRef(null);
+  const nextJsStylePreviewIframeRef = useRef(null);
   const stylePreviewAreaRef = useRef(null);
   const [builderTabIndex, setBuilderTabIndex] = useState(getBuilderTabDefaultIndex(location?.search || ""));
   const [selectedModuleId, setSelectedModuleId] = useState("");
@@ -2782,6 +2948,8 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
     JSON.stringify(defaultThemeOverrides || {})
   );
   const nextJsThemeOverrideSaveTimerRef = useRef(null);
+  const nextJsDraftSyncTimerRef = useRef(null);
+  const nextJsDraftSyncSnapshotRef = useRef(null);
   const [pages, setPages] = useState([]);
   const [checkpoints, setCheckpoints] = useState([]);
   const [checkpointName, setCheckpointName] = useState("");
@@ -2866,19 +3034,33 @@ const [brandingErr, setBrandingErr] = useState("");
     [nextJsWebsiteStyleChoices]
   );
   const builderRendererMode = resolveBuilderRendererMode({
-    renderer_engine: siteSettings?.renderer_engine,
-    settings: siteSettings?.settings,
-    current_renderer_engine: websiteStatus?.current_renderer_engine,
+    renderer_engine:
+      siteSettings?.settings_draft?.renderer_engine ||
+      siteSettings?.draft?.renderer_engine ||
+      siteSettings?.renderer_engine,
+    settings:
+      siteSettings?.settings_draft ||
+      siteSettings?.draft ||
+      siteSettings?.settings,
+    current_renderer_engine:
+      websiteStatus?.draft_renderer_engine ||
+      websiteStatus?.current_renderer_engine,
   });
   const currentRendererEngine = builderRendererMode;
   const currentVisualThemeKey =
+    siteSettings?.settings_draft?.visual_theme_key ||
+    siteSettings?.draft?.visual_theme_key ||
     siteSettings?.visual_theme_key ||
     siteSettings?.settings?.visual_theme_key ||
+    websiteStatus?.draft_visual_theme_key ||
     websiteStatus?.current_visual_theme_key ||
     null;
   const currentVisualThemeVersion =
+    siteSettings?.settings_draft?.visual_theme_version ||
+    siteSettings?.draft?.visual_theme_version ||
     siteSettings?.visual_theme_version ||
     siteSettings?.settings?.visual_theme_version ||
+    websiteStatus?.draft_visual_theme_version ||
     websiteStatus?.current_visual_theme_version ||
     1;
   const currentDesignFamily =
@@ -2889,8 +3071,53 @@ const [brandingErr, setBrandingErr] = useState("");
     siteSettings?.design_family_version ||
     siteSettings?.settings?.design_family_version ||
     1;
+  const conciseNextJsBrandingThemeKeys = new Set([
+    "iron-ember",
+    "still-bloom",
+    "clear-clinic",
+    "harbor-line",
+    "frame-and-field",
+    "motion-editorial",
+    "black-letter",
+    "circuit-north",
+    "solara-stay",
+    "paw-and-pine",
+    "quiet-harbor",
+    "fieldcraft",
+    "modern-gradient",
+    "eldora-dark",
+    "finwise",
+  ]);
+  const nextJsBrandingThemeKey = String(currentVisualThemeKey || "").trim().toLowerCase();
+  const usesConciseNextJsBrandingSurface =
+    isNextJsBuilderMode(builderRendererMode) && conciseNextJsBrandingThemeKeys.has(nextJsBrandingThemeKey);
+  const nextJsBrandingThemeName = nextJsBrandingThemeKey
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
   const currentStyleKey =
     isNextJsBuilderMode(builderRendererMode) ? currentVisualThemeKey || "" : "classic";
+  const semanticModuleDisplayLabel = (module) => {
+    const normalizedThemeKey = String(currentVisualThemeKey || "").trim().toLowerCase();
+    const moduleType = String(module?.type || "").trim().toLowerCase();
+    const moduleSlot = String(module?.slot || "").trim().toLowerCase();
+    if (
+      normalizedThemeKey === "iron-ember" &&
+      ["gallery", "portfolio"].includes(moduleType) &&
+      moduleSlot.startsWith("home")
+    ) {
+      return "Selected Assignments";
+    }
+    if (
+      normalizedThemeKey === "frame-and-field" &&
+      moduleType === "portfolio" &&
+      moduleSlot.startsWith("home")
+    ) {
+      return "Selected Assignments";
+    }
+    return getThemeModuleDisplayLabel(normalizedThemeKey, module?.type, module?.slot);
+  };
   const currentStyleVersion =
     isNextJsBuilderMode(builderRendererMode) ? Number(currentVisualThemeVersion || 1) : 1;
   const publishedRendererSelection = useMemo(
@@ -2985,6 +3212,19 @@ const [brandingErr, setBrandingErr] = useState("");
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 {style.name}
               </Typography>
+              {style.renderer_engine === "nextjs" ? (
+                <Chip
+                  size="small"
+                  label="Next.js"
+                  sx={{
+                    borderRadius: 1.5,
+                    color: "secondary.dark",
+                    bgcolor: "secondary.50",
+                    border: "1px solid",
+                    borderColor: "secondary.200",
+                  }}
+                />
+              ) : null}
               {style.badgeLabel ? (
                 <Chip
                   size="small"
@@ -3054,6 +3294,16 @@ const [brandingErr, setBrandingErr] = useState("");
             <Typography variant="body2" color="text.secondary">
               {style.description}
             </Typography>
+            {style.recommendedProfessionLabels?.length ? (
+              <Typography variant="caption" color="text.secondary">
+                Recommended for {style.recommendedProfessionLabels.join(", ")}
+              </Typography>
+            ) : null}
+            {style.supportedPages?.length ? (
+              <Typography variant="caption" color="text.secondary">
+                Supports {style.supportedPages.join(", ")}
+              </Typography>
+            ) : null}
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ pt: 0.25 }}>
             <Button
@@ -3112,10 +3362,10 @@ const [brandingErr, setBrandingErr] = useState("");
   }, [siteSettings?.branding_published_at]);
 
   useEffect(() => {
-    if (companyIdProp && companyIdProp !== companyId) {
-      setCompanyId(companyIdProp);
+    if (normalizedCompanyIdProp && normalizedCompanyIdProp !== companyId) {
+      setCompanyId(normalizedCompanyIdProp);
     }
-  }, [companyIdProp]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [normalizedCompanyIdProp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   
   // when the hook finally resolves, adopt it (avoids initializing as "")
@@ -3152,6 +3402,7 @@ useEffect(() => {
   const [err, setErr] = useState("");
 const [pagesListOpen, setPagesListOpen] = useState(false);
 const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+const [addSectionPanelOpen, setAddSectionPanelOpen] = useState(true);
 const [inspectorOpen, setInspectorOpen] = useState(false);
 const [inspectorTab, setInspectorTab] = useState("content");
 const [pageStyleOpen, setPageStyleOpen] = useState(false);
@@ -3193,18 +3444,19 @@ useEffect(() => {
         // previous session. Resolve the signed-in manager without sending that
         // stale company header before requesting website data. Explicit parent
         // and query contexts still win for support/admin flows.
-        const queryCompanyId = new URLSearchParams(location?.search || "").get("company_id") ||
-          new URLSearchParams(location?.search || "").get("cid");
-        if (!companyIdProp && !queryCompanyId) {
+        const params = new URLSearchParams(location?.search || "");
+        const queryCompanyId =
+          parsePositiveCompanyId(params.get("company_id")) ||
+          parsePositiveCompanyId(params.get("cid"));
+        if (!normalizedCompanyIdProp && !queryCompanyId) {
           const identity = await api.get("/auth/me", { noCompanyHeader: true }).catch(() => null);
-          const authenticatedCompanyId = Number(
+          const authenticatedCompanyId = parsePositiveCompanyId(
             identity?.data?.company_id ??
               identity?.data?.company?.id ??
               identity?.data?.user?.company_id
           );
           if (
-            Number.isFinite(authenticatedCompanyId) &&
-            authenticatedCompanyId > 0 &&
+            authenticatedCompanyId &&
             authenticatedCompanyId !== Number(companyId)
           ) {
             localStorage.setItem("company_id", String(authenticatedCompanyId));
@@ -3213,11 +3465,20 @@ useEffect(() => {
             return;
           }
         }
-        const [settingsRes, pagesRes, profileRes, statusRes] = await Promise.all([
+        // Website status is advisory metadata.  It must never hold the
+        // Builder boot hostage: a local backend can have an old status request
+        // in flight while settings/pages are already available.  In that case
+        // we can still derive the active Next theme from settings and mint the
+        // preview normally.
+        const statusRequest = wb.getStatus(companyId).catch(() => null);
+        const [settingsRes, pagesRes, profileRes] = await Promise.all([
           wb.getSettings(companyId),
           wb.listPages(companyId),
-          api.get("/admin/company-profile").catch(() => null),
-          wb.getStatus(companyId).catch(() => null),
+          api
+            .get("/admin/company-profile", {
+              headers: { "X-Company-Id": String(companyId) },
+            })
+            .catch(() => null),
         ]);
 
         const pagesList =
@@ -3225,7 +3486,14 @@ useEffect(() => {
           (pagesRes?.data?.items || []);
 
         const settingsPayload = settingsRes?.data ?? settingsRes ?? null;
-        const statusPayload = statusRes?.data ?? statusRes ?? null;
+        // Do not await this optional request.  If it completes later it still
+        // improves the style/status UI without blanking the canvas.
+        let statusPayload = null;
+        statusRequest.then((statusRes) => {
+          if (!alive || !statusRes) return;
+          const nextStatus = statusRes?.data ?? statusRes ?? null;
+          if (nextStatus) setWebsiteStatus(nextStatus);
+        });
         setSiteSettings(settingsPayload);
         const profileSlug =
           profileRes?.data?.slug ||
@@ -3251,6 +3519,16 @@ useEffect(() => {
             settings: selectedWebsiteSettings,
           })
         );
+        const isIronEmberNextWebsite =
+          nextJsWebsite &&
+          String(
+            selectedWebsiteSettings.visual_theme_key ||
+              statusPayload?.draft_visual_theme_key ||
+              statusPayload?.current_visual_theme_key ||
+              ""
+          )
+            .trim()
+            .toLowerCase() === "iron-ember";
         // A blank Next.js site is intentionally blank until its selected theme
         // installs a canonical starter blueprint. The Classic import path stays
         // exactly as it was for legacy-react websites.
@@ -3282,7 +3560,8 @@ useEffect(() => {
         const normalizedLegacy = await ensureLegacyBuilderPages(
           companyId,
           settingsPayload,
-          pagesList
+          pagesList,
+          { isIronEmberNextWebsite }
         );
         if (!alive) return;
         const finalSettings = normalizedLegacy.settings || settingsPayload;
@@ -3329,25 +3608,33 @@ useEffect(() => {
   useEffect(() => {
     if (!companyId) return;
     let alive = true;
-    (async () => {
-      try {
-        const [catalogRes, statusRes] = await Promise.all([
-          wb.getCatalog(companyId),
-          wb.getStatus(companyId),
-        ]);
+    // Keep the renderer catalog independent from the optional status request.
+    // The catalog is what makes a selected Next theme previewable.  Pairing it
+    // with status in Promise.all meant one stalled status request left the
+    // Builder with no matching theme and therefore an empty iframe.
+    wb.getCatalog(companyId)
+      .then((catalogRes) => {
         if (!alive) return;
         setWebsiteCatalog(catalogRes?.data || catalogRes || null);
+      })
+      .catch((e) => {
+        console.warn("Website catalog load failed", e?.response?.data || e);
+      });
+    wb.getStatus(companyId)
+      .then((statusRes) => {
+        if (!alive) return;
         setWebsiteStatus(statusRes?.data || statusRes || null);
-      } catch (e) {
-        console.warn("Website catalog/status load failed", e?.response?.data || e);
-      }
-    })();
+      })
+      .catch((e) => {
+        console.warn("Website status load failed", e?.response?.data || e);
+      });
     return () => {
       alive = false;
     };
   }, [companyId, location?.key]);
 
   const [selectedId, setSelectedId] = useState(null);
+  const [pendingPreviewSelection, setPendingPreviewSelection] = useState(null);
 
   // History state for undo/redo
   const {
@@ -3371,21 +3658,61 @@ useEffect(() => {
 
   useEffect(() => {
     const handleMessage = (event) => {
-      if (
-        !isAcceptedPreviewMessage({
+      // Prefer the actual current iframe origin. A local renderer can move
+      // between localhost and 127.0.0.1 after a restart while the CRA build
+      // still holds the configured base URL.
+      let activePreviewOrigin = nextJsPreviewOrigin;
+      try {
+        activePreviewOrigin = new URL(nextJsContentPreviewIframeRef.current?.src || nextJsPreviewOrigin).origin;
+      } catch (_err) {
+        // Keep the configured origin as the safe fallback.
+      }
+      const acceptedPreviewMessage = isAcceptedPreviewMessage({
           eventOrigin: event.origin,
-          expectedOrigin: nextJsPreviewOrigin,
+          expectedOrigin: activePreviewOrigin,
           eventSource: event.source,
-          expectedSource: nextJsPreviewIframeRef.current?.contentWindow,
-        })
-      ) {
+          expectedSource: nextJsContentPreviewIframeRef.current?.contentWindow,
+        });
+      if (!acceptedPreviewMessage) {
         return;
       }
       const data = event?.data;
-      if (!data || data.type !== "schedulaa:website-slot-select") return;
+      if (!data) return;
+      if (data.type === "schedulaa:website-page-menu-toggle") {
+        const pageId = data.pageId == null ? null : Number(data.pageId);
+        if (pageId) {
+          const nextShowInMenu = Boolean(
+            Object.prototype.hasOwnProperty.call(data, "showInMenu") ? data.showInMenu : false
+          );
+          applyPageActionPatch(pageId, { show_in_menu: nextShowInMenu });
+          setStyleMsg(
+            `${String(data.label || "Page")} ${nextShowInMenu ? "shown in" : "hidden from"} menu.`
+          );
+          setBuilderTabIndex(0);
+        }
+        return;
+      }
+      if (data.type !== "schedulaa:website-slot-select") return;
       const slot = String(data.slot || "").trim();
       const label = String(data.label || slot).trim();
       const fieldPath = normalizeSemanticFieldPath(data.fieldPath);
+      const settingsPanel = String(data.settingsPanel || "").trim().toLowerCase();
+      if (settingsPanel === "branding") {
+        setBrandingPanelOpen(true);
+        setStyleMsg(`Selected shared setting: ${label}`);
+        setBuilderTabIndex(0);
+        return;
+      }
+      // Resolve against the latest page list in a follow-up effect. Preview
+      // messages can arrive while the Builder is still replacing its initial
+      // blank page with the persisted homepage after a local reload.
+      setPendingPreviewSelection({
+        pageId: data.pageId == null ? null : String(data.pageId),
+        pagePath: data.pagePath || "",
+        moduleId: data.moduleId || "",
+        slot,
+        fieldPath,
+      });
       setStyleMsg(`Selected editable slot: ${label}`);
       setBuilderTabIndex(0);
       if (data.pageId) {
@@ -3466,6 +3793,70 @@ useEffect(() => {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [editing, isNextJsContentMode, nextJsPreviewOrigin, pages, setEditing]);
+
+  useEffect(() => {
+    if (!pendingPreviewSelection) return;
+    const targetPage = pendingPreviewSelection.pageId
+      ? pages.find((page) => String(page.id) === pendingPreviewSelection.pageId)
+      : pages.find((page) => normalizePreviewPagePath(page).join("/") === String(pendingPreviewSelection.pagePath || "").replace(/^\/+/, ""));
+    if (!targetPage) return;
+    if (String(editing?.id || "") !== String(targetPage.id)) {
+      const lifted = ensureSectionIds(withLiftedLayout(targetPage));
+      setSelectedId(lifted.id);
+      setEditing(lifted);
+      return;
+    }
+    const modules = safeModules(editing || {});
+    const module = pendingPreviewSelection.moduleId
+      ? modules.find((item) => item.id === pendingPreviewSelection.moduleId)
+      : modules.find((item) => item.slot === pendingPreviewSelection.slot) || (pendingPreviewSelection.slot === "home.hero" ? modules.find((item) => item.type === "hero") : null);
+    if (!module) {
+      // Record-backed composition pages can pre-date semantic intro modules.
+      // The rendered hero/list must still be editable as a normal Builder
+      // section, rather than becoming an unselectable page fallback. Create
+      // the real persisted composition module only when the manager selects it.
+      const slot = String(pendingPreviewSelection.slot || "");
+      if (["services.intro", "products.intro", "reviews.intro", "reviews.list"].includes(slot)) {
+        const created = createSemanticModule(
+          slot === "reviews.list" ? "reviews" : "richText",
+          editing,
+          slot
+        );
+        const hero = editing?.hero || {};
+        const media = hero?.media || {};
+        const currentContent = normalizePageContent(editing?.content || {});
+        created.content = {
+          ...created.content,
+          heading: hero?.title || editing?.menu_title || editing?.menuTitle || editing?.title || "",
+          intro: hero?.description || hero?.intro || "",
+          body: hero?.description || hero?.intro || "",
+          image: media?.imageUrl || media?.url || hero?.imageUrl || hero?.image || "",
+          imageUrl: media?.imageUrl || media?.url || hero?.imageUrl || hero?.image || "",
+          imageAlt: media?.imageAlt || hero?.imageAlt || editing?.title || "",
+        };
+        const nextEditing = withNormalizedModules({
+          ...editing,
+          content: {
+            ...currentContent,
+            modules: [...modules, created],
+          },
+        });
+        setEditing(nextEditing);
+        setSelectedModuleId(created.id);
+        setSelectedModuleFieldPath(pendingPreviewSelection.fieldPath || "content.heading");
+        setInspectorOpen(true);
+        setInspectorTab("content");
+        setPageSettingsDirty(true);
+        setPendingPreviewSelection(null);
+      }
+      return;
+    }
+    setSelectedModuleId(module.id);
+    setSelectedModuleFieldPath(pendingPreviewSelection.fieldPath);
+    setInspectorOpen(true);
+    setInspectorTab("content");
+    setPendingPreviewSelection(null);
+  }, [editing, pages, pendingPreviewSelection, setEditing]);
 
   useEffect(() => {
     setPageSettingsDirty(false);
@@ -4075,7 +4466,7 @@ const saveNavSettings = useCallback(
   ]
 );
 
-async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
+async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmberNextWebsite = false } = {}) {
   if (!cid) return { pages: pagesList || [], settings: settingsObj };
 
   let nextPages = Array.isArray(pagesList) ? [...pagesList] : [];
@@ -4138,6 +4529,60 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList) {
     };
     await navSettings.updateOverrides(cid, nav);
     nextSettings = mergeNavIntoSettings(nextSettings, { nav_overrides: nav });
+  }
+
+  if (isIronEmberNextWebsite) {
+    for (const target of NEXT_PUBLIC_BUILDER_PAGE_TARGETS) {
+      const existingPage = findNextPublicBuilderPage(nextPages, target);
+      if (existingPage) {
+        // Earlier Builder versions created these real rows with no semantic
+        // modules. Seed only truly empty records so the normal Inspector has
+        // the same image/content controls as Services, without overwriting a
+        // manager's existing composition.
+        const seeded = target.key === "reviews"
+          ? seedBlankReviewsEditorialModule(existingPage)
+          : !safeModules(existingPage).length
+            ? {
+            ...existingPage,
+            content: {
+              ...normalizePageContent(existingPage.content || {}),
+              modules: makeNextPublicBuilderModules(target),
+            },
+          }
+            : existingPage;
+        if (seeded !== existingPage) {
+          const updated = await wb.updatePage(
+            cid,
+            existingPage.id,
+            serializePage(ensureSectionIds(withLiftedLayout(seeded)))
+          );
+          const updatedPage = normalizePage(updated?.data || updated);
+          if (updatedPage?.id) {
+            nextPages = nextPages.map((page) =>
+              String(page.id) === String(updatedPage.id) ? updatedPage : page
+            );
+          }
+        }
+        continue;
+      }
+      try {
+        const created = await wb.createPage(
+          cid,
+          serializePage(
+            ensureSectionIds(withLiftedLayout(makeNextPublicBuilderPage(target, nextPages)))
+          )
+        );
+        const createdPage = normalizePage(created?.data || created);
+        if (createdPage?.id) nextPages = [...nextPages, createdPage];
+      } catch (err) {
+        const duplicateSlug =
+          err?.response?.status === 409 &&
+          String(err?.response?.data?.error || "").toLowerCase().includes("duplicate slug");
+        if (!duplicateSlug) throw err;
+        const refreshed = await wb.listPages(cid).catch(() => null);
+        if (Array.isArray(refreshed?.data)) nextPages = refreshed.data;
+      }
+    }
   }
 
   return { pages: nextPages, settings: nextSettings };
@@ -4432,6 +4877,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   const handleJumpToNav = () => jumpToById("nav-settings-card");
   const handleJumpToAssets = () => jumpToById("assets-manager-card");
   const handleJumpToPageSettings = () => jumpToById("builder-page-settings");
+  const handleJumpToCompanyProfile = () => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams({ view: "CompanyProfile" });
+    if (companyId) params.set("company_id", String(companyId));
+    window.location.assign(`/manager/dashboard?${params.toString()}`);
+  };
 
   const siteSeoDefaults = useMemo(() => {
     if (siteSettings?.seo) return siteSettings.seo;
@@ -4447,29 +4898,35 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     () => siteSeoDefaults.slugBaseUrl || canonicalBase,
     [siteSeoDefaults, canonicalBase]
   );
-  const previewSlug = useMemo(() => {
+  const authoritativeCompanySlug = useMemo(() => {
+    const slugFromStatus =
+      websiteStatus?.company_slug ||
+      websiteStatus?.status?.company_slug;
+    const slugFromProfile = companyProfileSlug;
     const slugFromSettings =
-      siteSettings?.company?.slug ||
-      companyProfileSlug ||
       siteSettings?.company_slug ||
+      siteSettings?.company?.slug ||
       siteSettings?.slug ||
       siteSettings?.settings?.slug;
+    return (
+      String(slugFromStatus || "").trim() ||
+      String(slugFromProfile || "").trim() ||
+      String(slugFromSettings || "").trim()
+    );
+  }, [companyProfileSlug, siteSettings, websiteStatus]);
+
+  const previewSlug = useMemo(() => {
+    const slugFromSettings = authoritativeCompanySlug;
     if (slugFromSettings) return slugFromSettings;
     if (companyId) return `preview-${companyId}`;
     return "preview";
-  }, [siteSettings, companyProfileSlug, companyId]);
+  }, [authoritativeCompanySlug, companyId]);
 
   const liveSlug = useMemo(() => {
-    const slugFromSettings =
-      siteSettings?.company?.slug ||
-      companyProfileSlug ||
-      siteSettings?.company_slug ||
-      siteSettings?.slug ||
-      siteSettings?.settings?.slug;
-    return (slugFromSettings || "").trim();
-  }, [siteSettings, companyProfileSlug]);
+    return String(authoritativeCompanySlug || "").trim();
+  }, [authoritativeCompanySlug]);
 
-  const liveSiteUrl = useMemo(() => {
+  const publishedLiveSiteUrl = useMemo(() => {
     const pagePath = normalizePreviewPagePath(editing);
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     return buildPublishedWebsiteUrl({
@@ -4486,6 +4943,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       currentOrigin: origin,
     });
   }, [editing, liveSlug, previewSlug, siteSettings, websiteStatus]);
+  const liveSiteUrl = publishedLiveSiteUrl;
 
   const seoPreviewTitle = useMemo(() => {
     return (
@@ -4650,19 +5108,27 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         // sites deliberately skip this path so switching themes never
         // overwrites tenant content.
         if (
-          style.key === "iron-ember" &&
+          isNextJsStyle(style) &&
           !pages.length &&
           style.starterContentPackKey
         ) {
           await wb.installContentPack(companyId, style.starterContentPackKey, {
             install_mode: "merge",
-            visual_theme_key: "iron-ember",
+            visual_theme_key: style.key,
           });
-          const installedPagesRes = await wb.listPages(companyId);
+          const [installedPagesRes, installedSettingsRes, installedStatusRes] = await Promise.all([
+            wb.listPages(companyId),
+            wb.getSettings(companyId).catch(() => null),
+            wb.getStatus(companyId).catch(() => null),
+          ]);
           const installedPages = (installedPagesRes?.data || [])
             .map(normalizePage)
             .map((page) => ensureSectionIds(withLiftedLayout(page)));
           setPages(installedPages);
+          const installedSettings = installedSettingsRes?.data || installedSettingsRes || null;
+          if (installedSettings) setSiteSettings(installedSettings);
+          const installedStatus = installedStatusRes?.data || installedStatusRes || null;
+          if (installedStatus) setWebsiteStatus(installedStatus);
           const home = installedPages.find((page) => page.is_homepage) || installedPages[0];
           if (home) {
             setSelectedId(home.id);
@@ -4691,10 +5157,20 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
 
   const refreshNextJsPreview = useCallback(
     async (style = null) => {
-      const nextStyle =
+      const catalogStyle =
         style ||
         websiteStyleChoices.find((item) => item.key === effectivePreviewFamily) ||
         null;
+      // The selected Next theme already lives in the persisted website
+      // settings. The catalog is presentation metadata for the style picker;
+      // it must not be a prerequisite for creating a content-canvas preview.
+      // In particular, a slow/stalled catalog/status call used to leave this
+      // iframe empty even though the saved `visual_theme_key` was valid.
+      const nextStyle =
+        catalogStyle ||
+        (isNextJsContentMode && currentStyleKey
+          ? { key: currentStyleKey, renderer_engine: "nextjs" }
+          : null);
       if (!companyId || !nextStyle || !isNextJsStyle(nextStyle)) {
         setNextJsPreviewToken("");
         setNextJsPreviewUrl("");
@@ -4707,23 +5183,34 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         return;
       }
       try {
+        // Do not leave an old iframe visible while a new signed session is
+        // being requested.  A backend restart invalidates its signature, and
+        // retaining that URL is what previously left the Builder as a blank
+        // white canvas.
+        setStyleErr("");
         const res = await wb.createPreviewSession(companyId, {
           visual_theme_key: nextStyle.key,
           page_path: currentPreviewPagePath,
         });
         const payload = res?.data || res || {};
         const token = payload?.token || "";
+        if (!token) {
+          throw new Error("Preview session did not return a token.");
+        }
         setNextJsPreviewToken(token);
         setNextJsPreviewUrl(
-          token
-            ? buildNextJsPreviewUrl({
-                token,
-                pagePath: currentPreviewPagePath,
-              })
-            : ""
+          buildNextJsPreviewUrl({
+            token,
+            pagePath: currentPreviewPagePath,
+          })
         );
         setStyleErr("");
       } catch (e) {
+        // A failed refresh must never retain an expired signed iframe URL.
+        // Clearing it gives the manager a visible error and a working Refresh
+        // Preview action instead of an opaque white document.
+        setNextJsPreviewToken("");
+        setNextJsPreviewUrl("");
         setStyleErr(
           e?.response?.data?.error ||
             e?.response?.data?.message ||
@@ -4732,7 +5219,45 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         );
       }
     },
-    [companyId, currentPreviewPagePath, effectivePreviewFamily, websiteStyleChoices]
+    [
+      companyId,
+      currentPreviewPagePath,
+      currentStyleKey,
+      effectivePreviewFamily,
+      isNextJsContentMode,
+      websiteStyleChoices,
+    ]
+  );
+
+  const queueNextJsDraftSync = useCallback(
+    (snapshot) => {
+      if (!isNextJsContentMode || !companyId || !snapshot?.id) return;
+      nextJsDraftSyncSnapshotRef.current = ensureSectionIds(withLiftedLayout(snapshot));
+      if (nextJsDraftSyncTimerRef.current) {
+        clearTimeout(nextJsDraftSyncTimerRef.current);
+      }
+      nextJsDraftSyncTimerRef.current = setTimeout(async () => {
+        const pending = nextJsDraftSyncSnapshotRef.current;
+        nextJsDraftSyncTimerRef.current = null;
+        if (!pending?.id) return;
+        try {
+          const payload = serializePage(pending);
+          const response = await wb.updatePage(companyId, payload.id, payload);
+          const saved = ensureSectionIds(
+            withLiftedLayout(normalizePage(response?.data || payload))
+          );
+          setPages((prev) => prev.map((page) => (page.id === saved.id ? saved : page)));
+          setEditing((current) => {
+            if (!current?.id || String(current.id) !== String(saved.id)) return current;
+            return saved;
+          });
+          await refreshNextJsPreview();
+        } catch (error) {
+          console.error("[VisualSiteBuilder] nextjs draft sync failed", error);
+        }
+      }, 250);
+    },
+    [companyId, isNextJsContentMode, refreshNextJsPreview, setEditing, setPages]
   );
 
   // The iframe reports an expired/invalid signed preview token after a local
@@ -4740,11 +5265,17 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   // limited to the configured tenant-renderer origin and current iframe.
   useEffect(() => {
     const recoverPreviewToken = (event) => {
+      let activePreviewOrigin = nextJsPreviewOrigin;
+      try {
+        activePreviewOrigin = new URL(nextJsContentPreviewIframeRef.current?.src || nextJsPreviewOrigin).origin;
+      } catch (_err) {
+        // Keep the configured origin as the safe fallback.
+      }
       if (!isAcceptedPreviewMessage({
         eventOrigin: event.origin,
-        expectedOrigin: nextJsPreviewOrigin,
+        expectedOrigin: activePreviewOrigin,
         eventSource: event.source,
-        expectedSource: nextJsPreviewIframeRef.current?.contentWindow,
+        expectedSource: nextJsContentPreviewIframeRef.current?.contentWindow,
       })) return;
       if (event?.data?.type === "schedulaa:preview-token-invalid") {
         refreshNextJsPreview();
@@ -4755,10 +5286,9 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   }, [nextJsPreviewOrigin, refreshNextJsPreview]);
 
   useEffect(() => {
-    if (builderTabIndex !== 0) return;
     if (!isNextJsContentMode) return;
     refreshNextJsPreview();
-  }, [builderTabIndex, isNextJsContentMode, refreshNextJsPreview]);
+  }, [isNextJsContentMode, refreshNextJsPreview]);
 
   const saveNavSettingsWithPreviewRefresh = useCallback(
     async (draft) => {
@@ -4768,6 +5298,24 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       }
     },
     [isNextJsContentMode, refreshNextJsPreview, saveNavSettings]
+  );
+
+  // Client account and commerce entry points are system-owned routes rather
+  // than WebsitePage records. Keep their controls beside the Pages list so a
+  // manager can decide whether they are visible in the public menu without
+  // creating misleading, editable CMS pages for login, bookings, or basket.
+  const updateClientSystemLink = useCallback(
+    (field, value) => {
+      const nextOverrides = {
+        ...(navDraft?.nav_overrides || navOverridesWithDefault || {}),
+        [field]: value,
+      };
+      handleNavDraftChange({
+        nav_style: navDraft?.nav_style || navStyleState || {},
+        nav_overrides: nextOverrides,
+      });
+    },
+    [handleNavDraftChange, navDraft, navOverridesWithDefault, navStyleState]
   );
 
   const saveBrandingSettingsWithPreviewRefresh = useCallback(
@@ -4832,6 +5380,9 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     () => () => {
       if (nextJsThemeOverrideSaveTimerRef.current) {
         clearTimeout(nextJsThemeOverrideSaveTimerRef.current);
+      }
+      if (nextJsDraftSyncTimerRef.current) {
+        clearTimeout(nextJsDraftSyncTimerRef.current);
       }
     },
     []
@@ -4949,6 +5500,16 @@ const autoProvisionIfEmpty = useCallback(
         settings: selectedWebsiteSettings,
       })
     );
+    const isIronEmberNextWebsite =
+      nextJsWebsite &&
+      String(
+        selectedWebsiteSettings.visual_theme_key ||
+          statusPayload?.draft_visual_theme_key ||
+          statusPayload?.current_visual_theme_key ||
+          ""
+      )
+        .trim()
+        .toLowerCase() === "iron-ember";
     if (!pgRaw.length && !nextJsWebsite) {
       try {
         await autoProvisionIfEmpty(cid, settingsObj);
@@ -4961,7 +5522,9 @@ const autoProvisionIfEmpty = useCallback(
       }
     }
 
-    const normalizedLegacy = await ensureLegacyBuilderPages(cid, settingsObj, pgRaw);
+    const normalizedLegacy = await ensureLegacyBuilderPages(cid, settingsObj, pgRaw, {
+      isIronEmberNextWebsite,
+    });
     const pg = (normalizedLegacy.pages || pgRaw).map((p) =>
       ensureSectionIds(withLiftedLayout(p))
     );
@@ -6646,10 +7209,93 @@ const autoProvisionIfEmpty = useCallback(
           setPageSettingsOpen(next);
         }}
       >
-        <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
-          Looking for Reviews, Login, or My Bookings? These are system links.
-          Manage them in Navigation &amp; Menu → System links in public menu.
-        </Alert>
+        <Paper variant="outlined" sx={{ p: 1.25, mb: 1, borderRadius: 1.5 }}>
+          <Stack spacing={1}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Client links in public menu
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Login, My Bookings, and My Basket use the existing secure client flows. They are not editable website pages.
+              </Typography>
+            </Box>
+            <Grid container spacing={1}>
+              {[
+                {
+                  key: "login",
+                  enabledKey: "show_login_tab",
+                  labelKey: "login_tab_label",
+                  title: "Login",
+                  fallback: "Login",
+                },
+                {
+                  key: "my-bookings",
+                  enabledKey: "show_my_bookings_tab",
+                  labelKey: "my_bookings_tab_label",
+                  title: "My Bookings",
+                  fallback: "My Bookings",
+                },
+                {
+                  key: "basket",
+                  enabledKey: "show_basket_tab",
+                  labelKey: "basket_tab_label",
+                  title: "My Basket",
+                  fallback: "My Basket",
+                },
+              ].map((link) => {
+                const overrides = navDraft?.nav_overrides || navOverridesWithDefault || {};
+                const enabled = overrides[link.enabledKey] !== false;
+                return (
+                  <Grid item xs={12} md={4} key={link.key}>
+                    <Stack spacing={0.25}>
+                      <FormControlLabel
+                        sx={{ m: 0 }}
+                        control={
+                          <Switch
+                            size="small"
+                            checked={enabled}
+                            onChange={(event) =>
+                              updateClientSystemLink(link.enabledKey, event.target.checked)
+                            }
+                          />
+                        }
+                        label={`Show ${link.title}`}
+                      />
+                      <TextField
+                        size="small"
+                        label={`${link.title} label`}
+                        value={overrides[link.labelKey] || link.fallback}
+                        onChange={(event) =>
+                          updateClientSystemLink(link.labelKey, event.target.value)
+                        }
+                      />
+                    </Stack>
+                  </Grid>
+                );
+              })}
+            </Grid>
+            <Stack direction="row" justifyContent="flex-end">
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() =>
+                  saveNavSettingsWithPreviewRefresh({
+                    nav_style: navDraft?.nav_style || navStyleState || {},
+                    nav_overrides: navDraft?.nav_overrides || navOverridesWithDefault || {},
+                  })
+                }
+                disabled={navSaving}
+              >
+                {navSaving ? "Saving…" : "Save client links"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+        {isNextJsContentMode ? (
+          <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+            Services, Products, Reviews, and Jobs use their existing workspaces for business records. Edit this page&apos;s composition, modules, and SEO here; booking, commerce, applications, and account flows stay system-owned.
+          </Alert>
+        ) : null}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {selectedPageIds.length
@@ -7214,7 +7860,9 @@ const autoProvisionIfEmpty = useCallback(
         title={t("manager.visualBuilder.branding.title", "Header & Footer")}
         description={t(
           "manager.visualBuilder.branding.description",
-          "Upload logos, configure sticky header links, and add footer columns."
+          usesConciseNextJsBrandingSurface
+            ? `Edit the shared branding, footer links, and contact details used by ${nextJsBrandingThemeName}.`
+            : "Upload logos, configure sticky header links, and add footer columns."
         )}
         expanded={brandingPanelOpen}
         onChange={(open) => {
@@ -7258,6 +7906,8 @@ const autoProvisionIfEmpty = useCallback(
           onChangeNavOverrides={handleNavOverridesChange}
           pagesMeta={previewPagesMeta}
           onRequestPagesJump={handleJumpToPageSettings}
+          onRequestContactJump={handleJumpToCompanyProfile}
+          surface={usesConciseNextJsBrandingSurface ? nextJsBrandingThemeKey : "classic"}
           floatingSaveVisible={brandingPanelOpen}
           floatingSavePlacement="top-left"
         />
@@ -7324,23 +7974,43 @@ const autoProvisionIfEmpty = useCallback(
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
                       <Chip size="small" label={module.slot || "section"} />
                       <Box sx={{ minWidth: 0 }}>
-                        {index + 1}. {SEMANTIC_MODULE_LABELS[module.type] || module.type}
+                        {index + 1}. {semanticModuleDisplayLabel(module)}
                       </Box>
                       {module.enabled === false ? <Chip size="small" label="Hidden" /> : null}
                     </Stack>
                   </Button>
                   <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                    <Button size="small" onClick={() => moveSemanticModule(module.id, "up")}>
-                      Up
+                    <Button
+                      size="small"
+                      onClick={() => moveSemanticModule(module.id, "up")}
+                      disabled={!canMoveSemanticModule(module.id, "up")}
+                    >
+                      Move up
                     </Button>
-                    <Button size="small" onClick={() => moveSemanticModule(module.id, "down")}>
-                      Down
+                    <Button
+                      size="small"
+                      onClick={() => moveSemanticModule(module.id, "down")}
+                      disabled={!canMoveSemanticModule(module.id, "down")}
+                    >
+                      Move down
                     </Button>
                     <Button size="small" onClick={() => duplicateSemanticModule(module.id)}>
                       Duplicate
                     </Button>
+                    <Button
+                      size="small"
+                      color="warning"
+                      onClick={() =>
+                        updateSemanticModule(module.id, (currentModule) => ({
+                          ...currentModule,
+                          enabled: currentModule.enabled === false,
+                        }))
+                      }
+                    >
+                      {module.enabled === false ? "Show section" : "Hide section"}
+                    </Button>
                     <Button size="small" color="error" onClick={() => deleteSemanticModule(module.id)}>
-                      Delete
+                      Remove section
                     </Button>
                   </Stack>
                 </Stack>
@@ -7411,67 +8081,87 @@ const autoProvisionIfEmpty = useCallback(
 
         <Divider sx={{ my: 2 }} />
 
-        <CollapsibleSection
-          id="builder-add-blocks"
-          title={isNextJsContentMode ? "Add Section" : "Add new blocks"}
-          description={
-            isNextJsContentMode
-              ? "Choose from the semantic sections supported by the current page and website style."
-              : "Click a preview to see the block, then add it to the page."
-          }
-          defaultExpanded={false}
-        >
-          {isNextJsContentMode ? (
-            <Stack spacing={1.5}>
-              {Array.from(new Set(semanticModuleChoices.map((choice) => choice.group))).map((group) => (
-                <Box key={group}>
-                  <Typography variant="overline" sx={{ display: "block", mb: 1, color: "text.secondary" }}>
-                    {group}
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-                      gap: 1.25,
-                      alignItems: "start",
-                    }}
-                  >
-                    {semanticModuleChoices
-                      .filter((choice) => choice.group === group)
-                      .map((choice) => (
-                        <Button
-                          key={`${choice.slot}-${choice.type}`}
-                          variant="outlined"
-                          onClick={() => addSemanticModule(choice.type, choice.slot)}
-                          sx={{ justifyContent: "flex-start", minHeight: 72, textAlign: "left", borderRadius: 0.75 }}
-                        >
-                          <Stack spacing={0.5} alignItems="flex-start">
-                            <Typography variant="subtitle2">{choice.label}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {choice.slot}
-                            </Typography>
-                          </Stack>
-                        </Button>
-                      ))}
-                  </Box>
-                </Box>
-              ))}
-            </Stack>
-          ) : (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))",
-                gap: 1.5,
-                alignItems: "start",
-              }}
+        <Paper id="builder-add-blocks" variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+          <Stack spacing={1.5}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
             >
-              {ADD_BLOCK_ORDER.map(([type, labelKey]) =>
-                renderAddBlockButton(type, labelKey)
-              )}
-            </Box>
-          )}
-        </CollapsibleSection>
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  {isNextJsContentMode ? "Add Section" : "Add new blocks"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {isNextJsContentMode
+                    ? "Choose from the semantic sections supported by the current page and website style."
+                    : "Click a preview to see the block, then add it to the page."}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                aria-expanded={addSectionPanelOpen}
+                onClick={() => setAddSectionPanelOpen((current) => !current)}
+              >
+                {addSectionPanelOpen ? "Collapse" : "Expand"}
+              </Button>
+            </Stack>
+            {addSectionPanelOpen ? (
+              isNextJsContentMode ? (
+                <Stack spacing={1.5}>
+                  {Array.from(new Set(semanticModuleChoices.map((choice) => choice.group))).map((group) => (
+                    <Box key={group}>
+                      <Typography variant="overline" sx={{ display: "block", mb: 1, color: "text.secondary" }}>
+                        {group}
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                          gap: 1.25,
+                          alignItems: "start",
+                        }}
+                      >
+                        {semanticModuleChoices
+                          .filter((choice) => choice.group === group)
+                          .map((choice) => (
+                            <Button
+                              key={`${choice.slot}-${choice.type}`}
+                              variant="outlined"
+                              onClick={() => addSemanticModule(choice.type, choice.slot)}
+                              sx={{ justifyContent: "flex-start", minHeight: 72, textAlign: "left", borderRadius: 0.75 }}
+                            >
+                              <Stack spacing={0.5} alignItems="flex-start">
+                                <Typography variant="subtitle2">{choice.label}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {choice.slot}
+                                </Typography>
+                              </Stack>
+                            </Button>
+                          ))}
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))",
+                    gap: 1.5,
+                    alignItems: "start",
+                  }}
+                >
+                  {ADD_BLOCK_ORDER.map(([type, labelKey]) =>
+                    renderAddBlockButton(type, labelKey)
+                  )}
+                </Box>
+              )
+            ) : null}
+          </Stack>
+        </Paper>
         {unsupportedModuleWarning ? <Alert severity="warning" sx={{ mt: 2 }}>{unsupportedModuleWarning}</Alert> : null}
       </CollapsibleSection>
       {SeoSettingsSection}
@@ -7580,17 +8270,23 @@ const updateSemanticModules = useCallback(
       const currentModules = safeModules(normalized);
       const nextModules = typeof updater === "function" ? updater(currentModules, normalized) : updater;
       const content = normalizePageContent(normalized.content || {});
-      return withNormalizedModules({
+      const nextPage = withNormalizedModules({
         ...normalized,
         content: {
           ...content,
-          modules: Array.isArray(nextModules) ? nextModules : currentModules,
+          // Only canonical Next.js modules pass through this adapter. Classic
+          // keeps its existing ImageField/section representation unchanged.
+          modules: normalizeSemanticModuleMediaReferences(
+            Array.isArray(nextModules) ? nextModules : currentModules
+          ),
         },
       });
+      queueNextJsDraftSync(nextPage);
+      return nextPage;
     });
     setPageSettingsDirty(true);
   },
-  [setEditing]
+  [queueNextJsDraftSync, setEditing]
 );
 
 const addSemanticModule = useCallback(
@@ -7643,17 +8339,37 @@ const duplicateSemanticModule = useCallback(
 const moveSemanticModule = useCallback(
   (moduleId, direction) => {
     updateSemanticModules((currentModules) => {
-      const index = currentModules.findIndex((module) => module.id === moduleId);
-      if (index < 0) return currentModules;
-      const module = currentModules[index];
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= currentModules.length) return currentModules;
-      const target = currentModules[targetIndex];
-      if ((target?.slot || "") !== (module?.slot || "")) return currentModules;
-      const nextModules = [...currentModules];
-      nextModules[index] = target;
-      nextModules[targetIndex] = module;
-      return nextModules.map((item, order) => ({ ...item, order }));
+      const movePlan = getSemanticModuleMovePlan(
+        currentModules,
+        moduleId,
+        direction
+      );
+      if (!movePlan) return currentModules;
+
+      if (movePlan.kind === "swap") {
+        const nextModules = [...currentModules];
+        const currentModule = nextModules[movePlan.fromIndex];
+        nextModules[movePlan.fromIndex] = nextModules[movePlan.toIndex];
+        nextModules[movePlan.toIndex] = currentModule;
+        return nextModules.map((item, order) => ({ ...item, order }));
+      }
+
+      if (movePlan.kind === "rehome") {
+        const nextModules = [...currentModules];
+        const [movedModule] = nextModules.splice(movePlan.fromIndex, 1);
+        if (!movedModule) return currentModules;
+        const insertIndex =
+          movePlan.fromIndex < movePlan.insertIndex
+            ? movePlan.insertIndex - 1
+            : movePlan.insertIndex;
+        nextModules.splice(insertIndex, 0, {
+          ...movedModule,
+          slot: movePlan.nextSlot,
+        });
+        return nextModules.map((item, order) => ({ ...item, order }));
+      }
+
+      return currentModules;
     });
   },
   [updateSemanticModules]
@@ -7671,6 +8387,129 @@ const updateSemanticModule = useCallback(
   },
   [updateSemanticModules]
 );
+
+function getSemanticModuleMovePlan(modules, moduleId, direction) {
+  const currentModules = Array.isArray(modules) ? modules : [];
+  const index = currentModules.findIndex((module) => module.id === moduleId);
+  if (index < 0) return null;
+
+  const currentModule = currentModules[index];
+  const currentSlot = String(currentModule?.slot || "");
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  const pageManifest = getPageManifest(currentStyleKey, editingPageKind);
+  const slotRules = pageManifest?.slotRules || {};
+  const slotOrder = Object.keys(slotRules);
+  const slotOrderIndex = (slot) => {
+    const normalizedSlot = String(slot || "");
+    const explicitIndex = slotOrder.indexOf(normalizedSlot);
+    return explicitIndex >= 0 ? explicitIndex : Number.MAX_SAFE_INTEGER;
+  };
+  const findRehomeInsertIndex = (modulesList, targetSlot, movingDirection) => {
+    const desiredSlotOrder = slotOrderIndex(targetSlot);
+    const targetIndices = modulesList.reduce((acc, module, moduleIndex) => {
+      if (String(module?.slot || "") === String(targetSlot || "")) {
+        acc.push(moduleIndex);
+      }
+      return acc;
+    }, []);
+
+    if (targetIndices.length) {
+      return movingDirection === "up"
+        ? targetIndices[targetIndices.length - 1] + 1
+        : targetIndices[0];
+    }
+
+    const firstLaterIndex = modulesList.findIndex(
+      (module) => slotOrderIndex(module?.slot) > desiredSlotOrder
+    );
+    if (firstLaterIndex >= 0) return firstLaterIndex;
+    return modulesList.length;
+  };
+
+  if (targetIndex >= 0 && targetIndex < currentModules.length) {
+    const targetModule = currentModules[targetIndex];
+    if (String(targetModule?.slot || "") === currentSlot) {
+      return {
+        kind: "swap",
+        fromIndex: index,
+        toIndex: targetIndex,
+      };
+    }
+  }
+
+  const currentSlotIndex = slotOrder.indexOf(currentSlot);
+  const currentType = String(currentModule?.type || "");
+
+  if (
+    editingPageKind === "services" &&
+    currentSlotIndex >= 0 &&
+    currentType &&
+    currentType !== "services" &&
+    currentSlot !== "services.list"
+  ) {
+    if (currentSlot === "services.intro" && direction === "down") {
+      return {
+        kind: "rehome",
+        fromIndex: index,
+        insertIndex: findRehomeInsertIndex(
+          currentModules,
+          "services.afterList",
+          direction
+        ),
+        nextSlot: "services.afterList",
+      };
+    }
+
+    if (currentSlot === "services.afterList" && direction === "up") {
+      return {
+        kind: "rehome",
+        fromIndex: index,
+        insertIndex: findRehomeInsertIndex(
+          currentModules,
+          "services.intro",
+          direction
+        ),
+        nextSlot: "services.intro",
+      };
+    }
+  }
+
+  if (currentSlotIndex < 0) return null;
+
+  for (
+    let candidateIndex = currentSlotIndex + (direction === "up" ? -1 : 1);
+    candidateIndex >= 0 && candidateIndex < slotOrder.length;
+    candidateIndex += direction === "up" ? -1 : 1
+  ) {
+    const candidateSlot = slotOrder[candidateIndex];
+    const candidateRule = slotRules[candidateSlot];
+    if (!candidateRule) continue;
+    if (
+      !Array.isArray(candidateRule.allowedModuleTypes) ||
+      !candidateRule.allowedModuleTypes.includes(currentType)
+    ) {
+      continue;
+    }
+    return {
+      kind: "rehome",
+      fromIndex: index,
+      insertIndex: findRehomeInsertIndex(
+        currentModules,
+        candidateSlot,
+        direction
+      ),
+      nextSlot: candidateSlot,
+    };
+  }
+
+  return null;
+}
+
+function canMoveSemanticModule(moduleId, direction) {
+  return Boolean(
+    getSemanticModuleMovePlan(safeModules(editing || {}), moduleId, direction)
+  );
+}
 
 const openBuilderPage = useCallback(
   async (pageLike) => {
@@ -7806,7 +8645,7 @@ const CanvasColumn = (
           >
             <Box
               component="iframe"
-              ref={nextJsPreviewIframeRef}
+              ref={nextJsContentPreviewIframeRef}
               title="Next.js website content preview"
               src={nextJsPreviewUrl}
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
@@ -8343,11 +9182,11 @@ function InspectorColumn() {
   useEffect(() => {
     if (!selectedModuleFieldPath) return;
     const timer = window.setTimeout(() => {
-      const selector = candidateSemanticFieldPaths(selectedModuleFieldPath)
-        .map(
-          (fieldPath) =>
-            `[data-module-field-path="${fieldPath}"] input, [data-module-field-path="${fieldPath}"] textarea, [data-module-field-path="${fieldPath}"] button`
-        )
+        const selector = candidateSemanticFieldPaths(selectedModuleFieldPath)
+          .map(
+            (fieldPath) =>
+            `[data-module-field-path="${fieldPath}"], [data-module-field-path="${fieldPath}"] input, [data-module-field-path="${fieldPath}"] textarea, [data-module-field-path="${fieldPath}"] button`
+          )
         .join(", ");
       const field = selector ? document.querySelector(selector) : null;
       if (field && typeof field.focus === "function") {
@@ -8619,9 +9458,28 @@ function InspectorColumn() {
       }
       return next;
     };
+    const syncSemanticItemPatch = (patch = {}) => {
+      const next = syncPrimaryImagePatch(patch);
+      // These aliases exist in established semantic content. Keep the
+      // Inspector's canonical field and the theme-visible field in lockstep
+      // while older pages are normalized incrementally.
+      if (selectedSemanticModule.type === "team" && Object.prototype.hasOwnProperty.call(next, "bio")) {
+        next.body = next.bio;
+      }
+      if (selectedSemanticModule.type === "faq" && Object.prototype.hasOwnProperty.call(next, "question")) {
+        next.title = next.question;
+      }
+      if (selectedSemanticModule.type === "faq" && Object.prototype.hasOwnProperty.call(next, "answer")) {
+        next.body = next.answer;
+      }
+      if (selectedSemanticModule.type === "featureStory" && Object.prototype.hasOwnProperty.call(next, "kicker")) {
+        next.eyebrow = next.kicker;
+      }
+      return next;
+    };
     const updateItem = (index, patch) => {
       const nextItems = items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...syncPrimaryImagePatch(patch) } : item
+        itemIndex === index ? { ...item, ...syncSemanticItemPatch(patch) } : item
       );
       updateSelectedSemanticModuleItems(nextItems);
     };
@@ -8641,7 +9499,7 @@ function InspectorColumn() {
         case "faq":
           return { id: nanoOrShortId(), title: "", body: "" };
         case "reviews":
-          return { id: nanoOrShortId(), title: "", author: "", role: "", body: "", quote: "", avatar: "", avatarAlt: "" };
+          return { id: nanoOrShortId(), title: "", author: "", role: "", body: "", quote: "", image: "", imageUrl: "", imageAlt: "" };
         case "pricing":
           return { id: nanoOrShortId(), title: "", price: "", body: "", features: [], href: "" };
         case "stats":
@@ -8677,6 +9535,20 @@ function InspectorColumn() {
       updateSelectedSemanticModuleContent(syncPrimaryImagePatch(patch));
     const contentPath = (field) => `content.${field}`;
     const itemPath = (index, field) => `content.items.${index}.${field}`;
+    const heroTopMarqueeItems = Array.isArray(content.marqueeTopItems) ? content.marqueeTopItems : [
+      "Cut Rituals",
+      "Fade Detail",
+      "Beard Architecture",
+      "Consultation First",
+      "Queen West Studio",
+    ];
+    const heroBottomMarqueeItems = Array.isArray(content.marqueeBottomItems) ? content.marqueeBottomItems : [
+      "Measured barbering",
+      "Sharp finishing",
+      "Texture work",
+      "Low-noise appointments",
+      "Routine-ready shape",
+    ];
     const renderPrimaryCtaFields = () => (
       <>
         <TextField
@@ -8708,7 +9580,7 @@ function InspectorColumn() {
     return (
       <Stack spacing={2} sx={{ mt: 1 }}>
         <Alert severity="info">
-          Editing {SEMANTIC_MODULE_LABELS[selectedSemanticModule.type] || selectedSemanticModule.type}
+          Editing {semanticModuleDisplayLabel(selectedSemanticModule)}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
         {["richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
@@ -8729,10 +9601,68 @@ function InspectorColumn() {
               <TextField size="small" label="Eyebrow" value={content.eyebrow || ""} onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("eyebrow") }} />
               <TextField size="small" label="Heading" value={content.heading || ""} onChange={(event) => updateSelectedContent({ heading: event.target.value })} fullWidth autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "heading"} inputProps={{ "data-module-field-path": contentPath("heading") }} />
               <TextField size="small" label="Subheading" value={content.subheading || ""} onChange={(event) => updateSelectedContent({ subheading: event.target.value })} fullWidth multiline minRows={3} inputProps={{ "data-module-field-path": contentPath("subheading") }} />
+              <TextField
+                size="small"
+                label="Hero panel eyebrow"
+                value={content.signaturePanelEyebrow || ""}
+                onChange={(event) => updateSelectedContent({ signaturePanelEyebrow: event.target.value })}
+                fullWidth
+                autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "signaturePanelEyebrow"}
+                inputProps={{ "data-module-field-path": contentPath("signaturePanelEyebrow") }}
+              />
+              <TextField
+                size="small"
+                label="Hero panel body"
+                value={content.signaturePanelBody || "A considered menu — choose a service to begin."}
+                onChange={(event) => updateSelectedContent({ signaturePanelBody: event.target.value })}
+                fullWidth
+                multiline
+                minRows={2}
+                autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "signaturePanelBody"}
+                inputProps={{ "data-module-field-path": contentPath("signaturePanelBody") }}
+              />
+              <Typography variant="subtitle2">Marquee rail: top row</Typography>
+              {heroTopMarqueeItems.map((item, index) => (
+                <TextField
+                  key={`hero-top-marquee-${index}`}
+                  size="small"
+                  label={`Top pill ${index + 1}`}
+                  value={item || ""}
+                  onChange={(event) =>
+                    updateSelectedContent({
+                      marqueeTopItems: heroTopMarqueeItems.map((value, itemIndex) =>
+                        itemIndex === index ? event.target.value : value
+                      ),
+                    })
+                  }
+                  fullWidth
+                  autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === `marqueeTopItems.${index}`}
+                  inputProps={{ "data-module-field-path": contentPath(`marqueeTopItems.${index}`) }}
+                />
+              ))}
+              <Typography variant="subtitle2">Marquee rail: bottom row</Typography>
+              {heroBottomMarqueeItems.map((item, index) => (
+                <TextField
+                  key={`hero-bottom-marquee-${index}`}
+                  size="small"
+                  label={`Bottom pill ${index + 1}`}
+                  value={item || ""}
+                  onChange={(event) =>
+                    updateSelectedContent({
+                      marqueeBottomItems: heroBottomMarqueeItems.map((value, itemIndex) =>
+                        itemIndex === index ? event.target.value : value
+                      ),
+                    })
+                  }
+                  fullWidth
+                  autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === `marqueeBottomItems.${index}`}
+                  inputProps={{ "data-module-field-path": contentPath(`marqueeBottomItems.${index}`) }}
+                />
+              ))}
             </Stack>
             <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
-              <Box data-module-field-path={contentPath("image")}><ImageField label="Hero image" value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} /></Box>
+              <Box data-module-field-path={contentPath("image")}><ImageField label="Hero image" value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
               <TextField size="small" label="Hero image alt text" value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
             </Stack>
             <Stack spacing={1}>
@@ -8745,6 +9675,7 @@ function InspectorColumn() {
                       value={url || ""}
                       onChange={(nextUrl) => updateSelectedContent({ secondaryImages: secondaryImages.map((value, itemIndex) => itemIndex === index ? nextUrl : value) })}
                       companyId={companyId}
+                      fieldKey={`${selectedSemanticModule.id}:${contentPath(`secondaryImages.${index}`)}`}
                     />
                   </Box>
                   <Button size="small" onClick={() => updateSelectedContent({ secondaryImages: secondaryImages.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Button>
@@ -8804,6 +9735,7 @@ function InspectorColumn() {
                 value={content.image || content.imageUrl || ""}
                 onChange={(url) => updateSelectedContent({ image: url })}
                 companyId={companyId}
+                fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`}
               />
             </Box>
             <TextField
@@ -8824,6 +9756,7 @@ function InspectorColumn() {
                 value={content.secondaryImage || ""}
                 onChange={(url) => updateSelectedContent({ secondaryImage: url })}
                 companyId={companyId}
+                fieldKey={`${selectedSemanticModule.id}:${contentPath("secondaryImage")}`}
               />
             </Box>
             <TextField
@@ -8835,6 +9768,66 @@ function InspectorColumn() {
               inputProps={{ "data-module-field-path": contentPath("secondaryImageAlt") }}
             />
             {renderPrimaryCtaFields()}
+            <Stack spacing={1.25} data-testid="feature-story-panels-editor">
+              <Typography variant="overline" color="text.secondary">Story panels</Typography>
+              {items.map((item, index) => (
+                <Paper key={item.id || index} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                  <Stack spacing={1}>
+                    <TextField
+                      size="small"
+                      label="Story eyebrow"
+                      value={item.kicker || item.eyebrow || ""}
+                      onChange={(event) => updateItem(index, { kicker: event.target.value })}
+                      fullWidth
+                      inputProps={{ "data-module-field-path": itemPath(index, "kicker") }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Story title"
+                      value={item.title || ""}
+                      onChange={(event) => updateItem(index, { title: event.target.value })}
+                      fullWidth
+                      inputProps={{ "data-module-field-path": itemPath(index, "title") }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Story body"
+                      value={item.body || ""}
+                      onChange={(event) => updateItem(index, { body: event.target.value })}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      inputProps={{ "data-module-field-path": itemPath(index, "body") }}
+                    />
+                    <Box data-module-field-path={itemPath(index, "image")}>
+                      <ImageField
+                        label="Story panel image"
+                        value={item.image || item.imageUrl || ""}
+                        onChange={(url) => updateItem(index, { image: url })}
+                        companyId={companyId}
+                        fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "image")}`}
+                      />
+                    </Box>
+                    <TextField
+                      size="small"
+                      label="Story panel image alt text"
+                      value={item.imageAlt || ""}
+                      onChange={(event) => updateItem(index, { imageAlt: event.target.value })}
+                      fullWidth
+                      inputProps={{ "data-module-field-path": itemPath(index, "imageAlt") }}
+                    />
+                    <Stack direction="row" justifyContent="space-between">
+                      <Stack direction="row" spacing={1}>
+                        <Button size="small" variant="outlined" onClick={() => moveItem(index, "up")} disabled={index === 0}>Move up</Button>
+                        <Button size="small" variant="outlined" onClick={() => moveItem(index, "down")} disabled={index === items.length - 1}>Move down</Button>
+                      </Stack>
+                      <Button color="error" size="small" onClick={() => removeItem(index)}>Remove panel</Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem}>Add story panel</Button>
+            </Stack>
           </>
         ) : null}
         {["cta", "bookingCta"].includes(selectedSemanticModule.type) ? (
@@ -8846,6 +9839,7 @@ function InspectorColumn() {
                 value={content.backgroundImage || ""}
                 onChange={(url) => updateSelectedContent({ backgroundImage: url })}
                 companyId={companyId}
+                fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundImage")}`}
               />
             </Box>
           </>
@@ -8857,6 +9851,8 @@ function InspectorColumn() {
               label="Address / query"
               value={content.query || ""}
               onChange={(event) => updateSelectedContent({ query: event.target.value })}
+              helperText="Used to search and position the map. Example: Queen West, Toronto"
+              placeholder="Queen West, Toronto"
               fullWidth
               inputProps={{ "data-module-field-path": contentPath("query") }}
             />
@@ -8865,6 +9861,8 @@ function InspectorColumn() {
               label="Display address"
               value={content.address || ""}
               onChange={(event) => updateSelectedContent({ address: event.target.value })}
+              helperText="This is the readable address shown to visitors. Example: 123 Main Street, Suite 4, Toronto, ON"
+              placeholder="123 Main Street, Suite 4, Toronto, ON"
               fullWidth
               inputProps={{ "data-module-field-path": contentPath("address") }}
             />
@@ -8873,6 +9871,8 @@ function InspectorColumn() {
               label="Embed URL"
               value={content.embedUrl || ""}
               onChange={(event) => updateSelectedContent({ embedUrl: event.target.value })}
+              helperText="Optional. If you fill this in, this exact map embed overrides the address/query above."
+              placeholder="https://www.google.com/maps?q=..."
               fullWidth
               inputProps={{ "data-module-field-path": contentPath("embedUrl") }}
             />
@@ -8904,6 +9904,7 @@ function InspectorColumn() {
                 value={content.posterImage || content.posterUrl || ""}
                 onChange={(url) => updateSelectedContent({ posterImage: url, posterUrl: url })}
                 companyId={companyId}
+                fieldKey={`${selectedSemanticModule.id}:${contentPath("posterImage")}`}
               />
             </Box>
           </>
@@ -8923,24 +9924,45 @@ function InspectorColumn() {
             />
             <Stack spacing={1}>
               <Typography variant="overline" color="text.secondary">
-                {selectedSemanticModule.type === "team" ? "People" : selectedSemanticModule.type === "gallery" ? "Media" : selectedSemanticModule.type === "faq" ? "Questions" : "Items"}
+                {selectedSemanticModule.type === "team"
+                  ? "People"
+                  : ["gallery", "portfolio"].includes(selectedSemanticModule.type) &&
+                    String(currentVisualThemeKey || "").trim().toLowerCase() === "iron-ember" &&
+                    String(selectedSemanticModule.slot || "").trim().toLowerCase().startsWith("home")
+                    ? "Assignments"
+                    : selectedSemanticModule.type === "gallery"
+                      ? "Media"
+                      : selectedSemanticModule.type === "featureStory"
+                        ? "Story panels"
+                        : selectedSemanticModule.type === "faq"
+                          ? "Questions"
+                          : "Items"}
               </Typography>
               {items.map((item, index) => (
                 <Paper key={item.id || index} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                   <Stack spacing={1}>
                     <TextField
                       size="small"
-                      label={selectedSemanticModule.type === "reviews" ? "Name / heading" : "Title"}
-                      value={item.title || item.label || item.author || ""}
+                      label={selectedSemanticModule.type === "reviews"
+                        ? "Name / heading"
+                        : selectedSemanticModule.type === "faq"
+                          ? "Question"
+                          : ["gallery", "portfolio"].includes(selectedSemanticModule.type) &&
+                            String(currentVisualThemeKey || "").trim().toLowerCase() === "iron-ember" &&
+                            String(selectedSemanticModule.slot || "").trim().toLowerCase().startsWith("home")
+                            ? "Assignment title"
+                            : "Title"}
+                      value={selectedSemanticModule.type === "faq" ? (item.question || item.title || "") : (item.title || item.label || item.author || "")}
                       onChange={(event) =>
                         updateItem(index, {
                           title: event.target.value,
                           label: event.target.value,
+                          ...(selectedSemanticModule.type === "faq" ? { question: event.target.value } : {}),
                           ...(selectedSemanticModule.type === "reviews" ? { author: event.target.value } : {}),
                         })
                       }
                       fullWidth
-                      inputProps={{ "data-module-field-path": itemPath(index, "title") }}
+                      inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "question" : "title") }}
                     />
                     {["team", "reviews", "services", "locations", "hoursLocation", "contactDetails", "serviceAreas", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
                       <TextField
@@ -8954,13 +9976,28 @@ function InspectorColumn() {
                     ) : null}
                     <TextField
                       size="small"
-                      label={selectedSemanticModule.type === "reviews" ? "Quote / body" : selectedSemanticModule.type === "faq" ? "Answer" : "Body"}
-                      value={item.body || item.quote || ""}
-                      onChange={(event) => updateItem(index, { body: event.target.value, quote: event.target.value })}
+                      label={selectedSemanticModule.type === "reviews"
+                        ? "Quote / body"
+                        : selectedSemanticModule.type === "faq"
+                          ? "Answer"
+                          : selectedSemanticModule.type === "team"
+                            ? "Bio"
+                            : ["gallery", "portfolio"].includes(selectedSemanticModule.type) &&
+                              String(currentVisualThemeKey || "").trim().toLowerCase() === "iron-ember" &&
+                              String(selectedSemanticModule.slot || "").trim().toLowerCase().startsWith("home")
+                              ? "Assignment caption"
+                              : "Body"}
+                      value={selectedSemanticModule.type === "faq" ? (item.answer || item.body || "") : selectedSemanticModule.type === "team" ? (item.bio || item.body || "") : (item.body || item.quote || "")}
+                      onChange={(event) => updateItem(index, {
+                        body: event.target.value,
+                        quote: event.target.value,
+                        ...(selectedSemanticModule.type === "faq" ? { answer: event.target.value } : {}),
+                        ...(selectedSemanticModule.type === "team" ? { bio: event.target.value } : {}),
+                      })}
                       fullWidth
                       multiline
                       minRows={2}
-                      inputProps={{ "data-module-field-path": itemPath(index, "body") }}
+                      inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "answer" : selectedSemanticModule.type === "team" ? "bio" : "body") }}
                     />
                     {selectedSemanticModule.type === "pricing" ? (
                       <>
@@ -8992,10 +10029,10 @@ function InspectorColumn() {
                         />
                       </>
                     ) : null}
-                    {selectedSemanticModule.type === "stats" ? (
+                    {["stats", "trustRail", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
                       <TextField
                         size="small"
-                        label="Value"
+                        label={selectedSemanticModule.type === "stats" ? "Value" : "Proof value"}
                         value={item.value || ""}
                         onChange={(event) => updateItem(index, { value: event.target.value })}
                         fullWidth
@@ -9010,6 +10047,7 @@ function InspectorColumn() {
                             value={item.image || item.imageUrl || ""}
                             onChange={(url) => updateItem(index, { image: url })}
                             companyId={companyId}
+                            fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "image")}`}
                           />
                         </Box>
                         <TextField
@@ -9024,21 +10062,22 @@ function InspectorColumn() {
                     ) : null}
                     {selectedSemanticModule.type === "reviews" ? (
                       <>
-                        <Box data-module-field-path={itemPath(index, "avatar")}>
+                        <Box data-module-field-path={itemPath(index, "image")}>
                           <ImageField
-                            label="Avatar"
-                            value={item.avatar || ""}
-                            onChange={(url) => updateItem(index, { avatar: url })}
+                            label="Testimonial image"
+                            value={item.image || item.imageUrl || ""}
+                            onChange={(url) => updateItem(index, { image: url, imageUrl: url })}
                             companyId={companyId}
+                            fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "image")}`}
                           />
                         </Box>
                         <TextField
                           size="small"
-                          label="Avatar alt text"
-                          value={item.avatarAlt || ""}
-                          onChange={(event) => updateItem(index, { avatarAlt: event.target.value })}
+                          label="Testimonial image alt text"
+                          value={item.imageAlt || ""}
+                          onChange={(event) => updateItem(index, { imageAlt: event.target.value })}
                           fullWidth
-                          inputProps={{ "data-module-field-path": itemPath(index, "avatarAlt") }}
+                          inputProps={{ "data-module-field-path": itemPath(index, "imageAlt") }}
                         />
                       </>
                     ) : null}
@@ -9050,6 +10089,7 @@ function InspectorColumn() {
                             value={item.beforeImage || ""}
                             onChange={(url) => updateItem(index, { beforeImage: url })}
                             companyId={companyId}
+                            fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "beforeImage")}`}
                           />
                         </Box>
                         <Box data-module-field-path={itemPath(index, "afterImage")}>
@@ -9058,6 +10098,7 @@ function InspectorColumn() {
                             value={item.afterImage || ""}
                             onChange={(url) => updateItem(index, { afterImage: url })}
                             companyId={companyId}
+                            fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "afterImage")}`}
                           />
                         </Box>
                         <TextField
@@ -9125,7 +10166,26 @@ function InspectorColumn() {
             <Button
               size="small"
               variant="outlined"
+              startIcon={<UndoIcon />}
+              onClick={undo}
+              disabled={!canUndo}
+            >
+              Undo
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RedoIcon />}
+              onClick={redo}
+              disabled={!canRedo}
+            >
+              Redo
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
               onClick={() => moveSemanticModule(selectedSemanticModule.id, "up")}
+              disabled={!canMoveSemanticModule(selectedSemanticModule.id, "up")}
             >
               Move up
             </Button>
@@ -9133,6 +10193,7 @@ function InspectorColumn() {
               size="small"
               variant="outlined"
               onClick={() => moveSemanticModule(selectedSemanticModule.id, "down")}
+              disabled={!canMoveSemanticModule(selectedSemanticModule.id, "down")}
             >
               Move down
             </Button>
@@ -10147,7 +11208,7 @@ function InspectorColumn() {
               >
                 <Box
                   component="iframe"
-                  ref={nextJsPreviewIframeRef}
+                  ref={nextJsStylePreviewIframeRef}
                   title="Next.js website preview"
                   src={nextJsPreviewUrl}
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"

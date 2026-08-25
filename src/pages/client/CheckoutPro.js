@@ -72,6 +72,11 @@ function CheckoutShell({
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
   const [publicUpgradeMessage, setPublicUpgradeMessage] = useState("");
+  const showPublicBookingUnavailable = () => {
+    setError("");
+    setPublicUpgradeMessage("");
+    setPublicUpgradeOpen(true);
+  };
   const formatMoney = useCallback((value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency), [displayCurrency]);
   const currencyFmt = useCallback((value, currencyCode) => formatMoney(value, currencyCode), [formatMoney]);
   const accentColor = "var(--page-btn-bg, var(--sched-primary))";
@@ -436,8 +441,7 @@ function CheckoutShell({
     } catch (ex) {
       const data = ex?.response?.data || {};
       if (ex?.response?.status === 402 && data?.error === "subscription_required") {
-        setPublicUpgradeMessage(data?.message || "");
-        setPublicUpgradeOpen(true);
+        showPublicBookingUnavailable();
         return;
       }
       const message = data?.error || ex?.message || "Checkout failed";
@@ -461,8 +465,7 @@ function CheckoutShell({
     } catch (ex) {
       const data = ex?.response?.data || {};
       if (ex?.response?.status === 402 && data?.error === "subscription_required") {
-        setPublicUpgradeMessage(data?.message || "");
-        setPublicUpgradeOpen(true);
+        showPublicBookingUnavailable();
         return;
       }
       const message = data?.error || ex?.message || "Deposit not captured";
@@ -486,8 +489,7 @@ function CheckoutShell({
     } catch (ex) {
       const data = ex?.response?.data || {};
       if (ex?.response?.status === 402 && data?.error === "subscription_required") {
-        setPublicUpgradeMessage(data?.message || "");
-        setPublicUpgradeOpen(true);
+        showPublicBookingUnavailable();
         return;
       }
       const message = data?.error || ex?.message || "Card authorization failed";
@@ -519,6 +521,11 @@ function CheckoutShell({
         await confirmUnpaid();
       }
     } catch (e) {
+      const data = e?.response?.data || {};
+      if (e?.response?.status === 402 && data?.error === "subscription_required") {
+        showPublicBookingUnavailable();
+        return;
+      }
       setError(e?.message || "Checkout failed");
     } finally {
       setBusy(false);

@@ -39,6 +39,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { website } from "../../utils/api";
 import {
   SOCIAL_ICON_OPTIONS,
+  SOCIAL_PLACEMENT_OPTIONS,
   defaultFooterConfig,
   defaultHeaderConfig,
   normalizeFooterConfig,
@@ -862,6 +863,30 @@ function SocialLinksEditor({ title, items, onChange }) {
   );
 }
 
+function SocialPlacementSelector({ value, onChange }) {
+  return (
+    <Stack spacing={0.5}>
+      <FormControl size="small" fullWidth>
+        <InputLabel>Show social icons</InputLabel>
+        <Select
+          label="Show social icons"
+          value={value || "footer"}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          {SOCIAL_PLACEMENT_OPTIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <Typography variant="caption" color="text.secondary">
+        Next.js themes use this one social-link list in the selected placement.
+      </Typography>
+    </Stack>
+  );
+}
+
 function ColumnsEditor({ columns, onChange }) {
   const list = Array.isArray(columns) ? columns : [];
   const handleAdd = () => {
@@ -1265,6 +1290,8 @@ export default function WebsiteBrandingCard({
   onChangeNavOverrides,
   pagesMeta = [],
   onRequestPagesJump,
+  onRequestContactJump,
+  surface = "classic",
   floatingSaveVisible = true,
   floatingSavePlacement = "bottom-right",
 }) {
@@ -1488,6 +1515,178 @@ export default function WebsiteBrandingCard({
       nav_overrides: navOverrides,
     });
   };
+
+  // Next.js themes keep their visual shell in the renderer. This focused
+  // surface deliberately reuses the exact same draft object, uploader, and
+  // save callback as Classic while avoiding controls that are still truly
+  // renderer-specific (utility bars and generic presets). Footer columns are
+  // shared control-plane data and are rendered by every Next theme.
+  const conciseNextJsThemes = new Set([
+    "iron-ember",
+    "still-bloom",
+    "clear-clinic",
+    "harbor-line",
+    "frame-and-field",
+    "motion-editorial",
+    "black-letter",
+    "circuit-north",
+    "solara-stay",
+    "paw-and-pine",
+    "quiet-harbor",
+    "fieldcraft",
+    "modern-gradient",
+    "eldora-dark",
+    "finwise",
+  ]);
+  if (conciseNextJsThemes.has(surface)) {
+    const themeName = surface.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+    const pageNavLabels = derivedPageNav.map((item) => item.label).filter(Boolean);
+    return (
+      <Stack spacing={2} data-testid={`${surface}-branding-surface`}>
+        <Alert severity="info">
+          {themeName} uses its own header and footer composition. These shared
+          settings update that composition without changing your pages.
+        </Alert>
+        <Card variant="outlined">
+          <CardHeader
+            title="Header Brand"
+            subheader="Use the shared logo asset. Enable the text brand to show its name and subtitle alongside the logo."
+          />
+          <CardContent>
+            <Stack spacing={2}>
+              <LogoPicker
+                label="Header logo"
+                asset={header.logo_asset}
+                onUpload={(file) => uploadLogo(file, "header")}
+                onClear={() => updateHeader({ logo_asset_id: null, logo_asset: null })}
+                uploading={uploading}
+                disabled={!companyId}
+              />
+              <FormControlLabel
+                control={<Switch checked={header.show_brand_text !== false} onChange={(_, value) => updateHeader({ show_brand_text: value })} />}
+                label="Show text brand alongside logo"
+              />
+              <TextField
+                size="small"
+                label="Text brand"
+                value={header.text || ""}
+                onChange={(event) => updateHeader({ text: event.target.value })}
+                helperText="Shown beside the logo, or on its own when no logo is selected."
+                fullWidth
+              />
+              <TextField
+                size="small"
+                label="Text brand subtitle"
+                value={header.tagline || ""}
+                onChange={(event) => updateHeader({ tagline: event.target.value })}
+                fullWidth
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardHeader title="Header Navigation" subheader={`${themeName} navigation is generated from canonical Website Pages.`} />
+          <CardContent>
+            <Stack spacing={1.5}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {pageNavLabels.length ? pageNavLabels.map((label) => <Chip key={label} size="small" label={label} />) : <Typography variant="body2" color="text.secondary">No visible Website Pages are available yet.</Typography>}
+              </Stack>
+              <Button variant="outlined" size="small" onClick={onRequestPagesJump} sx={{ alignSelf: "flex-start" }}>
+                Manage pages and navigation
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardHeader title="Footer Brand" subheader={`${themeName} reuses the shared header logo in the footer.`} />
+          <CardContent>
+            <TextField
+              size="small"
+              multiline
+              minRows={3}
+              fullWidth
+              label="Footer summary"
+              value={footer.text || ""}
+              onChange={(event) => updateFooter({ text: event.target.value })}
+            />
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardHeader title="Footer Contact" subheader="Phone, email, and address are shared business contact details." />
+          <CardContent>
+            <Button variant="outlined" size="small" onClick={onRequestContactJump}>
+              Edit business contact details
+            </Button>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardHeader title="Footer Links" subheader="Create the same titled footer columns and links used by the Classic website." />
+          <CardContent>
+            <Stack spacing={2}>
+              <ColumnsEditor
+                columns={footer.columns}
+                onChange={(columns) => updateFooter({ columns })}
+              />
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button size="small" onClick={() => updateFooter({ columns: cloneFooterColumns() })}>
+                  Insert default columns
+                </Button>
+                <Button size="small" onClick={() => updateFooter({ legal_links: cloneLegalLinks() })}>
+                  Insert legal links
+                </Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card variant="outlined">
+          <CardHeader title="Footer Social & Legal" subheader={`Only configured links are displayed by ${themeName}.`} />
+          <CardContent>
+            <Stack spacing={2}>
+              <SocialPlacementSelector
+                value={footer.social_placement}
+                onChange={(social_placement) => updateFooter({ social_placement })}
+              />
+              <SocialLinksEditor
+                title="Footer social links"
+                items={footer.social_links}
+                onChange={(items) => updateFooter({ social_links: items })}
+              />
+              <LinkListEditor
+                title="Legal links"
+                items={footer.legal_links}
+                onChange={(links) => updateFooter({ legal_links: links })}
+                addLabel="Add legal link"
+                max={MAX_LEGAL_LINKS}
+              />
+              <FormControlLabel
+                control={<Switch checked={footer.show_copyright !== false} onChange={(_, value) => updateFooter({ show_copyright: value })} />}
+                label="Show copyright line"
+              />
+              {footer.show_copyright !== false ? (
+                <TextField
+                  size="small"
+                  fullWidth
+                  label="Copyright text"
+                  helperText="Use {{year}} and {{company}} tokens."
+                  value={footer.copyright_text || ""}
+                  onChange={(event) => updateFooter({ copyright_text: event.target.value })}
+                />
+              ) : null}
+            </Stack>
+          </CardContent>
+        </Card>
+        {uploadErr && <ErrorHelper message={uploadErr} />}
+        {error && <ErrorHelper message={error} />}
+        {message ? <Alert severity="success">{message}</Alert> : null}
+        {validationErrors.length ? <Alert severity="warning">{validationErrors.map((issue) => <div key={issue}>{issue}</div>)}</Alert> : null}
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button variant="contained" disabled={saving || uploading} onClick={handleSave}>
+            {saving ? "Saving…" : `Save ${themeName} settings`}
+          </Button>
+        </Box>
+      </Stack>
+    );
+  }
 
   return (
     <Stack spacing={3}>
@@ -1871,6 +2070,9 @@ export default function WebsiteBrandingCard({
             title="Social Links"
             tooltip="Manage header social icons, where they appear, and how they align with the menu."
           >
+            <Alert severity="info" variant="outlined">
+              These settings remain for the Classic public layout. Next.js themes use the Footer Social links and placement setting below.
+            </Alert>
             <SocialLinksEditor
               title="Header social links"
               items={header.social_links}
@@ -2140,6 +2342,10 @@ export default function WebsiteBrandingCard({
             title="Footer Social"
             tooltip="Manage the footer social links displayed near the bottom of the website."
           >
+            <SocialPlacementSelector
+              value={footer.social_placement}
+              onChange={(social_placement) => updateFooter({ social_placement })}
+            />
             <SocialLinksEditor
               title="Footer social links"
               items={footer.social_links}

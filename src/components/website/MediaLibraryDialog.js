@@ -43,8 +43,14 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Media Library</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="website-media-library-title"
+    >
+      <DialogTitle id="website-media-library-title">Media Library</DialogTitle>
       <DialogContent dividers>
         <Box sx={{ mb: 2 }}>
           <Button component="label" variant="outlined">

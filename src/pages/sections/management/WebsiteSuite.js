@@ -22,12 +22,23 @@ import VisualSiteBuilder from "./VisualSiteBuilder";
 import InlineSiteEditor from "./InlineSiteEditor";
 import ManagementFrame from "../../../components/ui/ManagementFrame";
 
-const TAB_KEYS = ["manager", "editor", "templates", "builder"];
+const TAB_KEYS = ["manager", "editor", "templates", "builder", "seo"];
+
+function initialWebsiteTab() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const requested = params.get("websiteTab") || (window.location.hash === "#seo" ? "seo" : "");
+    return TAB_KEYS.indexOf(requested);
+  } catch {
+    return -1;
+  }
+}
 
 export default function WebsiteSuite() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState(0);
-  const [open, setOpen] = useState(false);
+  const requestedTab = initialWebsiteTab();
+  const [tab, setTab] = useState(requestedTab >= 0 ? requestedTab : 0);
+  const [open, setOpen] = useState(requestedTab >= 0);
   const [full, setFull] = useState(true);
   const supportSessionId = useMemo(() => {
     try {
@@ -59,6 +70,11 @@ export default function WebsiteSuite() {
         label: t("manager.websiteSuite.tabs.builder.label"),
         dialogTitle: t("manager.websiteSuite.tabs.builder.dialogTitle"),
       },
+      {
+        key: "seo",
+        label: t("management.domainSettings.seo.title", "SEO & Metadata"),
+        dialogTitle: t("management.domainSettings.seo.title", "SEO & Metadata"),
+      },
     ],
     [t]
   );
@@ -81,6 +97,14 @@ export default function WebsiteSuite() {
           setTab(value);
           setFull(true);
           setOpen(true);
+          try {
+            const next = new URL(window.location.href);
+            next.searchParams.set("websiteTab", tabConfig[value]?.key || TAB_KEYS[0]);
+            next.hash = "";
+            window.history.replaceState(null, "", `${next.pathname}${next.search}`);
+          } catch {
+            // Route state is a convenience only; the Website Suite remains usable without it.
+          }
         }}
         variant="scrollable"
         allowScrollButtonsMobile
@@ -123,6 +147,7 @@ export default function WebsiteSuite() {
             {activeKey === "editor" && <InlineSiteEditor />}
             {activeKey === "templates" && <WebsiteTemplates />}
             {activeKey === "builder" && <VisualSiteBuilder />}
+            {activeKey === "seo" && <WebsiteManager focusSeo />}
           </Box>
         </DialogContent>
       </Dialog>

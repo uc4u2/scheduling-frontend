@@ -2,11 +2,14 @@ import {
   candidateSemanticFieldPaths,
   createSemanticModule,
   inferPageKind,
+  normalizeSemanticModuleMediaReferences,
   normalizeSemanticFieldPath,
   normalizeSemanticModules,
 } from "./websiteSemanticModules";
+import { getCompatibleSlots } from "./websiteThemeModules";
 import {
   getCompatibleModuleChoices,
+  getThemeModuleDisplayLabel,
   getThemeModuleManifest,
   resolveFallbackSlot,
 } from "./websiteThemeModules";
@@ -45,7 +48,7 @@ describe("website semantic modules", () => {
     expect(resolveFallbackSlot("modern-gradient", "services", "faq", "home.afterServices")).toBe("services.afterList");
   });
 
-  it("exposes manifests for all four live Next.js themes", () => {
+  it("exposes manifests for all integrated Next.js themes", () => {
     expect(getThemeModuleManifest("modern-gradient")).toBeTruthy();
     expect(getThemeModuleManifest("eldora-dark")).toBeTruthy();
     expect(getThemeModuleManifest("motion-editorial")).toBeTruthy();
@@ -56,12 +59,46 @@ describe("website semantic modules", () => {
     expect(getThemeModuleManifest("still-bloom")).toBeTruthy();
     expect(getThemeModuleManifest("black-letter")).toBeTruthy();
     expect(getThemeModuleManifest("circuit-north")).toBeTruthy();
+    expect(getThemeModuleManifest("solara-stay")).toBeTruthy();
+    expect(getThemeModuleManifest("paw-and-pine")).toBeTruthy();
+    expect(getThemeModuleManifest("quiet-harbor")).toBeTruthy();
+    expect(getThemeModuleManifest("frame-and-field")).toBeTruthy();
+    expect(getThemeModuleManifest("fieldcraft")).toBeTruthy();
   });
 
   it("infers canonical page kinds from legacy page slugs", () => {
     expect(inferPageKind({ slug: "services-classic" })).toBe("services");
     expect(inferPageKind({ slug: "service-areas" })).toBe("service-areas");
     expect(inferPageKind({ slug: "service-detail-facial" })).toBe("service-detail");
+    expect(inferPageKind({ slug: "products" })).toBe("products");
+    expect(inferPageKind({ slug: "products-classic" })).toBe("products");
+    expect(inferPageKind({ slug: "product-detail" })).toBe("product-detail");
+    expect(inferPageKind({ slug: "jobs" })).toBe("jobs");
+    expect(inferPageKind({ slug: "job-detail" })).toBe("job-detail");
+    expect(inferPageKind({ slug: "blog" })).toBe("blog");
+  });
+
+  it("gives Iron Ember's canonical Journal page an explicit Builder module manifest", () => {
+    const slots = getCompatibleSlots("iron-ember", "blog");
+    expect(slots["blog.primaryContent"].allowedModuleTypes).toContain("richText");
+    expect(slots["blog.finalCta"].allowedModuleTypes).toContain("cta");
+  });
+
+  it("gives Iron Ember Products and Jobs editable intro slots", () => {
+    const productSlots = getCompatibleSlots("iron-ember", "products");
+    const jobSlots = getCompatibleSlots("iron-ember", "jobs");
+    expect(productSlots["products.intro"].allowedModuleTypes).toContain("richText");
+    expect(jobSlots["jobs.intro"].allowedModuleTypes).toContain("richText");
+    expect(createSemanticModule("richText", { slug: "products" }).slot).toBe("products.intro");
+    expect(createSemanticModule("richText", { slug: "jobs" }).slot).toBe("jobs.intro");
+  });
+
+  it("uses Iron Ember Contact page labels without changing its shared semantic slots", () => {
+    expect(getThemeModuleDisplayLabel("iron-ember", "contactDetails", "contact.details")).toBe("Studio Details");
+    expect(getThemeModuleDisplayLabel("iron-ember", "hoursLocation", "contact.hours")).toBe("Studio Hours");
+    expect(getThemeModuleDisplayLabel("iron-ember", "map", "contact.map")).toBe("Studio Map");
+    expect(getThemeModuleDisplayLabel("iron-ember", "contactForm", "contact.form")).toBe("Contact Form");
+    expect(getThemeModuleDisplayLabel("modern-gradient", "map", "contact.map")).toBe("Map");
   });
 
   it("preserves richer semantic media fields when normalizing legacy blocks", () => {
@@ -135,12 +172,52 @@ describe("website semantic modules", () => {
     expect(video.content.posterUrl).toBe("https://cdn.example.com/poster.jpg");
   });
 
+  it("preserves legacy editorial-review entries as page-owned testimonial content", () => {
+    const modules = normalizeSemanticModules({
+      slug: "reviews",
+      content: {
+        sections: [{
+          id: "reviews-grid",
+          type: "reviewEditorialGrid",
+          props: {
+            title: "What clients are saying",
+            subtitle: "Recent client feedback",
+            reviewCountLabel: "Rated 5 stars by recent clients",
+            platformLabel: "Client reviews",
+            buttonText: "Read more reviews",
+            buttonLink: "/reviews",
+            entries: [{
+              name: "Alyssa M.",
+              badge: "Verified client",
+              text: "A thoughtful and well managed experience.",
+              image: "https://cdn.example.com/review.jpg",
+              imageAlt: "Review image",
+            }],
+          },
+        }],
+      },
+    });
+    const reviews = modules.find((module) => module.type === "reviews");
+    expect(reviews.content.items).toHaveLength(1);
+    expect(reviews.content.items[0]).toMatchObject({
+      title: "Alyssa M.",
+      body: "A thoughtful and well managed experience.",
+      badge: "Verified client",
+      image: "https://cdn.example.com/review.jpg",
+    });
+    expect(reviews.content).toMatchObject({
+      reviewCountLabel: "Rated 5 stars by recent clients",
+      platformLabel: "Client reviews",
+      primaryCta: { label: "Read more reviews", href: "/reviews" },
+    });
+  });
+
   it("normalizes canonical and aliased semantic field paths for builder focus", () => {
     expect(normalizeSemanticFieldPath("content.heading")).toBe("heading");
-    expect(normalizeSemanticFieldPath("content.items.0.question")).toBe("items.0.title");
-    expect(normalizeSemanticFieldPath("content.items.0.answer")).toBe("items.0.body");
-    expect(normalizeSemanticFieldPath("content.people.0.name")).toBe("items.0.title");
-    expect(normalizeSemanticFieldPath("content.people.0.bio")).toBe("items.0.body");
+    expect(normalizeSemanticFieldPath("content.items.0.question")).toBe("items.0.question");
+    expect(normalizeSemanticFieldPath("content.items.0.answer")).toBe("items.0.answer");
+    expect(normalizeSemanticFieldPath("content.people.0.name")).toBe("items.0.name");
+    expect(normalizeSemanticFieldPath("content.people.0.bio")).toBe("items.0.bio");
     expect(normalizeSemanticFieldPath("content.people.0.image")).toBe("items.0.image");
     expect(normalizeSemanticFieldPath("content.primaryCta.label")).toBe("primaryCta.label");
     expect(normalizeSemanticFieldPath("content.image")).toBe("image");
@@ -153,7 +230,8 @@ describe("website semantic modules", () => {
     ]);
     expect(candidateSemanticFieldPaths("content.items.0.question")).toEqual(
       expect.arrayContaining([
-        "items.0.title",
+        "items.0.question",
+        "content.items.0.question",
         "content.items.0.title",
         "content.items.0.question",
         "content.items.0.name",
@@ -162,7 +240,8 @@ describe("website semantic modules", () => {
     );
     expect(candidateSemanticFieldPaths("content.items.0.answer")).toEqual(
       expect.arrayContaining([
-        "items.0.body",
+        "items.0.answer",
+        "content.items.0.answer",
         "content.items.0.body",
         "content.items.0.answer",
         "content.items.0.bio",
@@ -179,6 +258,42 @@ describe("website semantic modules", () => {
     expect(candidateSemanticFieldPaths("content.primaryCta.label")).toEqual([
       "primaryCta.label",
       "content.primaryCta.label",
+    ]);
+  });
+
+  it("stores WebsiteMedia file URLs as portable canonical references without changing external URLs", () => {
+    const modules = normalizeSemanticModuleMediaReferences([
+      {
+        type: "hero",
+        content: {
+          image: "http://127.0.0.1:5000/api/website/media/file/8/hero.webp?variant=1200",
+          secondaryImage: "https://images.example.com/story.jpg",
+          items: [{ image: "https://api.example.test/api/website/media/file/8/team.webp" }],
+        },
+      },
+    ]);
+
+    expect(modules[0].content.image).toBe("/api/website/media/file/8/hero.webp?variant=1200");
+    expect(modules[0].content.secondaryImage).toBe("https://images.example.com/story.jpg");
+    expect(modules[0].content.items[0].image).toBe("/api/website/media/file/8/team.webp");
+  });
+
+  it("repairs malformed WebsiteMedia URLs that still include company/website-media path segments", () => {
+    const modules = normalizeSemanticModuleMediaReferences([
+      {
+        type: "hero",
+        content: {
+          image: "http://127.0.0.1:5000/api/website/media/file/7/company/7/website-media/1786832726_download.png",
+          secondaryImages: [
+            "/api/website/media/file/7/company/7/website-media/1786853226_download.png",
+          ],
+        },
+      },
+    ]);
+
+    expect(modules[0].content.image).toBe("/api/website/media/file/7/1786832726_download.png");
+    expect(modules[0].content.secondaryImages).toEqual([
+      "/api/website/media/file/7/1786853226_download.png",
     ]);
   });
 });

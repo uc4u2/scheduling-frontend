@@ -55,10 +55,18 @@ export default function ClientDashboard() {
   useEffect(() => {
     if (tenantSlug) persistTenantSlug(tenantSlug);
     const token = localStorage.getItem("token");
-    if (getRoleFromToken(token) !== "client") {
+    // CompanyPublic, the established public client entry, treats the stored
+    // role as the session authority after a successful client login. Keep the
+    // dashboard gate compatible with that contract as some valid legacy
+    // client tokens do not expose a top-level role claim.
+    const storedRole = String(localStorage.getItem("role") || "").toLowerCase();
+    const isClientSession = storedRole === "client" || getRoleFromToken(token) === "client";
+    if (!isClientSession) {
+      window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: false }, "*");
       navigate(buildTenantLoginPath(tenantSlug));
       return;
     }
+    window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: true }, "*");
     // Optionally, set tab by URL hash
     const hash = window.location.hash.toLowerCase();
     if (tabHashMap.hasOwnProperty(hash)) {
@@ -71,8 +79,19 @@ export default function ClientDashboard() {
       localStorage.removeItem("token");
       localStorage.removeItem("clientToken");
       localStorage.removeItem("role");
+      window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: false }, "*");
       const params = new URLSearchParams(window.location.search);
       const siteSlug = params.get("site");
+      // A Next public page frames this dashboard with embed=1. Keep logout
+      // inside the tenant-scoped client-auth surface so it does not fall back
+      // to the legacy public page/header.
+      if (params.get("embed") === "1" && (siteSlug || tenantSlug)) {
+        const tenant = siteSlug || tenantSlug;
+        window.location.assign(
+          `/login?site=${encodeURIComponent(tenant)}&client=1&embed=1&dialog=1`,
+        );
+        return;
+      }
       if (params.get("page") === "my-bookings") {
         window.location.assign(buildTenantDashboardPath(tenantSlug, { page: "my-bookings" }));
         return;

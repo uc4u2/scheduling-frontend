@@ -24,18 +24,32 @@ export function decodeJwt(token = "") {
   }
 }
 
+export function parsePositiveCompanyId(value) {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const direct = Number(raw);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const match = raw.match(/\d+/);
+  if (!match) return null;
+  const extracted = Number(match[0]);
+  return Number.isFinite(extracted) && extracted > 0 ? extracted : null;
+}
+
 /** Cache helpers (used by hook & axios interceptor) */
 export function setCachedCompanyId(id) {
-  const n = Number(id);
-  if (Number.isFinite(n) && n > 0 && typeof localStorage !== "undefined") {
+  const n = parsePositiveCompanyId(id);
+  if (n && typeof localStorage !== "undefined") {
     localStorage.setItem("company_id", String(n));
   }
 }
 export function getCachedCompanyId() {
   if (typeof localStorage === "undefined") return null;
   const raw = localStorage.getItem("company_id");
-  const n = raw ? Number(raw) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : null;
+  return parsePositiveCompanyId(raw);
 }
 export function clearCachedCompanyId() {
   try { localStorage.removeItem("company_id"); } catch {}
@@ -62,8 +76,8 @@ export function getAuthedCompanyId(opts = {}) {
     if (allowQuery && typeof window !== "undefined" && window.location?.search) {
       const q = new URLSearchParams(window.location.search);
       const fromQ = q.get("company_id") || q.get("cid");
-      const n = Number(fromQ);
-      if (Number.isFinite(n) && n > 0) return n;
+      const n = parsePositiveCompanyId(fromQ);
+      if (n) return n;
     }
   } catch {}
 
@@ -85,8 +99,8 @@ export function getAuthedCompanyId(opts = {}) {
           p.company?.id ??
           p.cid ??
           null;
-        const n = Number(guess);
-        if (Number.isFinite(n) && n > 0) return n;
+        const n = parsePositiveCompanyId(guess);
+        if (n) return n;
       }
     }
   } catch {}
@@ -113,8 +127,7 @@ export function onCompanyIdChange(handler) {
   if (typeof window === "undefined") return () => {};
   const fn = (e) => {
     if (e.key === "company_id") {
-      const n = e.newValue ? Number(e.newValue) : null;
-      handler(Number.isFinite(n) && n > 0 ? n : null);
+      handler(parsePositiveCompanyId(e.newValue));
     }
   };
   window.addEventListener("storage", fn);

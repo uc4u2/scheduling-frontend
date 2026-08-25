@@ -44,8 +44,13 @@ const SHARED_PAGES = {
   },
   reviews: {
     slotRules: {
-      "reviews.primaryContent": { allowedModuleTypes: ["reviews"], maxInstances: 2, required: true },
-      "reviews.supporting": { allowedModuleTypes: ["stats", "trustRail", "cta", "reviewSummary"], maxInstances: 4, fallbackSlot: "reviews.primaryContent" },
+      "reviews.intro": { allowedModuleTypes: ["richText", "featureStory", "hero"], maxInstances: 2 },
+      // Keep primaryContent for older WebsitePage rows. The published review
+      // rail deliberately has its own slot so selecting it never opens an
+      // unrelated legacy content module.
+      "reviews.primaryContent": { allowedModuleTypes: ["richText", "featureStory", "hero"], maxInstances: 2 },
+      "reviews.list": { allowedModuleTypes: ["reviews", "reviewSummary"], maxInstances: 2, required: true },
+      "reviews.supporting": { allowedModuleTypes: ["stats", "trustRail", "cta"], maxInstances: 4, fallbackSlot: "reviews.list" },
     },
   },
   projects: {
@@ -61,17 +66,69 @@ const SHARED_PAGES = {
   },
 };
 
+// Iron Ember's Journal is a normal canonical WebsitePage, not a separate
+// blog CMS. Keep its supported Add Section choices explicit so the Builder
+// presents the same page-specific editing contract as About or Contact.
+const IRON_EMBER_PAGES = {
+  ...SHARED_PAGES,
+  products: {
+    slotRules: {
+      "products.intro": { allowedModuleTypes: ["richText", "featureStory", "hero"], maxInstances: 2 },
+      "products.supporting": { allowedModuleTypes: ["faq", "reviews", "cta", "trustRail"], maxInstances: 4, fallbackSlot: "products.intro" },
+    },
+  },
+  jobs: {
+    slotRules: {
+      "jobs.intro": { allowedModuleTypes: ["richText", "featureStory", "hero"], maxInstances: 2 },
+      "jobs.supporting": { allowedModuleTypes: ["faq", "reviews", "cta", "trustRail"], maxInstances: 4, fallbackSlot: "jobs.intro" },
+    },
+  },
+  blog: {
+    slotRules: {
+      "blog.primaryContent": { allowedModuleTypes: ["richText", "featureStory", "gallery"], maxInstances: 4, required: true },
+      "blog.supporting": { allowedModuleTypes: ["faq", "reviews", "cta"], maxInstances: 3, fallbackSlot: "blog.primaryContent" },
+      "blog.finalCta": { allowedModuleTypes: ["cta", "bookingCta"], maxInstances: 2, fallbackSlot: "blog.supporting" },
+    },
+  },
+};
+
+// These are presentation labels only.  The module types and slots remain the
+// shared semantic contract; Iron Ember simply uses more useful studio language
+// for its deliberately composed Contact page.
+const THEME_SLOT_LABELS = {
+  "iron-ember": {
+    "contact.intro": "Contact Intro",
+    "contact.details": "Studio Details",
+    "contact.hours": "Studio Hours",
+    "contact.map": "Studio Map",
+    "contact.form": "Contact Form",
+    "contact.booking": "Contact CTA",
+  },
+};
+
+export function getThemeModuleDisplayLabel(themeKey, moduleType, slot) {
+  const normalizedThemeKey = String(themeKey || "").trim().toLowerCase();
+  const normalizedSlot = String(slot || "").trim().toLowerCase();
+  const themeLabel = THEME_SLOT_LABELS[normalizedThemeKey]?.[normalizedSlot];
+  return themeLabel || SEMANTIC_MODULE_LABELS[moduleType] || moduleType;
+}
+
 export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "modern-gradient": { themeKey: "modern-gradient", pages: SHARED_PAGES },
   "eldora-dark": { themeKey: "eldora-dark", pages: SHARED_PAGES },
   "motion-editorial": { themeKey: "motion-editorial", pages: SHARED_PAGES },
   finwise: { themeKey: "finwise", pages: SHARED_PAGES },
-  "iron-ember": { themeKey: "iron-ember", pages: SHARED_PAGES },
+  "iron-ember": { themeKey: "iron-ember", pages: IRON_EMBER_PAGES },
   "clear-clinic": { themeKey: "clear-clinic", pages: SHARED_PAGES },
   "harbor-line": { themeKey: "harbor-line", pages: SHARED_PAGES },
   "still-bloom": { themeKey: "still-bloom", pages: SHARED_PAGES },
   "black-letter": { themeKey: "black-letter", pages: SHARED_PAGES },
   "circuit-north": { themeKey: "circuit-north", pages: SHARED_PAGES },
+  "solara-stay": { themeKey: "solara-stay", pages: SHARED_PAGES },
+  "paw-and-pine": { themeKey: "paw-and-pine", pages: SHARED_PAGES },
+  "quiet-harbor": { themeKey: "quiet-harbor", pages: SHARED_PAGES },
+  "frame-and-field": { themeKey: "frame-and-field", pages: SHARED_PAGES },
+  fieldcraft: { themeKey: "fieldcraft", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {
@@ -104,7 +161,7 @@ export function getCompatibleModuleChoices(themeKey, pageKind, modules = []) {
       choices.push({
         slot,
         type: moduleType,
-        label: SEMANTIC_MODULE_LABELS[moduleType] || moduleType,
+        label: getThemeModuleDisplayLabel(themeKey, moduleType, slot),
         group: SEMANTIC_MODULE_GROUPS[moduleType] || "OTHER",
       });
     });

@@ -17,6 +17,12 @@ import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import { website } from "../../utils/api";
 import { useTranslation } from "react-i18next";
 import MediaLibraryDialog from "./MediaLibraryDialog";
+import { normalizeWebsiteMediaReference } from "../../utils/websiteSemanticModules";
+
+// The Builder can reconcile its contextual Inspector while a canvas selection
+// settles. Keep an in-flight library dialog keyed to its semantic field so a
+// harmless Inspector remount does not close the tenant's media chooser.
+const pendingMediaLibraryFields = new Set();
 
 /* ---------- NEW: Raw JSON props editor that actually writes back ---------- */
 // A tiny editor that writes back into section.props
@@ -134,12 +140,16 @@ function CommonFields({ block, onChangeRoot }) {
 // ...imports stay the same
 
 /* -------------------- Reusable media field -------------------- */
-export function ImageField({ label, value, onChange, companyId }) {
+export function ImageField({ label, value, onChange, companyId, fieldKey }) {
   const { t } = useTranslation();
   const [dragOver, setDragOver] = useState(false);
   const [inputUrl, setInputUrl] = useState(value || "");
   const [broken, setBroken] = useState(false);
-  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  // Labels such as "Image" repeat across Team, Gallery and Story panels.
+  // Keep each selected semantic field's library state independent so a
+  // remount can never reopen or close a different item's dialog.
+  const mediaFieldKey = `${companyId || "company"}:${fieldKey || label || "image"}`;
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(() => pendingMediaLibraryFields.has(mediaFieldKey));
 
   useEffect(() => {
     setInputUrl(value || "");
@@ -163,9 +173,10 @@ export function ImageField({ label, value, onChange, companyId }) {
 
   const applyUrl = (u) => {
     const abs = toAbsoluteUrl((u || "").trim());
+    const canonical = normalizeWebsiteMediaReference(abs) || "";
     setInputUrl(abs);
     setBroken(false);
-    onChange?.(abs);
+    onChange?.(canonical);
   };
 
   const handleFiles = async (files) => {
@@ -274,7 +285,19 @@ export function ImageField({ label, value, onChange, companyId }) {
       )}
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-        <Button size="small" variant="outlined" onClick={() => setMediaLibraryOpen(true)}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={(event) => {
+            // Keep the semantic Inspector mounted while the dialog opens. The
+            // Builder also listens for canvas/section clicks, and a bubbled
+            // inspector click could otherwise immediately remount ImageField
+            // and discard this local dialog state.
+            event.stopPropagation();
+            pendingMediaLibraryFields.add(mediaFieldKey);
+            setMediaLibraryOpen(true);
+          }}
+        >
           Media library
         </Button>
         <Button size="small" variant="outlined" component="label">
@@ -295,9 +318,13 @@ export function ImageField({ label, value, onChange, companyId }) {
       <MediaLibraryDialog
         open={mediaLibraryOpen}
         companyId={companyId}
-        onClose={() => setMediaLibraryOpen(false)}
+        onClose={() => {
+          pendingMediaLibraryFields.delete(mediaFieldKey);
+          setMediaLibraryOpen(false);
+        }}
         onPick={(media) => {
           applyUrl(media?.url || media?.url_public || "");
+          pendingMediaLibraryFields.delete(mediaFieldKey);
           setMediaLibraryOpen(false);
         }}
       />

@@ -75,6 +75,18 @@ describe("websiteStyleBridge", () => {
     ).toBe(true);
   });
 
+  it("accepts the documented localhost/127.0.0.1 preview aliases in local development", () => {
+    const iframeWindow = {};
+    expect(
+      isAcceptedPreviewMessage({
+        eventOrigin: "http://localhost:3402",
+        expectedOrigin: "http://127.0.0.1:3402",
+        eventSource: {},
+        expectedSource: iframeWindow,
+      })
+    ).toBe(true);
+  });
+
   it("reads the Website Style builder tab from the URL", () => {
     expect(getBuilderTabDefaultIndex("?builder_tab=style")).toBe(1);
     expect(getBuilderTabDefaultIndex("?builder_tab=content")).toBe(0);

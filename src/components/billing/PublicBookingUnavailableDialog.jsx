@@ -19,7 +19,7 @@ const PublicBookingUnavailableDialog = ({
 }) => {
   const detail =
     message ||
-    "Online booking is currently unavailable for this business. Please contact the business or try again later.";
+    "This business is not able to accept online bookings right now. Please contact them directly to arrange your appointment.";
 
   const contactHref = contactEmail
     ? `mailto:${contactEmail}`
@@ -34,7 +34,7 @@ const PublicBookingUnavailableDialog = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Booking unavailable</DialogTitle>
+      <DialogTitle>Online booking is unavailable</DialogTitle>
       <DialogContent>
         <Stack spacing={1.5}>
           <Typography variant="body1">{detail}</Typography>

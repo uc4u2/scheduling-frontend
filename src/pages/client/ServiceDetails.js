@@ -34,6 +34,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
+import { useTenantTransactionalShell } from "./TenantTransactionalShell";
 import { getUserTimezone } from "../../utils/timezone";
 import { getTenantHostMode } from "../../utils/tenant";
 import { isoFromParts as isoFromPartsTz } from "../../utils/datetime";
@@ -334,6 +335,12 @@ export const mergeAvailabilityResponse = (data, serviceDurationMinutes = 0) => {
   }
   return Array.from(byKey.values());
 };
+
+function ServiceTransactionalShell({ slug, children }) {
+  const transactionalShell = useTenantTransactionalShell();
+  if (transactionalShell?.brandingContract?.isNextJsTenant) return children;
+  return <PublicPageShell activeKey="__services" slugOverride={slug}>{children}</PublicPageShell>;
+}
 
 export default function ServiceDetails({ slugOverride, companySlug, serviceId: serviceIdProp }) {
   const { slug: routeSlug, serviceId: routeServiceId } = useParams();
@@ -1390,31 +1397,31 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
   /* guards */
   if (loading) {
     return (
-      <PublicPageShell activeKey="__services" slugOverride={slug}>
+      <ServiceTransactionalShell slug={slug}>
         <Container sx={{ textAlign: "center", mt: 5, color: buttonPalette.bg }}>
           <CircularProgress sx={{ color: "currentColor" }} />
         </Container>
-      </PublicPageShell>
+      </ServiceTransactionalShell>
     );
   }
   if (error) {
     return (
-      <PublicPageShell activeKey="__services" slugOverride={slug}>
+      <ServiceTransactionalShell slug={slug}>
         <Container sx={{ mt: 5 }}>
           <Alert severity="error">{error}</Alert>
         </Container>
-      </PublicPageShell>
+      </ServiceTransactionalShell>
     );
   }
   if (!service) {
     return (
-      <PublicPageShell activeKey="__services" slugOverride={slug}>
+      <ServiceTransactionalShell slug={slug}>
         <Container sx={{ mt: 5 }}>
           <Typography variant="h6" color="text.secondary">
             Service not found.
           </Typography>
         </Container>
-      </PublicPageShell>
+      </ServiceTransactionalShell>
     );
   }
 
@@ -2036,8 +2043,8 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
   );
 
   return (
-    <PublicPageShell activeKey="__services" slugOverride={slug}>
+    <ServiceTransactionalShell slug={slug}>
       {page}
-    </PublicPageShell>
+    </ServiceTransactionalShell>
   );
 }

@@ -1,6 +1,14 @@
-import { buildWebsiteStyleChoices } from "./websiteCatalogUi";
+import {
+  buildWebsiteStyleChoices,
+  encodePreviewPathToken,
+} from "./websiteCatalogUi";
 
 describe("website catalog UI helpers", () => {
+  it("makes dot-prefixed preview tokens safe for Next path segments", () => {
+    const token = ".signed.preview-token";
+    expect(encodePreviewPathToken(token)).toBe("t-.signed.preview-token");
+  });
+
   it("does not expose deprecated experimental families in the normal builder style chooser", () => {
     const keys = buildWebsiteStyleChoices().map((item) => item.key);
     expect(keys).not.toContain("industrial-blueprint");
@@ -25,10 +33,15 @@ describe("website catalog UI helpers", () => {
           { key: "still-bloom", renderer_engine: "nextjs", status: "beta", label: "Still Bloom" },
           { key: "black-letter", renderer_engine: "nextjs", status: "beta", label: "Black Letter" },
           { key: "circuit-north", renderer_engine: "nextjs", status: "beta", label: "Circuit North" },
+          { key: "solara-stay", renderer_engine: "nextjs", status: "beta", label: "Solara Stay" },
+          { key: "paw-and-pine", renderer_engine: "nextjs", status: "beta", label: "Paw & Pine" },
+          { key: "quiet-harbor", renderer_engine: "nextjs", status: "beta", label: "Quiet Harbor" },
+          { key: "frame-and-field", renderer_engine: "nextjs", status: "beta", label: "Frame & Field" },
+          { key: "fieldcraft", renderer_engine: "nextjs", status: "beta", label: "Fieldcraft" },
         ],
       },
     }).map((item) => item.key);
-    expect(keys).toEqual(["classic", "modern-gradient", "eldora-dark", "motion-editorial", "finwise", "iron-ember", "clear-clinic", "harbor-line", "still-bloom", "black-letter", "circuit-north"]);
+    expect(keys).toEqual(["classic", "modern-gradient", "eldora-dark", "motion-editorial", "finwise", "iron-ember", "clear-clinic", "harbor-line", "still-bloom", "black-letter", "circuit-north", "solara-stay", "paw-and-pine", "quiet-harbor", "frame-and-field", "fieldcraft"]);
   });
 
   it("hydrates preview thumbnails and beta badges for registered nextjs themes", () => {
@@ -97,5 +110,49 @@ describe("website catalog UI helpers", () => {
     expect(choices.find((item) => item.key === "still-bloom")?.recommended).toBe(true);
     expect(choices.find((item) => item.key === "still-bloom")?.recommendedProfessions).toContain("yoga_pilates");
     expect(choices.find((item) => item.key === "still-bloom")?.previewAssets?.desktop).toMatch(/still-bloom-desktop\.svg$/);
+  });
+
+  it("preserves approved source mapping and readiness metadata for the builder cards", () => {
+    const choices = buildWebsiteStyleChoices({
+      catalog: {
+        compatible_visual_themes: [
+          {
+            key: "iron-ember",
+            renderer_engine: "nextjs",
+            status: "beta",
+            label: "Iron Ember",
+            recommended_for_profession: true,
+            recommended_professions: ["barbershop"],
+            recommended_profession_labels: ["Barbershop"],
+            design_tags: ["dark", "craft"],
+            source_family: "profession-next-template-lab",
+            starter_media_policy: "source-fixture-to-tenant-website-media",
+            supported_pages: ["home", "about", "services", "contact", "gallery"],
+            supported_semantic_modules: ["hero", "featureStory", "gallery"],
+            starter_content_pack_key: "barbershop-starter",
+            readiness: {
+              source_exists: true,
+              integrated: true,
+              catalog_visible: true,
+              builder_editable: true,
+              preview_ready: true,
+            },
+            preview_assets: {
+              desktop: "/theme-previews/iron-ember-desktop.png",
+              mobile: "/theme-previews/iron-ember-mobile.png",
+            },
+          },
+        ],
+      },
+    });
+    const ironEmber = choices.find((item) => item.key === "iron-ember");
+    expect(ironEmber?.recommendedProfessionLabels).toContain("Barbershop");
+    expect(ironEmber?.sourceFamily).toBe("profession-next-template-lab");
+    expect(ironEmber?.starterMediaPolicy).toBe("source-fixture-to-tenant-website-media");
+    expect(ironEmber?.supportedPages).toContain("gallery");
+    expect(ironEmber?.supportedSemanticModules).toContain("featureStory");
+    expect(ironEmber?.readiness?.builder_editable).toBe(true);
+    expect(ironEmber?.starterContentPackKey).toBe("barbershop-starter");
+    expect(ironEmber?.previewAssets?.desktop).toMatch(/iron-ember-desktop\.png$/);
   });
 });

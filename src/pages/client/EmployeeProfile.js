@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../../utils/api";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
+import { useTenantTransactionalShell } from "./TenantTransactionalShell";
 import {
   Typography,
   Box,
@@ -21,6 +22,12 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
 import { getTenantHostMode } from "../../utils/tenant";
 import { buildEmployeeProfileBookingParams } from "../../utils/employeeBookingParams";
+
+function ServiceTransactionalShell({ slug, children }) {
+  const transactionalShell = useTenantTransactionalShell();
+  if (transactionalShell?.brandingContract?.isNextJsTenant) return children;
+  return <PublicPageShell activeKey="__services" slugOverride={slug}>{children}</PublicPageShell>;
+}
 
 const EmployeeProfile = ({ slugOverride }) => {
   const { slug: routeSlug, employeeId, serviceId: routeServiceId } = useParams();
@@ -288,12 +295,34 @@ const EmployeeProfile = ({ slugOverride }) => {
                       }}
                     >
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 800, color: '#4a2331' }}>{svc.name}</Typography>
-                          <Typography sx={{ mt: 0.5, color: 'rgba(74,35,49,0.72)' }}>
-                            {svc.description || 'Select this service to continue to available appointment times.'}
-                          </Typography>
-                        </Box>
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1, width: "100%" }}>
+                          <Box
+                            sx={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 2,
+                              overflow: "hidden",
+                              bgcolor: "rgba(200,93,124,0.10)",
+                              flexShrink: 0,
+                              border: "1px solid rgba(200,93,124,0.14)",
+                            }}
+                          >
+                            {svc.image_url ? (
+                              <Box
+                                component="img"
+                                src={svc.image_url}
+                                alt={svc.name}
+                                sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : null}
+                          </Box>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 800, color: '#4a2331' }}>{svc.name}</Typography>
+                            <Typography sx={{ mt: 0.5, color: 'rgba(74,35,49,0.72)' }}>
+                              {svc.description || 'Select this service to continue to available appointment times.'}
+                            </Typography>
+                          </Box>
+                        </Stack>
                         <Button variant="outlined" sx={{ borderRadius: 999, flexShrink: 0 }}>
                           View & Book
                         </Button>
@@ -387,11 +416,7 @@ const EmployeeProfile = ({ slugOverride }) => {
     return content;
   }
 
-  return (
-    <PublicPageShell activeKey="__services" slugOverride={effectiveSlug}>
-      {content}
-    </PublicPageShell>
-  );
+  return <ServiceTransactionalShell slug={effectiveSlug}>{content}</ServiceTransactionalShell>;
 };
 
 export default EmployeeProfile;

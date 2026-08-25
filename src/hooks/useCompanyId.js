@@ -5,6 +5,7 @@ import {
   getAuthedCompanyId,
   setCachedCompanyId,
   onCompanyIdChange,
+  parsePositiveCompanyId,
 } from "../utils/authedCompany";
 
 /**
@@ -35,16 +36,17 @@ export function useCompanyIdEx({
 
   const firstGuess = useMemo(() => {
     // 1) explicit initial
-    if (Number.isFinite(Number(initial)) && Number(initial) > 0) {
-      return Number(initial);
+    const initialCompanyId = parsePositiveCompanyId(initial);
+    if (initialCompanyId) {
+      return initialCompanyId;
     }
 
     // 2) ?company_id=
     if (allowQuery && typeof window !== "undefined") {
       try {
         const q = new URLSearchParams(window.location.search);
-        const qCid = Number(q.get("company_id"));
-        if (Number.isFinite(qCid) && qCid > 0) return qCid;
+        const qCid = parsePositiveCompanyId(q.get("company_id") || q.get("cid"));
+        if (qCid) return qCid;
       } catch {}
     }
 
@@ -93,10 +95,9 @@ export function useCompanyIdEx({
           // also try path /<slug>/*
           const [, pathSlug] = String(window.location.pathname).split("/");
           if (pathSlug && pathSlug !== "manage") {
-            const { data } = await api.get(`/api/public/${encodeURIComponent(pathSlug)}/website`, { noCompanyHeader: true });
-            const id = data?.company_id || data?.company?.id;
-            const n = Number(id);
-            if (alive && Number.isFinite(n) && n > 0) {
+        const { data } = await api.get(`/api/public/${encodeURIComponent(pathSlug)}/website`, { noCompanyHeader: true });
+            const n = parsePositiveCompanyId(data?.company_id || data?.company?.id);
+            if (alive && n) {
               setCachedCompanyId(n);
               setCompanyIdState(n);
               setSource(`public:${pathSlug}`);
@@ -107,9 +108,8 @@ export function useCompanyIdEx({
         }
 
         const { data } = await api.get(`/api/public/${encodeURIComponent(slug)}/website`, { noCompanyHeader: true });
-        const id = data?.company_id || data?.company?.id;
-        const n = Number(id);
-        if (alive && Number.isFinite(n) && n > 0) {
+        const n = parsePositiveCompanyId(data?.company_id || data?.company?.id);
+        if (alive && n) {
           setCachedCompanyId(n);
           setCompanyIdState(n);
           setSource(`public:${slug}`);
@@ -138,8 +138,8 @@ export function useCompanyIdEx({
             data?.company?.id ??
             data?.profile?.company_id ??
             null;
-          const n = Number(id);
-          if (alive && Number.isFinite(n) && n > 0) {
+          const n = parsePositiveCompanyId(id);
+          if (alive && n) {
             setCachedCompanyId(n);
             setCompanyIdState(n);
             setSource(`backend:${path}`);

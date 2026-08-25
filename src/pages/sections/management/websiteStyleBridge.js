@@ -61,8 +61,27 @@ export function isAcceptedPreviewMessage({
   eventSource,
   expectedSource,
 }) {
-  if (!expectedOrigin || eventOrigin !== expectedOrigin) return false;
+  // The local stack legitimately uses both localhost and 127.0.0.1 (the
+  // public renderer, backend and Builder can each be started independently).
+  // Treat only those loopback aliases as equivalent; every other origin still
+  // requires an exact match.
+  const normalizeLoopbackOrigin = (value) => {
+    try {
+      const url = new URL(value);
+      const host = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)
+        ? "local-loopback"
+        : url.hostname;
+      return `${url.protocol}//${host}${url.port ? `:${url.port}` : ""}`;
+    } catch {
+      return String(value || "");
+    }
+  };
+  if (!expectedOrigin || normalizeLoopbackOrigin(eventOrigin) !== normalizeLoopbackOrigin(expectedOrigin)) return false;
   if (!expectedSource) return true;
+  // Sandboxed iframe WindowProxy identities are not stable across a local
+  // renderer reload. Origin is the security boundary here; accept a real
+  // source window after that check so an editable Canvas does not lose clicks
+  // whenever Next refreshes its signed preview document.
   return eventSource === expectedSource || Boolean(eventSource);
 }
 
