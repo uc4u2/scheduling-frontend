@@ -16,6 +16,30 @@ export const NEXTJS_THEME_OVERRIDE_FIELDS = {
     label: "Page background",
     category: "color",
   },
+  surfaceColor: {
+    label: "Surface color",
+    category: "color",
+  },
+  foregroundColor: {
+    label: "Primary text color",
+    category: "color",
+  },
+  mutedForegroundColor: {
+    label: "Muted text color",
+    category: "color",
+  },
+  cardColor: {
+    label: "Card surface color",
+    category: "color",
+  },
+  borderColor: {
+    label: "Border color",
+    category: "color",
+  },
+  buttonForegroundColor: {
+    label: "Button text color",
+    category: "color",
+  },
   sectionSpacing: {
     label: "Section spacing",
     category: "range",
@@ -129,9 +153,18 @@ export const NEXTJS_THEME_OVERRIDE_CONTRACT = {
   },
   "iron-ember": {
     acceptedFields: [
+      "brandPrimaryColor",
       "accentColor",
+      "pageBackground",
+      "surfaceColor",
+      "foregroundColor",
+      "mutedForegroundColor",
+      "cardColor",
+      "borderColor",
+      "buttonForegroundColor",
       "sectionSpacing",
       "buttonRadius",
+      "buttonTreatment",
       "heroMediaUrl",
       "lightDarkPreference",
     ],
@@ -192,6 +225,16 @@ function normalizeHex(value, fallback = "") {
   return `#${body.toLowerCase()}`;
 }
 
+function isDarkHex(value) {
+  const normalized = normalizeHex(value, "");
+  if (!/^#[a-f0-9]{6}$/i.test(normalized)) return false;
+  const numeric = Number.parseInt(normalized.slice(1), 16);
+  const red = (numeric >> 16) & 255;
+  const green = (numeric >> 8) & 255;
+  const blue = numeric & 255;
+  return red * 0.299 + green * 0.587 + blue * 0.114 < 150;
+}
+
 export function getThemeOverrideContract(themeKey) {
   return NEXTJS_THEME_OVERRIDE_CONTRACT[String(themeKey || "").trim().toLowerCase()] || null;
 }
@@ -209,6 +252,12 @@ export function sanitizeThemeOverrideValue(fieldKey, value, fallback = undefined
     case "brandPrimaryColor":
     case "accentColor":
     case "pageBackground":
+    case "surfaceColor":
+    case "foregroundColor":
+    case "mutedForegroundColor":
+    case "cardColor":
+    case "borderColor":
+    case "buttonForegroundColor":
       return normalizeHex(value, fallback || "");
     case "heroMediaUrl":
       return String(value || "").trim();
@@ -246,5 +295,48 @@ export function buildNextJsPageStyleFromDraft(themeKey, draft = {}) {
   const next = sanitizeThemeOverrideDraft(themeKey, draft);
   return {
     themeOverrides: next,
+  };
+}
+
+/**
+ * Translate the existing Builder preset payload into the canonical Next
+ * theme-override contract.  The preset library predates Next and stores
+ * visual values under pageStyle/header/footer keys; keeping that translation
+ * here prevents themes from depending on legacy-only payload names.
+ */
+export function buildThemeOverridesFromPreset(
+  preset = {},
+  currentThemeOverrides = {},
+  defaultThemeOverrides = {}
+) {
+  const base = {
+    ...(defaultThemeOverrides || {}),
+    ...(currentThemeOverrides || {}),
+  };
+  const pageStyle = preset?.pageStyle || {};
+  const header = preset?.header || {};
+  const pageBackground = pageStyle.backgroundColor || base.pageBackground || "";
+  const foregroundColor = pageStyle.headingColor || header.text_color || base.foregroundColor || "";
+  const accentColor = pageStyle.linkColor || preset?.accent || pageStyle.btnBg || base.accentColor || "";
+  const brandPrimaryColor = pageStyle.btnBg || preset?.accent || accentColor || base.brandPrimaryColor || "";
+  const buttonRadiusPx = Number(pageStyle.btnRadius);
+
+  return {
+    ...base,
+    brandPrimaryColor,
+    accentColor,
+    pageBackground,
+    surfaceColor: pageStyle.overlayColor || header.bg || pageBackground || base.surfaceColor || "",
+    foregroundColor,
+    mutedForegroundColor: pageStyle.headingColor || header.text_color || base.mutedForegroundColor || foregroundColor,
+    cardColor: pageStyle.cardColor || header.bg || base.cardColor || "",
+    borderColor: header.text_color || foregroundColor || base.borderColor || "",
+    buttonForegroundColor: pageStyle.btnColor || base.buttonForegroundColor || "",
+    surfaceTone: isDarkHex(pageBackground) ? "dark" : "light",
+    lightDarkPreference: isDarkHex(pageBackground) ? "dark" : "light",
+    buttonRadius: Number.isFinite(buttonRadiusPx)
+      ? Math.max(0, Math.min(4, Math.round(buttonRadiusPx / 4)))
+      : base.buttonRadius,
+    buttonTreatment: "solid",
   };
 }

@@ -125,6 +125,7 @@ import {
   WEBSITE_THEME_MODULE_MANIFESTS,
 } from "../../../utils/websiteThemeModules";
 import {
+  buildThemeOverridesFromPreset,
   getSupportedThemeOverrideFields,
   NEXTJS_THEME_OVERRIDE_FIELDS,
   sanitizeThemeOverrideDraft,
@@ -4293,37 +4294,6 @@ const applyIndustryStarterPack = useCallback(
     themeOverridesDraft,
   ]
 );
-
-function buildThemeOverridesFromPreset(preset, currentThemeOverrides, defaultThemeOverrides) {
-  const base = currentThemeOverrides || defaultThemeOverrides;
-  return {
-    ...base,
-    brandColor:
-      preset?.accent ||
-      preset?.pageStyle?.linkColor ||
-      preset?.pageStyle?.btnBg ||
-      base?.brandColor ||
-      defaultThemeOverrides.brandColor,
-    surface: preset?.pageStyle?.backgroundColor === "#111113" ? "dark" : "light",
-    header: {
-      ...(base?.header || {}),
-      background: preset?.header?.bg || base?.header?.background,
-      text: preset?.header?.text_color || base?.header?.text,
-    },
-    footer: {
-      ...(base?.footer || {}),
-      background: preset?.footer?.bg || base?.footer?.background,
-      text: preset?.footer?.text_color || base?.footer?.text,
-    },
-    radius: preset?.pageStyle?.cardRadius ?? base?.radius,
-    shadow:
-      preset?.pageStyle?.cardShadow?.includes("60px")
-        ? "lg"
-        : preset?.pageStyle?.cardShadow?.includes("36px")
-          ? "sm"
-          : "md",
-  };
-}
 
 const reapplyThemeToChrome = useCallback(() => {
   const activeTheme = readSiteThemeSettings(siteSettings);

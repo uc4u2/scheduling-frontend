@@ -1,4 +1,5 @@
 import {
+  buildThemeOverridesFromPreset,
   buildNextJsPageStyleFromDraft,
   getSupportedThemeOverrideFields,
   getThemeOverrideContract,
@@ -41,5 +42,48 @@ describe("website theme overrides", () => {
     expect(isThemeOverrideFieldSupported("finwise", "buttonTreatment")).toBe(true);
     expect(isThemeOverrideFieldSupported("eldora-dark", "buttonTreatment")).toBe(false);
     expect(getSupportedThemeOverrideFields("modern-gradient")).toContain("gradientAccent");
+  });
+
+  it.each([
+    ["Modern Noir", "#111113", "#d2a858", "#f5f1e8", "#1c1c20"],
+    ["Blush Spa", "#fff7f8", "#c85d7c", "#4a2331", "#fff0f4"],
+    ["Forest Calm", "#f5fbf7", "#4f8b72", "#234437", "#eef8f0"],
+    ["Champagne Luxe", "#fffaf2", "#b98a50", "#4f3422", "#fff3df"],
+    ["Ocean Clean", "#f4fbff", "#238eb2", "#173c4b", "#eaf8ff"],
+  ])("maps the %s Builder palette into Iron Ember semantic fields", (_label, backgroundColor, accent, headingColor, cardColor) => {
+    const preset = {
+      accent,
+      pageStyle: {
+        backgroundColor,
+        overlayColor: backgroundColor,
+        headingColor,
+        linkColor: accent,
+        cardColor,
+        btnBg: accent,
+        btnColor: backgroundColor,
+        btnRadius: 12,
+      },
+      header: { bg: backgroundColor, text_color: headingColor },
+    };
+
+    const overrides = buildThemeOverridesFromPreset(preset);
+    const sanitized = sanitizeThemeOverrideDraft("iron-ember", overrides);
+
+    expect(overrides).toMatchObject({
+      pageBackground: backgroundColor,
+      accentColor: accent,
+      brandPrimaryColor: accent,
+      foregroundColor: headingColor,
+      cardColor,
+      buttonForegroundColor: backgroundColor,
+      buttonRadius: 3,
+    });
+    expect(sanitized).toMatchObject({
+      pageBackground: backgroundColor,
+      accentColor: accent,
+      foregroundColor: headingColor,
+      cardColor,
+      buttonForegroundColor: backgroundColor,
+    });
   });
 });
