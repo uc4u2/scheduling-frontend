@@ -131,6 +131,8 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const [siteLoading, setSiteLoading] = useState(false);
   const [sitePayload, setSitePayload] = useState(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [productDeliveryStatus, setProductDeliveryStatus] = useState({});
+  const [productDeliveryLoading, setProductDeliveryLoading] = useState(false);
   const [checkoutBg, setCheckoutBg] = useState(null);
   const [checkoutCardBg, setCheckoutCardBg] = useState(null);
   const [pageScopeVars, setPageScopeVars] = useState(null);
@@ -327,10 +329,87 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const hasServiceItems = items.some((it) => it.type !== CartTypes.PRODUCT);
   const hasProductItems = items.some((it) => it.type === CartTypes.PRODUCT);
   const mixedCart = hasServiceItems && hasProductItems;
+  const productItems = useMemo(
+    () => items.filter((it) => it.type === CartTypes.PRODUCT),
+    [items]
+  );
+
+  useEffect(() => {
+    if (!slug || productItems.length === 0) {
+      setProductDeliveryStatus({});
+      setProductDeliveryLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const productIds = Array.from(
+      new Set(
+        productItems
+          .map((item) => Number(item.product_id))
+          .filter((value) => Number.isFinite(value) && value > 0)
+      )
+    );
+    if (productIds.length === 0) {
+      setProductDeliveryStatus({});
+      setProductDeliveryLoading(false);
+      return;
+    }
+    setProductDeliveryLoading(true);
+    Promise.all(
+      productIds.map(async (productId) => {
+        try {
+          const { data } = await apiClient.get(`/public/${slug}/products/${productId}`, { noCompanyHeader: true });
+          const shippingReturns = data?.customer_shipping_returns || null;
+          const deliveryMethods = Array.isArray(shippingReturns?.delivery_methods)
+            ? shippingReturns.delivery_methods
+            : [];
+          const blocked = Boolean(data && !data.is_digital && shippingReturns && deliveryMethods.length === 0);
+          return [
+            productId,
+            {
+              blocked,
+              message: blocked
+                ? "This product is temporarily unavailable because delivery is not configured right now."
+                : "",
+            },
+          ];
+        } catch {
+          return [productId, { blocked: false, message: "" }];
+        }
+      })
+    )
+      .then((entries) => {
+        if (cancelled) return;
+        setProductDeliveryStatus(Object.fromEntries(entries));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setProductDeliveryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, productItems]);
+
+  const unavailableProductItems = useMemo(
+    () =>
+      productItems.filter((item) => {
+        const status = productDeliveryStatus[Number(item.product_id)];
+        return Boolean(status?.blocked);
+      }),
+    [productItems, productDeliveryStatus]
+  );
+  const productCheckoutBlocked = unavailableProductItems.length > 0;
 
   const proceed = () => {
     if (mixedCart) {
       setSnack({ open: true, msg: "Services and retail products must be checked out separately. Please complete one checkout before starting another." });
+      return;
+    }
+    if (productCheckoutBlocked) {
+      setSnack({
+        open: true,
+        msg: "One or more products are unavailable because delivery is not configured right now.",
+      });
       return;
     }
     setCheckoutOpen(true);
@@ -564,6 +643,13 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             Services and retail products must be checked out separately. Please finish one purchase before starting the other.
           </Alert>
         )}
+        {productCheckoutBlocked && (
+          <Alert severity="warning">
+            {unavailableProductItems.length === 1
+              ? `${unavailableProductItems[0].name} cannot be purchased right now because no delivery method is configured.`
+              : "One or more products in this basket cannot be purchased right now because no delivery method is configured."}
+          </Alert>
+        )}
 
         {items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center" }}>
@@ -599,9 +685,16 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                             {item.name}
                           </Typography>
                           {item.type === CartTypes.PRODUCT ? (
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description || ""}
-                            </Typography>
+                            <Stack spacing={0.75}>
+                              <Typography variant="body2" color="text.secondary">
+                                {item.description || ""}
+                              </Typography>
+                              {productDeliveryStatus[Number(item.product_id)]?.blocked ? (
+                                <Typography variant="body2" color="error">
+                                  {productDeliveryStatus[Number(item.product_id)]?.message}
+                                </Typography>
+                              ) : null}
+                            </Stack>
                           ) : (
                             <List dense sx={{ mt: 1 }}>
                               <ListItem disablePadding>
@@ -681,7 +774,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                       variant="contained"
                       startIcon={<ShoppingCartCheckoutIcon />}
                       onClick={proceed}
-                      disabled={items.length === 0 || mixedCart}
+                      disabled={items.length === 0 || mixedCart || productCheckoutBlocked || productDeliveryLoading}
                     >
                       Checkout
                     </Button>

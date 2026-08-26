@@ -199,7 +199,13 @@ const ProductDetails = ({ slugOverride }) => {
   }, [slug, effectiveProductId]);
 
   const handleAdd = () => {
-    if (!product || soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)) return;
+    if (
+      !product ||
+      soldOut ||
+      purchaseBlockedByDeliverySetup ||
+      variantPurchaseUnavailable ||
+      (variantSellingActive && !selectedVariant)
+    ) return;
     const qty = Math.max(1, Number(quantity) || 1);
     try {
       addProductToCart(product, qty, selectedVariant);
@@ -246,6 +252,19 @@ const ProductDetails = ({ slugOverride }) => {
   };
 
   const gallery = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product]);
+  const shippingReturns = product?.customer_shipping_returns || null;
+  const deliveryMethodRows = Array.isArray(shippingReturns?.delivery_methods)
+    ? shippingReturns.delivery_methods
+    : [];
+  const purchaseBlockedByDeliverySetup = Boolean(
+    product &&
+    !product.is_digital &&
+    shippingReturns &&
+    deliveryMethodRows.length === 0
+  );
+  const purchaseBlockedMessage = purchaseBlockedByDeliverySetup
+    ? "This product is temporarily unavailable because delivery is not configured right now."
+    : "";
   const variantCatalog = product?.variant_catalog || null;
   const variantSellingActive = Boolean(product?.variant_selling_enabled && variantCatalog);
   const variantPurchaseUnavailable = Boolean(product?.variant_purchase_unavailable);
@@ -423,7 +442,6 @@ const ProductDetails = ({ slugOverride }) => {
         ),
       });
     }
-    const shippingReturns = product?.customer_shipping_returns || null;
     const hasShippingReturns =
       Array.isArray(shippingReturns?.delivery_methods) && shippingReturns.delivery_methods.length > 0
       || hasMeaningfulText(shippingReturns?.policy_text)
@@ -704,6 +722,11 @@ const ProductDetails = ({ slugOverride }) => {
                   {product?.variant_purchase_unavailable_reason || "This product is temporarily unavailable."}
                 </Typography>
               ) : null}
+              {purchaseBlockedByDeliverySetup ? (
+                <Typography variant="body2" color="error">
+                  {purchaseBlockedMessage}
+                </Typography>
+              ) : null}
               <Stack direction="row" spacing={2} alignItems="center">
                 <TextField
                   label="Quantity"
@@ -712,7 +735,12 @@ const ProductDetails = ({ slugOverride }) => {
                   onChange={(event) => setQuantity(event.target.value)}
                   inputProps={{ min: 1 }}
                   sx={{ width: 120 }}
-                  disabled={soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)}
+                  disabled={
+                    soldOut ||
+                    purchaseBlockedByDeliverySetup ||
+                    variantPurchaseUnavailable ||
+                    (variantSellingActive && !selectedVariant)
+                  }
                 />
                 {product.track_stock && !variantSellingActive ? (
                   <Chip
@@ -739,7 +767,12 @@ const ProductDetails = ({ slugOverride }) => {
                   size="large"
                   startIcon={<ShoppingCartCheckoutIcon />}
                   onClick={handleAdd}
-                  disabled={soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)}
+                  disabled={
+                    soldOut ||
+                    purchaseBlockedByDeliverySetup ||
+                    variantPurchaseUnavailable ||
+                    (variantSellingActive && !selectedVariant)
+                  }
                   sx={{
                     borderRadius: "var(--page-btn-radius, 12px)",
                     backgroundColor: "var(--page-btn-bg, #2563eb)",
@@ -831,6 +864,8 @@ const ProductDetails = ({ slugOverride }) => {
               <Typography variant="caption" color="text.secondary">
                 {variantPurchaseUnavailable
                   ? "Temporarily unavailable"
+                  : purchaseBlockedByDeliverySetup
+                  ? "Delivery unavailable"
                   : variantSellingActive && !selectedVariant
                   ? "Choose options"
                   : soldOut
@@ -842,7 +877,12 @@ const ProductDetails = ({ slugOverride }) => {
               variant="contained"
               startIcon={<ShoppingCartCheckoutIcon />}
               onClick={handleAdd}
-              disabled={soldOut || variantPurchaseUnavailable || (variantSellingActive && !selectedVariant)}
+              disabled={
+                soldOut ||
+                purchaseBlockedByDeliverySetup ||
+                variantPurchaseUnavailable ||
+                (variantSellingActive && !selectedVariant)
+              }
               sx={{
                 minWidth: 180,
                 borderRadius: "var(--page-btn-radius, 12px)",

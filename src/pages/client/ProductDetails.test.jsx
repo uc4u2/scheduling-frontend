@@ -91,7 +91,7 @@ describe("ProductDetails", () => {
         track_stock: true,
         is_digital: false,
         allow_international_shipping: true,
-        created_at: "2026-07-20T12:00:00Z",
+        created_at: "2026-08-20T12:00:00Z",
         details_text: "Longer detail copy.\nSecond line.",
         specifications_json: [{ label: "Material", value: "Sterling silver" }],
         materials_care_text: "Keep dry.",
@@ -244,5 +244,38 @@ describe("ProductDetails", () => {
 
     expect(await screen.findByRole("heading", { name: "Context Pendant" })).toBeInTheDocument();
     expect(screen.getByText("CA$69.00")).toBeInTheDocument();
+  });
+
+  test("blocks add to basket when a physical product has no configured delivery methods", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        id: 77,
+        name: "Deliveryless Pendant",
+        description: "Short intro",
+        price: 69,
+        selling_currency: "CAD",
+        sku: "DLV-77",
+        qty_on_hand: 5,
+        track_stock: true,
+        is_digital: false,
+        allow_international_shipping: false,
+        created_at: "2026-06-01T12:00:00Z",
+        customer_shipping_returns: {
+          delivery_methods: [],
+          fallback_text: "Available delivery options are shown during checkout.",
+        },
+        images: [{ id: 1, url: "https://example.com/pendant.jpg", alt: "Deliveryless Pendant" }],
+      },
+    });
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByRole("heading", { name: "Deliveryless Pendant" })).toBeInTheDocument();
+    expect(
+      screen.getByText("This product is temporarily unavailable because delivery is not configured right now.")
+    ).toBeInTheDocument();
+    screen.getAllByRole("button", { name: /add to basket/i }).forEach((button) => {
+      expect(button).toBeDisabled();
+    });
   });
 });
