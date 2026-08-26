@@ -1,6 +1,6 @@
 # Product + Shipping + EasyPost UI Source Of Truth
 
-Updated: 2026-08-03
+Updated: 2026-08-26
 Scope: manager product workspace, delivery setup, order actions, checkout/client behavior.
 
 ## Product Commerce PV1
@@ -238,7 +238,12 @@ Phase 3 UX rules:
 ### Delivery setup panel
 - File: `frontend/src/pages/sections/management/EasyPostShippingSettingsPanel.js`
 - Responsibilities:
-  - Tab 1 `Delivery Methods`: checkout policy controls (`enabled`, `allow_pickup`, `allow_shipping`, `allow_local_delivery`, labels)
+  - Tab 1 `Delivery Methods`: checkout policy controls (`enabled`, `allow_pickup`, `allow_shipping`, labels)
+  - Tab 1 `Delivery Methods` also owns manual shipping coverage controls:
+    - `Origin country`
+    - `Destination policy`
+    - `Selected destination countries`
+  - Manager UI intentionally hides `allow_local_delivery`
   - Tab 1 also owns customer-facing Product-page policy text:
     - `Customer Shipping & Returns information`
     - `Customer Shipping & Returns URL`
@@ -249,6 +254,14 @@ Phase 3 UX rules:
     - customer-facing label fields appear only for selected methods
     - `Customer checkout preview` always reflects the effective server-owned state
     - manual parcel shipping shows a warning that no live carrier rate is calculated
+    - manual shipping country eligibility is still backend-driven through shipping settings; manager UI now exposes those controls directly in `Delivery Methods`
+    - `Origin country` accepts direct ISO-2 entry such as `CA` and also offers a quick-pick country selector
+    - `Destination policy` supports:
+      - `Domestic only`
+      - `Canada and United States`
+      - `Selected countries`
+    - `Selected destination countries` becomes editable only when the destination policy is `Selected countries`
+    - `Local delivery` must not be shown in manager UI until zone-based eligibility exists
   - Help drawer now uses a tabbed onboarding guide:
     - `Schedulaa setup`
     - `EasyPost website setup`
@@ -261,7 +274,7 @@ Phase 3 UX rules:
     - Test-versus-Production API key guidance
     - Wallet versus own-carrier guidance
     - platform-managed webhook wording
-    - dynamic checklist using current server-confirmed Schedulaa state only
+  - dynamic checklist using current server-confirmed Schedulaa state only
   - International duties notice/policy controls:
     - `Domestic shipping only`
     - `Sell to international customers — buyer may pay import charges`
@@ -275,6 +288,21 @@ Phase 3 UX rules:
     - `origin`
     - `destinations`
     - `package_profiles`
+
+### Local delivery temporary policy
+
+- Manager-facing UI must treat `local_delivery` as hidden.
+- Backend and checkout codepaths may still understand `local_delivery`, but manager save flows should keep it off.
+- Reason:
+  - current coverage rules are country-based and are acceptable for `shipping`
+  - current coverage rules are not precise enough for true local-delivery eligibility
+  - a business with origin country `CA` must not imply local delivery anywhere in Canada
+  - a business allowing `CA + US` for shipping must not imply local delivery in the United States
+- Future supported model:
+  - postal-code or prefix zones
+  - city / province allowlists
+  - radius from business origin
+  - address validation against local-delivery zones before checkout can continue
 
 Current deliberate limitation:
 - Delivery setup does not directly launch Product checkout preview in this release.
