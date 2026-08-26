@@ -460,6 +460,12 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         allow_pickup: Boolean(settings.allow_pickup),
         allow_shipping: Boolean(settings.allow_shipping),
         allow_local_delivery: Boolean(settings.allow_local_delivery),
+        origin_country: settings.origin_country || null,
+        destination_policy_preset: settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only",
+        destination_policy_mode: settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only",
+        destination_countries: Array.isArray(settings.allowed_destination_countries)
+          ? settings.allowed_destination_countries
+          : [],
         customer_shipping_returns_policy_text: settings.customer_shipping_returns_policy_text || null,
         customer_shipping_returns_policy_url: settings.customer_shipping_returns_policy_url || null,
         email_customer_order_shipped: settings.email_customer_order_shipped !== false,
@@ -497,11 +503,6 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
           us_export_filing_citation: settings.us_export_filing_citation || null,
           us_noeei_eligibility_confirmed: Boolean(settings.us_noeei_eligibility_confirmed_at || settings.us_noeei_eligibility_confirmed_by),
           default_package_profile_id: settings.default_package_profile_id || null,
-          destination_policy_preset: settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only",
-          destination_policy_mode: settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only",
-          destination_countries: Array.isArray(settings.allowed_destination_countries)
-            ? settings.allowed_destination_countries
-            : [],
           international_address_verification_mode: settings.international_address_verification_mode || "best_effort",
         });
       }
@@ -983,8 +984,13 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin city", hint: "City of the shipment origin address.", value: settings.origin_city, onChange: (e) => updateField("origin_city", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin region", hint: "State/Province/Region code. Example: ON, CA, NY.", value: settings.origin_region, onChange: (e) => updateField("origin_region", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin postal code", hint: "ZIP/Postal code for origin address.", value: settings.origin_postal_code, onChange: (e) => updateField("origin_postal_code", e.target.value), disabled: !isEasyPostMode })}</Grid>
-                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin country", hint: "2-letter country code (ISO-2). Example: US, CA.", value: settings.origin_country, onChange: (e) => updateField("origin_country", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin country", hint: "2-letter country code (ISO-2). Example: US, CA. Checkout country options depend on this even when you ship manually.", value: settings.origin_country, onChange: (e) => updateField("origin_country", e.target.value) })}</Grid>
                 </Grid>
+                {!isEasyPostMode && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                    Manual shipping still needs an origin country and destination policy so checkout knows which countries to offer customers.
+                  </Typography>
+                )}
                 </Box>
                 <Box ref={destinationSectionRef} sx={focusHighlightSx(focusedSection === "destinations")}>
                 <Grid container spacing={1.5}>
@@ -996,7 +1002,6 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       label="Destination policy"
                       value={destinationPolicyMode}
                       onChange={(e) => updateField("destination_policy_mode", e.target.value)}
-                      disabled={!isEasyPostMode}
                     >
                       <MenuItem value="domestic_only">Domestic only</MenuItem>
                       <MenuItem value="ca_us">Canada and United States</MenuItem>
@@ -1020,7 +1025,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         updateField("destination_policy_mode", "selected_countries");
                       }}
                       isOptionEqualToValue={(option, value) => option.code === value.code}
-                      disabled={!isEasyPostMode || destinationPolicyMode !== "selected_countries"}
+                      disabled={destinationPolicyMode !== "selected_countries"}
                       renderTags={(value, getTagProps) =>
                         value.map((option, index) => {
                           const { key, ...tagProps } = getTagProps({ index });
@@ -1039,7 +1044,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                           {...params}
                           size="small"
                           label="Selected destination countries"
-                          helperText="The tenant's domestic origin country is always included."
+                          helperText="The origin country is always included. This applies to manual shipping and EasyPost."
                         />
                       )}
                     />
