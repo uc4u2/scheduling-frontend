@@ -155,6 +155,8 @@ Business country:
 
 Thank you.`;
 
+const MANAGER_LOCAL_DELIVERY_UI_ENABLED = false;
+
 const STATUS_CHIP_CONTRACT = {
   ready: {
     variant: "filled",
@@ -217,6 +219,10 @@ const DELIVERY_METHOD_META = {
     customerLabel: "Customer-facing local-delivery name - optional",
   },
 };
+
+const visibleDeliveryMethodEntries = Object.entries(DELIVERY_METHOD_META).filter(
+  ([code]) => MANAGER_LOCAL_DELIVERY_UI_ENABLED || code !== "local_delivery"
+);
 
 const DELIVERY_METHOD_DEFAULT_LABELS = {
   pickup: "Pickup",
@@ -287,7 +293,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const isEasyPostMode = Boolean(settings?.easypost_enabled);
   const deliveryEnabled = Boolean(settings?.enabled);
   const savedMethodCodes = useMemo(
-    () => Object.entries(DELIVERY_METHOD_META)
+    () => visibleDeliveryMethodEntries
       .filter(([, meta]) => Boolean(settings?.[meta.field]))
       .map(([code]) => code),
     [settings]
@@ -473,7 +479,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         easypost_enabled: Boolean(settings.easypost_enabled),
         allow_pickup: Boolean(settings.allow_pickup),
         allow_shipping: Boolean(settings.allow_shipping),
-        allow_local_delivery: Boolean(settings.allow_local_delivery),
+        allow_local_delivery: false,
         origin_country: settings.origin_country || null,
         destination_policy_preset: settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only",
         destination_policy_mode: settings.destination_policy_mode || settings.destination_policy_preset || "domestic_only",
@@ -489,7 +495,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         email_customer_ready_for_pickup: settings.email_customer_ready_for_pickup !== false,
         shipping_label_pickup: settings.shipping_label_pickup || null,
         shipping_label_shipping: settings.shipping_label_shipping || null,
-        shipping_label_local_delivery: settings.shipping_label_local_delivery || null,
+        shipping_label_local_delivery: null,
       };
       if (settings.easypost_enabled) {
         Object.assign(payload, {
@@ -772,7 +778,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         </Typography>
                       )}
                       <Grid container spacing={1.5}>
-                        {Object.entries(DELIVERY_METHOD_META).map(([code, meta]) => {
+                        {visibleDeliveryMethodEntries.map(([code, meta]) => {
                           const checked = Boolean(settings?.[meta.field]);
                           const customLabel = settings?.[meta.customLabelField] || "";
                           return (
@@ -949,9 +955,6 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     Manual fulfillment does not calculate carrier rates. Confirm that shipping is included in your Product price, or use EasyPost rates and labels.
                   </Alert>
                 )}
-                <Alert severity="info">
-                  Local delivery currently acts as a fulfillment choice only. Customers may select Local Delivery, and your business arranges it manually.
-                </Alert>
                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                   <Stack spacing={1.25}>
                     <Typography variant="subtitle2" fontWeight={700}>

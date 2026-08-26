@@ -63,6 +63,8 @@ import useCompanyCurrencyContext from "../../../hooks/useCompanyCurrencyContext"
 import { getActiveCurrency } from "../../../utils/currency";
 import { dashboardStatusChipProps } from "../../../utils/dashboardStatusChip";
 
+const MANAGER_LOCAL_DELIVERY_UI_ENABLED = false;
+
 const emptyForm = {
   sku: "",
   name: "",
@@ -405,7 +407,7 @@ const ProductManagement = ({ token }) => {
       delivery_methods_override_enabled: form.delivery_methods_override_enabled,
       delivery_allow_pickup: form.delivery_allow_pickup,
       delivery_allow_shipping: form.delivery_allow_shipping,
-      delivery_allow_local_delivery: form.delivery_allow_local_delivery,
+      delivery_allow_local_delivery: false,
       shipping_weight_grams: form.shipping_weight_grams,
       shipping_length_mm: form.shipping_length_mm,
       shipping_width_mm: form.shipping_width_mm,
@@ -474,7 +476,7 @@ const ProductManagement = ({ token }) => {
           enabled: deliveryEnabled,
           allow_pickup: deliveryEnabled && Boolean(shippingSettings?.allow_pickup),
           allow_shipping: deliveryEnabled && shippingSettings?.allow_shipping !== false,
-          allow_local_delivery: deliveryEnabled && Boolean(shippingSettings?.allow_local_delivery),
+          allow_local_delivery: false,
         });
         setShippingCountryCatalog(Array.isArray(shippingSettings?.country_catalog) ? shippingSettings.country_catalog : []);
       } catch {
@@ -713,8 +715,7 @@ const ProductManagement = ({ token }) => {
         if (field === "delivery_methods_override_enabled" && value) {
           const hasAnyMethod =
             Boolean(prev.delivery_allow_pickup) ||
-            Boolean(prev.delivery_allow_shipping) ||
-            Boolean(prev.delivery_allow_local_delivery);
+            Boolean(prev.delivery_allow_shipping);
           // Safe default for override mode: shipping enabled if nothing is selected yet.
           return {
             ...prev,
@@ -755,6 +756,7 @@ const ProductManagement = ({ token }) => {
   const buildProductPayload = useCallback(() => {
     const payload = {
       ...form,
+      delivery_allow_local_delivery: false,
       category: String(form.category || "").trim(),
       price: form.price === "" ? "0" : form.price,
       cost: form.cost === "" ? null : form.cost,
@@ -817,7 +819,7 @@ const ProductManagement = ({ token }) => {
           delivery_methods_override_enabled: !!editing.delivery_methods_override_enabled,
           delivery_allow_pickup: !!editing.delivery_allow_pickup,
           delivery_allow_shipping: !!editing.delivery_allow_shipping,
-          delivery_allow_local_delivery: !!editing.delivery_allow_local_delivery,
+          delivery_allow_local_delivery: false,
           shipping_weight_grams: editing.shipping_weight_grams != null ? String(editing.shipping_weight_grams) : "",
           shipping_length_mm: editing.shipping_length_mm != null ? String(editing.shipping_length_mm) : "",
           shipping_width_mm: editing.shipping_width_mm != null ? String(editing.shipping_width_mm) : "",
@@ -1922,8 +1924,7 @@ const ProductManagement = ({ token }) => {
                     Workspace currently allows:
                     {globalDeliveryPolicy.allow_pickup ? " Pickup" : ""}
                     {globalDeliveryPolicy.allow_shipping ? `${globalDeliveryPolicy.allow_pickup ? "," : ""} Shipping` : ""}
-                    {globalDeliveryPolicy.allow_local_delivery ? `${(globalDeliveryPolicy.allow_pickup || globalDeliveryPolicy.allow_shipping) ? "," : ""} Local delivery` : ""}
-                    {!globalDeliveryPolicy.allow_pickup && !globalDeliveryPolicy.allow_shipping && !globalDeliveryPolicy.allow_local_delivery ? " no delivery methods right now." : "."}
+                    {!globalDeliveryPolicy.allow_pickup && !globalDeliveryPolicy.allow_shipping ? " no delivery methods right now." : "."}
                   </Typography>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                     <Tooltip
@@ -1962,24 +1963,26 @@ const ProductManagement = ({ token }) => {
                         />
                       </span>
                     </Tooltip>
-                    <Tooltip
-                      title={globalDeliveryPolicy.allow_local_delivery ? "" : (globalDeliveryPolicy.enabled ? "Enable Local delivery in Products -> Delivery setup first." : "Turn on checkout delivery and enable Local delivery in Products -> Delivery setup first.")}
-                      arrow
-                    >
-                      <span>
-                        <FormControlLabel
-                          control={(
-                            <Checkbox
-                              id="delivery_allow_local_delivery"
-                              checked={form.delivery_allow_local_delivery}
-                              onChange={handleChange("delivery_allow_local_delivery")}
-                              disabled={!globalDeliveryPolicy.allow_local_delivery}
-                            />
-                          )}
-                          label="Local delivery"
-                        />
-                      </span>
-                    </Tooltip>
+                    {MANAGER_LOCAL_DELIVERY_UI_ENABLED ? (
+                      <Tooltip
+                        title={globalDeliveryPolicy.allow_local_delivery ? "" : (globalDeliveryPolicy.enabled ? "Enable Local delivery in Products -> Delivery setup first." : "Turn on checkout delivery and enable Local delivery in Products -> Delivery setup first.")}
+                        arrow
+                      >
+                        <span>
+                          <FormControlLabel
+                            control={(
+                              <Checkbox
+                                id="delivery_allow_local_delivery"
+                                checked={form.delivery_allow_local_delivery}
+                                onChange={handleChange("delivery_allow_local_delivery")}
+                                disabled={!globalDeliveryPolicy.allow_local_delivery}
+                              />
+                            )}
+                            label="Local delivery"
+                          />
+                        </span>
+                      </Tooltip>
+                    ) : null}
                   </Stack>
                   <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
                     Override is on. This Product can only narrow the workspace delivery choices.

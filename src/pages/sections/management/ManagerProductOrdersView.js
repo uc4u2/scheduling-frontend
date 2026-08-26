@@ -85,7 +85,6 @@ const deliveryOptions = [
   { value: "all", label: "All delivery methods" },
   { value: "pickup", label: "Pickup" },
   { value: "shipping", label: "Shipping" },
-  { value: "local_delivery", label: "Local delivery" },
 ];
 const defaultFilters = {
   search: "",
@@ -389,7 +388,7 @@ const normalizeManagerShippingSettings = (data = {}) => ({
   easypost_last_test_message: data?.easypost_last_test_message || "",
   allow_pickup: Boolean(data?.allow_pickup),
   allow_shipping: data?.allow_shipping !== false,
-  allow_local_delivery: Boolean(data?.allow_local_delivery),
+  allow_local_delivery: false,
   origin_name: data?.origin_name || "",
   origin_phone: data?.origin_phone || "",
   origin_address1: data?.origin_address1 || "",
@@ -405,7 +404,7 @@ const normalizeManagerShippingSettings = (data = {}) => ({
   readiness: data?.readiness || { ready: false, checklist: [] },
   shipping_label_pickup: data?.shipping_label_pickup || "",
   shipping_label_shipping: data?.shipping_label_shipping || "",
-  shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
+  shipping_label_local_delivery: "",
 });
 
 const formatPaymentStatusLabel = (status) =>
@@ -1340,7 +1339,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         easypost_enabled: Boolean(shippingSettings.easypost_enabled),
         allow_pickup: Boolean(shippingSettings.allow_pickup),
         allow_shipping: Boolean(shippingSettings.allow_shipping),
-        allow_local_delivery: Boolean(shippingSettings.allow_local_delivery),
+        allow_local_delivery: false,
         origin_name: shippingSettings.origin_name || null,
         origin_phone: shippingSettings.origin_phone || null,
         origin_address1: shippingSettings.origin_address1 || null,
@@ -1351,7 +1350,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         origin_country: shippingSettings.origin_country || null,
         shipping_label_pickup: shippingSettings.shipping_label_pickup || null,
         shipping_label_shipping: shippingSettings.shipping_label_shipping || null,
-        shipping_label_local_delivery: shippingSettings.shipping_label_local_delivery || null,
+        shipping_label_local_delivery: null,
       };
       const trimmedEasyPostKey = (easypostApiKeyInput || "").trim();
       if (trimmedEasyPostKey) {
