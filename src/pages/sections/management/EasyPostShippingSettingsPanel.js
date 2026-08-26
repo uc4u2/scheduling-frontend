@@ -313,11 +313,25 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     deliveryEnabled && Boolean(settings?.allow_shipping) && !isEasyPostMode
   );
   const destinationPolicyMode = settings?.destination_policy_mode || settings?.destination_policy_preset || "domestic_only";
+  const countryCatalog = useMemo(
+    () => (Array.isArray(settings?.country_catalog) ? settings.country_catalog : []),
+    [settings?.country_catalog]
+  );
   const selectedCountryOptions = useMemo(() => {
     const selected = Array.isArray(settings?.allowed_destination_countries) ? settings.allowed_destination_countries : [];
-    const catalog = Array.isArray(settings?.country_catalog) ? settings.country_catalog : [];
-    return catalog.filter((row) => selected.includes(row.code));
-  }, [settings?.allowed_destination_countries, settings?.country_catalog]);
+    return countryCatalog.filter((row) => selected.includes(row.code));
+  }, [countryCatalog, settings?.allowed_destination_countries]);
+  const inlineSelectMenuProps = useMemo(
+    () => ({
+      disablePortal: true,
+      PaperProps: {
+        sx: {
+          maxHeight: 320,
+        },
+      },
+    }),
+    []
+  );
   const originComplete = useMemo(() => (
     Boolean(
       settings?.origin_name
@@ -798,6 +812,111 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         <Alert severity="error">{deliveryMethodsError}</Alert>
                       )}
                     </Stack>
+                    {!isEasyPostMode && (
+                      <>
+                        <Divider />
+                        <Box sx={focusHighlightSx(focusedSection === "origin")}>
+                          <Stack spacing={1.5}>
+                            <Typography variant="subtitle2" fontWeight={700}>
+                              Shipping coverage
+                            </Typography>
+                            <Grid container spacing={1.5}>
+                              <Grid item xs={12} md={4}>
+                                <Stack spacing={1}>
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    label="Origin country"
+                                    value={settings.origin_country || ""}
+                                    onChange={(e) => updateField("origin_country", String(e.target.value || "").toUpperCase().slice(0, 2))}
+                                    helperText="Enter the 2-letter country code, for example CA or US."
+                                    inputProps={{ maxLength: 2 }}
+                                  />
+                                  <TextField
+                                    select
+                                    fullWidth
+                                    size="small"
+                                    label="Quick pick country"
+                                    InputLabelProps={{ shrink: true }}
+                                    value=""
+                                    onChange={(e) => updateField("origin_country", e.target.value)}
+                                    SelectProps={{ MenuProps: inlineSelectMenuProps, displayEmpty: true }}
+                                    helperText="Optional: choose from the list instead of typing."
+                                  >
+                                    <MenuItem value="" disabled>Select a country</MenuItem>
+                                    {countryCatalog.map((option) => (
+                                      <MenuItem key={option.code} value={option.code}>
+                                        {option.label} ({option.code})
+                                      </MenuItem>
+                                    ))}
+                                  </TextField>
+                                </Stack>
+                              </Grid>
+                              <Grid item xs={12} md={4}>
+                                <TextField
+                                  select
+                                  fullWidth
+                                  size="small"
+                                  label="Destination policy"
+                                  value={destinationPolicyMode}
+                                  onChange={(e) => updateField("destination_policy_mode", e.target.value)}
+                                  SelectProps={{ MenuProps: inlineSelectMenuProps }}
+                                >
+                                  <MenuItem value="domestic_only">Domestic only</MenuItem>
+                                  <MenuItem value="ca_us">Canada and United States</MenuItem>
+                                  <MenuItem value="selected_countries">Selected countries</MenuItem>
+                                </TextField>
+                              </Grid>
+                              <Grid item xs={12} md={8}>
+                                <Autocomplete
+                                  multiple
+                                  options={countryCatalog}
+                                  value={selectedCountryOptions}
+                                  getOptionLabel={(option) => `${option.label} (${option.code})`}
+                                  disablePortal
+                                  disableCloseOnSelect
+                                  onChange={(_event, values) => {
+                                    const domestic = String(settings.origin_country || "").trim().toUpperCase();
+                                    const nextCodes = Array.from(new Set([
+                                      ...(domestic ? [domestic] : []),
+                                      ...values.map((row) => row.code),
+                                    ]));
+                                    updateField("allowed_destination_countries", nextCodes);
+                                    updateField("destination_policy_mode", "selected_countries");
+                                  }}
+                                  isOptionEqualToValue={(option, value) => option.code === value.code}
+                                  disabled={destinationPolicyMode !== "selected_countries"}
+                                  renderTags={(value, getTagProps) =>
+                                    value.map((option, index) => {
+                                      const { key, ...tagProps } = getTagProps({ index });
+                                      return (
+                                        <Chip
+                                          key={key}
+                                          label={`${option.label} (${option.code})`}
+                                          size="small"
+                                          {...tagProps}
+                                        />
+                                      );
+                                    })
+                                  }
+                                  renderInput={(params) => (
+                                    <TextField
+                                      {...params}
+                                      size="small"
+                                      label="Selected destination countries"
+                                      helperText="The origin country is always included. This applies to manual shipping and EasyPost."
+                                    />
+                                  )}
+                                />
+                              </Grid>
+                            </Grid>
+                            <Typography variant="caption" color="text.secondary">
+                              Manual shipping still needs an origin country and destination policy so checkout knows which countries to offer customers.
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </>
+                    )}
                   </Stack>
                 </Paper>
                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
@@ -975,6 +1094,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   </Grid>
                 </Grid>
                 </Box>
+                {isEasyPostMode && (
+                <>
                 <Box ref={originSectionRef} sx={focusHighlightSx(focusedSection === "origin")}>
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin name", hint: "Sender/business name used as shipment origin. Example: your store name.", value: settings.origin_name, onChange: (e) => updateField("origin_name", e.target.value), disabled: !isEasyPostMode })}</Grid>
@@ -986,11 +1107,6 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin postal code", hint: "ZIP/Postal code for origin address.", value: settings.origin_postal_code, onChange: (e) => updateField("origin_postal_code", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin country", hint: "2-letter country code (ISO-2). Example: US, CA. Checkout country options depend on this even when you ship manually.", value: settings.origin_country, onChange: (e) => updateField("origin_country", e.target.value) })}</Grid>
                 </Grid>
-                {!isEasyPostMode && (
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                    Manual shipping still needs an origin country and destination policy so checkout knows which countries to offer customers.
-                  </Typography>
-                )}
                 </Box>
                 <Box ref={destinationSectionRef} sx={focusHighlightSx(focusedSection === "destinations")}>
                 <Grid container spacing={1.5}>
@@ -1133,6 +1249,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   </Grid>
                 </Grid>
                 </Box>
+                </>
+                )}
                 {destinationPolicyMode !== "domestic_only" && (
                   <>
                     <Divider />
