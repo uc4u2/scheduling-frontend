@@ -121,7 +121,7 @@ import {
   upgradeLegacyIronEmberProjectGallery,
   withNormalizedModules,
 } from "../../../utils/websiteSemanticModules";
-import { createIronEmberOriginalHomeModules } from "../../../utils/ironEmberHomeBlueprint";
+import { getProfessionHomeBlueprint } from "../../../utils/professionHomeBlueprints";
 import {
   getCompatibleModuleChoices,
   getThemeModuleDisplayLabel,
@@ -7583,10 +7583,10 @@ const autoProvisionIfEmpty = useCallback(
     .filter(({ section }) => section.type !== "pageStyle");
   const semanticModules = safeModules(editing);
   const editingPageKind = inferPageKind(editing || {});
-  const canRestoreOriginalIronEmberHome =
-    isNextJsContentMode &&
-    editingPageKind === "home" &&
-    String(currentStyleKey || "").trim().toLowerCase() === "iron-ember";
+  const originalHomepageBlueprint = isNextJsContentMode && editingPageKind === "home"
+    ? getProfessionHomeBlueprint(currentStyleKey)
+    : null;
+  const canRestoreOriginalHomepage = Boolean(originalHomepageBlueprint);
   const semanticModuleChoices = isNextJsContentMode
     ? getCompatibleModuleChoices(currentStyleKey, editingPageKind, semanticModules)
     : [];
@@ -8338,7 +8338,7 @@ const autoProvisionIfEmpty = useCallback(
       >
         {isNextJsContentMode ? (
           <Stack spacing={1}>
-            {canRestoreOriginalIronEmberHome ? (
+            {canRestoreOriginalHomepage ? (
               <Alert
                 severity="info"
                 variant="outlined"
@@ -8346,15 +8346,14 @@ const autoProvisionIfEmpty = useCallback(
                   <Button
                     size="small"
                     color="inherit"
-                    onClick={() => restoreOriginalIronEmberHome()}
+                    onClick={() => restoreOriginalHomepage()}
                   >
                     Restore original homepage
                   </Button>
                 }
               >
-                Iron Ember can restore its original editorial homepage as editable
-                modules, including the scroll story and Selected Cuts rail. Review
-                the draft, then use Save and Publish normally.
+                {originalHomepageBlueprint.label} can restore {originalHomepageBlueprint.description}
+                {" "}as editable modules. Review the draft, then use Save and Publish normally.
               </Alert>
             ) : null}
             {semanticModules.map((module, index) => (
@@ -8708,22 +8707,22 @@ const updateSemanticModules = useCallback(
   [queueNextJsDraftSync, setEditing]
 );
 
-const restoreOriginalIronEmberHome = useCallback(() => {
-  if (!canRestoreOriginalIronEmberHome) return;
+const restoreOriginalHomepage = useCallback(() => {
+  if (!canRestoreOriginalHomepage || !originalHomepageBlueprint) return;
   const accepted = window.confirm(
-    "Replace this homepage's current sections with the original Iron Ember editorial homepage? The replacement stays in draft until you click Save."
+    `Replace this homepage's current sections with the original ${originalHomepageBlueprint.label} composition? The replacement stays in draft until you click Save.`
   );
   if (!accepted) return;
 
-  const modules = createIronEmberOriginalHomeModules();
-  updateSemanticModules(() => modules, { title: "Cut With Character.", menu_title: "Home" });
+  const modules = originalHomepageBlueprint.createModules();
+  updateSemanticModules(() => modules, { title: originalHomepageBlueprint.pageTitle, menu_title: "Home" });
   setSelectedModuleId(modules[0]?.id || "");
   setSelectedBlock(-1);
   setInspectorOpen(true);
   setInspectorTab("content");
   setUnsupportedModuleWarning("");
-  setMsg("Original Iron Ember homepage restored in draft. Review it, then click Save and Publish.");
-}, [canRestoreOriginalIronEmberHome, updateSemanticModules]);
+  setMsg(`Original ${originalHomepageBlueprint.label} homepage restored in draft. Review it, then click Save and Publish.`);
+}, [canRestoreOriginalHomepage, originalHomepageBlueprint, updateSemanticModules]);
 
 const addSemanticModule = useCallback(
   (moduleType, slot) => {

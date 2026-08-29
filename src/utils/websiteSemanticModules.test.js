@@ -11,6 +11,9 @@ import {
   upgradeLegacyIronEmberProjectGallery,
 } from "./websiteSemanticModules";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
+import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
+import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
+import { getProfessionHomeBlueprint, getProfessionHomeBlueprintKeys } from "./professionHomeBlueprints";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -181,6 +184,43 @@ describe("website semantic modules", () => {
     const second = createIronEmberOriginalHomeModules();
     second[0].content.heading = "Changed in one draft";
     expect(modules[0].content.heading).toBe("Cut With Character.");
+  });
+
+  it("provides the complete source-native Clear Clinic homepage as canonical editable modules", () => {
+    const modules = createClearClinicOriginalHomeModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "trustRail", "services", "team", "process", "featureStory",
+      "reviews", "serviceAreas", "faq", "contactIntro", "contactDetails",
+      "hoursLocation", "map", "contactForm", "bookingCta",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    expect(modules.find((module) => module.type === "featureStory").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.type === "hero").content.secondaryImages).toHaveLength(1);
+    expect(modules.find((module) => module.type === "services").content.source).toBe("operational");
+    expect(modules.find((module) => module.type === "reviews").content.source).toBe("operational");
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+    expect(modules.every((module) => module.settings.starterBlueprint === "clear-clinic-original")).toBe(true);
+  });
+
+  it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom"]));
+    expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
+    expect(getProfessionHomeBlueprint("classic")).toBeNull();
+    expect(getProfessionHomeBlueprint("")).toBeNull();
+  });
+
+  it("provides Still Bloom's complete editable studio rhythm", () => {
+    const modules = createStillBloomOriginalHomeModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "richText", "services", "hoursLocation", "featureStory", "team",
+      "pricing", "reviews", "faq", "contactIntro", "contactDetails", "map",
+      "contactForm", "bookingCta",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    expect(modules.find((module) => module.id === "bloom-home-hero").content.secondaryImages).toHaveLength(2);
+    expect(modules.find((module) => module.id === "bloom-home-schedule").content.items).toHaveLength(5);
+    expect(modules.find((module) => module.id === "bloom-home-movement-story").content.items).toHaveLength(3);
+    expect(modules.every((module) => module.settings.starterBlueprint === "still-bloom-original")).toBe(true);
   });
 
   it("keeps legacy JSON stored but out of a complete Next starter blueprint", () => {
