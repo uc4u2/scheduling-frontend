@@ -4,6 +4,7 @@ import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBluep
 import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
+import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -45,6 +46,12 @@ const BLUEPRINTS = {
     description: "its private editorial hero, specialty paths, therapists, first-session rhythm, guidance, and grouped intake ending",
     pageTitle: "Private support for clearer inner ground.",
     createModules: createQuietHarborOriginalHomeModules,
+  },
+  fieldcraft: {
+    label: "Fieldcraft",
+    description: "its original utility hero, practical service selector, before-and-after proof, project rhythm, homeowner guidance, and grouped estimate ending",
+    pageTitle: "Built to show up and finish right.",
+    createModules: createFieldcraftOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",

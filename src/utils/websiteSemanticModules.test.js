@@ -21,6 +21,7 @@ import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBluep
 import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
+import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -298,6 +299,18 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "quiet-home-reviews").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "quiet-home-team").content.items).toHaveLength(3);
     expect(modules.every((module) => module.settings.starterBlueprint === "quiet-harbor-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Fieldcraft's complete editable local-trades rhythm", () => {
+    const modules = createFieldcraftOriginalHomeModules();
+    expect(modules).toHaveLength(17);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(17);
+    expect(modules.find((module) => module.id === "field-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "field-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "field-home-before-after").content.items).toHaveLength(2);
+    expect(modules.find((module) => module.id === "field-home-projects").content.items).toHaveLength(3);
+    expect(modules.every((module) => module.settings.starterBlueprint === "fieldcraft-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 
