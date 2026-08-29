@@ -89,120 +89,64 @@ const SHARED_FIELD_DEFAULTS = {
   gradientAccent: false,
 };
 
-export const NEXTJS_THEME_OVERRIDE_CONTRACT = {
-  "modern-gradient": {
-    acceptedFields: [
-      "brandPrimaryColor",
-      "accentColor",
-      "pageBackground",
-      "sectionSpacing",
-      "buttonRadius",
-      "lightDarkPreference",
-      "heroMediaUrl",
-      "gradientAccent",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      lightDarkPreference: "light",
-      gradientAccent: true,
-    },
-  },
-  "eldora-dark": {
-    acceptedFields: [
-      "accentColor",
-      "sectionSpacing",
-      "buttonRadius",
-      "heroMediaUrl",
-      "lightDarkPreference",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      lightDarkPreference: "dark",
-    },
-  },
-  "motion-editorial": {
-    acceptedFields: [
-      "accentColor",
-      "typographyScale",
-      "heroMediaUrl",
-      "sectionSpacing",
-      "lightDarkPreference",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      typographyScale: 1.05,
-      lightDarkPreference: "dark",
-    },
-  },
-  finwise: {
-    acceptedFields: [
-      "brandPrimaryColor",
-      "accentColor",
-      "pageBackground",
-      "sectionSpacing",
-      "buttonRadius",
-      "buttonTreatment",
-      "lightDarkPreference",
-      "heroMediaUrl",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      lightDarkPreference: "light",
-      buttonTreatment: "soft",
-    },
-  },
-  "iron-ember": {
-    acceptedFields: [
-      "brandPrimaryColor",
-      "accentColor",
-      "pageBackground",
-      "surfaceColor",
-      "foregroundColor",
-      "mutedForegroundColor",
-      "cardColor",
-      "borderColor",
-      "buttonForegroundColor",
-      "sectionSpacing",
-      "buttonRadius",
-      "buttonTreatment",
-      "heroMediaUrl",
-      "lightDarkPreference",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      lightDarkPreference: "dark",
-    },
-  },
-  "clear-clinic": {
-    acceptedFields: [
-      "brandPrimaryColor",
-      "accentColor",
-      "sectionSpacing",
-      "buttonRadius",
-      "heroMediaUrl",
-      "lightDarkPreference",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      lightDarkPreference: "light",
-    },
-  },
-  "harbor-line": {
-    acceptedFields: [
-      "accentColor",
-      "sectionSpacing",
-      "buttonRadius",
-      "heroMediaUrl",
-      "lightDarkPreference",
-      "typographyScale",
-    ],
-    defaults: {
-      ...SHARED_FIELD_DEFAULTS,
-      lightDarkPreference: "dark",
-      typographyScale: 1.05,
-    },
-  },
+export const NEXTJS_PAGE_STYLE_BASE_FIELDS = [
+  "brandPrimaryColor",
+  "accentColor",
+  "pageBackground",
+  "surfaceColor",
+  "foregroundColor",
+  "mutedForegroundColor",
+  "cardColor",
+  "borderColor",
+  "buttonForegroundColor",
+  "lightDarkPreference",
+  "buttonTreatment",
+  "buttonRadius",
+  "sectionSpacing",
+  "heroMediaUrl",
+];
+
+export const NEXTJS_PAGE_STYLE_PRESET_KEYS = [
+  "modern-noir",
+  "blush-spa",
+  "forest-calm",
+  "champagne-luxe",
+  "ocean-clean",
+];
+
+// This capability map is the Builder's single registry for Next Page Style.
+// Visible UI derives both theme recognition and special-field gating from it;
+// legacy JSON templates never enter this catalog.
+const NEXTJS_PAGE_STYLE_THEME_CAPABILITIES = {
+  "modern-gradient": { lightDarkPreference: "light", specialFields: ["gradientAccent"], gradientAccent: true },
+  "eldora-dark": { lightDarkPreference: "dark" },
+  "motion-editorial": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  finwise: { lightDarkPreference: "light", buttonTreatment: "soft" },
+  "iron-ember": { lightDarkPreference: "dark" },
+  "clear-clinic": { lightDarkPreference: "light" },
+  "harbor-line": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "still-bloom": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "black-letter": { lightDarkPreference: "dark" },
+  "circuit-north": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "solara-stay": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "paw-and-pine": { lightDarkPreference: "light" },
+  "quiet-harbor": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "frame-and-field": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  fieldcraft: { lightDarkPreference: "light" },
 };
+
+export const NEXTJS_THEME_OVERRIDE_CONTRACT = Object.fromEntries(
+  Object.entries(NEXTJS_PAGE_STYLE_THEME_CAPABILITIES).map(([themeKey, capability]) => {
+    const { specialFields = [], ...defaultOverrides } = capability;
+    return [themeKey, {
+      acceptedFields: [...NEXTJS_PAGE_STYLE_BASE_FIELDS, ...specialFields],
+      defaults: {
+        ...SHARED_FIELD_DEFAULTS,
+        ...defaultOverrides,
+      },
+    }];
+  })
+);
 
 function clampNumber(value, min, max, fallback) {
   const next = Number(value);
@@ -237,6 +181,21 @@ function isDarkHex(value) {
 
 export function getThemeOverrideContract(themeKey) {
   return NEXTJS_THEME_OVERRIDE_CONTRACT[String(themeKey || "").trim().toLowerCase()] || null;
+}
+
+export function resolveNextJsPageStyleCapabilities({
+  rendererEngine,
+  visualThemeKey,
+} = {}) {
+  if (String(rendererEngine || "").trim().toLowerCase() !== "nextjs") return null;
+  const themeKey = String(visualThemeKey || "").trim().toLowerCase();
+  const contract = getThemeOverrideContract(themeKey);
+  if (!contract) return null;
+  return {
+    themeKey,
+    supportedFields: [...contract.acceptedFields],
+    presetKeys: [...NEXTJS_PAGE_STYLE_PRESET_KEYS],
+  };
 }
 
 export function getSupportedThemeOverrideFields(themeKey) {
@@ -288,6 +247,10 @@ export function sanitizeThemeOverrideDraft(themeKey, draft = {}) {
     const fallback = contract.defaults?.[fieldKey];
     next[fieldKey] = sanitizeThemeOverrideValue(fieldKey, draft?.[fieldKey], fallback);
   });
+  const themePresetKey = String(draft?.themePresetKey || "").trim().toLowerCase();
+  if (NEXTJS_PAGE_STYLE_PRESET_KEYS.includes(themePresetKey)) {
+    next.themePresetKey = themePresetKey;
+  }
   return next;
 }
 
@@ -323,6 +286,9 @@ export function buildThemeOverridesFromPreset(
 
   return {
     ...base,
+    ...(NEXTJS_PAGE_STYLE_PRESET_KEYS.includes(String(preset?.key || "").trim().toLowerCase())
+      ? { themePresetKey: String(preset.key).trim().toLowerCase() }
+      : {}),
     brandPrimaryColor,
     accentColor,
     pageBackground,

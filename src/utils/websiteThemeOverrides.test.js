@@ -4,15 +4,41 @@ import {
   getSupportedThemeOverrideFields,
   getThemeOverrideContract,
   isThemeOverrideFieldSupported,
+  NEXTJS_PAGE_STYLE_BASE_FIELDS,
+  NEXTJS_PAGE_STYLE_PRESET_KEYS,
+  resolveNextJsPageStyleCapabilities,
   sanitizeThemeOverrideDraft,
 } from "./websiteThemeOverrides";
 
 describe("website theme overrides", () => {
-  it("exposes a safe contract for each live nextjs theme", () => {
-    expect(getThemeOverrideContract("modern-gradient")).toBeTruthy();
-    expect(getThemeOverrideContract("eldora-dark")).toBeTruthy();
-    expect(getThemeOverrideContract("motion-editorial")).toBeTruthy();
-    expect(getThemeOverrideContract("finwise")).toBeTruthy();
+  const registeredNextThemeKeys = [
+    "modern-gradient",
+    "eldora-dark",
+    "motion-editorial",
+    "finwise",
+    "iron-ember",
+    "clear-clinic",
+    "harbor-line",
+    "still-bloom",
+    "black-letter",
+    "circuit-north",
+    "solara-stay",
+    "paw-and-pine",
+    "quiet-harbor",
+    "frame-and-field",
+    "fieldcraft",
+  ];
+
+  it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {
+    const capability = resolveNextJsPageStyleCapabilities({
+      rendererEngine: "nextjs",
+      visualThemeKey: themeKey,
+    });
+
+    expect(getThemeOverrideContract(themeKey)).toBeTruthy();
+    expect(capability).toBeTruthy();
+    expect(capability.supportedFields).toEqual(expect.arrayContaining(NEXTJS_PAGE_STYLE_BASE_FIELDS));
+    expect(capability.presetKeys).toEqual(NEXTJS_PAGE_STYLE_PRESET_KEYS);
   });
 
   it("filters unsupported fields from a draft", () => {
@@ -21,10 +47,12 @@ describe("website theme overrides", () => {
       accentColor: "#111111",
       buttonRadius: 3,
       lightDarkPreference: "dark",
+      gradientAccent: true,
     });
-    expect(sanitized.brandPrimaryColor).toBeUndefined();
+    expect(sanitized.brandPrimaryColor).toBe("#ffffff");
     expect(sanitized.accentColor).toBe("#111111");
     expect(sanitized.buttonRadius).toBe(3);
+    expect(sanitized.gradientAccent).toBeUndefined();
   });
 
   it("normalizes values into the accepted nextjs page-style contract", () => {
@@ -40,8 +68,27 @@ describe("website theme overrides", () => {
 
   it("answers support checks for Builder field gating", () => {
     expect(isThemeOverrideFieldSupported("finwise", "buttonTreatment")).toBe(true);
-    expect(isThemeOverrideFieldSupported("eldora-dark", "buttonTreatment")).toBe(false);
+    expect(isThemeOverrideFieldSupported("eldora-dark", "buttonTreatment")).toBe(true);
     expect(getSupportedThemeOverrideFields("modern-gradient")).toContain("gradientAccent");
+  });
+
+  it("keeps special fields theme-specific", () => {
+    expect(isThemeOverrideFieldSupported("modern-gradient", "gradientAccent")).toBe(true);
+    expect(isThemeOverrideFieldSupported("iron-ember", "gradientAccent")).toBe(false);
+    expect(isThemeOverrideFieldSupported("motion-editorial", "typographyScale")).toBe(true);
+    expect(isThemeOverrideFieldSupported("still-bloom", "typographyScale")).toBe(true);
+    expect(isThemeOverrideFieldSupported("eldora-dark", "typographyScale")).toBe(false);
+  });
+
+  it("does not route legacy JSON templates through the Next Page Style catalog", () => {
+    expect(resolveNextJsPageStyleCapabilities({
+      rendererEngine: "legacy-react",
+      visualThemeKey: "iron-ember",
+    })).toBeNull();
+    expect(resolveNextJsPageStyleCapabilities({
+      rendererEngine: "nextjs",
+      visualThemeKey: "unknown-json-template",
+    })).toBeNull();
   });
 
   it.each([
@@ -85,5 +132,21 @@ describe("website theme overrides", () => {
       cardColor,
       buttonForegroundColor: backgroundColor,
     });
+  });
+
+  it("stores the selected Next preset identity inside the existing theme_overrides contract", () => {
+    const overrides = buildThemeOverridesFromPreset({
+      key: "blush-spa",
+      pageStyle: { backgroundColor: "#fff7f8" },
+    });
+
+    expect(sanitizeThemeOverrideDraft("clear-clinic", overrides)).toMatchObject({
+      themePresetKey: "blush-spa",
+      pageBackground: "#fff7f8",
+    });
+    expect(sanitizeThemeOverrideDraft("clear-clinic", {
+      ...overrides,
+      themePresetKey: "unsupported-preset",
+    }).themePresetKey).toBeUndefined();
   });
 });

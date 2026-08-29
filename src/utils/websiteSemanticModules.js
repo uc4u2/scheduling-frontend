@@ -7,6 +7,7 @@ export const SEMANTIC_MODULE_LABELS = {
   reviews: "Reviews",
   faq: "FAQ",
   gallery: "Gallery",
+  selectedCuts: "Selected Cuts",
   map: "Map",
   contactForm: "Contact Form",
   contactIntro: "Contact Intro",
@@ -60,6 +61,7 @@ export const SEMANTIC_MODULE_GROUPS = {
   proofBand: "TRUST",
   reviewSummary: "TRUST",
   gallery: "MEDIA",
+  selectedCuts: "MEDIA",
   video: "MEDIA",
   beforeAfter: "MEDIA",
   portfolio: "MEDIA",
@@ -85,6 +87,66 @@ export const SEMANTIC_MODULE_GROUPS = {
   inquiry: "PROFESSION",
   priceMenu: "PROFESSION",
 };
+
+export const IRON_EMBER_PROJECT_GALLERY_ITEMS = [
+  { id: "studio-ritual", title: "Studio Ritual", caption: "The chair, tools, and measured pace before the first cut.", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageAlt: "A warm, low-lit barbershop chair and tools prepared for an appointment.", href: "", link: "" },
+  { id: "precision-fade", title: "Precision Fade", caption: "Controlled graduation shaped to settle cleanly between visits.", image: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber refining a precise fade on the side of a client's haircut.", href: "", link: "" },
+  { id: "beard-balance", title: "Beard Balance", caption: "Outline, density, and proportion brought back into balance.", image: "https://images.unsplash.com/photo-1622288432450-277d0fef5ed6?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1622288432450-277d0fef5ed6?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber carefully shaping a client's beard and refining its outline.", href: "", link: "" },
+  { id: "craft-detail", title: "Craft Detail", caption: "Close finishing work that holds the whole shape together.", image: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=1400&q=85", imageAlt: "Close-up of barber hands and tools during detailed grooming work.", href: "", link: "" },
+  { id: "texture-work", title: "Texture Work", caption: "Movement and weight refined with comb and shear work.", image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber working texture through a client's hair with a comb and scissors.", href: "", link: "" },
+  { id: "final-direction", title: "Final Direction", caption: "The finishing pass, styled for an easier everyday routine.", image: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber completing the final styling of a finished haircut.", href: "", link: "" },
+];
+
+const isLegacyEventGalleryModule = (module) => {
+  if (!["gallery", "portfolio"].includes(String(module?.type || ""))) return false;
+  const items = Array.isArray(module?.content?.items) ? module.content.items : [];
+  return items.length >= 4 && items.every((item) =>
+    String(item?.imageUrl || item?.image || "").includes("/website/enterprise-events-aurora/")
+  );
+};
+
+export function createIronEmberProjectGalleryModule(page = {}) {
+  const module = createSemanticModule("gallery", page, "projects.primaryContent");
+  return {
+    ...module,
+    content: {
+      heading: "Selected work.",
+      intro: "Six studio studies in shape, texture, detail, and finish.",
+      items: IRON_EMBER_PROJECT_GALLERY_ITEMS.map((item) => ({ ...item })),
+    },
+    settings: { ...module.settings, starterBlueprint: "iron-ember-projects-gallery-v1" },
+  };
+}
+
+// A legacy events template could leave two generic gallery modules on an Iron
+// Ember Projects page. Upgrade only that exact untouched asset family; any
+// manager-authored gallery is preserved byte-for-byte.
+export function upgradeLegacyIronEmberProjectGallery(page = {}) {
+  const modules = normalizeSemanticModules(page);
+  const legacyModules = modules.filter(isLegacyEventGalleryModule);
+  if (!legacyModules.length) return page;
+  const target = legacyModules.find((module) => module.type === "gallery") || legacyModules[0];
+  const starter = createIronEmberProjectGalleryModule(page);
+  const legacyIds = new Set(legacyModules.map((module) => String(module.id)));
+  const nextModules = modules
+    .filter((module) => !legacyIds.has(String(module.id)) || String(module.id) === String(target.id))
+    .map((module) => String(module.id) === String(target.id)
+      ? {
+          ...module,
+          type: "gallery",
+          slot: "projects.primaryContent",
+          content: starter.content,
+          settings: { ...module.settings, starterBlueprint: "iron-ember-projects-gallery-v1" },
+        }
+      : module);
+  return {
+    ...page,
+    content: {
+      ...normalizePageContent(page.content || {}),
+      modules: nextModules,
+    },
+  };
+}
 
 export const OLD_BLOCK_MIGRATION_STATUS = {
   hero: "normalized",
@@ -170,7 +232,7 @@ export function inferPageKind(page = {}) {
   if (slug === "product-detail") return "product-detail";
   if (slug.startsWith("service-") && slug !== "service-areas") return "service-detail";
   if (["about", "team", "our-team"].includes(slug)) return "about";
-  if (["gallery", "projects", "portfolio", "fleet"].includes(slug)) return "projects";
+  if (["gallery", "projects", "projects-gallery", "portfolio", "fleet"].includes(slug)) return "projects";
   if (["blog", "journal", "news"].includes(slug)) return "blog";
   if (slug === "reviews") return "reviews";
   if (slug === "jobs") return "jobs";
@@ -180,6 +242,24 @@ export function inferPageKind(page = {}) {
   if (slug === "faq") return "faq";
   if (["privacy", "terms", "cookies", "policies"].includes(slug)) return "legal";
   return "generic";
+}
+
+// Classic pages can store an iframe string as their hero/body because the old
+// renderer mounted an entire catalogue page there. It remains valid Classic
+// data, but it is not editable public copy for a Next semantic hero.
+export function sanitizeNextJsEditableText(value) {
+  const text = String(value || "").trim();
+  const normalized = text.toLowerCase();
+  if (
+    normalized.includes("<iframe") &&
+    (
+      /[?&](?:embed=1|mode=modal|dialog=1)(?:[&#"']|$)/.test(normalized) ||
+      ["/{{slug}}/services", "/{{slug}}/products", "/{{slug}}/reviews", "/{{slug}}/jobs"].some((marker) => normalized.includes(marker))
+    )
+  ) {
+    return "";
+  }
+  return text;
 }
 
 export function normalizePageContent(content = {}) {
@@ -250,6 +330,28 @@ export function normalizeWebsiteMediaReference(value) {
     // Relative media references and non-URL text are already canonical.
   }
   return value;
+}
+
+/**
+ * The existing Website Media endpoint stores both images and uploaded video
+ * files. Semantic Next.js modules persist the same stable URL string for
+ * either kind, so the Builder must determine which preview element to use
+ * without introducing a second media record or persistence field.
+ *
+ * Keep this deliberately aligned with the legacy video controls: MP4 and
+ * WebM are the supported uploaded formats. Query strings and URL fragments
+ * are ignored when checking the extension.
+ */
+export function isWebsiteVideoReference(value) {
+  const candidate = value && typeof value === "object"
+    ? value.url || value.url_public || value.file_url || value.src || value.stored_name
+    : value;
+  const declaredType = value && typeof value === "object"
+    ? String(value.file_type || value.mime_type || value.content_type || "").toLowerCase()
+    : "";
+  if (declaredType === "video" || declaredType.startsWith("video/")) return true;
+  const clean = String(candidate || "").trim().split(/[?#]/, 1)[0].toLowerCase();
+  return /\.(?:mp4|webm)$/.test(clean);
 }
 
 export function normalizeSemanticModuleMediaReferences(value) {
@@ -342,6 +444,7 @@ export function defaultSlotForModule(pageKind, moduleType) {
     return "about.story";
   }
   if (page === "home") {
+    if (moduleType === "selectedCuts") return "home.selectedCuts";
     if (["services", "stats", "trustRail", "pricing"].includes(moduleType)) return "home.primaryContent";
     if (["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio", "proofBand", "reviewSummary"].includes(moduleType)) return "home.afterServices";
     if (["cta", "contactForm", "contactIntro", "contactDetails", "map", "hoursLocation", "locations", "bookingCta"].includes(moduleType)) return "home.beforeContact";
@@ -491,6 +594,8 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         eyebrow: props.eyebrow || "",
         heading: props.heading || props.title || "",
         subheading: props.subheading || props.description || "",
+        signaturePanelEnabled: props.signaturePanelEnabled !== false,
+        signaturePanelServiceLimit: Math.max(1, Math.min(10, Number(props.signaturePanelServiceLimit) || 4)),
         signaturePanelEyebrow: props.signaturePanelEyebrow || "",
         signaturePanelBody: props.signaturePanelBody || "",
         marqueeTopItems: Array.isArray(props.marqueeTopItems) ? props.marqueeTopItems : [],
@@ -555,6 +660,7 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         embedUrl: props.embedUrl || "",
         zoom: props.zoom || "",
         address: props.address || "",
+        ...normalizeCta(props),
       };
       break;
     case "contactForm":
@@ -562,6 +668,7 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         heading: props.title || props.heading || "",
         intro: props.subtitle || props.description || "",
         formKey: props.formKey || props.key || "contact",
+        submitLabel: props.submitLabel || props.buttonLabel || "Send",
       };
       break;
     case "contactIntro":
@@ -572,6 +679,7 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         image: pickMediaUrl(props.image, props.imageUrl),
         imageUrl: pickMediaUrl(props.image, props.imageUrl),
         imageAlt: props.imageAlt || props.alt || "",
+        ...normalizeCta(props),
       };
       break;
     case "featureStory":
@@ -640,6 +748,14 @@ export function normalizeSemanticModules(page = {}) {
     });
   });
 
+  const hasCanonicalStarterBlueprint = modules.some((module) =>
+    String(module?.settings?.starterBlueprint || "").trim()
+  );
+  // A marked Next starter blueprint is the complete Builder composition.
+  // Legacy JSON remains persisted for Classic compatibility and rollback, but
+  // must not leak old template blocks back into the modern preview on save.
+  if (hasCanonicalStarterBlueprint) return modules;
+
   (Array.isArray(content.sections) ? content.sections : []).forEach((section) => {
     const normalized = normalizeModuleFromSection(section, pageKind);
     if (!normalized) return;
@@ -681,6 +797,8 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         eyebrow: "",
         heading: page?.title || "",
         subheading: "",
+        signaturePanelEnabled: true,
+        signaturePanelServiceLimit: 4,
         signaturePanelEyebrow: "",
         signaturePanelBody: "",
         marqueeTopItems: [
@@ -723,10 +841,11 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         image: "",
         imageUrl: "",
         imageAlt: "",
+        primaryCta: { label: "Contact us", href: "/contact" },
       };
       break;
     case "contactForm":
-      base.content = { heading: "Contact us", intro: "", formKey: "contact" };
+      base.content = { heading: "Contact us", intro: "", formKey: "contact", submitLabel: "Send" };
       break;
     case "cta":
       base.content = {
@@ -745,7 +864,7 @@ export function createSemanticModule(moduleType, page = {}, slot) {
       };
       break;
     case "map":
-      base.content = { heading: "Find us", intro: "", query: "", address: "", embedUrl: "", zoom: "" };
+      base.content = { heading: "Find us", intro: "", query: "", address: "", embedUrl: "", zoom: "", primaryCta: { label: "Open map", href: "" } };
       break;
     case "video":
       base.content = { heading: "Video", body: "", videoUrl: "", embedUrl: "", posterImage: "", posterUrl: "", posterAlt: "" };
@@ -761,6 +880,23 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         secondaryImage: "",
         secondaryImageAlt: "",
         primaryCta: { label: "", href: "" },
+      };
+      break;
+    case "selectedCuts":
+      base.content = {
+        eyebrow: "Selected cuts",
+        heading: "Fresh from the chair.",
+        intro: "Eight studies in shape, texture, detail, and finish.",
+        items: [
+          { id: "precision-fade", title: "Precision Fade", category: "Blend / Graduation", image: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber shaping a precise fade with clippers", href: "" },
+          { id: "beard-detailing", title: "Beard Detailing", category: "Outline / Balance", image: "https://images.unsplash.com/photo-1622288432450-277d0fef5ed6?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1622288432450-277d0fef5ed6?auto=format&fit=crop&w=1400&q=85", imageAlt: "Close beard detailing during a barber service", href: "" },
+          { id: "scissor-finish", title: "Scissor Finish", category: "Shear Work / Shape", image: "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber finishing a haircut with scissors", href: "" },
+          { id: "consultation", title: "The Consultation", category: "Profile / Planning", image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber consulting with a client in the chair", href: "" },
+          { id: "between-chairs", title: "Between Chairs", category: "Studio / Ritual", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageAlt: "Classic barber chair in a working studio", href: "" },
+          { id: "texture-work", title: "Texture Work", category: "Movement / Control", image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber working texture into a modern haircut", href: "" },
+          { id: "final-styling", title: "Final Styling", category: "Finish / Direction", image: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1400&q=85", imageAlt: "Final styling and finishing touches in a barbershop", href: "" },
+          { id: "craft-at-hand", title: "Craft at Hand", category: "Tools / Close Detail", image: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=1400&q=85", imageAlt: "Barber tools and careful close-up craft detail", href: "" },
+        ],
       };
       break;
     case "services":

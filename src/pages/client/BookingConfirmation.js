@@ -620,7 +620,7 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
   const go = (to) => {
     const keep = new URLSearchParams();
 
-    ["embed", "primary", "text"].forEach(
+    ["embed", "mode", "dialog", "site", "primary", "text", "return_to", "returnTo"].forEach(
       (k) => searchParams.get(k) && keep.set(k, searchParams.get(k)),
     );
 

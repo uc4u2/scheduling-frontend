@@ -145,6 +145,7 @@ export const defaultFooterConfig = () => ({
   link_color: "",
   text: "",
   columns: [],
+  show_navigation: true,
   legal_links: [],
   social_links: [],
   social_placement: "footer",
@@ -247,6 +248,10 @@ export const normalizeFooterConfig = (value, { preserveAssets = true } = {}) => 
     link_color: value.link_color ?? base.link_color,
     text: value.text ?? base.text,
     columns: cleanColumns(value.columns, 4, 6),
+    show_navigation:
+      value.show_navigation === undefined
+        ? base.show_navigation
+        : Boolean(value.show_navigation),
     legal_links: cleanLinks(value.legal_links, 6),
     social_links: cleanSocial(value.social_links, 6),
     social_placement: socialPlacementChoice(value.social_placement, base.social_placement),

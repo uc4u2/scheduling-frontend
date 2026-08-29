@@ -1,7 +1,12 @@
 const PRESERVED_QUERY_KEYS = [
   "embed",
+  "mode",
+  "dialog",
+  "site",
   "primary",
   "text",
+  "return_to",
+  "returnTo",
   "h",
   "b",
   "link",

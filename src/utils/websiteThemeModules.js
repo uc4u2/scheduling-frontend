@@ -13,6 +13,7 @@ const SHARED_PAGES = {
   },
   about: {
     slotRules: {
+      "about.intro": { allowedModuleTypes: ["hero", "richText", "featureStory"], maxInstances: 1 },
       "about.story": { allowedModuleTypes: ["richText", "featureStory", "gallery", "process", "stats"], maxInstances: 4, required: true },
       "about.team": { allowedModuleTypes: ["team", "trustRail", "serviceAreas"], maxInstances: 3, fallbackSlot: "about.story" },
       "about.reviews": { allowedModuleTypes: ["reviews", "faq", "cta"], maxInstances: 3, fallbackSlot: "about.story" },
@@ -33,7 +34,7 @@ const SHARED_PAGES = {
   },
   contact: {
     slotRules: {
-      "contact.intro": { allowedModuleTypes: ["contactIntro", "richText", "cta"], maxInstances: 2 },
+      "contact.intro": { allowedModuleTypes: ["hero", "contactIntro", "richText", "cta"], maxInstances: 2 },
       "contact.details": { allowedModuleTypes: ["contactDetails"], maxInstances: 2, fallbackSlot: "contact.intro" },
       "contact.form": { allowedModuleTypes: ["contactForm"], maxInstances: 1, required: true, fallbackSlot: "contact.intro" },
       "contact.map": { allowedModuleTypes: ["map"], maxInstances: 1, fallbackSlot: "contact.form" },
@@ -55,6 +56,7 @@ const SHARED_PAGES = {
   },
   projects: {
     slotRules: {
+      "projects.intro": { allowedModuleTypes: ["hero", "richText", "featureStory"], maxInstances: 1 },
       "projects.primaryContent": { allowedModuleTypes: ["portfolio"], maxInstances: 2, required: true },
       "projects.supporting": { allowedModuleTypes: ["reviews", "gallery", "cta"], maxInstances: 4, fallbackSlot: "projects.primaryContent" },
     },
@@ -66,11 +68,27 @@ const SHARED_PAGES = {
   },
 };
 
+function ironEmberContentPage(introSlot) {
+  return {
+    slotRules: {
+      [introSlot]: { allowedModuleTypes: ["hero", "richText", "featureStory"], maxInstances: 1 },
+      "generic.primaryContent": { allowedModuleTypes: ["richText", "faq", "gallery", "map", "cta", "reviews", "contactForm", "featureStory"], maxInstances: 8 },
+    },
+  };
+}
+
 // Iron Ember's Journal is a normal canonical WebsitePage, not a separate
 // blog CMS. Keep its supported Add Section choices explicit so the Builder
 // presents the same page-specific editing contract as About or Contact.
 const IRON_EMBER_PAGES = {
   ...SHARED_PAGES,
+  home: {
+    ...SHARED_PAGES.home,
+    slotRules: {
+      ...SHARED_PAGES.home.slotRules,
+      "home.selectedCuts": { allowedModuleTypes: ["selectedCuts"], maxInstances: 1, fallbackSlot: "home.afterServices" },
+    },
+  },
   products: {
     slotRules: {
       "products.intro": { allowedModuleTypes: ["richText", "featureStory", "hero"], maxInstances: 2 },
@@ -85,11 +103,16 @@ const IRON_EMBER_PAGES = {
   },
   blog: {
     slotRules: {
+      "blog.intro": { allowedModuleTypes: ["hero", "richText", "featureStory"], maxInstances: 1 },
       "blog.primaryContent": { allowedModuleTypes: ["richText", "featureStory", "gallery"], maxInstances: 4, required: true },
       "blog.supporting": { allowedModuleTypes: ["faq", "reviews", "cta"], maxInstances: 3, fallbackSlot: "blog.primaryContent" },
       "blog.finalCta": { allowedModuleTypes: ["cta", "bookingCta"], maxInstances: 2, fallbackSlot: "blog.supporting" },
     },
   },
+  "service-areas": ironEmberContentPage("service-areas.intro"),
+  faq: ironEmberContentPage("faq.intro"),
+  legal: ironEmberContentPage("legal.intro"),
+  generic: ironEmberContentPage("generic.intro"),
 };
 
 // These are presentation labels only.  The module types and slots remain the
@@ -97,6 +120,7 @@ const IRON_EMBER_PAGES = {
 // for its deliberately composed Contact page.
 const THEME_SLOT_LABELS = {
   "iron-ember": {
+    "home.selectedcuts": "Selected Cuts",
     "contact.intro": "Contact Intro",
     "contact.details": "Studio Details",
     "contact.hours": "Studio Hours",

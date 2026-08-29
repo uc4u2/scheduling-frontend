@@ -2,6 +2,16 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 const STORE_KEY = "schedulaa_embed";
+const PRESENTATION_QUERY_KEYS = [
+  "embed",
+  "mode",
+  "dialog",
+  "site",
+  "primary",
+  "text",
+  "return_to",
+  "returnTo",
+];
 
 /** Read saved embed config from sessionStorage */
 export function readEmbedStore() {
@@ -61,9 +71,13 @@ export function useEmbedConfig() {
 }
 
 /** Merge current embed params into a URLSearchParams */
-function appendEmbedParams(existingSearch, embedCfg) {
+function appendEmbedParams(existingSearch, embedCfg, currentSearch = "") {
   const out = new URLSearchParams(existingSearch || "");
   if (embedCfg.isEmbed) {
+    const current = new URLSearchParams(currentSearch || "");
+    PRESENTATION_QUERY_KEYS.forEach((key) => {
+      if (!out.has(key) && current.has(key)) out.set(key, current.get(key));
+    });
     out.set("embed", "1");
     if (embedCfg.primary) out.set("primary", embedCfg.primary);
     if (embedCfg.text) out.set("text", embedCfg.text);
@@ -80,10 +94,10 @@ export function useNavWithEmbed() {
   return (to, opts) => {
     if (typeof to === "string") {
       const [path, q = ""] = to.split("?");
-      const merged = appendEmbedParams(q, cfg);
+      const merged = appendEmbedParams(q, cfg, location.search);
       navigate(merged ? `${path}?${merged}` : path, opts);
     } else {
-      const merged = appendEmbedParams(to.search, cfg);
+      const merged = appendEmbedParams(to.search, cfg, location.search);
       navigate({ ...to, search: merged }, opts);
     }
   };
@@ -97,10 +111,10 @@ export function LinkWithEmbed({ to, ...props }) {
   let href;
   if (typeof to === "string") {
     const [path, q = ""] = to.split("?");
-    const merged = appendEmbedParams(q, cfg);
+    const merged = appendEmbedParams(q, cfg, location.search);
     href = merged ? `${path}?${merged}` : path;
   } else {
-    const merged = appendEmbedParams(to.search, cfg);
+    const merged = appendEmbedParams(to.search, cfg, location.search);
     href = { ...to, search: merged };
   }
   // lazy import to avoid circular dep

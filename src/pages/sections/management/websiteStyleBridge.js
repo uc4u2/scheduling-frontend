@@ -1,4 +1,5 @@
 import { isNextJsStyle } from "./websiteCatalogUi";
+import { inferPageKind } from "../../../utils/websiteSemanticModules";
 
 export function buildClassicRestorePayload() {
   return {
@@ -53,6 +54,25 @@ export function normalizePreviewPagePath(editing) {
     .replace(/^\/+|\/+$/g, "");
   if (!pathValue || pathValue === "home") return [];
   return pathValue.split("/").filter(Boolean);
+}
+
+// WebsitePage slugs remain backward-compatible with Classic (for example
+// `services-classic` and `gallery`). Next exposes one semantic public route
+// for those aliases. Keep this translation limited to the Next preview/live
+// bridge so the persisted page and legacy public renderer are not migrated.
+export function normalizeNextJsPreviewPagePath(editing) {
+  const pagePath = normalizePreviewPagePath(editing);
+  if (pagePath.length !== 1) return pagePath;
+  const canonicalByKind = {
+    services: "services",
+    products: "products",
+    projects: "projects",
+    blog: "blog",
+    contact: "contact",
+    "service-areas": "service-areas",
+  };
+  const canonical = canonicalByKind[inferPageKind(editing)];
+  return canonical ? [canonical] : pagePath;
 }
 
 export function isAcceptedPreviewMessage({

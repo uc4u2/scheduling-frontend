@@ -88,6 +88,7 @@ import useHistory from "../../../hooks/useHistory";
 import { parsePositiveCompanyId } from "../../../utils/authedCompany";
 import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
 import WebsiteBrandingCard from "../../../components/website/WebsiteBrandingCard";
+import WebsiteContactFormEditor from "../../../components/website/WebsiteContactFormEditor";
 import NavStyleHydrator from "../../../components/website/NavStyleHydrator";
 
 /** Floating + Inline inspectors and schema registry */
@@ -109,14 +110,18 @@ import {
 } from "../../../components/website/BuilderPageUtils";
 import {
   candidateSemanticFieldPaths,
+  createIronEmberProjectGalleryModule,
   createSemanticModule,
   inferPageKind,
   normalizeSemanticFieldPath,
   normalizeSemanticModules,
   normalizePageContent,
   normalizeSemanticModuleMediaReferences,
+  sanitizeNextJsEditableText,
+  upgradeLegacyIronEmberProjectGallery,
   withNormalizedModules,
 } from "../../../utils/websiteSemanticModules";
+import { createIronEmberOriginalHomeModules } from "../../../utils/ironEmberHomeBlueprint";
 import {
   getCompatibleModuleChoices,
   getThemeModuleDisplayLabel,
@@ -126,8 +131,8 @@ import {
 } from "../../../utils/websiteThemeModules";
 import {
   buildThemeOverridesFromPreset,
-  getSupportedThemeOverrideFields,
   NEXTJS_THEME_OVERRIDE_FIELDS,
+  resolveNextJsPageStyleCapabilities,
   sanitizeThemeOverrideDraft,
 } from "../../../utils/websiteThemeOverrides";
 import {
@@ -159,6 +164,7 @@ import {
   isNextJsBuilderMode,
   usesDockedSemanticInspector,
   isAcceptedPreviewMessage,
+  normalizeNextJsPreviewPagePath,
   normalizePreviewPagePath,
   resolveBuilderRendererMode,
 } from "./websiteStyleBridge";
@@ -376,6 +382,10 @@ const NEXT_PUBLIC_BUILDER_PAGE_TARGETS = [
   { key: "products", slug: "products", title: "Products", show_in_menu: true },
   { key: "reviews", slug: "reviews", title: "Reviews", show_in_menu: true },
   { key: "jobs", slug: "jobs", title: "Jobs", show_in_menu: true },
+  { key: "about", slug: "about", title: "About", show_in_menu: true },
+  { key: "contact", slug: "contact", title: "Contact", show_in_menu: true },
+  { key: "blog", slug: "blog", title: "Blog", show_in_menu: true },
+  { key: "service-areas", slug: "locations", title: "Locations", show_in_menu: true },
 ];
 
 // These are editable starter content for a WebsitePage-owned testimonial
@@ -444,6 +454,65 @@ const makeNextPublicBuilderModules = (entry) => {
           items: REVIEW_EDITORIAL_STARTERS,
         },
       },
+    ];
+  }
+  if (entry.key === "about") {
+    return [
+      intro("The studio behind the work.", "A considered approach to craft, consultation, and an easier everyday routine.", "Tell the story of the business, the standards behind the work, and what clients can expect."),
+      {
+        ...createSemanticModule("richText", page, "about.story"),
+        content: { eyebrow: "The standard", heading: "Built around the details.", intro: "A clear point of view, carried through every appointment.", body: "Use this section to explain the studio's approach, craft, and values.", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageAlt: "A carefully prepared barber studio and chair" },
+      },
+      {
+        ...createSemanticModule("team", page, "about.team"),
+        content: { eyebrow: "The studio", heading: "Meet the team.", intro: "Introduce the people clients will meet.", items: [
+          { id: "about-team-1", title: "Lead barber", role: "Founder / Barber", bio: "Add a short biography, specialty, and point of view.", image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=85", imageAlt: "Barber at work in the studio" },
+          { id: "about-team-2", title: "Studio barber", role: "Barber", bio: "Add a short biography, specialty, and point of view.", image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85", imageAlt: "Barber consulting with a client" },
+        ] },
+      },
+      {
+        ...createSemanticModule("process", page, "about.story"),
+        content: { eyebrow: "What to expect", heading: "A clear appointment rhythm.", intro: "Keep the experience easy to understand before a client arrives.", items: [
+          { id: "about-process-1", title: "Consult", body: "Start with the routine, preferences, and finish that matters." },
+          { id: "about-process-2", title: "Shape", body: "Build the service around proportion, texture, and maintenance." },
+          { id: "about-process-3", title: "Finish", body: "Leave with practical direction for the days between visits." },
+        ] },
+      },
+      cta("Ready for a considered appointment?", "View services", "/services"),
+    ].map((module) => module.slot?.endsWith(".supporting") ? { ...module, slot: "about.reviews" } : module);
+  }
+  if (entry.key === "contact") {
+    return [
+      intro("Start with the conversation.", "Share what you are looking for and the studio will guide the next step.", "Use the contact details, form, map, and booking link below."),
+      { ...createSemanticModule("contactDetails", page, "contact.details"), content: { eyebrow: "Contact", heading: "Studio details.", intro: "Phone, email, and address continue to use the shared business contact settings.", items: [] } },
+      { ...createSemanticModule("hoursLocation", page, "contact.hours"), content: { eyebrow: "Hours", heading: "Studio rhythm.", intro: "Update these hours to match the studio schedule.", items: [
+        { id: "contact-hours-weekday", title: "Tuesday — Friday", body: "10:00 AM — 7:00 PM" },
+        { id: "contact-hours-saturday", title: "Saturday", body: "9:00 AM — 5:00 PM" },
+        { id: "contact-hours-closed", title: "Sunday — Monday", body: "Closed" },
+      ] } },
+      { ...createSemanticModule("contactForm", page, "contact.form"), content: { heading: "Send a studio note.", intro: "The existing Website Form below controls the actual fields and success response.", formKey: "contact", submitLabel: "Send message" } },
+      { ...createSemanticModule("map", page, "contact.map"), content: { heading: "Find the studio", intro: "", address: "", query: "", embedUrl: "", primaryCta: { label: "Open directions", href: "" } } },
+      { ...createSemanticModule("bookingCta", page, "contact.booking"), content: { eyebrow: "Next step", heading: "Prefer to choose a service first?", body: "Browse the service menu and continue through the existing booking flow.", primaryCta: { label: "View services", href: "/services" } } },
+    ];
+  }
+  if (entry.key === "blog") {
+    return [
+      intro("Studio journal.", "Notes on craft, care, and the routine between visits.", "Use this page for editable studio stories and useful client guidance."),
+      {
+        ...createSemanticModule("featureStory", page, "blog.primaryContent"),
+        content: { eyebrow: "Field notes", heading: "From the studio.", intro: "Short, useful stories tenants can replace or reorder.", body: "", image: "", imageUrl: "", imageAlt: "", items: [
+          { id: "journal-1", title: "The consultation comes first.", body: "Explain how a useful consultation shapes the service and the finish.", image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85", imageAlt: "Barber consulting with a client in the chair" },
+          { id: "journal-2", title: "Texture that settles well.", body: "Share practical guidance for shape, texture, and the days between visits.", image: "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=1200&q=85", imageAlt: "Barber finishing a haircut with scissors" },
+          { id: "journal-3", title: "A cleaner everyday routine.", body: "Add aftercare, product, or styling notes clients can use at home.", image: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=85", imageAlt: "Final styling in a dark editorial barbershop" },
+        ] },
+      },
+      { ...createSemanticModule("cta", page, "blog.finalCta"), content: { eyebrow: "Ready when you are", heading: "Put the notes into practice.", body: "Choose a service and continue through the established booking experience.", primaryCta: { label: "View services", href: "/services" } } },
+    ];
+  }
+  if (entry.key === "service-areas") {
+    return [
+      intro("Find the studio.", "Location details, coverage, and the easiest way to plan a visit.", "The map and shared business contact details remain available on the Contact page."),
+      { ...createSemanticModule("serviceAreas", page, "generic.primaryContent"), content: { eyebrow: "Locations", heading: "Where to find us.", intro: "Add, remove, and reorder the locations or service areas shown here.", items: [] } },
     ];
   }
   return [];
@@ -515,9 +584,71 @@ const makeNextPublicBuilderPage = (entry, pagesList = []) => ({
 });
 
 const findNextPublicBuilderPage = (pagesList, entry) => {
-  return (pagesList || []).find((page) => {
+  const pages = pagesList || [];
+  const preferredSlugs = {
+    services: ["services-classic", "services"],
+    products: ["products"],
+    reviews: ["reviews"],
+    jobs: ["jobs"],
+    about: ["about", "our-team"],
+    contact: ["contact", "request-quote", "request-service"],
+    blog: ["blog", "journal", "news"],
+    "service-areas": ["locations", "service-areas"],
+  }[entry.key] || [entry.slug];
+  for (const slug of preferredSlugs) {
+    const exact = pages.find((page) => String(page?.slug || "").trim().toLowerCase() === slug);
+    if (exact) return exact;
+  }
+  return pages.find((page) => {
     const kind = inferPageKind(page);
     return kind === entry.key;
+  });
+};
+
+const completeIronEmberContactModules = (page, modules, starters) => {
+  const nextModules = [...modules];
+  const legacyMap = safeSections(page).find((section) => section?.type === "mapEmbed");
+  const mapProps = legacyMap?.props || {};
+  const detailItems = [
+    { id: "legacy-contact-location", title: mapProps.detailOneTitle, body: mapProps.detailOneText },
+    { id: "legacy-contact-direct", title: mapProps.detailThreeTitle, body: mapProps.detailThreeText },
+  ].filter((item) => String(item.title || item.body || "").trim());
+  const hourItems = String(mapProps.detailTwoTitle || mapProps.detailTwoText || "").trim()
+    ? [{ id: "legacy-contact-hours", title: mapProps.detailTwoTitle || "Studio hours", body: mapProps.detailTwoText || "" }]
+    : [];
+
+  const appendMissing = (type, patchContent = {}) => {
+    if (nextModules.some((module) => module.type === type)) return;
+    const starter = starters.find((module) => module.type === type);
+    if (!starter) return;
+    nextModules.push({ ...starter, content: { ...starter.content, ...patchContent } });
+  };
+
+  appendMissing("contactDetails", {
+    heading: mapProps.title || "Studio details.",
+    intro: mapProps.body || "Phone, email, and address continue to use the shared business contact settings.",
+    items: detailItems,
+  });
+  appendMissing("hoursLocation", {
+    heading: mapProps.detailTwoTitle || "Studio rhythm.",
+    intro: "",
+    items: hourItems,
+  });
+  appendMissing("contactForm");
+  appendMissing("map");
+  appendMissing("bookingCta");
+
+  return nextModules.map((module) => {
+    if (module.type !== "map") return module;
+    const address = String(module.content?.address || mapProps.detailOneText || "").trim();
+    return {
+      ...module,
+      content: {
+        ...module.content,
+        address,
+        query: String(module.content?.query || address || "").trim(),
+      },
+    };
   });
 };
 
@@ -1316,6 +1447,7 @@ function PageStyleCard({
   companyId,
   isNextJsMode = false,
   nextJsThemeKey = "",
+  nextJsThemeLabel = "",
   nextJsThemeOverrides = {},
   onChangeNextJsThemeOverrides,
 }) {
@@ -1547,16 +1679,24 @@ function PageStyleCard({
   );
 
   if (isNextJsMode) {
-    const supportedFields = getSupportedThemeOverrideFields(nextJsThemeKey);
+    const pageStyleCapabilities = resolveNextJsPageStyleCapabilities({
+      rendererEngine: "nextjs",
+      visualThemeKey: nextJsThemeKey,
+    });
+    const supportedFields = pageStyleCapabilities?.supportedFields || [];
     const supportedFieldSet = new Set(supportedFields);
-    const normalizedNextThemeKey = String(nextJsThemeKey || "").trim().toLowerCase();
-    const isIronEmberTheme = normalizedNextThemeKey === "iron-ember";
+    const resolvedThemeLabel = nextJsThemeLabel || String(nextJsThemeKey || "the current theme")
+      .split("-")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
     const nextSiteThemeSettings = readSiteThemeSettings(siteThemeSettings);
-    const activeNextPresetKey = nextSiteThemeSettings.themePresetKey || "";
+    const activeNextPresetKey =
+      String(nextJsThemeOverrides?.themePresetKey || "").trim().toLowerCase() ||
+      nextSiteThemeSettings.themePresetKey ||
+      "";
     const nextPresetChoices = THEME_PRESET_LIBRARY.filter((preset) =>
-      ["modern-noir", "blush-spa", "forest-calm", "champagne-luxe", "ocean-clean"].includes(
-        preset.key
-      )
+      pageStyleCapabilities?.presetKeys?.includes(preset.key)
     );
     const sanitizedOverrides = sanitizeThemeOverrideDraft(
       nextJsThemeKey,
@@ -1575,18 +1715,17 @@ function PageStyleCard({
     return (
       <Stack id="page-style-card" data-testid="page-style-panel" spacing={1.5}>
         <Alert severity="info" variant="outlined">
-          This website style keeps its composition fixed. Page Style only exposes
-          safe theme overrides supported by {nextJsThemeKey || "the active theme"}.
+          Page Style applies safe palette overrides supported by {resolvedThemeLabel}.
         </Alert>
 
-        {isIronEmberTheme ? (
+        {nextPresetChoices.length ? (
           <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1, borderColor: "divider" }}>
             <Stack spacing={1.25}>
               <Box>
-                <Typography variant="subtitle2">Iron Ember color presets</Typography>
+                <Typography variant="subtitle2">{resolvedThemeLabel} color presets</Typography>
                 <Typography variant="caption" color="text.secondary">
                   Choose a complete color direction for this template. The preset updates
-                  Iron Ember&apos;s semantic palette; its layout and booking flows stay unchanged.
+                  its semantic palette; layout and system-owned flows stay unchanged.
                 </Typography>
               </Box>
               <Stack
@@ -1677,7 +1816,13 @@ function PageStyleCard({
                             onApplyThemePreset?.(preset, { applyToAll: Boolean(applyToAll) })
                           }
                         >
-                          {activeNextPresetKey === preset.key ? "Reapply preset" : "Apply preset"}
+                          {activeNextPresetKey === preset.key
+                            ? applyToAll
+                              ? "Reapply to all pages"
+                              : "Reapply to current page"
+                            : applyToAll
+                              ? "Apply to all pages"
+                              : "Apply to current page"}
                         </Button>
                       </Stack>
                     </Paper>
@@ -1731,6 +1876,63 @@ function PageStyleCard({
                 testId: "page-style-page-background",
               })
             : null}
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {supportedFieldSet.has("surfaceColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.surfaceColor.label,
+                  value: sanitizedOverrides.surfaceColor || "#ffffff",
+                  onChange: (val) => updateOverride("surfaceColor", val),
+                  testId: "page-style-surface-color",
+                })
+              : null}
+            {supportedFieldSet.has("cardColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.cardColor.label,
+                  value: sanitizedOverrides.cardColor || "#ffffff",
+                  onChange: (val) => updateOverride("cardColor", val),
+                  testId: "page-style-card-color",
+                })
+              : null}
+          </Stack>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {supportedFieldSet.has("foregroundColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.foregroundColor.label,
+                  value: sanitizedOverrides.foregroundColor || "#111827",
+                  onChange: (val) => updateOverride("foregroundColor", val),
+                  testId: "page-style-foreground-color",
+                })
+              : null}
+            {supportedFieldSet.has("mutedForegroundColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.mutedForegroundColor.label,
+                  value: sanitizedOverrides.mutedForegroundColor || "#64748b",
+                  onChange: (val) => updateOverride("mutedForegroundColor", val),
+                  testId: "page-style-muted-foreground-color",
+                })
+              : null}
+          </Stack>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {supportedFieldSet.has("borderColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.borderColor.label,
+                  value: sanitizedOverrides.borderColor || "#e2e8f0",
+                  onChange: (val) => updateOverride("borderColor", val),
+                  testId: "page-style-border-color",
+                })
+              : null}
+            {supportedFieldSet.has("buttonForegroundColor")
+              ? colorField({
+                  label: NEXTJS_THEME_OVERRIDE_FIELDS.buttonForegroundColor.label,
+                  value: sanitizedOverrides.buttonForegroundColor || "#ffffff",
+                  onChange: (val) => updateOverride("buttonForegroundColor", val),
+                  testId: "page-style-button-foreground-color",
+                })
+              : null}
+          </Stack>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             {supportedFieldSet.has("surfaceTone") ? (
@@ -3195,26 +3397,13 @@ const [brandingErr, setBrandingErr] = useState("");
     siteSettings?.design_family_version ||
     siteSettings?.settings?.design_family_version ||
     1;
-  const conciseNextJsBrandingThemeKeys = new Set([
-    "iron-ember",
-    "still-bloom",
-    "clear-clinic",
-    "harbor-line",
-    "frame-and-field",
-    "motion-editorial",
-    "black-letter",
-    "circuit-north",
-    "solara-stay",
-    "paw-and-pine",
-    "quiet-harbor",
-    "fieldcraft",
-    "modern-gradient",
-    "eldora-dark",
-    "finwise",
-  ]);
   const nextJsBrandingThemeKey = String(currentVisualThemeKey || "").trim().toLowerCase();
+  const nextJsPageStyleCapabilities = resolveNextJsPageStyleCapabilities({
+    rendererEngine: builderRendererMode,
+    visualThemeKey: nextJsBrandingThemeKey,
+  });
   const usesConciseNextJsBrandingSurface =
-    isNextJsBuilderMode(builderRendererMode) && conciseNextJsBrandingThemeKeys.has(nextJsBrandingThemeKey);
+    Boolean(nextJsPageStyleCapabilities);
   const nextJsBrandingThemeName = nextJsBrandingThemeKey
     .split("-")
     .filter(Boolean)
@@ -3231,7 +3420,7 @@ const [brandingErr, setBrandingErr] = useState("");
       ["gallery", "portfolio"].includes(moduleType) &&
       moduleSlot.startsWith("home")
     ) {
-      return "Selected Assignments";
+      return "Shop Gallery";
     }
     if (
       normalizedThemeKey === "frame-and-field" &&
@@ -3849,7 +4038,7 @@ useEffect(() => {
       } else if (data.pagePath) {
         const normalizedPath = String(data.pagePath).replace(/^\/+/, "");
         const matchByPath = pages.find(
-          (page) => normalizePreviewPagePath(page).join("/") === normalizedPath
+          (page) => (isNextJsContentMode ? normalizeNextJsPreviewPagePath(page) : normalizePreviewPagePath(page)).join("/") === normalizedPath
         );
         if (matchByPath) {
           const lifted = ensureSectionIds(withLiftedLayout(matchByPath));
@@ -3922,7 +4111,7 @@ useEffect(() => {
     if (!pendingPreviewSelection) return;
     const targetPage = pendingPreviewSelection.pageId
       ? pages.find((page) => String(page.id) === pendingPreviewSelection.pageId)
-      : pages.find((page) => normalizePreviewPagePath(page).join("/") === String(pendingPreviewSelection.pagePath || "").replace(/^\/+/, ""));
+      : pages.find((page) => (isNextJsContentMode ? normalizeNextJsPreviewPagePath(page) : normalizePreviewPagePath(page)).join("/") === String(pendingPreviewSelection.pagePath || "").replace(/^\/+/, ""));
     if (!targetPage) return;
     if (String(editing?.id || "") !== String(targetPage.id)) {
       const lifted = ensureSectionIds(withLiftedLayout(targetPage));
@@ -3940,20 +4129,37 @@ useEffect(() => {
       // section, rather than becoming an unselectable page fallback. Create
       // the real persisted composition module only when the manager selects it.
       const slot = String(pendingPreviewSelection.slot || "");
-      if (["services.intro", "products.intro", "reviews.intro", "reviews.list"].includes(slot)) {
+      const editableInnerHeroSlots = [
+        "about.intro",
+        "services.intro",
+        "products.intro",
+        "projects.intro",
+        "reviews.intro",
+        "contact.intro",
+        "jobs.intro",
+        "blog.intro",
+        "service-areas.intro",
+        "faq.intro",
+        "legal.intro",
+        "generic.intro",
+      ];
+      if ([...editableInnerHeroSlots, "reviews.list"].includes(slot)) {
         const created = createSemanticModule(
-          slot === "reviews.list" ? "reviews" : "richText",
+          slot === "reviews.list" ? "reviews" : "hero",
           editing,
           slot
         );
         const hero = editing?.hero || {};
         const media = hero?.media || {};
         const currentContent = normalizePageContent(editing?.content || {});
+        const heroDescription = sanitizeNextJsEditableText(hero?.description || hero?.intro || "");
         created.content = {
           ...created.content,
+          eyebrow: editing?.menu_title || editing?.menuTitle || editing?.title || "",
           heading: hero?.title || editing?.menu_title || editing?.menuTitle || editing?.title || "",
-          intro: hero?.description || hero?.intro || "",
-          body: hero?.description || hero?.intro || "",
+          subheading: heroDescription,
+          intro: heroDescription,
+          body: heroDescription,
           image: media?.imageUrl || media?.url || hero?.imageUrl || hero?.image || "",
           imageUrl: media?.imageUrl || media?.url || hero?.imageUrl || hero?.image || "",
           imageAlt: media?.imageAlt || hero?.imageAlt || editing?.title || "",
@@ -3980,7 +4186,7 @@ useEffect(() => {
     setInspectorOpen(true);
     setInspectorTab("content");
     setPendingPreviewSelection(null);
-  }, [editing, pages, pendingPreviewSelection, setEditing]);
+  }, [editing, isNextJsContentMode, pages, pendingPreviewSelection, setEditing]);
 
   useEffect(() => {
     setPageSettingsDirty(false);
@@ -4625,6 +4831,24 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
   }
 
   if (isIronEmberNextWebsite) {
+    const projectsPage = nextPages.find((page) => inferPageKind(page) === "projects");
+    if (projectsPage) {
+      const upgradedProjectsPage = upgradeLegacyIronEmberProjectGallery(projectsPage);
+      if (upgradedProjectsPage !== projectsPage) {
+        const updated = await wb.updatePage(
+          cid,
+          projectsPage.id,
+          serializePage(ensureSectionIds(withLiftedLayout(upgradedProjectsPage)))
+        );
+        const updatedPage = normalizePage(updated?.data || updated);
+        if (updatedPage?.id) {
+          nextPages = nextPages.map((page) =>
+            String(page.id) === String(updatedPage.id) ? updatedPage : page
+          );
+        }
+      }
+    }
+
     for (const target of NEXT_PUBLIC_BUILDER_PAGE_TARGETS) {
       const existingPage = findNextPublicBuilderPage(nextPages, target);
       if (existingPage) {
@@ -4632,16 +4856,37 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
         // modules. Seed only truly empty records so the normal Inspector has
         // the same image/content controls as Services, without overwriting a
         // manager's existing composition.
+        const existingModules = safeModules(existingPage);
+        const rawModules = Array.isArray(existingPage?.content?.modules)
+          ? existingPage.content.modules
+          : [];
+        const starters = makeNextPublicBuilderModules(target);
+        let completedModules = existingModules.length ? existingModules : starters;
+        if (target.key === "contact") {
+          completedModules = completeIronEmberContactModules(existingPage, completedModules, starters);
+        }
+        if (target.key === "services" && !completedModules.some((module) => module.type === "services" && module.slot === "services.list")) {
+          completedModules = [
+            ...completedModules,
+            starters.find((module) => module.type === "services"),
+          ].filter(Boolean);
+        }
+        // Old Next tenants may contain only Classic JSON sections. Keep those
+        // sections intact, but persist their established semantic projection so
+        // the Builder and preview use the same module ids and field paths.
+        const needsCanonicalPersistence =
+          rawModules.length !== completedModules.length ||
+          completedModules.some((module, index) => String(rawModules[index]?.id || "") !== String(module?.id || ""));
         const seeded = target.key === "reviews"
           ? seedBlankReviewsEditorialModule(existingPage)
-          : !safeModules(existingPage).length
+          : needsCanonicalPersistence
             ? {
-            ...existingPage,
-            content: {
-              ...normalizePageContent(existingPage.content || {}),
-              modules: makeNextPublicBuilderModules(target),
-            },
-          }
+                ...existingPage,
+                content: {
+                  ...normalizePageContent(existingPage.content || {}),
+                  modules: completedModules,
+                },
+              }
             : existingPage;
         if (seeded !== existingPage) {
           const updated = await wb.updatePage(
@@ -4674,6 +4919,55 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
         if (!duplicateSlug) throw err;
         const refreshed = await wb.listPages(cid).catch(() => null);
         if (Array.isArray(refreshed?.data)) nextPages = refreshed.data;
+      }
+    }
+
+    // A tenant can also have older FAQ, legal, policy, or custom marketing
+    // pages that are not part of the standard starter-page catalogue. Their
+    // Classic JSON sections already have an established semantic projection;
+    // persist that projection once so the Builder Inspector and the Next
+    // preview share stable module ids after refresh. Do not create content for
+    // empty pages and do not touch system/detail routes owned elsewhere.
+    const systemOwnedPageSlugs = new Set([
+      "basket",
+      "cart",
+      "checkout",
+      "login",
+      "my-bookings",
+      "account",
+      "booking-confirmation",
+    ]);
+    for (const page of [...nextPages]) {
+      const slug = String(page?.slug || "").trim().toLowerCase();
+      const kind = inferPageKind(page);
+      if (
+        !page?.id ||
+        systemOwnedPageSlugs.has(slug) ||
+        ["service-detail", "product-detail", "job-detail"].includes(kind)
+      ) {
+        continue;
+      }
+      const rawModules = Array.isArray(page?.content?.modules) ? page.content.modules : [];
+      const projectedModules = safeModules(page);
+      if (!projectedModules.length || rawModules.length) continue;
+
+      const projectedPage = {
+        ...page,
+        content: {
+          ...normalizePageContent(page.content || {}),
+          modules: projectedModules,
+        },
+      };
+      const updated = await wb.updatePage(
+        cid,
+        page.id,
+        serializePage(ensureSectionIds(withLiftedLayout(projectedPage)))
+      );
+      const updatedPage = normalizePage(updated?.data || updated);
+      if (updatedPage?.id) {
+        nextPages = nextPages.map((candidate) =>
+          String(candidate.id) === String(updatedPage.id) ? updatedPage : candidate
+        );
       }
     }
   }
@@ -5020,7 +5314,10 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   }, [authoritativeCompanySlug]);
 
   const publishedLiveSiteUrl = useMemo(() => {
-    const pagePath = normalizePreviewPagePath(editing);
+    const publishedSelection = getPublishedRendererSelection(websiteStatus || {});
+    const pagePath = publishedSelection.rendererEngine === "nextjs"
+      ? normalizeNextJsPreviewPagePath(editing)
+      : normalizePreviewPagePath(editing);
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     return buildPublishedWebsiteUrl({
       status: websiteStatus || {
@@ -5245,11 +5542,13 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   );
 
   const currentPreviewPagePath = useMemo(() => {
-    return normalizePreviewPagePath(editing);
-  }, [editing?.canonical_path, editing?.path, editing?.slug]);
+    return isNextJsContentMode
+      ? normalizeNextJsPreviewPagePath(editing)
+      : normalizePreviewPagePath(editing);
+  }, [editing, isNextJsContentMode]);
 
   const refreshNextJsPreview = useCallback(
-    async (style = null) => {
+    async (style = null, pagePathOverride = null) => {
       const catalogStyle =
         style ||
         websiteStyleChoices.find((item) => item.key === effectivePreviewFamily) ||
@@ -5281,9 +5580,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         // retaining that URL is what previously left the Builder as a blank
         // white canvas.
         setStyleErr("");
+        const requestedPagePath = Array.isArray(pagePathOverride)
+          ? pagePathOverride
+          : currentPreviewPagePath;
         const res = await wb.createPreviewSession(companyId, {
           visual_theme_key: nextStyle.key,
-          page_path: currentPreviewPagePath,
+          page_path: requestedPagePath,
         });
         const payload = res?.data || res || {};
         const token = payload?.token || "";
@@ -5294,7 +5596,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         setNextJsPreviewUrl(
           buildNextJsPreviewUrl({
             token,
-            pagePath: currentPreviewPagePath,
+            pagePath: requestedPagePath,
           })
         );
         setStyleErr("");
@@ -5344,7 +5646,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
             if (!current?.id || String(current.id) !== String(saved.id)) return current;
             return saved;
           });
-          await refreshNextJsPreview();
+          await refreshNextJsPreview(null, normalizeNextJsPreviewPagePath(saved));
         } catch (error) {
           console.error("[VisualSiteBuilder] nextjs draft sync failed", error);
         }
@@ -5686,7 +5988,7 @@ const autoProvisionIfEmpty = useCallback(
           await applyStyleToAllPagesNow();
         }
         if (isNextJsContentMode && nextJsPreviewUrl) {
-          await refreshNextJsPreview();
+          await refreshNextJsPreview(null, normalizeNextJsPreviewPagePath(saved));
         }
       } else {
         const r = await wb.createPage(companyId, payload);
@@ -5698,7 +6000,7 @@ const autoProvisionIfEmpty = useCallback(
         setEditing(created);
         setMsg(t("manager.visualBuilder.messages.created"));
         if (isNextJsContentMode && nextJsPreviewUrl) {
-          await refreshNextJsPreview();
+          await refreshNextJsPreview(null, normalizeNextJsPreviewPagePath(created));
         }
       }
     } catch (e) {
@@ -7281,6 +7583,10 @@ const autoProvisionIfEmpty = useCallback(
     .filter(({ section }) => section.type !== "pageStyle");
   const semanticModules = safeModules(editing);
   const editingPageKind = inferPageKind(editing || {});
+  const canRestoreOriginalIronEmberHome =
+    isNextJsContentMode &&
+    editingPageKind === "home" &&
+    String(currentStyleKey || "").trim().toLowerCase() === "iron-ember";
   const semanticModuleChoices = isNextJsContentMode
     ? getCompatibleModuleChoices(currentStyleKey, editingPageKind, semanticModules)
     : [];
@@ -8032,6 +8338,25 @@ const autoProvisionIfEmpty = useCallback(
       >
         {isNextJsContentMode ? (
           <Stack spacing={1}>
+            {canRestoreOriginalIronEmberHome ? (
+              <Alert
+                severity="info"
+                variant="outlined"
+                action={
+                  <Button
+                    size="small"
+                    color="inherit"
+                    onClick={() => restoreOriginalIronEmberHome()}
+                  >
+                    Restore original homepage
+                  </Button>
+                }
+              >
+                Iron Ember can restore its original editorial homepage as editable
+                modules, including the scroll story and Selected Cuts rail. Review
+                the draft, then use Save and Publish normally.
+              </Alert>
+            ) : null}
             {semanticModules.map((module, index) => (
               <Paper
                 key={module.id}
@@ -8357,7 +8682,7 @@ function scrollCanvasToSection(idx) {
 }
 
 const updateSemanticModules = useCallback(
-  (updater) => {
+  (updater, pagePatch = null) => {
     setEditing((cur) => {
       const normalized = withNormalizedModules(cur || {});
       const currentModules = safeModules(normalized);
@@ -8365,6 +8690,7 @@ const updateSemanticModules = useCallback(
       const content = normalizePageContent(normalized.content || {});
       const nextPage = withNormalizedModules({
         ...normalized,
+        ...(pagePatch && typeof pagePatch === "object" ? pagePatch : {}),
         content: {
           ...content,
           // Only canonical Next.js modules pass through this adapter. Classic
@@ -8382,6 +8708,23 @@ const updateSemanticModules = useCallback(
   [queueNextJsDraftSync, setEditing]
 );
 
+const restoreOriginalIronEmberHome = useCallback(() => {
+  if (!canRestoreOriginalIronEmberHome) return;
+  const accepted = window.confirm(
+    "Replace this homepage's current sections with the original Iron Ember editorial homepage? The replacement stays in draft until you click Save."
+  );
+  if (!accepted) return;
+
+  const modules = createIronEmberOriginalHomeModules();
+  updateSemanticModules(() => modules, { title: "Cut With Character.", menu_title: "Home" });
+  setSelectedModuleId(modules[0]?.id || "");
+  setSelectedBlock(-1);
+  setInspectorOpen(true);
+  setInspectorTab("content");
+  setUnsupportedModuleWarning("");
+  setMsg("Original Iron Ember homepage restored in draft. Review it, then click Save and Publish.");
+}, [canRestoreOriginalIronEmberHome, updateSemanticModules]);
+
 const addSemanticModule = useCallback(
   (moduleType, slot) => {
     if (!isNextJsContentMode) return;
@@ -8391,8 +8734,23 @@ const addSemanticModule = useCallback(
       setUnsupportedModuleWarning("This section is not supported for the selected website style.");
       return;
     }
-    const created = createSemanticModule(moduleType, editing, nextSlot);
-    updateSemanticModules((currentModules) => [...currentModules, created]);
+    const created =
+      moduleType === "gallery" &&
+      String(currentStyleKey || "").trim().toLowerCase() === "iron-ember" &&
+      editingPageKind === "projects"
+        ? createIronEmberProjectGalleryModule(editing)
+        : createSemanticModule(moduleType, editing, nextSlot);
+    updateSemanticModules((currentModules) => {
+      if (moduleType !== "selectedCuts" || String(currentStyleKey || "").trim().toLowerCase() !== "iron-ember") {
+        return [...currentModules, created];
+      }
+      const ordered = currentModules
+        .map((module, index) => ({ ...module, order: Number.isFinite(Number(module.order)) ? Number(module.order) : index }))
+        .sort((left, right) => left.order - right.order);
+      const nextSectionIndex = ordered.findIndex((module) => ["gallery", "portfolio", "process", "reviews", "pricing", "faq"].includes(module.type));
+      ordered.splice(nextSectionIndex >= 0 ? nextSectionIndex : ordered.length, 0, created);
+      return ordered.map((module, order) => ({ ...module, order }));
+    });
     setSelectedModuleId(created.id);
     setInspectorOpen(true);
     setInspectorTab("content");
@@ -8432,6 +8790,18 @@ const duplicateSemanticModule = useCallback(
 const moveSemanticModule = useCallback(
   (moduleId, direction) => {
     updateSemanticModules((currentModules) => {
+      const sourceModule = currentModules.find((module) => module.id === moduleId);
+      if (String(sourceModule?.type || "") === "selectedCuts") {
+        const ordered = currentModules
+          .map((module, index) => ({ ...module, order: Number.isFinite(Number(module.order)) ? Number(module.order) : index }))
+          .sort((left, right) => left.order - right.order);
+        const fromIndex = ordered.findIndex((module) => module.id === moduleId);
+        const toIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+        if (fromIndex < 0 || toIndex < 0 || toIndex >= ordered.length) return currentModules;
+        const [moved] = ordered.splice(fromIndex, 1);
+        ordered.splice(toIndex, 0, moved);
+        return ordered.map((module, order) => ({ ...module, order }));
+      }
       const movePlan = getSemanticModuleMovePlan(
         currentModules,
         moduleId,
@@ -8489,6 +8859,7 @@ function getSemanticModuleMovePlan(modules, moduleId, direction) {
   const currentModule = currentModules[index];
   const currentSlot = String(currentModule?.slot || "");
   const targetIndex = direction === "up" ? index - 1 : index + 1;
+
   const pageManifest = getPageManifest(currentStyleKey, editingPageKind);
   const slotRules = pageManifest?.slotRules || {};
   const slotOrder = Object.keys(slotRules);
@@ -8599,8 +8970,17 @@ function getSemanticModuleMovePlan(modules, moduleId, direction) {
 }
 
 function canMoveSemanticModule(moduleId, direction) {
+  const currentModules = safeModules(editing || {});
+  const selectedCutsModule = currentModules.find((module) => module.id === moduleId && module.type === "selectedCuts");
+  if (selectedCutsModule) {
+    const ordered = currentModules
+      .map((module, index) => ({ module, order: Number.isFinite(Number(module.order)) ? Number(module.order) : index }))
+      .sort((left, right) => left.order - right.order);
+    const index = ordered.findIndex(({ module }) => module.id === moduleId);
+    return direction === "up" ? index > 0 : index >= 0 && index < ordered.length - 1;
+  }
   return Boolean(
-    getSemanticModuleMovePlan(safeModules(editing || {}), moduleId, direction)
+    getSemanticModuleMovePlan(currentModules, moduleId, direction)
   );
 }
 
@@ -9541,6 +9921,29 @@ function InspectorColumn() {
     }
     const content = selectedSemanticModule.content || {};
     const items = Array.isArray(content.items) ? content.items : [];
+    const usesOperationalServiceRecords =
+      selectedSemanticModule.type === "services" &&
+      String(content.source || "").trim().toLowerCase() === "operational";
+    const ironEmberInnerHeroSlots = new Set([
+      "about.intro",
+      "services.intro",
+      "services.hero",
+      "products.intro",
+      "projects.intro",
+      "reviews.intro",
+      "contact.intro",
+      "jobs.intro",
+      "blog.intro",
+      "service-areas.intro",
+      "faq.intro",
+      "legal.intro",
+      "generic.intro",
+    ]);
+    const isIronEmberInnerPageHero =
+      editingPageKind !== "home" &&
+      String(currentStyleKey || "").trim().toLowerCase() === "iron-ember" &&
+      (selectedSemanticModule.type === "hero" || ironEmberInnerHeroSlots.has(String(selectedSemanticModule.slot || "")));
+    const allowsIronEmberVideoMedia = String(currentStyleKey || "").trim().toLowerCase() === "iron-ember";
     const syncPrimaryImagePatch = (patch = {}) => {
       const next = { ...patch };
       if (Object.prototype.hasOwnProperty.call(next, "image")) {
@@ -9612,6 +10015,8 @@ function InspectorColumn() {
         case "gallery":
         case "portfolio":
           return { id: nanoOrShortId(), title: "", caption: "", body: "", image: "", imageUrl: "", imageAlt: "", href: "" };
+        case "selectedCuts":
+          return { id: nanoOrShortId(), title: "", category: "", image: "", imageUrl: "", imageAlt: "", href: "" };
         case "team":
           return { id: nanoOrShortId(), title: "", role: "", body: "", image: "", imageUrl: "", imageAlt: "" };
         default:
@@ -9624,8 +10029,19 @@ function InspectorColumn() {
         createEmptyItem(),
       ]);
     };
-    const updateSelectedContent = (patch) =>
-      updateSelectedSemanticModuleContent(syncPrimaryImagePatch(patch));
+    const updateSelectedContent = (patch) => {
+      const nextPatch = syncPrimaryImagePatch(patch);
+      if (isIronEmberInnerPageHero) {
+        const currentHeroCopy = content.subheading || content.intro || content.body || "";
+        const safeHeroCopy = sanitizeNextJsEditableText(currentHeroCopy);
+        if (safeHeroCopy !== String(currentHeroCopy || "").trim()) {
+          nextPatch.subheading = safeHeroCopy;
+          nextPatch.intro = safeHeroCopy;
+          nextPatch.body = safeHeroCopy;
+        }
+      }
+      updateSelectedSemanticModuleContent(nextPatch);
+    };
     const contentPath = (field) => `content.${field}`;
     const itemPath = (index, field) => `content.items.${index}.${field}`;
     const heroTopMarqueeItems = Array.isArray(content.marqueeTopItems) ? content.marqueeTopItems : [
@@ -9673,10 +10089,10 @@ function InspectorColumn() {
     return (
       <Stack spacing={2} sx={{ mt: 1 }}>
         <Alert severity="info">
-          Editing {semanticModuleDisplayLabel(selectedSemanticModule)}
+          Editing {isIronEmberInnerPageHero ? "Hero" : semanticModuleDisplayLabel(selectedSemanticModule)}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
-        {["richText", "services", "reviews", "faq", "gallery", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["richText", "services", "reviews", "faq", "gallery", "selectedCuts", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Heading"
@@ -9687,78 +10103,135 @@ function InspectorColumn() {
             inputProps={{ "data-module-field-path": contentPath("heading") }}
           />
         ) : null}
-        {selectedSemanticModule.type === "hero" ? (
+        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+          <TextField
+            size="small"
+            label="Eyebrow"
+            value={content.eyebrow || ""}
+            onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })}
+            fullWidth
+            inputProps={{ "data-module-field-path": contentPath("eyebrow") }}
+          />
+        ) : null}
+        {selectedSemanticModule.type === "hero" || isIronEmberInnerPageHero ? (
           <>
             <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Content</Typography>
-              <TextField size="small" label="Eyebrow" value={content.eyebrow || ""} onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("eyebrow") }} />
+              <TextField size="small" label="Eyebrow" value={content.eyebrow || editing?.menu_title || editing?.menuTitle || editing?.title || ""} onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("eyebrow") }} />
               <TextField size="small" label="Heading" value={content.heading || ""} onChange={(event) => updateSelectedContent({ heading: event.target.value })} fullWidth autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "heading"} inputProps={{ "data-module-field-path": contentPath("heading") }} />
-              <TextField size="small" label="Subheading" value={content.subheading || ""} onChange={(event) => updateSelectedContent({ subheading: event.target.value })} fullWidth multiline minRows={3} inputProps={{ "data-module-field-path": contentPath("subheading") }} />
-              <TextField
-                size="small"
-                label="Hero panel eyebrow"
-                value={content.signaturePanelEyebrow || ""}
-                onChange={(event) => updateSelectedContent({ signaturePanelEyebrow: event.target.value })}
-                fullWidth
-                autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "signaturePanelEyebrow"}
-                inputProps={{ "data-module-field-path": contentPath("signaturePanelEyebrow") }}
-              />
-              <TextField
-                size="small"
-                label="Hero panel body"
-                value={content.signaturePanelBody || "A considered menu — choose a service to begin."}
-                onChange={(event) => updateSelectedContent({ signaturePanelBody: event.target.value })}
-                fullWidth
-                multiline
-                minRows={2}
-                autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "signaturePanelBody"}
-                inputProps={{ "data-module-field-path": contentPath("signaturePanelBody") }}
-              />
-              <Typography variant="subtitle2">Marquee rail: top row</Typography>
-              {heroTopMarqueeItems.map((item, index) => (
-                <TextField
-                  key={`hero-top-marquee-${index}`}
-                  size="small"
-                  label={`Top pill ${index + 1}`}
-                  value={item || ""}
-                  onChange={(event) =>
-                    updateSelectedContent({
-                      marqueeTopItems: heroTopMarqueeItems.map((value, itemIndex) =>
-                        itemIndex === index ? event.target.value : value
-                      ),
-                    })
-                  }
-                  fullWidth
-                  autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === `marqueeTopItems.${index}`}
-                  inputProps={{ "data-module-field-path": contentPath(`marqueeTopItems.${index}`) }}
-                />
-              ))}
-              <Typography variant="subtitle2">Marquee rail: bottom row</Typography>
-              {heroBottomMarqueeItems.map((item, index) => (
-                <TextField
-                  key={`hero-bottom-marquee-${index}`}
-                  size="small"
-                  label={`Bottom pill ${index + 1}`}
-                  value={item || ""}
-                  onChange={(event) =>
-                    updateSelectedContent({
-                      marqueeBottomItems: heroBottomMarqueeItems.map((value, itemIndex) =>
-                        itemIndex === index ? event.target.value : value
-                      ),
-                    })
-                  }
-                  fullWidth
-                  autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === `marqueeBottomItems.${index}`}
-                  inputProps={{ "data-module-field-path": contentPath(`marqueeBottomItems.${index}`) }}
-                />
-              ))}
+              <TextField size="small" label="Subheading" value={isIronEmberInnerPageHero ? sanitizeNextJsEditableText(content.subheading || content.intro || content.body || "") : content.subheading || ""} onChange={(event) => updateSelectedContent({ subheading: event.target.value, intro: event.target.value, body: event.target.value })} fullWidth multiline minRows={3} inputProps={{ "data-module-field-path": contentPath("subheading") }} />
+              {isIronEmberInnerPageHero ? (
+                <Alert severity="info" variant="outlined">
+                  This inner-page hero uses the eyebrow, heading, subheading,
+                  primary image, and image alt text shown here. Iron Ember&apos;s
+                  panel, marquee, secondary-image, and CTA fields belong to its
+                  homepage hero.
+                </Alert>
+              ) : (
+                <>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={content.signaturePanelEnabled !== false}
+                        onChange={(_, checked) =>
+                          updateSelectedContent({ signaturePanelEnabled: checked })
+                        }
+                        inputProps={{
+                          "aria-label": "Show signature services panel",
+                          "data-module-field-path": contentPath("signaturePanelEnabled"),
+                        }}
+                      />
+                    }
+                    label="Show signature services panel"
+                  />
+                  <Alert severity="info" variant="outlined">
+                    This optional panel previews live Service records.
+                    Edit their names and prices in Services, or turn the panel off here.
+                    The hero CTA buttons remain visible either way.
+                  </Alert>
+                  {content.signaturePanelEnabled !== false ? (
+                    <>
+                  <TextField
+                    size="small"
+                    type="number"
+                    label="Services shown in panel"
+                    value={content.signaturePanelServiceLimit ?? 4}
+                    onChange={(event) => updateSelectedContent({
+                      signaturePanelServiceLimit: Math.max(1, Math.min(10, Number(event.target.value) || 1)),
+                    })}
+                    helperText="Default: 4. Choose between 1 and 10; only available live services are shown."
+                    fullWidth
+                    inputProps={{ min: 1, max: 10, "data-module-field-path": contentPath("signaturePanelServiceLimit") }}
+                  />
+                  <TextField
+                    size="small"
+                    label="Hero panel eyebrow"
+                    value={content.signaturePanelEyebrow ?? ""}
+                    onChange={(event) => updateSelectedContent({ signaturePanelEyebrow: event.target.value })}
+                    fullWidth
+                    autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "signaturePanelEyebrow"}
+                    inputProps={{ "data-module-field-path": contentPath("signaturePanelEyebrow") }}
+                  />
+                  <TextField
+                    size="small"
+                    label="Hero panel body"
+                    value={content.signaturePanelBody ?? ""}
+                    onChange={(event) => updateSelectedContent({ signaturePanelBody: event.target.value })}
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === "signaturePanelBody"}
+                    inputProps={{ "data-module-field-path": contentPath("signaturePanelBody") }}
+                  />
+                    </>
+                  ) : null}
+                  <Typography variant="subtitle2">Marquee rail: top row</Typography>
+                  {heroTopMarqueeItems.map((item, index) => (
+                    <TextField
+                      key={`hero-top-marquee-${index}`}
+                      size="small"
+                      label={`Top pill ${index + 1}`}
+                      value={item || ""}
+                      onChange={(event) =>
+                        updateSelectedContent({
+                          marqueeTopItems: heroTopMarqueeItems.map((value, itemIndex) =>
+                            itemIndex === index ? event.target.value : value
+                          ),
+                        })
+                      }
+                      fullWidth
+                      autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === `marqueeTopItems.${index}`}
+                      inputProps={{ "data-module-field-path": contentPath(`marqueeTopItems.${index}`) }}
+                    />
+                  ))}
+                  <Typography variant="subtitle2">Marquee rail: bottom row</Typography>
+                  {heroBottomMarqueeItems.map((item, index) => (
+                    <TextField
+                      key={`hero-bottom-marquee-${index}`}
+                      size="small"
+                      label={`Bottom pill ${index + 1}`}
+                      value={item || ""}
+                      onChange={(event) =>
+                        updateSelectedContent({
+                          marqueeBottomItems: heroBottomMarqueeItems.map((value, itemIndex) =>
+                            itemIndex === index ? event.target.value : value
+                          ),
+                        })
+                      }
+                      fullWidth
+                      autoFocus={normalizeSemanticFieldPath(selectedModuleFieldPath) === `marqueeBottomItems.${index}`}
+                      inputProps={{ "data-module-field-path": contentPath(`marqueeBottomItems.${index}`) }}
+                    />
+                  ))}
+                </>
+              )}
             </Stack>
             <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
-              <Box data-module-field-path={contentPath("image")}><ImageField label="Hero image" value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
-              <TextField size="small" label="Hero image alt text" value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
+              <Box data-module-field-path={contentPath("image")}><ImageField label={allowsIronEmberVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsIronEmberVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
+              <TextField size="small" label={allowsIronEmberVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
             </Stack>
-            <Stack spacing={1}>
+            {!isIronEmberInnerPageHero ? <Stack spacing={1}>
               <Typography variant="subtitle2">Secondary images</Typography>
               {(Array.isArray(content.secondaryImages) ? content.secondaryImages : []).map((url, index, secondaryImages) => (
                 <Stack key={`${url}-${index}`} direction="row" spacing={1} alignItems="center">
@@ -9777,8 +10250,8 @@ function InspectorColumn() {
               <Button size="small" variant="outlined" onClick={() => updateSelectedContent({ secondaryImages: [...(Array.isArray(content.secondaryImages) ? content.secondaryImages : []), ""] })}>
                 Add secondary image
               </Button>
-            </Stack>
-            <Stack spacing={1.5}>
+            </Stack> : null}
+            {!isIronEmberInnerPageHero ? <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Buttons</Typography>
               {renderPrimaryCtaFields()}
             <TextField
@@ -9805,10 +10278,10 @@ function InspectorColumn() {
               fullWidth
               inputProps={{ "data-module-field-path": contentPath("secondaryCta.href") }}
             />
-            </Stack>
+            </Stack> : null}
           </>
         ) : null}
-        {["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Body"
@@ -9820,7 +10293,7 @@ function InspectorColumn() {
             inputProps={{ "data-module-field-path": contentPath("body") }}
           />
         ) : null}
-        {["richText", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["richText", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) ? (
           <>
             <Box data-module-field-path={contentPath("image")}>
               <ImageField
@@ -9969,17 +10442,44 @@ function InspectorColumn() {
               fullWidth
               inputProps={{ "data-module-field-path": contentPath("embedUrl") }}
             />
+            {renderPrimaryCtaFields()}
           </>
         ) : null}
         {selectedSemanticModule.type === "contactForm" ? (
-          <TextField
-            size="small"
-            label="Form key"
-            value={content.formKey || "contact"}
-            onChange={(event) => updateSelectedContent({ formKey: event.target.value })}
-            fullWidth
-            inputProps={{ "data-module-field-path": contentPath("formKey") }}
-          />
+          <>
+            <TextField
+              size="small"
+              label="Form introduction"
+              value={content.intro || ""}
+              onChange={(event) => updateSelectedContent({ intro: event.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+              inputProps={{ "data-module-field-path": contentPath("intro") }}
+            />
+            <TextField
+              size="small"
+              label="Submit button label"
+              value={content.submitLabel || "Send"}
+              onChange={(event) => updateSelectedContent({ submitLabel: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("submitLabel") }}
+            />
+            <TextField
+              size="small"
+              label="Form definition key"
+              value={content.formKey || "contact"}
+              fullWidth
+              disabled
+              helperText="The production renderer currently uses the existing contact Website Form. Change its fields below without creating a second form store."
+              inputProps={{ "data-module-field-path": contentPath("formKey") }}
+            />
+            <WebsiteContactFormEditor
+              companyId={companyId}
+              formKey={content.formKey || "contact"}
+              onSaved={() => refreshNextJsPreview()}
+            />
+          </>
         ) : null}
         {selectedSemanticModule.type === "video" ? (
           <>
@@ -10002,7 +10502,7 @@ function InspectorColumn() {
             </Box>
           </>
         ) : null}
-        {["services", "reviews", "faq", "gallery", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {["services", "reviews", "faq", "gallery", "selectedCuts", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <>
             <Typography variant="overline" color="text.secondary">Content</Typography>
             <TextField
@@ -10015,14 +10515,37 @@ function InspectorColumn() {
               minRows={2}
               inputProps={{ "data-module-field-path": contentPath("intro") }}
             />
-            <Stack spacing={1}>
+            {selectedSemanticModule.type === "reviews" ? (
+              <>
+                <TextField
+                  size="small"
+                  label="Review count label"
+                  value={content.reviewCountLabel || ""}
+                  onChange={(event) => updateSelectedContent({ reviewCountLabel: event.target.value })}
+                  fullWidth
+                  inputProps={{ "data-module-field-path": contentPath("reviewCountLabel") }}
+                />
+                <TextField
+                  size="small"
+                  label="Review platform label"
+                  value={content.platformLabel || ""}
+                  onChange={(event) => updateSelectedContent({ platformLabel: event.target.value })}
+                  fullWidth
+                  inputProps={{ "data-module-field-path": contentPath("platformLabel") }}
+                />
+                {renderPrimaryCtaFields()}
+              </>
+            ) : null}
+            {usesOperationalServiceRecords ? (
+              <Alert severity="info" variant="outlined">
+                Service cards use the existing Services workspace. This section controls only the editable heading, eyebrow, introduction, position, and visibility.
+              </Alert>
+            ) : <Stack spacing={1}>
               <Typography variant="overline" color="text.secondary">
                 {selectedSemanticModule.type === "team"
                   ? "People"
-                  : ["gallery", "portfolio"].includes(selectedSemanticModule.type) &&
-                    String(currentVisualThemeKey || "").trim().toLowerCase() === "iron-ember" &&
-                    String(selectedSemanticModule.slot || "").trim().toLowerCase().startsWith("home")
-                    ? "Assignments"
+                  : selectedSemanticModule.type === "selectedCuts"
+                    ? "Cuts"
                     : selectedSemanticModule.type === "gallery"
                       ? "Media"
                       : selectedSemanticModule.type === "featureStory"
@@ -10040,10 +10563,8 @@ function InspectorColumn() {
                         ? "Name / heading"
                         : selectedSemanticModule.type === "faq"
                           ? "Question"
-                          : ["gallery", "portfolio"].includes(selectedSemanticModule.type) &&
-                            String(currentVisualThemeKey || "").trim().toLowerCase() === "iron-ember" &&
-                            String(selectedSemanticModule.slot || "").trim().toLowerCase().startsWith("home")
-                            ? "Assignment title"
+                          : selectedSemanticModule.type === "selectedCuts"
+                            ? "Cut title"
                             : "Title"}
                       value={selectedSemanticModule.type === "faq" ? (item.question || item.title || "") : (item.title || item.label || item.author || "")}
                       onChange={(event) =>
@@ -10057,7 +10578,7 @@ function InspectorColumn() {
                       fullWidth
                       inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "question" : "title") }}
                     />
-                    {["team", "reviews", "services", "locations", "hoursLocation", "contactDetails", "serviceAreas", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+                    {["team", "reviews", "services", "serviceAreas", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
                       <TextField
                         size="small"
                         label={selectedSemanticModule.type === "reviews" ? "Role" : "Supporting label"}
@@ -10067,7 +10588,16 @@ function InspectorColumn() {
                         inputProps={{ "data-module-field-path": itemPath(index, "role") }}
                       />
                     ) : null}
-                    <TextField
+                    {selectedSemanticModule.type === "selectedCuts" ? (
+                      <TextField
+                        size="small"
+                        label="Category / craft metadata"
+                        value={item.category || ""}
+                        onChange={(event) => updateItem(index, { category: event.target.value })}
+                        fullWidth
+                        inputProps={{ "data-module-field-path": itemPath(index, "category") }}
+                      />
+                    ) : <TextField
                       size="small"
                       label={selectedSemanticModule.type === "reviews"
                         ? "Quote / body"
@@ -10075,11 +10605,7 @@ function InspectorColumn() {
                           ? "Answer"
                           : selectedSemanticModule.type === "team"
                             ? "Bio"
-                            : ["gallery", "portfolio"].includes(selectedSemanticModule.type) &&
-                              String(currentVisualThemeKey || "").trim().toLowerCase() === "iron-ember" &&
-                              String(selectedSemanticModule.slot || "").trim().toLowerCase().startsWith("home")
-                              ? "Assignment caption"
-                              : "Body"}
+                            : "Body"}
                       value={selectedSemanticModule.type === "faq" ? (item.answer || item.body || "") : selectedSemanticModule.type === "team" ? (item.bio || item.body || "") : (item.body || item.quote || "")}
                       onChange={(event) => updateItem(index, {
                         body: event.target.value,
@@ -10091,7 +10617,7 @@ function InspectorColumn() {
                       multiline
                       minRows={2}
                       inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "answer" : selectedSemanticModule.type === "team" ? "bio" : "body") }}
-                    />
+                    />}
                     {selectedSemanticModule.type === "pricing" ? (
                       <>
                         <TextField
@@ -10122,6 +10648,37 @@ function InspectorColumn() {
                         />
                       </>
                     ) : null}
+                    {selectedSemanticModule.type === "services" ? (
+                      <>
+                        <TextField
+                          size="small"
+                          label="Price label"
+                          value={item.price || ""}
+                          onChange={(event) => updateItem(index, { price: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "price") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="Duration"
+                          value={item.duration || ""}
+                          onChange={(event) => updateItem(index, { duration: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "duration") }}
+                        />
+                      </>
+                    ) : null}
+                    {selectedSemanticModule.type === "reviews" ? (
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="Rating"
+                        value={item.rating || 5}
+                        onChange={(event) => updateItem(index, { rating: Math.max(1, Math.min(5, Number(event.target.value) || 5)) })}
+                        inputProps={{ min: 1, max: 5, "data-module-field-path": itemPath(index, "rating") }}
+                        fullWidth
+                      />
+                    ) : null}
                     {["stats", "trustRail", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
                       <TextField
                         size="small"
@@ -10132,11 +10689,12 @@ function InspectorColumn() {
                         inputProps={{ "data-module-field-path": itemPath(index, "value") }}
                       />
                     ) : null}
-                    {["gallery", "team", "portfolio", "services", "trustRail"].includes(selectedSemanticModule.type) ? (
+                    {["gallery", "selectedCuts", "team", "portfolio", "services", "trustRail"].includes(selectedSemanticModule.type) ? (
                       <>
                         <Box data-module-field-path={itemPath(index, "image")}>
                           <ImageField
-                            label="Image"
+                            label={allowsIronEmberVideoMedia && (selectedSemanticModule.type === "gallery" || selectedSemanticModule.type === "portfolio") ? "Image or video" : "Image"}
+                            allowVideo={allowsIronEmberVideoMedia && (selectedSemanticModule.type === "gallery" || selectedSemanticModule.type === "portfolio")}
                             value={item.image || item.imageUrl || ""}
                             onChange={(url) => updateItem(index, { image: url })}
                             companyId={companyId}
@@ -10212,16 +10770,16 @@ function InspectorColumn() {
                         />
                       </>
                     ) : null}
-                    {["gallery", "portfolio"].includes(selectedSemanticModule.type) ? (
+                    {["gallery", "portfolio", "selectedCuts"].includes(selectedSemanticModule.type) ? (
                       <>
-                        <TextField
+                        {["gallery", "portfolio"].includes(selectedSemanticModule.type) ? <TextField
                           size="small"
                           label="Caption"
                           value={item.caption || ""}
                           onChange={(event) => updateItem(index, { caption: event.target.value })}
                           fullWidth
                           inputProps={{ "data-module-field-path": itemPath(index, "caption") }}
-                        />
+                        /> : null}
                         <TextField
                           size="small"
                           label="Link"
@@ -10251,7 +10809,7 @@ function InspectorColumn() {
               <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem}>
                 Add item
               </Button>
-            </Stack>
+            </Stack>}
           </>
         ) : null}
         <Stack direction="row" justifyContent="space-between">
@@ -10343,6 +10901,7 @@ function InspectorColumn() {
         }
         isNextJsMode={isNextJsContentMode}
         nextJsThemeKey={currentStyleKey}
+        nextJsThemeLabel={activeStyleChoice?.name || nextJsBrandingThemeName}
         nextJsThemeOverrides={themeOverridesDraft || {}}
         onChangeNextJsThemeOverrides={handleThemeOverridesDraftChange}
         onChange={(next) => {

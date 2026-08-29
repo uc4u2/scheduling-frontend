@@ -1,7 +1,27 @@
 import { buildPublishedWebsiteUrl, normalizeWebsitePath } from "./publicWebsite";
 
-const LIGHT_THEME_KEYS = new Set(["modern-gradient", "finwise", "clear-clinic"]);
 const DARK_THEME_KEYS = new Set(["eldora-dark", "iron-ember", "harbor-line"]);
+
+const MODE_FALLBACK_TOKENS = {
+  light: {
+    background: "#f7f7f8",
+    surface: "#ffffff",
+    surfaceAlt: "#f0f2f5",
+    text: "#1f2937",
+    textMuted: "#6b7280",
+    border: "rgba(31,41,55,0.12)",
+    buttonText: "#ffffff",
+  },
+  dark: {
+    background: "#0f1117",
+    surface: "#171b25",
+    surfaceAlt: "#212736",
+    text: "#f6f0e8",
+    textMuted: "#c7bea9",
+    border: "rgba(246,240,232,0.12)",
+    buttonText: "#0f1117",
+  },
+};
 
 const DEFAULT_THEME_TOKENS = {
   "modern-gradient": {
@@ -118,7 +138,29 @@ const cleanUrl = (value) => {
 const clampRadius = (value, fallback) => {
   const next = Number(value);
   if (!Number.isFinite(next)) return fallback;
-  return Math.max(0, Math.min(28, next));
+  // The shared Page Style contract stores the Builder's 0–4 radius scale.
+  // Keep accepting older direct pixel values so legacy-only settings remain stable.
+  const pixels = next >= 0 && next <= 4 ? next * 8 : next;
+  return Math.max(0, Math.min(28, pixels));
+};
+
+const hexLuminance = (value) => {
+  const match = cleanText(value).match(/^#([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const channels = match[1].match(/.{2}/g).map((channel) => parseInt(channel, 16) / 255);
+  const [red, green, blue] = channels.map((channel) =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  );
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+};
+
+const resolveColorMode = (themeKey, themeOverrides) => {
+  const preference = cleanText(themeOverrides?.lightDarkPreference).toLowerCase();
+  if (preference === "light" || preference === "dark") return preference;
+  const luminance = hexLuminance(themeOverrides?.pageBackground);
+  if (luminance !== null) return luminance < 0.36 ? "dark" : "light";
+  if (DARK_THEME_KEYS.has(themeKey)) return "dark";
+  return "light";
 };
 
 const normalizeRelativePath = (value = "") => {
@@ -149,51 +191,55 @@ export function resolveTransactionalThemeTokens(themeKey, themeOverrides = {}) {
   const palettePrimary = palette?.primary?.main || palette?.primary;
   const paletteAccent = palette?.accent?.main || palette?.accent;
   const surfaceTone = cleanText(themeOverrides?.surfaceTone).toLowerCase();
-  const pageBackground = cleanUrl(themeOverrides?.pageBackground) || cleanText(themeOverrides?.pageBackground);
-  const lightDarkPreference = cleanText(themeOverrides?.lightDarkPreference).toLowerCase();
+  const pageBackground = cleanText(themeOverrides?.pageBackground);
   const buttonTreatment = cleanText(themeOverrides?.buttonTreatment).toLowerCase();
-  const backgroundMode =
-    lightDarkPreference ||
-    (DARK_THEME_KEYS.has(normalizedThemeKey) ? "dark" : LIGHT_THEME_KEYS.has(normalizedThemeKey) ? "light" : "");
+  const mode = resolveColorMode(normalizedThemeKey, themeOverrides);
+  const themeDefaultMode = DARK_THEME_KEYS.has(normalizedThemeKey) ? "dark" : "light";
+  const modeDefaults = mode === themeDefaultMode ? themeDefaults : MODE_FALLBACK_TOKENS[mode];
 
   const tokens = {
     ...themeDefaults,
+    ...modeDefaults,
+    mode,
     primary: pick(themeOverrides?.brandPrimaryColor, palettePrimary) || themeDefaults.primary,
     accent: pick(themeOverrides?.accentColor, paletteAccent) || themeDefaults.accent,
+    background: pageBackground || modeDefaults.background,
+    surface:
+      pick(themeOverrides?.surfaceColor, themeOverrides?.cardColor) || modeDefaults.surface,
+    surfaceAlt:
+      pick(themeOverrides?.surfaceColor, themeOverrides?.cardColor) || modeDefaults.surfaceAlt,
+    card:
+      pick(themeOverrides?.cardColor, themeOverrides?.surfaceColor) || modeDefaults.surface,
+    text: pick(themeOverrides?.foregroundColor) || modeDefaults.text,
+    textMuted: pick(themeOverrides?.mutedForegroundColor) || modeDefaults.textMuted,
+    border: pick(themeOverrides?.borderColor) || modeDefaults.border,
+    buttonText: pick(themeOverrides?.buttonForegroundColor) || modeDefaults.buttonText,
     radius: clampRadius(themeOverrides?.buttonRadius, themeDefaults.radius),
+    buttonTreatment: ["solid", "outline", "soft", "minimal"].includes(buttonTreatment)
+      ? buttonTreatment
+      : "solid",
   };
 
-  if (backgroundMode === "dark") {
-    tokens.background = themeDefaults.background;
-    tokens.surface = themeDefaults.surface;
-    tokens.surfaceAlt = themeDefaults.surfaceAlt;
-    tokens.text = themeDefaults.text;
-    tokens.textMuted = themeDefaults.textMuted;
-    tokens.border = themeDefaults.border;
-  }
-
-  if (backgroundMode === "light") {
-    tokens.background = themeDefaults.background;
-    tokens.surface = themeDefaults.surface;
-    tokens.surfaceAlt = themeDefaults.surfaceAlt;
-    tokens.text = themeDefaults.text;
-    tokens.textMuted = themeDefaults.textMuted;
-    tokens.border = themeDefaults.border;
-  }
-
-  if (surfaceTone === "soft") {
+  if (surfaceTone === "soft" && !pick(themeOverrides?.surfaceColor, themeOverrides?.cardColor)) {
     tokens.surface = themeDefaults.surfaceAlt;
-  } else if (surfaceTone === "contrast") {
+  } else if (surfaceTone === "contrast" && !pick(themeOverrides?.surfaceColor, themeOverrides?.cardColor)) {
     tokens.surfaceAlt = themeDefaults.surface;
   }
 
-  if (cleanText(pageBackground) && !/^https?:\/\//i.test(pageBackground)) {
-    tokens.background = pageBackground;
-  }
 
-  if (buttonTreatment === "outline") {
+  tokens.buttonBackground = tokens.primary;
+  tokens.buttonHover = tokens.accent;
+  tokens.buttonBorder = tokens.primary;
+  if (tokens.buttonTreatment === "outline" || tokens.buttonTreatment === "minimal") {
+    tokens.buttonBackground = "transparent";
+    tokens.buttonHover = tokens.surfaceAlt;
+    tokens.buttonText = tokens.primary;
+  } else if (tokens.buttonTreatment === "soft") {
+    tokens.buttonBackground = tokens.surfaceAlt;
+    tokens.buttonHover = tokens.surface;
     tokens.buttonText = tokens.primary;
   }
+  if (tokens.buttonTreatment === "minimal") tokens.buttonBorder = "transparent";
 
   return tokens;
 }

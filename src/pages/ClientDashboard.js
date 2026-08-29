@@ -32,6 +32,16 @@ const tabHashMap = {
 
 const LOGOUT_TAB_INDEX = 5;
 
+function withPresentationQuery(path, search) {
+  const source = new URLSearchParams(search || "");
+  const [pathname, rawQuery = ""] = String(path || "").split("?");
+  const query = new URLSearchParams(rawQuery);
+  ["embed", "mode", "dialog", "site", "primary", "text", "return_to", "returnTo"].forEach((key) => {
+    if (source.has(key)) query.set(key, source.get(key));
+  });
+  return query.toString() ? `${pathname}?${query.toString()}` : pathname;
+}
+
 function getRoleFromToken(token) {
   if (!token) return null;
   try {
@@ -63,7 +73,7 @@ export default function ClientDashboard() {
     const isClientSession = storedRole === "client" || getRoleFromToken(token) === "client";
     if (!isClientSession) {
       window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: false }, "*");
-      navigate(buildTenantLoginPath(tenantSlug));
+      navigate(withPresentationQuery(buildTenantLoginPath(tenantSlug), location.search));
       return;
     }
     window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: true }, "*");
@@ -72,7 +82,7 @@ export default function ClientDashboard() {
     if (tabHashMap.hasOwnProperty(hash)) {
       setTab(tabHashMap[hash]);
     }
-  }, [navigate, tenantSlug]);
+  }, [location.search, navigate, tenantSlug]);
 
   const handleTabChange = (_, value) => {
     if (value === LOGOUT_TAB_INDEX) {
@@ -87,8 +97,16 @@ export default function ClientDashboard() {
       // to the legacy public page/header.
       if (params.get("embed") === "1" && (siteSlug || tenantSlug)) {
         const tenant = siteSlug || tenantSlug;
+        const loginParams = new URLSearchParams();
+        ["mode", "dialog", "primary", "text", "return_to", "returnTo"].forEach((key) => {
+          if (params.has(key)) loginParams.set(key, params.get(key));
+        });
+        loginParams.set("site", tenant);
+        loginParams.set("client", "1");
+        loginParams.set("embed", "1");
+        loginParams.set("dialog", "1");
         window.location.assign(
-          `/login?site=${encodeURIComponent(tenant)}&client=1&embed=1&dialog=1`,
+          `/login?${loginParams.toString()}`,
         );
         return;
       }
@@ -99,7 +117,7 @@ export default function ClientDashboard() {
       if (siteSlug || tenantSlug) {
         window.location.assign(`/${siteSlug || tenantSlug}?page=my-bookings`);
       } else {
-        navigate(buildTenantLoginPath(tenantSlug));
+        navigate(withPresentationQuery(buildTenantLoginPath(tenantSlug), location.search));
       }
       return;
     }

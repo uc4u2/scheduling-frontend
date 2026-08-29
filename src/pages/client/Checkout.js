@@ -699,7 +699,7 @@ export function CheckoutFormCore({
   const embedSuffix = useMemo(() => {
     try {
       const qs = new URLSearchParams(location.search || "");
-      const keys = ["embed", "mode", "dialog", "primary", "text"];
+      const keys = ["embed", "mode", "dialog", "site", "primary", "text", "return_to", "returnTo"];
       const entries = keys
         .map((key) => {
           const val = qs.get(key);

@@ -7,6 +7,7 @@ import {
   isNextJsBuilderMode,
   usesDockedSemanticInspector,
   normalizePreviewPagePath,
+  normalizeNextJsPreviewPagePath,
   resolveBuilderRendererMode,
 } from "./websiteStyleBridge";
 
@@ -45,6 +46,18 @@ describe("websiteStyleBridge", () => {
   it("normalizes empty or home paths to root preview", () => {
     expect(normalizePreviewPagePath({ slug: "home" })).toEqual([]);
     expect(normalizePreviewPagePath({ path: "/" })).toEqual([]);
+  });
+
+  it("uses one canonical Next route for persisted Classic page aliases", () => {
+    expect(normalizeNextJsPreviewPagePath({ slug: "services-classic" })).toEqual(["services"]);
+    expect(normalizeNextJsPreviewPagePath({ slug: "pricing" })).toEqual(["services"]);
+    expect(normalizeNextJsPreviewPagePath({ slug: "gallery" })).toEqual(["projects"]);
+    expect(normalizeNextJsPreviewPagePath({ slug: "projects-gallery" })).toEqual(["projects"]);
+  });
+
+  it("does not rewrite ordinary or nested Next page paths", () => {
+    expect(normalizeNextJsPreviewPagePath({ slug: "about" })).toEqual(["about"]);
+    expect(normalizeNextJsPreviewPagePath({ path: "services/signature-cut", slug: "signature-cut" })).toEqual(["services", "signature-cut"]);
   });
 
   it("accepts preview messages from the expected preview origin", () => {

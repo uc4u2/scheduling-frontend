@@ -100,4 +100,56 @@ describe("tenantTransactionalBranding", () => {
       radius: 12,
     });
   });
+
+  it.each([
+    ["Modern Noir", "#111113", "#0f1012", "#1a1b20", "#f5efe3", "#d1a257", "#18171a", "dark", 8],
+    ["Blush Spa", "#fff7f8", "#f0e6e9", "#ffffff", "#4a2331", "#c85d7c", "#fffafc", "light", 16],
+    ["Forest Calm", "#f5fbf7", "#e7f1ea", "#ffffff", "#234437", "#4f8b72", "#f7fdf9", "light", 16],
+    ["Champagne Luxe", "#fffaf2", "#f3eadf", "#ffffff", "#4f3422", "#b98a50", "#fffaf2", "light", 16],
+    ["Ocean Clean", "#f7fbfd", "#edf5fa", "#ffffff", "#1f4254", "#2e8ca6", "#f7fbfd", "light", 16],
+  ])("resolves the complete %s Page Style palette", (_name, background, surface, card, text, primary, buttonText, mode, radius) => {
+    const tokens = resolveTransactionalThemeTokens("iron-ember", {
+      pageBackground: background,
+      surfaceColor: surface,
+      cardColor: card,
+      foregroundColor: text,
+      mutedForegroundColor: text,
+      borderColor: text,
+      brandPrimaryColor: primary,
+      accentColor: primary,
+      buttonForegroundColor: buttonText,
+      lightDarkPreference: mode,
+      buttonRadius: radius / 8,
+      buttonTreatment: "solid",
+    });
+
+    expect(tokens).toMatchObject({
+      background,
+      surface,
+      card,
+      text,
+      textMuted: text,
+      border: text,
+      primary,
+      accent: primary,
+      buttonText,
+      buttonBackground: primary,
+      mode,
+      radius,
+    });
+  });
+
+  it("keeps button treatment visual-only while honoring the shared radius scale", () => {
+    expect(resolveTransactionalThemeTokens("iron-ember", {
+      brandPrimaryColor: "#c85d7c",
+      surfaceColor: "#f0e6e9",
+      buttonRadius: 3,
+      buttonTreatment: "outline",
+    })).toMatchObject({
+      buttonBackground: "transparent",
+      buttonBorder: "#c85d7c",
+      buttonText: "#c85d7c",
+      radius: 24,
+    });
+  });
 });

@@ -5,8 +5,9 @@ import {
   Button, Grid, Box, Typography, CircularProgress, Alert
 } from "@mui/material";
 import { wb } from "../../utils/api";
+import { isWebsiteVideoReference } from "../../utils/websiteSemanticModules";
 
-export default function MediaLibraryDialog({ open, onClose, onPick, companyId }) {
+export default function MediaLibraryDialog({ open, onClose, onPick, companyId, allowVideo = false }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [items, setItems] = useState([]); // [{id,url,width,height,created_at}]
@@ -17,7 +18,8 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
     setErr("");
     try {
       const { data } = await wb.mediaList(companyId);
-      setItems(Array.isArray(data?.items) ? data.items : []);
+      const media = Array.isArray(data?.items) ? data.items : [];
+      setItems(allowVideo ? media : media.filter((item) => !isWebsiteVideoReference(item)));
     } catch (e) {
       setErr("Could not load media (backend not wired yet).");
     } finally {
@@ -30,13 +32,31 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
   const onUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isVideo = isWebsiteVideoReference({ url: file.name, content_type: file.type });
+    if (isVideo && !allowVideo) {
+      setErr("This field accepts images only.");
+      return;
+    }
+    if (allowVideo && String(file.type || "").startsWith("video/") && !isVideo) {
+      setErr("Unsupported video format. Use MP4 or WebM.");
+      return;
+    }
+    const maxBytes = isVideo ? 12 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setErr(isVideo ? "Video is too large. Maximum size is 12 MB." : "Image is too large. Maximum size is 5 MB.");
+      return;
+    }
     setLoading(true);
     setErr("");
     try {
       await wb.mediaUpload(companyId, file);
       await load();
     } catch (e) {
-      setErr("Upload failed.");
+      if (e?.response?.status === 413) {
+        setErr(isVideo ? "Video is too large. Maximum size is 12 MB." : "Image is too large. Maximum size is 5 MB.");
+      } else {
+        setErr("Upload failed. Check the file type and try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -55,7 +75,7 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
         <Box sx={{ mb: 2 }}>
           <Button component="label" variant="outlined">
             Upload…
-            <input type="file" accept="image/*" hidden onChange={onUpload} />
+            <input type="file" accept={allowVideo ? "image/*,.mp4,.webm,video/mp4,video/webm" : "image/*"} hidden onChange={onUpload} />
           </Button>
         </Box>
 
@@ -74,7 +94,11 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
                 }}
                 onClick={() => onPick?.(m)}
               >
-                <Box component="img" src={m.url} alt="" sx={{ width: "100%", display: "block" }} />
+                {isWebsiteVideoReference(m) ? (
+                  <Box component="video" src={m.url} muted playsInline preload="metadata" aria-label="Video in media library" sx={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", display: "block", bgcolor: "#000" }} />
+                ) : (
+                  <Box component="img" src={m.url} alt="" sx={{ width: "100%", display: "block" }} />
+                )}
               </Box>
             </Grid>
           ))}
@@ -82,7 +106,7 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
 
         {!loading && items.length === 0 && (
           <Typography color="text.secondary" sx={{ mt: 2 }}>
-            No media yet. Upload an image to get started.
+            No media yet. Upload {allowVideo ? "an image or video" : "an image"} to get started.
           </Typography>
         )}
       </DialogContent>

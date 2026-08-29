@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavWithEmbed } from "../../embed";
 
 import {
   Dialog,
@@ -52,7 +52,7 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
   const [msg, setMsg] = useState({ type: "", text: "" });
 
   const userTz = getUserTimezone();
-  const navigate = useNavigate();
+  const navigate = useNavWithEmbed();
   const theme = useTheme();
 
   /* ───────────────────── pre-select hydration ─────────────────── */

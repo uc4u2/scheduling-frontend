@@ -17,7 +17,10 @@ import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import { website } from "../../utils/api";
 import { useTranslation } from "react-i18next";
 import MediaLibraryDialog from "./MediaLibraryDialog";
-import { normalizeWebsiteMediaReference } from "../../utils/websiteSemanticModules";
+import {
+  isWebsiteVideoReference,
+  normalizeWebsiteMediaReference,
+} from "../../utils/websiteSemanticModules";
 
 // The Builder can reconcile its contextual Inspector while a canvas selection
 // settles. Keep an in-flight library dialog keyed to its semantic field so a
@@ -140,7 +143,7 @@ function CommonFields({ block, onChangeRoot }) {
 // ...imports stay the same
 
 /* -------------------- Reusable media field -------------------- */
-export function ImageField({ label, value, onChange, companyId, fieldKey }) {
+export function ImageField({ label, value, onChange, companyId, fieldKey, allowVideo = false }) {
   const { t } = useTranslation();
   const [dragOver, setDragOver] = useState(false);
   const [inputUrl, setInputUrl] = useState(value || "");
@@ -181,9 +184,24 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
 
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return;
-    const MAX_BYTES = 5 * 1024 * 1024; // 5MB guard to avoid backend 413
+    const file = files[0];
+    const isVideo = isWebsiteVideoReference({
+      url: file.name,
+      content_type: file.type,
+    });
+    if (isVideo && !allowVideo) {
+      alert("This field accepts images only. Choose an image, or use a Hero/Gallery media field for MP4/WebM video.");
+      return;
+    }
+    if (allowVideo && String(file.type || "").startsWith("video/") && !isVideo) {
+      alert("Unsupported video format. Use MP4 or WebM.");
+      return;
+    }
+    const MAX_BYTES = isVideo ? 12 * 1024 * 1024 : 5 * 1024 * 1024;
     if (files[0].size > MAX_BYTES) {
-      alert("Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
+      alert(isVideo
+        ? "Video is too large. Max size 12MB. Please upload a smaller MP4/WebM."
+        : "Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
       return;
     }
     try {
@@ -203,7 +221,9 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
     } catch (e) {
       console.error("upload failed", e);
       if (e?.response?.status === 413) {
-        alert("Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
+        alert(isVideo
+          ? "Video is too large. Max size 12MB. Please upload a smaller MP4/WebM."
+          : "Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
       } else {
         alert(t("manager.visualBuilder.inspector.imageField.uploadFailed"));
       }
@@ -231,7 +251,7 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
     >
       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.75 }}>
         <Typography variant="caption">{label}</Typography>
-        <Tooltip title="Images: JPG/PNG/WebP, max 5MB.">
+        <Tooltip title={allowVideo ? "Images: JPG/PNG/WebP, max 5MB. Videos: MP4/WebM, max 12MB." : "Images: JPG/PNG/WebP, max 5MB."}>
           <IconButton size="small" sx={{ p: 0.25 }}>
             <InfoOutlined fontSize="inherit" />
           </IconButton>
@@ -249,9 +269,28 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
         sx={{ mb: 1 }}
       />
 
-      {inputUrl ? (
+      {inputUrl && allowVideo && isWebsiteVideoReference(inputUrl) ? (
+        <video
+          src={toAbsoluteUrl(inputUrl)}
+          muted
+          loop
+          playsInline
+          controls
+          preload="metadata"
+          aria-label={label || "Selected video"}
+          onError={() => setBroken(true)}
+          onLoadedData={() => setBroken(false)}
+          style={{
+            width: "100%",
+            maxHeight: 200,
+            objectFit: "cover",
+            borderRadius: 6,
+            background: "#000",
+          }}
+        />
+      ) : inputUrl ? (
         <img
-          src={inputUrl}
+          src={toAbsoluteUrl(inputUrl)}
           alt="selected"
           onError={() => setBroken(true)}
           onLoad={() => setBroken(false)}
@@ -280,7 +319,7 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
 
       {broken && (
         <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
-          {t("manager.visualBuilder.inspector.imageField.error")}
+          {allowVideo ? "Media failed to load. Check the URL, file type, or CORS/CSP." : t("manager.visualBuilder.inspector.imageField.error")}
         </Typography>
       )}
 
@@ -301,10 +340,10 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
           Media library
         </Button>
         <Button size="small" variant="outlined" component="label">
-          {t("manager.visualBuilder.inspector.imageField.upload")}
+          {allowVideo ? "Upload image/video" : t("manager.visualBuilder.inspector.imageField.upload")}
           <input
             type="file"
-            accept="image/*"
+            accept={allowVideo ? "image/*,.mp4,.webm,video/mp4,video/webm" : "image/*"}
             hidden
             onChange={(e) => handleFiles(e.target.files)}
           />
@@ -318,6 +357,7 @@ export function ImageField({ label, value, onChange, companyId, fieldKey }) {
       <MediaLibraryDialog
         open={mediaLibraryOpen}
         companyId={companyId}
+        allowVideo={allowVideo}
         onClose={() => {
           pendingMediaLibraryFields.delete(mediaFieldKey);
           setMediaLibraryOpen(false);

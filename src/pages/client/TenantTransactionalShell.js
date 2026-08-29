@@ -18,6 +18,7 @@ import { publicSite } from "../../utils/api";
 import {
   buildTenantTransactionalBrandingContract,
   resolveTransactionalReturnTo,
+  resolveTransactionalThemeTokens,
 } from "../../utils/tenantTransactionalBranding";
 import { getTenantHostMode } from "../../utils/tenant";
 import { persistTenantSlug, resolveTenantSlug } from "../../utils/clientTenant";
@@ -61,6 +62,14 @@ export default function TenantTransactionalShell({
     () => new URLSearchParams(location.search || "").get("embed") === "1",
     [location.search]
   );
+  const bridgeHintTokens = useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    const textMode = params.get("text") === "dark" ? "dark" : "light";
+    return resolveTransactionalThemeTokens("classic", {
+      brandPrimaryColor: params.get("primary") || undefined,
+      lightDarkPreference: textMode,
+    });
+  }, [location.search]);
 
   useEffect(() => {
     if (slug) persistTenantSlug(slug);
@@ -127,11 +136,11 @@ export default function TenantTransactionalShell({
           minHeight: isEmbedded ? "100%" : "100vh",
           display: "grid",
           placeItems: "center",
-          bgcolor: "#120d0b",
-          color: "#f5ead8",
+          bgcolor: bridgeHintTokens.background,
+          color: bridgeHintTokens.text,
         }}
       >
-        <CircularProgress size={28} sx={{ color: "#b77947" }} />
+        <CircularProgress size={28} sx={{ color: bridgeHintTokens.primary }} />
       </Box>
     );
   }
@@ -142,7 +151,7 @@ export default function TenantTransactionalShell({
 
   const transactionalTheme = createTheme({
     palette: {
-      mode: brandingContract.visualThemeKey === "iron-ember" || brandingContract.visualThemeKey === "eldora-dark" || brandingContract.visualThemeKey === "harbor-line" ? "dark" : "light",
+      mode: brandingContract.tokens.mode,
       primary: { main: brandingContract.tokens.primary, contrastText: brandingContract.tokens.buttonText },
       secondary: { main: brandingContract.tokens.accent },
       background: { default: brandingContract.tokens.background, paper: brandingContract.tokens.surface },
@@ -155,27 +164,38 @@ export default function TenantTransactionalShell({
           body: {
             backgroundColor: brandingContract.tokens.background,
             color: brandingContract.tokens.text,
+            "--page-body-bg": brandingContract.tokens.background,
             "--page-surface-bg": brandingContract.tokens.surface,
             "--page-calendar-surface": brandingContract.tokens.surface,
-            "--page-card-bg": brandingContract.tokens.surface,
+            "--page-card-bg": brandingContract.tokens.card,
             "--page-secondary-bg": brandingContract.tokens.surfaceAlt,
             "--page-body-color": brandingContract.tokens.text,
             "--page-heading-color": brandingContract.tokens.text,
             "--page-border-color": brandingContract.tokens.border,
-            "--page-btn-bg": brandingContract.tokens.primary,
-            "--page-btn-bg-hover": brandingContract.tokens.accent,
+            "--page-btn-bg": brandingContract.tokens.buttonBackground,
+            "--page-btn-bg-hover": brandingContract.tokens.buttonHover,
             "--page-btn-color": brandingContract.tokens.buttonText,
             "--page-btn-bg-soft": brandingContract.tokens.surfaceAlt,
+            "--page-btn-border": brandingContract.tokens.buttonBorder,
+            "--page-btn-radius": `${brandingContract.tokens.radius}px`,
+            "--page-focus-ring": `${brandingContract.tokens.primary}66`,
             "--page-calendar-accent": brandingContract.tokens.primary,
             "--page-calendar-accent-contrast": brandingContract.tokens.buttonText,
             "--sched-primary": brandingContract.tokens.primary,
           },
         },
       },
-      MuiPaper: { styleOverrides: { root: { backgroundColor: `${brandingContract.tokens.surface} !important`, backgroundImage: "none !important", color: `${brandingContract.tokens.text} !important`, borderColor: `${brandingContract.tokens.border} !important` } } },
-      MuiTypography: { styleOverrides: { root: { color: `${brandingContract.tokens.text} !important` } } },
-      MuiButton: { styleOverrides: { containedPrimary: { backgroundColor: `${brandingContract.tokens.primary} !important`, color: `${brandingContract.tokens.buttonText} !important` }, outlined: { borderColor: `${brandingContract.tokens.primary} !important`, color: `${brandingContract.tokens.accent} !important` } } },
+      MuiPaper: { styleOverrides: { root: { backgroundColor: brandingContract.tokens.surface, backgroundImage: "none", color: brandingContract.tokens.text, borderColor: brandingContract.tokens.border } } },
+      MuiCard: { styleOverrides: { root: { backgroundColor: brandingContract.tokens.card, borderColor: brandingContract.tokens.border } } },
+      MuiDialog: { styleOverrides: { paper: { backgroundColor: brandingContract.tokens.surface, color: brandingContract.tokens.text, border: `1px solid ${brandingContract.tokens.border}` } } },
+      MuiButton: { styleOverrides: {
+        root: { borderRadius: brandingContract.tokens.radius, "&:focus-visible": { outline: `3px solid ${brandingContract.tokens.primary}66`, outlineOffset: 2 } },
+        containedPrimary: { backgroundColor: brandingContract.tokens.buttonBackground, border: `1px solid ${brandingContract.tokens.buttonBorder}`, color: brandingContract.tokens.buttonText, "&:hover": { backgroundColor: brandingContract.tokens.buttonHover } },
+        outlined: { borderColor: brandingContract.tokens.primary, color: brandingContract.tokens.primary },
+      } },
       MuiChip: { styleOverrides: { root: { backgroundColor: `${brandingContract.tokens.surfaceAlt} !important`, color: `${brandingContract.tokens.text} !important` } } },
+      MuiOutlinedInput: { styleOverrides: { root: { backgroundColor: brandingContract.tokens.card, color: brandingContract.tokens.text, "& fieldset": { borderColor: brandingContract.tokens.border }, "&:hover fieldset": { borderColor: brandingContract.tokens.primary }, "&.Mui-focused fieldset": { borderColor: brandingContract.tokens.primary } } } },
+      MuiDivider: { styleOverrides: { root: { borderColor: brandingContract.tokens.border } } },
     },
   });
 
@@ -305,6 +325,7 @@ export default function TenantTransactionalShell({
             "--tenant-shell-primary": brandingContract.tokens.primary,
             "--tenant-shell-accent": brandingContract.tokens.accent,
             "--tenant-shell-surface": brandingContract.tokens.surface,
+            "--tenant-shell-card": brandingContract.tokens.card,
             "--tenant-shell-surface-alt": brandingContract.tokens.surfaceAlt,
             "--tenant-shell-text": brandingContract.tokens.text,
             "--tenant-shell-muted": brandingContract.tokens.textMuted,
@@ -314,28 +335,35 @@ export default function TenantTransactionalShell({
             // Legacy transactional components already consume these CSS
             // variables. Bind them to the published Next theme instead of
             // allowing their white/blue fallback values to leak through.
+            "--page-body-bg": brandingContract.tokens.background,
             "--page-surface-bg": brandingContract.tokens.surface,
             "--page-calendar-surface": brandingContract.tokens.surface,
-            "--page-card-bg": brandingContract.tokens.surface,
+            "--page-card-bg": brandingContract.tokens.card,
             "--page-secondary-bg": brandingContract.tokens.surfaceAlt,
             "--page-body-color": brandingContract.tokens.text,
             "--page-heading-color": brandingContract.tokens.text,
             "--page-border-color": brandingContract.tokens.border,
-            "--page-btn-bg": brandingContract.tokens.primary,
-            "--page-btn-bg-hover": brandingContract.tokens.accent,
+            "--page-btn-bg": brandingContract.tokens.buttonBackground,
+            "--page-btn-bg-hover": brandingContract.tokens.buttonHover,
             "--page-btn-color": brandingContract.tokens.buttonText,
             "--page-btn-bg-soft": brandingContract.tokens.surfaceAlt,
+            "--page-btn-border": brandingContract.tokens.buttonBorder,
+            "--page-btn-radius": `${brandingContract.tokens.radius}px`,
+            "--page-focus-ring": `${brandingContract.tokens.primary}66`,
             "--page-calendar-accent": brandingContract.tokens.primary,
             "--page-calendar-accent-contrast": brandingContract.tokens.buttonText,
             "--sched-primary": brandingContract.tokens.primary,
             "& .MuiPaper-root": {
               borderRadius: "var(--tenant-shell-radius)",
-              backgroundColor: `${brandingContract.tokens.surface} !important`,
-              color: `${brandingContract.tokens.text} !important`,
-              borderColor: `${brandingContract.tokens.border} !important`,
+              backgroundColor: brandingContract.tokens.surface,
+              color: brandingContract.tokens.text,
+              borderColor: brandingContract.tokens.border,
             },
-            "& .MuiTypography-root, & .MuiFormLabel-root": {
-              color: `${brandingContract.tokens.text} !important`,
+            "& .MuiCard-root": {
+              backgroundColor: brandingContract.tokens.card,
+            },
+            "& .MuiFormLabel-root": {
+              color: brandingContract.tokens.textMuted,
             },
             "& .MuiDivider-root": { borderColor: brandingContract.tokens.border },
             "& .MuiChip-root": {
@@ -344,13 +372,24 @@ export default function TenantTransactionalShell({
             },
             "& .MuiButton-containedPrimary, & .MuiButton-contained": {
               borderRadius: "var(--tenant-shell-radius)",
-              backgroundColor: brandingContract.tokens.primary,
+              backgroundColor: brandingContract.tokens.buttonBackground,
               color: brandingContract.tokens.buttonText,
-              "&:hover": { backgroundColor: brandingContract.tokens.accent },
+              border: `1px solid ${brandingContract.tokens.buttonBorder}`,
+              "&:hover": { backgroundColor: brandingContract.tokens.buttonHover },
+              "&:focus-visible": { outline: `3px solid ${brandingContract.tokens.primary}66`, outlineOffset: 2 },
             },
             "& .MuiButton-outlined": {
               borderColor: brandingContract.tokens.primary,
-              color: brandingContract.tokens.accent,
+              color: brandingContract.tokens.primary,
+            },
+            "& .MuiDialog-paper, & .MuiModal-root .MuiPaper-root": {
+              backgroundColor: brandingContract.tokens.surface,
+              color: brandingContract.tokens.text,
+              borderColor: brandingContract.tokens.border,
+            },
+            "& .MuiOutlinedInput-root": {
+              backgroundColor: brandingContract.tokens.card,
+              color: brandingContract.tokens.text,
             },
           }}
         >

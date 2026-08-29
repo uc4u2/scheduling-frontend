@@ -159,9 +159,9 @@ const EmployeeProfile = ({ slugOverride }) => {
           sx={{
             p: { xs: 2.25, md: 3 },
             borderRadius: 4,
-            border: "1px solid rgba(200,93,124,0.14)",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(251,240,243,0.98) 100%)",
-            boxShadow: "0 20px 48px rgba(124,72,92,0.08)",
+            border: "1px solid var(--page-border-color)",
+            background: "linear-gradient(180deg, var(--page-card-bg) 0%, var(--page-surface-bg) 100%)",
+            boxShadow: "var(--page-card-shadow, 0 20px 48px rgba(0,0,0,0.08))",
           }}
         >
           <Stack
@@ -175,9 +175,9 @@ const EmployeeProfile = ({ slugOverride }) => {
                 height: 156,
                 borderRadius: "50%",
                 overflow: "hidden",
-                border: "6px solid rgba(255,255,255,0.92)",
-                boxShadow: "0 16px 34px rgba(124,72,92,0.14)",
-                bgcolor: "rgba(200,93,124,0.10)",
+                border: "6px solid var(--page-card-bg)",
+                boxShadow: "var(--page-card-shadow, 0 16px 34px rgba(0,0,0,0.12))",
+                bgcolor: "var(--page-btn-bg-soft)",
                 flexShrink: 0,
               }}
             >
@@ -197,18 +197,18 @@ const EmployeeProfile = ({ slugOverride }) => {
                   label="Provider profile"
                   sx={{
                     alignSelf: { xs: "center", md: "flex-start" },
-                    bgcolor: "rgba(200,93,124,0.12)",
-                    color: "#7a3550",
+                    bgcolor: "var(--page-btn-bg-soft)",
+                    color: "var(--tenant-shell-primary, var(--sched-primary))",
                     fontWeight: 700,
                     letterSpacing: ".04em",
                   }}
                 />
-                <Typography variant="h3" sx={{ fontWeight: 800, color: "#4a2331", lineHeight: 1.05 }}>
+                <Typography variant="h3" sx={{ fontWeight: 800, color: "var(--page-heading-color)", lineHeight: 1.05 }}>
                   {providerName}
                 </Typography>
               </Stack>
 
-              <Typography sx={{ maxWidth: 700, color: "rgba(74,35,49,0.80)", lineHeight: 1.75 }}>
+              <Typography sx={{ maxWidth: 700, color: "var(--tenant-shell-muted, var(--page-body-color))", lineHeight: 1.75 }}>
                 {profile.bio || "No bio available."}
               </Typography>
 
@@ -222,12 +222,12 @@ const EmployeeProfile = ({ slugOverride }) => {
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
                   sx={{
-                    borderRadius: 999,
                     px: 2.25,
                     py: 1,
-                    bgcolor: "#c85d7c",
-                    color: "#fffafc",
-                    boxShadow: "0 14px 28px rgba(124,72,92,0.12)",
+                    bgcolor: "var(--page-btn-bg)",
+                    color: "var(--page-btn-color)",
+                    borderRadius: "var(--page-btn-radius)",
+                    boxShadow: "var(--page-card-shadow, 0 14px 28px rgba(0,0,0,0.10))",
                   }}
                 >
                   {serviceId ? "Viewing availability" : "View services"}
@@ -253,17 +253,17 @@ const EmployeeProfile = ({ slugOverride }) => {
             sx={{
               p: { xs: 2.25, md: 3 },
               borderRadius: 4,
-              border: "1px solid rgba(200,93,124,0.12)",
-              background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
-              boxShadow: "0 18px 42px rgba(124,72,92,0.06)",
+              border: "1px solid var(--page-border-color)",
+              background: "linear-gradient(180deg, var(--page-card-bg) 0%, var(--page-surface-bg) 100%)",
+              boxShadow: "var(--page-card-shadow, 0 18px 42px rgba(0,0,0,0.06))",
             }}
           >
             <Stack spacing={2}>
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, color: "#4a2331" }}>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: "var(--page-heading-color)" }}>
                   Services Offered
                 </Typography>
-                <Typography sx={{ mt: 0.75, color: "rgba(74,35,49,0.72)", maxWidth: 720 }}>
+                <Typography sx={{ mt: 0.75, color: "var(--tenant-shell-muted, var(--page-body-color))", maxWidth: 720 }}>
                   Choose a treatment to view availability and continue to booking.
                 </Typography>
               </Box>
@@ -283,14 +283,14 @@ const EmployeeProfile = ({ slugOverride }) => {
                       sx={{
                         p: 2,
                         borderRadius: 3,
-                        border: "1px solid rgba(200,93,124,0.14)",
-                        background: "rgba(255,255,255,0.94)",
+                        border: "1px solid var(--page-border-color)",
+                        background: "var(--page-card-bg)",
                         cursor: "pointer",
                         transition: "transform .16s ease, box-shadow .16s ease, border-color .16s ease",
                         '&:hover': {
                           transform: 'translateY(-1px)',
-                          borderColor: 'rgba(200,93,124,0.30)',
-                          boxShadow: '0 16px 32px rgba(124,72,92,0.08)'
+                          borderColor: 'var(--page-btn-border)',
+                          boxShadow: 'var(--page-card-shadow, 0 16px 32px rgba(0,0,0,0.08))'
                         }
                       }}
                     >
@@ -302,9 +302,9 @@ const EmployeeProfile = ({ slugOverride }) => {
                               height: 64,
                               borderRadius: 2,
                               overflow: "hidden",
-                              bgcolor: "rgba(200,93,124,0.10)",
+                              bgcolor: "var(--page-btn-bg-soft)",
                               flexShrink: 0,
-                              border: "1px solid rgba(200,93,124,0.14)",
+                              border: "1px solid var(--page-border-color)",
                             }}
                           >
                             {svc.image_url ? (
@@ -317,8 +317,8 @@ const EmployeeProfile = ({ slugOverride }) => {
                             ) : null}
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 800, color: '#4a2331' }}>{svc.name}</Typography>
-                            <Typography sx={{ mt: 0.5, color: 'rgba(74,35,49,0.72)' }}>
+                            <Typography sx={{ fontWeight: 800, color: 'var(--page-heading-color)' }}>{svc.name}</Typography>
+                            <Typography sx={{ mt: 0.5, color: 'var(--tenant-shell-muted, var(--page-body-color))' }}>
                               {svc.description || 'Select this service to continue to available appointment times.'}
                             </Typography>
                           </Box>
@@ -339,17 +339,17 @@ const EmployeeProfile = ({ slugOverride }) => {
             sx={{
               p: { xs: 2.25, md: 3 },
               borderRadius: 4,
-              border: "1px solid rgba(200,93,124,0.12)",
-              background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
-              boxShadow: "0 18px 42px rgba(124,72,92,0.06)",
+              border: "1px solid var(--page-border-color)",
+              background: "linear-gradient(180deg, var(--page-card-bg) 0%, var(--page-surface-bg) 100%)",
+              boxShadow: "var(--page-card-shadow, 0 18px 42px rgba(0,0,0,0.06))",
             }}
           >
             <Stack spacing={2}>
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, color: "#4a2331", textAlign: { xs: 'center', md: 'left' } }}>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: "var(--page-heading-color)", textAlign: { xs: 'center', md: 'left' } }}>
                   Availability Calendar
                 </Typography>
-                <Typography sx={{ mt: 0.75, color: "rgba(74,35,49,0.72)", textAlign: { xs: 'center', md: 'left' } }}>
+                <Typography sx={{ mt: 0.75, color: "var(--tenant-shell-muted, var(--page-body-color))", textAlign: { xs: 'center', md: 'left' } }}>
                   Select a time to continue your booking with {providerName}.
                 </Typography>
               </Box>
@@ -370,11 +370,11 @@ const EmployeeProfile = ({ slugOverride }) => {
             sx={{
               p: 2,
               borderRadius: 3,
-              border: "1px solid rgba(200,93,124,0.12)",
-              background: "rgba(255,255,255,0.92)",
+              border: "1px solid var(--page-border-color)",
+              background: "var(--page-card-bg)",
             }}
           >
-            <Typography variant="h6" gutterBottom sx={{ color: '#4a2331', fontWeight: 700 }}>
+            <Typography variant="h6" gutterBottom sx={{ color: 'var(--page-heading-color)', fontWeight: 700 }}>
               Public booking link
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>

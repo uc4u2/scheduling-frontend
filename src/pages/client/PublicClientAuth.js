@@ -64,13 +64,21 @@ export default function PublicClientAuth({ slug }) {
     const embedded =
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
+    const activeQuery = new URLSearchParams(window.location.search || "");
+    const embeddedQuery = new URLSearchParams();
+    ["mode", "dialog", "site", "primary", "text", "return_to", "returnTo"].forEach((key) => {
+      if (activeQuery.has(key)) embeddedQuery.set(key, activeQuery.get(key));
+    });
+    if (slug) embeddedQuery.set("site", slug);
+    embeddedQuery.set("embed", "1");
+    embeddedQuery.set("dialog", "1");
     const target =
       // A Next transactional bridge frames the established client login.
       // Return to DashboardShellGate, the mounted client-panel route used by
       // the Next bridge, instead of a tenant-prefixed URL that custom-domain
       // public routing can treat as a marketing page.
       embedded && slug
-        ? `/dashboard?site=${encodeURIComponent(slug)}&embed=1&dialog=1`
+        ? `/dashboard?${embeddedQuery.toString()}`
         : getTenantHostMode() === "custom"
         ? "/?page=my-bookings"
         : slug

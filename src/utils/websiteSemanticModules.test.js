@@ -1,11 +1,17 @@
 import {
   candidateSemanticFieldPaths,
+  createIronEmberProjectGalleryModule,
   createSemanticModule,
   inferPageKind,
+  isWebsiteVideoReference,
   normalizeSemanticModuleMediaReferences,
   normalizeSemanticFieldPath,
   normalizeSemanticModules,
+  sanitizeNextJsEditableText,
+  upgradeLegacyIronEmberProjectGallery,
 } from "./websiteSemanticModules";
+import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
+import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
   getCompatibleModuleChoices,
@@ -15,6 +21,10 @@ import {
 } from "./websiteThemeModules";
 
 describe("website semantic modules", () => {
+  it("preserves the independent footer page-navigation visibility setting", () => {
+    expect(normalizeFooterConfig({ show_navigation: false }).show_navigation).toBe(false);
+    expect(normalizeFooterConfig({}).show_navigation).toBe(true);
+  });
   it("normalizes legacy sections into semantic modules", () => {
     const modules = normalizeSemanticModules({
       slug: "home",
@@ -33,6 +43,49 @@ describe("website semantic modules", () => {
     const page = { slug: "contact", is_homepage: false };
     const module = createSemanticModule("map", page);
     expect(module.slot).toBe("contact.map");
+  });
+
+  it("seeds Iron Ember Projects with six barber-specific editable gallery items", () => {
+    const module = createIronEmberProjectGalleryModule({ slug: "gallery", title: "Gallery" });
+    expect(module.type).toBe("gallery");
+    expect(module.slot).toBe("projects.primaryContent");
+    expect(module.content.items).toHaveLength(6);
+    expect(new Set(module.content.items.map((item) => item.imageUrl)).size).toBe(6);
+    expect(module.content.items.every((item) => item.imageAlt && item.caption)).toBe(true);
+  });
+
+  it("upgrades only the untouched legacy events gallery used by Iron Ember Projects", () => {
+    const legacyPage = {
+      slug: "gallery",
+      content: {
+        modules: [
+          {
+            id: "events-gallery",
+            type: "gallery",
+            enabled: true,
+            slot: "projects.primaryContent",
+            content: {
+              items: [1, 2, 3, 4, 5, 6].map((index) => ({
+                image: `/website/enterprise-events-aurora/carousel-0${index}.jpg`,
+                imageUrl: `/website/enterprise-events-aurora/carousel-0${index}.jpg`,
+              })),
+            },
+          },
+        ],
+      },
+    };
+    const upgraded = upgradeLegacyIronEmberProjectGallery(legacyPage);
+    expect(upgraded).not.toBe(legacyPage);
+    expect(upgraded.content.modules[0].content.items).toHaveLength(6);
+    expect(upgraded.content.modules[0].content.items[0].title).toBe("Studio Ritual");
+
+    const authored = {
+      ...legacyPage,
+      content: {
+        modules: [{ ...legacyPage.content.modules[0], content: { items: [{ image: "https://example.com/authored.jpg", imageUrl: "https://example.com/authored.jpg" }] } }],
+      },
+    };
+    expect(upgradeLegacyIronEmberProjectGallery(authored)).toBe(authored);
   });
 
   it("returns theme-compatible Add Section choices for a Next.js theme", () => {
@@ -68,6 +121,7 @@ describe("website semantic modules", () => {
 
   it("infers canonical page kinds from legacy page slugs", () => {
     expect(inferPageKind({ slug: "services-classic" })).toBe("services");
+    expect(inferPageKind({ slug: "projects-gallery" })).toBe("projects");
     expect(inferPageKind({ slug: "service-areas" })).toBe("service-areas");
     expect(inferPageKind({ slug: "service-detail-facial" })).toBe("service-detail");
     expect(inferPageKind({ slug: "products" })).toBe("products");
@@ -78,10 +132,74 @@ describe("website semantic modules", () => {
     expect(inferPageKind({ slug: "blog" })).toBe("blog");
   });
 
+  it("keeps Classic public iframe markup out of a newly editable Next hero", () => {
+    expect(sanitizeNextJsEditableText('<iframe src="/{{slug}}/products?embed=1&mode=modal"></iframe>')).toBe("");
+    expect(sanitizeNextJsEditableText("Browse the current product collection.")).toBe("Browse the current product collection.");
+  });
+
   it("gives Iron Ember's canonical Journal page an explicit Builder module manifest", () => {
     const slots = getCompatibleSlots("iron-ember", "blog");
     expect(slots["blog.primaryContent"].allowedModuleTypes).toContain("richText");
     expect(slots["blog.finalCta"].allowedModuleTypes).toContain("cta");
+  });
+
+  it("offers an Iron Ember-only Selected Cuts module with eight editable canonical defaults", () => {
+    const ironChoices = getCompatibleModuleChoices("iron-ember", "home", []);
+    const otherChoices = getCompatibleModuleChoices("modern-gradient", "home", []);
+    expect(ironChoices).toEqual(expect.arrayContaining([expect.objectContaining({ type: "selectedCuts", slot: "home.selectedCuts", label: "Selected Cuts" })]));
+    expect(otherChoices.some((choice) => choice.type === "selectedCuts")).toBe(false);
+
+    const module = createSemanticModule("selectedCuts", { slug: "home", is_homepage: true });
+    expect(module.slot).toBe("home.selectedCuts");
+    expect(module.content.items).toHaveLength(8);
+    expect(new Set(module.content.items.map((item) => item.image))).toHaveProperty("size", 8);
+    module.content.items.forEach((item) => {
+      expect(item).toEqual(expect.objectContaining({ title: expect.any(String), category: expect.any(String), imageAlt: expect.any(String) }));
+    });
+  });
+
+  it("provides the complete original Iron Ember homepage as canonical editable modules", () => {
+    const modules = createIronEmberOriginalHomeModules();
+    const selectedCuts = modules.find((module) => module.type === "selectedCuts");
+    const craftStory = modules.find((module) => module.type === "featureStory");
+    const hero = modules.find((module) => module.type === "hero");
+
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "stats", "services", "richText", "team", "featureStory",
+      "selectedCuts", "richText", "gallery", "process", "reviews", "faq",
+      "contactIntro", "contactDetails", "hoursLocation", "map",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    expect(selectedCuts.content.items).toHaveLength(8);
+    expect(new Set(selectedCuts.content.items.map((item) => item.image)).size).toBe(8);
+    expect(craftStory.content.items).toHaveLength(3);
+    expect(hero.content.signaturePanelEnabled).toBe(true);
+    expect(hero.content.signaturePanelServiceLimit).toBe(4);
+    expect(hero.content.signaturePanelEyebrow).toBe("Signature services");
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+
+    const second = createIronEmberOriginalHomeModules();
+    second[0].content.heading = "Changed in one draft";
+    expect(modules[0].content.heading).toBe("Cut With Character.");
+  });
+
+  it("keeps legacy JSON stored but out of a complete Next starter blueprint", () => {
+    const modules = createIronEmberOriginalHomeModules();
+    const normalized = normalizeSemanticModules({
+      slug: "home",
+      is_homepage: true,
+      content: {
+        modules,
+        sections: [
+          { id: "legacy-pricing", type: "pricingTable", props: { heading: "Event packages" } },
+          { id: "legacy-team", type: "teamGrid", props: { heading: "Event team" } },
+        ],
+      },
+    });
+
+    expect(normalized).toHaveLength(16);
+    expect(normalized.some((module) => module.id === "legacy-pricing")).toBe(false);
+    expect(normalized.some((module) => module.id === "legacy-team")).toBe(false);
   });
 
   it("gives Iron Ember Products and Jobs editable intro slots", () => {
@@ -91,6 +209,26 @@ describe("website semantic modules", () => {
     expect(jobSlots["jobs.intro"].allowedModuleTypes).toContain("richText");
     expect(createSemanticModule("richText", { slug: "products" }).slot).toBe("products.intro");
     expect(createSemanticModule("richText", { slug: "jobs" }).slot).toBe("jobs.intro");
+  });
+
+  it("declares a dedicated editable upper-section slot across Iron Ember listing pages", () => {
+    for (const [pageKind, slot] of [
+      ["about", "about.intro"],
+      ["services", "services.intro"],
+      ["products", "products.intro"],
+      ["projects", "projects.intro"],
+      ["reviews", "reviews.intro"],
+      ["contact", "contact.intro"],
+      ["jobs", "jobs.intro"],
+      ["blog", "blog.intro"],
+      ["service-areas", "service-areas.intro"],
+      ["faq", "faq.intro"],
+      ["legal", "legal.intro"],
+      ["generic", "generic.intro"],
+    ]) {
+      const slots = getCompatibleSlots("iron-ember", pageKind);
+      expect(slots[slot]?.allowedModuleTypes).toEqual(expect.arrayContaining(["hero"]));
+    }
   });
 
   it("uses Iron Ember Contact page labels without changing its shared semantic slots", () => {
@@ -276,6 +414,14 @@ describe("website semantic modules", () => {
     expect(modules[0].content.image).toBe("/api/website/media/file/8/hero.webp?variant=1200");
     expect(modules[0].content.secondaryImage).toBe("https://images.example.com/story.jpg");
     expect(modules[0].content.items[0].image).toBe("/api/website/media/file/8/team.webp");
+  });
+
+  it("recognizes only the existing MP4/WebM WebsiteMedia video contract", () => {
+    expect(isWebsiteVideoReference("/api/website/media/file/7/hero.mp4?cache=1")).toBe(true);
+    expect(isWebsiteVideoReference({ url: "/api/website/media/file/7/rail.webm", file_type: "file" })).toBe(true);
+    expect(isWebsiteVideoReference({ url: "/opaque/media", file_type: "video/mp4" })).toBe(true);
+    expect(isWebsiteVideoReference("/api/website/media/file/7/hero.webp")).toBe(false);
+    expect(isWebsiteVideoReference("/api/website/media/file/7/unsupported.mov")).toBe(false);
   });
 
   it("repairs malformed WebsiteMedia URLs that still include company/website-media path segments", () => {

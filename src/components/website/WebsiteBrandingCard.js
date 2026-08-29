@@ -1620,9 +1620,37 @@ export default function WebsiteBrandingCard({
           </CardContent>
         </Card>
         <Card variant="outlined">
-          <CardHeader title="Footer Links" subheader="Create the same titled footer columns and links used by the Classic website." />
+          <CardHeader title="Footer Links" subheader="Choose whether to repeat page navigation, then create independent footer-only link columns." />
           <CardContent>
             <Stack spacing={2}>
+              {surface === "iron-ember" ? (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={footer.show_navigation !== false}
+                      onChange={(_, value) => updateFooter({ show_navigation: value })}
+                    />
+                  }
+                  label="Repeat header page navigation in footer"
+                />
+              ) : null}
+              {surface === "iron-ember" ? (
+                <Typography variant="caption" color="text.secondary">
+                  This repeated list follows page visibility and cannot be edited one link at a time.
+                  Turn it off to use only the independent custom footer columns below. Header
+                  navigation is unaffected.
+                </Typography>
+              ) : null}
+              {surface === "iron-ember" && footer.show_navigation !== false ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => updateFooter({ show_navigation: false })}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  Use custom footer links only
+                </Button>
+              ) : null}
               <ColumnsEditor
                 columns={footer.columns}
                 onChange={(columns) => updateFooter({ columns })}
