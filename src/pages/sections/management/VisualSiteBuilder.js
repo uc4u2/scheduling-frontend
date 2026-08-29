@@ -10501,7 +10501,7 @@ function InspectorColumn() {
             </Box>
           </>
         ) : null}
-        {["services", "reviews", "faq", "gallery", "selectedCuts", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {["services", "reviews", "faq", "gallery", "selectedCuts", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "richText", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
           <>
             <Typography variant="overline" color="text.secondary">Content</Typography>
             <TextField
@@ -10688,7 +10688,7 @@ function InspectorColumn() {
                         inputProps={{ "data-module-field-path": itemPath(index, "value") }}
                       />
                     ) : null}
-                    {["gallery", "selectedCuts", "team", "portfolio", "services", "trustRail"].includes(selectedSemanticModule.type) ? (
+                    {["gallery", "selectedCuts", "team", "portfolio", "services", "trustRail", "featureStory"].includes(selectedSemanticModule.type) ? (
                       <>
                         <Box data-module-field-path={itemPath(index, "image")}>
                           <ImageField

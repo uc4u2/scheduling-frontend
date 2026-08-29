@@ -15,6 +15,7 @@ import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { getProfessionHomeBlueprint, getProfessionHomeBlueprintKeys } from "./professionHomeBlueprints";
+import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -204,10 +205,25 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
+  });
+
+  it("provides Black Letter's complete editable legal rhythm", () => {
+    const modules = createBlackLetterOriginalHomeModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "trustRail", "services", "richText", "team", "featureStory",
+      "process", "richText", "reviews", "faq", "contactIntro", "contactDetails",
+      "hoursLocation", "map", "contactForm", "bookingCta",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    expect(modules.find((module) => module.id === "black-home-counsel-story").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "black-home-practice-areas").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "black-home-reviews").content.source).toBe("operational");
+    expect(modules.every((module) => module.settings.starterBlueprint === "black-letter-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 
   it("provides Still Bloom's complete editable studio rhythm", () => {

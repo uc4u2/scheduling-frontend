@@ -1,9 +1,16 @@
+import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 
 const BLUEPRINTS = {
+  "black-letter": {
+    label: "Black Letter Counsel",
+    description: "its original authority-led legal hero, practice directory, counsel story, legal process, and formal consultation ending",
+    pageTitle: "Counsel with clarity.",
+    createModules: createBlackLetterOriginalHomeModules,
+  },
   "clear-clinic": {
     label: "Clear Clinic",
     description: "its original clinical care journey, treatment selector, care story, patient guidance, and grouped clinic ending",
