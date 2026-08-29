@@ -19,6 +19,7 @@ import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint
 import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
 import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
 import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
+import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -208,7 +209,7 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field", "solara-stay"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field", "solara-stay", "paw-and-pine"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
@@ -274,6 +275,17 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "solara-home-reviews").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "solara-home-local-guide").content.items).toHaveLength(3);
     expect(modules.every((module) => module.settings.starterBlueprint === "solara-stay-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Paw & Pine's complete editable grooming rhythm", () => {
+    const modules = createPawAndPineOriginalHomeModules();
+    expect(modules).toHaveLength(14);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(14);
+    expect(modules.find((module) => module.id === "paw-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "paw-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "paw-home-gallery").content.items).toHaveLength(6);
+    expect(modules.every((module) => module.settings.starterBlueprint === "paw-and-pine-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 
