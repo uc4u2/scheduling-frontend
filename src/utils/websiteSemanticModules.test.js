@@ -12,6 +12,7 @@ import {
 } from "./websiteSemanticModules";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
+import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { getProfessionHomeBlueprint, getProfessionHomeBlueprintKeys } from "./professionHomeBlueprints";
 import { normalizeFooterConfig } from "./headerFooter";
@@ -203,7 +204,7 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
@@ -221,6 +222,21 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "bloom-home-schedule").content.items).toHaveLength(5);
     expect(modules.find((module) => module.id === "bloom-home-movement-story").content.items).toHaveLength(3);
     expect(modules.every((module) => module.settings.starterBlueprint === "still-bloom-original")).toBe(true);
+  });
+
+  it("provides Harbor Line's complete editable property rhythm", () => {
+    const modules = createHarborLineOriginalHomeModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "portfolio", "stats", "featureStory", "team", "featureStory",
+      "serviceAreas", "reviews", "faq", "contactIntro", "contactDetails",
+      "hoursLocation", "map", "contactForm", "bookingCta",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    expect(modules.find((module) => module.id === "harbor-home-listings").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "harbor-home-property-story").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "harbor-home-reviews").content.source).toBe("operational");
+    expect(modules.every((module) => module.settings.starterBlueprint === "harbor-line-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 
   it("keeps legacy JSON stored but out of a complete Next starter blueprint", () => {
