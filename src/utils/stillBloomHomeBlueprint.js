@@ -35,6 +35,7 @@ export function createStillBloomOriginalHomeModules() {
       eyebrow: "Class paths",
       heading: "Choose the class rhythm that fits this season.",
       intro: "Class records, prices, and booking remain managed by the Services workspace.",
+      source: "operational",
       items: [],
     }, { dataSource: "operational-services" }),
     moduleRecord("bloom-home-schedule", "hoursLocation", "home.afterServices", 3, {
@@ -81,6 +82,7 @@ export function createStillBloomOriginalHomeModules() {
       eyebrow: "Member notes",
       heading: "A quieter kind of progress.",
       intro: "Published reviews remain management-owned and flow into this studio-native rail.",
+      source: "operational",
       items: [],
     }, { dataSource: "published-reviews" }),
     moduleRecord("bloom-home-faq", "faq", "home.afterServices", 8, {
