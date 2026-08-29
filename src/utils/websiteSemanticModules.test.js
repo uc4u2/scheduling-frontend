@@ -18,6 +18,7 @@ import { getProfessionHomeBlueprint, getProfessionHomeBlueprintKeys } from "./pr
 import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
 import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
 import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
+import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -207,7 +208,7 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field", "solara-stay"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
@@ -261,6 +262,18 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "frame-home-packages").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "frame-home-reviews").content.source).toBe("operational");
     expect(modules.every((module) => module.settings.starterBlueprint === "frame-and-field-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Solara Stay's complete editable destination rhythm", () => {
+    const modules = createSolaraStayOriginalHomeModules();
+    expect(modules).toHaveLength(12);
+    expect(modules.map((module) => module.type)).toEqual(["hero", "services", "featureStory", "richText", "reviews", "faq", "contactIntro", "contactDetails", "hoursLocation", "map", "contactForm", "bookingCta"]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(12);
+    expect(modules.find((module) => module.id === "solara-home-stays").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "solara-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "solara-home-local-guide").content.items).toHaveLength(3);
+    expect(modules.every((module) => module.settings.starterBlueprint === "solara-stay-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

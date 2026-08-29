@@ -1,6 +1,7 @@
 import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
 import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
 import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
+import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -24,6 +25,12 @@ const BLUEPRINTS = {
     description: "its current cinematic hero, editorial work wall, packages, eight-item Selected Assignments rail, Studio Notes, and studio inquiry ending",
     pageTitle: "We frame stories.",
     createModules: createFrameAndFieldOriginalHomeModules,
+  },
+  "solara-stay": {
+    label: "Solara Stay",
+    description: "its immersive destination hero, stay rail, local guide, guest stories, and grouped hospitality inquiry ending",
+    pageTitle: "Stay longer in warmer light.",
+    createModules: createSolaraStayOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
