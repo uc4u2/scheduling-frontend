@@ -16,6 +16,7 @@ import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { getProfessionHomeBlueprint, getProfessionHomeBlueprintKeys } from "./professionHomeBlueprints";
 import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
+import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -205,7 +206,7 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
@@ -223,6 +224,22 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "black-home-practice-areas").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "black-home-reviews").content.source).toBe("operational");
     expect(modules.every((module) => module.settings.starterBlueprint === "black-letter-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Circuit North's complete editable technical rhythm without fake live telemetry", () => {
+    const modules = createCircuitNorthOriginalHomeModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "stats", "services", "featureStory", "team", "reviews",
+      "process", "richText", "faq", "contactIntro", "serviceAreas",
+      "contactDetails", "hoursLocation", "map", "contactForm", "bookingCta",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    expect(modules.find((module) => module.id === "circuit-home-proof").content.items.map((item) => item.value)).toEqual(["MAP", "PLAN", "BUILD", "RUN"]);
+    expect(modules.find((module) => module.id === "circuit-home-briefs").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "circuit-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "circuit-home-reviews").content.source).toBe("operational");
+    expect(modules.every((module) => module.settings.starterBlueprint === "circuit-north-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

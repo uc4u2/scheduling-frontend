@@ -1,4 +1,5 @@
 import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
+import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -10,6 +11,12 @@ const BLUEPRINTS = {
     description: "its original authority-led legal hero, practice directory, counsel story, legal process, and formal consultation ending",
     pageTitle: "Counsel with clarity.",
     createModules: createBlackLetterOriginalHomeModules,
+  },
+  "circuit-north": {
+    label: "Circuit North",
+    description: "its original system hero, technical architecture, proof rail, delivery process, technology briefs, and operations ending",
+    pageTitle: "Systems that stay understandable.",
+    createModules: createCircuitNorthOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
