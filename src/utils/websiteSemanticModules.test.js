@@ -20,6 +20,7 @@ import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBluepri
 import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
 import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
+import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -286,6 +287,17 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "paw-home-reviews").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "paw-home-gallery").content.items).toHaveLength(6);
     expect(modules.every((module) => module.settings.starterBlueprint === "paw-and-pine-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Quiet Harbor's complete editable private-practice rhythm", () => {
+    const modules = createQuietHarborOriginalHomeModules();
+    expect(modules).toHaveLength(13);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(13);
+    expect(modules.find((module) => module.id === "quiet-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "quiet-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "quiet-home-team").content.items).toHaveLength(3);
+    expect(modules.every((module) => module.settings.starterBlueprint === "quiet-harbor-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

@@ -3,6 +3,7 @@ import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBluepri
 import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
 import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
+import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -38,6 +39,12 @@ const BLUEPRINTS = {
     description: "its layered pet hero, grooming selector, studio rail, care notes, team, process, and grouped studio ending",
     pageTitle: "Calmer care for pets and people.",
     createModules: createPawAndPineOriginalHomeModules,
+  },
+  "quiet-harbor": {
+    label: "Quiet Harbor",
+    description: "its private editorial hero, specialty paths, therapists, first-session rhythm, guidance, and grouped intake ending",
+    pageTitle: "Private support for clearer inner ground.",
+    createModules: createQuietHarborOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
