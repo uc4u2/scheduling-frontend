@@ -17,6 +17,7 @@ import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { getProfessionHomeBlueprint, getProfessionHomeBlueprintKeys } from "./professionHomeBlueprints";
 import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
 import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
+import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -206,7 +207,7 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
@@ -240,6 +241,26 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "circuit-home-services").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "circuit-home-reviews").content.source).toBe("operational");
     expect(modules.every((module) => module.settings.starterBlueprint === "circuit-north-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Frame & Field's current source rhythm with eight canonical Selected Assignments", () => {
+    const modules = createFrameAndFieldOriginalHomeModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "featureStory", "gallery", "services", "reviews", "portfolio",
+      "richText", "contactIntro", "contactDetails", "hoursLocation", "map",
+      "faq", "contactForm", "bookingCta",
+    ]);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
+    const assignments = modules.find((module) => module.id === "frame-home-assignments");
+    expect(assignments.content.items).toHaveLength(8);
+    expect(new Set(assignments.content.items.map((item) => item.id)).size).toBe(8);
+    assignments.content.items.forEach((item) => expect(item).toEqual(expect.objectContaining({ title: expect.any(String), category: expect.any(String), imageAlt: expect.any(String) })));
+    expect(modules.find((module) => module.id === "frame-home-selected-frames").content.items).toHaveLength(6);
+    expect(modules.find((module) => module.id === "frame-home-studio-notes").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "frame-home-packages").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "frame-home-reviews").content.source).toBe("operational");
+    expect(modules.every((module) => module.settings.starterBlueprint === "frame-and-field-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

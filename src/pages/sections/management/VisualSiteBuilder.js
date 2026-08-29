@@ -10688,7 +10688,7 @@ function InspectorColumn() {
                         inputProps={{ "data-module-field-path": itemPath(index, "value") }}
                       />
                     ) : null}
-                    {["gallery", "selectedCuts", "team", "portfolio", "services", "trustRail", "featureStory"].includes(selectedSemanticModule.type) ? (
+                    {["gallery", "selectedCuts", "team", "portfolio", "services", "trustRail", "featureStory", "richText"].includes(selectedSemanticModule.type) ? (
                       <>
                         <Box data-module-field-path={itemPath(index, "image")}>
                           <ImageField
@@ -10773,9 +10773,9 @@ function InspectorColumn() {
                       <>
                         {["gallery", "portfolio"].includes(selectedSemanticModule.type) ? <TextField
                           size="small"
-                          label="Caption"
+                          label={selectedSemanticModule.type === "portfolio" && String(currentStyleKey || "").trim().toLowerCase() === "frame-and-field" ? "Category / metadata" : "Caption"}
                           value={item.caption || ""}
-                          onChange={(event) => updateItem(index, { caption: event.target.value })}
+                          onChange={(event) => updateItem(index, { caption: event.target.value, ...(selectedSemanticModule.type === "portfolio" ? { category: event.target.value } : {}) })}
                           fullWidth
                           inputProps={{ "data-module-field-path": itemPath(index, "caption") }}
                         /> : null}

@@ -1,5 +1,6 @@
 import { createBlackLetterOriginalHomeModules } from "./blackLetterHomeBlueprint";
 import { createCircuitNorthOriginalHomeModules } from "./circuitNorthHomeBlueprint";
+import { createFrameAndFieldOriginalHomeModules } from "./frameAndFieldHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -17,6 +18,12 @@ const BLUEPRINTS = {
     description: "its original system hero, technical architecture, proof rail, delivery process, technology briefs, and operations ending",
     pageTitle: "Systems that stay understandable.",
     createModules: createCircuitNorthOriginalHomeModules,
+  },
+  "frame-and-field": {
+    label: "Frame & Field",
+    description: "its current cinematic hero, editorial work wall, packages, eight-item Selected Assignments rail, Studio Notes, and studio inquiry ending",
+    pageTitle: "We frame stories.",
+    createModules: createFrameAndFieldOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
