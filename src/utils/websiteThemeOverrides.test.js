@@ -28,6 +28,7 @@ describe("website theme overrides", () => {
     "frame-and-field",
     "fieldcraft",
     "lumea-clinic",
+    "northstar-health",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {

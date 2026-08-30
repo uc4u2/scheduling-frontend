@@ -23,6 +23,7 @@ import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint";
+import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
@@ -134,6 +135,20 @@ describe("website semantic modules", () => {
     expect(getThemeModuleManifest("frame-and-field")).toBeTruthy();
     expect(getThemeModuleManifest("fieldcraft")).toBeTruthy();
     expect(getThemeModuleManifest("lumea-clinic")).toBeTruthy();
+    expect(getThemeModuleManifest("northstar-health")).toBeTruthy();
+  });
+
+  it("provides Northstar Health's source-native canonical homepage blueprint", () => {
+    const modules = createNorthstarHealthOriginalHomeModules();
+    expect(modules).toHaveLength(16);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(16);
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "stats", "trustRail", "services", "team", "process", "featureStory", "reviews", "richText", "faq",
+      "contactIntro", "contactDetails", "hoursLocation", "map", "contactForm", "bookingCta",
+    ]);
+    expect(modules.find((module) => module.type === "services").content.source).toBe("operational");
+    expect(modules.find((module) => module.type === "reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "northstar-home-care-story").content.items).toHaveLength(3);
   });
 
   it("infers canonical page kinds from legacy page slugs", () => {

@@ -154,6 +154,7 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "frame-and-field": { themeKey: "frame-and-field", pages: SHARED_PAGES },
   fieldcraft: { themeKey: "fieldcraft", pages: SHARED_PAGES },
   "lumea-clinic": { themeKey: "lumea-clinic", pages: SHARED_PAGES },
+  "northstar-health": { themeKey: "northstar-health", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

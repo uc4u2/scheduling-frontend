@@ -14,8 +14,15 @@ import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint";
+import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeBlueprint";
 
 const BLUEPRINTS = {
+  "northstar-health": {
+    label: "Northstar Health",
+    description: "its original layered healthcare hero, patient proof, care selector, provider story, visit journey, guidance, and grouped clinic ending",
+    pageTitle: "Modern healthcare with human clarity.",
+    createModules: createNorthstarHealthOriginalHomeModules,
+  },
   "lumea-clinic": {
     label: "Lumea Clinic",
     description: "its original layered clinical-luxury hero, treatment selector, comparison, care journey, facility story, and grouped consultation ending",
