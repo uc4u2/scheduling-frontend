@@ -25,6 +25,7 @@ import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
+import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -351,6 +352,20 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "modern-home-pricing").settings.ownership).toBe("marketing-packages");
     expect(modules.find((module) => module.id === "modern-home-faq").content.items).toHaveLength(4);
     expect(modules.every((module) => module.settings.starterBlueprint === "modern-gradient-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Finwise's complete editable corporate rhythm without fake proof or duplicated operational prices", () => {
+    const modules = createFinwiseOriginalHomeModules();
+    expect(modules).toHaveLength(13);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(13);
+    expect(modules.find((module) => module.id === "finwise-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "finwise-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "finwise-home-trust").settings.claimsMode).toBe("capabilities");
+    expect(modules.find((module) => module.id === "finwise-home-stats").settings.claimsMode).toBe("capabilities");
+    expect(modules.find((module) => module.id === "finwise-home-pricing").settings.ownership).toBe("marketing-packages");
+    expect(modules.find((module) => module.id === "finwise-home-faq").content.items).toHaveLength(4);
+    expect(modules.every((module) => module.settings.starterBlueprint === "finwise-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

@@ -8,6 +8,7 @@ import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
+import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -73,6 +74,12 @@ const BLUEPRINTS = {
     description: "its original spacious gradient hero, trust field, editorial media wall, masonry reviews, premium packages, clean FAQ, and rounded request ending",
     pageTitle: "Modern service, thoughtfully delivered.",
     createModules: createModernGradientOriginalHomeModules,
+  },
+  finwise: {
+    label: "Finwise",
+    description: "its original corporate hero, honest trust field, alternating benefit stories, package comparison, client proof, split FAQ, stats, and dark request ending",
+    pageTitle: "A better way to plan the work ahead.",
+    createModules: createFinwiseOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
