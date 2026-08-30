@@ -24,6 +24,7 @@ import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
+import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -337,6 +338,19 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "eldora-home-trust").settings.claimsMode).toBe("capabilities");
     expect(modules.find((module) => module.id === "eldora-home-faq").content.items).toHaveLength(4);
     expect(modules.every((module) => module.settings.starterBlueprint === "eldora-dark-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Modern Gradient's complete editable source rhythm without overriding operational pricing", () => {
+    const modules = createModernGradientOriginalHomeModules();
+    expect(modules).toHaveLength(12);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(12);
+    expect(modules.find((module) => module.id === "modern-home-trust").settings.claimsMode).toBe("capabilities");
+    expect(modules.find((module) => module.id === "modern-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "modern-home-gallery").content.items).toHaveLength(5);
+    expect(modules.find((module) => module.id === "modern-home-pricing").settings.ownership).toBe("marketing-packages");
+    expect(modules.find((module) => module.id === "modern-home-faq").content.items).toHaveLength(4);
+    expect(modules.every((module) => module.settings.starterBlueprint === "modern-gradient-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

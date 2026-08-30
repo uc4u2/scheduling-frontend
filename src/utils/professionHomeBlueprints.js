@@ -7,6 +7,7 @@ import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
+import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -66,6 +67,12 @@ const BLUEPRINTS = {
     description: "its original cinematic hero, capability ticker, service bento, planning showcase, animated FAQ, options, and dark lead ending",
     pageTitle: "Comfort systems, made clearer.",
     createModules: createEldoraDarkOriginalHomeModules,
+  },
+  "modern-gradient": {
+    label: "Modern Gradient",
+    description: "its original spacious gradient hero, trust field, editorial media wall, masonry reviews, premium packages, clean FAQ, and rounded request ending",
+    pageTitle: "Modern service, thoughtfully delivered.",
+    createModules: createModernGradientOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
