@@ -23,6 +23,7 @@ import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
+import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -323,6 +324,19 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "motion-home-services").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "motion-home-reviews").content.source).toBe("operational");
     expect(modules.every((module) => module.settings.starterBlueprint === "motion-editorial-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Eldora Dark's complete editable cinematic rhythm without fake customer claims", () => {
+    const modules = createEldoraDarkOriginalHomeModules();
+    expect(modules).toHaveLength(13);
+    expect(modules.map((module) => module.id)).toEqual([
+      "eldora-home-hero", "eldora-home-trust", "eldora-home-services", "eldora-home-bento-story", "eldora-home-showcase", "eldora-home-faq", "eldora-home-pricing", "eldora-home-contact-intro", "eldora-home-contact-details", "eldora-home-hours", "eldora-home-map", "eldora-home-contact-form", "eldora-home-cta",
+    ]);
+    expect(modules.find((module) => module.id === "eldora-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "eldora-home-trust").settings.claimsMode).toBe("capabilities");
+    expect(modules.find((module) => module.id === "eldora-home-faq").content.items).toHaveLength(4);
+    expect(modules.every((module) => module.settings.starterBlueprint === "eldora-dark-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

@@ -6,6 +6,7 @@ import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
+import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -59,6 +60,12 @@ const BLUEPRINTS = {
     description: "its original full-screen editorial hero, pinned story, service directory, hours treatment, client stories, and grouped contact ending",
     pageTitle: "Comfort, considered in motion.",
     createModules: createMotionEditorialOriginalHomeModules,
+  },
+  "eldora-dark": {
+    label: "Eldora Dark",
+    description: "its original cinematic hero, capability ticker, service bento, planning showcase, animated FAQ, options, and dark lead ending",
+    pageTitle: "Comfort systems, made clearer.",
+    createModules: createEldoraDarkOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
