@@ -22,6 +22,7 @@ import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
+import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
@@ -132,6 +133,7 @@ describe("website semantic modules", () => {
     expect(getThemeModuleManifest("quiet-harbor")).toBeTruthy();
     expect(getThemeModuleManifest("frame-and-field")).toBeTruthy();
     expect(getThemeModuleManifest("fieldcraft")).toBeTruthy();
+    expect(getThemeModuleManifest("lumea-clinic")).toBeTruthy();
   });
 
   it("infers canonical page kinds from legacy page slugs", () => {
@@ -315,6 +317,19 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "field-home-before-after").content.items).toHaveLength(2);
     expect(modules.find((module) => module.id === "field-home-projects").content.items).toHaveLength(3);
     expect(modules.every((module) => module.settings.starterBlueprint === "fieldcraft-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Lumea Clinic's complete editable clinical-luxury rhythm without duplicating operational records", () => {
+    const modules = createLumeaClinicOriginalHomeModules();
+    expect(modules).toHaveLength(17);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(17);
+    expect(modules.find((module) => module.id === "lumea-home-treatments").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "lumea-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "lumea-home-before-after").content.items).toHaveLength(1);
+    expect(modules.find((module) => module.id === "lumea-home-hero").content.secondaryImages).toHaveLength(2);
+    expect(modules.every((module) => module.settings.starterBlueprint === "lumea-clinic-original")).toBe(true);
+    expect(getProfessionHomeBlueprint("lumea-clinic")).toEqual(expect.objectContaining({ label: "Lumea Clinic", createModules: expect.any(Function) }));
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

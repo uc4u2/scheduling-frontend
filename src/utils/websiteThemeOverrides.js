@@ -133,6 +133,7 @@ const NEXTJS_PAGE_STYLE_THEME_CAPABILITIES = {
   "quiet-harbor": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
   "frame-and-field": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
   fieldcraft: { lightDarkPreference: "light" },
+  "lumea-clinic": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
 };
 
 export const NEXTJS_THEME_OVERRIDE_CONTRACT = Object.fromEntries(

@@ -153,6 +153,7 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "quiet-harbor": { themeKey: "quiet-harbor", pages: SHARED_PAGES },
   "frame-and-field": { themeKey: "frame-and-field", pages: SHARED_PAGES },
   fieldcraft: { themeKey: "fieldcraft", pages: SHARED_PAGES },
+  "lumea-clinic": { themeKey: "lumea-clinic", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

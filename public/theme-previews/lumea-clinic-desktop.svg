@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Lumea Clinic theme preview</title>
+  <desc id="desc">A light clinical-luxury layout with refined type and layered treatment imagery.</desc>
+  <rect width="1200" height="760" fill="#f7f2ec"/>
+  <circle cx="960" cy="165" r="285" fill="#ead8cc"/>
+  <rect x="55" y="35" width="1090" height="72" rx="36" fill="#fffaf6" stroke="#cfb9aa"/>
+  <text x="92" y="81" fill="#46372f" font-family="Georgia,serif" font-size="28">LUMEA CLINIC</text>
+  <text x="82" y="270" fill="#a6765e" font-family="Arial,sans-serif" font-size="16" letter-spacing="5">CLINICAL LUXURY</text>
+  <text x="78" y="365" fill="#352a25" font-family="Georgia,serif" font-size="78">Luxury care</text>
+  <text x="78" y="445" fill="#352a25" font-family="Georgia,serif" font-size="78">with clarity.</text>
+  <rect x="78" y="505" width="220" height="54" rx="27" fill="#9a6851"/>
+  <rect x="724" y="154" width="365" height="470" rx="55 150 55 55" fill="#bca495"/>
+  <rect x="596" y="245" width="220" height="285" rx="110 35 110 35" fill="#d6c0b2" stroke="#fffaf6" stroke-width="16"/>
+  <rect x="690" y="500" width="235" height="175" rx="32" fill="#efe4dc" stroke="#fffaf6" stroke-width="14"/>
+</svg>

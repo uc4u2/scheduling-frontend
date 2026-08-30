@@ -27,6 +27,7 @@ describe("website theme overrides", () => {
     "quiet-harbor",
     "frame-and-field",
     "fieldcraft",
+    "lumea-clinic",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {

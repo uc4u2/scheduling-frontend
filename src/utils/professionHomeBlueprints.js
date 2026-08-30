@@ -13,8 +13,15 @@ import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
+import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint";
 
 const BLUEPRINTS = {
+  "lumea-clinic": {
+    label: "Lumea Clinic",
+    description: "its original layered clinical-luxury hero, treatment selector, comparison, care journey, facility story, and grouped consultation ending",
+    pageTitle: "Luxury care with softer clinical precision.",
+    createModules: createLumeaClinicOriginalHomeModules,
+  },
   "black-letter": {
     label: "Black Letter Counsel",
     description: "its original authority-led legal hero, practice directory, counsel story, legal process, and formal consultation ending",
