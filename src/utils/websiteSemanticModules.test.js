@@ -22,6 +22,7 @@ import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
+import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -311,6 +312,17 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.id === "field-home-before-after").content.items).toHaveLength(2);
     expect(modules.find((module) => module.id === "field-home-projects").content.items).toHaveLength(3);
     expect(modules.every((module) => module.settings.starterBlueprint === "fieldcraft-original")).toBe(true);
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides Motion Editorial's complete editable source rhythm", () => {
+    const modules = createMotionEditorialOriginalHomeModules();
+    expect(modules).toHaveLength(11);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(11);
+    expect(modules.find((module) => module.id === "motion-home-story").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "motion-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "motion-home-reviews").content.source).toBe("operational");
+    expect(modules.every((module) => module.settings.starterBlueprint === "motion-editorial-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

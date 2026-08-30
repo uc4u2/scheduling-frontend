@@ -5,6 +5,7 @@ import { createSolaraStayOriginalHomeModules } from "./solaraStayHomeBlueprint";
 import { createPawAndPineOriginalHomeModules } from "./pawAndPineHomeBlueprint";
 import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint";
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
+import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
@@ -52,6 +53,12 @@ const BLUEPRINTS = {
     description: "its original utility hero, practical service selector, before-and-after proof, project rhythm, homeowner guidance, and grouped estimate ending",
     pageTitle: "Built to show up and finish right.",
     createModules: createFieldcraftOriginalHomeModules,
+  },
+  "motion-editorial": {
+    label: "Motion Editorial",
+    description: "its original full-screen editorial hero, pinned story, service directory, hours treatment, client stories, and grouped contact ending",
+    pageTitle: "Comfort, considered in motion.",
+    createModules: createMotionEditorialOriginalHomeModules,
   },
   "clear-clinic": {
     label: "Clear Clinic",
