@@ -28,6 +28,7 @@ import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeB
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
+import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -138,6 +139,25 @@ describe("website semantic modules", () => {
     expect(getThemeModuleManifest("northstar-health")).toBeTruthy();
     expect(getThemeModuleManifest("axis-and-co")).toBeTruthy();
     expect(getThemeModuleManifest("torque-house")).toBeTruthy();
+    expect(getThemeModuleManifest("velora-house")).toBeTruthy();
+  });
+
+  it("provides Velora House's source-native salon blueprint with honest proof and nine editable portfolio items", () => {
+    const modules = createVeloraHouseOriginalHomeModules();
+    expect(modules).toHaveLength(10);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(10);
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "featureStory", "proofBand", "services", "portfolio", "reviews",
+      "contactIntro", "contactDetails", "contactForm", "bookingCta",
+    ]);
+    expect(modules.find((module) => module.id === "velora-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "velora-home-reviews").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "velora-home-portfolio").content.items).toHaveLength(9);
+    expect(modules.find((module) => module.id === "velora-home-proof").settings.claimsMode).toBe("service-principles");
+    expect(modules.some((module) => ["team", "beforeAfter"].includes(module.type))).toBe(false);
+    expect(modules.every((module) => module.settings.starterBlueprint === "velora-house-original")).toBe(true);
+    expect(getProfessionHomeBlueprint("velora-house")).toEqual(expect.objectContaining({ label: "Velora House", createModules: expect.any(Function) }));
+    modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 
   it("provides Northstar Health's source-native canonical homepage blueprint", () => {

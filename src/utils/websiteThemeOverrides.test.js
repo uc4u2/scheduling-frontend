@@ -31,6 +31,7 @@ describe("website theme overrides", () => {
     "northstar-health",
     "axis-and-co",
     "torque-house",
+    "velora-house",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {

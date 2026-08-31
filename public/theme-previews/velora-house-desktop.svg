@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Velora House theme preview</title>
+  <desc id="desc">A dark-luxury salon layout with editorial serif typography, peach and aqua accents, and layered beauty portraits.</desc>
+  <rect width="1200" height="760" fill="#1b2130"/>
+  <circle cx="1050" cy="620" r="310" fill="#232f43"/>
+  <circle cx="90" cy="130" r="180" fill="#27374b"/>
+  <rect x="54" y="32" width="1092" height="68" rx="34" fill="#232a39" stroke="#4a5264"/>
+  <text x="90" y="77" fill="#fff5ed" font-family="Georgia,serif" font-size="27">VELORA HOUSE</text>
+  <text x="80" y="252" fill="#f0c7b0" font-family="Arial,sans-serif" font-size="14" letter-spacing="5">SALON &amp; BEAUTY</text>
+  <text x="76" y="345" fill="#fff5ed" font-family="Georgia,serif" font-size="74">Beauty, shaped</text>
+  <text x="76" y="423" fill="#fff5ed" font-family="Georgia,serif" font-size="74">around you.</text>
+  <rect x="78" y="484" width="210" height="56" rx="28" fill="#d6a37f"/>
+  <rect x="744" y="144" width="340" height="500" rx="170 170 55 55" fill="#4a5264" stroke="#d6a37f" stroke-width="3"/>
+  <ellipse cx="914" cy="330" rx="112" ry="150" fill="#2b3344"/>
+  <path d="M800 625 C820 485 1010 485 1035 625" fill="#f0c7b0" opacity=".42"/>
+  <rect x="624" y="392" width="235" height="255" rx="28" fill="#31475a" stroke="#fff5ed" stroke-width="10"/>
+  <circle cx="1100" cy="190" r="13" fill="#79c8c7"/>
+  <circle cx="1128" cy="225" r="7" fill="#f0c7b0"/>
+</svg>

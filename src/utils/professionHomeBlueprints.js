@@ -17,8 +17,15 @@ import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint
 import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeBlueprint";
 import { createAxisAndCoOriginalHomeModules } from "./axisAndCoHomeBlueprint";
 import { createTorqueHouseOriginalHomeModules } from "./torqueHouseHomeBlueprint";
+import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
 
 const BLUEPRINTS = {
+  "velora-house": {
+    label: "Velora House",
+    description: "its original layered beauty hero, image-led studio story, honest proof principles, service directory, nine-item masonry portfolio, and premium inquiry ending",
+    pageTitle: "Elevated beauty rituals, shaped around you.",
+    createModules: createVeloraHouseOriginalHomeModules,
+  },
   "torque-house": {
     label: "Torque House",
     description: "its industrial workshop hero, service selector, before-and-after proof, projects, service process, and grouped shop ending",
