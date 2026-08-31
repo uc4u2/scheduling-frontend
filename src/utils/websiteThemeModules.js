@@ -115,6 +115,33 @@ const IRON_EMBER_PAGES = {
   generic: ironEmberContentPage("generic.intro"),
 };
 
+// Schedule is a reusable semantic concept, but only Forge Motion advertises a
+// renderer for it in this campaign. Other frozen themes can opt in later
+// without inheriting a section they do not yet render.
+const FORGE_MOTION_PAGES = {
+  ...SHARED_PAGES,
+  home: {
+    ...SHARED_PAGES.home,
+    slotRules: {
+      ...SHARED_PAGES.home.slotRules,
+      "home.afterServices": {
+        ...SHARED_PAGES.home.slotRules["home.afterServices"],
+        allowedModuleTypes: [...SHARED_PAGES.home.slotRules["home.afterServices"].allowedModuleTypes, "schedule"],
+      },
+    },
+  },
+  generic: {
+    ...SHARED_PAGES.generic,
+    slotRules: {
+      ...SHARED_PAGES.generic.slotRules,
+      "generic.primaryContent": {
+        ...SHARED_PAGES.generic.slotRules["generic.primaryContent"],
+        allowedModuleTypes: [...SHARED_PAGES.generic.slotRules["generic.primaryContent"].allowedModuleTypes, "schedule"],
+      },
+    },
+  },
+};
+
 // These are presentation labels only.  The module types and slots remain the
 // shared semantic contract; Iron Ember simply uses more useful studio language
 // for its deliberately composed Contact page.
@@ -158,6 +185,7 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "axis-and-co": { themeKey: "axis-and-co", pages: SHARED_PAGES },
   "torque-house": { themeKey: "torque-house", pages: SHARED_PAGES },
   "velora-house": { themeKey: "velora-house", pages: SHARED_PAGES },
+  "forge-motion": { themeKey: "forge-motion", pages: FORGE_MOTION_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

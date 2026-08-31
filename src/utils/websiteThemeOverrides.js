@@ -138,6 +138,7 @@ const NEXTJS_PAGE_STYLE_THEME_CAPABILITIES = {
   "axis-and-co": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
   "torque-house": { lightDarkPreference: "dark" },
   "velora-house": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "forge-motion": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.08 },
 };
 
 export const NEXTJS_THEME_OVERRIDE_CONTRACT = Object.fromEntries(

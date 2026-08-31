@@ -29,6 +29,7 @@ import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
 import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
+import { createForgeMotionOriginalHomeModules } from "./forgeMotionHomeBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
 import { getCompatibleSlots } from "./websiteThemeModules";
 import {
@@ -140,6 +141,36 @@ describe("website semantic modules", () => {
     expect(getThemeModuleManifest("axis-and-co")).toBeTruthy();
     expect(getThemeModuleManifest("torque-house")).toBeTruthy();
     expect(getThemeModuleManifest("velora-house")).toBeTruthy();
+    expect(getThemeModuleManifest("forge-motion")).toBeTruthy();
+  });
+
+  it("provides Forge Motion's source-native blueprint and an honest editable marketing schedule", () => {
+    const modules = createForgeMotionOriginalHomeModules();
+    expect(modules).toHaveLength(13);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(13);
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero", "featureStory", "team", "services", "schedule", "stats", "portfolio",
+      "bookingCta", "reviews", "contactDetails", "hoursLocation", "map", "contactForm",
+    ]);
+    expect(modules.find((module) => module.id === "forge-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "forge-home-reviews").content.source).toBe("operational");
+    const schedule = modules.find((module) => module.id === "forge-home-schedule");
+    expect(schedule.settings.availabilityMode).toBe("marketing-display-only");
+    expect(schedule.content.items).toHaveLength(6);
+    expect(schedule.content.items.every((item) => item.day && item.time && item.title && item.format && item.note)).toBe(true);
+    expect(schedule.content.items.some((item) => ["Available", "Limited", "Full"].includes(item.note))).toBe(false);
+    expect(modules.find((module) => module.id === "forge-home-proof").settings.claimsMode).toBe("indexed-coaching-principles");
+    expect(modules.every((module) => module.settings.starterBlueprint === "forge-motion-original")).toBe(true);
+    expect(getProfessionHomeBlueprint("forge-motion")).toEqual(expect.objectContaining({ label: "Forge Motion", createModules: expect.any(Function) }));
+    modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("activates schedule as a canonical displayed-content module without changing live availability", () => {
+    const module = createSemanticModule("schedule", { slug: "home", is_homepage: true });
+    expect(module.slot).toBe("home.afterServices");
+    expect(module.content).toEqual(expect.objectContaining({ heading: "Schedule", items: [] }));
+    expect(getCompatibleSlots("forge-motion", "home")["home.afterServices"].allowedModuleTypes).toContain("schedule");
+    expect(getCompatibleModuleChoices("forge-motion", "home", []).some((choice) => choice.type === "schedule")).toBe(true);
   });
 
   it("provides Velora House's source-native salon blueprint with honest proof and nine editable portfolio items", () => {

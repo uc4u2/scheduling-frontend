@@ -18,8 +18,15 @@ import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeB
 import { createAxisAndCoOriginalHomeModules } from "./axisAndCoHomeBlueprint";
 import { createTorqueHouseOriginalHomeModules } from "./torqueHouseHomeBlueprint";
 import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
+import { createForgeMotionOriginalHomeModules } from "./forgeMotionHomeBlueprint";
 
 const BLUEPRINTS = {
+  "forge-motion": {
+    label: "Forge Motion",
+    description: "its original full-bleed fitness hero, coaching story, team, operational program selector, displayed weekly schedule, honest proof, training journal, client rail, and inquiry ending",
+    pageTitle: "Build strength that holds up in real life.",
+    createModules: createForgeMotionOriginalHomeModules,
+  },
   "velora-house": {
     label: "Velora House",
     description: "its original layered beauty hero, image-led studio story, honest proof principles, service directory, nine-item masonry portfolio, and premium inquiry ending",

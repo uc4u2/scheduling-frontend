@@ -1,0 +1,147 @@
+const media = (imageAlt = "") => ({ image: "", imageUrl: "", imageAlt });
+const record = (id, type, slot, order, content, settings = {}) => ({
+  id,
+  type,
+  slot,
+  order,
+  enabled: true,
+  content,
+  settings: {
+    createdInBuilder: true,
+    starterBlueprint: "forge-motion-original",
+    source: "forge-motion-original",
+    ...settings,
+  },
+});
+
+export function createForgeMotionOriginalHomeModules() {
+  return [
+    record("forge-home-hero", "hero", "home.hero", 0, {
+      eyebrow: "Fitness & personal training",
+      heading: "Build strength that holds up in real life.",
+      subheading: "A focused coaching environment for strength, mobility, conditioning, and a routine you can keep using.",
+      ...media("A coach supporting a client during a focused strength training session."),
+      primaryCta: { label: "Explore training", href: "/services" },
+      secondaryCta: { label: "Start a conversation", href: "/contact" },
+    }),
+    record("forge-home-story", "featureStory", "home.afterHero", 1, {
+      eyebrow: "Training philosophy",
+      heading: "Coaching built around strength, consistency, and real life.",
+      intro: "Explain the studio's real approach to assessment, progression, communication, and recovery.",
+      body: "The strongest training plan is one the client understands and can continue. Use this space for the practice's verified philosophy rather than transformation promises.",
+      ...media("A coach observing a client's movement during a structured training session."),
+      secondaryImage: "",
+      secondaryImageAlt: "A close training detail showing movement quality and coaching attention.",
+      items: [
+        { id: "forge-story-1", title: "Assess the starting point", body: "Begin with the client's current routine, movement confidence, and practical goals." },
+        { id: "forge-story-2", title: "Build a repeatable plan", body: "Shape the training week around realistic frequency, support, and recovery." },
+        { id: "forge-story-3", title: "Coach the details", body: "Use clear feedback and appropriate progression without unsupported outcome claims." },
+      ],
+      primaryCta: { label: "About the approach", href: "/about" },
+    }),
+    record("forge-home-team", "team", "home.primaryContent", 2, {
+      eyebrow: "Coaching team",
+      heading: "Introduce the people behind the training experience.",
+      intro: "Replace these placeholders with verified names, roles, biographies, images, and qualifications.",
+      items: [
+        { id: "forge-team-1", title: "Lead coach", role: "Add verified role", body: "Add a real coach biography and only verified qualifications.", ...media("Portrait of the lead fitness coach in the training studio.") },
+        { id: "forge-team-2", title: "Movement coach", role: "Add verified role", body: "Add a real coach biography and the training areas they actually support.", ...media("Portrait of a movement coach beside the studio training floor.") },
+        { id: "forge-team-3", title: "Performance coach", role: "Add verified role", body: "Add a real coach biography without invented credentials or competition history.", ...media("Portrait of a performance coach in a professional training environment.") },
+      ],
+    }),
+    record("forge-home-services", "services", "home.primaryContent", 3, {
+      eyebrow: "Training paths",
+      heading: "Choose the service that fits the current goal and routine.",
+      intro: "Names, descriptions, duration, pricing, availability, and booking configuration remain managed in Services.",
+      source: "operational",
+      items: [],
+      primaryCta: { label: "View all training services", href: "/services" },
+    }, { dataSource: "operational-services", presentation: "fitness-program-selector" }),
+    record("forge-home-schedule", "schedule", "home.afterServices", 4, {
+      eyebrow: "Displayed weekly rhythm",
+      heading: "Show how a typical training week can be structured.",
+      intro: "This editable marketing schedule is illustrative. Live appointment availability remains in the Schedulaa booking system.",
+      items: [
+        { id: "forge-schedule-1", day: "Monday", time: "07:00", title: "Strength training", format: "Studio", note: "Small group" },
+        { id: "forge-schedule-2", day: "Tuesday", time: "12:00", title: "Private coaching", format: "Studio", note: "One-to-one" },
+        { id: "forge-schedule-3", day: "Wednesday", time: "18:00", title: "Conditioning", format: "Studio", note: "Group" },
+        { id: "forge-schedule-4", day: "Thursday", time: "08:00", title: "Mobility session", format: "Online", note: "Guided" },
+        { id: "forge-schedule-5", day: "Friday", time: "17:30", title: "Performance training", format: "Studio", note: "Coached" },
+        { id: "forge-schedule-6", day: "Saturday", time: "09:00", title: "Return to training", format: "Studio", note: "Small group" },
+      ],
+      primaryCta: { label: "Ask about training times", href: "/contact" },
+    }, { presentation: "fitness-weekly-schedule", availabilityMode: "marketing-display-only" }),
+    record("forge-home-proof", "stats", "home.afterServices", 5, {
+      eyebrow: "Coaching standard",
+      heading: "A clear structure without fabricated performance claims.",
+      intro: "These indexed principles are editable. Replace them only with accurate, supportable information.",
+      items: [
+        { id: "forge-proof-1", value: "01", title: "Assessment", body: "Understand the starting point before selecting the training path." },
+        { id: "forge-proof-2", value: "02", title: "Progression", body: "Adjust the work using the studio's real coaching approach." },
+        { id: "forge-proof-3", value: "03", title: "Communication", body: "Keep expectations, feedback, and the next session understandable." },
+        { id: "forge-proof-4", value: "04", title: "Consistency", body: "Build a schedule that can work beyond an ideal week." },
+      ],
+    }, { claimsMode: "indexed-coaching-principles" }),
+    record("forge-home-portfolio", "portfolio", "home.afterServices", 6, {
+      eyebrow: "Training journal",
+      heading: "Movement, coaching detail, and the studio in action.",
+      intro: "Replace these editable records with genuine studio media and accurate, non-transformational context.",
+      items: [
+        { id: "forge-work-1", title: "Strength session", category: "Studio", caption: "Studio", body: "A sample editorial record for focused strength coaching.", ...media("A client completing a controlled strength exercise with coach support.") },
+        { id: "forge-work-2", title: "Movement detail", category: "Mobility", caption: "Mobility", body: "A sample record focused on range, control, and coaching cues.", ...media("A close view of a guided mobility exercise in the studio.") },
+        { id: "forge-work-3", title: "Conditioning rhythm", category: "Conditioning", caption: "Conditioning", body: "A sample record for a structured conditioning session.", ...media("A coached conditioning exercise in progress on a training floor.") },
+        { id: "forge-work-4", title: "Coaching notes", category: "Practice", caption: "Practice", body: "A sample editorial record about preparation and communication.", ...media("A coach reviewing training notes beside the studio floor.") },
+        { id: "forge-work-5", title: "Return to training", category: "Progression", caption: "Progression", body: "A neutral sample story about rebuilding a repeatable routine.", ...media("A client returning to structured exercise with measured coach guidance.") },
+        { id: "forge-work-6", title: "Studio focus", category: "Environment", caption: "Environment", body: "A sample record showing the real atmosphere of the training space.", ...media("A professional fitness studio prepared for a coaching session.") },
+      ],
+    }, { presentation: "fitness-editorial-wall" }),
+    record("forge-home-cta", "bookingCta", "home.finalCta", 7, {
+      eyebrow: "Next step",
+      heading: "Ready to train with more intention?",
+      body: "Choose a real Service or start a conversation. Availability, provider selection, review, checkout, payment, and confirmation remain system-owned.",
+      backgroundImage: "",
+      backgroundImageAlt: "A coach demonstrating a training movement in a full-width fitness setting.",
+      primaryCta: { label: "Choose a training service", href: "/services" },
+    }, { presentation: "fitness-split-cta" }),
+    record("forge-home-reviews", "reviews", "home.afterServices", 8, {
+      eyebrow: "Client feedback",
+      heading: "Published reviews from real training experiences.",
+      intro: "Published Reviews remain management-owned. No fixture testimonials are stored in this module.",
+      source: "operational",
+      items: [],
+    }, { dataSource: "published-reviews", presentation: "fitness-review-rail" }),
+    record("forge-home-contact-details", "contactDetails", "home.beforeContact", 9, {
+      eyebrow: "Studio details",
+      heading: "Make the first training conversation specific.",
+      items: [
+        { id: "forge-detail-location", title: "Training location", body: "Add the studio address or service-area guidance" },
+        { id: "forge-detail-phone", title: "Phone", body: "Add the studio phone" },
+        { id: "forge-detail-email", title: "Email", body: "Add the studio email" },
+      ],
+    }),
+    record("forge-home-hours", "hoursLocation", "home.beforeContact", 10, {
+      eyebrow: "Studio hours",
+      heading: "Share the real contact and training window.",
+      items: [
+        { id: "forge-hours-weekday", title: "Weekdays", body: "Add real staffed or contact hours" },
+        { id: "forge-hours-weekend", title: "Weekend", body: "Add real staffed or contact hours" },
+        { id: "forge-hours-note", title: "Session guidance", body: "Clarify that live availability appears only in the booking flow" },
+      ],
+    }),
+    record("forge-home-map", "map", "home.beforeContact", 11, {
+      eyebrow: "Location",
+      heading: "Find the training space.",
+      intro: "Add the supported studio address or map embed.",
+      query: "Add the studio address",
+      address: "Add the studio address",
+      embedUrl: "",
+    }),
+    record("forge-home-contact-form", "contactForm", "home.beforeContact", 12, {
+      eyebrow: "Training inquiry",
+      heading: "Tell the team what you want to build.",
+      intro: "The existing Website Form handles this inquiry. No newsletter or lead store is created by the theme.",
+      formKey: "contact",
+      submitLabel: "Send training inquiry",
+    }),
+  ];
+}

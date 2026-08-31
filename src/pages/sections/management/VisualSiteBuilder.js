@@ -9720,7 +9720,8 @@ function InspectorColumn() {
       editingPageKind !== "home" &&
       String(currentStyleKey || "").trim().toLowerCase() === "iron-ember" &&
       (selectedSemanticModule.type === "hero" || ironEmberInnerHeroSlots.has(String(selectedSemanticModule.slot || "")));
-    const allowsIronEmberVideoMedia = String(currentStyleKey || "").trim().toLowerCase() === "iron-ember";
+    const isIronEmberTheme = String(currentStyleKey || "").trim().toLowerCase() === "iron-ember";
+    const allowsIronEmberVideoMedia = isIronEmberTheme;
     const syncPrimaryImagePatch = (patch = {}) => {
       const next = { ...patch };
       if (Object.prototype.hasOwnProperty.call(next, "image")) {
@@ -9777,6 +9778,8 @@ function InspectorColumn() {
           return { id: nanoOrShortId(), title: "", price: "", body: "", features: [], href: "" };
         case "stats":
           return { id: nanoOrShortId(), title: "", value: "", body: "" };
+        case "schedule":
+          return { id: nanoOrShortId(), day: "", time: "", title: "", format: "", note: "" };
         case "trustRail":
           return { id: nanoOrShortId(), title: "", body: "", image: "", imageUrl: "", imageAlt: "", href: "" };
         case "beforeAfter":
@@ -9869,7 +9872,7 @@ function InspectorColumn() {
           Editing {isIronEmberInnerPageHero ? "Hero" : semanticModuleDisplayLabel(selectedSemanticModule)}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
-        {!isIronEmberInnerPageHero && ["richText", "services", "reviews", "faq", "gallery", "selectedCuts", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["richText", "services", "reviews", "faq", "gallery", "selectedCuts", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Heading"
@@ -9880,7 +9883,7 @@ function InspectorColumn() {
             inputProps={{ "data-module-field-path": contentPath("heading") }}
           />
         ) : null}
-        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Eyebrow"
@@ -9904,7 +9907,7 @@ function InspectorColumn() {
                   panel, marquee, secondary-image, and CTA fields belong to its
                   homepage hero.
                 </Alert>
-              ) : (
+              ) : isIronEmberTheme ? (
                 <>
                   <FormControlLabel
                     control={
@@ -10001,7 +10004,7 @@ function InspectorColumn() {
                     />
                   ))}
                 </>
-              )}
+              ) : null}
             </Stack>
             <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
@@ -10114,7 +10117,7 @@ function InspectorColumn() {
             <Stack spacing={1.25} data-testid="feature-story-panels-editor">
               <Typography variant="overline" color="text.secondary">Story panels</Typography>
               {items.map((item, index) => (
-                <Paper key={item.id || index} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                <Paper key={item.id || index} variant="outlined" data-testid={`semantic-item-${index}`} sx={{ p: 1.5, borderRadius: 1 }}>
                   <Stack spacing={1}>
                     <TextField
                       size="small"
@@ -10279,7 +10282,7 @@ function InspectorColumn() {
             </Box>
           </>
         ) : null}
-        {["services", "reviews", "faq", "gallery", "selectedCuts", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "richText", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
+        {["services", "reviews", "faq", "gallery", "selectedCuts", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "richText", "contactDetails", "hoursLocation", "locations", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
           <>
             <Typography variant="overline" color="text.secondary">Content</Typography>
             <TextField
@@ -10332,7 +10335,7 @@ function InspectorColumn() {
                           : "Items"}
               </Typography>
               {items.map((item, index) => (
-                <Paper key={item.id || index} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                <Paper key={item.id || index} variant="outlined" data-testid={`semantic-item-${index}`} sx={{ p: 1.5, borderRadius: 1 }}>
                   <Stack spacing={1}>
                     <TextField
                       size="small"
@@ -10355,6 +10358,44 @@ function InspectorColumn() {
                       fullWidth
                       inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "question" : "title") }}
                     />
+                    {selectedSemanticModule.type === "schedule" ? (
+                      <>
+                        <TextField
+                          size="small"
+                          label="Day"
+                          value={item.day || ""}
+                          onChange={(event) => updateItem(index, { day: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "day") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="Displayed time"
+                          value={item.time || ""}
+                          onChange={(event) => updateItem(index, { time: event.target.value })}
+                          fullWidth
+                          helperText="Presentation only. This does not create live availability."
+                          inputProps={{ "data-module-field-path": itemPath(index, "time") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="Format / context"
+                          value={item.format || ""}
+                          onChange={(event) => updateItem(index, { format: event.target.value })}
+                          fullWidth
+                          inputProps={{ "data-module-field-path": itemPath(index, "format") }}
+                        />
+                        <TextField
+                          size="small"
+                          label="Display note"
+                          value={item.note || ""}
+                          onChange={(event) => updateItem(index, { note: event.target.value })}
+                          fullWidth
+                          helperText="Use neutral context such as Group, Private, Studio, or Online—not live availability."
+                          inputProps={{ "data-module-field-path": itemPath(index, "note") }}
+                        />
+                      </>
+                    ) : null}
                     {["team", "reviews", "services", "serviceAreas", "proofBand", "reviewSummary"].includes(selectedSemanticModule.type) ? (
                       <TextField
                         size="small"
@@ -10374,7 +10415,7 @@ function InspectorColumn() {
                         fullWidth
                         inputProps={{ "data-module-field-path": itemPath(index, "category") }}
                       />
-                    ) : <TextField
+                    ) : selectedSemanticModule.type !== "schedule" ? <TextField
                       size="small"
                       label={selectedSemanticModule.type === "reviews"
                         ? "Quote / body"
@@ -10394,7 +10435,7 @@ function InspectorColumn() {
                       multiline
                       minRows={2}
                       inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "answer" : selectedSemanticModule.type === "team" ? "bio" : "body") }}
-                    />}
+                    /> : null}
                     {selectedSemanticModule.type === "pricing" ? (
                       <>
                         <TextField

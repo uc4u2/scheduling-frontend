@@ -446,7 +446,7 @@ export function defaultSlotForModule(pageKind, moduleType) {
   if (page === "home") {
     if (moduleType === "selectedCuts") return "home.selectedCuts";
     if (["services", "stats", "trustRail", "pricing"].includes(moduleType)) return "home.primaryContent";
-    if (["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio", "proofBand", "reviewSummary"].includes(moduleType)) return "home.afterServices";
+    if (["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio", "proofBand", "reviewSummary", "schedule"].includes(moduleType)) return "home.afterServices";
     if (["cta", "contactForm", "contactIntro", "contactDetails", "map", "hoursLocation", "locations", "bookingCta"].includes(moduleType)) return "home.beforeContact";
     return "home.afterHero";
   }
@@ -915,6 +915,7 @@ export function createSemanticModule(moduleType, page = {}, slot) {
     case "locations":
     case "proofBand":
     case "reviewSummary":
+    case "schedule":
       base.content = { heading: SEMANTIC_MODULE_LABELS[moduleType], intro: "", items: [] };
       break;
     case "reviews":

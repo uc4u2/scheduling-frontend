@@ -32,6 +32,7 @@ describe("website theme overrides", () => {
     "axis-and-co",
     "torque-house",
     "velora-house",
+    "forge-motion",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {

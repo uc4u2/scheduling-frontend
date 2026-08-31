@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Forge Motion theme preview</title>
+  <desc id="desc">A bold full-width fitness layout with oversized typography, near-black fields, training imagery, and an electric chartreuse accent.</desc>
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050505"/>
+      <stop offset="1" stop-color="#1b1d1a"/>
+    </linearGradient>
+    <linearGradient id="figure" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#777b72"/>
+      <stop offset="1" stop-color="#292c28"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="760" fill="url(#field)"/>
+  <path d="M780 60h420v700H620c74-93 119-202 136-326 17-125 25-250 24-374Z" fill="#10120f"/>
+  <ellipse cx="965" cy="267" rx="120" ry="138" fill="url(#figure)"/>
+  <path d="M760 708c19-183 90-304 213-304 126 0 190 119 211 304Z" fill="#42463f"/>
+  <path d="M825 425c-68 49-111 119-130 210M1094 429c51 48 78 111 89 188" fill="none" stroke="#c7ff3d" stroke-width="18" opacity=".7"/>
+  <rect x="48" y="34" width="1104" height="62" fill="#0a0a0a" stroke="#30332d"/>
+  <text x="79" y="75" fill="#f7f5ef" font-family="Arial,sans-serif" font-size="24" font-weight="800" letter-spacing="4">FORGE MOTION</text>
+  <text x="78" y="178" fill="#c7ff3d" font-family="Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="5">PERSONAL TRAINING</text>
+  <text x="70" y="295" fill="#f7f5ef" font-family="Arial,sans-serif" font-size="104" font-weight="900" letter-spacing="-6">BUILD</text>
+  <text x="70" y="388" fill="#f7f5ef" font-family="Arial,sans-serif" font-size="104" font-weight="900" letter-spacing="-6">WHAT</text>
+  <text x="70" y="481" fill="#f7f5ef" font-family="Arial,sans-serif" font-size="104" font-weight="900" letter-spacing="-6">LASTS.</text>
+  <text x="78" y="538" fill="#b8bbb2" font-family="Arial,sans-serif" font-size="19">Coaching built around strength, mobility, and consistency.</text>
+  <rect x="78" y="579" width="214" height="62" fill="#c7ff3d"/>
+  <text x="112" y="618" fill="#050505" font-family="Arial,sans-serif" font-size="13" font-weight="900" letter-spacing="2">EXPLORE TRAINING</text>
+  <rect x="315" y="579" width="178" height="62" fill="none" stroke="#777b72"/>
+  <text x="353" y="618" fill="#f7f5ef" font-family="Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="2">MEET A COACH</text>
+  <path d="M48 690h1104" stroke="#41443e"/>
+  <text x="78" y="723" fill="#90948a" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="3">STRENGTH · MOBILITY · CONSISTENCY</text>
+</svg>
