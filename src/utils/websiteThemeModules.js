@@ -156,6 +156,7 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "lumea-clinic": { themeKey: "lumea-clinic", pages: SHARED_PAGES },
   "northstar-health": { themeKey: "northstar-health", pages: SHARED_PAGES },
   "axis-and-co": { themeKey: "axis-and-co", pages: SHARED_PAGES },
+  "torque-house": { themeKey: "torque-house", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

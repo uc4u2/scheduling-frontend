@@ -16,8 +16,15 @@ import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint";
 import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeBlueprint";
 import { createAxisAndCoOriginalHomeModules } from "./axisAndCoHomeBlueprint";
+import { createTorqueHouseOriginalHomeModules } from "./torqueHouseHomeBlueprint";
 
 const BLUEPRINTS = {
+  "torque-house": {
+    label: "Torque House",
+    description: "its industrial workshop hero, service selector, before-and-after proof, projects, service process, and grouped shop ending",
+    pageTitle: "Vehicle service with a sharper workshop rhythm.",
+    createModules: createTorqueHouseOriginalHomeModules,
+  },
   "axis-and-co": {
     label: "Axis & Co.",
     description: "its original executive hero, expertise selector, client tensions, case stories, strategic framework, guidance, and consultation ending",

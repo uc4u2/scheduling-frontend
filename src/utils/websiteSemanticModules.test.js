@@ -137,6 +137,7 @@ describe("website semantic modules", () => {
     expect(getThemeModuleManifest("lumea-clinic")).toBeTruthy();
     expect(getThemeModuleManifest("northstar-health")).toBeTruthy();
     expect(getThemeModuleManifest("axis-and-co")).toBeTruthy();
+    expect(getThemeModuleManifest("torque-house")).toBeTruthy();
   });
 
   it("provides Northstar Health's source-native canonical homepage blueprint", () => {
@@ -347,6 +348,7 @@ describe("website semantic modules", () => {
     expect(modules.every((module) => module.settings.starterBlueprint === "lumea-clinic-original")).toBe(true);
     expect(getProfessionHomeBlueprint("lumea-clinic")).toEqual(expect.objectContaining({ label: "Lumea Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("axis-and-co")).toEqual(expect.objectContaining({ label: "Axis & Co.", createModules: expect.any(Function) }));
+    expect(getProfessionHomeBlueprint("torque-house")).toEqual(expect.objectContaining({ label: "Torque House", createModules: expect.any(Function) }));
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

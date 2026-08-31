@@ -30,6 +30,7 @@ describe("website theme overrides", () => {
     "lumea-clinic",
     "northstar-health",
     "axis-and-co",
+    "torque-house",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {
