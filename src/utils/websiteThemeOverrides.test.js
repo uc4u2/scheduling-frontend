@@ -29,6 +29,7 @@ describe("website theme overrides", () => {
     "fieldcraft",
     "lumea-clinic",
     "northstar-health",
+    "axis-and-co",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {

@@ -135,6 +135,7 @@ const NEXTJS_PAGE_STYLE_THEME_CAPABILITIES = {
   fieldcraft: { lightDarkPreference: "light" },
   "lumea-clinic": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
   "northstar-health": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
+  "axis-and-co": { lightDarkPreference: "light", specialFields: ["typographyScale"], typographyScale: 1.05 },
 };
 
 export const NEXTJS_THEME_OVERRIDE_CONTRACT = Object.fromEntries(

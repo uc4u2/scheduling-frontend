@@ -15,8 +15,15 @@ import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
 import { createStillBloomOriginalHomeModules } from "./stillBloomHomeBlueprint";
 import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint";
 import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeBlueprint";
+import { createAxisAndCoOriginalHomeModules } from "./axisAndCoHomeBlueprint";
 
 const BLUEPRINTS = {
+  "axis-and-co": {
+    label: "Axis & Co.",
+    description: "its original executive hero, expertise selector, client tensions, case stories, strategic framework, guidance, and consultation ending",
+    pageTitle: "Sharper operating strategy.",
+    createModules: createAxisAndCoOriginalHomeModules,
+  },
   "northstar-health": {
     label: "Northstar Health",
     description: "its original layered healthcare hero, patient proof, care selector, provider story, visit journey, guidance, and grouped clinic ending",
