@@ -160,6 +160,14 @@ describe("website semantic modules", () => {
     expect(schedule.content.items.every((item) => item.day && item.time && item.title && item.format && item.note)).toBe(true);
     expect(schedule.content.items.some((item) => ["Available", "Limited", "Full"].includes(item.note))).toBe(false);
     expect(modules.find((module) => module.id === "forge-home-proof").settings.claimsMode).toBe("indexed-coaching-principles");
+    const hero = modules.find((module) => module.id === "forge-home-hero");
+    expect(hero.content).toEqual(expect.objectContaining({ posterImage: "", secondaryImages: ["", ""], secondaryImageAlts: expect.any(Array) }));
+    expect(hero.content.secondaryImageAlts).toHaveLength(2);
+    const portfolio = modules.find((module) => module.id === "forge-home-portfolio");
+    expect(portfolio.content.items).toHaveLength(8);
+    expect(new Set(portfolio.content.items.map((item) => item.id)).size).toBe(8);
+    expect(portfolio.content.items.every((item) => item.imageAlt)).toBe(true);
+    expect(modules.find((module) => module.id === "forge-home-cta").content).toEqual(expect.objectContaining({ backgroundImage: "", backgroundPoster: "" }));
     expect(modules.every((module) => module.settings.starterBlueprint === "forge-motion-original")).toBe(true);
     expect(getProfessionHomeBlueprint("forge-motion")).toEqual(expect.objectContaining({ label: "Forge Motion", createModules: expect.any(Function) }));
     modules.forEach((module, index) => expect(module.order).toBe(index));

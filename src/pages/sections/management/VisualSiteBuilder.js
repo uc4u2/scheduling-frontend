@@ -9720,8 +9720,10 @@ function InspectorColumn() {
       editingPageKind !== "home" &&
       String(currentStyleKey || "").trim().toLowerCase() === "iron-ember" &&
       (selectedSemanticModule.type === "hero" || ironEmberInnerHeroSlots.has(String(selectedSemanticModule.slot || "")));
-    const isIronEmberTheme = String(currentStyleKey || "").trim().toLowerCase() === "iron-ember";
-    const allowsIronEmberVideoMedia = isIronEmberTheme;
+    const normalizedNextThemeKey = String(currentStyleKey || "").trim().toLowerCase();
+    const isIronEmberTheme = normalizedNextThemeKey === "iron-ember";
+    const isForgeMotionTheme = normalizedNextThemeKey === "forge-motion";
+    const allowsHeroVideoMedia = isIronEmberTheme || isForgeMotionTheme;
     const syncPrimaryImagePatch = (patch = {}) => {
       const next = { ...patch };
       if (Object.prototype.hasOwnProperty.call(next, "image")) {
@@ -10008,13 +10010,23 @@ function InspectorColumn() {
             </Stack>
             <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
-              <Box data-module-field-path={contentPath("image")}><ImageField label={allowsIronEmberVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsIronEmberVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
-              <TextField size="small" label={allowsIronEmberVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
+              <Box data-module-field-path={contentPath("image")}><ImageField label={allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
+              <TextField size="small" label={allowsHeroVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
+              {isForgeMotionTheme ? <Box data-module-field-path={contentPath("posterImage")}>
+                <ImageField
+                  label="Hero video poster / mobile fallback"
+                  value={content.posterImage || ""}
+                  onChange={(url) => updateSelectedContent({ posterImage: url })}
+                  companyId={companyId}
+                  fieldKey={`${selectedSemanticModule.id}:${contentPath("posterImage")}`}
+                />
+              </Box> : null}
             </Stack>
             {!isIronEmberInnerPageHero ? <Stack spacing={1}>
               <Typography variant="subtitle2">Secondary images</Typography>
               {(Array.isArray(content.secondaryImages) ? content.secondaryImages : []).map((url, index, secondaryImages) => (
-                <Stack key={`${url}-${index}`} direction="row" spacing={1} alignItems="center">
+                <Stack key={`${url}-${index}`} spacing={1}>
+                  <Stack direction="row" spacing={1} alignItems="center">
                   <Box sx={{ flex: 1 }} data-module-field-path={contentPath(`secondaryImages.${index}`)}>
                     <ImageField
                       label={`Secondary image ${index + 1}`}
@@ -10024,10 +10036,29 @@ function InspectorColumn() {
                       fieldKey={`${selectedSemanticModule.id}:${contentPath(`secondaryImages.${index}`)}`}
                     />
                   </Box>
-                  <Button size="small" onClick={() => updateSelectedContent({ secondaryImages: secondaryImages.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Button>
+                  <Button size="small" onClick={() => updateSelectedContent({
+                    secondaryImages: secondaryImages.filter((_, itemIndex) => itemIndex !== index),
+                    secondaryImageAlts: (Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts : []).filter((_, itemIndex) => itemIndex !== index),
+                  })}>Remove</Button>
+                  </Stack>
+                  <TextField
+                    size="small"
+                    label={`Secondary image ${index + 1} alt text`}
+                    value={(Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts[index] : "") || ""}
+                    onChange={(event) => {
+                      const nextAlts = Array.isArray(content.secondaryImageAlts) ? [...content.secondaryImageAlts] : [];
+                      nextAlts[index] = event.target.value;
+                      updateSelectedContent({ secondaryImageAlts: nextAlts });
+                    }}
+                    fullWidth
+                    inputProps={{ "data-module-field-path": contentPath(`secondaryImageAlts.${index}`) }}
+                  />
                 </Stack>
               ))}
-              <Button size="small" variant="outlined" onClick={() => updateSelectedContent({ secondaryImages: [...(Array.isArray(content.secondaryImages) ? content.secondaryImages : []), ""] })}>
+              <Button size="small" variant="outlined" onClick={() => updateSelectedContent({
+                secondaryImages: [...(Array.isArray(content.secondaryImages) ? content.secondaryImages : []), ""],
+                secondaryImageAlts: [...(Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts : []), ""],
+              })}>
                 Add secondary image
               </Button>
             </Stack> : null}
@@ -10181,13 +10212,23 @@ function InspectorColumn() {
             {renderPrimaryCtaFields()}
             <Box data-module-field-path={contentPath("backgroundImage")}>
               <ImageField
-                label="Background image"
+                label={isForgeMotionTheme ? "Background image or video" : "Background image"}
+                allowVideo={isForgeMotionTheme}
                 value={content.backgroundImage || ""}
                 onChange={(url) => updateSelectedContent({ backgroundImage: url })}
                 companyId={companyId}
                 fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundImage")}`}
               />
             </Box>
+            {isForgeMotionTheme ? <Box data-module-field-path={contentPath("backgroundPoster")}>
+              <ImageField
+                label="Background video poster / fallback"
+                value={content.backgroundPoster || ""}
+                onChange={(url) => updateSelectedContent({ backgroundPoster: url })}
+                companyId={companyId}
+                fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundPoster")}`}
+              />
+            </Box> : null}
           </>
         ) : null}
         {selectedSemanticModule.type === "map" ? (
@@ -10511,8 +10552,8 @@ function InspectorColumn() {
                       <>
                         <Box data-module-field-path={itemPath(index, "image")}>
                           <ImageField
-                            label={allowsIronEmberVideoMedia && (selectedSemanticModule.type === "gallery" || selectedSemanticModule.type === "portfolio") ? "Image or video" : "Image"}
-                            allowVideo={allowsIronEmberVideoMedia && (selectedSemanticModule.type === "gallery" || selectedSemanticModule.type === "portfolio")}
+                            label={isIronEmberTheme && (selectedSemanticModule.type === "gallery" || selectedSemanticModule.type === "portfolio") ? "Image or video" : "Image"}
+                            allowVideo={isIronEmberTheme && (selectedSemanticModule.type === "gallery" || selectedSemanticModule.type === "portfolio")}
                             value={item.image || item.imageUrl || ""}
                             onChange={(url) => updateItem(index, { image: url })}
                             companyId={companyId}
