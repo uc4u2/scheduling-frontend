@@ -19,6 +19,16 @@ function absolutizeThemePreview(path) {
   return `/${String(path).replace(/^\/+/, "")}`;
 }
 
+function resolveThemeCardPreview(previewAssets) {
+  const explicitCard = absolutizeThemePreview(previewAssets?.card || null);
+  if (explicitCard) return explicitCard;
+  const desktop = absolutizeThemePreview(previewAssets?.desktop || null);
+  if (desktop?.endsWith("-desktop.png")) {
+    return desktop.replace(/-desktop\.png$/, "-card.webp");
+  }
+  return desktop;
+}
+
 // Signed preview tokens currently begin with a dot. Next normalizes that raw
 // path segment away (`/preview/.token/services` becomes `/preview/services`).
 // A stable route prefix keeps the dynamic segment non-dot-prefixed; the Next
@@ -72,6 +82,7 @@ export function buildWebsiteStyleChoices({
       previewAssets:
         typeof theme.preview_assets === "object" && theme.preview_assets
           ? {
+              card: resolveThemeCardPreview(theme.preview_assets),
               desktop: absolutizeThemePreview(theme.preview_assets.desktop || null),
               mobile: absolutizeThemePreview(theme.preview_assets.mobile || null),
             }
@@ -98,6 +109,30 @@ export function buildWebsiteStyleChoices({
   });
 
   return styles;
+}
+
+const PREVIEW_PAGE_DEFINITIONS = {
+  home: { key: "home", label: "Home", path: [] },
+  about: { key: "about", label: "About", path: ["about"] },
+  services: { key: "services", label: "Services", path: ["services"] },
+  reviews: { key: "reviews", label: "Reviews", path: ["reviews"] },
+  contact: { key: "contact", label: "Contact", path: ["contact"] },
+  gallery: { key: "gallery", label: "Gallery / Work", path: ["projects"] },
+  products: { key: "products", label: "Products", path: ["products"] },
+  jobs: { key: "jobs", label: "Jobs", path: ["jobs"] },
+};
+
+export function buildWebsiteStylePreviewPages(supportedPages = []) {
+  const supported = new Set(
+    (Array.isArray(supportedPages) ? supportedPages : [])
+      .map((page) => String(page || "").trim().toLowerCase())
+      .filter(Boolean)
+  );
+  supported.add("home");
+
+  return Object.values(PREVIEW_PAGE_DEFINITIONS)
+    .filter((page) => supported.has(page.key))
+    .map((page) => ({ ...page, path: [...page.path] }));
 }
 
 export function isNextJsStyle(style) {

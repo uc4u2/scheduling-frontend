@@ -1,5 +1,6 @@
 import {
   buildWebsiteStyleChoices,
+  buildWebsiteStylePreviewPages,
   encodePreviewPathToken,
 } from "./websiteCatalogUi";
 
@@ -63,7 +64,56 @@ describe("website catalog UI helpers", () => {
     });
     expect(choices.map((item) => item.key)).toContain("finwise");
     expect(choices.find((item) => item.key === "finwise")?.badgeLabel).toBe("Beta");
+    expect(choices.find((item) => item.key === "finwise")?.previewAssets?.card).toMatch(/finwise-card\.webp$/);
     expect(choices.find((item) => item.key === "finwise")?.previewAssets?.desktop).toMatch(/finwise-desktop\.png$/);
+  });
+
+  it("preserves optimized card previews independently from full device screenshots", () => {
+    const choices = buildWebsiteStyleChoices({
+      catalog: {
+        compatible_visual_themes: [
+          {
+            key: "finwise",
+            renderer_engine: "nextjs",
+            status: "production",
+            label: "Finwise",
+            preview_assets: {
+              card: "/theme-previews/finwise-card.webp",
+              desktop: "/theme-previews/finwise-desktop.png",
+              mobile: "/theme-previews/finwise-mobile.png",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(choices.find((item) => item.key === "finwise")?.previewAssets).toEqual({
+      card: "/theme-previews/finwise-card.webp",
+      desktop: "/theme-previews/finwise-desktop.png",
+      mobile: "/theme-previews/finwise-mobile.png",
+    });
+  });
+
+  it("builds safe live-preview navigation without detail routes that require record slugs", () => {
+    expect(
+      buildWebsiteStylePreviewPages([
+        "home",
+        "about",
+        "services",
+        "service-detail",
+        "gallery",
+        "products",
+        "product-detail",
+        "contact",
+      ])
+    ).toEqual([
+      { key: "home", label: "Home", path: [] },
+      { key: "about", label: "About", path: ["about"] },
+      { key: "services", label: "Services", path: ["services"] },
+      { key: "contact", label: "Contact", path: ["contact"] },
+      { key: "gallery", label: "Gallery / Work", path: ["projects"] },
+      { key: "products", label: "Products", path: ["products"] },
+    ]);
   });
 
   it("preserves recommendation metadata for builder grouping", () => {

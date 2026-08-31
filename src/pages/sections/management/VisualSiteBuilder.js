@@ -177,6 +177,7 @@ import TabShell from "../../../components/ui/TabShell";
  //import EnterpriseEditorExtras from "../../../components/website/EnterpriseEditorExtras";
 
 import WebsiteBuilderHelpDrawer from "./WebsiteBuilderHelpDrawer"; // NEW
+import NextJsWebsiteStyleBrowser from "./NextJsWebsiteStyleBrowser";
 
 const BLOCK_PREVIEWS = {
   hero: "/block-previews/hero.png",
@@ -3230,12 +3231,11 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [styleErr, setStyleErr] = useState("");
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
+  const [styleGalleryPreviewUrl, setStyleGalleryPreviewUrl] = useState("");
   // The content Canvas is an editing surface. Keep its frame identity distinct
   // from the read-only style-gallery preview so postMessage selection events
   // cannot be checked against the wrong iframe after a tab change.
   const nextJsContentPreviewIframeRef = useRef(null);
-  const nextJsStylePreviewIframeRef = useRef(null);
-  const stylePreviewAreaRef = useRef(null);
   const [builderTabIndex, setBuilderTabIndex] = useState(getBuilderTabDefaultIndex(location?.search || ""));
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [selectedModuleFieldPath, setSelectedModuleFieldPath] = useState("");
@@ -3355,10 +3355,6 @@ const [brandingErr, setBrandingErr] = useState("");
     () => websiteStyleChoices.filter((style) => style.key !== "classic"),
     [websiteStyleChoices]
   );
-  const recommendedWebsiteStyleChoices = useMemo(
-    () => nextJsWebsiteStyleChoices.filter((style) => style.recommended),
-    [nextJsWebsiteStyleChoices]
-  );
   const builderRendererMode = resolveBuilderRendererMode({
     renderer_engine:
       siteSettings?.settings_draft?.renderer_engine ||
@@ -3453,209 +3449,6 @@ const [brandingErr, setBrandingErr] = useState("");
     (style) =>
       style.key === currentStyleKey && Number(style.version) === Number(currentStyleVersion)
   );
-  const renderWebsiteStyleCard = (style) => {
-    const isCurrentDraft =
-      style.key === currentStyleKey &&
-      Number(style.version) === Number(currentStyleVersion);
-    const isCurrentLive =
-      style.key === liveStyleKey &&
-      Number(style.version) === Number(liveStyleVersion);
-    const isPreviewing = style.key === effectivePreviewFamily;
-    return (
-      <Paper
-        key={style.key}
-        variant="outlined"
-        sx={{
-          p: 2,
-          borderRadius: 1.5,
-          borderColor: isCurrentDraft ? "success.main" : "divider",
-          bgcolor: "background.paper",
-          boxShadow: isCurrentDraft ? 2 : 0,
-        }}
-      >
-        <Stack spacing={1.25}>
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1,
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr) 68px",
-                sm: "minmax(0, 1fr) 78px",
-              },
-              alignItems: "start",
-            }}
-          >
-            <Box
-              component="img"
-              src={style.previewAssets?.desktop || ""}
-              alt={`${style.name} desktop preview`}
-              sx={{
-                width: "100%",
-                aspectRatio: "16 / 10",
-                minHeight: { xs: 132, sm: 154 },
-                maxHeight: { xs: 160, sm: 176 },
-                borderRadius: 1.5,
-                border: "1px solid",
-                borderColor: "divider",
-                bgcolor: "background.default",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-            <Box
-              component="img"
-              src={style.previewAssets?.mobile || ""}
-              alt={`${style.name} mobile preview`}
-              sx={{
-                width: "100%",
-                aspectRatio: "10 / 21",
-                minHeight: { xs: 132, sm: 154 },
-                maxHeight: { xs: 160, sm: 176 },
-                borderRadius: 1.5,
-                border: "1px solid",
-                borderColor: "divider",
-                bgcolor: "background.default",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-          </Box>
-          <Stack spacing={0.75}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                {style.name}
-              </Typography>
-              {style.renderer_engine === "nextjs" ? (
-                <Chip
-                  size="small"
-                  label="Next.js"
-                  sx={{
-                    borderRadius: 1.5,
-                    color: "secondary.dark",
-                    bgcolor: "secondary.50",
-                    border: "1px solid",
-                    borderColor: "secondary.200",
-                  }}
-                />
-              ) : null}
-              {style.badgeLabel ? (
-                <Chip
-                  size="small"
-                  label={style.badgeLabel}
-                  sx={{
-                    borderRadius: 1.5,
-                    color: "warning.dark",
-                    bgcolor: "warning.50",
-                    border: "1px solid",
-                    borderColor: "warning.200",
-                  }}
-                />
-              ) : null}
-              {style.recommended ? (
-                <Chip
-                  size="small"
-                  label="Recommended"
-                  sx={{
-                    borderRadius: 1.5,
-                    color: "primary.dark",
-                    bgcolor: "primary.50",
-                    border: "1px solid",
-                    borderColor: "primary.200",
-                  }}
-                />
-              ) : null}
-              {isCurrentDraft ? (
-                <Chip
-                  size="small"
-                  label="Draft"
-                  sx={{
-                    borderRadius: 1.5,
-                    color: "success.dark",
-                    bgcolor: "success.50",
-                    border: "1px solid",
-                    borderColor: "success.200",
-                  }}
-                />
-              ) : null}
-              {isCurrentLive ? (
-                <Chip
-                  size="small"
-                  label="Live"
-                  sx={{
-                    borderRadius: 1.5,
-                    color: "info.dark",
-                    bgcolor: "info.50",
-                    border: "1px solid",
-                    borderColor: "info.200",
-                  }}
-                />
-              ) : null}
-              {isPreviewing && !isCurrentDraft ? (
-                <Chip
-                  size="small"
-                  label="Previewing"
-                  sx={{
-                    borderRadius: 1.5,
-                    color: "info.dark",
-                    bgcolor: "info.50",
-                    border: "1px solid",
-                    borderColor: "info.200",
-                  }}
-                />
-              ) : null}
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {style.description}
-            </Typography>
-            {style.recommendedProfessionLabels?.length ? (
-              <Typography variant="caption" color="text.secondary">
-                Recommended for {style.recommendedProfessionLabels.join(", ")}
-              </Typography>
-            ) : null}
-            {style.supportedPages?.length ? (
-              <Typography variant="caption" color="text.secondary">
-                Supports {style.supportedPages.join(", ")}
-              </Typography>
-            ) : null}
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ pt: 0.25 }}>
-            <Button
-              size="small"
-              variant={isPreviewing ? "contained" : "outlined"}
-              disabled={styleSaving}
-              onClick={async () => {
-                setStylePreviewFamily(style.key);
-                if (isNextJsStyle(style)) {
-                  await refreshNextJsPreview(style);
-                  setTimeout(() => {
-                    stylePreviewAreaRef.current?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }, 50);
-                } else {
-                  setNextJsPreviewToken("");
-                  setNextJsPreviewUrl("");
-                }
-              }}
-              sx={{ borderRadius: 1.5 }}
-            >
-              Preview
-            </Button>
-            <Button
-              size="small"
-              variant="contained"
-              disabled={styleSaving || isCurrentDraft}
-              onClick={() => applyWebsiteStyle(style)}
-              sx={{ borderRadius: 1.5 }}
-            >
-              Apply Style
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-    );
-  };
   const deprecatedStoredDesignFamily =
     !isNextJsBuilderMode(builderRendererMode) &&
     currentDesignFamily !== "classic" &&
@@ -5548,7 +5341,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   }, [editing, isNextJsContentMode]);
 
   const refreshNextJsPreview = useCallback(
-    async (style = null, pagePathOverride = null) => {
+    async (style = null, pagePathOverride = null, commitToCanvas = true) => {
       const catalogStyle =
         style ||
         websiteStyleChoices.find((item) => item.key === effectivePreviewFamily) ||
@@ -5564,15 +5357,19 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
           ? { key: currentStyleKey, renderer_engine: "nextjs" }
           : null);
       if (!companyId || !nextStyle || !isNextJsStyle(nextStyle)) {
-        setNextJsPreviewToken("");
-        setNextJsPreviewUrl("");
-        return;
+        if (commitToCanvas) {
+          setNextJsPreviewToken("");
+          setNextJsPreviewUrl("");
+        }
+        return "";
       }
       if (!hasConfiguredNextJsThemeBaseUrl()) {
         setStyleErr(NEXTJS_THEME_PREVIEW_CONFIG_ERROR);
-        setNextJsPreviewToken("");
-        setNextJsPreviewUrl("");
-        return;
+        if (commitToCanvas) {
+          setNextJsPreviewToken("");
+          setNextJsPreviewUrl("");
+        }
+        return "";
       }
       try {
         // Do not leave an old iframe visible while a new signed session is
@@ -5592,26 +5389,31 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         if (!token) {
           throw new Error("Preview session did not return a token.");
         }
-        setNextJsPreviewToken(token);
-        setNextJsPreviewUrl(
-          buildNextJsPreviewUrl({
-            token,
-            pagePath: requestedPagePath,
-          })
-        );
+        const previewUrl = buildNextJsPreviewUrl({
+          token,
+          pagePath: requestedPagePath,
+        });
+        if (commitToCanvas) {
+          setNextJsPreviewToken(token);
+          setNextJsPreviewUrl(previewUrl);
+        }
         setStyleErr("");
+        return previewUrl;
       } catch (e) {
         // A failed refresh must never retain an expired signed iframe URL.
         // Clearing it gives the manager a visible error and a working Refresh
         // Preview action instead of an opaque white document.
-        setNextJsPreviewToken("");
-        setNextJsPreviewUrl("");
+        if (commitToCanvas) {
+          setNextJsPreviewToken("");
+          setNextJsPreviewUrl("");
+        }
         setStyleErr(
           e?.response?.data?.error ||
             e?.response?.data?.message ||
             e?.message ||
             "Failed to create Next.js preview session."
         );
+        return "";
       }
     },
     [
@@ -7447,41 +7249,22 @@ const autoProvisionIfEmpty = useCallback(
             {NEXTJS_THEME_PREVIEW_CONFIG_ERROR}
           </Alert>
         ) : null}
-        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em", pt: 0.5 }}>
-          Recommended for your business
-        </Typography>
-        <Box
-          sx={{
-            display: "grid",
-            gap: 1.5,
-            gridTemplateColumns: {
-              xs: "1fr",
-              lg: "repeat(2, minmax(0, 1fr))",
-            },
+        <NextJsWebsiteStyleBrowser
+          styles={nextJsWebsiteStyleChoices}
+          currentStyleKey={currentStyleKey}
+          currentStyleVersion={currentStyleVersion}
+          liveStyleKey={liveStyleKey}
+          liveStyleVersion={liveStyleVersion}
+          saving={styleSaving}
+          previewUrl={styleGalleryPreviewUrl}
+          previewError={styleErr}
+          onPreview={async (style, pagePath) => {
+            setStyleGalleryPreviewUrl("");
+            const previewUrl = await refreshNextJsPreview(style, pagePath, false);
+            setStyleGalleryPreviewUrl(previewUrl || "");
           }}
-        >
-          {recommendedWebsiteStyleChoices.map((style) => renderWebsiteStyleCard(style))}
-        </Box>
-        {!recommendedWebsiteStyleChoices.length ? (
-          <Alert severity="info" variant="outlined">
-            No profession-specific recommendation is active for this business yet. All approved website styles remain available below.
-          </Alert>
-        ) : null}
-        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em", pt: 1 }}>
-          All Website Styles
-        </Typography>
-        <Box
-          sx={{
-            display: "grid",
-            gap: 1.5,
-            gridTemplateColumns: {
-              xs: "1fr",
-              lg: "repeat(2, minmax(0, 1fr))",
-            },
-          }}
-        >
-          {nextJsWebsiteStyleChoices.map((style) => renderWebsiteStyleCard(style))}
-        </Box>
+          onApply={applyWebsiteStyle}
+        />
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
           {(() => {
             const style = websiteStyleChoices.find((item) => item.key === "classic");
@@ -7536,12 +7319,7 @@ const autoProvisionIfEmpty = useCallback(
                       setStylePreviewFamily("classic");
                       setNextJsPreviewToken("");
                       setNextJsPreviewUrl("");
-                      setTimeout(() => {
-                        stylePreviewAreaRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        });
-                      }, 50);
+                      setBuilderTabIndex(0);
                     }}
                     sx={{ borderRadius: 1.5 }}
                   >
@@ -11772,126 +11550,7 @@ function InspectorColumn() {
     </Grid>
   );
 
-  const StyleTabContent = (
-    <Stack spacing={2}>
-      {StyleChooserBlock}
-      <Paper ref={stylePreviewAreaRef} variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1.5}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "center" }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {`Theme Preview — ${websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)?.name || "Website Style"}`}
-            </Typography>
-            <Chip
-              size="small"
-              label={
-                isNextJsStyle(
-                  websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
-                )
-                  ? "Draft preview"
-                  : "Classic canvas"
-              }
-            />
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={stylePreviewViewport}
-              onChange={(_, value) => value && setStylePreviewViewport(value)}
-            >
-              <ToggleButton value="desktop">Desktop</ToggleButton>
-              <ToggleButton value="tablet">Tablet</ToggleButton>
-              <ToggleButton value="mobile">Mobile</ToggleButton>
-            </ToggleButtonGroup>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<RefreshIcon fontSize="small" />}
-              onClick={() => refreshNextJsPreview()}
-              disabled={
-                !isNextJsStyle(
-                  websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
-                )
-              }
-            >
-              Refresh preview
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<OpenInNewIcon fontSize="small" />}
-              component="a"
-              href={nextJsPreviewUrl || undefined}
-              target="_blank"
-              rel="noreferrer"
-              disabled={!nextJsPreviewUrl}
-            >
-              Open in new tab
-            </Button>
-          </Stack>
-        </Stack>
-        <Box sx={{ mt: 2 }}>
-          {isNextJsStyle(
-            websiteStyleChoices.find((item) => item.key === effectivePreviewFamily)
-          ) ? (
-            nextJsPreviewUrl ? (
-              <Box
-                sx={{
-                  width:
-                    stylePreviewViewport === "desktop"
-                      ? "100%"
-                      : stylePreviewViewport === "tablet"
-                      ? 834
-                      : 390,
-                  maxWidth: "100%",
-                  mx: "auto",
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1.5,
-                  overflow: "hidden",
-                  bgcolor: "#fff",
-                }}
-              >
-                <Box
-                  component="iframe"
-                  ref={nextJsStylePreviewIframeRef}
-                  title="Next.js website preview"
-                  src={nextJsPreviewUrl}
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-                  sx={{
-                    width: "100%",
-                    height:
-                      stylePreviewViewport === "desktop"
-                        ? 680
-                        : stylePreviewViewport === "tablet"
-                        ? 700
-                        : 780,
-                    border: 0,
-                    display: "block",
-                  }}
-                />
-              </Box>
-            ) : (
-              <Alert severity="info" variant="outlined">
-                {stylePreviewFamily
-                  ? `Preview ${websiteStyleChoices.find((item) => item.key === stylePreviewFamily)?.name || "this website style"} to see your current website content in this design.`
-                  : "Choose a website style above and click Preview."}
-              </Alert>
-            )
-          ) : (
-            <Alert severity="info" variant="outlined">
-              Classic mode continues to use the existing React canvas in the Website Content tab.
-            </Alert>
-          )}
-        </Box>
-      </Paper>
-    </Stack>
-  );
+  const StyleTabContent = StyleChooserBlock;
 
 const tabs = [
   {
