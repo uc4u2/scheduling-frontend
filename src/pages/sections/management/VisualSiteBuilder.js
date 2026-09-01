@@ -179,6 +179,19 @@ import TabShell from "../../../components/ui/TabShell";
 import WebsiteBuilderHelpDrawer from "./WebsiteBuilderHelpDrawer"; // NEW
 import NextJsWebsiteStyleBrowser from "./NextJsWebsiteStyleBrowser";
 
+const FORGE_DEFAULT_ADDITIONAL_HERO_SLIDE = Object.freeze({
+  id: "forge-hero-slide-2",
+  eyebrow: "Coached movement",
+  heading: "Train with purpose. Move with confidence.",
+  subheading: "A second cinematic story for another training path, coach, or studio atmosphere.",
+  image: "",
+  imageUrl: "",
+  imageAlt: "A cinematic second training scene featuring purposeful coached movement.",
+  posterImage: "",
+  primaryCta: { label: "View training options", href: "/services" },
+  secondaryCta: { label: "Meet the coaches", href: "/about" },
+});
+
 const BLOCK_PREVIEWS = {
   hero: "/block-previews/hero.png",
   heroCarousel: "/block-previews/heroCarousel.png",
@@ -9840,7 +9853,14 @@ function InspectorColumn() {
       "Low-noise appointments",
       "Routine-ready shape",
     ];
-    const heroSlides = Array.isArray(content.slides) ? content.slides : [];
+    const storedHeroSlides = Array.isArray(content.slides) ? content.slides : [];
+    const heroSlides = isForgeMotionTheme && storedHeroSlides.length === 0
+      ? [{
+          ...FORGE_DEFAULT_ADDITIONAL_HERO_SLIDE,
+          primaryCta: { ...FORGE_DEFAULT_ADDITIONAL_HERO_SLIDE.primaryCta },
+          secondaryCta: { ...FORGE_DEFAULT_ADDITIONAL_HERO_SLIDE.secondaryCta },
+        }]
+      : storedHeroSlides;
     const updateHeroSlide = (index, patch) => updateSelectedContent({
       slides: heroSlides.map((slide, slideIndex) => slideIndex === index ? { ...slide, ...patch } : slide),
     });
@@ -10086,11 +10106,6 @@ function InspectorColumn() {
             </Stack> : null}
             {isForgeMotionTheme && !isIronEmberInnerPageHero ? <Stack spacing={1.5} sx={{ order: 2 }}>
               <Typography variant="overline" color="text.secondary">Hero slides</Typography>
-              <Alert severity={heroSlides.length ? "info" : "warning"} variant="outlined">
-                {heroSlides.length
-                  ? `This Hero has ${heroSlides.length + 1} slides. Slide 1 uses the main fields above; each additional slide has independent text, image/video, poster, and CTAs.`
-                  : "Only slide 1 exists right now. The foreground overlay below is not another slide. Click Add hero slide to create slide 2 with its own image/video and text."}
-              </Alert>
               {heroSlides.map((slide, index) => (
                 <Box key={slide.id || index} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
                   <Stack spacing={1.25}>
@@ -10099,7 +10114,7 @@ function InspectorColumn() {
                       <Stack direction="row" spacing={0.5}>
                         <Button size="small" disabled={index === 0} onClick={() => updateSelectedContent({ slides: heroSlides.map((item, itemIndex) => itemIndex === index - 1 ? heroSlides[index] : itemIndex === index ? heroSlides[index - 1] : item) })}>Move up</Button>
                         <Button size="small" disabled={index === heroSlides.length - 1} onClick={() => updateSelectedContent({ slides: heroSlides.map((item, itemIndex) => itemIndex === index + 1 ? heroSlides[index] : itemIndex === index ? heroSlides[index + 1] : item) })}>Move down</Button>
-                        <Button size="small" color="error" onClick={() => updateSelectedContent({ slides: heroSlides.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Button>
+                        <Button size="small" color="error" disabled={heroSlides.length === 1} onClick={() => updateSelectedContent({ slides: heroSlides.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Button>
                       </Stack>
                     </Stack>
                     <TextField size="small" label="Eyebrow" value={slide.eyebrow || ""} onChange={(event) => updateHeroSlide(index, { eyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.eyebrow`) }} />

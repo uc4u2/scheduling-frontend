@@ -34,7 +34,7 @@ export function createForgeMotionOriginalHomeModules() {
           id: "forge-hero-slide-2",
           eyebrow: "Coached movement",
           heading: "Train with purpose. Move with confidence.",
-          subheading: "Use a second image or background video to introduce another training path, coach, or studio atmosphere.",
+          subheading: "A second cinematic story for another training path, coach, or studio atmosphere.",
           ...media("A cinematic second training scene featuring purposeful coached movement."),
           posterImage: "",
           primaryCta: { label: "View training options", href: "/services" },
