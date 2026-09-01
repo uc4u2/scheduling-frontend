@@ -10012,7 +10012,7 @@ function InspectorColumn() {
                 </>
               ) : null}
             </Stack>
-            <Stack spacing={1.5}>
+            <Stack spacing={1.5} sx={{ order: 1 }}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
               <Box data-module-field-path={contentPath("image")}><ImageField label={allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
               <TextField size="small" label={allowsHeroVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
@@ -10026,17 +10026,17 @@ function InspectorColumn() {
                 />
               </Box> : null}
             </Stack>
-            {!isIronEmberInnerPageHero ? <Stack spacing={1}>
-              <Typography variant="subtitle2">Optional foreground layers</Typography>
+            {!isIronEmberInnerPageHero ? <Stack spacing={1} sx={{ order: isForgeMotionTheme ? 3 : 2 }}>
+              <Typography variant="subtitle2">{isForgeMotionTheme ? "Optional foreground overlay (not a slide)" : "Secondary images"}</Typography>
               {isForgeMotionTheme ? <Typography variant="caption" color="text.secondary">
-                These images float over the first slide for depth. Leave them empty or remove them for a clean full-background hero.
+                These images float over slide 1 for depth; they do not replace the main background and do not create another slide. Leave them empty or remove them for a clean full-background hero.
               </Typography> : null}
               {(Array.isArray(content.secondaryImages) ? content.secondaryImages : []).map((url, index, secondaryImages) => (
                 <Stack key={`${url}-${index}`} spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
                   <Box sx={{ flex: 1 }} data-module-field-path={contentPath(`secondaryImages.${index}`)}>
                     <ImageField
-                      label={`Secondary image ${index + 1}`}
+                      label={isForgeMotionTheme ? `Foreground overlay image ${index + 1}` : `Secondary image ${index + 1}`}
                       value={url || ""}
                       onChange={(nextUrl) => updateSelectedContent({ secondaryImages: secondaryImages.map((value, itemIndex) => itemIndex === index ? nextUrl : value) })}
                       companyId={companyId}
@@ -10050,7 +10050,7 @@ function InspectorColumn() {
                   </Stack>
                   <TextField
                     size="small"
-                    label={`Secondary image ${index + 1} alt text`}
+                    label={isForgeMotionTheme ? `Foreground overlay image ${index + 1} alt text` : `Secondary image ${index + 1} alt text`}
                     value={(Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts[index] : "") || ""}
                     onChange={(event) => {
                       const nextAlts = Array.isArray(content.secondaryImageAlts) ? [...content.secondaryImageAlts] : [];
@@ -10066,7 +10066,7 @@ function InspectorColumn() {
                 secondaryImages: [...(Array.isArray(content.secondaryImages) ? content.secondaryImages : []), ""],
                 secondaryImageAlts: [...(Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts : []), ""],
               })}>
-                Add secondary image
+                {isForgeMotionTheme ? "Add foreground overlay image" : "Add secondary image"}
               </Button>
               {isForgeMotionTheme ? <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
                 <Stack spacing={1.25}>
@@ -10084,10 +10084,12 @@ function InspectorColumn() {
                 </Stack>
               </Box> : null}
             </Stack> : null}
-            {isForgeMotionTheme && !isIronEmberInnerPageHero ? <Stack spacing={1.5}>
-              <Typography variant="overline" color="text.secondary">Additional cinematic slides</Typography>
-              <Alert severity="info" variant="outlined">
-                Slide 1 uses the main Hero fields above. Additional slides can use an image or MP4/WebM video and rotate automatically; reduced-motion visitors can change slides manually.
+            {isForgeMotionTheme && !isIronEmberInnerPageHero ? <Stack spacing={1.5} sx={{ order: 2 }}>
+              <Typography variant="overline" color="text.secondary">Hero slides</Typography>
+              <Alert severity={heroSlides.length ? "info" : "warning"} variant="outlined">
+                {heroSlides.length
+                  ? `This Hero has ${heroSlides.length + 1} slides. Slide 1 uses the main fields above; each additional slide has independent text, image/video, poster, and CTAs.`
+                  : "Only slide 1 exists right now. The foreground overlay below is not another slide. Click Add hero slide to create slide 2 with its own image/video and text."}
               </Alert>
               {heroSlides.map((slide, index) => (
                 <Box key={slide.id || index} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
@@ -10130,9 +10132,9 @@ function InspectorColumn() {
                   primaryCta: { label: "", href: "/services" },
                   secondaryCta: { label: "", href: "/contact" },
                 }],
-              })}>Add cinematic slide</Button>
+              })}>Add hero slide {heroSlides.length + 2}</Button>
             </Stack> : null}
-            {!isIronEmberInnerPageHero ? <Stack spacing={1.5}>
+            {!isIronEmberInnerPageHero ? <Stack spacing={1.5} sx={{ order: 4 }}>
               <Typography variant="overline" color="text.secondary">Buttons</Typography>
               {renderPrimaryCtaFields()}
             <TextField
@@ -10432,6 +10434,11 @@ function InspectorColumn() {
                 Service cards use the existing Services workspace. This section controls only the editable heading, eyebrow, introduction, position, and visibility.
               </Alert>
             ) : <Stack spacing={1}>
+              {isForgeMotionTheme && selectedSemanticModule.type === "stats" && items.length === 3 ? (
+                <Alert severity="info" variant="outlined">
+                  Forge displays a fourth operational card using the current number of published Services. Add a fourth item here if you prefer a custom editable proof card instead.
+                </Alert>
+              ) : null}
               <Typography variant="overline" color="text.secondary">
                 {selectedSemanticModule.type === "team"
                   ? "People"
