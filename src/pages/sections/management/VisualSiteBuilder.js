@@ -10355,6 +10355,35 @@ function InspectorColumn() {
         ) : null}
         {selectedSemanticModule.type === "contactForm" ? (
           <>
+            {isForgeMotionTheme ? <>
+              <Box data-module-field-path={contentPath("backgroundImage")}>
+                <ImageField
+                  label="Contact hero image or video"
+                  allowVideo
+                  value={content.backgroundImage || ""}
+                  onChange={(url) => updateSelectedContent({ backgroundImage: url })}
+                  companyId={companyId}
+                  fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundImage")}`}
+                />
+              </Box>
+              <TextField
+                size="small"
+                label="Contact hero media alt text"
+                value={content.backgroundImageAlt || ""}
+                onChange={(event) => updateSelectedContent({ backgroundImageAlt: event.target.value })}
+                fullWidth
+                inputProps={{ "data-module-field-path": contentPath("backgroundImageAlt") }}
+              />
+              <Box data-module-field-path={contentPath("backgroundPoster")}>
+                <ImageField
+                  label="Contact video poster / mobile fallback"
+                  value={content.backgroundPoster || ""}
+                  onChange={(url) => updateSelectedContent({ backgroundPoster: url })}
+                  companyId={companyId}
+                  fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundPoster")}`}
+                />
+              </Box>
+            </> : null}
             <TextField
               size="small"
               label="Form introduction"

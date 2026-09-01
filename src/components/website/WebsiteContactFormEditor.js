@@ -79,7 +79,10 @@ export default function WebsiteContactFormEditor({ companyId, formKey = "contact
         placeholder: String(field.options?.placeholder || "").trim(),
         ...(field.type === "select"
           ? {
-              choices: String(field.options?.choicesText || "")
+              choices: String(
+                field.options?.choicesText ??
+                (Array.isArray(field.options?.choices) ? field.options.choices.join("\n") : "")
+              )
                 .split("\n")
                 .map((value) => value.trim())
                 .filter(Boolean),
