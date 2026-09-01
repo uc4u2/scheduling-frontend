@@ -9840,6 +9840,10 @@ function InspectorColumn() {
       "Low-noise appointments",
       "Routine-ready shape",
     ];
+    const heroSlides = Array.isArray(content.slides) ? content.slides : [];
+    const updateHeroSlide = (index, patch) => updateSelectedContent({
+      slides: heroSlides.map((slide, slideIndex) => slideIndex === index ? { ...slide, ...patch } : slide),
+    });
     const renderPrimaryCtaFields = () => (
       <>
         <TextField
@@ -10023,7 +10027,10 @@ function InspectorColumn() {
               </Box> : null}
             </Stack>
             {!isIronEmberInnerPageHero ? <Stack spacing={1}>
-              <Typography variant="subtitle2">Secondary images</Typography>
+              <Typography variant="subtitle2">Optional foreground layers</Typography>
+              {isForgeMotionTheme ? <Typography variant="caption" color="text.secondary">
+                These images float over the first slide for depth. Leave them empty or remove them for a clean full-background hero.
+              </Typography> : null}
               {(Array.isArray(content.secondaryImages) ? content.secondaryImages : []).map((url, index, secondaryImages) => (
                 <Stack key={`${url}-${index}`} spacing={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -10061,6 +10068,69 @@ function InspectorColumn() {
               })}>
                 Add secondary image
               </Button>
+              {isForgeMotionTheme ? <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
+                <Stack spacing={1.25}>
+                  <FormControlLabel
+                    control={<Switch checked={content.layerPanelEnabled !== false} onChange={(_, checked) => updateSelectedContent({ layerPanelEnabled: checked })} />}
+                    label="Show foreground text panel"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    This panel appears only when the first optional foreground image is present. Turn it off for an image-only layer.
+                  </Typography>
+                  {content.layerPanelEnabled !== false ? <>
+                    <TextField size="small" label="Foreground panel eyebrow" value={content.layerPanelEyebrow || ""} onChange={(event) => updateSelectedContent({ layerPanelEyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("layerPanelEyebrow") }} />
+                    <TextField size="small" label="Foreground panel text" value={content.layerPanelBody || ""} onChange={(event) => updateSelectedContent({ layerPanelBody: event.target.value })} fullWidth multiline minRows={2} inputProps={{ "data-module-field-path": contentPath("layerPanelBody") }} />
+                  </> : null}
+                </Stack>
+              </Box> : null}
+            </Stack> : null}
+            {isForgeMotionTheme && !isIronEmberInnerPageHero ? <Stack spacing={1.5}>
+              <Typography variant="overline" color="text.secondary">Additional cinematic slides</Typography>
+              <Alert severity="info" variant="outlined">
+                Slide 1 uses the main Hero fields above. Additional slides can use an image or MP4/WebM video and rotate automatically; reduced-motion visitors can change slides manually.
+              </Alert>
+              {heroSlides.map((slide, index) => (
+                <Box key={slide.id || index} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
+                  <Stack spacing={1.25}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
+                      <Typography variant="subtitle2">Slide {index + 2}</Typography>
+                      <Stack direction="row" spacing={0.5}>
+                        <Button size="small" disabled={index === 0} onClick={() => updateSelectedContent({ slides: heroSlides.map((item, itemIndex) => itemIndex === index - 1 ? heroSlides[index] : itemIndex === index ? heroSlides[index - 1] : item) })}>Move up</Button>
+                        <Button size="small" disabled={index === heroSlides.length - 1} onClick={() => updateSelectedContent({ slides: heroSlides.map((item, itemIndex) => itemIndex === index + 1 ? heroSlides[index] : itemIndex === index ? heroSlides[index + 1] : item) })}>Move down</Button>
+                        <Button size="small" color="error" onClick={() => updateSelectedContent({ slides: heroSlides.filter((_, itemIndex) => itemIndex !== index) })}>Remove</Button>
+                      </Stack>
+                    </Stack>
+                    <TextField size="small" label="Eyebrow" value={slide.eyebrow || ""} onChange={(event) => updateHeroSlide(index, { eyebrow: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.eyebrow`) }} />
+                    <TextField size="small" label="Heading" value={slide.heading || ""} onChange={(event) => updateHeroSlide(index, { heading: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.heading`) }} />
+                    <TextField size="small" label="Subheading" value={slide.subheading || ""} onChange={(event) => updateHeroSlide(index, { subheading: event.target.value })} fullWidth multiline minRows={2} inputProps={{ "data-module-field-path": contentPath(`slides.${index}.subheading`) }} />
+                    <Box data-module-field-path={contentPath(`slides.${index}.image`)}>
+                      <ImageField label="Slide image or video" allowVideo value={slide.image || slide.imageUrl || ""} onChange={(url) => updateHeroSlide(index, { image: url, imageUrl: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath(`slides.${index}.image`)}`} />
+                    </Box>
+                    <TextField size="small" label="Slide media alt text" value={slide.imageAlt || ""} onChange={(event) => updateHeroSlide(index, { imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.imageAlt`) }} />
+                    <Box data-module-field-path={contentPath(`slides.${index}.posterImage`)}>
+                      <ImageField label="Video poster / mobile fallback" value={slide.posterImage || ""} onChange={(url) => updateHeroSlide(index, { posterImage: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath(`slides.${index}.posterImage`)}`} />
+                    </Box>
+                    <TextField size="small" label="Primary CTA label" value={slide.primaryCta?.label || ""} onChange={(event) => updateHeroSlide(index, { primaryCta: { ...(slide.primaryCta || {}), label: event.target.value } })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.primaryCta.label`) }} />
+                    <TextField size="small" label="Primary CTA link" value={slide.primaryCta?.href || ""} onChange={(event) => updateHeroSlide(index, { primaryCta: { ...(slide.primaryCta || {}), href: event.target.value } })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.primaryCta.href`) }} />
+                    <TextField size="small" label="Secondary CTA label" value={slide.secondaryCta?.label || ""} onChange={(event) => updateHeroSlide(index, { secondaryCta: { ...(slide.secondaryCta || {}), label: event.target.value } })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.secondaryCta.label`) }} />
+                    <TextField size="small" label="Secondary CTA link" value={slide.secondaryCta?.href || ""} onChange={(event) => updateHeroSlide(index, { secondaryCta: { ...(slide.secondaryCta || {}), href: event.target.value } })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.secondaryCta.href`) }} />
+                  </Stack>
+                </Box>
+              ))}
+              <Button size="small" variant="outlined" disabled={heroSlides.length >= 3} onClick={() => updateSelectedContent({
+                slides: [...heroSlides, {
+                  id: `forge-hero-slide-${nanoid(8)}`,
+                  eyebrow: "",
+                  heading: "",
+                  subheading: "",
+                  image: "",
+                  imageUrl: "",
+                  imageAlt: "",
+                  posterImage: "",
+                  primaryCta: { label: "", href: "/services" },
+                  secondaryCta: { label: "", href: "/contact" },
+                }],
+              })}>Add cinematic slide</Button>
             </Stack> : null}
             {!isIronEmberInnerPageHero ? <Stack spacing={1.5}>
               <Typography variant="overline" color="text.secondary">Buttons</Typography>

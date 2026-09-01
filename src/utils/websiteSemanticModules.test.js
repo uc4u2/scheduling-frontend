@@ -161,8 +161,24 @@ describe("website semantic modules", () => {
     expect(schedule.content.items.some((item) => ["Available", "Limited", "Full"].includes(item.note))).toBe(false);
     expect(modules.find((module) => module.id === "forge-home-proof").settings.claimsMode).toBe("indexed-coaching-principles");
     const hero = modules.find((module) => module.id === "forge-home-hero");
-    expect(hero.content).toEqual(expect.objectContaining({ posterImage: "", secondaryImages: ["", ""], secondaryImageAlts: expect.any(Array) }));
-    expect(hero.content.secondaryImageAlts).toHaveLength(2);
+    expect(hero.content).toEqual(expect.objectContaining({
+      posterImage: "",
+      secondaryImages: [],
+      secondaryImageAlts: [],
+      layerPanelEnabled: true,
+      layerPanelEyebrow: "Training structure",
+      layerPanelBody: "Strength · movement · repeatable progress",
+    }));
+    expect(hero.content.slides).toHaveLength(1);
+    expect(hero.content.slides[0]).toEqual(expect.objectContaining({
+      id: "forge-hero-slide-2",
+      heading: expect.any(String),
+      image: "",
+      posterImage: "",
+      imageAlt: expect.any(String),
+    }));
+    expect(modules.find((module) => module.id === "forge-home-proof").content.items).toHaveLength(4);
+    expect(hero.content.secondaryImageAlts).toHaveLength(0);
     const portfolio = modules.find((module) => module.id === "forge-home-portfolio");
     expect(portfolio.content.items).toHaveLength(8);
     expect(new Set(portfolio.content.items.map((item) => item.id)).size).toBe(8);
