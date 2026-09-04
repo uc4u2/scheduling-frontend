@@ -72,6 +72,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import OpenWithIcon from "@mui/icons-material/OpenWith";
 
 import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
@@ -122,6 +123,22 @@ import {
   withNormalizedModules,
 } from "../../../utils/websiteSemanticModules";
 import { getProfessionHomeBlueprint } from "../../../utils/professionHomeBlueprints";
+import {
+  FORGE_MOTION_CONTACT_STARTER_VERSION,
+  upgradeForgeMotionContactModules,
+} from "../../../utils/forgeMotionContactBlueprint";
+import {
+  FORGE_MOTION_HOME_STARTER_VERSION,
+  upgradeLegacyForgeMotionHomeModules,
+} from "../../../utils/forgeMotionHomeBlueprint";
+import {
+  FORGE_MOTION_PAGE_STARTER_VERSION,
+  upgradeForgeMotionMarketingPage,
+} from "../../../utils/forgeMotionPageBlueprint";
+import {
+  createWebsiteBlogPostPage,
+  slugifyWebsiteArticle,
+} from "../../../utils/websiteBlogBlueprint";
 import {
   getCompatibleModuleChoices,
   getThemeModuleDisplayLabel,
@@ -187,6 +204,7 @@ const FORGE_DEFAULT_ADDITIONAL_HERO_SLIDE = Object.freeze({
   image: "",
   imageUrl: "",
   imageAlt: "A cinematic second training scene featuring purposeful coached movement.",
+  imagePosition: { x: 50, y: 50 },
   posterImage: "",
   primaryCta: { label: "View training options", href: "/services" },
   secondaryCta: { label: "Meet the coaches", href: "/about" },
@@ -3244,6 +3262,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [styleErr, setStyleErr] = useState("");
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
+  const [nextJsPreviewStale, setNextJsPreviewStale] = useState(false);
   const [styleGalleryPreviewUrl, setStyleGalleryPreviewUrl] = useState("");
   // The content Canvas is an editing surface. Keep its frame identity distinct
   // from the read-only style-gallery preview so postMessage selection events
@@ -3257,6 +3276,14 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
   const [pageMenuTarget, setPageMenuTarget] = useState(null);
+  const [canvasPageMenuAnchor, setCanvasPageMenuAnchor] = useState(null);
+  const [newArticleDialogOpen, setNewArticleDialogOpen] = useState(false);
+  const [newArticleDraft, setNewArticleDraft] = useState({
+    title: "",
+    slug: "",
+    description: "",
+    slugTouched: false,
+  });
   const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
   const rawNavOverrides = useMemo(
     () =>
@@ -3521,8 +3548,10 @@ useEffect(() => {
   const [err, setErr] = useState("");
 const [pagesListOpen, setPagesListOpen] = useState(false);
 const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+const [seoSettingsOpen, setSeoSettingsOpen] = useState(false);
 const [addSectionPanelOpen, setAddSectionPanelOpen] = useState(true);
 const [inspectorOpen, setInspectorOpen] = useState(false);
+const [semanticFloatingInspectorOpen, setSemanticFloatingInspectorOpen] = useState(false);
 const [inspectorTab, setInspectorTab] = useState("content");
 const [pageStyleOpen, setPageStyleOpen] = useState(false);
 const canvasScrollRef = useRef(null);
@@ -3638,16 +3667,17 @@ useEffect(() => {
             settings: selectedWebsiteSettings,
           })
         );
-        const isIronEmberNextWebsite =
-          nextJsWebsite &&
-          String(
+        const nextJsThemeKey = nextJsWebsite
+          ? String(
             selectedWebsiteSettings.visual_theme_key ||
               statusPayload?.draft_visual_theme_key ||
               statusPayload?.current_visual_theme_key ||
               ""
           )
             .trim()
-            .toLowerCase() === "iron-ember";
+            .toLowerCase()
+          : "";
+        const isIronEmberNextWebsite = nextJsThemeKey === "iron-ember";
         // A blank Next.js site is intentionally blank until its selected theme
         // installs a canonical starter blueprint. The Classic import path stays
         // exactly as it was for legacy-react websites.
@@ -3680,7 +3710,7 @@ useEffect(() => {
           companyId,
           settingsPayload,
           pagesList,
-          { isIronEmberNextWebsite }
+          { isIronEmberNextWebsite, nextJsThemeKey }
         );
         if (!alive) return;
         const finalSettings = normalizedLegacy.settings || settingsPayload;
@@ -4571,7 +4601,7 @@ const saveNavSettings = useCallback(
   ]
 );
 
-async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmberNextWebsite = false } = {}) {
+async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmberNextWebsite = false, nextJsThemeKey = "" } = {}) {
   if (!cid) return { pages: pagesList || [], settings: settingsObj };
 
   let nextPages = Array.isArray(pagesList) ? [...pagesList] : [];
@@ -4634,6 +4664,195 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
     };
     await navSettings.updateOverrides(cid, nav);
     nextSettings = mergeNavIntoSettings(nextSettings, { nav_overrides: nav });
+  }
+
+  if (nextJsThemeKey) {
+    const normalizedThemeKey = String(nextJsThemeKey).trim().toLowerCase();
+    const homeBlueprint = getProfessionHomeBlueprint(normalizedThemeKey);
+    const contactTarget = NEXT_PUBLIC_BUILDER_PAGE_TARGETS.find((target) => target.key === "contact");
+    for (const existingPage of [...nextPages]) {
+      const pageKind = inferPageKind(existingPage);
+      if (pageKind !== "home" && pageKind !== "contact") continue;
+      const normalizedContent = normalizePageContent(existingPage.content || {});
+      if (Number(normalizedContent.meta?.nextJsContactFormStarterVersion || 0) >= 1) continue;
+      const existingModules = safeModules(existingPage);
+      const hasContactForm = existingModules.some((module) => module.type === "contactForm");
+
+      const starter = pageKind === "home"
+        ? homeBlueprint?.createModules?.().find((module) => module.type === "contactForm")
+        : contactTarget
+          ? makeNextPublicBuilderModules(contactTarget).find((module) => module.type === "contactForm")
+          : null;
+      if (!hasContactForm && !starter) continue;
+
+      const stableStarter = !hasContactForm && pageKind === "contact"
+        ? { ...starter, id: `${normalizedThemeKey}-contact-page-form` }
+        : starter;
+      const upgradedPage = {
+        ...existingPage,
+        content: {
+          ...normalizedContent,
+          meta: {
+            ...normalizedContent.meta,
+            // This makes the upgrade one-time. If an owner later removes the
+            // optional form, the Builder respects that choice on reload.
+            nextJsContactFormStarterVersion: 1,
+          },
+          modules: hasContactForm ? existingModules : [...existingModules, stableStarter],
+        },
+      };
+      const updated = await wb.updatePage(
+        cid,
+        existingPage.id,
+        serializePage(ensureSectionIds(withLiftedLayout(upgradedPage)))
+      );
+      const updatedPage = normalizePage(updated?.data || updated);
+      if (updatedPage?.id) {
+        nextPages = nextPages.map((page) =>
+          String(page.id) === String(updatedPage.id) ? updatedPage : page
+        );
+      }
+    }
+
+    if (normalizedThemeKey === "forge-motion") {
+      for (const existingPage of [...nextPages]) {
+        const forgePageKind = inferPageKind(existingPage);
+        if (forgePageKind === "home") {
+          const normalizedContent = normalizePageContent(existingPage.content || {});
+          if (
+            Number(normalizedContent.meta?.forgeMotionHomeStarterVersion || 0) <
+            FORGE_MOTION_HOME_STARTER_VERSION
+          ) {
+            const existingModules = safeModules(existingPage);
+            const upgradedModules = upgradeLegacyForgeMotionHomeModules(existingModules);
+            const upgradedPage = {
+              ...existingPage,
+              title:
+                ["cut with character", "cut with character."].includes(
+                  String(existingPage.title || "").trim().toLowerCase()
+                )
+                  ? "Build strength that holds up in real life."
+                  : existingPage.title,
+              seo_title:
+                existingPage.seo_title || "Fitness coaching built for real life",
+              seo_description:
+                existingPage.seo_description ||
+                "Explore strength, mobility, conditioning, coaching services, and a practical training approach built around a repeatable week.",
+              og_title:
+                existingPage.og_title || "Fitness coaching built for real life",
+              og_description:
+                existingPage.og_description ||
+                "Explore coaching services, the studio approach, training guidance, and a clear path to get started.",
+              og_image_url:
+                existingPage.og_image_url ||
+                upgradedModules.find((module) => module.type === "hero")?.content?.image ||
+                "",
+              canonical_path: existingPage.canonical_path || "/",
+              content: {
+                ...normalizedContent,
+                meta: {
+                  ...normalizedContent.meta,
+                  forgeMotionHomeStarterVersion: FORGE_MOTION_HOME_STARTER_VERSION,
+                },
+                modules: upgradedModules,
+              },
+            };
+            const updated = await wb.updatePage(
+              cid,
+              existingPage.id,
+              serializePage(ensureSectionIds(withLiftedLayout(upgradedPage)))
+            );
+            const updatedPage = normalizePage(updated?.data || updated);
+            if (updatedPage?.id) {
+              nextPages = nextPages.map((page) =>
+                String(page.id) === String(updatedPage.id) ? updatedPage : page
+              );
+            }
+          }
+          continue;
+        }
+        if (forgePageKind !== "contact") {
+          const normalizedContent = normalizePageContent(existingPage.content || {});
+          if (
+            Number(normalizedContent.meta?.forgeMotionPageStarterVersion || 0) >=
+            FORGE_MOTION_PAGE_STARTER_VERSION
+          ) {
+            continue;
+          }
+          const upgradedPage = upgradeForgeMotionMarketingPage(existingPage);
+          if (upgradedPage === existingPage) continue;
+          const updated = await wb.updatePage(
+            cid,
+            existingPage.id,
+            serializePage(ensureSectionIds(withLiftedLayout(upgradedPage)))
+          );
+          const updatedPage = normalizePage(updated?.data || updated);
+          if (updatedPage?.id) {
+            nextPages = nextPages.map((page) =>
+              String(page.id) === String(updatedPage.id) ? updatedPage : page
+            );
+          }
+          continue;
+        }
+        const normalizedContent = normalizePageContent(existingPage.content || {});
+        if (
+          Number(normalizedContent.meta?.forgeMotionContactStarterVersion || 0) >=
+          FORGE_MOTION_CONTACT_STARTER_VERSION
+        ) {
+          continue;
+        }
+        const existingModules = safeModules(existingPage);
+        const upgradedModules = upgradeForgeMotionContactModules(existingModules);
+        const contactSlug = String(existingPage.slug || existingPage.path || "")
+          .trim()
+          .toLowerCase();
+        const isRequestPage = contactSlug === "request-quote";
+        const staleContactTitle = [
+          "request an event consultation",
+          "event consultation",
+          "contact us",
+        ].includes(String(existingPage.title || "").trim().toLowerCase());
+        const contactTitle = isRequestPage ? "Training inquiry" : "Contact";
+        const contactDescription = isRequestPage
+          ? "Send the coaching team a training inquiry or choose a current service through the existing booking flow."
+          : "Contact the coaching team, find verified studio details and hours, or send a training inquiry.";
+        const upgradedPage = {
+          ...existingPage,
+          title: staleContactTitle || !existingPage.title ? contactTitle : existingPage.title,
+          menu_title:
+            staleContactTitle || !existingPage.menu_title
+              ? contactTitle
+              : existingPage.menu_title,
+          seo_title: existingPage.seo_title || contactTitle,
+          seo_description: existingPage.seo_description || contactDescription,
+          og_title: existingPage.og_title || contactTitle,
+          og_description: existingPage.og_description || contactDescription,
+          canonical_path:
+            existingPage.canonical_path ||
+            `/${String(existingPage.path || existingPage.slug || "contact").replace(/^\/+/, "")}`,
+          content: {
+            ...normalizedContent,
+            meta: {
+              ...normalizedContent.meta,
+              forgeMotionContactStarterVersion:
+                FORGE_MOTION_CONTACT_STARTER_VERSION,
+            },
+            modules: upgradedModules,
+          },
+        };
+        const updated = await wb.updatePage(
+          cid,
+          existingPage.id,
+          serializePage(ensureSectionIds(withLiftedLayout(upgradedPage)))
+        );
+        const updatedPage = normalizePage(updated?.data || updated);
+        if (updatedPage?.id) {
+          nextPages = nextPages.map((page) =>
+            String(page.id) === String(updatedPage.id) ? updatedPage : page
+          );
+        }
+      }
+    }
   }
 
   if (isIronEmberNextWebsite) {
@@ -5069,7 +5288,16 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   const handleJumpToPageStyle = () => jumpToById("page-style-card");
   const handleJumpToNav = () => jumpToById("nav-settings-card");
   const handleJumpToAssets = () => jumpToById("assets-manager-card");
-  const handleJumpToPageSettings = () => jumpToById("builder-page-settings");
+  const handleJumpToPageSettings = () => {
+    setPagesListOpen(false);
+    setPageSettingsOpen(true);
+    requestAnimationFrame(() => jumpToById("builder-page-settings"));
+  };
+  const handleJumpToSeoSettings = () => {
+    setPagesListOpen(false);
+    setSeoSettingsOpen(true);
+    requestAnimationFrame(() => jumpToById("builder-page-seo"));
+  };
   const handleJumpToCompanyProfile = () => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams({ view: "CompanyProfile" });
@@ -5347,11 +5575,18 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     [companyId, pages.length, setEditing]
   );
 
-  const currentPreviewPagePath = useMemo(() => {
-    return isNextJsContentMode
+  // A module edit replaces the page object, but it does not change the route.
+  // Use a primitive route key so ordinary typing cannot remint the signed
+  // preview session and reload the entire iframe.
+  const currentPreviewPagePathKey = (
+    isNextJsContentMode
       ? normalizeNextJsPreviewPagePath(editing)
-      : normalizePreviewPagePath(editing);
-  }, [editing, isNextJsContentMode]);
+      : normalizePreviewPagePath(editing)
+  ).join("/");
+  const currentPreviewPagePath = useMemo(
+    () => (currentPreviewPagePathKey ? currentPreviewPagePathKey.split("/") : []),
+    [currentPreviewPagePathKey]
+  );
 
   const refreshNextJsPreview = useCallback(
     async (style = null, pagePathOverride = null, commitToCanvas = true) => {
@@ -5409,6 +5644,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         if (commitToCanvas) {
           setNextJsPreviewToken(token);
           setNextJsPreviewUrl(previewUrl);
+          setNextJsPreviewStale(false);
         }
         setStyleErr("");
         return previewUrl;
@@ -5442,6 +5678,10 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   const queueNextJsDraftSync = useCallback(
     (snapshot) => {
       if (!isNextJsContentMode || !companyId || !snapshot?.id) return;
+      // Persist edits without replacing the iframe underneath the editor.
+      // The explicit Refresh preview action applies the saved snapshot when
+      // the manager is ready to review it.
+      setNextJsPreviewStale(true);
       nextJsDraftSyncSnapshotRef.current = ensureSectionIds(withLiftedLayout(snapshot));
       if (nextJsDraftSyncTimerRef.current) {
         clearTimeout(nextJsDraftSyncTimerRef.current);
@@ -5461,13 +5701,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
             if (!current?.id || String(current.id) !== String(saved.id)) return current;
             return saved;
           });
-          await refreshNextJsPreview(null, normalizeNextJsPreviewPagePath(saved));
         } catch (error) {
           console.error("[VisualSiteBuilder] nextjs draft sync failed", error);
         }
       }, 250);
     },
-    [companyId, isNextJsContentMode, refreshNextJsPreview, setEditing, setPages]
+    [companyId, isNextJsContentMode, setEditing, setPages]
   );
 
   // The iframe reports an expired/invalid signed preview token after a local
@@ -5710,16 +5949,17 @@ const autoProvisionIfEmpty = useCallback(
         settings: selectedWebsiteSettings,
       })
     );
-    const isIronEmberNextWebsite =
-      nextJsWebsite &&
-      String(
+    const nextJsThemeKey = nextJsWebsite
+      ? String(
         selectedWebsiteSettings.visual_theme_key ||
           statusPayload?.draft_visual_theme_key ||
           statusPayload?.current_visual_theme_key ||
           ""
       )
         .trim()
-        .toLowerCase() === "iron-ember";
+        .toLowerCase()
+      : "";
+    const isIronEmberNextWebsite = nextJsThemeKey === "iron-ember";
     if (!pgRaw.length && !nextJsWebsite) {
       try {
         await autoProvisionIfEmpty(cid, settingsObj);
@@ -5734,6 +5974,7 @@ const autoProvisionIfEmpty = useCallback(
 
     const normalizedLegacy = await ensureLegacyBuilderPages(cid, settingsObj, pgRaw, {
       isIronEmberNextWebsite,
+      nextJsThemeKey,
     });
     const pg = (normalizedLegacy.pages || pgRaw).map((p) =>
       ensureSectionIds(withLiftedLayout(p))
@@ -6734,8 +6975,10 @@ const autoProvisionIfEmpty = useCallback(
       .replace(/-+/g, "-");
 
   const buildDuplicateSlug = (base, existing) => {
-    const cleanBase = slugify(base) || "page";
-    const baseSlug = `duplicated${cleanBase}`;
+    const rawBase = String(base || "").trim().toLowerCase();
+    const isBlogPost = rawBase.startsWith("blog/");
+    const cleanBase = slugify(isBlogPost ? rawBase.slice("blog/".length) : rawBase) || "page";
+    const baseSlug = isBlogPost ? `blog/duplicated-${cleanBase}` : `duplicated${cleanBase}`;
     let candidate = baseSlug;
     let idx = 2;
     while (existing.has(candidate)) {
@@ -6774,6 +7017,7 @@ const autoProvisionIfEmpty = useCallback(
         const next = JSON.parse(JSON.stringify(source));
         delete next.id;
         next.slug = buildDuplicateSlug(next.slug || next.title || "page", existingSlugs);
+        next.path = next.slug;
         next.title = prefixDuplicate(next.title || next.slug, "Page");
         next.menu_title = prefixDuplicate(next.menu_title || next.title, "Page");
         if (next.seo_title) next.seo_title = prefixDuplicate(next.seo_title, "Page");
@@ -6817,6 +7061,7 @@ const autoProvisionIfEmpty = useCallback(
       const next = JSON.parse(JSON.stringify(source));
       delete next.id;
       next.slug = buildDuplicateSlug(next.slug || next.title || "page", existingSlugs);
+      next.path = next.slug;
       next.title = prefixDuplicate(next.title || next.slug, "Page");
       next.menu_title = prefixDuplicate(next.menu_title || next.title, "Page");
       if (next.seo_title) next.seo_title = prefixDuplicate(next.seo_title, "Page");
@@ -6836,6 +7081,52 @@ const autoProvisionIfEmpty = useCallback(
     } catch (e) {
       console.error(e);
       setErr(t("manager.visualBuilder.errors.savePage"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openNewArticleDialog = () => {
+    setNewArticleDraft({ title: "", slug: "", description: "", slugTouched: false });
+    setNewArticleDialogOpen(true);
+  };
+
+  const createBlogPost = async () => {
+    if (!companyId || !isNextJsContentMode) return;
+    const title = String(newArticleDraft.title || "").trim();
+    if (!title) {
+      setErr("Enter an article title before creating the draft.");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const starter = createWebsiteBlogPostPage(pages, {
+        title,
+        slug: newArticleDraft.slug,
+        description: newArticleDraft.description,
+        themeKey: currentStyleKey,
+      });
+      const payload = serializePage(ensureSectionIds(withLiftedLayout(starter)));
+      const response = await wb.createPage(companyId, payload);
+      const created = ensureSectionIds(
+        withLiftedLayout(normalizePage(response?.data || response || payload))
+      );
+      setPages((previous) => [created, ...previous]);
+      setSelectedId(created.id);
+      setEditing(created);
+      setSelectedBlock(-1);
+      setPagesListOpen(false);
+      setPageSettingsOpen(false);
+      setNewArticleDialogOpen(false);
+      setMsg("Draft article created. Edit it on the Canvas, review Page settings and SEO, then publish it when ready.");
+      if (isNextJsContentMode && nextJsPreviewUrl) {
+        await refreshNextJsPreview(null, normalizeNextJsPreviewPagePath(created));
+      }
+    } catch (error) {
+      console.error(error);
+      setErr(error?.response?.data?.error || "Unable to create the draft article.");
     } finally {
       setBusy(false);
     }
@@ -7127,11 +7418,18 @@ const autoProvisionIfEmpty = useCallback(
       id="builder-page-seo"
       title={t("manager.visualBuilder.pages.seo.cardTitle", "SEO")}
       description={t("manager.visualBuilder.pages.seo.cardDescription")}
+      expanded={seoSettingsOpen}
       onChange={(open) => {
+        setSeoSettingsOpen(open);
         if (open && mode === "simple") setSelectedBlock(-1);
       }}
     >
       <Stack spacing={1.5}>
+        {inferPageKind(editing || {}) === "blog" ? (
+          <Alert severity="info" variant="outlined">
+            Blog SEO checklist: use one specific page title, write an original summary, add descriptive image alt text and a social image, leave No index off only when the article is ready, then publish the page and website. Published indexable pages are included in the website sitemap automatically.
+          </Alert>
+        ) : null}
         <Alert severity="info">
           <Trans
             i18nKey="manager.visualBuilder.pages.seo.advancedPrompt"
@@ -7392,7 +7690,8 @@ const autoProvisionIfEmpty = useCallback(
       <InspectorColumn />
       <CollapsibleSection
         id="builder-pages-list"
-        title={t("manager.visualBuilder.pages.title")}
+        title="All pages & menu"
+        description="Advanced page organization and bulk controls. Use the Canvas toolbar for everyday page work."
         expanded={pagesListOpen}
         onChange={(next) => {
           setPagesListOpen(next);
@@ -8791,7 +9090,7 @@ const openBuilderPage = useCallback(
       setSelectedId(lifted.id);
       setEditing(lifted);
       setSelectedBlock(-1);
-      setPagesListOpen(true);
+      setPagesListOpen(false);
       setPageSettingsOpen(true);
       requestAnimationFrame(() => scrollCanvasToTop());
     } catch (e) {
@@ -8801,6 +9100,171 @@ const openBuilderPage = useCallback(
   },
   [companyId, t]
 );
+
+const canvasPageTarget =
+  pages.find((page) => String(page?.id) === String(editing?.id || selectedId)) ||
+  editing ||
+  null;
+
+const closeCanvasPageMenu = () => setCanvasPageMenuAnchor(null);
+
+const PageWorkspaceBar = isNextJsContentMode ? (
+  <Paper
+    variant="outlined"
+    sx={{ mb: 1.25, p: 1.25, borderRadius: 1.5, bgcolor: "background.paper" }}
+  >
+    <Stack spacing={0.75}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={1}
+        alignItems={{ xs: "stretch", md: "center" }}
+      >
+        <TextField
+          select
+          size="small"
+          label="Current page"
+          value={canvasPageTarget?.id != null ? String(canvasPageTarget.id) : ""}
+          onChange={(event) => {
+            const next = pages.find((page) => String(page?.id) === String(event.target.value));
+            if (next) openBuilderPage(next);
+          }}
+          sx={{ minWidth: { xs: "100%", md: 250 } }}
+        >
+          {pages.map((page) => (
+            <MenuItem key={page.id} value={String(page.id)}>
+              {page.title || page.menu_title || page.slug || "Untitled page"} · /{page.slug || ""}
+            </MenuItem>
+          ))}
+        </TextField>
+        {canvasPageTarget ? (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            <Chip
+              size="small"
+              color={canvasPageTarget.published ?? true ? "success" : "default"}
+              variant="outlined"
+              label={canvasPageTarget.published ?? true ? "Published page" : "Draft page"}
+            />
+            {canvasPageTarget.show_in_menu ?? true ? null : (
+              <Chip size="small" variant="outlined" label="Hidden from menu" />
+            )}
+          </Stack>
+        ) : null}
+        <Box sx={{ flex: 1 }} />
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<AddIcon fontSize="small" />}
+          onClick={openNewArticleDialog}
+          disabled={busy || !companyId}
+        >
+          New article
+        </Button>
+        <Button size="small" variant="outlined" onClick={handleJumpToPageSettings}>
+          Page settings
+        </Button>
+        <Button size="small" variant="outlined" onClick={handleJumpToSeoSettings}>
+          SEO
+        </Button>
+        <Button
+          size="small"
+          variant={semanticFloatingInspectorOpen ? "contained" : "outlined"}
+          startIcon={<OpenWithIcon fontSize="small" />}
+          onClick={() => {
+            setSemanticFloatingInspectorOpen((current) => !current);
+            setInspectorOpen(true);
+          }}
+          disabled={!selectedModule}
+        >
+          Floating editor
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          endIcon={<MoreVertIcon fontSize="small" />}
+          onClick={(event) => setCanvasPageMenuAnchor(event.currentTarget)}
+          disabled={!canvasPageTarget?.id}
+        >
+          Page actions
+        </Button>
+      </Stack>
+      <Typography variant="caption" color="text.secondary">
+        Switch pages here, edit the selected page in the Canvas, and manage its publishing without searching through the advanced page list.
+        {nextJsPreviewStale ? " Saved edits are ready; refresh the preview when you want to review them." : ""}
+      </Typography>
+    </Stack>
+    <Menu
+      anchorEl={canvasPageMenuAnchor}
+      open={Boolean(canvasPageMenuAnchor)}
+      onClose={closeCanvasPageMenu}
+    >
+      <MenuItem
+        onClick={() => {
+          if (canvasPageTarget?.id) {
+            const current = Boolean(canvasPageTarget.published ?? true);
+            applyPageActionPatch(canvasPageTarget.id, { published: !current });
+          }
+          closeCanvasPageMenu();
+        }}
+      >
+        {canvasPageTarget?.published ?? true ? "Unpublish page" : "Publish page"}
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          if (canvasPageTarget?.id) {
+            const current = Boolean(canvasPageTarget.show_in_menu ?? true);
+            applyPageActionPatch(canvasPageTarget.id, { show_in_menu: !current });
+          }
+          closeCanvasPageMenu();
+        }}
+      >
+        {canvasPageTarget?.show_in_menu ?? true ? "Hide from menu" : "Show in menu"}
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          if (canvasPageTarget?.id) {
+            if (canvasPageTarget.is_homepage) {
+              applyPageActionPatch(canvasPageTarget.id, { is_homepage: false });
+            } else {
+              applyPageActionPatch(canvasPageTarget.id, {}, { setHomepage: true });
+            }
+          }
+          closeCanvasPageMenu();
+        }}
+      >
+        {canvasPageTarget?.is_homepage ? "Unset homepage" : "Set as homepage"}
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          if (canvasPageTarget?.id) {
+            const current = Boolean(canvasPageTarget.autosave ?? true);
+            applyPageActionPatch(canvasPageTarget.id, { autosave: !current });
+          }
+          closeCanvasPageMenu();
+        }}
+      >
+        {canvasPageTarget?.autosave ?? true ? "Disable autosave" : "Enable autosave"}
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          if (canvasPageTarget?.id) duplicatePageById(canvasPageTarget.id);
+          closeCanvasPageMenu();
+        }}
+      >
+        Duplicate page
+      </MenuItem>
+      <Divider />
+      <MenuItem
+        onClick={() => {
+          setPagesListOpen(true);
+          requestAnimationFrame(() => jumpToById("builder-pages-list"));
+          closeCanvasPageMenu();
+        }}
+      >
+        Open all pages & menu
+      </MenuItem>
+    </Menu>
+  </Paper>
+) : null;
 
 const CanvasColumn = (
   <SectionCard
@@ -8886,6 +9350,7 @@ const CanvasColumn = (
     }
   >
     <Box id="visual-builder-canvas">
+      {PageWorkspaceBar}
       {isNextJsContentMode ? (
         nextJsPreviewUrl ? (
           <Box
@@ -9271,7 +9736,7 @@ const CanvasColumn = (
 
 
 
-function InspectorColumn() {
+function InspectorColumn({ floating = false } = {}) {
   const clamp01 = (n) => {
     const num = Number(n);
     if (!Number.isFinite(num)) return 0;
@@ -9839,6 +10304,18 @@ function InspectorColumn() {
     };
     const contentPath = (field) => `content.${field}`;
     const itemPath = (index, field) => `content.items.${index}.${field}`;
+    const mediaPositionControl = (fieldPath, value, onCommit) => ({
+      position: value,
+      onPositionChange: onCommit,
+      onPositionPreview: (position) => {
+        nextJsContentPreviewIframeRef.current?.contentWindow?.postMessage({
+          type: "schedulaa:website-media-position-preview",
+          moduleId: selectedSemanticModule.id,
+          fieldPath,
+          position,
+        }, "*");
+      },
+    });
     const heroTopMarqueeItems = Array.isArray(content.marqueeTopItems) ? content.marqueeTopItems : [
       "Cut Rituals",
       "Fade Detail",
@@ -10034,7 +10511,7 @@ function InspectorColumn() {
             </Stack>
             <Stack spacing={1.5} sx={{ order: 1 }}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
-              <Box data-module-field-path={contentPath("image")}><ImageField label={allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} /></Box>
+              <Box data-module-field-path={contentPath("image")}><ImageField label={allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))} /></Box>
               <TextField size="small" label={allowsHeroVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
               {isForgeMotionTheme ? <Box data-module-field-path={contentPath("posterImage")}>
                 <ImageField
@@ -10043,6 +10520,7 @@ function InspectorColumn() {
                   onChange={(url) => updateSelectedContent({ posterImage: url })}
                   companyId={companyId}
                   fieldKey={`${selectedSemanticModule.id}:${contentPath("posterImage")}`}
+                  {...mediaPositionControl(contentPath("posterImage"), content.posterImagePosition, (posterImagePosition) => updateSelectedContent({ posterImagePosition }))}
                 />
               </Box> : null}
             </Stack>
@@ -10061,11 +10539,17 @@ function InspectorColumn() {
                       onChange={(nextUrl) => updateSelectedContent({ secondaryImages: secondaryImages.map((value, itemIndex) => itemIndex === index ? nextUrl : value) })}
                       companyId={companyId}
                       fieldKey={`${selectedSemanticModule.id}:${contentPath(`secondaryImages.${index}`)}`}
+                      {...mediaPositionControl(contentPath(`secondaryImages.${index}`), content.secondaryImagePositions?.[index], (nextPosition) => {
+                        const positions = Array.isArray(content.secondaryImagePositions) ? [...content.secondaryImagePositions] : [];
+                        positions[index] = nextPosition;
+                        updateSelectedContent({ secondaryImagePositions: positions });
+                      })}
                     />
                   </Box>
                   <Button size="small" onClick={() => updateSelectedContent({
                     secondaryImages: secondaryImages.filter((_, itemIndex) => itemIndex !== index),
                     secondaryImageAlts: (Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts : []).filter((_, itemIndex) => itemIndex !== index),
+                    secondaryImagePositions: (Array.isArray(content.secondaryImagePositions) ? content.secondaryImagePositions : []).filter((_, itemIndex) => itemIndex !== index),
                   })}>Remove</Button>
                   </Stack>
                   <TextField
@@ -10085,6 +10569,7 @@ function InspectorColumn() {
               <Button size="small" variant="outlined" onClick={() => updateSelectedContent({
                 secondaryImages: [...(Array.isArray(content.secondaryImages) ? content.secondaryImages : []), ""],
                 secondaryImageAlts: [...(Array.isArray(content.secondaryImageAlts) ? content.secondaryImageAlts : []), ""],
+                secondaryImagePositions: [...(Array.isArray(content.secondaryImagePositions) ? content.secondaryImagePositions : []), { x: 50, y: 50 }],
               })}>
                 {isForgeMotionTheme ? "Add foreground overlay image" : "Add secondary image"}
               </Button>
@@ -10121,11 +10606,11 @@ function InspectorColumn() {
                     <TextField size="small" label="Heading" value={slide.heading || ""} onChange={(event) => updateHeroSlide(index, { heading: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.heading`) }} />
                     <TextField size="small" label="Subheading" value={slide.subheading || ""} onChange={(event) => updateHeroSlide(index, { subheading: event.target.value })} fullWidth multiline minRows={2} inputProps={{ "data-module-field-path": contentPath(`slides.${index}.subheading`) }} />
                     <Box data-module-field-path={contentPath(`slides.${index}.image`)}>
-                      <ImageField label="Slide image or video" allowVideo value={slide.image || slide.imageUrl || ""} onChange={(url) => updateHeroSlide(index, { image: url, imageUrl: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath(`slides.${index}.image`)}`} />
+                      <ImageField label="Slide image or video" allowVideo value={slide.image || slide.imageUrl || ""} onChange={(url) => updateHeroSlide(index, { image: url, imageUrl: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath(`slides.${index}.image`)}`} {...mediaPositionControl(contentPath(`slides.${index}.image`), slide.imagePosition, (imagePosition) => updateHeroSlide(index, { imagePosition }))} />
                     </Box>
                     <TextField size="small" label="Slide media alt text" value={slide.imageAlt || ""} onChange={(event) => updateHeroSlide(index, { imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.imageAlt`) }} />
                     <Box data-module-field-path={contentPath(`slides.${index}.posterImage`)}>
-                      <ImageField label="Video poster / mobile fallback" value={slide.posterImage || ""} onChange={(url) => updateHeroSlide(index, { posterImage: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath(`slides.${index}.posterImage`)}`} />
+                      <ImageField label="Video poster / mobile fallback" value={slide.posterImage || ""} onChange={(url) => updateHeroSlide(index, { posterImage: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath(`slides.${index}.posterImage`)}`} {...mediaPositionControl(contentPath(`slides.${index}.posterImage`), slide.posterImagePosition, (posterImagePosition) => updateHeroSlide(index, { posterImagePosition }))} />
                     </Box>
                     <TextField size="small" label="Primary CTA label" value={slide.primaryCta?.label || ""} onChange={(event) => updateHeroSlide(index, { primaryCta: { ...(slide.primaryCta || {}), label: event.target.value } })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.primaryCta.label`) }} />
                     <TextField size="small" label="Primary CTA link" value={slide.primaryCta?.href || ""} onChange={(event) => updateHeroSlide(index, { primaryCta: { ...(slide.primaryCta || {}), href: event.target.value } })} fullWidth inputProps={{ "data-module-field-path": contentPath(`slides.${index}.primaryCta.href`) }} />
@@ -10143,6 +10628,7 @@ function InspectorColumn() {
                   image: "",
                   imageUrl: "",
                   imageAlt: "",
+                  imagePosition: { x: 50, y: 50 },
                   posterImage: "",
                   primaryCta: { label: "", href: "/services" },
                   secondaryCta: { label: "", href: "/contact" },
@@ -10200,6 +10686,7 @@ function InspectorColumn() {
                 onChange={(url) => updateSelectedContent({ image: url })}
                 companyId={companyId}
                 fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`}
+                {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))}
               />
             </Box>
             <TextField
@@ -10221,6 +10708,7 @@ function InspectorColumn() {
                 onChange={(url) => updateSelectedContent({ secondaryImage: url })}
                 companyId={companyId}
                 fieldKey={`${selectedSemanticModule.id}:${contentPath("secondaryImage")}`}
+                {...mediaPositionControl(contentPath("secondaryImage"), content.secondaryImagePosition, (secondaryImagePosition) => updateSelectedContent({ secondaryImagePosition }))}
               />
             </Box>
             <TextField
@@ -10270,6 +10758,7 @@ function InspectorColumn() {
                         onChange={(url) => updateItem(index, { image: url })}
                         companyId={companyId}
                         fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "image")}`}
+                        {...mediaPositionControl(itemPath(index, "image"), item.imagePosition, (imagePosition) => updateItem(index, { imagePosition }))}
                       />
                     </Box>
                     <TextField
@@ -10305,6 +10794,7 @@ function InspectorColumn() {
                 onChange={(url) => updateSelectedContent({ backgroundImage: url })}
                 companyId={companyId}
                 fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundImage")}`}
+                {...mediaPositionControl(contentPath("backgroundImage"), content.backgroundImagePosition, (backgroundImagePosition) => updateSelectedContent({ backgroundImagePosition }))}
               />
             </Box>
             {isForgeMotionTheme ? <Box data-module-field-path={contentPath("backgroundPoster")}>
@@ -10314,6 +10804,7 @@ function InspectorColumn() {
                 onChange={(url) => updateSelectedContent({ backgroundPoster: url })}
                 companyId={companyId}
                 fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundPoster")}`}
+                {...mediaPositionControl(contentPath("backgroundPoster"), content.backgroundPosterPosition, (backgroundPosterPosition) => updateSelectedContent({ backgroundPosterPosition }))}
               />
             </Box> : null}
           </>
@@ -10364,6 +10855,7 @@ function InspectorColumn() {
                   onChange={(url) => updateSelectedContent({ backgroundImage: url })}
                   companyId={companyId}
                   fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundImage")}`}
+                  {...mediaPositionControl(contentPath("backgroundImage"), content.backgroundImagePosition, (backgroundImagePosition) => updateSelectedContent({ backgroundImagePosition }))}
                 />
               </Box>
               <TextField
@@ -10381,6 +10873,7 @@ function InspectorColumn() {
                   onChange={(url) => updateSelectedContent({ backgroundPoster: url })}
                   companyId={companyId}
                   fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundPoster")}`}
+                  {...mediaPositionControl(contentPath("backgroundPoster"), content.backgroundPosterPosition, (backgroundPosterPosition) => updateSelectedContent({ backgroundPosterPosition }))}
                 />
               </Box>
             </> : null}
@@ -10435,6 +10928,7 @@ function InspectorColumn() {
                 onChange={(url) => updateSelectedContent({ posterImage: url, posterUrl: url })}
                 companyId={companyId}
                 fieldKey={`${selectedSemanticModule.id}:${contentPath("posterImage")}`}
+                {...mediaPositionControl(contentPath("posterImage"), content.posterImagePosition, (posterImagePosition) => updateSelectedContent({ posterImagePosition }))}
               />
             </Box>
           </>
@@ -10475,7 +10969,36 @@ function InspectorColumn() {
             ) : null}
             {usesOperationalServiceRecords ? (
               <Alert severity="info" variant="outlined">
-                Service cards use the existing Services workspace. This section controls only the editable heading, eyebrow, introduction, position, and visibility.
+                <Stack spacing={1}>
+                  <Typography variant="body2">
+                    These cards come from the Services workspace. Hiding them here does not delete services or change pricing, availability, or booking.
+                  </Typography>
+                  <Link
+                    component={RouterLink}
+                    to="/manager/dashboard?view=advanced-management&panel=services"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    underline="hover"
+                    sx={{ alignSelf: "flex-start", fontWeight: 700 }}
+                  >
+                    Open Services workspace ↗
+                  </Link>
+                  <FormControlLabel
+                    control={(
+                      <Switch
+                        checked={selectedSemanticModule.enabled !== false}
+                        onChange={(_, checked) =>
+                          updateSemanticModule(selectedSemanticModule.id, (module) => ({
+                            ...module,
+                            enabled: checked,
+                          }))
+                        }
+                        inputProps={{ "aria-label": "Show managed Services on this page" }}
+                      />
+                    )}
+                    label="Show managed Services on this page"
+                  />
+                </Stack>
               </Alert>
             ) : <Stack spacing={1}>
               {isForgeMotionTheme && selectedSemanticModule.type === "stats" && items.length === 3 ? (
@@ -10679,6 +11202,7 @@ function InspectorColumn() {
                             onChange={(url) => updateItem(index, { image: url })}
                             companyId={companyId}
                             fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "image")}`}
+                            {...mediaPositionControl(itemPath(index, "image"), item.imagePosition, (imagePosition) => updateItem(index, { imagePosition }))}
                           />
                         </Box>
                         <TextField
@@ -10700,6 +11224,7 @@ function InspectorColumn() {
                             onChange={(url) => updateItem(index, { image: url, imageUrl: url })}
                             companyId={companyId}
                             fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "image")}`}
+                            {...mediaPositionControl(itemPath(index, "image"), item.imagePosition, (imagePosition) => updateItem(index, { imagePosition }))}
                           />
                         </Box>
                         <TextField
@@ -10721,6 +11246,7 @@ function InspectorColumn() {
                             onChange={(url) => updateItem(index, { beforeImage: url })}
                             companyId={companyId}
                             fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "beforeImage")}`}
+                            {...mediaPositionControl(itemPath(index, "beforeImage"), item.beforeImagePosition, (beforeImagePosition) => updateItem(index, { beforeImagePosition }))}
                           />
                         </Box>
                         <Box data-module-field-path={itemPath(index, "afterImage")}>
@@ -10730,6 +11256,7 @@ function InspectorColumn() {
                             onChange={(url) => updateItem(index, { afterImage: url })}
                             companyId={companyId}
                             fieldKey={`${selectedSemanticModule.id}:${itemPath(index, "afterImage")}`}
+                            {...mediaPositionControl(itemPath(index, "afterImage"), item.afterImagePosition, (afterImagePosition) => updateItem(index, { afterImagePosition }))}
                           />
                         </Box>
                         <TextField
@@ -10861,6 +11388,7 @@ function InspectorColumn() {
 
   return (
     <Stack spacing={1.5}>
+    {!floating && (
     <CollapsibleSection
       id="page-style-card-wrapper"
       title={t("manager.visualBuilder.pageStyle.title")}
@@ -10941,13 +11469,14 @@ function InspectorColumn() {
         }}
       />
     </CollapsibleSection>
+    )}
 
     {(isNextJsContentMode || mode !== "simple") && (
     <CollapsibleSection
-      id="inspector-block"
+      id={floating ? "floating-inspector-block" : "inspector-block"}
       title={t("manager.visualBuilder.inspector.title")}
       description={t("manager.visualBuilder.inspector.description")}
-      expanded={inspectorOpen}
+      expanded={floating || inspectorOpen}
       onChange={(next) => setInspectorOpen(next)}
       defaultExpanded={false}
       actions={
@@ -11949,6 +12478,20 @@ if (authError) {
       )}
 
       {/* Floating panel (single instance) */}
+      {isNextJsContentMode && semanticFloatingInspectorOpen && selectedModule ? (
+        <FloatingInspector.Panel
+          fi={fi}
+          forceOpen
+          selectedIndex={selectedModuleIndex}
+          selectedBlockObj={selectedModule}
+          panelTitle={`Floating editor — ${semanticModuleDisplayLabel(selectedModule)}`}
+          panelWidth={460}
+          anchorSide="right"
+          onClose={() => setSemanticFloatingInspectorOpen(false)}
+        >
+          <InspectorColumn floating />
+        </FloatingInspector.Panel>
+      ) : null}
       {!isNextJsContentMode && <FloatingInspector.Panel
         fi={fi}
         selectedIndex={selectedBlock}
@@ -12013,6 +12556,79 @@ if (authError) {
         onJumpToNavSettings={handleJumpToNav}
         onJumpToAssets={handleJumpToAssets}
       />
+
+      <Dialog
+        open={newArticleDialogOpen}
+        onClose={() => !busy && setNewArticleDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Create article draft</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            <Alert severity="info" variant="outlined">
+              This creates an unpublished WebsitePage article using the selected theme. It will stay out of the public sitemap until you publish it.
+            </Alert>
+            <TextField
+              autoFocus
+              required
+              fullWidth
+              size="small"
+              label="Article title"
+              value={newArticleDraft.title}
+              onChange={(event) => {
+                const title = event.target.value;
+                setNewArticleDraft((current) => ({
+                  ...current,
+                  title,
+                  slug: current.slugTouched ? current.slug : slugifyWebsiteArticle(title),
+                }));
+              }}
+              placeholder="How to choose the right service"
+            />
+            <TextField
+              fullWidth
+              size="small"
+              label="Article URL"
+              value={newArticleDraft.slug}
+              onChange={(event) =>
+                setNewArticleDraft((current) => ({
+                  ...current,
+                  slug: slugifyWebsiteArticle(event.target.value.replace(/^\/?blog\//i, "")),
+                  slugTouched: true,
+                }))
+              }
+              InputProps={{ startAdornment: <InputAdornment position="start">/blog/</InputAdornment> }}
+              helperText="Generated from the title. You can change it now; avoid changing it after publishing."
+            />
+            <TextField
+              fullWidth
+              size="small"
+              multiline
+              minRows={2}
+              label="Search description"
+              value={newArticleDraft.description}
+              onChange={(event) =>
+                setNewArticleDraft((current) => ({ ...current, description: event.target.value }))
+              }
+              placeholder="Briefly explain the question this article answers."
+              helperText="Used as the starting SEO and social description; review it before publishing."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNewArticleDialogOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={createBlogPost}
+            disabled={busy || !String(newArticleDraft.title || "").trim()}
+          >
+            {busy ? "Creating…" : "Create draft"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={blockPreview.open}

@@ -143,11 +143,28 @@ function CommonFields({ block, onChangeRoot }) {
 // ...imports stay the same
 
 /* -------------------- Reusable media field -------------------- */
-export function ImageField({ label, value, onChange, companyId, fieldKey, allowVideo = false }) {
+const clampFocalPercent = (value) => Math.max(0, Math.min(100, Number(value) || 0));
+
+export function ImageField({
+  label,
+  value,
+  onChange,
+  companyId,
+  fieldKey,
+  allowVideo = false,
+  position,
+  onPositionChange,
+  onPositionPreview,
+}) {
   const { t } = useTranslation();
   const [dragOver, setDragOver] = useState(false);
   const [inputUrl, setInputUrl] = useState(value || "");
   const [broken, setBroken] = useState(false);
+  const [previewPosition, setPreviewPosition] = useState({
+    x: clampFocalPercent(position?.x ?? 50),
+    y: clampFocalPercent(position?.y ?? 50),
+  });
+  const positionDragRef = React.useRef(null);
   // Labels such as "Image" repeat across Team, Gallery and Story panels.
   // Keep each selected semantic field's library state independent so a
   // remount can never reopen or close a different item's dialog.
@@ -158,6 +175,46 @@ export function ImageField({ label, value, onChange, companyId, fieldKey, allowV
     setInputUrl(value || "");
     setBroken(false);
   }, [value]);
+
+  useEffect(() => {
+    if (positionDragRef.current) return;
+    setPreviewPosition({
+      x: clampFocalPercent(position?.x ?? 50),
+      y: clampFocalPercent(position?.y ?? 50),
+    });
+  }, [position?.x, position?.y]);
+
+  const canReposition = Boolean(inputUrl && !isWebsiteVideoReference(inputUrl) && onPositionChange);
+  const previewNextPosition = (next) => {
+    setPreviewPosition(next);
+    onPositionPreview?.(next);
+  };
+  const finishPositionDrag = (event) => {
+    const drag = positionDragRef.current;
+    if (!drag) return;
+    positionDragRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    onPositionChange?.(drag.latest || previewPosition);
+  };
+  const nudgePosition = (event) => {
+    if (!canReposition) return;
+    const step = event.shiftKey ? 10 : 2;
+    const direction = {
+      ArrowLeft: { x: -step, y: 0 },
+      ArrowRight: { x: step, y: 0 },
+      ArrowUp: { x: 0, y: -step },
+      ArrowDown: { x: 0, y: step },
+    }[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const next = {
+      x: clampFocalPercent(previewPosition.x + direction.x),
+      y: clampFocalPercent(previewPosition.y + direction.y),
+    };
+    previewNextPosition(next);
+    onPositionChange?.(next);
+  };
 
   // Ensure we always return an absolute URL for previews & CSS backgrounds
   const toAbsoluteUrl = (maybeUrl) => {
@@ -289,18 +346,120 @@ export function ImageField({ label, value, onChange, companyId, fieldKey, allowV
           }}
         />
       ) : inputUrl ? (
-        <img
-          src={toAbsoluteUrl(inputUrl)}
-          alt="selected"
-          onError={() => setBroken(true)}
-          onLoad={() => setBroken(false)}
-          style={{
-            width: "100%",
-            maxHeight: 160,
-            objectFit: "cover",
-            borderRadius: 6,
+        <Box
+          role={canReposition ? "application" : undefined}
+          tabIndex={canReposition ? 0 : undefined}
+          aria-label={canReposition ? `${label}. Drag the image to reposition its visible area, or use arrow keys.` : undefined}
+          onKeyDown={nudgePosition}
+          onPointerDown={(event) => {
+            if (!canReposition || (event.button != null && event.button !== 0)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            positionDragRef.current = {
+              startX: event.clientX,
+              startY: event.clientY,
+              position: previewPosition,
+            };
           }}
-        />
+          onPointerMove={(event) => {
+            const drag = positionDragRef.current;
+            if (!drag) return;
+            event.preventDefault();
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const next = {
+              x: clampFocalPercent(drag.position.x - ((event.clientX - drag.startX) / Math.max(bounds.width, 1)) * 100),
+              y: clampFocalPercent(drag.position.y - ((event.clientY - drag.startY) / Math.max(bounds.height, 1)) * 100),
+            };
+            drag.latest = next;
+            previewNextPosition(next);
+          }}
+          onPointerUp={finishPositionDrag}
+          onPointerCancel={finishPositionDrag}
+          sx={{
+            position: "relative",
+            height: 160,
+            overflow: "hidden",
+            borderRadius: 1,
+            bgcolor: "common.black",
+            cursor: canReposition ? "grab" : "default",
+            touchAction: canReposition ? "none" : "auto",
+            userSelect: "none",
+            outline: "none",
+            "&:active": { cursor: canReposition ? "grabbing" : "default" },
+            "&:focus-visible": { boxShadow: (theme) => `0 0 0 3px ${theme.palette.primary.main}` },
+          }}
+        >
+          <Box
+            component="img"
+            src={toAbsoluteUrl(inputUrl)}
+            alt="selected"
+            draggable={false}
+            onError={() => setBroken(true)}
+            onLoad={() => setBroken(false)}
+            sx={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              objectFit: "cover",
+              objectPosition: `${previewPosition.x}% ${previewPosition.y}%`,
+              pointerEvents: "none",
+            }}
+          />
+          {canReposition ? (
+            <>
+              <Box
+                aria-hidden="true"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  background: "linear-gradient(transparent 72%, rgba(0,0,0,.6))",
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  position: "absolute",
+                  left: 10,
+                  bottom: 8,
+                  color: "common.white",
+                  fontWeight: 700,
+                  pointerEvents: "none",
+                  textShadow: "0 1px 4px rgba(0,0,0,.75)",
+                }}
+              >
+                Drag to reposition · {Math.round(previewPosition.x)} / {Math.round(previewPosition.y)}
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const centered = { x: 50, y: 50 };
+                  previewNextPosition(centered);
+                  onPositionChange?.(centered);
+                }}
+                sx={{
+                  position: "absolute",
+                  right: 8,
+                  bottom: 6,
+                  minWidth: 0,
+                  px: 1,
+                  py: 0.35,
+                  bgcolor: "rgba(15,23,42,.78)",
+                  color: "common.white",
+                  fontSize: 10,
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "rgba(15,23,42,.94)" },
+                }}
+              >
+                Center
+              </Button>
+            </>
+          ) : null}
+        </Box>
       ) : (
         <Box
           sx={{

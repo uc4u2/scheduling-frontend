@@ -196,6 +196,13 @@ export function createIronEmberOriginalHomeModules() {
       embedUrl: "https://www.openstreetmap.org/export/embed.html?bbox=-79.426%2C43.639%2C-79.401%2C43.652&layer=mapnik&marker=43.6465%2C-79.4135",
       primaryCta: { label: "Open studio map", href: "https://maps.google.com/?q=Queen+West+Toronto" },
     }),
+    moduleRecord("iron-home-contact-form", "contactForm", "home.beforeContact", 16, {
+      eyebrow: "Contact",
+      heading: "Send a studio note.",
+      intro: "Use the existing Website Form to ask a question before choosing a service.",
+      formKey: "contact",
+      submitLabel: "Send message",
+    }),
   ];
 
   return JSON.parse(JSON.stringify(modules));

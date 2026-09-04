@@ -192,8 +192,14 @@ function PanelInner({
   onChangeProp,
   renderAdvancedEditor,
   onClose,
+  forceOpen = false,
+  panelTitle = "",
+  panelWidth = 380,
+  anchorSide = "left",
+  children,
 }) {
   const { isFloatingActive, mode, panelOffset, setPanelOffset } = fi;
+  const panelActive = forceOpen || isFloatingActive;
   const dragStateRef = React.useRef(null);
   const paperRef = React.useRef(null);
   const bodyRef = React.useRef(null);
@@ -253,7 +259,7 @@ function PanelInner({
 
   // Keep the floating panel reachable even if a saved offset pushes it off-screen.
   React.useEffect(() => {
-    if (!isFloatingActive || selectedIndex < 0) return;
+    if (!panelActive || selectedIndex < 0) return;
     const node = paperRef.current;
     if (!node) return;
 
@@ -291,16 +297,17 @@ function PanelInner({
     });
 
     return () => window.cancelAnimationFrame(raf);
-  }, [isFloatingActive, selectedIndex, panelOffset?.x, panelOffset?.y, setPanelOffset]);
+  }, [panelActive, selectedIndex, panelOffset?.x, panelOffset?.y, setPanelOffset]);
 
-  if (!isFloatingActive || selectedIndex < 0) return null;
+  if (!panelActive || selectedIndex < 0) return null;
 
   return (
     <Box
       sx={{
         position: "fixed",
         top: { xs: 92, md: 140 },
-        left: { xs: 10, md: 24 },
+        left: anchorSide === "right" ? "auto" : { xs: 10, md: 24 },
+        right: anchorSide === "right" ? { xs: 10, md: 24 } : "auto",
         zIndex: 1300,
         pointerEvents: "none",
       }}
@@ -310,7 +317,7 @@ function PanelInner({
           ref={paperRef}
           elevation={8}
           sx={{
-            width: { xs: 320, md: 380 },
+            width: { xs: 320, md: panelWidth },
             maxWidth: "90vw",
             maxHeight: "80vh",
             borderRadius: 2,
@@ -319,11 +326,40 @@ function PanelInner({
             flexDirection: "column",
             transform: `translate(${panelOffset?.x || 0}px, ${panelOffset?.y || 0}px)`,
             pointerEvents: "auto",
+            ...(forceOpen
+              ? {
+                  bgcolor: "background.paper",
+                  backgroundImage: "none",
+                  opacity: 1,
+                  backdropFilter: "none",
+                  "& .MuiAccordion-root": {
+                    bgcolor: "background.paper",
+                    backgroundImage: "none",
+                    opacity: 1,
+                  },
+                }
+              : {}),
           }}
         >
-          <Box sx={{ p: 1, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              p: 1,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              ...(forceOpen
+                ? {
+                    bgcolor: "background.paper",
+                    backgroundImage: "none",
+                    opacity: 1,
+                  }
+                : {}),
+            }}
+          >
             <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
-              Simple editor — #{selectedIndex + 1}
+              {panelTitle || `Simple editor — #${selectedIndex + 1}`}
             </Typography>
             <Tooltip title="Move panel">
               <IconButton
@@ -356,7 +392,7 @@ function PanelInner({
               bodyScrollTopRef.current = event.currentTarget.scrollTop;
             }}
           >
-            {mode === "simple" && schemaForBlock ? (
+            {children || (mode === "simple" && schemaForBlock ? (
               <SchemaInspector
                 schema={schemaForBlock}
                 value={selectedBlockObj?.props || {}}
@@ -367,7 +403,7 @@ function PanelInner({
             ) : (
               // Fall back to the "advanced" editor provided by VisualSiteBuilder
               renderAdvancedEditor?.({ block: selectedBlockObj, onChangeProps, onChangeProp }) || null
-            )}
+            ))}
           </Box>
         </Paper>
       </ClickAwayListener>

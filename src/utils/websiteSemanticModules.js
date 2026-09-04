@@ -233,7 +233,7 @@ export function inferPageKind(page = {}) {
   if (slug.startsWith("service-") && slug !== "service-areas") return "service-detail";
   if (["about", "team", "our-team"].includes(slug)) return "about";
   if (["gallery", "projects", "projects-gallery", "portfolio", "fleet"].includes(slug)) return "projects";
-  if (["blog", "journal", "news"].includes(slug)) return "blog";
+  if (["blog", "journal", "news"].includes(slug) || slug.startsWith("blog/")) return "blog";
   if (slug === "reviews") return "reviews";
   if (slug === "jobs") return "jobs";
   if (slug === "job-detail") return "job-detail";
@@ -603,7 +603,9 @@ function normalizeModuleFromSection(section = {}, pageKind = "generic") {
         image,
         imageUrl: image,
         imageAlt: props.imageAlt || props.alt || "",
+        imagePosition: props.imagePosition || { x: 50, y: 50 },
         secondaryImages,
+        secondaryImagePositions: Array.isArray(props.secondaryImagePositions) ? props.secondaryImagePositions : [],
         ...normalizeCta(props, true),
       };
       }
@@ -818,7 +820,9 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         image: "",
         imageUrl: "",
         imageAlt: "",
+        imagePosition: { x: 50, y: 50 },
         secondaryImages: [],
+        secondaryImagePositions: [],
         primaryCta: { label: "Learn more", href: "#" },
         secondaryCta: { label: "", href: "" },
       };

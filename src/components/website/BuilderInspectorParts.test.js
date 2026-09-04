@@ -42,6 +42,49 @@ describe("ImageField", () => {
     expect(screen.queryByAltText("selected")).not.toBeInTheDocument();
   });
 
+  it("repositions directly in the existing image preview and commits once on release", () => {
+    Object.defineProperty(window, "PointerEvent", {
+      configurable: true,
+      value: MouseEvent,
+    });
+    const onPositionPreview = jest.fn();
+    const onPositionChange = jest.fn();
+    render(
+      <ImageField
+        label="Gallery image"
+        value="https://cdn.example.test/gallery.jpg"
+        onChange={jest.fn()}
+        companyId={7}
+        position={{ x: 50, y: 50 }}
+        onPositionPreview={onPositionPreview}
+        onPositionChange={onPositionChange}
+      />
+    );
+
+    const surface = screen.getByRole("application", { name: /Gallery image/ });
+    surface.getBoundingClientRect = () => ({
+      width: 400,
+      height: 160,
+      top: 0,
+      left: 0,
+      right: 400,
+      bottom: 160,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+    fireEvent.pointerDown(surface, { button: 0, pointerId: 1, clientX: 200, clientY: 80 });
+    fireEvent.pointerMove(surface, { pointerId: 1, clientX: 160, clientY: 96 });
+
+    expect(onPositionPreview).toHaveBeenLastCalledWith({ x: 60, y: 40 });
+    expect(onPositionChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(surface, { pointerId: 1, clientX: 160, clientY: 96 });
+    expect(onPositionChange).toHaveBeenCalledTimes(1);
+    expect(onPositionChange).toHaveBeenCalledWith({ x: 60, y: 40 });
+    expect(screen.queryByText("Adjust visible area")).not.toBeInTheDocument();
+  });
+
   it.each([
     { name: "oversize.webp", type: "image/webp", size: 5 * 1024 * 1024 + 1, allowVideo: false, label: "manager.visualBuilder.inspector.imageField.upload", message: "Image is too large. Max size 5MB." },
     { name: "oversize.mp4", type: "video/mp4", size: 12 * 1024 * 1024 + 1, allowVideo: true, label: "Upload image/video", message: "Video is too large. Max size 12MB." },

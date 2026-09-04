@@ -61,6 +61,14 @@ const SHARED_PAGES = {
       "projects.supporting": { allowedModuleTypes: ["reviews", "gallery", "cta"], maxInstances: 4, fallbackSlot: "projects.primaryContent" },
     },
   },
+  blog: {
+    slotRules: {
+      "blog.intro": { allowedModuleTypes: ["hero", "richText", "featureStory"], maxInstances: 1 },
+      "blog.primaryContent": { allowedModuleTypes: ["richText", "featureStory", "gallery"], maxInstances: 8, required: true },
+      "blog.supporting": { allowedModuleTypes: ["faq", "reviews", "gallery", "cta"], maxInstances: 4, fallbackSlot: "blog.primaryContent" },
+      "blog.finalCta": { allowedModuleTypes: ["cta", "bookingCta"], maxInstances: 2, fallbackSlot: "blog.supporting" },
+    },
+  },
   generic: {
     slotRules: {
       "generic.primaryContent": { allowedModuleTypes: ["richText", "faq", "gallery", "map", "cta", "reviews", "contactForm", "featureStory"], maxInstances: 8, required: true },

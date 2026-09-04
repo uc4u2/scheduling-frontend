@@ -29,17 +29,90 @@ import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
 import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
-import { createForgeMotionOriginalHomeModules } from "./forgeMotionHomeBlueprint";
+import {
+  createForgeMotionOriginalHomeModules,
+  upgradeLegacyForgeMotionHomeModules,
+} from "./forgeMotionHomeBlueprint";
+import {
+  createForgeMotionContactModules,
+  upgradeForgeMotionContactModules,
+} from "./forgeMotionContactBlueprint";
+import {
+  FORGE_MOTION_PAGE_STARTER_VERSION,
+  createForgeMotionBlogPostPage,
+  createForgeMotionPageModules,
+  upgradeForgeMotionMarketingPage,
+} from "./forgeMotionPageBlueprint";
+import { createWebsiteBlogPostPage } from "./websiteBlogBlueprint";
 import { normalizeFooterConfig } from "./headerFooter";
-import { getCompatibleSlots } from "./websiteThemeModules";
 import {
   getCompatibleModuleChoices,
+  getCompatibleSlots,
+  getPageManifest,
   getThemeModuleDisplayLabel,
   getThemeModuleManifest,
   resolveFallbackSlot,
+  WEBSITE_THEME_MODULE_MANIFESTS,
 } from "./websiteThemeModules";
 
 describe("website semantic modules", () => {
+  it("creates a complete Forge Contact blueprint with canonical editable media and form modules", () => {
+    const modules = createForgeMotionContactModules();
+    expect(modules.map((module) => module.type)).toEqual([
+      "hero",
+      "contactIntro",
+      "contactDetails",
+      "hoursLocation",
+      "map",
+      "contactForm",
+      "bookingCta",
+    ]);
+    expect(modules.find((module) => module.type === "hero")).toEqual(expect.objectContaining({
+      id: "forge-contact-hero",
+      slot: "contact.hero",
+      content: expect.objectContaining({ image: expect.stringContaining("images.unsplash.com"), imageAlt: expect.any(String) }),
+    }));
+    expect(modules.find((module) => module.type === "contactIntro")).toEqual(expect.objectContaining({
+      id: "forge-contact-intro",
+      slot: "contact.intro",
+      content: expect.objectContaining({
+        eyebrow: "Studio access",
+        heading: "Details, location, and a direct line.",
+      }),
+    }));
+    expect(modules.find((module) => module.type === "hoursLocation").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.type === "contactForm").content.formKey).toBe("contact");
+    expect(modules.find((module) => module.type === "bookingCta").content.backgroundImage).toContain("images.unsplash.com");
+  });
+
+  it("upgrades only generic Forge Contact defaults while preserving authored content and ids", () => {
+    const upgraded = upgradeForgeMotionContactModules([
+      { id: "saved-hero", type: "hero", enabled: true, slot: "contact.hero", order: 0, content: { heading: "Contact", image: "/website/enterprise-events-aurora/hero-01.jpg", imageAlt: "Barber cutting a client's hair in a dark studio." } },
+      { id: "saved-details", type: "contactDetails", enabled: true, slot: "contact.details", order: 1, content: { heading: "Contact Details", items: [{ id: "location", title: "Main location", body: "123 Main Street" }] } },
+      { id: "saved-hours", type: "hoursLocation", enabled: true, slot: "contact.hours", order: 2, content: { heading: "Office hours", items: [{ id: "hours", title: "Office hours", body: "Monday - Friday: 9AM - 6PM Saturday: 10AM - 4PM" }] } },
+      { id: "saved-map", type: "map", enabled: true, slot: "contact.map", order: 3, content: { heading: "Contact Details", query: "123 Main Street", primaryCta: { label: "Book appointment", href: "#" } } },
+      { id: "saved-form", type: "contactForm", enabled: true, slot: "contact.form", order: 4, content: { heading: "Get in touch", submitLabel: "Send" } },
+      { id: "saved-cta", type: "bookingCta", enabled: true, slot: "contact.booking", order: 5, content: { eyebrow: "Next step", heading: "Prefer to choose a service first?", body: "Browse the service menu and continue through the existing booking flow.", primaryCta: { label: "View services", href: "/services" } } },
+    ]);
+    expect(upgraded.find((module) => module.id === "saved-hero").content.image).toContain("images.unsplash.com");
+    expect(upgraded.find((module) => module.id === "forge-contact-intro")).toEqual(expect.objectContaining({
+      type: "contactIntro",
+      slot: "contact.intro",
+    }));
+    expect(upgraded.find((module) => module.id === "saved-details").content.items[0]).toEqual(expect.objectContaining({ title: "Studio location", body: "123 Main Street" }));
+    expect(upgraded.find((module) => module.id === "saved-hours").content.items).toHaveLength(3);
+    expect(upgraded.find((module) => module.id === "saved-map").content.heading).toBe("Find the studio.");
+    expect(upgraded.find((module) => module.id === "saved-map").content.primaryCta.href).toContain("google.com/maps/search");
+    expect(upgraded.find((module) => module.id === "saved-form").content.heading).toBe("Start your training inquiry.");
+    expect(upgraded.find((module) => module.id === "saved-cta").content.backgroundImage).toContain("images.unsplash.com");
+    expect(upgraded.find((module) => module.id === "saved-cta").content.primaryCta.label).toBe("View training services");
+
+    const authored = upgradeForgeMotionContactModules([
+      { id: "authored-hero", type: "hero", enabled: true, slot: "contact.hero", order: 0, content: { eyebrow: "Talk with Alex", heading: "Plan the next block", subheading: "A custom introduction", image: "https://example.com/custom.jpg", imageAlt: "Alex coaching" } },
+    ]).find((module) => module.id === "authored-hero");
+    expect(authored.content).toEqual(expect.objectContaining({ heading: "Plan the next block", image: "https://example.com/custom.jpg", imageAlt: "Alex coaching" }));
+  });
+
   it("preserves the independent footer page-navigation visibility setting", () => {
     expect(normalizeFooterConfig({ show_navigation: false }).show_navigation).toBe(false);
     expect(normalizeFooterConfig({}).show_navigation).toBe(true);
@@ -163,8 +236,11 @@ describe("website semantic modules", () => {
     const hero = modules.find((module) => module.id === "forge-home-hero");
     expect(hero.content).toEqual(expect.objectContaining({
       posterImage: "",
-      secondaryImages: [],
-      secondaryImageAlts: [],
+      image: expect.stringContaining("images.unsplash.com"),
+      imagePosition: { x: 50, y: 45 },
+      secondaryImages: expect.arrayContaining([expect.stringContaining("images.unsplash.com")]),
+      secondaryImagePositions: [{ x: 50, y: 42 }, { x: 50, y: 38 }],
+      secondaryImageAlts: expect.any(Array),
       layerPanelEnabled: true,
       layerPanelEyebrow: "Training structure",
       layerPanelBody: "Strength · movement · repeatable progress",
@@ -173,20 +249,39 @@ describe("website semantic modules", () => {
     expect(hero.content.slides[0]).toEqual(expect.objectContaining({
       id: "forge-hero-slide-2",
       heading: expect.any(String),
-      image: "",
+      image: expect.stringContaining("images.unsplash.com"),
+      imagePosition: { x: 50, y: 42 },
       posterImage: "",
       imageAlt: expect.any(String),
     }));
     expect(modules.find((module) => module.id === "forge-home-proof").content.items).toHaveLength(4);
-    expect(hero.content.secondaryImageAlts).toHaveLength(0);
+    expect(hero.content.secondaryImageAlts).toHaveLength(2);
     const portfolio = modules.find((module) => module.id === "forge-home-portfolio");
     expect(portfolio.content.items).toHaveLength(8);
     expect(new Set(portfolio.content.items.map((item) => item.id)).size).toBe(8);
     expect(portfolio.content.items.every((item) => item.imageAlt)).toBe(true);
-    expect(modules.find((module) => module.id === "forge-home-cta").content).toEqual(expect.objectContaining({ backgroundImage: "", backgroundPoster: "" }));
+    expect(portfolio.content.items.every((item) => item.image.includes("images.unsplash.com"))).toBe(true);
+    expect(modules.find((module) => module.id === "forge-home-cta").content).toEqual(expect.objectContaining({ backgroundImage: expect.stringContaining("images.unsplash.com"), backgroundPoster: "" }));
     expect(modules.every((module) => module.settings.starterBlueprint === "forge-motion-original")).toBe(true);
     expect(getProfessionHomeBlueprint("forge-motion")).toEqual(expect.objectContaining({ label: "Forge Motion", createModules: expect.any(Function) }));
     modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("upgrades only the known stale Iron Ember homepage when Forge Motion is active", () => {
+    const stale = [{
+      id: "legacy-hero",
+      type: "hero",
+      content: { eyebrow: "Barbershop / Grooming Studio", heading: "Cut With Character." },
+      settings: {},
+    }];
+    const upgraded = upgradeLegacyForgeMotionHomeModules(stale);
+    expect(upgraded).toHaveLength(13);
+    expect(upgraded[0]).toEqual(expect.objectContaining({ id: "forge-home-hero", type: "hero" }));
+    expect(upgraded[0].content.heading).toBe("Build strength that holds up in real life.");
+    expect(upgraded[0].content.image).toContain("images.unsplash.com");
+
+    const authored = [{ id: "custom-hero", type: "hero", content: { heading: "My real studio" } }];
+    expect(upgradeLegacyForgeMotionHomeModules(authored)).toBe(authored);
   });
 
   it("activates schedule as a canonical displayed-content module without changing live availability", () => {
@@ -239,6 +334,81 @@ describe("website semantic modules", () => {
     expect(inferPageKind({ slug: "jobs" })).toBe("jobs");
     expect(inferPageKind({ slug: "job-detail" })).toBe("job-detail");
     expect(inferPageKind({ slug: "blog" })).toBe("blog");
+    expect(inferPageKind({ slug: "blog/build-a-repeatable-week" })).toBe("blog");
+  });
+
+  it("builds Forge fitness pages and unpublished nested blog drafts", () => {
+    const modules = createForgeMotionPageModules("blog");
+    expect(modules.map((module) => module.type)).toEqual(["hero", "featureStory", "bookingCta"]);
+    expect(modules.every((module) => module.id.startsWith("forge-blog-"))).toBe(true);
+
+    const post = createForgeMotionBlogPostPage([{ slug: "blog/new-training-article" }]);
+    expect(post.slug).toBe("blog/new-training-article-2");
+    expect(post.path).toBe(post.slug);
+    expect(post.published).toBe(false);
+    expect(post.show_in_menu).toBe(false);
+    expect(post.noindex).toBe(false);
+    expect(post.content.meta.forgeMotionPageStarterVersion).toBe(FORGE_MOTION_PAGE_STARTER_VERSION);
+    expect(post.content.modules.map((module) => module.type)).toEqual(["hero", "richText", "bookingCta"]);
+  });
+
+  it("builds neutral unpublished article drafts for every Next.js theme", () => {
+    const pages = [
+      {
+        id: 1,
+        slug: "home",
+        is_homepage: true,
+        content: {
+          modules: [
+            {
+              id: "home-hero",
+              type: "hero",
+              content: { image: "/media/site-hero.jpg", imageAlt: "Tenant-owned hero" },
+            },
+          ],
+        },
+      },
+      { id: 2, slug: "blog/choosing-a-service" },
+    ];
+    const article = createWebsiteBlogPostPage(pages, {
+      title: "Choosing a service",
+      slug: "choosing-a-service",
+      description: "A concise guide to choosing the right service.",
+    });
+
+    expect(article.slug).toBe("blog/choosing-a-service-2");
+    expect(article.title).toBe("Choosing a service");
+    expect(article.published).toBe(false);
+    expect(article.show_in_menu).toBe(false);
+    expect(article.content.meta.websiteBlogPost).toBe(true);
+    expect(article.content.modules.map((module) => module.type)).toEqual(["hero", "richText", "cta"]);
+    expect(article.content.modules[0].content.image).toBe("/media/site-hero.jpg");
+    expect(article.seo_description).toBe("A concise guide to choosing the right service.");
+
+    Object.keys(WEBSITE_THEME_MODULE_MANIFESTS).forEach((themeKey) => {
+      const manifest = getPageManifest(themeKey, "blog");
+      expect(manifest.slotRules["blog.primaryContent"].allowedModuleTypes).toContain("richText");
+    });
+  });
+
+  it("repairs stale Forge cross-profession pages without overwriting authored pages", () => {
+    const repaired = upgradeForgeMotionMarketingPage({
+      slug: "blog",
+      title: "Blog",
+      content: { modules: [{ id: "old", type: "richText", content: { heading: "Studio journal", body: "Barber care notes" } }], meta: {} },
+    });
+    expect(repaired.title).toBe("Training notes");
+    expect(repaired.seo_description).toContain("strength");
+    expect(repaired.content.modules[0].id).toBe("forge-blog-hero");
+
+    const authored = upgradeForgeMotionMarketingPage({
+      slug: "about",
+      title: "Our coaching method",
+      content: { modules: [{ id: "authored", type: "richText", content: { heading: "Our own words" } }], meta: {} },
+    });
+    expect(authored.content.modules[0].id).toBe("authored");
+    expect(authored.title).toBe("Our coaching method");
+    expect(authored.content.meta.forgeMotionPageStarterVersion).toBe(FORGE_MOTION_PAGE_STARTER_VERSION);
   });
 
   it("keeps Classic public iframe markup out of a newly editable Next hero", () => {
@@ -276,7 +446,7 @@ describe("website semantic modules", () => {
     expect(modules.map((module) => module.type)).toEqual([
       "hero", "stats", "services", "richText", "team", "featureStory",
       "selectedCuts", "richText", "gallery", "process", "reviews", "faq",
-      "contactIntro", "contactDetails", "hoursLocation", "map",
+      "contactIntro", "contactDetails", "hoursLocation", "map", "contactForm",
     ]);
     expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
     expect(selectedCuts.content.items).toHaveLength(8);
@@ -313,6 +483,13 @@ describe("website semantic modules", () => {
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
+  });
+
+  it("gives every registered profession homepage a canonical WebsiteForm section", () => {
+    getProfessionHomeBlueprintKeys().forEach((themeKey) => {
+      const blueprint = getProfessionHomeBlueprint(themeKey);
+      expect(blueprint.createModules().some((module) => module.type === "contactForm")).toBe(true);
+    });
   });
 
   it("provides Black Letter's complete editable legal rhythm", () => {
@@ -521,7 +698,7 @@ describe("website semantic modules", () => {
       },
     });
 
-    expect(normalized).toHaveLength(16);
+    expect(normalized).toHaveLength(17);
     expect(normalized.some((module) => module.id === "legacy-pricing")).toBe(false);
     expect(normalized.some((module) => module.id === "legacy-team")).toBe(false);
   });
