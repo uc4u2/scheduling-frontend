@@ -33,6 +33,8 @@ export const authInputSx = {
     },
     "& .MuiOutlinedInput-input": {
       py: 1.55,
+      color: "#1f2937",
+      WebkitTextFillColor: "#1f2937",
     },
   },
 };
@@ -216,7 +218,7 @@ export default function AuthCardShell({
                   fontWeight={800}
                   sx={{
                     letterSpacing: "-0.03em",
-                    color: "#1f2937",
+                    color: (theme) => (theme.palette.mode === "dark" ? "#f8fafc" : "#1f2937"),
                     fontSize: { xs: "2rem", md: "2.55rem" },
                     lineHeight: 1.05,
                   }}
