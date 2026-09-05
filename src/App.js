@@ -516,9 +516,18 @@ const ClientAwareLoginRoute = ({ setToken }) => {
       </TenantTransactionalShell>
     );
   }
+
+  // A tenant shell is appropriate only when the URL explicitly identifies a
+  // tenant. The platform-wide /login route must never recover a previously
+  // visited tenant from localStorage: staff and manager sign-in is Schedulaa
+  // infrastructure, not part of a tenant's public website.
+  if (!slug) {
+    return <Login setToken={setToken} allowStoredSite={false} />;
+  }
+
   return (
-    <TenantTransactionalShell activeKey="__login" pagePath="">
-      <Login setToken={setToken} slugOverride={slug} />
+    <TenantTransactionalShell slugOverride={slug} activeKey="__login" pagePath="">
+      <Login setToken={setToken} slugOverride={slug} allowStoredSite={false} />
     </TenantTransactionalShell>
   );
 };

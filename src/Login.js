@@ -80,7 +80,7 @@ const getAuthErrorMessage = (err, fallback) => {
   return payload.message || payload.error || fallback;
 };
 
-const Login = ({ setToken, slugOverride = "" }) => {
+const Login = ({ setToken, slugOverride = "", allowStoredSite = true }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -111,7 +111,9 @@ const Login = ({ setToken, slugOverride = "" }) => {
   const returnToParam = (qs.get("returnTo") || "").trim();
   const disabledReasonParam = (qs.get("reason") || "").trim();
   const siteFromStorage =
-    typeof localStorage !== "undefined" ? (localStorage.getItem("site") || "").trim() : "";
+    allowStoredSite && typeof localStorage !== "undefined"
+      ? (localStorage.getItem("site") || "").trim()
+      : "";
   const effectiveSite = useMemo(() => {
     return (
       String(slugOverride || "").trim() ||

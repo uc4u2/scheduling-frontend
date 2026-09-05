@@ -1,6 +1,6 @@
 import React from "react";
 import { Avatar, Box, Chip, Container, Paper, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, createTheme, ThemeProvider, useTheme } from "@mui/material/styles";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
 export const authInputSx = {
@@ -35,6 +35,11 @@ export const authInputSx = {
       py: 1.55,
       color: "#1f2937",
       WebkitTextFillColor: "#1f2937",
+    },
+    "& input:-webkit-autofill": {
+      WebkitBoxShadow: "0 0 0 1000px rgba(255,255,255,0.98) inset",
+      WebkitTextFillColor: "#1f2937",
+      caretColor: "#1f2937",
     },
   },
 };
@@ -85,20 +90,36 @@ export default function AuthCardShell({
   heroCards = defaultHeroCards,
 }) {
   const hasMobileHeroCopy = Boolean(heroTitle || heroSubtitle);
+  const inheritedTheme = useTheme();
+  const authTheme = React.useMemo(
+    () =>
+      createTheme(inheritedTheme, {
+        palette: {
+          mode: "light",
+          primary: { main: "#f97316", contrastText: "#ffffff" },
+          secondary: { main: "#ea580c" },
+          background: { default: "#f8fafc", paper: "#ffffff" },
+          text: { primary: "#1f2937", secondary: "#64748b" },
+          divider: "rgba(148,163,184,0.28)",
+        },
+      }),
+    [inheritedTheme],
+  );
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        py: { xs: 4, md: 6 },
-        px: { xs: 1.5, sm: 2.5, md: 3.5 },
-        background:
-          "radial-gradient(circle at 12% 18%, rgba(249,115,22,0.12), transparent 34%), radial-gradient(circle at 88% 14%, rgba(251,191,36,0.12), transparent 28%), linear-gradient(180deg, #f8fafc 0%, #f7f5f2 46%, #eef2f7 100%)",
-      }}
-    >
-      <Container maxWidth="lg" sx={{ px: { xs: 0, sm: 1 } }}>
+    <ThemeProvider theme={authTheme}>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          py: { xs: 4, md: 6 },
+          px: { xs: 1.5, sm: 2.5, md: 3.5 },
+          background:
+            "radial-gradient(circle at 12% 18%, rgba(249,115,22,0.12), transparent 34%), radial-gradient(circle at 88% 14%, rgba(251,191,36,0.12), transparent 28%), linear-gradient(180deg, #f8fafc 0%, #f7f5f2 46%, #eef2f7 100%)",
+        }}
+      >
+        <Container maxWidth="lg" sx={{ px: { xs: 0, sm: 1 } }}>
         <Box
           sx={{
             display: "grid",
@@ -358,7 +379,8 @@ export default function AuthCardShell({
             </Box>
           </Box>
         </Box>
-      </Container>
-    </Box>
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 }
