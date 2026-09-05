@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
+  AlertTitle,
   Box,
   Drawer,
   List,
@@ -36,20 +38,43 @@ export default function PlatformAdminShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [admin, setAdmin] = useState(null);
+  const [transactionalEmailAlert, setTransactionalEmailAlert] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  const loadTransactionalEmailHealth = useCallback(async () => {
+    try {
+      const { data } = await platformAdminApi.get("/operations/transactional-email-health");
+      setTransactionalEmailAlert(data?.operational_alert || null);
+    } catch {
+      // Health visibility must never interrupt access to the command center.
+      setTransactionalEmailAlert(null);
+    }
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       try {
         const { data } = await platformAdminApi.get("/auth/me");
         setAdmin(data || null);
+        loadTransactionalEmailHealth();
       } catch {
         localStorage.removeItem("platformAdminToken");
         navigate("/admin/login");
       }
     };
     load();
-  }, [navigate]);
+  }, [loadTransactionalEmailHealth, navigate]);
+
+  useEffect(() => {
+    if (!admin) return undefined;
+    const refresh = () => loadTransactionalEmailHealth();
+    const intervalId = window.setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [admin, loadTransactionalEmailHealth]);
 
   useEffect(() => {
     const openHelp = () => setHelpOpen(true);
@@ -104,6 +129,22 @@ export default function PlatformAdminShell() {
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
+        {transactionalEmailAlert && (
+          <Alert
+            severity={transactionalEmailAlert.severity === "critical" ? "error" : "warning"}
+            action={(
+              <Button color="inherit" size="small" onClick={loadTransactionalEmailHealth}>
+                Refresh
+              </Button>
+            )}
+            sx={{ mb: 2 }}
+          >
+            <AlertTitle>{transactionalEmailAlert.title}</AlertTitle>
+            {transactionalEmailAlert.message}
+            {transactionalEmailAlert.action ? ` ${transactionalEmailAlert.action}` : ""}
+            {transactionalEmailAlert.latest_at ? ` Last detected ${new Date(transactionalEmailAlert.latest_at).toLocaleString()}.` : ""}
+          </Alert>
+        )}
         <Outlet />
       </Box>
       <HelpDialog
