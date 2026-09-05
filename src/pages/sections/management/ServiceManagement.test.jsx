@@ -39,10 +39,10 @@ jest.mock("../../../components/common/CategoryAutocomplete", () => (props) => (
 jest.mock("../../../components/common/CategoryManagerDialog", () => () => null);
 jest.mock("../../../components/tutorials/TutorialHelpCard", () => () => null);
 
-function renderPage() {
+function renderPage(props = {}) {
   return render(
     <ThemeProvider theme={createTheme()}>
-      <ServiceManagement token="token-123" />
+      <ServiceManagement token="token-123" {...props} />
     </ThemeProvider>
   );
 }
@@ -136,6 +136,18 @@ describe("ServiceManagement booking preview", () => {
       expect(
         screen.getByText(/The Service changed after this preview\. Refresh to see current payment behavior\./i)
       ).toBeInTheDocument()
+    );
+  });
+
+  test("support mode does not expose booking payment configuration", async () => {
+    renderPage({ supportMode: true });
+
+    fireEvent.click(await screen.findByRole("button", { name: /manager\.service\.buttonAdd/i }));
+    expect(screen.queryByRole("button", { name: /preview customer payment/i })).not.toBeInTheDocument();
+    expect(mockApiPost).not.toHaveBeenCalledWith(
+      "/api/manager/booking-payment-preview",
+      expect.anything(),
+      expect.anything()
     );
   });
 });

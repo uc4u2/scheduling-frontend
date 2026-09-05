@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   FormControlLabel,
   Paper,
   Stack,
@@ -13,9 +14,9 @@ import {
 import api from "../../../utils/api";
 
 const AGREEMENT_TEXT = [
-  "You are approving temporary support access to edit your website and/or domain settings.",
-  "This access is time-limited and may be ended at any time.",
-  "Only Schedulaa support staff assigned to this ticket can use the access.",
+  "You are approving temporary support access only to the capabilities listed above.",
+  "This access remains active only for the support session and may be ended at any time.",
+  "Only authorized Schedulaa platform staff can start and use the support session.",
 ];
 
 const SupportConsentPage = () => {
@@ -25,6 +26,32 @@ const SupportConsentPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [details, setDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(Boolean(token));
+
+  useEffect(() => {
+    let active = true;
+    if (!token) {
+      setDetailsLoading(false);
+      return undefined;
+    }
+    api.get("/api/support/sessions/approval-details", {
+      params: { token },
+      noAuth: true,
+      noCompanyHeader: true,
+    }).then(({ data }) => {
+      if (active) setDetails(data || null);
+    }).catch((err) => {
+      if (!active) return;
+      const code = err?.response?.data?.error;
+      setError(code === "token_expired" ? "This approval link has expired." : "This approval link is invalid.");
+    }).finally(() => {
+      if (active) setDetailsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [token]);
 
   const handleApprove = async () => {
     if (!checked) {
@@ -40,7 +67,7 @@ const SupportConsentPage = () => {
       setError("");
       await api.post(
         "/api/support/sessions/approve-by-token",
-        { token, consent: true, consent_version: "v1" },
+        { token, consent: true, consent_version: "v2-scoped" },
         { noAuth: true, noCompanyHeader: true }
       );
       setSuccess(true);
@@ -71,13 +98,30 @@ const SupportConsentPage = () => {
             Please review and approve the support access request.
           </Typography>
 
+          {detailsLoading && <CircularProgress size={24} />}
+          {details && (
+            <Alert severity="info">
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {details.scope_label}
+              </Typography>
+              <Typography variant="body2">{details.scope_description}</Typography>
+              <Box component="ul" sx={{ mb: 0, pl: 2.5 }}>
+                {(details.capabilities || []).map((capability) => (
+                  <li key={capability}>
+                    {capability.replace(/_/g, " ")}
+                  </li>
+                ))}
+              </Box>
+            </Alert>
+          )}
+
           <Stack spacing={1.5} sx={{ mt: 1 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               Agreement (Support Access Consent)
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               By approving support access, you authorize Schedulaa support staff to temporarily
-              access your website and/or domain settings for the purpose of resolving your request.
+              access only the capabilities listed above for the purpose of resolving your request.
             </Typography>
             {AGREEMENT_TEXT.map((line) => (
               <Typography key={line} variant="body2" sx={{ color: "text.secondary" }}>
@@ -111,7 +155,7 @@ const SupportConsentPage = () => {
             <Button
               variant="contained"
               onClick={handleApprove}
-              disabled={submitting || success}
+              disabled={submitting || success || detailsLoading || !details}
             >
               {submitting ? "Approving..." : "Approve access"}
             </Button>

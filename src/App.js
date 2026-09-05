@@ -28,6 +28,7 @@ import {
   isPublicTenantGatewayEnabled,
   shouldUseNextJsPublicRenderer,
 } from "./utils/publicWebsite";
+import { getSupportWorkspaceContext } from "./utils/supportWorkspaceAccess";
 
 // Components
 import MainNav from "./landing/components/MainNav";
@@ -414,7 +415,11 @@ const FeatureGate = ({ feature, children }) => {
 const RequireAuthRoute = ({ children }) => {
   const location = useLocation();
   const hasToken = Boolean(localStorage.getItem("token"));
-  if (!hasToken) {
+  const hasSupportContext = getSupportWorkspaceContext(
+    location.pathname,
+    location.search
+  ).valid;
+  if (!hasToken && !hasSupportContext) {
     const next = `${location.pathname}${location.search || ""}${location.hash || ""}`;
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
   }

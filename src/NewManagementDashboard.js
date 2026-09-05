@@ -1740,7 +1740,13 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   );
 };
 
-const NewManagementDashboard = ({ token, initialView, sectionOnly = false, supportMode = false }) => {
+const NewManagementDashboard = ({
+  token,
+  initialView,
+  sectionOnly = false,
+  supportMode = false,
+  supportCapabilities = [],
+}) => {
   const theme = useTheme();
   const isRtl = theme.direction === "rtl";
   const navigate = useNavigate();
@@ -1830,7 +1836,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
   const allowedViewKeys = useMemo(() => {
     if (supportMode) {
-      return ["website-pages"];
+      return ["website-pages", "advanced-management"];
     }
     const keys = new Set();
     filteredMenuConfig.forEach((item) => {
@@ -3058,7 +3064,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         );
 
       case "advanced-management":
-        return <SecondNewManagementDashboard token={token} />;
+        return (
+          <SecondNewManagementDashboard
+            token={token}
+            supportMode={supportMode}
+            supportCapabilities={supportCapabilities}
+          />
+        );
 
       case "operations-launcher":
         return <OperationsLauncher />;

@@ -394,7 +394,10 @@ export default function ManagerTicketsView() {
                         </Button>
                       }
                     >
-                      Support requested access to your website builder. Approve to allow editing for 30 minutes.
+                      Support requested {supportSession.scope_label || "temporary website access"}.
+                      {supportSession.scope_description
+                        ? ` ${supportSession.scope_description}`
+                        : " Review the approval page to see the exact permissions."}
                     </Alert>
                   )}
                 {supportNotice && (

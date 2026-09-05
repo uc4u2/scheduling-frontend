@@ -21,6 +21,12 @@ import platformAdminApi from "../../api/platformAdminApi";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+import {
+  buildSupportWorkspacePath,
+  downloadWebsiteDesignHandoff,
+  getSupportCapabilities,
+  getWebsiteDesignWorkspaceAction,
+} from "../utils/websiteDesignWorkspace";
 
 const BASE_STATUSES = [
   "new",
@@ -43,6 +49,13 @@ const WEBSITE_DESIGN_STATUSES = [
 
 const formatDate = (value, tz) => formatDateTimeInTz(value, tz);
 
+const FALLBACK_SUPPORT_SCOPES = [
+  { scope: "website_all", scope_label: "Website and domain" },
+  { scope: "website_services", scope_label: "Website, domain, and services" },
+  { scope: "website_catalog", scope_label: "Website, services, and products" },
+  { scope: "website_commerce", scope_label: "Full website commerce setup" },
+];
+
 export default function AdminTicketDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -56,6 +69,10 @@ export default function AdminTicketDetailPage() {
   const [messageBody, setMessageBody] = useState("");
   const [status, setStatus] = useState("");
   const [assignedAdminId, setAssignedAdminId] = useState("");
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const [workspaceNotice, setWorkspaceNotice] = useState("");
+  const [requestedScope, setRequestedScope] = useState("website_all");
+  const [supportScopes, setSupportScopes] = useState(FALLBACK_SUPPORT_SCOPES);
   const theme = useTheme();
   const timezone = useMemo(() => getUserTimezone(admin?.timezone), [admin?.timezone]);
   const lastMessageId = useMemo(() => {
@@ -73,6 +90,15 @@ export default function AdminTicketDetailPage() {
   const supportPending = supportSession?.status === "pending";
   const supportActive = supportSession?.status === "active";
   const supportApproved = Boolean(supportSession?.approved_at);
+  const workspaceAction = getWebsiteDesignWorkspaceAction(supportSession);
+  const supportCapabilities = useMemo(() => {
+    return getSupportCapabilities(supportSession);
+  }, [supportSession]);
+  const canManageWebsite = supportCapabilities.includes("website_builder");
+  const canManageDomain = supportCapabilities.includes("domain_connect");
+  const canManageServices = supportCapabilities.includes("services_manage");
+  const canManageProducts = supportCapabilities.includes("products_manage");
+  const canManageShipping = supportCapabilities.includes("shipping_manage");
 
   const loadAdmin = async () => {
     try {
@@ -83,9 +109,9 @@ export default function AdminTicketDetailPage() {
     }
   };
 
-  const loadTicket = async (before) => {
+  const loadTicket = async (before, options = {}) => {
     try {
-      setLoading(true);
+      if (!options.silent) setLoading(true);
       const params = new URLSearchParams();
       if (before) params.set("before", String(before));
       params.set("limit", "50");
@@ -101,9 +127,9 @@ export default function AdminTicketDetailPage() {
       setAssignedAdminId(data?.assigned_admin_id || "");
       setError("");
     } catch (err) {
-      setError("Unable to load ticket.");
+      if (!options.silent) setError("Unable to load ticket.");
     } finally {
-      setLoading(false);
+      if (!options.silent) setLoading(false);
     }
   };
 
@@ -145,8 +171,20 @@ export default function AdminTicketDetailPage() {
     }
   };
 
+  const loadSupportScopes = async () => {
+    try {
+      const { data } = await platformAdminApi.get("/support-session/scopes");
+      if (Array.isArray(data?.scopes) && data.scopes.length) {
+        setSupportScopes(data.scopes);
+      }
+    } catch {
+      setSupportScopes(FALLBACK_SUPPORT_SCOPES);
+    }
+  };
+
   useEffect(() => {
     loadAdmin();
+    loadSupportScopes();
   }, []);
 
   useEffect(() => {
@@ -168,6 +206,15 @@ export default function AdminTicketDetailPage() {
     }, 5000);
     return () => clearInterval(timer);
   }, [lastMessageId, ticket?.status]);
+
+  useEffect(() => {
+    if (!supportPending || supportApproved) return undefined;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      loadTicket(undefined, { silent: true });
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [supportPending, supportApproved, id]);
 
   const sendMessage = async () => {
     if (!messageBody.trim()) return;
@@ -216,7 +263,7 @@ export default function AdminTicketDetailPage() {
   const updateStatus = async (value) => {
     try {
       const { data } = await platformAdminApi.patch(`/tickets/${id}/status`, { status: value });
-      setTicket(data);
+      setTicket((prev) => (prev ? { ...prev, ...data } : data));
       setStatus(data.status);
     } catch {
       setError("Unable to update status.");
@@ -227,7 +274,7 @@ export default function AdminTicketDetailPage() {
     try {
       const payload = { assigned_admin_id: value || null };
       const { data } = await platformAdminApi.patch(`/tickets/${id}/assign`, payload);
-      setTicket(data);
+      setTicket((prev) => (prev ? { ...prev, ...data } : data));
       setAssignedAdminId(data.assigned_admin_id || "");
     } catch {
       setError("Unable to assign ticket.");
@@ -237,13 +284,15 @@ export default function AdminTicketDetailPage() {
   const requestSupportSession = async () => {
     try {
       const { data } = await platformAdminApi.post(`/tickets/${id}/support-session/request`, {
-        scope: "website_all",
+        scope: requestedScope,
       });
       if (data?.support_session) {
         setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
       }
+      return data?.support_session || null;
     } catch (err) {
       setError("Unable to request support session.");
+      return null;
     }
   };
 
@@ -253,9 +302,11 @@ export default function AdminTicketDetailPage() {
       if (data?.support_session) {
         setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
       }
+      return data?.support_session || null;
     } catch (err) {
       const msg = err?.response?.data?.error || "Unable to start support session.";
       setError(msg);
+      return null;
     }
   };
 
@@ -270,13 +321,83 @@ export default function AdminTicketDetailPage() {
     }
   };
 
-  const openSupportLink = (path) => {
-    if (!supportSession?.id || !ticket?.company_id) return;
-    const params = new URLSearchParams();
-    params.set("support_session", String(supportSession.id));
-    params.set("company_id", String(ticket.company_id));
-    const url = `${path}?${params.toString()}`;
+  const buildSupportLink = (path, session = supportSession) => {
+    return buildSupportWorkspacePath(path, session, ticket?.company_id, window.location.origin);
+  };
+
+  const openSupportLink = (path, session = supportSession, targetWindow = null) => {
+    const url = buildSupportLink(path, session);
+    if (!url) return;
+    if (targetWindow && !targetWindow.closed) {
+      targetWindow.location.replace(url);
+      return;
+    }
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const launchDesignWorkspace = async () => {
+    if (workspaceBusy) return;
+    setWorkspaceBusy(true);
+    setWorkspaceNotice("");
+    setError("");
+    let pendingWindow = null;
+    try {
+      if (workspaceAction.kind === "request") {
+        const session = await requestSupportSession();
+        if (session) {
+          setWorkspaceNotice(
+            "Access request sent. This panel refreshes automatically after the manager approves it."
+          );
+        }
+        return;
+      }
+      if (workspaceAction.kind === "waiting") {
+        await loadTicket(undefined, { silent: true });
+        setWorkspaceNotice("Waiting for the manager's approval. The status refreshes automatically.");
+        return;
+      }
+      if (workspaceAction.kind === "start") {
+        pendingWindow = window.open("", "_blank");
+        if (pendingWindow) pendingWindow.opener = null;
+        const session = await startSupportSession();
+        if (!session) {
+          if (pendingWindow) pendingWindow.close();
+          return;
+        }
+        const sessionCapabilities = getSupportCapabilities(session);
+        const workspacePath = sessionCapabilities.includes("website_builder")
+          ? "/manage/website/builder"
+          : "/manager/website";
+        openSupportLink(workspacePath, session, pendingWindow);
+        setWorkspaceNotice("Support workspace started using the manager-approved access session.");
+        return;
+      }
+      if (workspaceAction.kind === "open") {
+        openSupportLink(canManageWebsite ? "/manage/website/builder" : "/manager/website");
+      }
+    } finally {
+      setWorkspaceBusy(false);
+    }
+  };
+
+  const exportAgentHandoff = async () => {
+    if (!supportActive || workspaceBusy) return;
+    setWorkspaceBusy(true);
+    setWorkspaceNotice("");
+    setError("");
+    try {
+      const { data } = await platformAdminApi.post(`/tickets/${id}/support-session/handoff`);
+      if (!data?.handoff || !downloadWebsiteDesignHandoff(data.handoff)) {
+        throw new Error("missing_handoff");
+      }
+      setWorkspaceNotice(
+        "Agent handoff downloaded. It contains scoped support access; end the session when work is complete."
+      );
+    } catch (err) {
+      setError(err?.response?.data?.error || "Unable to create agent handoff.");
+    } finally {
+      setWorkspaceBusy(false);
+    }
   };
 
   if (loading) {
@@ -375,46 +496,103 @@ export default function AdminTicketDetailPage() {
                   <Chip size="small" variant="outlined" label={supportSession.scope.replace(/_/g, " ")} />
                 )}
               </Stack>
+              {(!supportSession || ["ended", "expired"].includes(supportSession.status)) && (
+                <FormControl size="small" sx={{ maxWidth: 440 }}>
+                  <InputLabel>Requested access</InputLabel>
+                  <Select
+                    label="Requested access"
+                    value={requestedScope}
+                    onChange={(event) => setRequestedScope(event.target.value)}
+                  >
+                    {supportScopes.map((option) => (
+                      <MenuItem key={option.scope} value={option.scope}>
+                        {option.scope_label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+              {supportSession?.scope_description && (
+                <Typography variant="body2" color="text.secondary">
+                  {supportSession.scope_description}
+                </Typography>
+              )}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
-                {!supportSession && (
-                  <Button variant="contained" onClick={requestSupportSession}>
-                    Request website access
+                <Button
+                  variant={workspaceAction.kind === "waiting" ? "outlined" : "contained"}
+                  disabled={
+                    workspaceBusy ||
+                    workspaceAction.kind === "waiting" ||
+                    workspaceAction.kind === "unavailable"
+                  }
+                  onClick={launchDesignWorkspace}
+                >
+                  {workspaceBusy ? "Preparing…" : workspaceAction.label}
+                </Button>
+                {workspaceAction.kind === "waiting" && (
+                  <Button
+                    variant="text"
+                    disabled={workspaceBusy}
+                    onClick={() => loadTicket(undefined, { silent: true })}
+                  >
+                    Refresh approval status
                   </Button>
-                )}
-                {supportPending && !supportApproved && (
-                  <Button variant="outlined" disabled>
-                    Awaiting manager approval
-                  </Button>
-                )}
-                {supportPending && supportApproved && (
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <Button variant="contained" onClick={startSupportSession}>
-                      Start support session
-                    </Button>
-                    {isSupport && !isAssignedToMe && (
-                      <Typography variant="caption" color="text.secondary">
-                        Assign the ticket to yourself before starting the session.
-                      </Typography>
-                    )}
-                  </Stack>
                 )}
                 {supportActive && (
                   <>
-                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website")}>
-                      Open Website Manager
+                    {canManageWebsite && (
+                      <Button variant="outlined" onClick={() => openSupportLink("/manager/website")}>
+                        Open Website Manager
+                      </Button>
+                    )}
+                    <Button variant="outlined" onClick={exportAgentHandoff} disabled={workspaceBusy}>
+                      Download agent handoff
                     </Button>
-                    <Button variant="outlined" onClick={() => openSupportLink("/manage/website/builder")}>
-                      Open Visual Builder
-                    </Button>
-                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website")}>
-                      Open Domain Connect
-                    </Button>
+                    {canManageDomain && (
+                      <Button variant="outlined" onClick={() => openSupportLink("/manager/website")}>
+                        Open Domain Connect
+                      </Button>
+                    )}
+                    {canManageServices && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => openSupportLink("/manager/advanced-management?panel=services")}
+                      >
+                        Open Services
+                      </Button>
+                    )}
+                    {canManageProducts && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => openSupportLink("/manager/advanced-management?panel=products")}
+                      >
+                        Open Products
+                      </Button>
+                    )}
+                    {canManageShipping && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => openSupportLink("/manager/advanced-management?panel=easypost-shipping")}
+                      >
+                        Open Delivery setup
+                      </Button>
+                    )}
                     <Button color="error" variant="contained" onClick={endSupportSession}>
                       End session
                     </Button>
                   </>
                 )}
               </Stack>
+              {workspaceNotice && (
+                <Typography variant="body2" color="text.secondary">
+                  {workspaceNotice}
+                </Typography>
+              )}
+              {isSupport && !isAssignedToMe && supportPending && supportApproved && (
+                <Typography variant="caption" color="text.secondary">
+                  Assign the ticket to yourself before launching the design workspace.
+                </Typography>
+              )}
               {supportApproved && supportSession?.expires_at && (
                 <Typography variant="caption" color="text.secondary">
                   Approved until {formatDate(supportSession.expires_at, timezone)}

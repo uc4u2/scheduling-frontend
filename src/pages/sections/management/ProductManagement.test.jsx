@@ -288,6 +288,26 @@ describe("ProductManagement", () => {
     mockApiDelete.mockResolvedValue({ data: {} });
   });
 
+  test("support mode hides AI, checkout, global stock, and unapproved delivery controls", async () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement
+          token="test-token"
+          supportMode
+          canManageShipping={false}
+        />
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByTestId("product-grid")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create with AI" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Improve content with AI" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delivery setup" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Stock history" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("commerce-copilot-drawer")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("checkout-preview-dialog")).not.toBeInTheDocument();
+  });
+
   test("passes selected Variant context from Commerce Copilot to Product checkout preview", async () => {
     render(
       <ThemeProvider theme={createTheme()}>

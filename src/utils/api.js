@@ -203,7 +203,16 @@ api.interceptors.request.use((config) => {
       url.startsWith("/admin/website") ||
       url.startsWith("/api/domains") ||
       url.startsWith("/api/chatbot/settings") ||
-      url.startsWith("/admin/company-profile")
+      url.startsWith("/admin/company-profile") ||
+      url.startsWith("/booking/services") ||
+      url.startsWith("/booking/service-categories") ||
+      url.startsWith("/booking/packages") ||
+      url.startsWith("/booking/service-images") ||
+      url.startsWith("/inventory/products") ||
+      url.startsWith("/inventory/product-categories") ||
+      url.startsWith("/inventory/product-images") ||
+      url.startsWith("/inventory/shipping-settings") ||
+      url.startsWith("/inventory/shipping/package-profiles")
     ) {
       config.headers = {
         ...(config.headers || {}),

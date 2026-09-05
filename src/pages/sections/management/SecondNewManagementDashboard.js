@@ -42,6 +42,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 
 import { Link as RouterLink, useLocation } from "react-router-dom";
+import { getSupportCommercePanels } from "../../../utils/supportWorkspaceAccess";
 
 
 
@@ -142,7 +143,11 @@ import { stripeConnect } from "../../../utils/api";
 
  */
 
-const SecondNewManagementDashboard = ({ token }) => {
+const SecondNewManagementDashboard = ({
+  token,
+  supportMode = false,
+  supportCapabilities = [],
+}) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const location = useLocation();
@@ -184,7 +189,7 @@ const SecondNewManagementDashboard = ({ token }) => {
 
     refresh: refreshConnect,
 
-  } = useStripeConnectStatus();
+  } = useStripeConnectStatus({ auto: !supportMode });
 
   const [connectAction, setConnectAction] = useState(null);
 
@@ -445,7 +450,8 @@ const openAnalytics = useCallback(() => {
 
 const panels = useMemo(
 
-  () => [
+  () => {
+    const items = [
 
     {
       key: "services",
@@ -454,7 +460,7 @@ const panels = useMemo(
 
       icon: <DesignServicesIcon />,
 
-      element: <ServiceManagement token={token} />,
+      element: <ServiceManagement token={token} supportMode={supportMode} />,
 
     },
 
@@ -465,7 +471,13 @@ const panels = useMemo(
 
       icon: <ShoppingBagIcon />,
 
-      element: <ProductManagement token={token} />,
+      element: (
+        <ProductManagement
+          token={token}
+          supportMode={supportMode}
+          canManageShipping={supportCapabilities.includes("shipping_manage")}
+        />
+      ),
 
     },
 
@@ -709,9 +721,13 @@ const panels = useMemo(
 
     },
 
-  ],
+    ];
+    if (!supportMode) return items;
+    const allowedPanels = new Set(getSupportCommercePanels(supportCapabilities));
+    return items.filter((panel) => allowedPanels.has(panel.key));
+  },
 
-  [token, connectContext, openAnalytics, t]
+  [token, connectContext, openAnalytics, supportCapabilities, supportMode, t]
 
 );
 
@@ -851,9 +867,9 @@ const panels = useMemo(
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
 
-              Configure services, staff, and schedules. Review bookings, handle charges & refunds,
-
-              and open analytics in place.
+              {supportMode
+                ? "Manage only the services, products, and delivery settings approved for this support session."
+                : "Configure services, staff, and schedules. Review bookings, handle charges & refunds, and open analytics in place."}
 
             </Typography>
 
@@ -863,7 +879,7 @@ const panels = useMemo(
 
           {/* Quick actions */}
 
-          <Stack
+          {!supportMode && <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
             flexWrap="wrap"
@@ -904,7 +920,7 @@ const panels = useMemo(
 
             </Button>
 
-          </Stack>
+          </Stack>}
 
         </Stack>
 
@@ -914,7 +930,7 @@ const panels = useMemo(
 
       {/* Stripe Connect status */}
 
-      {connectLoading ? (
+      {!supportMode && (connectLoading ? (
 
         <Alert severity="info" sx={{ mb: 2 }}>
 
@@ -1025,9 +1041,9 @@ const panels = useMemo(
 
         </Alert>
 
-      )}
+      ))}
 
-      {connectError ? (
+      {!supportMode && connectError ? (
 
         <Alert severity="error" sx={{ mb: 2 }}>
 

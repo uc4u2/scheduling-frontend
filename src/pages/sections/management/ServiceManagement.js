@@ -91,7 +91,7 @@ const toDateTimeLocalInput = (value) => {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 };
 
-const ServiceManagement = ({ token }) => {
+const ServiceManagement = ({ token, supportMode = false }) => {
   const { t, i18n } = useTranslation();
 
   const [services, setServices] = useState([]);
@@ -779,30 +779,34 @@ const ServiceManagement = ({ token }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>{t("manager.service.dialog.cancel")}</Button>
-          <Button variant="outlined" onClick={runPreview}>
-            Preview customer payment
-          </Button>
+          {!supportMode && (
+            <Button variant="outlined" onClick={runPreview}>
+              Preview customer payment
+            </Button>
+          )}
           <Button onClick={save} variant="contained">
             {editing ? t("manager.service.dialog.update") : t("manager.service.dialog.create")}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <BookingPaymentPreviewDialog
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        preview={bookingPreview}
-        loading={previewLoading}
-        error={previewError}
-        stale={previewStale}
-        staleMessage="The Service changed after this preview. Refresh to see current payment behavior."
-        onRefresh={runPreview}
-        onCopySummary={handleCopyPreview}
-      >
-        <Typography variant="body2" color="text.secondary">
-          Preview the current unsaved Service price with your tenant’s current booking payment settings. The Service is not saved.
-        </Typography>
-      </BookingPaymentPreviewDialog>
+      {!supportMode && (
+        <BookingPaymentPreviewDialog
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          preview={bookingPreview}
+          loading={previewLoading}
+          error={previewError}
+          stale={previewStale}
+          staleMessage="The Service changed after this preview. Refresh to see current payment behavior."
+          onRefresh={runPreview}
+          onCopySummary={handleCopyPreview}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Preview the current unsaved Service price with your tenant’s current booking payment settings. The Service is not saved.
+          </Typography>
+        </BookingPaymentPreviewDialog>
+      )}
 
       <Dialog open={packagesOpen} onClose={closePackages} maxWidth="md" fullWidth>
         <DialogTitle>

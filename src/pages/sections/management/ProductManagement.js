@@ -244,6 +244,7 @@ const ProductRowActions = ({
   setMovementTarget,
   setMovementOpen,
   handleDelete,
+  supportMode = false,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const menuOpen = Boolean(anchorEl);
@@ -266,14 +267,16 @@ const ProductRowActions = ({
       <IconButton size="small" aria-label={`Edit ${row.name}`} onClick={() => handleOpen(row)}>
         <Edit fontSize="small" />
       </IconButton>
-      <Button
-        size="small"
-        variant="text"
-        onClick={() => openCopilot("repair_product", row.id)}
-        sx={{ whiteSpace: "nowrap", minWidth: 0 }}
-      >
-        Fix with AI
-      </Button>
+      {!supportMode && (
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => openCopilot("repair_product", row.id)}
+          sx={{ whiteSpace: "nowrap", minWidth: 0 }}
+        >
+          Fix with AI
+        </Button>
+      )}
       <IconButton
         size="small"
         aria-label={`More actions for ${row.name}`}
@@ -288,15 +291,17 @@ const ProductRowActions = ({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <MenuItem onClick={() => runMenuAction(() => openCheckoutPreview(row.id))}>
-          Preview customer checkout
-        </MenuItem>
-        {!row.is_digital ? (
+        {!supportMode ? (
+          <MenuItem onClick={() => runMenuAction(() => openCheckoutPreview(row.id))}>
+            Preview customer checkout
+          </MenuItem>
+        ) : null}
+        {!supportMode && !row.is_digital ? (
           <MenuItem onClick={() => runMenuAction(() => openCopilot("test_shipping_setup", row.id))}>
             Test shipping setup
           </MenuItem>
         ) : null}
-        {!row.is_digital ? (
+        {!supportMode && !row.is_digital ? (
           <MenuItem onClick={() => runMenuAction(() => openCopilot("international_expansion_assistant", row.id))}>
             Expand internationally
           </MenuItem>
@@ -304,9 +309,11 @@ const ProductRowActions = ({
         <MenuItem onClick={() => runMenuAction(() => openVariantConfiguration(row))}>
           {String(row.variant_mode || "none").toLowerCase() === "none" ? "Configure options" : "Edit options and variants"}
         </MenuItem>
-        <MenuItem onClick={() => runMenuAction(() => openCopilot("improve_product_content", row.id))}>
-          Improve content
-        </MenuItem>
+        {!supportMode ? (
+          <MenuItem onClick={() => runMenuAction(() => openCopilot("improve_product_content", row.id))}>
+            Improve content
+          </MenuItem>
+        ) : null}
         <MenuItem onClick={() => runMenuAction(() => openImages(row))}>
           Manage images
         </MenuItem>
@@ -327,7 +334,7 @@ const ProductRowActions = ({
   );
 };
 
-const ProductManagement = ({ token }) => {
+const ProductManagement = ({ token, supportMode = false, canManageShipping = true }) => {
   const { t } = useTranslation();
 
   const [products, setProducts] = useState([]);
@@ -517,7 +524,7 @@ const ProductManagement = ({ token }) => {
   }, [load]);
 
   useEffect(() => {
-    if (!open || form.is_digital || !form.track_stock) return;
+    if (supportMode || !open || form.is_digital || !form.track_stock) return;
     let alive = true;
     setInventoryItemsLoading(true);
     api
@@ -538,7 +545,7 @@ const ProductManagement = ({ token }) => {
     return () => {
       alive = false;
     };
-  }, [auth, form.is_digital, form.track_stock, open]);
+  }, [auth, form.is_digital, form.track_stock, open, supportMode]);
 
   const handleOpen = useCallback((row = null, options = {}) => {
     setEditing(row);
@@ -1157,11 +1164,12 @@ const ProductManagement = ({ token }) => {
             setMovementTarget={setMovementTarget}
             setMovementOpen={setMovementOpen}
             handleDelete={handleDelete}
+            supportMode={supportMode}
           />
         ),
       },
     ],
-    [businessSellingCurrency, handleDelete, handleOpen, openCheckoutPreview, openCopilot, openImages, openVariantConfiguration, t]
+    [businessSellingCurrency, handleDelete, handleOpen, openCheckoutPreview, openCopilot, openImages, openVariantConfiguration, supportMode, t]
   );
 
   useEffect(() => {
@@ -1188,7 +1196,7 @@ const ProductManagement = ({ token }) => {
   }, [movementOpen, movementTarget, auth]);
 
   useEffect(() => {
-    if (!movementOpen || !movementTarget?.linked_inventory_item_id) {
+    if (supportMode || !movementOpen || !movementTarget?.linked_inventory_item_id) {
       setLinkedInventoryHistoryRows([]);
       return undefined;
     }
@@ -1214,10 +1222,10 @@ const ProductManagement = ({ token }) => {
     return () => {
       alive = false;
     };
-  }, [movementOpen, movementTarget, auth]);
+  }, [movementOpen, movementTarget, auth, supportMode]);
 
   useEffect(() => {
-    if (!globalMovementOpen) return;
+    if (supportMode || !globalMovementOpen) return;
     let alive = true;
     setGlobalMovementLoading(true);
     const params = {
@@ -1251,7 +1259,7 @@ const ProductManagement = ({ token }) => {
     return () => {
       alive = false;
     };
-  }, [globalMovementOpen, globalMovementFilters, globalMovementPagination.per_page, auth]);
+  }, [globalMovementOpen, globalMovementFilters, globalMovementPagination.per_page, auth, supportMode]);
 
   const localeText = useMemo(
     () => ({
@@ -1353,39 +1361,47 @@ const ProductManagement = ({ token }) => {
         <Button startIcon={<Add />} variant="contained" onClick={() => handleOpen()}>
           {t("manager.product.buttonAdd")}
         </Button>
-        <Button
-          startIcon={<CloudUpload />}
-          variant="outlined"
-          color="inherit"
-          onClick={() => openCopilot("create_physical_product")}
-        >
-          Create with AI
-        </Button>
-        <Button
-          variant="outlined"
-          color="inherit"
-          onClick={() => openCopilot("improve_product_content")}
-        >
-          Improve content with AI
-        </Button>
-        <Tooltip title="Configure checkout delivery methods (manual policy) and EasyPost automation in one place." arrow>
+        {!supportMode && (
+          <>
+            <Button
+              startIcon={<CloudUpload />}
+              variant="outlined"
+              color="inherit"
+              onClick={() => openCopilot("create_physical_product")}
+            >
+              Create with AI
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={() => openCopilot("improve_product_content")}
+            >
+              Improve content with AI
+            </Button>
+          </>
+        )}
+        {canManageShipping && (
+          <Tooltip title="Configure checkout delivery methods (manual policy) and EasyPost automation in one place." arrow>
+            <Button
+              startIcon={<LocalShipping />}
+              variant="outlined"
+              color="inherit"
+              onClick={() => setDeliverySetupOpen(true)}
+            >
+              Delivery setup
+            </Button>
+          </Tooltip>
+        )}
+        {!supportMode && (
           <Button
-            startIcon={<LocalShipping />}
+            startIcon={<History />}
             variant="outlined"
             color="inherit"
-            onClick={() => setDeliverySetupOpen(true)}
+            onClick={() => setGlobalMovementOpen(true)}
           >
-            Delivery setup
+            Stock history
           </Button>
-        </Tooltip>
-        <Button
-          startIcon={<History />}
-          variant="outlined"
-          color="inherit"
-          onClick={() => setGlobalMovementOpen(true)}
-        >
-          Stock history
-        </Button>
+        )}
         <Button
           variant="outlined"
           color="inherit"
@@ -2096,10 +2112,12 @@ const ProductManagement = ({ token }) => {
                   )}
                 </Stack>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  <Button size="small" variant="text" onClick={() => setDeliverySetupOpen(true)}>
-                    Configure package profiles
-                  </Button>
-                  {editing?.id ? (
+                  {canManageShipping && (
+                    <Button size="small" variant="text" onClick={() => setDeliverySetupOpen(true)}>
+                      Configure package profiles
+                    </Button>
+                  )}
+                  {!supportMode && editing?.id ? (
                     <Button size="small" variant="text" onClick={() => openCopilot("repair_product", editing.id)}>
                       Ask Commerce Copilot to explain this
                     </Button>
@@ -2376,22 +2394,22 @@ const ProductManagement = ({ token }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>{t("manager.product.dialog.cancel")}</Button>
-          {editing?.id ? (
+          {!supportMode && editing?.id ? (
             <Button variant="outlined" onClick={() => openCopilot("improve_product_content", editing.id)}>
               Generate storefront content
             </Button>
           ) : null}
-          {editing?.id ? (
+          {!supportMode && editing?.id ? (
             <Button variant="outlined" onClick={() => openCheckoutPreview(editing.id)}>
               Preview customer checkout
             </Button>
           ) : null}
-          {editing?.id && !form.is_digital ? (
+          {!supportMode && editing?.id && !form.is_digital ? (
             <Button variant="outlined" onClick={() => openCopilot("test_shipping_setup", editing.id)}>
               Test this Product's shipping setup
             </Button>
           ) : null}
-          {editing?.id && !form.is_digital ? (
+          {!supportMode && editing?.id && !form.is_digital ? (
             <Button variant="outlined" onClick={() => openCopilot("international_expansion_assistant", editing.id)}>
               Review international selling
             </Button>
@@ -2540,14 +2558,20 @@ const ProductManagement = ({ token }) => {
               <Typography variant="body2"><strong>Units:</strong> Manual Product Management stores grams and millimetres. Commerce Copilot can accept mm, cm, or in and converts safely to millimetres before shipping providers are called.</Typography>
               <Typography variant="body2"><strong>Ships separately:</strong> Turn this on when the product ships in its own parcel instead of sharing a package with other items.</Typography>
               <Typography variant="body2"><strong>Delivery override:</strong> Use this only when the product needs different checkout delivery methods from your workspace defaults.</Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                <Button size="small" variant="outlined" onClick={() => { setHelpOpen(false); setDeliverySetupOpen(true); }}>
-                  Open Delivery Setup
-                </Button>
-                <Button size="small" variant="text" onClick={() => { setHelpOpen(false); openCopilot("review_shipping_setup", editing?.id || null); }}>
-                  Ask Commerce Copilot to explain shipping
-                </Button>
-              </Stack>
+              {(canManageShipping || !supportMode) && (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  {canManageShipping && (
+                    <Button size="small" variant="outlined" onClick={() => { setHelpOpen(false); setDeliverySetupOpen(true); }}>
+                      Open Delivery Setup
+                    </Button>
+                  )}
+                  {!supportMode && (
+                    <Button size="small" variant="text" onClick={() => { setHelpOpen(false); openCopilot("review_shipping_setup", editing?.id || null); }}>
+                      Ask Commerce Copilot to explain shipping
+                    </Button>
+                  )}
+                </Stack>
+              )}
             </Stack>
           ) : null}
 
@@ -2592,7 +2616,7 @@ const ProductManagement = ({ token }) => {
         </Stack>
       </Drawer>
 
-      <Drawer
+      {canManageShipping && <Drawer
         anchor="right"
         open={deliverySetupOpen}
         onClose={() => setDeliverySetupOpen(false)}
@@ -2614,8 +2638,8 @@ const ProductManagement = ({ token }) => {
           </Typography>
           <EasyPostShippingSettingsPanel token={token} compact />
         </Stack>
-      </Drawer>
-      <CommerceCopilotDrawer
+      </Drawer>}
+      {!supportMode && <CommerceCopilotDrawer
         open={copilotOpen}
         onClose={() => setCopilotOpen(false)}
         token={token}
@@ -2631,8 +2655,8 @@ const ProductManagement = ({ token }) => {
           const match = products.find((row) => String(row.id) === String(productId || ""));
           if (match) handleOpen(match);
         }}
-      />
-      <ProductCheckoutPreviewDialog
+      />}
+      {!supportMode && <ProductCheckoutPreviewDialog
         open={checkoutPreviewOpen}
         onClose={() => setCheckoutPreviewOpen(false)}
         token={token}
@@ -2644,7 +2668,7 @@ const ProductManagement = ({ token }) => {
         externalStateFingerprint={open ? checkoutPreviewEditorFingerprint : ""}
         onOpenProductCost={openProductCost}
         onOpenProduct={handleOpen}
-      />
+      />}
 
       <Drawer
         anchor="right"
