@@ -3,6 +3,7 @@ import axios from "axios";
 import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
 import { canonicalWebsitePagePath } from "./websitePageApi";
+import { uploadWebsiteMediaFile } from "./websiteMediaUpload";
 
 /* ------------------------------ Base URL ------------------------------ */
 const viteBase =
@@ -999,19 +1000,56 @@ export const website = {
       }),
 
   uploadMedia: async (files, { companyId } = {}) => {
-    const fd = new FormData();
     const list = Array.isArray(files) ? files : [files];
     if (!list.length) {
       return { items: [] };
     }
-    fd.append("file", list[0]);
-    const res = await api.post("/api/website/media", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-      ...withCompany(companyId),
+    const file = list[0];
+    const items = await uploadWebsiteMediaFile({
+      file,
+      requestPresign: (selectedFile) => api
+        .get("/api/website/media/presign", {
+          params: {
+            filename: selectedFile.name,
+            content_type: selectedFile.type,
+            bytes_size: selectedFile.size,
+          },
+          ...withCompany(companyId),
+        })
+        .then((response) => response.data),
+      uploadDirect: async (presign, selectedFile) => {
+        const uploadResponse = await fetch(presign.upload_url, {
+          method: "PUT",
+          headers: presign.headers || { "Content-Type": selectedFile.type },
+          body: selectedFile,
+        });
+        if (!uploadResponse.ok) {
+          throw new Error(`website-media-direct-upload-failed:${uploadResponse.status}`);
+        }
+      },
+      finalizeDirect: (presign, selectedFile) => api.post(
+          presign.finalize_url || "/api/website/media/finalize",
+          {
+            key: presign.key,
+            filename: selectedFile.name,
+            content_type: selectedFile.type,
+          },
+          withCompany(companyId)
+        ).then((response) => response?.data?.items || []),
+      uploadMultipart: async (selectedFile) => {
+        // Local development and existing installations retain this path.
+        const fd = new FormData();
+        fd.append("file", selectedFile);
+        return api.post("/api/website/media", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+          ...withCompany(companyId),
+        }).then((response) => response?.data?.items || []);
+      },
     });
-    const items = Array.isArray(res?.data?.items) ? res.data.items : [];
     return {
-      items: items.map((item) => normalizeMediaAsset(item, companyId)).filter(Boolean),
+      items: (Array.isArray(items) ? items : [])
+        .map((item) => normalizeMediaAsset(item, companyId))
+        .filter(Boolean),
     };
   },
 

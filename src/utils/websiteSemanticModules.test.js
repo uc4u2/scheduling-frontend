@@ -57,7 +57,7 @@ import {
 
 describe("website semantic modules", () => {
   it("creates a complete Forge Contact blueprint with canonical editable media and form modules", () => {
-    const modules = createForgeMotionContactModules();
+    const modules = createForgeMotionContactModules(7);
     expect(modules.map((module) => module.type)).toEqual([
       "hero",
       "contactIntro",
@@ -70,7 +70,7 @@ describe("website semantic modules", () => {
     expect(modules.find((module) => module.type === "hero")).toEqual(expect.objectContaining({
       id: "forge-contact-hero",
       slot: "contact.hero",
-      content: expect.objectContaining({ image: expect.stringContaining("images.unsplash.com"), imageAlt: expect.any(String) }),
+      content: expect.objectContaining({ image: expect.stringContaining("starter-media://forge-motion/"), imageAlt: expect.any(String) }),
     }));
     expect(modules.find((module) => module.type === "contactIntro")).toEqual(expect.objectContaining({
       id: "forge-contact-intro",
@@ -82,7 +82,7 @@ describe("website semantic modules", () => {
     }));
     expect(modules.find((module) => module.type === "hoursLocation").content.items).toHaveLength(3);
     expect(modules.find((module) => module.type === "contactForm").content.formKey).toBe("contact");
-    expect(modules.find((module) => module.type === "bookingCta").content.backgroundImage).toContain("images.unsplash.com");
+    expect(modules.find((module) => module.type === "bookingCta").content.backgroundImage).toContain("starter-media://forge-motion/");
   });
 
   it("upgrades only generic Forge Contact defaults while preserving authored content and ids", () => {
@@ -93,8 +93,8 @@ describe("website semantic modules", () => {
       { id: "saved-map", type: "map", enabled: true, slot: "contact.map", order: 3, content: { heading: "Contact Details", query: "123 Main Street", primaryCta: { label: "Book appointment", href: "#" } } },
       { id: "saved-form", type: "contactForm", enabled: true, slot: "contact.form", order: 4, content: { heading: "Get in touch", submitLabel: "Send" } },
       { id: "saved-cta", type: "bookingCta", enabled: true, slot: "contact.booking", order: 5, content: { eyebrow: "Next step", heading: "Prefer to choose a service first?", body: "Browse the service menu and continue through the existing booking flow.", primaryCta: { label: "View services", href: "/services" } } },
-    ]);
-    expect(upgraded.find((module) => module.id === "saved-hero").content.image).toContain("images.unsplash.com");
+    ], 7);
+    expect(upgraded.find((module) => module.id === "saved-hero").content.image).toContain("starter-media://forge-motion/");
     expect(upgraded.find((module) => module.id === "forge-contact-intro")).toEqual(expect.objectContaining({
       type: "contactIntro",
       slot: "contact.intro",
@@ -104,12 +104,12 @@ describe("website semantic modules", () => {
     expect(upgraded.find((module) => module.id === "saved-map").content.heading).toBe("Find the studio.");
     expect(upgraded.find((module) => module.id === "saved-map").content.primaryCta.href).toContain("google.com/maps/search");
     expect(upgraded.find((module) => module.id === "saved-form").content.heading).toBe("Start your training inquiry.");
-    expect(upgraded.find((module) => module.id === "saved-cta").content.backgroundImage).toContain("images.unsplash.com");
+    expect(upgraded.find((module) => module.id === "saved-cta").content.backgroundImage).toContain("starter-media://forge-motion/");
     expect(upgraded.find((module) => module.id === "saved-cta").content.primaryCta.label).toBe("View training services");
 
     const authored = upgradeForgeMotionContactModules([
       { id: "authored-hero", type: "hero", enabled: true, slot: "contact.hero", order: 0, content: { eyebrow: "Talk with Alex", heading: "Plan the next block", subheading: "A custom introduction", image: "https://example.com/custom.jpg", imageAlt: "Alex coaching" } },
-    ]).find((module) => module.id === "authored-hero");
+    ], 7).find((module) => module.id === "authored-hero");
     expect(authored.content).toEqual(expect.objectContaining({ heading: "Plan the next block", image: "https://example.com/custom.jpg", imageAlt: "Alex coaching" }));
   });
 
@@ -218,7 +218,7 @@ describe("website semantic modules", () => {
   });
 
   it("provides Forge Motion's source-native blueprint and an honest editable marketing schedule", () => {
-    const modules = createForgeMotionOriginalHomeModules();
+    const modules = createForgeMotionOriginalHomeModules(7);
     expect(modules).toHaveLength(13);
     expect(new Set(modules.map((module) => module.id)).size).toBe(13);
     expect(modules.map((module) => module.type)).toEqual([
@@ -236,9 +236,9 @@ describe("website semantic modules", () => {
     const hero = modules.find((module) => module.id === "forge-home-hero");
     expect(hero.content).toEqual(expect.objectContaining({
       posterImage: "",
-      image: expect.stringContaining("images.unsplash.com"),
+      image: expect.stringContaining("starter-media://forge-motion/"),
       imagePosition: { x: 50, y: 45 },
-      secondaryImages: expect.arrayContaining([expect.stringContaining("images.unsplash.com")]),
+      secondaryImages: expect.arrayContaining([expect.stringContaining("starter-media://forge-motion/")]),
       secondaryImagePositions: [{ x: 50, y: 42 }, { x: 50, y: 38 }],
       secondaryImageAlts: expect.any(Array),
       layerPanelEnabled: true,
@@ -249,7 +249,7 @@ describe("website semantic modules", () => {
     expect(hero.content.slides[0]).toEqual(expect.objectContaining({
       id: "forge-hero-slide-2",
       heading: expect.any(String),
-      image: expect.stringContaining("images.unsplash.com"),
+      image: expect.stringContaining("starter-media://forge-motion/"),
       imagePosition: { x: 50, y: 42 },
       posterImage: "",
       imageAlt: expect.any(String),
@@ -260,8 +260,8 @@ describe("website semantic modules", () => {
     expect(portfolio.content.items).toHaveLength(8);
     expect(new Set(portfolio.content.items.map((item) => item.id)).size).toBe(8);
     expect(portfolio.content.items.every((item) => item.imageAlt)).toBe(true);
-    expect(portfolio.content.items.every((item) => item.image.includes("images.unsplash.com"))).toBe(true);
-    expect(modules.find((module) => module.id === "forge-home-cta").content).toEqual(expect.objectContaining({ backgroundImage: expect.stringContaining("images.unsplash.com"), backgroundPoster: "" }));
+    expect(portfolio.content.items.every((item) => item.image.includes("starter-media://forge-motion/"))).toBe(true);
+    expect(modules.find((module) => module.id === "forge-home-cta").content).toEqual(expect.objectContaining({ backgroundImage: expect.stringContaining("starter-media://forge-motion/"), backgroundPoster: "" }));
     expect(modules.every((module) => module.settings.starterBlueprint === "forge-motion-original")).toBe(true);
     expect(getProfessionHomeBlueprint("forge-motion")).toEqual(expect.objectContaining({ label: "Forge Motion", createModules: expect.any(Function) }));
     modules.forEach((module, index) => expect(module.order).toBe(index));
@@ -274,14 +274,14 @@ describe("website semantic modules", () => {
       content: { eyebrow: "Barbershop / Grooming Studio", heading: "Cut With Character." },
       settings: {},
     }];
-    const upgraded = upgradeLegacyForgeMotionHomeModules(stale);
+    const upgraded = upgradeLegacyForgeMotionHomeModules(stale, 7);
     expect(upgraded).toHaveLength(13);
     expect(upgraded[0]).toEqual(expect.objectContaining({ id: "forge-home-hero", type: "hero" }));
     expect(upgraded[0].content.heading).toBe("Build strength that holds up in real life.");
-    expect(upgraded[0].content.image).toContain("images.unsplash.com");
+    expect(upgraded[0].content.image).toContain("starter-media://forge-motion/");
 
     const authored = [{ id: "custom-hero", type: "hero", content: { heading: "My real studio" } }];
-    expect(upgradeLegacyForgeMotionHomeModules(authored)).toBe(authored);
+    expect(upgradeLegacyForgeMotionHomeModules(authored, 7)).toBe(authored);
   });
 
   it("activates schedule as a canonical displayed-content module without changing live availability", () => {
@@ -338,11 +338,11 @@ describe("website semantic modules", () => {
   });
 
   it("builds Forge fitness pages and unpublished nested blog drafts", () => {
-    const modules = createForgeMotionPageModules("blog");
+    const modules = createForgeMotionPageModules("blog", 7);
     expect(modules.map((module) => module.type)).toEqual(["hero", "featureStory", "bookingCta"]);
     expect(modules.every((module) => module.id.startsWith("forge-blog-"))).toBe(true);
 
-    const post = createForgeMotionBlogPostPage([{ slug: "blog/new-training-article" }]);
+    const post = createForgeMotionBlogPostPage([{ slug: "blog/new-training-article" }], 7);
     expect(post.slug).toBe("blog/new-training-article-2");
     expect(post.path).toBe(post.slug);
     expect(post.published).toBe(false);
@@ -396,7 +396,7 @@ describe("website semantic modules", () => {
       slug: "blog",
       title: "Blog",
       content: { modules: [{ id: "old", type: "richText", content: { heading: "Studio journal", body: "Barber care notes" } }], meta: {} },
-    });
+    }, 7);
     expect(repaired.title).toBe("Training notes");
     expect(repaired.seo_description).toContain("strength");
     expect(repaired.content.modules[0].id).toBe("forge-blog-hero");
@@ -405,7 +405,7 @@ describe("website semantic modules", () => {
       slug: "about",
       title: "Our coaching method",
       content: { modules: [{ id: "authored", type: "richText", content: { heading: "Our own words" } }], meta: {} },
-    });
+    }, 7);
     expect(authored.content.modules[0].id).toBe("authored");
     expect(authored.title).toBe("Our coaching method");
     expect(authored.content.meta.forgeMotionPageStarterVersion).toBe(FORGE_MOTION_PAGE_STARTER_VERSION);

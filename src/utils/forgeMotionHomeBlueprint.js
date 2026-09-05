@@ -1,21 +1,26 @@
+import {
+  forgeMotionStarterRef,
+  resolveForgeMotionStarterMedia,
+} from "./forgeMotionStarterMedia";
+
 const FORGE_MEDIA = {
-  hero: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=2000&q=85",
-  heroDetail: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=85",
-  heroSupport: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
-  heroSecond: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=2000&q=85",
-  story: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1600&q=85",
-  storyDetail: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&w=1200&q=85",
-  coachOne: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1000&q=85",
-  coachTwo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1000&q=85",
-  coachThree: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1000&q=85",
-  railOne: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=85",
-  railTwo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1200&q=85",
-  railThree: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=85",
-  railFour: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=1200&q=85",
-  railFive: "https://images.unsplash.com/photo-1576678927484-cc907957088c?auto=format&fit=crop&w=1200&q=85",
-  railSix: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85",
-  railSeven: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1200&q=85",
-  railEight: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=85",
+  hero: forgeMotionStarterRef("hero"),
+  heroDetail: forgeMotionStarterRef("heroDetail"),
+  heroSupport: forgeMotionStarterRef("heroSupport"),
+  heroSecond: forgeMotionStarterRef("heroSecond"),
+  story: forgeMotionStarterRef("story"),
+  storyDetail: forgeMotionStarterRef("storyDetail"),
+  coachOne: forgeMotionStarterRef("coachOne"),
+  coachTwo: forgeMotionStarterRef("coachTwo"),
+  coachThree: forgeMotionStarterRef("coachThree"),
+  railOne: forgeMotionStarterRef("railOne"),
+  railTwo: forgeMotionStarterRef("heroSecond"),
+  railThree: forgeMotionStarterRef("hero"),
+  railFour: forgeMotionStarterRef("railFour"),
+  railFive: forgeMotionStarterRef("railFive"),
+  railSix: forgeMotionStarterRef("heroSupport"),
+  railSeven: forgeMotionStarterRef("story"),
+  railEight: forgeMotionStarterRef("heroDetail"),
 };
 
 const media = (imageAlt = "", image = "") => ({ image, imageUrl: image, imageAlt });
@@ -34,8 +39,8 @@ const record = (id, type, slot, order, content, settings = {}) => ({
   },
 });
 
-export function createForgeMotionOriginalHomeModules() {
-  return [
+export function createForgeMotionOriginalHomeModules(companyId) {
+  return resolveForgeMotionStarterMedia([
     record("forge-home-hero", "hero", "home.hero", 0, {
       eyebrow: "Fitness & personal training",
       heading: "Build strength that holds up in real life.",
@@ -190,14 +195,12 @@ export function createForgeMotionOriginalHomeModules() {
       formKey: "contact",
       submitLabel: "Send training inquiry",
     }),
-  ];
+  ], companyId);
 }
 
-// v5 repairs the final cross-profession Forge demo copy/media and page-level
-// SEO that could
-// remain after the premium visual upgrade. Authored fitness content is still
-// preserved by upgradeLegacyForgeMotionHomeModules.
-export const FORGE_MOTION_HOME_STARTER_VERSION = 5;
+// v6 moves Forge defaults into tenant-owned WebsiteMedia without replacing
+// media that an owner selected in the Builder.
+export const FORGE_MOTION_HOME_STARTER_VERSION = 6;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const normalized = (value) => String(value || "").trim().toLowerCase();
@@ -207,7 +210,7 @@ const normalized = (value) => String(value || "").trim().toLowerCase();
  * starter composition. Authored Forge homepages are left alone; this is a
  * one-time content correction for the stale cross-profession starter only.
  */
-export function upgradeLegacyForgeMotionHomeModules(modules = []) {
+export function upgradeLegacyForgeMotionHomeModules(modules = [], companyId) {
   const current = Array.isArray(modules) ? modules : [];
   const hero = current.find((module) => module?.type === "hero");
   const heroHeading = normalized(hero?.content?.heading || hero?.content?.title);
@@ -221,12 +224,7 @@ export function upgradeLegacyForgeMotionHomeModules(modules = []) {
     heroEyebrow === "barbershop / grooming studio";
 
   if (!hasIronEmberBlueprint && !hasKnownBarbershopStarter) {
-    const serialized = JSON.stringify(current);
-    const repaired = serialized.replaceAll(
-      "photo-1517837016564-bfc5ec3ca4d0",
-      "photo-1571019614242-c5c5dee9f50b"
-    );
-    return repaired === serialized ? current : JSON.parse(repaired);
+    return resolveForgeMotionStarterMedia(current, companyId);
   }
-  return clone(createForgeMotionOriginalHomeModules());
+  return clone(createForgeMotionOriginalHomeModules(companyId));
 }

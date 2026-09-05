@@ -1,15 +1,20 @@
+import {
+  forgeMotionStarterRef,
+  resolveForgeMotionStarterMedia,
+} from "./forgeMotionStarterMedia";
+
 const FORGE_PAGE_MEDIA = {
-  about: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1800&q=85",
-  services: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1800&q=85",
-  reviews: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1800&q=85",
-  products: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=1800&q=85",
-  projects: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1800&q=85",
-  jobs: "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&w=1800&q=85",
-  locations: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=1800&q=85",
-  blog: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1800&q=85",
-  recovery: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1400&q=85",
-  coaching: "https://images.unsplash.com/photo-1571019613576-2b22c76fd955?auto=format&fit=crop&w=1400&q=85",
-  movement: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=1400&q=85",
+  about: forgeMotionStarterRef("story"),
+  services: forgeMotionStarterRef("hero"),
+  reviews: forgeMotionStarterRef("heroSecond"),
+  products: forgeMotionStarterRef("products"),
+  projects: forgeMotionStarterRef("railOne"),
+  jobs: forgeMotionStarterRef("storyDetail"),
+  locations: forgeMotionStarterRef("locations"),
+  blog: forgeMotionStarterRef("heroDetail"),
+  recovery: forgeMotionStarterRef("heroSupport"),
+  coaching: forgeMotionStarterRef("coaching"),
+  movement: forgeMotionStarterRef("railFour"),
 };
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -239,7 +244,7 @@ const pageBlueprints = {
   },
 };
 
-export const FORGE_MOTION_PAGE_STARTER_VERSION = 4;
+export const FORGE_MOTION_PAGE_STARTER_VERSION = 5;
 
 export function forgeMotionPageKey(page = {}) {
   const slug = lower(page.slug || page.path);
@@ -253,12 +258,12 @@ export function forgeMotionPageKey(page = {}) {
   return "";
 }
 
-export function createForgeMotionPageModules(pageOrKey = {}) {
+export function createForgeMotionPageModules(pageOrKey = {}, companyId) {
   const key = typeof pageOrKey === "string" ? pageOrKey : forgeMotionPageKey(pageOrKey);
-  return clone(pageBlueprints[key]?.modules || []);
+  return resolveForgeMotionStarterMedia(clone(pageBlueprints[key]?.modules || []), companyId);
 }
 
-export function createForgeMotionBlogPostPage(existingPages = []) {
+export function createForgeMotionBlogPostPage(existingPages = [], companyId) {
   const existing = new Set((existingPages || []).map((page) => lower(page.slug || page.path)));
   let suffix = "new-training-article";
   let index = 2;
@@ -279,7 +284,7 @@ export function createForgeMotionBlogPostPage(existingPages = []) {
     }),
     cta(pageKey, 2, "Need help choosing a training service?"),
   ];
-  return {
+  return resolveForgeMotionStarterMedia({
     slug,
     path: slug,
     title: "New training article",
@@ -299,7 +304,7 @@ export function createForgeMotionBlogPostPage(existingPages = []) {
       modules,
       meta: { layout: "full", forgeMotionPageStarterVersion: FORGE_MOTION_PAGE_STARTER_VERSION, forgeMotionBlogPost: true },
     },
-  };
+  }, companyId);
 }
 
 const staleForgePage = (page) => {
@@ -317,9 +322,9 @@ const staleForgePage = (page) => {
  * Authored pages are retained; pages carrying known starter/demo signatures are
  * replaced with the fitness-native canonical composition.
  */
-export function upgradeForgeMotionMarketingPage(page = {}) {
+export function upgradeForgeMotionMarketingPage(page = {}, companyId) {
   const key = forgeMotionPageKey(page);
-  const blueprint = pageBlueprints[key];
+  const blueprint = resolveForgeMotionStarterMedia(pageBlueprints[key], companyId);
   if (!blueprint) return page;
   const content = page.content && typeof page.content === "object" ? page.content : {};
   const meta = content.meta && typeof content.meta === "object" ? content.meta : {};
@@ -327,7 +332,9 @@ export function upgradeForgeMotionMarketingPage(page = {}) {
   const modules = Array.isArray(content.modules) ? content.modules : [];
   const alreadyForge = modules.some((module) => lower(module?.settings?.starterBlueprint).startsWith("forge-motion"));
   const shouldReplace = !modules.length || staleForgePage(page);
-  const nextModules = shouldReplace ? clone(blueprint.modules) : modules;
+  const nextModules = shouldReplace
+    ? clone(blueprint.modules)
+    : resolveForgeMotionStarterMedia(modules, companyId);
   const canonicalPath = key === "services"
     ? "/services"
     : key === "projects"
@@ -344,7 +351,10 @@ export function upgradeForgeMotionMarketingPage(page = {}) {
     seo_description: text(page.seo_description) || blueprint.description,
     og_title: text(page.og_title) || blueprint.title,
     og_description: text(page.og_description) || blueprint.description,
-    og_image_url: text(page.og_image_url) || blueprint.modules[0]?.content?.image || "",
+    og_image_url:
+      resolveForgeMotionStarterMedia(text(page.og_image_url), companyId) ||
+      blueprint.modules[0]?.content?.image ||
+      "",
     // Known legacy aliases intentionally converge on one public canonical URL
     // (for example services-classic/pricing -> /services). Preserve authored
     // canonicals only for pages that do not have an alias mapping.

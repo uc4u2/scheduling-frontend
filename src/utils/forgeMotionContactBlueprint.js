@@ -1,7 +1,10 @@
-const FORGE_CONTACT_HERO_IMAGE =
-  "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=1800&q=85";
-const FORGE_CONTACT_CTA_IMAGE =
-  "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1800&q=85";
+import {
+  forgeMotionStarterRef,
+  resolveForgeMotionStarterMedia,
+} from "./forgeMotionStarterMedia";
+
+const FORGE_CONTACT_HERO_IMAGE = forgeMotionStarterRef("contact");
+const FORGE_CONTACT_CTA_IMAGE = forgeMotionStarterRef("hero");
 
 const moduleRecord = (id, type, slot, order, content) => ({
   id,
@@ -17,10 +20,10 @@ const moduleRecord = (id, type, slot, order, content) => ({
   },
 });
 
-export const FORGE_MOTION_CONTACT_STARTER_VERSION = 5;
+export const FORGE_MOTION_CONTACT_STARTER_VERSION = 6;
 
-export function createForgeMotionContactModules() {
-  return [
+export function createForgeMotionContactModules(companyId) {
+  return resolveForgeMotionStarterMedia([
     moduleRecord("forge-contact-hero", "hero", "contact.hero", 0, {
       eyebrow: "Training inquiries",
       heading: "Contact",
@@ -81,7 +84,7 @@ export function createForgeMotionContactModules() {
       backgroundImageAlt: "Strength training equipment prepared in a modern fitness studio.",
       primaryCta: { label: "View training services", href: "/services" },
     }),
-  ];
+  ], companyId);
 }
 
 const text = (value) => String(value || "").trim();
@@ -200,9 +203,9 @@ const upgradeContent = (type, current, starter) => {
  * theme-native Contact blueprint. Known generic/demo values are upgraded;
  * authored copy, media, repeaters, and module ids are preserved.
  */
-export function upgradeForgeMotionContactModules(modules = []) {
-  const starters = createForgeMotionContactModules();
-  const next = clone(Array.isArray(modules) ? modules : []);
+export function upgradeForgeMotionContactModules(modules = [], companyId) {
+  const starters = createForgeMotionContactModules(companyId);
+  const next = clone(resolveForgeMotionStarterMedia(Array.isArray(modules) ? modules : [], companyId));
 
   for (const starter of starters) {
     const index = next.findIndex((module) => {

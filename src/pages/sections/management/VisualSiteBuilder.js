@@ -4679,7 +4679,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
       const hasContactForm = existingModules.some((module) => module.type === "contactForm");
 
       const starter = pageKind === "home"
-        ? homeBlueprint?.createModules?.().find((module) => module.type === "contactForm")
+        ? homeBlueprint?.createModules?.(cid).find((module) => module.type === "contactForm")
         : contactTarget
           ? makeNextPublicBuilderModules(contactTarget).find((module) => module.type === "contactForm")
           : null;
@@ -4724,7 +4724,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
             FORGE_MOTION_HOME_STARTER_VERSION
           ) {
             const existingModules = safeModules(existingPage);
-            const upgradedModules = upgradeLegacyForgeMotionHomeModules(existingModules);
+            const upgradedModules = upgradeLegacyForgeMotionHomeModules(existingModules, cid);
             const upgradedPage = {
               ...existingPage,
               title:
@@ -4779,7 +4779,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
           ) {
             continue;
           }
-          const upgradedPage = upgradeForgeMotionMarketingPage(existingPage);
+          const upgradedPage = upgradeForgeMotionMarketingPage(existingPage, cid);
           if (upgradedPage === existingPage) continue;
           const updated = await wb.updatePage(
             cid,
@@ -4802,7 +4802,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
           continue;
         }
         const existingModules = safeModules(existingPage);
-        const upgradedModules = upgradeForgeMotionContactModules(existingModules);
+        const upgradedModules = upgradeForgeMotionContactModules(existingModules, cid);
         const contactSlug = String(existingPage.slug || existingPage.path || "")
           .trim()
           .toLowerCase();
@@ -8804,7 +8804,7 @@ const restoreOriginalHomepage = useCallback(() => {
   );
   if (!accepted) return;
 
-  const modules = originalHomepageBlueprint.createModules();
+  const modules = originalHomepageBlueprint.createModules(companyId);
   updateSemanticModules(() => modules, { title: originalHomepageBlueprint.pageTitle, menu_title: "Home" });
   setSelectedModuleId(modules[0]?.id || "");
   setSelectedBlock(-1);
