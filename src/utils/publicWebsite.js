@@ -140,6 +140,25 @@ function appendPublicWebsitePath(baseUrl, pagePath, search = "") {
   return `${base}${normalizedPath ? `/${normalizedPath}` : ""}${String(search || "")}`;
 }
 
+function sameHostPublicContractUrl(contract, currentOrigin) {
+  const origin = String(currentOrigin || "").trim().replace(/\/$/, "");
+  if (!contract || !origin) return "";
+  const candidates = [
+    contract.primary_public_url,
+    contract.schedulaa_url,
+    contract.custom_domain_url,
+  ];
+  for (const candidate of candidates) {
+    try {
+      const parsed = new URL(String(candidate || ""));
+      if (parsed.origin === origin) return parsed.toString().replace(/\/$/, "");
+    } catch {
+      // Ignore malformed compatibility fields and continue to the next one.
+    }
+  }
+  return "";
+}
+
 export function buildPublishedWebsiteUrl({
   status = {},
   pagePath = "",
@@ -168,6 +187,16 @@ export function buildPublishedWebsiteUrl({
 
   const selection = getPublishedRendererSelection(status);
   if (selection.rendererEngine === "nextjs") {
+    // When a transactional page is already being served on a verified public
+    // tenant host, keep every return link on that same host. This is safe even
+    // if an older frontend deployment lacks the cohort environment flag: the
+    // successful current request proves that the gateway/public host is live.
+    const currentPublicBase = !isLocalCurrentOrigin
+      ? sameHostPublicContractUrl(contract, safeOrigin)
+      : "";
+    if (currentPublicBase) {
+      return appendPublicWebsitePath(currentPublicBase, normalizedPath, query);
+    }
     const gatewayActive = isPublicTenantGatewayEnabled(status, gateway);
     if (!isLocalCurrentOrigin && gatewayActive && contract?.primary_public_url) {
       return appendPublicWebsitePath(contract.primary_public_url, normalizedPath, query);

@@ -99,6 +99,45 @@ describe("public website resolver", () => {
     })).toBe("https://www.vandaorchidjewel.com/contact");
   });
 
+  it("keeps transactional return links on the current public host without an environment flag", () => {
+    const status = {
+      company_slug: "web-design",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      public_url_contract: {
+        primary_public_url: "https://app.schedulaa.com/web-design",
+        schedulaa_url: "https://app.schedulaa.com/web-design",
+      },
+    };
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "products",
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
+      gateway: { enabled: false },
+    })).toBe("https://app.schedulaa.com/web-design/products");
+  });
+
+  it("does not switch a custom-domain request onto the canonical platform host", () => {
+    const status = {
+      company_slug: "salon",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      public_url_contract: {
+        primary_public_url: "https://app.schedulaa.com/salon",
+        schedulaa_url: "https://app.schedulaa.com/salon",
+        custom_domain_url: "https://www.salon.example/",
+      },
+    };
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "login",
+      currentOrigin: "https://www.salon.example",
+      nextBaseUrl: "https://renderer.example",
+      gateway: { enabled: false },
+    })).toBe("https://www.salon.example/login");
+  });
+
   it("reads the additive backend contract without removing legacy fields", () => {
     expect(getPublicUrlContract({ public_url_contract: { contract_version: "1.0" } })).toEqual({ contract_version: "1.0" });
     expect(getPublicUrlContract({ company_slug: "legacy" })).toBeNull();

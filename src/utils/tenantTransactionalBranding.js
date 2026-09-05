@@ -1,6 +1,16 @@
 import { buildPublishedWebsiteUrl, normalizeWebsitePath } from "./publicWebsite";
 
-const DARK_THEME_KEYS = new Set(["eldora-dark", "iron-ember", "harbor-line"]);
+const DARK_THEME_KEYS = new Set([
+  "black-letter",
+  "circuit-north",
+  "eldora-dark",
+  "forge-motion",
+  "harbor-line",
+  "iron-ember",
+  "motion-editorial",
+  "torque-house",
+  "velora-house",
+]);
 
 const MODE_FALLBACK_TOKENS = {
   light: {
@@ -95,6 +105,76 @@ const DEFAULT_THEME_TOKENS = {
     accent: "#74b8de",
     buttonText: "#ffffff",
     radius: 18,
+  },
+  "still-bloom": {
+    background: "#fffaf7", surface: "#f7f1ec", surfaceAlt: "#f1e7e1",
+    text: "#46363d", textMuted: "#6b5961", border: "#eadfd9",
+    primary: "#8f667a", accent: "#d5aa72", buttonText: "#ffffff", radius: 18,
+  },
+  "black-letter": {
+    background: "#12151a", surface: "#17191d", surfaceAlt: "#202329",
+    text: "#f3efe7", textMuted: "#bdb8af", border: "#383b3f",
+    primary: "#b8a67f", accent: "#e1d1ae", buttonText: "#12151a", radius: 6,
+  },
+  "circuit-north": {
+    background: "#08111c", surface: "#0f1824", surfaceAlt: "#111b28",
+    text: "#ecf6ff", textMuted: "#c1d2e2", border: "#153247",
+    primary: "#3ba7ff", accent: "#9ed3ff", buttonText: "#08111c", radius: 8,
+  },
+  "solara-stay": {
+    background: "#f7efe4", surface: "#efe3d4", surfaceAlt: "#eadbc9",
+    text: "#18222f", textMuted: "#5f6469", border: "#d8cabb",
+    primary: "#0d1a2b", accent: "#c96e42", buttonText: "#ffffff", radius: 16,
+  },
+  "paw-and-pine": {
+    background: "#fff4e5", surface: "#f5e5d2", surfaceAlt: "#eed9c1",
+    text: "#23453d", textMuted: "#61746e", border: "#cfd8d2",
+    primary: "#23453d", accent: "#cf6f37", buttonText: "#ffffff", radius: 20,
+  },
+  "quiet-harbor": {
+    background: "#edf2ed", surface: "#e2e9e3", surfaceAlt: "#d8e2da",
+    text: "#26383d", textMuted: "#68777a", border: "#c9d2cc",
+    primary: "#26383d", accent: "#788e89", buttonText: "#ffffff", radius: 14,
+  },
+  "frame-and-field": {
+    background: "#f2eee8", surface: "#e8e1d8", surfaceAlt: "#dfd5c9",
+    text: "#11100f", textMuted: "#65605b", border: "#d1c9bf",
+    primary: "#11100f", accent: "#a65e35", buttonText: "#ffffff", radius: 4,
+  },
+  fieldcraft: {
+    background: "#f4f0e8", surface: "#e8e1d5", surfaceAlt: "#ded4c5",
+    text: "#122728", textMuted: "#647272", border: "#cbd2cd",
+    primary: "#122728", accent: "#dc6433", buttonText: "#ffffff", radius: 4,
+  },
+  "lumea-clinic": {
+    background: "#f8f3ef", surface: "#efe6e0", surfaceAlt: "#e7d9d1",
+    text: "#31282b", textMuted: "#74686b", border: "#d9cbc4",
+    primary: "#62464d", accent: "#bd817b", buttonText: "#ffffff", radius: 22,
+  },
+  "northstar-health": {
+    background: "#f3f8f7", surface: "#e6f0ee", surfaceAlt: "#dce9e6",
+    text: "#183b3a", textMuted: "#627976", border: "#c9dcda",
+    primary: "#226d68", accent: "#77aaa3", buttonText: "#ffffff", radius: 20,
+  },
+  "axis-and-co": {
+    background: "#f5f2ec", surface: "#ebe5dc", surfaceAlt: "#e1d9cd",
+    text: "#202c36", textMuted: "#667078", border: "#d4cdc3",
+    primary: "#283f52", accent: "#a97b4d", buttonText: "#ffffff", radius: 16,
+  },
+  "torque-house": {
+    background: "#090a0a", surface: "#121414", surfaceAlt: "#1a1d1d",
+    text: "#f4f1e9", textMuted: "#b9b6ae", border: "#343838",
+    primary: "#f0b323", accent: "#f0b323", buttonText: "#090a0a", radius: 4,
+  },
+  "velora-house": {
+    background: "#1b2130", surface: "#232a39", surfaceAlt: "#2b3344",
+    text: "#fff5ed", textMuted: "#c8c2c0", border: "#4a5264",
+    primary: "#d6a37f", accent: "#f0c7b0", buttonText: "#1b2130", radius: 18,
+  },
+  "forge-motion": {
+    background: "#080808", surface: "#111111", surfaceAlt: "#171717",
+    text: "#f7f7f2", textMuted: "#b8b8b2", border: "#30302d",
+    primary: "#c7ff3d", accent: "#c7ff3d", buttonText: "#080808", radius: 4,
   },
   "harbor-line": {
     background: "#0c1014",
@@ -272,6 +352,7 @@ export function buildTenantTransactionalBrandingContract(
     current_visual_theme_key: visualThemeKey,
     published_visual_theme_version: shellPayload.visual_theme_version || null,
     current_visual_theme_version: shellPayload.visual_theme_version || null,
+    public_url_contract: shellPayload.public_url_contract || null,
   };
 
   const normalizedPagePath = normalizeWebsitePath(pagePath);

@@ -50,6 +50,29 @@ describe("tenantTransactionalBranding", () => {
     expect(contract.tokens.radius).toBe(20);
   });
 
+  it("uses the backend public URL contract for public-host transaction returns", () => {
+    const contract = buildTenantTransactionalBrandingContract(
+      {
+        slug: "web-design",
+        renderer_engine: "nextjs",
+        visual_theme_key: "frame-and-field",
+        public_url_contract: {
+          primary_public_url: "https://app.schedulaa.com/web-design",
+          schedulaa_url: "https://app.schedulaa.com/web-design",
+        },
+      },
+      { pagePath: "products", currentOrigin: "https://app.schedulaa.com" },
+    );
+
+    expect(contract.publicSiteUrl).toBe("https://app.schedulaa.com/web-design/products");
+    expect(contract.rootSiteUrl).toBe("https://app.schedulaa.com/web-design");
+    expect(contract.tokens).toMatchObject({
+      background: "#f2eee8",
+      primary: "#11100f",
+      accent: "#a65e35",
+    });
+  });
+
   it("prefers safe relative return targets", () => {
     const contract = {
       rootSiteUrl: "https://next.example.com/site/uc-jalali",
@@ -98,6 +121,11 @@ describe("tenantTransactionalBranding", () => {
     expect(resolveTransactionalThemeTokens("finwise")).toMatchObject({
       primary: "#1b4ddb",
       radius: 12,
+    });
+    expect(resolveTransactionalThemeTokens("forge-motion")).toMatchObject({
+      background: "#080808",
+      primary: "#c7ff3d",
+      mode: "dark",
     });
   });
 
