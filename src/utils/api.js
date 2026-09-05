@@ -1593,6 +1593,7 @@ export const wb = {
         ? Boolean(options.draftOnly)
         : !publishFlag;
     const schemaVersion = options.schemaVersion;
+    const operationId = options.operationId;
 
     // 🔧 Polyfill common shapes so backends with different schemas accept it
     const flatPayload = Object.fromEntries(
@@ -1650,6 +1651,7 @@ export const wb = {
       _publish_now: Boolean(publishFlag),
       _draft_only: Boolean(draftOnly),
       ...(schemaVersion != null ? { _schema_version: schemaVersion } : {}),
+      ...(operationId ? { _operation_id: operationId } : {}),
     };
     const safeRequestPayload = sanitizeJsonPayload(requestPayload);
 
@@ -1712,9 +1714,10 @@ export const wb = {
       headers: { "X-Company-Id": companyId },
     }),
 
-  deleteCheckpoint: (companyId, id) =>
+  deleteCheckpoint: (companyId, id, { confirmProtected = false } = {}) =>
     api.delete(`/api/website/checkpoints/${id}`, {
       headers: { "X-Company-Id": companyId },
+      data: { confirm_protected: Boolean(confirmProtected) },
     }),
 
   // TEMPLATES

@@ -176,6 +176,15 @@ import {
   getPublishedRendererSelection,
 } from "../../../utils/publicWebsite";
 import {
+  CHECKPOINT_EXCLUDED_ITEMS,
+  CHECKPOINT_INCLUDED_ITEMS,
+  checkpointCounts,
+  checkpointKindLabel,
+  checkpointPublishBlocked,
+  formatCheckpointTimestamp,
+  validateApprovedCheckpointName,
+} from "../../../utils/websiteCheckpointHistory";
+import {
   getBuilderTabDefaultIndex,
   buildWebsiteStyleApplyPayload,
   isNextJsBuilderMode,
@@ -3318,6 +3327,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const nextJsDraftSyncSnapshotRef = useRef(null);
   const [pages, setPages] = useState([]);
   const [checkpoints, setCheckpoints] = useState([]);
+  const [protectedCheckpointCount, setProtectedCheckpointCount] = useState(0);
   const [checkpointName, setCheckpointName] = useState("");
   const [checkpointNote, setCheckpointNote] = useState("");
   const [checkpointDialog, setCheckpointDialog] = useState({
@@ -3353,9 +3363,11 @@ const [brandingErr, setBrandingErr] = useState("");
       const res = await wb.listCheckpoints(cid, { limit: 20 });
       const list = Array.isArray(res?.data?.checkpoints) ? res.data.checkpoints : [];
       setCheckpoints(list);
+      setProtectedCheckpointCount(Number(res?.data?.protected_count || 0));
     } catch (e) {
       console.warn("Checkpoint load failed", e?.response?.data || e);
       setCheckpoints([]);
+      setProtectedCheckpointCount(0);
     }
   }, []);
 
@@ -5514,11 +5526,13 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       setStyleErr("");
       try {
         const payload = buildWebsiteStyleApplyPayload(style);
-        await wb.saveSettings(
+        const operationId = `theme-switch-${nanoid()}`;
+        const settingsResponse = await wb.saveSettings(
           companyId,
           payload,
-          { publish: false, draftOnly: true }
+          { publish: false, draftOnly: true, operationId }
         );
+        let automaticCheckpoint = settingsResponse?.data?.automatic_checkpoint || null;
         const [refreshed, statusRes] = await Promise.all([
           wb.getSettings(companyId).catch(() => null),
           wb.getStatus(companyId).catch(() => null),
@@ -5536,10 +5550,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
           !pages.length &&
           style.starterContentPackKey
         ) {
-          await wb.installContentPack(companyId, style.starterContentPackKey, {
+          const installResponse = await wb.installContentPack(companyId, style.starterContentPackKey, {
             install_mode: "merge",
             visual_theme_key: style.key,
+            operation_id: operationId,
           });
+          automaticCheckpoint = automaticCheckpoint || installResponse?.data?.automatic_checkpoint || null;
           const [installedPagesRes, installedSettingsRes, installedStatusRes] = await Promise.all([
             wb.listPages(companyId),
             wb.getSettings(companyId).catch(() => null),
@@ -5560,7 +5576,12 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
           }
         }
         setStylePreviewFamily(style.key || "classic");
-        setStyleMsg(`${style.name} applied to draft. Publish to make it live.`);
+        await loadCheckpoints(companyId);
+        setStyleMsg(
+          `${style.name} applied to draft. Publish to make it live.${
+            automaticCheckpoint?.name ? ` Safety version saved: ${automaticCheckpoint.name}.` : ""
+          }`
+        );
       } catch (e) {
         setStyleErr(
           e?.response?.data?.message ||
@@ -5572,7 +5593,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         setStyleSaving(false);
       }
     },
-    [companyId, pages.length, setEditing]
+    [companyId, loadCheckpoints, pages.length, setEditing]
   );
 
   // A module edit replaces the page object, but it does not change the route.
@@ -5894,7 +5915,7 @@ const autoProvisionIfEmpty = useCallback(
 
 
   
-  const loadAll = async (cid) => {
+  const loadAll = async (cid, preferredPage = null) => {
   setErr("");
   setMsg("");
   setBusy(true);
@@ -5987,7 +6008,14 @@ const autoProvisionIfEmpty = useCallback(
     await loadCheckpoints(cid);
 
     if (pg.length) {
-      const home =
+      const preferred =
+        pg.find((p) => preferredPage?.id && String(p.id) === String(preferredPage.id)) ||
+        pg.find((p) =>
+          preferredPage?.slug &&
+          String(p.slug || "") === String(preferredPage.slug) &&
+          String(p.locale || "en") === String(preferredPage.locale || "en")
+        );
+      const home = preferred ||
         pg.find((p) => p.is_homepage) ||
         pg.find((p) => (p.slug || "").toLowerCase() === "home") ||
         pg.find((p) => Number(p.sort_order) === 0) ||
@@ -6337,8 +6365,15 @@ const autoProvisionIfEmpty = useCallback(
     }
   }, [applyBrandingFromServer, companyId, previewSlug, setSiteSettings, siteSettings?.company?.slug]);
 
-  const onSaveCheckpoint = useCallback(async () => {
+  const onSaveCheckpoint = useCallback(async (kind = "manual") => {
     if (!companyId) return;
+    if (kind === "approved") {
+      const validationError = validateApprovedCheckpointName(checkpointName);
+      if (validationError) {
+        setErr(validationError);
+        return;
+      }
+    }
     setBusy(true);
     setErr("");
     setMsg("");
@@ -6346,11 +6381,12 @@ const autoProvisionIfEmpty = useCallback(
       await wb.createCheckpoint(companyId, {
         name: (checkpointName || "").trim() || undefined,
         note: (checkpointNote || "").trim() || undefined,
+        kind,
       });
       setCheckpointName("");
       setCheckpointNote("");
       await loadCheckpoints(companyId);
-      setMsg("Checkpoint saved.");
+      setMsg(kind === "approved" ? "Approved design saved and protected." : "Website version saved.");
     } catch (e) {
       setErr(
         e?.response?.data?.message ||
@@ -6396,9 +6432,11 @@ const autoProvisionIfEmpty = useCallback(
     setMsg("");
     try {
       if (checkpointDialog.mode === "delete") {
-        await wb.deleteCheckpoint(companyId, checkpoint.id);
+        await wb.deleteCheckpoint(companyId, checkpoint.id, {
+          confirmProtected: Boolean(checkpoint.protected),
+        });
         await loadCheckpoints(companyId);
-        setMsg("Checkpoint deleted.");
+        setMsg("Website version deleted.");
       } else if (checkpointDialog.mode === "restore") {
         const { data } = await wb.restoreCheckpoint(companyId, checkpoint.id, {
           publish_now: Boolean(checkpointDialog.publishNow),
@@ -6409,7 +6447,11 @@ const autoProvisionIfEmpty = useCallback(
           applyBrandingFromServer(data.draft);
         }
         if (data?.reload_required) {
-          await loadAll(companyId);
+          await loadAll(companyId, {
+            id: editing?.id,
+            slug: editing?.slug,
+            locale: editing?.locale,
+          });
         } else {
           const pageRes = await wb.listPages(companyId);
           const pg = (pageRes?.data || []).map((p) =>
@@ -6423,8 +6465,9 @@ const autoProvisionIfEmpty = useCallback(
         }
         await loadCheckpoints(companyId);
         const restoredCount = Number(data?.page_count || data?.result?.restored_pages || 0);
-        const suffix = checkpointDialog.publishNow ? " and published" : "";
-        setMsg(`Checkpoint restored${suffix} (${restoredCount} page${restoredCount === 1 ? "" : "s"}).`);
+        const suffix = checkpointDialog.publishNow ? " and published" : " to draft";
+        const rollbackName = data?.rollback_checkpoint?.name;
+        setMsg(`Website version restored${suffix} (${restoredCount} page${restoredCount === 1 ? "" : "s"}).${rollbackName ? ` Rollback saved: ${rollbackName}.` : ""}`);
       }
       closeCheckpointDialog();
     } catch (e) {
@@ -6442,6 +6485,9 @@ const autoProvisionIfEmpty = useCallback(
     checkpointDialog,
     closeCheckpointDialog,
     companyId,
+    editing?.id,
+    editing?.locale,
+    editing?.slug,
     loadAll,
     loadCheckpoints,
     setEditing,
@@ -6463,7 +6509,7 @@ const autoProvisionIfEmpty = useCallback(
           e?.response?.data?.message ||
           e?.response?.data?.error ||
           e?.message ||
-          "Failed to load checkpoint preview.",
+          "Failed to inspect website version.",
         checkpoint: null,
       });
     }
@@ -8178,10 +8224,10 @@ const autoProvisionIfEmpty = useCallback(
 
       <CollapsibleSection
         id="builder-checkpoints"
-        title="Website checkpoints"
-        description="Save and restore rollback points for this website."
+        title="Design history & restore"
+        description={`${checkpoints.length} version(s) available. ${protectedCheckpointCount} approved version(s) protected.`}
         actions={
-          <Tooltip title="Save a rollback point before major edits. Checkpoints store page content, order, SEO fields, and current draft website settings (theme/header/footer/nav). Latest 20 are kept automatically.">
+          <Tooltip title="Save design versions before major edits. Approved versions are retained until you explicitly delete them; the latest 20 unprotected versions are retained automatically.">
             <IconButton size="small">
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -8190,11 +8236,11 @@ const autoProvisionIfEmpty = useCallback(
       >
         <Stack spacing={1}>
           <TextField
-            label="Checkpoint name"
+            label="Version name"
             size="small"
             value={checkpointName}
             onChange={(e) => setCheckpointName(e.target.value)}
-            placeholder="Before homepage redesign"
+            placeholder="Approved homepage design v1"
             fullWidth
           />
           <TextField
@@ -8207,16 +8253,30 @@ const autoProvisionIfEmpty = useCallback(
             fullWidth
           />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Tooltip title="Creates a restore point for this website draft: pages, section content, SEO/page settings, and website draft settings.">
+            <Tooltip title="Saves the current website design, pages, forms, menus, redirects, SEO, and media references.">
               <span>
                 <Button
                   size="small"
                   variant="contained"
                   startIcon={<SaveIcon fontSize="small" />}
-                  onClick={onSaveCheckpoint}
+                  onClick={() => onSaveCheckpoint("manual")}
                   disabled={busy || !companyId}
                 >
-                  Save checkpoint
+                  Save version
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Approved designs are protected from automatic pruning and remain until explicitly deleted.">
+              <span>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="success"
+                  startIcon={<SaveIcon fontSize="small" />}
+                  onClick={() => onSaveCheckpoint("approved")}
+                  disabled={busy || !companyId}
+                >
+                  Save approved design
                 </Button>
               </span>
             </Tooltip>
@@ -8231,11 +8291,20 @@ const autoProvisionIfEmpty = useCallback(
             </Button>
           </Stack>
 
+          <Alert severity="info" variant="outlined">
+            <Typography variant="caption" component="div">
+              <strong>Included:</strong> {CHECKPOINT_INCLUDED_ITEMS.join(", ")}.
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ mt: 0.5 }}>
+              <strong>Not included:</strong> {CHECKPOINT_EXCLUDED_ITEMS.join(", ")}.
+            </Typography>
+          </Alert>
+
           <Divider />
 
           {checkpoints.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              No checkpoints saved yet.
+              No website versions saved yet.
             </Typography>
           ) : (
             checkpoints.map((cp) => {
@@ -8245,11 +8314,16 @@ const autoProvisionIfEmpty = useCallback(
               return (
                 <Paper key={cp.id} variant="outlined" sx={{ p: 1.25 }}>
                   <Stack spacing={0.5}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      {cp.name || `Checkpoint #${cp.id}`}
-                    </Typography>
+                    <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {cp.name || `Version #${cp.id}`}
+                      </Typography>
+                      <Chip size="small" variant="outlined" label={checkpointKindLabel(cp.checkpoint_kind)} />
+                      {cp.protected ? <Chip size="small" color="success" label="Protected" /> : null}
+                      {cp.theme_key ? <Chip size="small" variant="outlined" label={`Theme: ${cp.theme_key}`} /> : null}
+                    </Stack>
                     <Typography variant="caption" color="text.secondary">
-                      {cp.created_at ? new Date(cp.created_at).toLocaleString() : "—"} • {Number(cp.page_count || 0)} page(s)
+                      {formatCheckpointTimestamp(cp.created_at)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       Saved by: {byLabel}
@@ -8257,7 +8331,22 @@ const autoProvisionIfEmpty = useCallback(
                     {cp.note ? (
                       <Typography variant="body2">{cp.note}</Typography>
                     ) : null}
-                    <Stack direction="row" spacing={1} sx={{ pt: 0.5 }}>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {checkpointCounts(cp).map((count) => (
+                        <Chip key={count.label} size="small" variant="outlined" label={`${count.label}: ${count.value}`} />
+                      ))}
+                    </Stack>
+                    {Number(cp.missing_tenant_media_count || 0) > 0 ? (
+                      <Alert severity="warning" sx={{ py: 0 }}>
+                        {cp.missing_tenant_media_count} tenant media item(s) are missing. Draft restore is available, but Restore & Publish is blocked.
+                      </Alert>
+                    ) : null}
+                    {Number(cp.external_media_warning_count || 0) > 0 ? (
+                      <Typography variant="caption" color="warning.main">
+                        {cp.external_media_warning_count} external media reference(s) cannot be guaranteed available.
+                      </Typography>
+                    ) : null}
+                    <Stack direction="row" spacing={1} sx={{ pt: 0.5 }} flexWrap="wrap" useFlexGap>
                       <Button
                         size="small"
                         variant="outlined"
@@ -8265,7 +8354,7 @@ const autoProvisionIfEmpty = useCallback(
                         onClick={() => previewCheckpoint(cp)}
                         disabled={busy}
                       >
-                        Preview
+                        Inspect version
                       </Button>
                       <Button
                         size="small"
@@ -8273,14 +8362,15 @@ const autoProvisionIfEmpty = useCallback(
                         onClick={() => requestRestoreCheckpoint(cp, false)}
                         disabled={busy}
                       >
-                        Restore
+                        Restore to draft
                       </Button>
                       <Button
                         size="small"
                         variant="outlined"
                         color="success"
                         onClick={() => requestRestoreCheckpoint(cp, true)}
-                        disabled={busy}
+                        disabled={busy || checkpointPublishBlocked(cp)}
+                        title={checkpointPublishBlocked(cp) ? "Restore & Publish is blocked until missing tenant media is replaced." : undefined}
                       >
                         Restore & Publish
                       </Button>
@@ -8291,7 +8381,7 @@ const autoProvisionIfEmpty = useCallback(
                         onClick={() => requestDeleteCheckpoint(cp)}
                         disabled={busy}
                       >
-                        Delete
+                        Delete version
                       </Button>
                     </Stack>
                   </Stack>
@@ -12671,19 +12761,31 @@ if (authError) {
       >
         <DialogTitle>
           {checkpointDialog.mode === "delete"
-            ? "Delete checkpoint"
+            ? "Delete website version"
             : checkpointDialog.publishNow
-            ? "Restore and publish"
-            : "Restore checkpoint"}
+            ? "Restore & Publish"
+            : "Restore to draft"}
         </DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body2">
-            {checkpointDialog.mode === "delete"
-              ? `Delete "${checkpointDialog.checkpoint?.name || "Checkpoint"}"? This cannot be undone.`
-              : checkpointDialog.publishNow
-              ? `Restore "${checkpointDialog.checkpoint?.name || "Checkpoint"}" and publish immediately?`
-              : `Restore "${checkpointDialog.checkpoint?.name || "Checkpoint"}"? This will replace current draft pages.`}
-          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2">
+              {checkpointDialog.mode === "delete"
+                ? `Delete "${checkpointDialog.checkpoint?.name || "Website version"}"? This cannot be undone.`
+                : checkpointDialog.publishNow
+                ? `Restore "${checkpointDialog.checkpoint?.name || "Website version"}" and publish it to the live site?`
+                : `Restore "${checkpointDialog.checkpoint?.name || "Website version"}" to the current draft?`}
+            </Typography>
+            {checkpointDialog.mode === "delete" && checkpointDialog.checkpoint?.protected ? (
+              <Alert severity="warning">This is a protected approved design. Protected versions are never pruned automatically.</Alert>
+            ) : checkpointDialog.mode === "restore" ? (
+              <Alert severity={checkpointDialog.publishNow ? "warning" : "info"}>
+                The current draft will be replaced. A rollback version is saved automatically first. Operational records and form submissions are not changed.
+              </Alert>
+            ) : null}
+            {checkpointDialog.mode === "restore" && !checkpointDialog.publishNow && Number(checkpointDialog.checkpoint?.missing_tenant_media_count || 0) > 0 ? (
+              <Alert severity="warning">Missing tenant media will remain as warnings in the restored draft. Review the normal site preview before publishing.</Alert>
+            ) : null}
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeCheckpointDialog} disabled={busy}>Cancel</Button>
@@ -12694,10 +12796,10 @@ if (authError) {
             disabled={busy}
           >
             {checkpointDialog.mode === "delete"
-              ? "Delete"
+              ? "Delete version"
               : checkpointDialog.publishNow
               ? "Restore & Publish"
-              : "Restore"}
+              : "Restore to draft"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -12708,28 +12810,40 @@ if (authError) {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Checkpoint preview</DialogTitle>
+        <DialogTitle>Inspect version</DialogTitle>
         <DialogContent dividers>
           {checkpointPreview.loading ? (
-            <Typography variant="body2">Loading checkpoint...</Typography>
+            <Typography variant="body2">Loading website version...</Typography>
           ) : checkpointPreview.error ? (
             <Alert severity="error">{checkpointPreview.error}</Alert>
           ) : (
             <Stack spacing={1}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {checkpointPreview.checkpoint?.name || "Checkpoint"}
+                {checkpointPreview.checkpoint?.name || "Website version"}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {checkpointPreview.checkpoint?.created_at
-                  ? new Date(checkpointPreview.checkpoint.created_at).toLocaleString()
-                  : "—"}
+                {formatCheckpointTimestamp(checkpointPreview.checkpoint?.created_at)}
               </Typography>
               {checkpointPreview.checkpoint?.note ? (
                 <Typography variant="body2">{checkpointPreview.checkpoint.note}</Typography>
               ) : null}
               <Divider />
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                <Chip size="small" label={checkpointKindLabel(checkpointPreview.checkpoint?.checkpoint_kind)} />
+                {checkpointPreview.checkpoint?.protected ? <Chip size="small" color="success" label="Protected" /> : null}
+                {checkpointPreview.checkpoint?.theme_key ? <Chip size="small" variant="outlined" label={`Theme: ${checkpointPreview.checkpoint.theme_key}`} /> : null}
+                {checkpointCounts(checkpointPreview.checkpoint).map((count) => (
+                  <Chip key={count.label} size="small" variant="outlined" label={`${count.label}: ${count.value}`} />
+                ))}
+              </Stack>
+              {Array.isArray(checkpointPreview.checkpoint?.validation_warnings) && checkpointPreview.checkpoint.validation_warnings.length ? (
+                <Alert severity="warning">{checkpointPreview.checkpoint.validation_warnings.join(" ")}</Alert>
+              ) : null}
+              {Array.isArray(checkpointPreview.checkpoint?.warnings) && checkpointPreview.checkpoint.warnings.length ? (
+                <Alert severity="warning">{checkpointPreview.checkpoint.warnings.join(" ")}</Alert>
+              ) : null}
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Pages in snapshot
+                Pages in this version
               </Typography>
               <List dense sx={{ maxHeight: 280, overflowY: "auto" }}>
                 {Array.isArray(checkpointPreview.checkpoint?.snapshot?.pages) &&
@@ -12744,10 +12858,40 @@ if (authError) {
                   ))
                 ) : (
                   <ListItem disablePadding>
-                    <ListItemText primary="No pages found in snapshot." />
+                    <ListItemText primary="No pages found in this version." />
                   </ListItem>
                 )}
               </List>
+              <Grid container spacing={1}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Forms</Typography>
+                  {(checkpointPreview.checkpoint?.snapshot?.forms || []).map((form) => (
+                    <Typography key={form.key} variant="caption" display="block">
+                      {form.name || form.key} • {(form.fields || []).length} field(s)
+                    </Typography>
+                  ))}
+                  {!(checkpointPreview.checkpoint?.snapshot?.forms || []).length ? <Typography variant="caption">No forms captured.</Typography> : null}
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>Menus & redirects</Typography>
+                  {(checkpointPreview.checkpoint?.snapshot?.menus || []).map((menu) => (
+                    <Typography key={menu.key} variant="caption" display="block">
+                      {menu.name || menu.key} • {(menu.items || []).length} item(s)
+                    </Typography>
+                  ))}
+                  <Typography variant="caption" display="block">
+                    {(checkpointPreview.checkpoint?.snapshot?.redirects || []).length} redirect(s)
+                  </Typography>
+                </Grid>
+              </Grid>
+              <Alert severity={checkpointPublishBlocked(checkpointPreview.checkpoint) ? "warning" : "success"}>
+                {checkpointPublishBlocked(checkpointPreview.checkpoint)
+                  ? "Restore & Publish is currently blocked because required tenant media is missing. Restore to draft remains available."
+                  : "This version can be restored to draft or restored and published."}
+              </Alert>
+              <Typography variant="caption" color="text.secondary">
+                Inspect version shows structured design data only. Use Restore to draft, then the signed Next.js preview, for a visual review.
+              </Typography>
             </Stack>
           )}
         </DialogContent>
