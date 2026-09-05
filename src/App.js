@@ -25,6 +25,7 @@ import api, { publicSite, API_BASE_URL } from "./utils/api";
 import {
   buildPublishedWebsiteUrl,
   inferPagePathFromLocation,
+  isPublicTenantGatewayEnabled,
   shouldUseNextJsPublicRenderer,
 } from "./utils/publicWebsite";
 
@@ -751,6 +752,7 @@ const AppContent = ({ token, setToken }) => {
             payload?.visual_theme_version ||
             payload?.website_setting?.settings?.visual_theme_version ||
             null,
+          public_url_contract: payload?.public_url_contract || null,
         };
         const targetUrl = buildPublishedWebsiteUrl({
           status: liveStatus,
@@ -758,7 +760,11 @@ const AppContent = ({ token, setToken }) => {
           currentOrigin: window.location.origin,
           search: location.search || "",
         });
-        if (shouldUseNextJsPublicRenderer(liveStatus) && targetUrl) {
+        if (
+          shouldUseNextJsPublicRenderer(liveStatus) &&
+          targetUrl &&
+          (!isPublicTenantGatewayEnabled(liveStatus) || targetUrl.startsWith(window.location.origin))
+        ) {
           const currentHref = `${window.location.origin}${window.location.pathname}${window.location.search || ""}`;
           if (targetUrl !== currentHref) {
             window.location.replace(targetUrl);

@@ -166,6 +166,7 @@ const SeoSettingsCard = ({
   customDomain,
   primaryHost,
   settings,
+  publicUrlContract,
   companyLogoUrl,
   hasDraftChanges,
   onSave,
@@ -276,15 +277,15 @@ const SeoSettingsCard = ({
   }, [settings, domainVerified, customDomain]);
 
   const slugBaseUrl = useMemo(() => {
-    return seo.slugBaseUrl || tenantBaseUrl({ slug: companySlug, primaryHost });
-  }, [seo.slugBaseUrl, companySlug, primaryHost]);
+    return publicUrlContract?.schedulaa_url || seo.slugBaseUrl || tenantBaseUrl({ slug: companySlug, primaryHost });
+  }, [publicUrlContract?.schedulaa_url, seo.slugBaseUrl, companySlug, primaryHost]);
 
   const canonicalHostUrl = useMemo(() => {
     if (canonicalMode !== "custom" || !domainVerified) {
-      return slugBaseUrl;
+      return publicUrlContract?.canonical_url || slugBaseUrl;
     }
     return ensureUrl(canonicalHost || customDomain || "");
-  }, [canonicalMode, domainVerified, canonicalHost, customDomain, slugBaseUrl]);
+  }, [canonicalMode, domainVerified, canonicalHost, customDomain, publicUrlContract?.canonical_url, slugBaseUrl]);
 
   const searchPreviewUrl = useMemo(() => {
     if (domainVerified && customDomain) {
@@ -325,7 +326,7 @@ const SeoSettingsCard = ({
       : canonicalHostUrl || slugBaseUrl;
     if (!base) return "";
     try {
-      return new URL("/sitemap.xml", base).toString();
+      return `${String(base).replace(/\/$/, "")}/sitemap.xml`;
     } catch {
       return "";
     }
@@ -337,7 +338,7 @@ const SeoSettingsCard = ({
       : canonicalHostUrl || slugBaseUrl;
     if (!base) return "";
     try {
-      return new URL("/robots.txt", base).toString();
+      return `${String(base).replace(/\/$/, "")}/robots.txt`;
     } catch {
       return "";
     }

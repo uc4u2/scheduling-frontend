@@ -35,6 +35,7 @@ import ThemeDesignerDialog from "../../../components/website/ThemeDesignerDialog
 import DomainSettingsCard from "./components/DomainSettingsCard";
 import SeoSettingsCard from "./components/SeoSettingsCard";
 import useCompanyId from "../../../hooks/useCompanyId";
+import { buildPublishedWebsiteUrl } from "../../../utils/publicWebsite";
 
 const EMPTY_FORM = {
   slug: "",
@@ -222,16 +223,21 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
   }, [shouldFocusSeo, loading]);
 
   // computed
-  const slugPath = useMemo(() => {
-    const slug = company?.slug?.trim();
-    return slug ? `/${slug}` : "";
-  }, [company?.slug]);
+  const publicStatus = useMemo(() => ({
+    ...(settings || {}),
+    company_slug: settings?.company_slug || company?.slug || "",
+    is_live: typeof settings?.is_live === "boolean" ? settings.is_live : true,
+  }), [company?.slug, settings]);
+
+  const slugPath = useMemo(() => buildPublishedWebsiteUrl({
+    status: publicStatus,
+    currentOrigin: typeof window !== "undefined" ? window.location.origin : "",
+  }) || "", [publicStatus]);
 
   const slugFullUrl = useMemo(() => {
     if (!slugPath) return "";
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      return origin ? `${origin}${slugPath}` : slugPath;
+      return new URL(slugPath, typeof window !== "undefined" ? window.location.origin : undefined).toString().replace(/\/$/, "");
     } catch {
       return slugPath;
     }
@@ -750,6 +756,7 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
         companyId={companyId}
         companySlug={company?.slug}
         primaryHost={settings?.primary_host}
+        publicUrlContract={settings?.public_url_contract}
         onDomainChange={handleDomainSnapshotUpdate}
       />
 
@@ -761,6 +768,7 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
           customDomain={domainSnapshot.domain || settings?.custom_domain}
           primaryHost={settings?.primary_host}
           settings={settings}
+          publicUrlContract={settings?.public_url_contract}
           companyLogoUrl={companyLogoUrl}
           hasDraftChanges={hasDraftChanges}
           onSave={handleSeoSave}

@@ -129,7 +129,7 @@ const faqs = [
   {
     question: "Can I keep my website if I haven’t subscribed yet?",
     answer:
-      "Yes. Every account includes a free website at www.schedulaa.com/your-company-slug. You can publish and keep it before subscribing, then upgrade when you’re ready.",
+      "Yes. Every account includes a free website at app.schedulaa.com/your-company-slug. You can publish and keep it before subscribing, then upgrade when you’re ready.",
   },
   {
     question: "Can clients book appointments on my site?",
@@ -329,7 +329,7 @@ const WebsiteBuilderPage = () => {
                 </Typography>
                 <Typography variant="h6" sx={{ opacity: 0.94, maxWidth: 600 }}>
                   Build a responsive website with booking, Stripe payments, and analytics in one platform.
-                  Every account includes a free website at www.schedulaa.com/your-company-slug
+                  Every account includes a free website at app.schedulaa.com/your-company-slug
                   (even before you subscribe).
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
@@ -483,7 +483,7 @@ const WebsiteBuilderPage = () => {
                   Your website is live right after signup
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
-                  Publish instantly on a free Schedulaa URL (www.schedulaa.com/your-company-slug). You can keep
+                  Publish instantly on a free Schedulaa URL (app.schedulaa.com/your-company-slug). You can keep
                   the site even before subscribing, then connect a custom domain anytime.
                 </Typography>
                 <Button component={Link} to={CTA_URL} variant="contained" sx={{ alignSelf: "flex-start" }}>

@@ -1,9 +1,11 @@
 import {
   buildPublishedWebsiteUrl,
+  getPublicUrlContract,
   getPublishedRendererSelection,
   inferPagePathFromLocation,
   normalizeLoopbackBaseUrl,
   shouldUseNextJsPublicRenderer,
+  isPublicTenantGatewayEnabled,
 } from "./publicWebsite";
 
 describe("public website resolver", () => {
@@ -53,6 +55,64 @@ describe("public website resolver", () => {
       });
       expect(url).toMatch(/\/site\/acme-spa\/services\/facials$/);
     }
+  });
+
+  it("uses the stable public contract for a gateway-enabled Next tenant", () => {
+    const status = {
+      company_slug: "web-design",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      published_visual_theme_key: "forge-motion",
+      public_url_contract: {
+        company_slug: "web-design",
+        primary_public_url: "https://app.schedulaa.com/web-design",
+      },
+    };
+    expect(isPublicTenantGatewayEnabled(status, { enabled: true, cohortSlugs: "web-design" })).toBe(true);
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "services/strength",
+      search: "?ref=manager",
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
+      gateway: { enabled: true, cohortSlugs: "web-design" },
+    })).toBe("https://app.schedulaa.com/web-design/services/strength?ref=manager");
+  });
+
+  it("uses a verified custom-domain contract without exposing the company slug", () => {
+    const status = {
+      company_slug: "vandaorchidjewels",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      public_url_contract: {
+        company_slug: "vandaorchidjewels",
+        primary_public_url: "https://www.vandaorchidjewel.com/",
+        custom_domain_url: "https://www.vandaorchidjewel.com/",
+      },
+    };
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "contact",
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://renderer.example",
+      gateway: { enabled: true, customHosts: "www.vandaorchidjewel.com" },
+    })).toBe("https://www.vandaorchidjewel.com/contact");
+  });
+
+  it("reads the additive backend contract without removing legacy fields", () => {
+    expect(getPublicUrlContract({ public_url_contract: { contract_version: "1.0" } })).toEqual({ contract_version: "1.0" });
+    expect(getPublicUrlContract({ company_slug: "legacy" })).toBeNull();
+    expect(getPublishedRendererSelection({
+      public_url_contract: {
+        renderer_engine: "nextjs",
+        visual_theme_key: "forge-motion",
+        visual_theme_version: "1.0.0",
+      },
+    })).toMatchObject({
+      rendererEngine: "nextjs",
+      visualThemeKey: "forge-motion",
+      visualThemeVersion: "1.0.0",
+    });
   });
 
   it("returns nextjs selection from published metadata", () => {

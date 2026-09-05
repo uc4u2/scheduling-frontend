@@ -1022,7 +1022,7 @@ export default function CompanyProfile({ token }) {
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             Add your company name and details so we can publish your starter site at
-            <strong> https://schedulaa.com/&lt;your-slug&gt;</strong>.
+            <strong> https://app.schedulaa.com/&lt;your-slug&gt;</strong>.
           </Typography>
           <Typography variant="body2" color="text.secondary">
             You can always edit these details later, but finishing this step now helps your team launch faster.

@@ -49,6 +49,7 @@ const INITIAL_STATE = {
   cloudflareDetails: null,
   bootstrapDetails: null,
   workerRouteDetails: null,
+  publicUrlContract: null,
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -292,6 +293,10 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "guidance")) {
         next.guidance = payload.guidance || null;
+      }
+
+      if (hasOwn(payload, "public_url_contract")) {
+        next.publicUrlContract = payload.public_url_contract || null;
       }
 
       if (hasOwn(payload, "domain_details")) {

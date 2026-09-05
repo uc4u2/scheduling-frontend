@@ -426,6 +426,7 @@ const DomainSettingsCard = ({
   companyId,
   companySlug,
   primaryHost,
+  publicUrlContract,
   onDomainChange,
 }) => {
   const { t } = useTranslation();
@@ -491,6 +492,7 @@ const DomainSettingsCard = ({
     cloudflareDetails,
     bootstrapDetails,
     workerRouteDetails,
+    publicUrlContract: domainPublicUrlContract,
   } = useDomainSettings(companyId);
 
   const statusMetaMap = useMemo(() => buildStatusMeta(t), [t]);
@@ -564,8 +566,8 @@ const DomainSettingsCard = ({
   const effectiveToken = verificationToken || instructionsToShow?.TXT?.value || null;
 
   const baseUrl = useMemo(
-    () => tenantBaseUrl({ customDomain: domain, slug: companySlug, primaryHost }),
-    [domain, companySlug, primaryHost]
+    () => (domainPublicUrlContract || publicUrlContract)?.primary_public_url || tenantBaseUrl({ customDomain: domain, slug: companySlug, primaryHost }),
+    [domainPublicUrlContract, publicUrlContract, domain, companySlug, primaryHost]
   );
   const requestedDomainValue =
     normalizeRequestedDomainInput(requestedDomain || domainDetails?.requested || domainInput || domain);

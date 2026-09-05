@@ -1,4 +1,9 @@
 const configuredNextBaseUrl = process.env.REACT_APP_TENANT_WEB_NEXT_URL || "";
+const configuredGatewayEnabled = /^(1|true|yes|on)$/i.test(
+  String(process.env.REACT_APP_PUBLIC_TENANT_GATEWAY_ENABLED || "")
+);
+const configuredGatewayCohortSlugs = process.env.REACT_APP_PUBLIC_TENANT_GATEWAY_COHORT_SLUGS || "";
+const configuredGatewayCustomHosts = process.env.REACT_APP_PUBLIC_TENANT_GATEWAY_CUSTOM_HOSTS || "";
 
 const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)$/i;
 
@@ -61,9 +66,15 @@ export function inferPagePathFromLocation({
 }
 
 export function getPublishedRendererSelection(status = {}) {
+  const contract =
+    status?.public_url_contract ||
+    status?.website_setting?.public_url_contract ||
+    status?.website?.public_url_contract ||
+    null;
   const rendererEngine =
     String(
       status?.published_renderer_engine ||
+        contract?.renderer_engine ||
         status?.current_renderer_engine ||
         "legacy-react"
     ).trim().toLowerCase() || "legacy-react";
@@ -72,9 +83,11 @@ export function getPublishedRendererSelection(status = {}) {
     rendererEngine,
     visualThemeKey:
       status?.published_visual_theme_key ||
+      contract?.visual_theme_key ||
       (rendererEngine === "nextjs" ? status?.current_visual_theme_key || null : null),
     visualThemeVersion:
       status?.published_visual_theme_version ||
+      contract?.visual_theme_version ||
       (rendererEngine === "nextjs" ? status?.current_visual_theme_version || null : null),
     legacyDesignFamily:
       status?.published_legacy_design_family ||
@@ -84,14 +97,59 @@ export function getPublishedRendererSelection(status = {}) {
   };
 }
 
+const csvSet = (value = "") => new Set(
+  String(value || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+export function getPublicUrlContract(status = {}) {
+  const contract =
+    status?.public_url_contract ||
+    status?.website_setting?.public_url_contract ||
+    status?.website?.public_url_contract ||
+    null;
+  return contract && typeof contract === "object" ? contract : null;
+}
+
+export function isPublicTenantGatewayEnabled(
+  status = {},
+  {
+    enabled = configuredGatewayEnabled,
+    cohortSlugs = configuredGatewayCohortSlugs,
+    customHosts = configuredGatewayCustomHosts,
+  } = {}
+) {
+  if (!enabled) return false;
+  const contract = getPublicUrlContract(status);
+  const slug = String(status?.company_slug || contract?.company_slug || "").trim().toLowerCase();
+  if (slug && csvSet(cohortSlugs).has(slug)) return true;
+  const customUrl = String(contract?.custom_domain_url || "").trim();
+  try {
+    return Boolean(customUrl) && csvSet(customHosts).has(new URL(customUrl).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+function appendPublicWebsitePath(baseUrl, pagePath, search = "") {
+  const normalizedPath = normalizeWebsitePath(pagePath);
+  const base = String(baseUrl || "").trim().replace(/\/$/, "");
+  if (!base) return null;
+  return `${base}${normalizedPath ? `/${normalizedPath}` : ""}${String(search || "")}`;
+}
+
 export function buildPublishedWebsiteUrl({
   status = {},
   pagePath = "",
   currentOrigin = "",
   search = "",
   nextBaseUrl = TENANT_WEB_NEXT_PUBLIC_BASE_URL,
+  gateway = undefined,
 } = {}) {
-  const slug = String(status?.company_slug || "").trim();
+  const contract = getPublicUrlContract(status);
+  const slug = String(status?.company_slug || contract?.company_slug || "").trim();
   if (!slug) return null;
   const normalizedPath = normalizeWebsitePath(pagePath);
   const suffix = normalizedPath ? `/${normalizedPath}` : "";
@@ -110,6 +168,10 @@ export function buildPublishedWebsiteUrl({
 
   const selection = getPublishedRendererSelection(status);
   if (selection.rendererEngine === "nextjs") {
+    const gatewayActive = isPublicTenantGatewayEnabled(status, gateway);
+    if (!isLocalCurrentOrigin && gatewayActive && contract?.primary_public_url) {
+      return appendPublicWebsitePath(contract.primary_public_url, normalizedPath, query);
+    }
     if (normalizedNextBaseUrl) {
       return `${normalizedNextBaseUrl}/site/${encodeURIComponent(slug)}${suffix}${query}`;
     }
@@ -123,6 +185,10 @@ export function buildPublishedWebsiteUrl({
   // the tenant has a production custom domain saved in its website settings.
   if (isLocalCurrentOrigin) {
     return `${safeOrigin}/${encodeURIComponent(slug)}${suffix}${query}`;
+  }
+
+  if (contract?.primary_public_url) {
+    return appendPublicWebsitePath(contract.primary_public_url, normalizedPath, query);
   }
 
   if (customDomain && !isLocalHostname(customDomain)) {
