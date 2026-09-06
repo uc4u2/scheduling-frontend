@@ -1,10 +1,10 @@
 # Chatbot UI Source Of Truth
 
-Last updated: 2026-04-05
+Last updated: 2026-09-06
 
-This document defines the frontend UI contract for the shared app/tenant chatbot widget used by:
+This document defines the UI contract for Schedulaa's app and tenant chatbot widgets used by:
 
-- tenant/public business websites
+- legacy and Next.js tenant/public business websites
 - app/product surfaces that use the `frontend` repo widget
 
 This is a UI source of truth only. Backend chat behavior, knowledge routing, and tenant chatbot settings remain owned by:
@@ -65,11 +65,15 @@ The shared widget must remain a single component unless there is a strong mainte
 
 ## 3.1 Repo boundary
 
-There are two separate chatbot UIs in the overall platform:
+There are three separate chatbot UIs in the overall platform:
 
 ### This document covers
 
 - `frontend/src/components/ui/ChatBot.js`
+- `tenant-web-next/components/public/tenant-chatbot.tsx`
+
+The two implementations share the public tenant chatbot settings and `POST /chat`
+contracts, but they remain native to their respective rendering stacks.
 
 ### This document does not cover
 
@@ -118,6 +122,21 @@ Visual rules:
 - keep the improved structure, but allow tenant colors to drive the accents
 
 Tenant mode should look more modern than before while still feeling like the tenant’s public site assistant.
+
+### Next.js tenant renderer geometry
+
+The Next.js tenant assistant:
+
+- starts closed and uses a fixed bottom-right launcher
+- inherits semantic tenant colors, but not unrestricted page corner-radius values
+- uses stable widget radii so pill-heavy themes cannot turn the messenger shell into an oval
+- caps the open panel at `23rem` wide and `36rem` high, with viewport-safe mobile sizing
+- keeps transcript content scrollable without causing horizontal page overflow
+- resolves tenant CTAs through the public/preview URL resolver
+
+Focused regression coverage lives in:
+
+- `tenant-web-next/tests/tenant-chatbot.test.tsx`
 
 ## 6. UI structure
 
