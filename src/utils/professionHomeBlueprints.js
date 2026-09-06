@@ -113,8 +113,8 @@ const BLUEPRINTS = {
   },
   "modern-gradient": {
     label: "Modern Gradient",
-    description: "its original spacious gradient hero, trust field, editorial media wall, masonry reviews, premium packages, clean FAQ, and rounded request ending",
-    pageTitle: "Modern service, thoughtfully delivered.",
+    description: "its approved website design sales homepage with motion hero, service paths, portfolio, six-step process, pricing, articles, and quote ending",
+    pageTitle: "Home",
     createModules: createModernGradientOriginalHomeModules,
   },
   finwise: {

@@ -628,16 +628,21 @@ describe("website semantic modules", () => {
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 
-  it("provides Modern Gradient's complete editable source rhythm without overriding operational pricing", () => {
+  it("provides the approved Modern Gradient web-design sales homepage", () => {
     const modules = createModernGradientOriginalHomeModules();
-    expect(modules).toHaveLength(12);
-    expect(new Set(modules.map((module) => module.id)).size).toBe(12);
-    expect(modules.find((module) => module.id === "modern-home-trust").settings.claimsMode).toBe("capabilities");
-    expect(modules.find((module) => module.id === "modern-home-reviews").content.source).toBe("operational");
-    expect(modules.find((module) => module.id === "modern-home-gallery").content.items).toHaveLength(5);
-    expect(modules.find((module) => module.id === "modern-home-pricing").settings.ownership).toBe("marketing-packages");
-    expect(modules.find((module) => module.id === "modern-home-faq").content.items).toHaveLength(4);
-    expect(modules.every((module) => module.settings.starterBlueprint === "modern-gradient-original")).toBe(true);
+    expect(modules).toHaveLength(10);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(10);
+    expect(modules.find((module) => module.id === "wd-home-hero").content.heading).toBe(
+      "A better website should make the next step obvious."
+    );
+    expect(modules.find((module) => module.id === "wd-home-hero").content.videoUrl).toBe(
+      "starter-media://modern-gradient/hero-video"
+    );
+    expect(modules.find((module) => module.id === "wd-home-work").content.items).toHaveLength(5);
+    expect(modules.find((module) => module.id === "wd-home-process").content.items).toHaveLength(6);
+    expect(modules.find((module) => module.id === "wd-home-pricing").content.items).toHaveLength(3);
+    expect(modules.find((module) => module.id === "wd-home-faq").content.items).toHaveLength(6);
+    expect(modules.every((module) => module.settings.starterBlueprint === "web-design-starter")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
   });
 

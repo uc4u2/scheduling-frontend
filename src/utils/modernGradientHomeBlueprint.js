@@ -1,129 +1,483 @@
-const record = (id, type, slot, order, content, settings = {}) => ({
-  id,
-  type,
-  slot,
-  order,
-  enabled: true,
-  content,
-  settings: {
-    createdInBuilder: true,
-    starterBlueprint: "modern-gradient-original",
-    source: "modern-gradient-original",
-    ...settings,
+const WEB_DESIGN_HOME_MODULES = [
+  {
+    "content": {
+      "eyebrow": "Websites for service businesses",
+      "heading": "A better website should make the next step obvious.",
+      "image": "starter-media://modern-gradient/hero-poster",
+      "imageAlt": "A creative team planning a polished website experience in motion.",
+      "imageUrl": "starter-media://modern-gradient/hero-poster",
+      "posterImage": "starter-media://modern-gradient/hero-poster",
+      "primaryCta": {
+        "href": "/request-quote",
+        "label": "Request a Quote"
+      },
+      "secondaryCta": {
+        "href": "/work",
+        "label": "View Our Work"
+      },
+      "subheading": "We design polished, mobile-first websites that explain what you do, build trust, and connect visitors to quotes, bookings, products, and payments.",
+      "videoUrl": "starter-media://modern-gradient/hero-video"
+    },
+    "enabled": true,
+    "id": "wd-home-hero",
+    "order": 0,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-hero",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.hero",
+    "type": "hero",
+    "variant": null
   },
-});
-
-const media = (imageAlt) => ({ image: "", imageUrl: "", imageAlt });
+  {
+    "content": {
+      "eyebrow": "Built around the business",
+      "heading": "Clear by design.",
+      "intro": "Every project starts with the real offer, the real audience, and the action the website needs to support.",
+      "items": [
+        {
+          "body": "Pages are composed and checked for smaller screens, not treated as an afterthought.",
+          "id": "trust-mobile",
+          "title": "Mobile-first"
+        },
+        {
+          "body": "Important text, images, navigation, forms, and SEO remain manageable after launch.",
+          "id": "trust-editable",
+          "title": "Editable"
+        },
+        {
+          "body": "The site can connect to the booking, product, lead, and payment tools the business actually uses.",
+          "id": "trust-connected",
+          "title": "Workflow-connected"
+        }
+      ]
+    },
+    "enabled": true,
+    "id": "wd-home-trust",
+    "order": 1,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-trust",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.trust",
+    "type": "trustRail",
+    "variant": null
+  },
+  {
+    "content": {
+      "eyebrow": "Capabilities",
+      "heading": "Design that supports the way you sell.",
+      "intro": "Choose a focused launch, a fuller growth site, or a scoped redesign around the workflows your customers need.",
+      "items": [
+        {
+          "body": "A clear, branded website built around your services, audience, and next best action.",
+          "cta": {
+            "href": "/request-quote",
+            "label": "Request a quote"
+          },
+          "id": "cap-new",
+          "image": "starter-media://modern-gradient/new-website",
+          "imageAlt": "A laptop displaying a clean website design in a bright workspace.",
+          "imageUrl": "starter-media://modern-gradient/new-website",
+          "title": "New business websites"
+        },
+        {
+          "body": "Restructure dated content, improve mobile usability, and give the site a more focused visual direction.",
+          "cta": {
+            "href": "/request-quote",
+            "label": "Discuss a redesign"
+          },
+          "id": "cap-redesign",
+          "image": "starter-media://modern-gradient/website-redesign",
+          "imageAlt": "A responsive website displayed on a desktop monitor surrounded by plants.",
+          "imageUrl": "starter-media://modern-gradient/website-redesign",
+          "title": "Website redesign"
+        },
+        {
+          "body": "Connect service pages to practical booking, contact, and quote-request paths.",
+          "cta": {
+            "href": "/work",
+            "label": "See the approach"
+          },
+          "id": "cap-booking",
+          "image": "starter-media://modern-gradient/development-workflow",
+          "imageAlt": "A web developer building and testing a website at a desktop workstation.",
+          "title": "Booking and lead workflows"
+        },
+        {
+          "body": "Prepare product, payment, and checkout experiences that fit the way the business sells.",
+          "cta": {
+            "href": "/request-quote",
+            "label": "Plan your project"
+          },
+          "id": "cap-commerce",
+          "image": "starter-media://modern-gradient/ecommerce-website",
+          "imageAlt": "An ecommerce website displayed on a laptop in a professional workspace.",
+          "imageUrl": "starter-media://modern-gradient/ecommerce-website",
+          "title": "Ecommerce and payments"
+        }
+      ],
+      "source": "custom"
+    },
+    "enabled": true,
+    "id": "wd-home-services",
+    "order": 2,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-services",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.services",
+    "type": "services",
+    "variant": null
+  },
+  {
+    "content": {
+      "body": "A polished visual direction matters, but the site also needs a useful structure. We organize the offer, shape the customer journey, connect the right forms or transactions, and test the experience before launch.",
+      "eyebrow": "Our approach",
+      "heading": "Start with clarity, then make it memorable.",
+      "image": "starter-media://modern-gradient/design-studio",
+      "imageAlt": "A professional web design workstation showing interface layouts.",
+      "imageUrl": "starter-media://modern-gradient/design-studio",
+      "primaryCta": {
+        "href": "/about",
+        "label": "How we work"
+      }
+    },
+    "enabled": true,
+    "id": "wd-home-story",
+    "order": 3,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-story",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.story",
+    "type": "featureStory",
+    "variant": null
+  },
+  {
+    "content": {
+      "eyebrow": "Selected directions",
+      "heading": "Digital experiences built around real business tasks.",
+      "intro": "These visuals demonstrate the types of connected website and workflow experiences we can shape. They are design directions, not fabricated client case studies.",
+      "items": [
+        {
+          "caption": "Editable page systems for service businesses",
+          "id": "work-builder",
+          "image": "starter-media://modern-gradient/responsive-design",
+          "imageAlt": "Website design and code displayed across desktop, tablet, and phone screens.",
+          "imageUrl": "starter-media://modern-gradient/responsive-design",
+          "title": "Branded website direction"
+        },
+        {
+          "caption": "A practical path from service discovery to booking",
+          "id": "work-booking",
+          "image": "starter-media://modern-gradient/development-workflow",
+          "imageAlt": "A web developer building and testing a website at a desktop workstation.",
+          "title": "Booking-connected experience"
+        },
+        {
+          "caption": "Clear service structure and customer choices",
+          "id": "work-services",
+          "image": "starter-media://modern-gradient/website-launch",
+          "imageAlt": "A finished modern website displayed on a laptop in a warm studio setting.",
+          "imageUrl": "starter-media://modern-gradient/website-launch",
+          "title": "Service-led content"
+        },
+        {
+          "caption": "Payment links and client follow-up",
+          "id": "work-payments",
+          "image": "starter-media://modern-gradient/ecommerce-website",
+          "imageAlt": "An ecommerce website displayed on a laptop in a professional workspace.",
+          "title": "Payment-ready workflow"
+        },
+        {
+          "caption": "A secure, understandable payment step",
+          "id": "work-checkout",
+          "image": "starter-media://modern-gradient/secure-checkout",
+          "imageAlt": "A vivid, security-focused laptop workspace representing a polished digital checkout experience.",
+          "imageUrl": "starter-media://modern-gradient/secure-checkout",
+          "title": "Focused checkout"
+        }
+      ]
+    },
+    "enabled": true,
+    "id": "wd-home-work",
+    "order": 4,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-work",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.portfolio",
+    "type": "portfolio",
+    "variant": null
+  },
+  {
+    "content": {
+      "eyebrow": "Process",
+      "heading": "A controlled path from idea to launch.",
+      "intro": "Each stage produces something reviewable, so decisions stay clear and approved work remains recoverable.",
+      "items": [
+        {
+          "body": "Clarify the audience, offer, content, required pages, and the action visitors should take.",
+          "id": "process-discovery",
+          "title": "Discovery",
+          "value": "01"
+        },
+        {
+          "body": "Choose the visual direction and organize the words, images, services, and proof needed to support it.",
+          "id": "process-direction",
+          "title": "Direction and content",
+          "value": "02"
+        },
+        {
+          "body": "Compose responsive pages, connect forms and workflows, and configure search and sharing details.",
+          "id": "process-build",
+          "title": "Design and build",
+          "value": "03"
+        },
+        {
+          "body": "Test the site across devices, complete revisions, save an approved version, and publish.",
+          "id": "process-review",
+          "title": "Review and launch",
+          "value": "04"
+        },
+        {
+          "body": "Receive the approved site, editing guidance, and a recoverable launch version your team can manage.",
+          "id": "process-handoff",
+          "title": "Handoff and training",
+          "value": "05"
+        },
+        {
+          "body": "Make controlled updates as services, content, and business priorities change.",
+          "id": "process-support",
+          "title": "Ongoing support",
+          "value": "06"
+        }
+      ]
+    },
+    "enabled": true,
+    "id": "wd-home-process",
+    "order": 5,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-process",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.process",
+    "type": "process",
+    "variant": null
+  },
+  {
+    "content": {
+      "eyebrow": "Engagement options",
+      "heading": "Choose the level of setup you need.",
+      "intro": "Website setup is a one-time service. Larger or unusual scopes receive a confirmed quote before work begins.",
+      "items": [
+        {
+          "body": "A fast branded setup for a simple website with up to five pages.",
+          "features": [
+            "Template and branding setup",
+            "Up to 5 pages",
+            "Booking, contact, or quote form setup",
+            "Publish support",
+            "1 revision round"
+          ],
+          "id": "setup-basic",
+          "price": "$500 USD",
+          "primaryCta": {
+            "href": "/upgrade?addon=website_design",
+            "label": "Buy Basic Setup"
+          },
+          "title": "Basic Website Setup"
+        },
+        {
+          "body": "A fuller sales website for service businesses that need richer content and lead capture.",
+          "features": [
+            "Up to 10 pages",
+            "Services and products setup",
+            "Gallery, projects, reviews, and contact pages",
+            "Quote request or lead capture flow",
+            "Basic SEO and social sharing setup",
+            "2 revision rounds"
+          ],
+          "id": "setup-growth",
+          "price": "$1,500 USD",
+          "primaryCta": {
+            "href": "/request-quote",
+            "label": "Request Growth Setup"
+          },
+          "title": "Growth Website Setup"
+        },
+        {
+          "body": "A scoped engagement for larger content libraries, migration, and additional refinement.",
+          "features": [
+            "Everything in Growth",
+            "Larger content migration",
+            "Additional landing pages",
+            "More layout customization",
+            "Copy refinement support",
+            "3 revision rounds"
+          ],
+          "id": "setup-premium",
+          "price": "From $2,500 USD",
+          "primaryCta": {
+            "href": "/request-quote",
+            "label": "Request a custom quote"
+          },
+          "title": "Premium Website Setup"
+        }
+      ]
+    },
+    "enabled": true,
+    "id": "wd-home-pricing",
+    "order": 6,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-pricing",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.pricing",
+    "type": "pricing",
+    "variant": null
+  },
+  {
+    "content": {
+      "eyebrow": "FAQ",
+      "heading": "Questions before we begin.",
+      "intro": "A few practical answers about scope, content, launch, and ongoing updates.",
+      "items": [
+        {
+          "answer": "The exact scope depends on the selected engagement. Typical work includes structure, branding, page composition, content placement, forms, responsive review, SEO basics, and launch support.",
+          "id": "faq-included",
+          "question": "What is included in a website setup?"
+        },
+        {
+          "answer": "No. We can begin with the business goals and available material, then identify the remaining copy, images, service details, and legal information needed for launch.",
+          "id": "faq-content",
+          "question": "Do I need all of my content before we start?"
+        },
+        {
+          "answer": "Yes. The project can connect the public site to the booking, product, payment, and WebsiteForm workflows already available in Schedulaa when they fit the business.",
+          "id": "faq-booking",
+          "question": "Can the site support bookings, products, or quote requests?"
+        },
+        {
+          "answer": "Responsive behavior is reviewed across desktop, tablet, and mobile sizes before launch.",
+          "id": "faq-mobile",
+          "question": "Will the website work on mobile devices?"
+        },
+        {
+          "answer": "Domain connection support is included where listed. Domain registration costs are separate.",
+          "id": "faq-domain",
+          "question": "Can you help connect my domain?"
+        },
+        {
+          "answer": "You can manage normal updates through the website tools or request ongoing help for larger changes and refinements.",
+          "id": "faq-updates",
+          "question": "What happens after launch?"
+        }
+      ]
+    },
+    "enabled": true,
+    "id": "wd-home-faq",
+    "order": 7,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-faq",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.faq",
+    "type": "faq",
+    "variant": null
+  },
+  {
+    "content": {
+      "eyebrow": "Start a project",
+      "formKey": "contact",
+      "heading": "Tell us what the website needs to do.",
+      "intro": "Share the business, project type, timing, and priorities. We’ll review the details and follow up with the right next step."
+    },
+    "enabled": true,
+    "id": "wd-home-form",
+    "order": 8,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-form",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.quote",
+    "type": "contactForm",
+    "variant": null
+  },
+  {
+    "content": {
+      "body": "Start with a focused request. We’ll help define the scope before any custom work begins.",
+      "eyebrow": "Ready when you are",
+      "heading": "Turn the next website idea into a clear project.",
+      "primaryCta": {
+        "href": "/request-quote",
+        "label": "Request a Website Quote"
+      }
+    },
+    "enabled": true,
+    "id": "wd-home-cta",
+    "order": 9,
+    "settings": {
+      "createdInBuilder": true,
+      "source": "web-design-starter",
+      "starterBlueprint": "web-design-starter",
+      "contentPack": {
+        "moduleKey": "wd-home-cta",
+        "blueprintVersion": "4"
+      }
+    },
+    "slot": "home.finalCta",
+    "type": "cta",
+    "variant": null
+  }
+];
 
 export function createModernGradientOriginalHomeModules() {
-  return [
-    record("modern-home-hero", "hero", "home.hero", 0, {
-      eyebrow: "A clearer way forward",
-      heading: "Modern service, thoughtfully delivered.",
-      subheading: "Use this spacious introduction for the real promise, service context, and strongest next step.",
-      ...media("A wide editorial image representing the company's work."),
-      videoUrl: "",
-      posterImage: "",
-      primaryCta: { label: "Request service", href: "/contact" },
-      secondaryCta: { label: "Explore services", href: "/services" },
-    }),
-    record("modern-home-trust", "trustRail", "home.afterHero", 1, {
-      eyebrow: "What clients can expect",
-      heading: "A service experience designed around clarity.",
-      intro: "Use honest capabilities or service principles here—not invented customer logos.",
-      items: [
-        "Clear next steps",
-        "Thoughtful planning",
-        "Responsive support",
-        "Current options",
-        "Practical guidance",
-        "Careful follow-through",
-      ].map((title, index) => ({ id: `modern-trust-${index + 1}`, title, body: "Editable capability label" })),
-    }, { presentation: "source-marks", claimsMode: "capabilities" }),
-    record("modern-home-feature", "featureStory", "home.primaryContent", 2, {
-      eyebrow: "The approach",
-      heading: "Room to understand the work before choosing the next step.",
-      body: "Explain the real process, expertise, or point of view that makes this service experience distinctive.",
-      ...media("A premium editorial image showing the team, process, or finished work."),
-      primaryCta: { label: "Our approach", href: "/about" },
-    }, { presentation: "asymmetric-feature" }),
-    record("modern-home-gallery", "gallery", "home.primaryContent", 3, {
-      eyebrow: "Selected work",
-      heading: "A closer look at the work.",
-      intro: "Add current, relevant images with useful alternative text.",
-      items: [
-        { id: "modern-gallery-1", title: "Project detail", caption: "Project detail", ...media("A detailed view of completed work.") },
-        { id: "modern-gallery-2", title: "In progress", caption: "In progress", ...media("The team carrying out work on site.") },
-        { id: "modern-gallery-3", title: "Finished result", caption: "Finished result", ...media("A wide view of a finished project.") },
-        { id: "modern-gallery-4", title: "Service context", caption: "Service context", ...media("The property or environment where the service is delivered.") },
-        { id: "modern-gallery-5", title: "Team perspective", caption: "Team perspective", ...media("A team member reviewing the work.") },
-      ],
-    }, { presentation: "editorial-wall" }),
-    record("modern-home-reviews", "reviews", "home.afterServices", 4, {
-      eyebrow: "Client perspective",
-      heading: "What the experience felt like.",
-      intro: "Published Reviews remain management-owned and appear here automatically.",
-      source: "operational",
-      items: [],
-    }, { dataSource: "published-reviews", presentation: "masonry-wall" }),
-    record("modern-home-stats", "stats", "home.afterServices", 5, {
-      eyebrow: "How we work",
-      heading: "Proof without inflated claims.",
-      intro: "Use real, verifiable facts or capability statements.",
-      items: [
-        { id: "modern-stat-1", value: "01", title: "Listen first", body: "Start with the real need and current context." },
-        { id: "modern-stat-2", value: "02", title: "Explain clearly", body: "Make options, timing, and tradeoffs understandable." },
-        { id: "modern-stat-3", value: "03", title: "Plan carefully", body: "Agree on the practical next step before work begins." },
-        { id: "modern-stat-4", value: "04", title: "Follow through", body: "Keep communication useful through completion." },
-      ],
-    }, { claimsMode: "capabilities" }),
-    record("modern-home-pricing", "pricing", "home.afterServices", 6, {
-      eyebrow: "Ways to begin",
-      heading: "Choose the right level of conversation.",
-      intro: "These are editable marketing packages. Authoritative Service prices remain in management-owned Services.",
-      items: [
-        { id: "modern-plan-1", title: "Focused visit", price: "Current quote", body: "A clear starting point for one immediate need.", features: ["Initial context", "Current-condition review", "Recommended next step"], primaryCta: { label: "Ask about a visit", href: "/contact" } },
-        { id: "modern-plan-2", title: "Ongoing support", price: "Ask the team", body: "A recurring relationship where the business actually offers it.", features: ["Editable service rhythm", "Current scheduling terms", "Useful follow-through"], primaryCta: { label: "Start a conversation", href: "/contact" } },
-        { id: "modern-plan-3", title: "Project planning", price: "Custom", body: "A scoped conversation for a larger body of work.", features: ["Options review", "Scope discussion", "Written next steps"], primaryCta: { label: "Plan a project", href: "/contact" } },
-      ],
-    }, { ownership: "marketing-packages" }),
-    record("modern-home-faq", "faq", "home.afterServices", 7, {
-      eyebrow: "FAQ",
-      heading: "Questions before the next step.",
-      intro: "Keep answers current and specific to the real service process.",
-      items: [
-        { id: "modern-faq-1", question: "What happens after I get in touch?", answer: "Describe the real response, consultation, or intake process." },
-        { id: "modern-faq-2", question: "How should I prepare?", answer: "Add the practical information clients should have ready." },
-        { id: "modern-faq-3", question: "How are options explained?", answer: "Describe how scope, timing, and pricing are communicated." },
-        { id: "modern-faq-4", question: "Which areas do you support?", answer: "List only the real service area or supported locations." },
-      ],
-    }),
-    record("modern-home-contact-intro", "contactIntro", "home.beforeContact", 8, {
-      eyebrow: "Start a request",
-      heading: "Tell us what would make the next step easier.",
-      body: "Share the current need, timing, and the best way for the team to follow up.",
-      ...media("A bright editorial image introducing the request process."),
-    }),
-    record("modern-home-contact-details", "contactDetails", "home.beforeContact", 9, {
-      heading: "Contact details",
-      items: [
-        { id: "modern-detail-phone", title: "Phone", body: "Add the business phone" },
-        { id: "modern-detail-email", title: "Email", body: "Add the business email" },
-        { id: "modern-detail-location", title: "Location", body: "Add the business address or service context" },
-      ],
-    }),
-    record("modern-home-contact-form", "contactForm", "home.beforeContact", 10, {
-      eyebrow: "Request",
-      heading: "Start the conversation.",
-      intro: "The existing Website Form handles this inquiry.",
-      formKey: "contact",
-      submitLabel: "Send request",
-    }),
-    record("modern-home-cta", "bookingCta", "home.finalCta", 11, {
-      eyebrow: "Next step",
-      heading: "Make the next decision feel clearer.",
-      body: "Use the existing service and contact routes—no new transaction or lead backend is introduced.",
-      primaryCta: { label: "Request service", href: "/contact" },
-    }),
-  ];
+  return JSON.parse(JSON.stringify(WEB_DESIGN_HOME_MODULES));
 }
