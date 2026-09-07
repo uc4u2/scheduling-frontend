@@ -1,6 +1,26 @@
 export const TRANSACTIONAL_MEASURE_MESSAGE = "schedulaa:transactional-measure";
 export const TRANSACTIONAL_READY_MESSAGE = "schedulaa:transactional-ready";
 export const TRANSACTIONAL_RESIZE_MESSAGE = "schedulaa:transactional-resize";
+export const TRANSACTIONAL_NAVIGATE_MESSAGE = "schedulaa:transactional-navigate";
+
+export function normalizeTransactionalReturnPath(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "";
+  try {
+    const parsed = new URL(raw, "https://schedulaa.local");
+    if (parsed.origin !== "https://schedulaa.local") return "";
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return "";
+  }
+}
+
+export function requestTransactionalNavigation(targetWindow, value = "") {
+  const href = normalizeTransactionalReturnPath(value);
+  if (!href || !targetWindow?.postMessage) return false;
+  targetWindow.postMessage({ type: TRANSACTIONAL_NAVIGATE_MESSAGE, href }, "*");
+  return true;
+}
 
 function measureNode(node) {
   if (!node) return 0;

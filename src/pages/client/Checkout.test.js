@@ -408,6 +408,9 @@ describe("CheckoutFormCore", () => {
 
     expect(await screen.findByRole("button", { name: /pay now/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/may securely save my card with Stripe/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add another product/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add another service/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add-on\(s\)/i })).not.toBeInTheDocument();
   });
 
   test("product-only carts show the product-specific disabled message", async () => {

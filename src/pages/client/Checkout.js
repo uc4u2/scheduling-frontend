@@ -50,6 +50,10 @@ import TimezoneSelect from "../../components/TimezoneSelect";
 import { getUserTimezone, formatTimezoneLabel } from "../../utils/timezone";
 import TenantTransactionalShell from "./TenantTransactionalShell";
 import { buildMarketingLegalUrl } from "../../config/origins";
+import {
+  normalizeTransactionalReturnPath,
+  requestTransactionalNavigation,
+} from "../../utils/transactionalFrameBridge";
 
 const USER_AGREEMENT_URL = buildMarketingLegalUrl("/user-agreement");
 
@@ -715,6 +719,12 @@ export function CheckoutFormCore({
       return "";
     }
   }, [location.search]);
+  const productsReturnTo = useMemo(
+    () => normalizeTransactionalReturnPath(
+      searchParams.get("return_to") || searchParams.get("returnTo") || ""
+    ),
+    [searchParams]
+  );
 
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
@@ -1036,6 +1046,10 @@ export function CheckoutFormCore({
     () => cart.filter((item) => isPackage(item)),
     [cart]
   );
+  const productOnlyCheckout =
+    productItems.length > 0 && serviceItems.length === 0 && packageItems.length === 0;
+  const serviceOnlyCheckout =
+    serviceItems.length > 0 && productItems.length === 0 && packageItems.length === 0;
   const selectedShippingRateSnapshot = useMemo(() => {
     if (!shippingRates?.selectedRateId) return null;
     const selected = (shippingRates?.rates || []).find(
@@ -3859,38 +3873,69 @@ export function CheckoutFormCore({
 
       {/* Footer actions */}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mt={2}>
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            onRequestAddService?.();
-            const target = slugLocal || companySlug;
-            if (!target) return;
-            const params = new URLSearchParams();
-            params.set('page', 'services-classic');
-            if (embedSuffix) {
-              try {
-                const extra = new URLSearchParams(embedSuffix.slice(1));
-                extra.forEach((value, key) => params.set(key, value));
-              } catch {}
-            }
-            const path = isCustomDomain ? "/" : `/${target}`;
-            navigate({ pathname: path, search: `?${params.toString()}` });
-          }}
-          sx={outlineButtonSx}
-        >
-          Add Another Service
-        </Button>
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={openAddons}
-          sx={outlineButtonSx}
-        >
-          Add-on(s)
-        </Button>
+        {productOnlyCheckout && (
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              onRequestAddService?.();
+              if (
+                productsReturnTo &&
+                typeof window !== "undefined" &&
+                window.parent !== window &&
+                requestTransactionalNavigation(window.parent, productsReturnTo)
+              ) {
+                return;
+              }
+              const target = slugLocal || companySlug;
+              if (!target) return;
+              const params = new URLSearchParams();
+              params.set("page", "products");
+              const path = isCustomDomain ? "/products" : `/${target}`;
+              navigate({ pathname: path, search: isCustomDomain ? "" : `?${params.toString()}` });
+            }}
+            sx={outlineButtonSx}
+          >
+            Add Another Product
+          </Button>
+        )}
+        {serviceOnlyCheckout && (
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              onRequestAddService?.();
+              const target = slugLocal || companySlug;
+              if (!target) return;
+              const params = new URLSearchParams();
+              params.set('page', 'services-classic');
+              if (embedSuffix) {
+                try {
+                  const extra = new URLSearchParams(embedSuffix.slice(1));
+                  extra.forEach((value, key) => params.set(key, value));
+                } catch {}
+              }
+              const path = isCustomDomain ? "/" : `/${target}`;
+              navigate({ pathname: path, search: `?${params.toString()}` });
+            }}
+            sx={outlineButtonSx}
+          >
+            Add Another Service
+          </Button>
+        )}
+        {serviceOnlyCheckout && (
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={openAddons}
+            sx={outlineButtonSx}
+          >
+            Add-on(s)
+          </Button>
+        )}
         <Button fullWidth variant="text" onClick={onBack} sx={textButtonSx}>
           Back
         </Button>

@@ -1,6 +1,8 @@
 import {
   measureTransactionalContent,
+  normalizeTransactionalReturnPath,
   publishTransactionalMeasurement,
+  requestTransactionalNavigation,
 } from "./transactionalFrameBridge";
 
 describe("transactionalFrameBridge", () => {
@@ -47,5 +49,23 @@ describe("transactionalFrameBridge", () => {
     };
 
     expect(measureTransactionalContent(basket, [dialog])).toBe(1400);
+  });
+
+  it("only requests parent navigation for safe tenant-relative return paths", () => {
+    const targetWindow = { postMessage: jest.fn() };
+
+    expect(normalizeTransactionalReturnPath("/web-design/products?from=basket")).toBe(
+      "/web-design/products?from=basket"
+    );
+    expect(normalizeTransactionalReturnPath("https://evil.example/products")).toBe("");
+    expect(normalizeTransactionalReturnPath("//evil.example/products")).toBe("");
+    expect(requestTransactionalNavigation(targetWindow, "/web-design/products")).toBe(true);
+    expect(targetWindow.postMessage).toHaveBeenCalledWith(
+      {
+        type: "schedulaa:transactional-navigate",
+        href: "/web-design/products",
+      },
+      "*"
+    );
   });
 });

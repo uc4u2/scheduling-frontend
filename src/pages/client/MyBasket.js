@@ -32,6 +32,10 @@ import { releasePendingCheckout } from "../../utils/hostedCheckout";
 import { api as apiClient, publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
 import { getTenantHostMode } from "../../utils/tenant";
+import {
+  normalizeTransactionalReturnPath,
+  requestTransactionalNavigation,
+} from "../../utils/transactionalFrameBridge";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -125,6 +129,12 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     }
     return query ? `/${slug}?${query}` : `/${slug}`;
   }, [slug, searchParams, isCustomDomain]);
+  const productsReturnTo = useMemo(
+    () => normalizeTransactionalReturnPath(
+      searchParams.get("return_to") || searchParams.get("returnTo") || ""
+    ),
+    [searchParams]
+  );
 
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });
@@ -415,6 +425,14 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     setCheckoutOpen(true);
   };
   const continueShopping = () => {
+    if (
+      productsReturnTo &&
+      typeof window !== "undefined" &&
+      window.parent !== window &&
+      requestTransactionalNavigation(window.parent, productsReturnTo)
+    ) {
+      return;
+    }
     if (!productsHref) return;
     navigate(productsHref);
   };
