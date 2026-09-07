@@ -175,8 +175,8 @@ import StripeConnectReturn from "./pages/sections/management/StripeConnectReturn
 // CLIENT PORTAL (canonical public page)
 import CompanyPublic from "./pages/client/CompanyPublic";
 import PublicClientAuth from "./pages/client/PublicClientAuth";
-import PublicPageShell from "./pages/client/PublicPageShell";
 import TenantTransactionalShell from "./pages/client/TenantTransactionalShell";
+import TenantLegacySiteFrame from "./pages/client/TenantLegacySiteFrame";
 import ServiceList from "./pages/client/ServiceList";
 import ServiceDetails from "./pages/client/ServiceDetails";
 import EmployeeList from "./pages/client/EmployeeList";
@@ -489,7 +489,16 @@ const LegacyReviewsRedirect = ({ slugOverride = "" }) => {
 const TenantScopedClientLogin = () => {
   const { slug } = useParams();
   return (
-    <TenantTransactionalShell slugOverride={slug} activeKey="__login" pagePath="">
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__login"
+      pagePath=""
+      legacyShell={(node, shellPayload) => (
+        <TenantLegacySiteFrame slug={slug} activeKey="__login" shellPayload={shellPayload}>
+          {node}
+        </TenantLegacySiteFrame>
+      )}
+    >
       <PublicClientAuth slug={slug} />
     </TenantTransactionalShell>
   );
@@ -501,7 +510,16 @@ const TenantScopedClientAccount = () => {
   const role = typeof localStorage !== "undefined" ? localStorage.getItem("role") : "";
   const clientLoggedIn = Boolean(token && role === "client");
   return (
-    <TenantTransactionalShell slugOverride={slug} activeKey="__mybookings" pagePath="">
+    <TenantTransactionalShell
+      slugOverride={slug}
+      activeKey="__mybookings"
+      pagePath=""
+      legacyShell={(node, shellPayload) => (
+        <TenantLegacySiteFrame slug={slug} activeKey="__mybookings" shellPayload={shellPayload}>
+          {node}
+        </TenantLegacySiteFrame>
+      )}
+    >
       {clientLoggedIn ? <ClientDashboard /> : <PublicClientAuth slug={slug} />}
     </TenantTransactionalShell>
   );
@@ -516,7 +534,16 @@ const ClientAwareLoginRoute = ({ setToken }) => {
   const slug = String(params.get("site") || "").trim();
   if (clientMode && slug) {
     return (
-      <TenantTransactionalShell slugOverride={slug} activeKey="__login" pagePath="">
+      <TenantTransactionalShell
+        slugOverride={slug}
+        activeKey="__login"
+        pagePath=""
+        legacyShell={(node, shellPayload) => (
+          <TenantLegacySiteFrame slug={slug} activeKey="__login" shellPayload={shellPayload}>
+            {node}
+          </TenantLegacySiteFrame>
+        )}
+      >
         <PublicClientAuth slug={slug} />
       </TenantTransactionalShell>
     );
@@ -927,10 +954,10 @@ const AppContent = ({ token, setToken }) => {
                     slugOverride={tenantSlug}
                     activeKey="__login"
                     pagePath=""
-                    legacyShell={(node) => (
-                      <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                    legacyShell={(node, shellPayload) => (
+                      <TenantLegacySiteFrame slug={tenantSlug} activeKey="__login" shellPayload={shellPayload}>
                         {node}
-                      </PublicPageShell>
+                      </TenantLegacySiteFrame>
                     )}
                   >
                     <PublicClientAuth slug={tenantSlug} />
@@ -944,10 +971,10 @@ const AppContent = ({ token, setToken }) => {
                     slugOverride={tenantSlug}
                     activeKey="__login"
                     pagePath=""
-                    legacyShell={(node) => (
-                      <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                    legacyShell={(node, shellPayload) => (
+                      <TenantLegacySiteFrame slug={tenantSlug} activeKey="__login" shellPayload={shellPayload}>
                         {node}
-                      </PublicPageShell>
+                      </TenantLegacySiteFrame>
                     )}
                   >
                     <PublicClientAuth slug={tenantSlug} />
@@ -961,10 +988,10 @@ const AppContent = ({ token, setToken }) => {
                     slugOverride={tenantSlug}
                     activeKey="__login"
                     pagePath=""
-                    legacyShell={(node) => (
-                      <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                    legacyShell={(node, shellPayload) => (
+                      <TenantLegacySiteFrame slug={tenantSlug} activeKey="__login" shellPayload={shellPayload}>
                         {node}
-                      </PublicPageShell>
+                      </TenantLegacySiteFrame>
                     )}
                   >
                     <ForgotPassword slugOverride={tenantSlug} />
