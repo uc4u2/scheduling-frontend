@@ -65,7 +65,7 @@ describe("DigitalProductsWorkspace", () => {
     const button = await screen.findByRole("button", { name: /create digital product with ai/i });
     fireEvent.click(button);
 
-    await waitFor(() => expect(screen.getByTestId("commerce-copilot-drawer")).toBeInTheDocument());
+    expect(await screen.findByTestId("commerce-copilot-drawer")).toBeInTheDocument();
     expect(mockCopilotDrawer).toHaveBeenLastCalledWith(
       expect.objectContaining({
         open: true,
@@ -73,5 +73,24 @@ describe("DigitalProductsWorkspace", () => {
         targetProductId: 11,
       })
     );
+  });
+
+  test("support mode exposes setup without loading customer license or audit data", async () => {
+    render(<DigitalProductsWorkspace token="" supportMode />);
+
+    expect(await screen.findByText("Asset Library")).toBeInTheDocument();
+    expect(screen.getByText("Product Delivery Mapping")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Licensing" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Access Audit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create digital product with ai/i })).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith(
+        "/inventory/digital-assets?include_inactive=1",
+        expect.any(Object)
+      );
+    });
+    expect(mockApiGet.mock.calls.some(([url]) => String(url).startsWith("/inventory/digital-license-keys"))).toBe(false);
+    expect(mockApiGet.mock.calls.some(([url]) => String(url).startsWith("/inventory/digital-access-audit"))).toBe(false);
   });
 });

@@ -11,9 +11,11 @@ describe("support commerce workspace access", () => {
     expect(SUPPORT_COMMERCE_PANELS).toEqual([
       "services",
       "products",
+      "digital-products",
       "easypost-shipping",
     ]);
     expect(isSupportCommercePanel("services")).toBe(true);
+    expect(isSupportCommercePanel("digital-products")).toBe(true);
     expect(isSupportCommercePanel("payments")).toBe(false);
     expect(isSupportCommercePanel("product-orders")).toBe(false);
   });
@@ -24,6 +26,12 @@ describe("support commerce workspace access", () => {
     expect(supportCapabilitiesAllowPanel(capabilities, "services")).toBe(true);
     expect(supportCapabilitiesAllowPanel(capabilities, "easypost-shipping")).toBe(false);
     expect(supportCapabilitiesAllowPanel(capabilities, "payments")).toBe(false);
+    expect(supportCapabilitiesAllowPanel(capabilities, "digital-products")).toBe(false);
+    expect(getSupportCommercePanels([...capabilities, "digital_products_manage"])).toEqual([
+      "services",
+      "products",
+      "digital-products",
+    ]);
   });
 
   test("requires the exact support route and both session identifiers", () => {

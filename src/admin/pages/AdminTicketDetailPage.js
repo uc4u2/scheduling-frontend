@@ -53,7 +53,8 @@ const FALLBACK_SUPPORT_SCOPES = [
   { scope: "website_all", scope_label: "Website and domain" },
   { scope: "website_services", scope_label: "Website, domain, and services" },
   { scope: "website_catalog", scope_label: "Website, services, and products" },
-  { scope: "website_commerce", scope_label: "Full website commerce setup" },
+  { scope: "website_commerce", scope_label: "Website commerce and shipping" },
+  { scope: "website_digital_commerce", scope_label: "Complete commerce including digital delivery" },
 ];
 
 export default function AdminTicketDetailPage() {
@@ -99,6 +100,7 @@ export default function AdminTicketDetailPage() {
   const canManageServices = supportCapabilities.includes("services_manage");
   const canManageProducts = supportCapabilities.includes("products_manage");
   const canManageShipping = supportCapabilities.includes("shipping_manage");
+  const canManageDigitalProducts = supportCapabilities.includes("digital_products_manage");
 
   const loadAdmin = async () => {
     try {
@@ -567,6 +569,14 @@ export default function AdminTicketDetailPage() {
                         onClick={() => openSupportLink("/manager/advanced-management?panel=products")}
                       >
                         Open Products
+                      </Button>
+                    )}
+                    {canManageDigitalProducts && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => openSupportLink("/manager/advanced-management?panel=digital-products")}
+                      >
+                        Open Digital Products
                       </Button>
                     )}
                     {canManageShipping && (

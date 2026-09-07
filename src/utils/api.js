@@ -209,6 +209,7 @@ api.interceptors.request.use((config) => {
       url.startsWith("/booking/packages") ||
       url.startsWith("/booking/service-images") ||
       url.startsWith("/inventory/products") ||
+      url.startsWith("/inventory/digital-assets") ||
       url.startsWith("/inventory/product-categories") ||
       url.startsWith("/inventory/product-images") ||
       url.startsWith("/inventory/shipping-settings") ||

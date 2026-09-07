@@ -498,7 +498,7 @@ const panels = useMemo(
 
       icon: <AutoAwesomeMosaicIcon />,
 
-      element: <DigitalProductsWorkspace token={token} />,
+      element: <DigitalProductsWorkspace token={token} supportMode={supportMode} />,
 
     },
     {

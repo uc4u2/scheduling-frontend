@@ -1,12 +1,14 @@
 export const SUPPORT_COMMERCE_PANELS = Object.freeze([
   "services",
   "products",
+  "digital-products",
   "easypost-shipping",
 ]);
 
 export const SUPPORT_PANEL_CAPABILITIES = Object.freeze({
   services: "services_manage",
   products: "products_manage",
+  "digital-products": "digital_products_manage",
   "easypost-shipping": "shipping_manage",
 });
 

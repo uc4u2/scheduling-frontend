@@ -49,7 +49,7 @@ const emptyAssetForm = {
   access_instructions: "",
 };
 
-const DigitalProductsWorkspace = ({ token }) => {
+const DigitalProductsWorkspace = ({ token, supportMode = false }) => {
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
 
   const [busy, setBusy] = useState(false);
@@ -253,12 +253,14 @@ const DigitalProductsWorkspace = ({ token }) => {
   }, [selectedProductId, loadProductDelivery, notify]);
 
   useEffect(() => {
+    if (supportMode) return;
     loadLicenseRows();
-  }, [loadLicenseRows]);
+  }, [loadLicenseRows, supportMode]);
 
   useEffect(() => {
+    if (supportMode) return;
     loadAuditRows();
-  }, [loadAuditRows]);
+  }, [loadAuditRows, supportMode]);
 
   const handleCreateAsset = useCallback(async () => {
     if (!assetForm.title.trim()) {
@@ -401,18 +403,20 @@ const DigitalProductsWorkspace = ({ token }) => {
         <Box>
           <Typography variant="h5" fontWeight={700}>Digital Products</Typography>
           <Typography variant="body2" color="text.secondary">
-            Source of truth for digital asset library, product mapping, access policy, licensing, and audit visibility.
+            {supportMode
+              ? "Configure the tenant-approved digital asset library, product mapping, and access policy."
+              : "Source of truth for digital asset library, product mapping, access policy, licensing, and audit visibility."}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            onClick={() => setCopilotOpen(true)}
-          >
-            Create digital product with AI
-          </Button>
-          <Tooltip title="Open full manager guide for Digital Products." arrow>
+          {!supportMode && <Button
+              variant="outlined"
+              color="inherit"
+              onClick={() => setCopilotOpen(true)}
+            >
+              Create digital product with AI
+            </Button>}
+          {!supportMode && <Tooltip title="Open full manager guide for Digital Products." arrow>
             <Button
               startIcon={<HelpOutlineIcon />}
               variant="outlined"
@@ -421,13 +425,15 @@ const DigitalProductsWorkspace = ({ token }) => {
             >
               Help
             </Button>
-          </Tooltip>
+          </Tooltip>}
           <Button startIcon={<RefreshIcon />} onClick={loadAll} disabled={busy}>Refresh</Button>
         </Stack>
       </Stack>
 
       <Alert severity="info" sx={{ mb: 2 }}>
-        Product modal only marks items as digital. Full digital setup is managed here in Digital Products.
+        {supportMode
+          ? "Support access is limited to digital assets, files or links, product mapping, and access policy. Orders, licenses, customer entitlements, and access history remain unavailable."
+          : "Product modal only marks items as digital. Full digital setup is managed here in Digital Products."}
       </Alert>
 
       {message.text ? (
@@ -439,9 +445,9 @@ const DigitalProductsWorkspace = ({ token }) => {
       <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ mb: 2 }}>
         <Chip label={`Digital products: ${overview.total_digital_products}`} />
         <Chip label={`Active assets: ${overview.active_assets}`} color="primary" />
-        <Chip label={`Active entitlements: ${overview.active_entitlements}`} color="default" />
-        <Chip label={`Issued licenses: ${overview.issued_licenses}`} color="secondary" />
-        <Chip label={`Access events: ${overview.access_events}`} color="info" />
+        {!supportMode && <Chip label={`Active entitlements: ${overview.active_entitlements}`} color="default" />}
+        {!supportMode && <Chip label={`Issued licenses: ${overview.issued_licenses}`} color="secondary" />}
+        {!supportMode && <Chip label={`Access events: ${overview.access_events}`} color="info" />}
       </Stack>
 
       <Stack spacing={2}>
@@ -738,7 +744,7 @@ const DigitalProductsWorkspace = ({ token }) => {
           </CardContent>
         </Card>
 
-        <Card variant="outlined">
+        {!supportMode && <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" fontWeight={700}>Licensing</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -852,9 +858,9 @@ const DigitalProductsWorkspace = ({ token }) => {
               </Stack>
             </Stack>
           </CardContent>
-        </Card>
+        </Card>}
 
-        <Card variant="outlined">
+        {!supportMode && <Card variant="outlined">
           <CardContent>
             <Typography variant="h6" fontWeight={700}>Access Audit</Typography>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }}>
@@ -984,10 +990,10 @@ const DigitalProductsWorkspace = ({ token }) => {
               </Stack>
             </Stack>
           </CardContent>
-        </Card>
+        </Card>}
       </Stack>
 
-      <Drawer
+      {!supportMode && <Drawer
         anchor="right"
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
@@ -1094,14 +1100,14 @@ const DigitalProductsWorkspace = ({ token }) => {
             <Typography variant="body2">Customer-facing digital access still works independently of those manager reporting panels.</Typography>
           </Stack>
         </Stack>
-      </Drawer>
-      <CommerceCopilotDrawer
+      </Drawer>}
+      {!supportMode && <CommerceCopilotDrawer
         open={copilotOpen}
         onClose={() => setCopilotOpen(false)}
         token={token}
         initialWorkflow="create_digital_product"
         targetProductId={selectedProductId ? Number(selectedProductId) : null}
-      />
+      />}
     </Box>
   );
 };
