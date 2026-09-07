@@ -213,7 +213,7 @@ function ThemeCard({
             onClick={() => onApply(style)}
             disabled={saving || isCurrentDraft}
           >
-            {isCurrentDraft ? "Applied" : "Apply Style"}
+            {isCurrentDraft ? "Applied" : "Apply Theme"}
           </Button>
         </Stack>
       </Stack>
@@ -323,14 +323,14 @@ export default function NextJsWebsiteStyleBrowser({
           </>
         ) : (
           <Alert severity="info" variant="outlined">
-            No profession-specific recommendation is active for this business yet. All approved website styles remain available below.
+            No profession-specific recommendation is active for this business yet. All approved Modern themes remain available below.
           </Alert>
         )}
 
         {remainingStyles.length ? (
           <>
             <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em", pt: 1 }}>
-              {recommendedStyles.length ? "More Website Styles" : "All Website Styles"}
+              {recommendedStyles.length ? "More Modern Themes" : "All Modern Themes"}
             </Typography>
             {renderGrid(remainingStyles)}
           </>
@@ -353,7 +353,7 @@ export default function NextJsWebsiteStyleBrowser({
       >
         <DialogTitle sx={{ pr: 12, py: 1.5 }}>
           <Typography component="span" variant="subtitle1" sx={{ fontWeight: 700 }}>
-            {previewStyle?.name || "Website style"}
+            {previewStyle?.name || "Modern theme"}
           </Typography>
           <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
             Live draft preview
@@ -452,7 +452,7 @@ export default function NextJsWebsiteStyleBrowser({
                   disabled={saving || !previewStyle || previewIsCurrentDraft}
                   onClick={() => previewStyle && onApply(previewStyle)}
                 >
-                  {previewIsCurrentDraft ? "Applied to draft" : "Apply this style"}
+                  {previewIsCurrentDraft ? "Applied to draft" : "Apply this theme"}
                 </Button>
                 <Button
                   variant="outlined"

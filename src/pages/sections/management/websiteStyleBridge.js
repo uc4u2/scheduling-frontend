@@ -40,6 +40,10 @@ export function isNextJsBuilderMode(mode) {
   return resolveBuilderRendererMode(mode) === "nextjs";
 }
 
+export function requiresRendererSwitchConfirmation(currentMode, style) {
+  return isNextJsBuilderMode(currentMode) !== isNextJsStyle(style);
+}
+
 // Classic retains its floating/inline inspector modes. Semantic Next.js editing
 // always belongs in the Builder's contextual left inspector.
 export function usesDockedSemanticInspector(mode) {

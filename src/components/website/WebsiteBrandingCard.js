@@ -1275,6 +1275,7 @@ function validateConfig(header, footer, { menuSource = "pages" } = {}) {
 export default function WebsiteBrandingCard({
   companyId,
   companySlug = "Preview Co.",
+  companyName = "",
   headerValue,
   footerValue,
   themeOverridesValue,
@@ -1521,32 +1522,62 @@ export default function WebsiteBrandingCard({
   // save callback as Classic while avoiding controls that are still truly
   // renderer-specific (utility bars and generic presets). Footer columns are
   // shared control-plane data and are rendered by every Next theme.
-  const conciseNextJsThemes = new Set([
-    "iron-ember",
-    "still-bloom",
-    "clear-clinic",
-    "harbor-line",
-    "frame-and-field",
-    "motion-editorial",
-    "black-letter",
-    "circuit-north",
-    "solara-stay",
-    "paw-and-pine",
-    "quiet-harbor",
-    "fieldcraft",
-    "modern-gradient",
-    "eldora-dark",
-    "finwise",
-  ]);
-  if (conciseNextJsThemes.has(surface)) {
+  // VisualSiteBuilder passes a named surface only after validating that the
+  // active renderer is a supported Next.js theme. Avoid a second theme list
+  // here, which previously left newer themes showing non-functional Classic
+  // controls until this component was manually updated.
+  if (surface && surface !== "classic") {
     const themeName = surface.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
     const pageNavLabels = derivedPageNav.map((item) => item.label).filter(Boolean);
+    const usesCompanyNameFallback = !String(header.text || "").trim() && Boolean(companyName);
     return (
       <Stack spacing={2} data-testid={`${surface}-branding-surface`}>
         <Alert severity="info">
           {themeName} uses its own header and footer composition. These shared
-          settings update that composition without changing your pages.
+          settings update that composition without changing your pages. Save
+          your changes to refresh the Canvas preview.
         </Alert>
+        {floatingSaveVisible ? (
+          <Portal>
+            <Box
+              sx={{
+                position: "fixed",
+                zIndex: (theme) => theme.zIndex.tooltip + 1,
+                pointerEvents: "none",
+                ...(floatingSavePlacement === "top-left"
+                  ? { top: { xs: 96, md: 104 }, left: { xs: 16, md: 32 } }
+                  : floatingSavePlacement === "top-right"
+                  ? { top: { xs: 96, md: 104 }, right: { xs: 16, md: 32 } }
+                  : floatingSavePlacement === "bottom-left"
+                  ? { bottom: { xs: 88, md: 48 }, left: { xs: 16, md: 32 } }
+                  : { bottom: { xs: 88, md: 48 }, right: { xs: 16, md: 40 } }),
+              }}
+            >
+              <Paper
+                elevation={6}
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderRadius: 999,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  pointerEvents: "auto",
+                  boxShadow: "0 10px 25px rgba(15,23,42,0.2)",
+                  backdropFilter: "blur(12px)",
+                  backgroundColor: "background.paper",
+                }}
+              >
+                <Typography variant="body2" sx={{ display: { xs: "none", md: "block" }, fontWeight: 600 }}>
+                  {saving ? "Saving…" : "Update the Canvas preview"}
+                </Typography>
+                <Button variant="contained" disabled={saving || uploading} onClick={handleSave}>
+                  {saving ? "Saving…" : "Save & refresh"}
+                </Button>
+              </Paper>
+            </Box>
+          </Portal>
+        ) : null}
         <Card variant="outlined">
           <CardHeader
             title="Header Brand"
@@ -1569,9 +1600,13 @@ export default function WebsiteBrandingCard({
               <TextField
                 size="small"
                 label="Text brand"
-                value={header.text || ""}
+                value={header.text || companyName || ""}
                 onChange={(event) => updateHeader({ text: event.target.value })}
-                helperText="Shown beside the logo, or on its own when no logo is selected."
+                helperText={
+                  usesCompanyNameFallback
+                    ? "Using the company name as the default. Editing this changes only the website header."
+                    : "Website header override. This does not change the company name."
+                }
                 fullWidth
               />
               <TextField
@@ -1709,7 +1744,7 @@ export default function WebsiteBrandingCard({
         {validationErrors.length ? <Alert severity="warning">{validationErrors.map((issue) => <div key={issue}>{issue}</div>)}</Alert> : null}
         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
           <Button variant="contained" disabled={saving || uploading} onClick={handleSave}>
-            {saving ? "Saving…" : `Save ${themeName} settings`}
+            {saving ? "Saving…" : "Save & refresh Canvas"}
           </Button>
         </Box>
       </Stack>

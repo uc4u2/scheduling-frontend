@@ -5,6 +5,7 @@ import {
   getBuilderTabDefaultIndex,
   isAcceptedPreviewMessage,
   isNextJsBuilderMode,
+  requiresRendererSwitchConfirmation,
   usesDockedSemanticInspector,
   normalizePreviewPagePath,
   normalizeNextJsPreviewPagePath,
@@ -115,6 +116,16 @@ describe("websiteStyleBridge", () => {
     expect(isNextJsBuilderMode("legacy-react")).toBe(false);
     expect(usesDockedSemanticInspector("nextjs")).toBe(true);
     expect(usesDockedSemanticInspector("legacy-react")).toBe(false);
+  });
+
+  it("requires confirmation only when changing editor generations", () => {
+    const modernStyle = { renderer_engine: "nextjs" };
+    const classicStyle = { renderer_engine: "legacy-react" };
+
+    expect(requiresRendererSwitchConfirmation("legacy-react", modernStyle)).toBe(true);
+    expect(requiresRendererSwitchConfirmation("nextjs", classicStyle)).toBe(true);
+    expect(requiresRendererSwitchConfirmation("nextjs", modernStyle)).toBe(false);
+    expect(requiresRendererSwitchConfirmation("legacy-react", classicStyle)).toBe(false);
   });
 
   it("builds a builder URL with company and style-tab context", () => {

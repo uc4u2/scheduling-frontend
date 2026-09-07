@@ -14,7 +14,6 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
-  Paper,
   Stack,
   TextField,
   ToggleButton,
@@ -652,11 +651,44 @@ const SeoSettingsCard = ({
   };
 
   return (
-    <Paper sx={{ p: 3, mb: 3 }} variant="outlined">
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1 }}>
-          {tt("management.domainSettings.seo.title", "SEO & Metadata")}
-        </Typography>
+    <Accordion
+      defaultExpanded
+      disableGutters
+      elevation={0}
+      sx={{
+        mb: 3,
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 2,
+        overflow: "hidden",
+        boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
+        "&:before": { display: "none" },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        aria-controls="seo-settings-content"
+        id="seo-settings-header"
+        sx={{
+          px: { xs: 2, sm: 2.5 },
+          py: 0.75,
+          bgcolor: "action.hover",
+          borderBottom: "1px solid",
+          borderBottomColor: "divider",
+          "& .MuiAccordionSummary-content": { my: 1.25 },
+        }}
+      >
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            {tt("management.domainSettings.seo.title", "SEO & Metadata")}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage search listings, social sharing, favicons, canonical URLs, and indexing tools.
+          </Typography>
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails sx={{ p: { xs: 2, sm: 3 } }}>
+      <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mb: 2 }}>
         <Button
           variant="text"
           size="small"
@@ -1002,6 +1034,32 @@ const SeoSettingsCard = ({
             {faviconWarning && (
               <Alert severity="warning">{faviconWarning}</Alert>
             )}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              justifyContent="flex-end"
+              sx={{
+                mt: 1,
+                p: 1.5,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1.5,
+                bgcolor: "action.hover",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ mr: { sm: "auto" } }}>
+                Finished updating search, sharing, or favicon settings? Save them as a draft.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSubmit}
+                disabled={saving || !companyId}
+              >
+                {saving ? "Saving..." : "Save SEO changes"}
+              </Button>
+            </Stack>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
               <Button
                 variant="outlined"
@@ -1465,7 +1523,8 @@ const SeoSettingsCard = ({
       </Stack>
 
       <SeoHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
-    </Paper>
+      </AccordionDetails>
+    </Accordion>
   );
 };
 

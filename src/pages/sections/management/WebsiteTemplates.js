@@ -64,6 +64,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
   // Import status
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [pendingImport, setPendingImport] = useState(null);
 
   // ---------- Detect company once ----------
   useEffect(() => {
@@ -213,6 +214,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
 
       // Redirect to the builder after a successful import
       goToBuilder();
+      return true;
     } catch (e) {
       const detail =
         e?.response?.data?.error ||
@@ -220,9 +222,29 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
         e?.message ||
         "Import failed.";
       setImportResult({ ok: false, error: detail });
+      return false;
     } finally {
       setImporting(false);
     }
+  };
+
+  const requestImport = (key, version) => {
+    if (!companyId || !key) return;
+    setPendingImport({ key, version: version || DEFAULT_VERSION });
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport) return;
+    const imported = await runImport(pendingImport.key, pendingImport.version);
+    setPendingImport(null);
+    if (!imported) setPreviewOpen(false);
+  };
+
+  const openModernThemes = () => {
+    const params = new URLSearchParams(supportQuery.replace(/^\?/, ""));
+    if (companyId && !params.has("company_id")) params.set("company_id", String(companyId));
+    params.set("builder_tab", "style");
+    navigate(`/manage/website/builder?${params.toString()}`);
   };
 
   const deviceWidth = device === "mobile" ? 390 : device === "tablet" ? 768 : 1200;
@@ -244,6 +266,20 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
         </Alert>
       )}
       {err && <Alert severity="error">{err}</Alert>}
+      <Alert
+        severity="info"
+        variant="outlined"
+        action={
+          <Button color="inherit" size="small" onClick={openModernThemes}>
+            Browse Modern Themes
+          </Button>
+        }
+      >
+        These are Classic templates for the Classic editor. Looking for the newer curated designs? Open Modern Themes in the Visual Site Builder.
+      </Alert>
+      <Alert severity="warning" variant="outlined">
+        Applying a Classic template replaces the current page collection and publishes it immediately. A safety version is created automatically before the replacement.
+      </Alert>
       {!templates.length && (
         <Alert severity="info">
           No templates found yet. Place JSON files in <code>app/website_templates</code>.
@@ -285,7 +321,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                         <Button
                           size="small"
                           variant="contained"
-                          onClick={() => runImport(t.key, v)}
+                          onClick={() => requestImport(t.key, v)}
                           disabled={!companyId || importing}
                         >
                           {importing ? "Importing…" : "Use"}
@@ -372,7 +408,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                           onClick={() => {
                             setSelectedKey(t.key);
                             setSelectedVersion(v);
-                            runImport(t.key, v);
+                            requestImport(t.key, v);
                           }}
                           disabled={!companyId || importing}
                         >
@@ -448,8 +484,8 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
   return (
     <>
       <TabShell
-        title="Website Templates"
-        description="Browse and import ready-made designs"
+        title="Classic Website Templates"
+        description="Browse designs made for the Classic website editor"
         tabs={tabs}
       />
 
@@ -546,7 +582,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                     <span>
                       <Button
                         variant="contained"
-                        onClick={() => runImport(previewKey || selectedKey, previewVersion || selectedVersion)}
+                        onClick={() => requestImport(previewKey || selectedKey, previewVersion || selectedVersion)}
                         disabled={!companyId || importing}
                       >
                         {importing ? "Importing…" : "Use this template"}
@@ -592,6 +628,38 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
 
         <DialogActions sx={{ display: { xs: "flex", md: "none" } }}>
           <Button onClick={() => setPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(pendingImport)}
+        onClose={() => !importing && setPendingImport(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Apply this Classic template?</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2">
+              This replaces your current website pages with the selected Classic template and publishes the result immediately.
+            </Typography>
+            <Alert severity="warning" variant="outlined">
+              A safety version will be created automatically before replacement, but you should preview the template before continuing.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingImport(null)} disabled={importing}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={importing}
+            onClick={confirmImport}
+          >
+            {importing ? "Applying..." : "Replace Pages and Publish"}
+          </Button>
         </DialogActions>
       </Dialog>
     </>

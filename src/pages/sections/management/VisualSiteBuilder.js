@@ -39,6 +39,7 @@ import {
   ToggleButton,
   Tooltip,
   Select,
+  Snackbar,
   MenuItem,
   FormHelperText,
   Paper,
@@ -192,6 +193,7 @@ import {
   isAcceptedPreviewMessage,
   normalizeNextJsPreviewPagePath,
   normalizePreviewPagePath,
+  requiresRendererSwitchConfirmation,
   resolveBuilderRendererMode,
 } from "./websiteStyleBridge";
 
@@ -3269,6 +3271,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [styleSaving, setStyleSaving] = useState(false);
   const [styleMsg, setStyleMsg] = useState("");
   const [styleErr, setStyleErr] = useState("");
+  const [pendingRendererStyle, setPendingRendererStyle] = useState(null);
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
   const [nextJsPreviewStale, setNextJsPreviewStale] = useState(false);
@@ -5578,10 +5581,14 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         setStylePreviewFamily(style.key || "classic");
         await loadCheckpoints(companyId);
         setStyleMsg(
-          `${style.name} applied to draft. Publish to make it live.${
+          `${style.name} applied to draft. ${
+            isNextJsStyle(style) ? "The Modern editor is ready." : "The Classic editor is ready."
+          } Publish to make it live.${
             automaticCheckpoint?.name ? ` Safety version saved: ${automaticCheckpoint.name}.` : ""
           }`
         );
+        setBuilderTabIndex(0);
+        return true;
       } catch (e) {
         setStyleErr(
           e?.response?.data?.message ||
@@ -5589,12 +5596,31 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
             e?.message ||
             "Failed to apply website style."
         );
+        return false;
       } finally {
         setStyleSaving(false);
       }
     },
     [companyId, loadCheckpoints, pages.length, setEditing]
   );
+
+  const requestWebsiteStyleApply = useCallback(
+    (style) => {
+      if (!style) return;
+      if (requiresRendererSwitchConfirmation(builderRendererMode, style)) {
+        setPendingRendererStyle(style);
+        return;
+      }
+      applyWebsiteStyle(style);
+    },
+    [applyWebsiteStyle, builderRendererMode]
+  );
+
+  const confirmRendererSwitch = useCallback(async () => {
+    if (!pendingRendererStyle) return;
+    const applied = await applyWebsiteStyle(pendingRendererStyle);
+    if (applied) setPendingRendererStyle(null);
+  }, [applyWebsiteStyle, pendingRendererStyle]);
 
   // A module edit replaces the page object, but it does not change the route.
   // Use a primitive route key so ordinary typing cannot remint the signed
@@ -7345,10 +7371,9 @@ const autoProvisionIfEmpty = useCallback(
           <Button
             size="small"
             startIcon={<ViewCarouselIcon />}
-            component={RouterLink}
-            to={`/manager/website/templates${supportQuery}`}
+            onClick={() => setBuilderTabIndex(1)}
           >
-            {t("manager.visualBuilder.controls.buttons.chooseTemplate")}
+            {isNextJsContentMode ? "Change Modern Theme" : "Explore Modern Themes"}
           </Button>
           <IconButton size="small" onClick={openToolsMenu}>
             <MoreVertIcon fontSize="small" />
@@ -7587,7 +7612,7 @@ const autoProvisionIfEmpty = useCallback(
     <CollapsibleSection
       id="builder-style-chooser"
       title="Website Style"
-      description="Choose between the current classic renderer and approved Next.js themes."
+      description="Choose a Modern theme or continue with the Classic editor."
       expanded
     >
       <Stack spacing={1.5}>
@@ -7606,6 +7631,77 @@ const autoProvisionIfEmpty = useCallback(
             {NEXTJS_THEME_PREVIEW_CONFIG_ERROR}
           </Alert>
         ) : null}
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            borderRadius: 1.5,
+            borderColor: isNextJsContentMode ? "primary.main" : "divider",
+            bgcolor: isNextJsContentMode ? "primary.50" : "background.paper",
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent="space-between"
+          >
+            <Stack spacing={0.5}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Current editor: {isNextJsContentMode ? "Modern" : "Classic"}
+                </Typography>
+                <Chip
+                  size="small"
+                  label={isNextJsContentMode ? "Next.js" : "Classic editor"}
+                  color={isNextJsContentMode ? "primary" : "default"}
+                  variant="outlined"
+                />
+                {isNextJsContentMode && activeStyleChoice?.name ? (
+                  <Chip size="small" label={activeStyleChoice.name} color="success" />
+                ) : null}
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                {isNextJsContentMode
+                  ? "Your draft uses the Modern editor. Choose another theme below, or return to Classic if needed."
+                  : "Your draft uses the Classic editor. You can keep editing it or upgrade to a Modern theme below."}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button size="small" variant="outlined" onClick={() => setBuilderTabIndex(0)}>
+                Edit Website Content
+              </Button>
+              {isNextJsContentMode ? (
+                <Button
+                  size="small"
+                  color="warning"
+                  onClick={() => {
+                    const classicStyle = websiteStyleChoices.find((item) => item.key === "classic");
+                    if (classicStyle) requestWebsiteStyleApply(classicStyle);
+                  }}
+                  disabled={styleSaving}
+                >
+                  Return to Classic Editor
+                </Button>
+              ) : (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  component={RouterLink}
+                  to={`/manager/website/templates${supportQuery}`}
+                >
+                  Browse Classic Templates
+                </Button>
+              )}
+            </Stack>
+          </Stack>
+        </Paper>
+        <Alert severity="info" variant="outlined">
+          Modern themes are applied to your draft first. Your live website stays unchanged until you publish, and a safety version is created automatically when you switch editors.
+        </Alert>
+        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em" }}>
+          Modern Themes (Next.js)
+        </Typography>
         <NextJsWebsiteStyleBrowser
           styles={nextJsWebsiteStyleChoices}
           currentStyleKey={currentStyleKey}
@@ -7620,92 +7716,15 @@ const autoProvisionIfEmpty = useCallback(
             const previewUrl = await refreshNextJsPreview(style, pagePath, false);
             setStyleGalleryPreviewUrl(previewUrl || "");
           }}
-          onApply={applyWebsiteStyle}
+          onApply={requestWebsiteStyleApply}
         />
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5 }}>
-          {(() => {
-            const style = websiteStyleChoices.find((item) => item.key === "classic");
-            const isCurrentDraft =
-              style?.key === currentStyleKey &&
-              Number(style?.version || 1) === Number(currentStyleVersion);
-            const isCurrentLive =
-              style?.key === liveStyleKey &&
-              Number(style?.version || 1) === Number(liveStyleVersion);
-            return (
-              <Stack spacing={1.25}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Keep Current Classic Design
-                  </Typography>
-                  {isCurrentDraft ? (
-                    <Chip
-                      size="small"
-                      label="Draft"
-                      sx={{
-                        borderRadius: 1.5,
-                        color: "success.dark",
-                        bgcolor: "success.50",
-                        border: "1px solid",
-                        borderColor: "success.200",
-                      }}
-                    />
-                  ) : null}
-                  {isCurrentLive ? (
-                    <Chip
-                      size="small"
-                      label="Live"
-                      sx={{
-                        borderRadius: 1.5,
-                        color: "info.dark",
-                        bgcolor: "info.50",
-                        border: "1px solid",
-                        borderColor: "info.200",
-                      }}
-                    />
-                  ) : null}
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Stay on the current React/MUI public website renderer and legacy template path.
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={styleSaving}
-                    onClick={() => {
-                      setStylePreviewFamily("classic");
-                      setNextJsPreviewToken("");
-                      setNextJsPreviewUrl("");
-                      setBuilderTabIndex(0);
-                    }}
-                    sx={{ borderRadius: 1.5 }}
-                  >
-                    Preview
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    disabled={styleSaving || isCurrentDraft || !style}
-                    onClick={() => style && applyWebsiteStyle(style)}
-                    sx={{ borderRadius: 1.5 }}
-                  >
-                    Apply Style
-                  </Button>
-                </Stack>
-              </Stack>
-            );
-          })()}
-        </Paper>
-        <Alert severity="info" variant="outlined">
-          Modern themes use a curated layout. You can edit content, images, pages, and supported sections while the theme preserves the page composition.
-        </Alert>
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5, bgcolor: "background.paper" }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "flex-start", md: "center" }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
               Draft style: {activeStyleChoice?.name || "Classic"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Live style: {websiteStyleChoices.find((item) => item.key === liveStyleKey)?.name || "Keep Current Classic Design"}
+              Live style: {websiteStyleChoices.find((item) => item.key === liveStyleKey)?.name || "Classic"}
             </Typography>
           </Stack>
         </Paper>
@@ -8465,6 +8484,7 @@ const autoProvisionIfEmpty = useCallback(
       >
         <WebsiteBrandingCard
           companyId={companyId}
+          companyName={siteSettings?.company?.name || ""}
           companySlug={
             siteSettings?.company?.slug ||
             siteSettings?.company?.name ||
@@ -12444,6 +12464,52 @@ if (authError) {
         tabs={tabs}
         defaultIndex={builderTabDefaultIndex}
       />
+
+      <Dialog
+        open={Boolean(pendingRendererStyle)}
+        onClose={() => !styleSaving && setPendingRendererStyle(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {isNextJsStyle(pendingRendererStyle)
+            ? "Switch to the Modern editor?"
+            : "Return to the Classic editor?"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2">
+              {isNextJsStyle(pendingRendererStyle)
+                ? "Your website content will be preserved and the selected Modern theme will be applied to your draft. Some Classic-only presentation settings may look different in the Modern editor."
+                : "Your website content will remain available, but Modern theme layout and theme-specific presentation settings will not appear in the Classic editor."}
+            </Typography>
+            <Alert severity="info" variant="outlined">
+              Your live website will not change until you publish. An automatic safety version will be saved before the editor changes.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingRendererStyle(null)} disabled={styleSaving}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={confirmRendererSwitch} disabled={styleSaving}>
+            {styleSaving ? "Switching..." : "Switch Draft Editor"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(styleMsg)}
+        autoHideDuration={8000}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        onClose={(_event, reason) => {
+          if (reason !== "clickaway") setStyleMsg("");
+        }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setStyleMsg("")}>
+          {styleMsg}
+        </Alert>
+      </Snackbar>
 
       {pageSettingsDirty && (
         <Box

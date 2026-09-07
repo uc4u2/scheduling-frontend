@@ -20,6 +20,9 @@ import {
   ListItem,
   ListItemText,
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   CircularProgress,
   Link,
   Snackbar,
@@ -31,6 +34,7 @@ import { useTheme } from "@mui/material/styles";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import PaletteIcon from "@mui/icons-material/Palette";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ThemeDesignerDialog from "../../../components/website/ThemeDesignerDialog";
 import DomainSettingsCard from "./components/DomainSettingsCard";
 import SeoSettingsCard from "./components/SeoSettingsCard";
@@ -57,6 +61,49 @@ const EMPTY_FORM = {
 };
 
 const CHATBOT_MAX_CHARS = 20000;
+
+const managerSectionSx = {
+  mb: 3,
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: 2,
+  overflow: "hidden",
+  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
+  "&:before": { display: "none" },
+};
+
+const ManagerSection = ({ id, title, description, defaultExpanded = false, children }) => (
+  <Accordion
+    defaultExpanded={defaultExpanded}
+    disableGutters
+    elevation={0}
+    sx={managerSectionSx}
+  >
+    <AccordionSummary
+      expandIcon={<ExpandMoreIcon />}
+      aria-controls={`${id}-content`}
+      id={`${id}-header`}
+      sx={{
+        px: { xs: 2, sm: 2.5 },
+        py: 0.75,
+        bgcolor: "action.hover",
+        borderBottom: "1px solid transparent",
+        "&.Mui-expanded": { borderBottomColor: "divider" },
+        "& .MuiAccordionSummary-content": { my: 1.25 },
+      }}
+    >
+      <Box>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          {title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {description}
+        </Typography>
+      </Box>
+    </AccordionSummary>
+    <AccordionDetails sx={{ p: { xs: 2, sm: 2.5 } }}>{children}</AccordionDetails>
+  </Accordion>
+);
 
 const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
   const { t } = useTranslation();
@@ -775,17 +822,13 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
         />
       </Box>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <ManagerSection
+        id="chatbot-settings"
+        title="Chatbot"
+        description="Control the assistant shown on your public website."
+      >
         <Stack spacing={2}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Box>
-              <Typography variant="h6">Chatbot</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Control the assistant shown on your public website.
-              </Typography>
-            </Box>
-            {chatbotLoading && <CircularProgress size={20} />}
-          </Stack>
+          {chatbotLoading && <CircularProgress size={20} />}
 
           <FormControlLabel
             control={
@@ -882,7 +925,7 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
             </Button>
           </Stack>
         </Stack>
-      </Paper>
+      </ManagerSection>
 
       <Snackbar
         open={chatbotToastOpen && Boolean(chatbotMsg || chatbotErr)}
@@ -900,7 +943,11 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
         </Alert>
       </Snackbar>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <ManagerSection
+        id="theme-publishing"
+        title="Theme & publishing"
+        description="Choose the website theme, open the visual tools, and publish completed draft changes."
+      >
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={2}
@@ -976,10 +1023,15 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
             </Button>
           </Stack>
         </Stack>
-      </Paper>
+      </ManagerSection>
 
       {/* Pages */}
-      <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
+      <ManagerSection
+        id="pages-management"
+        title="Pages"
+        description="Review page visibility and edit advanced page and SEO fields."
+      >
+        <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         <Paper sx={{ p: 2, flex: 1 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
             <Typography variant="h6">{t("management.website.sections.pages.title")}</Typography>
@@ -1205,7 +1257,8 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
             </Stack>
           )}
         </Paper>
-      </Stack>
+        </Stack>
+      </ManagerSection>
 
       {/* Theme Designer mounted once */}
       <ThemeDesignerDialog
