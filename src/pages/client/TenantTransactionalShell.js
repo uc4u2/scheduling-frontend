@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -22,6 +22,10 @@ import {
 } from "../../utils/tenantTransactionalBranding";
 import { getTenantHostMode } from "../../utils/tenant";
 import { persistTenantSlug, resolveTenantSlug } from "../../utils/clientTenant";
+import {
+  TRANSACTIONAL_MEASURE_MESSAGE,
+  publishTransactionalMeasurement,
+} from "../../utils/transactionalFrameBridge";
 
 const TenantTransactionalContext = createContext(null);
 
@@ -58,6 +62,7 @@ export default function TenantTransactionalShell({
   const [shellPayload, setShellPayload] = useState(null);
   const [loading, setLoading] = useState(Boolean(slug || hostMode === "custom"));
   const [error, setError] = useState("");
+  const transactionalContentRef = useRef(null);
   const isEmbedded = useMemo(
     () => new URLSearchParams(location.search || "").get("embed") === "1",
     [location.search]
@@ -121,9 +126,33 @@ export default function TenantTransactionalShell({
 
   useEffect(() => {
     if (!isEmbedded || !brandingContract?.isNextJsTenant || typeof window === "undefined") return;
-    // The Next bridge keeps its themed loading cover in place until this
-    // legacy-owned transactional content has its renderer-aware shell.
-    window.parent?.postMessage({ type: "schedulaa:transactional-ready" }, "*");
+    let animationFrame = 0;
+    const publishMeasurement = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        publishTransactionalMeasurement(window.parent, transactionalContentRef.current);
+      });
+    };
+    const onMessage = (event) => {
+      if (event.source !== window.parent || event.data?.type !== TRANSACTIONAL_MEASURE_MESSAGE) return;
+      publishMeasurement();
+    };
+    const resizeObserver = typeof ResizeObserver === "function"
+      ? new ResizeObserver(publishMeasurement)
+      : null;
+
+    if (transactionalContentRef.current) resizeObserver?.observe(transactionalContentRef.current);
+    window.addEventListener("resize", publishMeasurement);
+    window.addEventListener("message", onMessage);
+    document.fonts?.ready?.then(publishMeasurement).catch(() => {});
+    publishMeasurement();
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", publishMeasurement);
+      window.removeEventListener("message", onMessage);
+    };
   }, [brandingContract?.isNextJsTenant, isEmbedded]);
 
   // Do not briefly render the legacy public shell while the published
@@ -161,9 +190,14 @@ export default function TenantTransactionalShell({
     components: {
       MuiCssBaseline: {
         styleOverrides: {
+          ...(isEmbedded ? {
+            html: { width: "100%", maxWidth: "100%", overflowX: "hidden" },
+            "#root": { width: "100%", maxWidth: "100%", overflowX: "hidden" },
+          } : {}),
           body: {
             backgroundColor: brandingContract.tokens.background,
             color: brandingContract.tokens.text,
+            ...(isEmbedded ? { width: "100%", maxWidth: "100%", overflowX: "hidden" } : {}),
             "--page-body-bg": brandingContract.tokens.background,
             "--page-surface-bg": brandingContract.tokens.surface,
             "--page-calendar-surface": brandingContract.tokens.surface,
@@ -321,7 +355,11 @@ export default function TenantTransactionalShell({
         ) : null}
 
         <Box
+          ref={transactionalContentRef}
           sx={{
+            width: "100%",
+            maxWidth: "100%",
+            overflowX: "hidden",
             "--tenant-shell-primary": brandingContract.tokens.primary,
             "--tenant-shell-accent": brandingContract.tokens.accent,
             "--tenant-shell-surface": brandingContract.tokens.surface,
