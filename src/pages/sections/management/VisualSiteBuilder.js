@@ -170,6 +170,7 @@ import {
   hasConfiguredNextJsThemeBaseUrl,
   isNextJsStyle,
   NEXTJS_THEME_PREVIEW_CONFIG_ERROR,
+  shouldProvisionNextPublicBuilderPages,
   TENANT_WEB_NEXT_BASE_URL,
 } from "./websiteCatalogUi";
 import {
@@ -3693,6 +3694,7 @@ useEffect(() => {
             .toLowerCase()
           : "";
         const isIronEmberNextWebsite = nextJsThemeKey === "iron-ember";
+        const provisionNextPublicBuilderPages = shouldProvisionNextPublicBuilderPages(nextJsThemeKey);
         // A blank Next.js site is intentionally blank until its selected theme
         // installs a canonical starter blueprint. The Classic import path stays
         // exactly as it was for legacy-react websites.
@@ -3725,7 +3727,7 @@ useEffect(() => {
           companyId,
           settingsPayload,
           pagesList,
-          { isIronEmberNextWebsite, nextJsThemeKey }
+          { isIronEmberNextWebsite, provisionNextPublicBuilderPages, nextJsThemeKey }
         );
         if (!alive) return;
         const finalSettings = normalizedLegacy.settings || settingsPayload;
@@ -4616,7 +4618,7 @@ const saveNavSettings = useCallback(
   ]
 );
 
-async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmberNextWebsite = false, nextJsThemeKey = "" } = {}) {
+async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmberNextWebsite = false, provisionNextPublicBuilderPages = false, nextJsThemeKey = "" } = {}) {
   if (!cid) return { pages: pagesList || [], settings: settingsObj };
 
   let nextPages = Array.isArray(pagesList) ? [...pagesList] : [];
@@ -4870,7 +4872,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
     }
   }
 
-  if (isIronEmberNextWebsite) {
+  if (provisionNextPublicBuilderPages) {
     const projectsPage = nextPages.find((page) => inferPageKind(page) === "projects");
     if (projectsPage) {
       const upgradedProjectsPage = upgradeLegacyIronEmberProjectGallery(projectsPage);
@@ -4902,7 +4904,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
           : [];
         const starters = makeNextPublicBuilderModules(target);
         let completedModules = existingModules.length ? existingModules : starters;
-        if (target.key === "contact") {
+        if (target.key === "contact" && isIronEmberNextWebsite) {
           completedModules = completeIronEmberContactModules(existingPage, completedModules, starters);
         }
         if (target.key === "services" && !completedModules.some((module) => module.type === "services" && module.slot === "services.list")) {
@@ -6007,6 +6009,7 @@ const autoProvisionIfEmpty = useCallback(
         .toLowerCase()
       : "";
     const isIronEmberNextWebsite = nextJsThemeKey === "iron-ember";
+    const provisionNextPublicBuilderPages = shouldProvisionNextPublicBuilderPages(nextJsThemeKey);
     if (!pgRaw.length && !nextJsWebsite) {
       try {
         await autoProvisionIfEmpty(cid, settingsObj);
@@ -6021,6 +6024,7 @@ const autoProvisionIfEmpty = useCallback(
 
     const normalizedLegacy = await ensureLegacyBuilderPages(cid, settingsObj, pgRaw, {
       isIronEmberNextWebsite,
+      provisionNextPublicBuilderPages,
       nextJsThemeKey,
     });
     const pg = (normalizedLegacy.pages || pgRaw).map((p) =>

@@ -139,6 +139,15 @@ export function isNextJsStyle(style) {
   return style?.renderer_engine === "nextjs";
 }
 
+/**
+ * Every approved Next renderer consumes the same backend-owned directory
+ * records. The Builder therefore needs the persisted directory pages for any
+ * selected Next theme, not only for the theme used during the initial rollout.
+ */
+export function shouldProvisionNextPublicBuilderPages(themeKey) {
+  return Boolean(String(themeKey || "").trim());
+}
+
 export function buildNextJsPreviewUrl({ token, pagePath = [] }) {
   if (!hasConfiguredNextJsThemeBaseUrl()) {
     throw new Error(NEXTJS_THEME_PREVIEW_CONFIG_ERROR);

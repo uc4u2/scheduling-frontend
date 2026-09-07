@@ -6,6 +6,7 @@ import { setActiveCurrency } from "../../utils/currency";
 
 const mockApiGet = jest.fn();
 const mockNavigate = jest.fn();
+const mockTransactionalShell = jest.fn(({ children }) => children);
 
 jest.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
@@ -24,10 +25,12 @@ jest.mock("../../utils/tenant", () => ({
 }));
 
 jest.mock("./CompanyPublic", () => ({ externalRenderOverride }) => externalRenderOverride?.node || null);
+jest.mock("./TenantTransactionalShell", () => (props) => mockTransactionalShell(props));
 
 describe("ProductDetails", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTransactionalShell.mockImplementation(({ children }) => children);
     window.localStorage.clear();
     window.history.replaceState({}, "", "/products/77");
     setActiveCurrency("USD");
@@ -76,6 +79,13 @@ describe("ProductDetails", () => {
     expect(screen.queryByRole("button", { name: /product details/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /specifications/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /shipping & returns/i })).not.toBeInTheDocument();
+    expect(mockTransactionalShell).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slugOverride: "sale",
+        activeKey: "__products",
+        pagePath: "products",
+      })
+    );
   });
 
   test("renders structured accordions, new badge, lightbox, and share fallback", async () => {

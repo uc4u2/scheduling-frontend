@@ -37,6 +37,7 @@ import { addProductToCart, CartErrorCodes } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
 import { getActiveCurrency } from "../../utils/currency";
 import CompanyPublic from "./CompanyPublic";
+import TenantTransactionalShell from "./TenantTransactionalShell";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 
@@ -949,14 +950,24 @@ const ProductDetails = ({ slugOverride }) => {
   );
 
   return (
-    <CompanyPublic
+    <TenantTransactionalShell
       slugOverride={slug || undefined}
-      forcedPageSlug="products"
-      externalRenderOverride={{
-        type: "products-detail",
-        node: content,
-      }}
-    />
+      activeKey="__products"
+      pagePath="products"
+      returnTo={searchParams.get("return_to") || searchParams.get("returnTo") || ""}
+      legacyShell={() => (
+        <CompanyPublic
+          slugOverride={slug || undefined}
+          forcedPageSlug="products"
+          externalRenderOverride={{
+            type: "products-detail",
+            node: content,
+          }}
+        />
+      )}
+    >
+      {content}
+    </TenantTransactionalShell>
   );
 };
 

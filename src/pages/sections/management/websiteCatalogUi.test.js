@@ -2,6 +2,7 @@ import {
   buildWebsiteStyleChoices,
   buildWebsiteStylePreviewPages,
   encodePreviewPathToken,
+  shouldProvisionNextPublicBuilderPages,
 } from "./websiteCatalogUi";
 
 describe("website catalog UI helpers", () => {
@@ -114,6 +115,13 @@ describe("website catalog UI helpers", () => {
       { key: "gallery", label: "Gallery / Work", path: ["projects"] },
       { key: "products", label: "Products", path: ["products"] },
     ]);
+  });
+
+  it("provisions backend-driven directory pages for every selected Next theme", () => {
+    expect(shouldProvisionNextPublicBuilderPages("iron-ember")).toBe(true);
+    expect(shouldProvisionNextPublicBuilderPages("modern-gradient")).toBe(true);
+    expect(shouldProvisionNextPublicBuilderPages("forge-motion")).toBe(true);
+    expect(shouldProvisionNextPublicBuilderPages("")).toBe(false);
   });
 
   it("preserves recommendation metadata for builder grouping", () => {
