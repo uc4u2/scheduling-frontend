@@ -130,7 +130,8 @@ export default function TenantTransactionalShell({
     const publishMeasurement = () => {
       window.cancelAnimationFrame(animationFrame);
       animationFrame = window.requestAnimationFrame(() => {
-        publishTransactionalMeasurement(window.parent, transactionalContentRef.current);
+        const dialogs = document.querySelectorAll(".MuiDialog-root");
+        publishTransactionalMeasurement(window.parent, transactionalContentRef.current, dialogs);
       });
     };
     const onMessage = (event) => {
@@ -140,8 +141,12 @@ export default function TenantTransactionalShell({
     const resizeObserver = typeof ResizeObserver === "function"
       ? new ResizeObserver(publishMeasurement)
       : null;
+    const mutationObserver = typeof MutationObserver === "function"
+      ? new MutationObserver(publishMeasurement)
+      : null;
 
     if (transactionalContentRef.current) resizeObserver?.observe(transactionalContentRef.current);
+    mutationObserver?.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("resize", publishMeasurement);
     window.addEventListener("message", onMessage);
     document.fonts?.ready?.then(publishMeasurement).catch(() => {});
@@ -150,6 +155,7 @@ export default function TenantTransactionalShell({
     return () => {
       window.cancelAnimationFrame(animationFrame);
       resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
       window.removeEventListener("resize", publishMeasurement);
       window.removeEventListener("message", onMessage);
     };

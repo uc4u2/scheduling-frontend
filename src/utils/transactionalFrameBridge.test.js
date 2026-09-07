@@ -24,4 +24,28 @@ describe("transactionalFrameBridge", () => {
       "*"
     );
   });
+
+  it("expands an embedded frame to the full checkout dialog content height", () => {
+    const title = {
+      scrollHeight: 56,
+      getBoundingClientRect: () => ({ height: 56 }),
+    };
+    const content = {
+      scrollHeight: 1280,
+      getBoundingClientRect: () => ({ height: 360 }),
+    };
+    const paper = {
+      children: [title, content],
+      querySelector: (selector) => selector === ".MuiDialogContent-root" ? content : null,
+    };
+    const dialog = {
+      querySelector: (selector) => selector === ".MuiDialog-paper" ? paper : null,
+    };
+    const basket = {
+      scrollHeight: 430,
+      getBoundingClientRect: () => ({ height: 430 }),
+    };
+
+    expect(measureTransactionalContent(basket, [dialog])).toBe(1400);
+  });
 });
