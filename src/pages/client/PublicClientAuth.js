@@ -191,21 +191,24 @@ export default function PublicClientAuth({ slug }) {
         <Stack spacing={2}>
           {tab === "register" && (
             <Stack direction="row" spacing={1}>
-              <TextField label="First" value={first} onChange={e=>setFirst(e.target.value)} fullWidth />
-              <TextField label="Last"  value={last}  onChange={e=>setLast(e.target.value)}  fullWidth />
+              <TextField label="First" name="given-name" autoComplete="given-name" value={first} onChange={e=>setFirst(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
+              <TextField label="Last" name="family-name" autoComplete="family-name" value={last} onChange={e=>setLast(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
             </Stack>
           )}
-          <TextField label="Email"    type="email"    value={email}    onChange={e=>setEmail(e.target.value)} fullWidth />
+          <TextField label="Email" name="email" autoComplete="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
           {tab === "register" && (
-            <TextField label="Phone" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} fullWidth />
+            <TextField label="Phone" name="phone" autoComplete="tel" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
           )}
-          <TextField label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} fullWidth />
+          <TextField label="Password" name="password" autoComplete={tab === "login" ? "current-password" : "new-password"} type="password" value={password} onChange={e=>setPassword(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
           {tab === "register" && (
             <TextField
               label="Confirm password"
+              name="password-confirmation"
+              autoComplete="new-password"
               type="password"
               value={passwordConfirm}
               onChange={e => setPasswordConfirm(e.target.value)}
+              InputLabelProps={{ shrink: true }}
               fullWidth
             />
           )}
@@ -261,11 +264,14 @@ export default function PublicClientAuth({ slug }) {
           {forgotMessage && <Alert severity="success" sx={{ mb: 2 }}>{forgotMessage}</Alert>}
           <TextField
             label="Email"
+            name="reset-email"
+            autoComplete="email"
             type="email"
             fullWidth
             margin="normal"
             value={forgotEmail}
             onChange={(e) => setForgotEmail(e.target.value)}
+            InputLabelProps={{ shrink: true }}
           />
         </DialogContent>
         <DialogActions>
