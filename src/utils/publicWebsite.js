@@ -166,6 +166,7 @@ export function buildPublishedWebsiteUrl({
   search = "",
   nextBaseUrl = TENANT_WEB_NEXT_PUBLIC_BASE_URL,
   gateway = undefined,
+  preferCurrentPublicHost = false,
 } = {}) {
   const contract = getPublicUrlContract(status);
   const slug = String(status?.company_slug || contract?.company_slug || "").trim();
@@ -187,13 +188,23 @@ export function buildPublishedWebsiteUrl({
 
   const selection = getPublishedRendererSelection(status);
   if (selection.rendererEngine === "nextjs") {
-    // When a transactional page is already being served on a verified public
-    // tenant host, keep every return link on that same host. This is safe even
-    // if an older frontend deployment lacks the cohort environment flag: the
-    // successful current request proves that the gateway/public host is live.
-    const currentPublicBase = !isLocalCurrentOrigin
-      ? sameHostPublicContractUrl(contract, safeOrigin)
+    // A verified custom domain must stay branded. Other same-host URLs are
+    // retained only for transaction return links that explicitly request it;
+    // manager/public entry links need the direct renderer fallback when their
+    // app-host tenant is not yet in the gateway cohort.
+    const currentCustomDomainBase = !isLocalCurrentOrigin
+      ? sameHostPublicContractUrl(
+          contract?.custom_domain_url
+            ? { custom_domain_url: contract.custom_domain_url }
+            : null,
+          safeOrigin
+        )
       : "";
+    const currentPublicBase = currentCustomDomainBase || (
+      preferCurrentPublicHost && !isLocalCurrentOrigin
+        ? sameHostPublicContractUrl(contract, safeOrigin)
+        : ""
+    );
     if (currentPublicBase) {
       return appendPublicWebsitePath(currentPublicBase, normalizedPath, query);
     }

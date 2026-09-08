@@ -362,6 +362,7 @@ export function buildTenantTransactionalBrandingContract(
       pagePath: normalizedPagePath,
       currentOrigin,
       search,
+      preferCurrentPublicHost: true,
     }) || (slug ? `/${slug}${normalizedPagePath ? `/${normalizedPagePath}` : ""}` : "/");
 
   const tokens = resolveTransactionalThemeTokens(
@@ -386,6 +387,7 @@ export function buildTenantTransactionalBrandingContract(
         status: statusLike,
         pagePath: "",
         currentOrigin,
+        preferCurrentPublicHost: true,
       }) || publicSiteUrl,
     tokens,
   };

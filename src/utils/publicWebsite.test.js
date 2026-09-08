@@ -99,7 +99,27 @@ describe("public website resolver", () => {
     })).toBe("https://www.vandaorchidjewel.com/contact");
   });
 
-  it("keeps transactional return links on the current public host without an environment flag", () => {
+  it("uses the direct Next renderer for a non-cohort site opened on the app host", () => {
+    const status = {
+      company_slug: "new-studio",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      published_visual_theme_key: "iron-ember",
+      public_url_contract: {
+        primary_public_url: "https://app.schedulaa.com/new-studio",
+        schedulaa_url: "https://app.schedulaa.com/new-studio",
+      },
+    };
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "services",
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
+      gateway: { enabled: false },
+    })).toBe("https://scheduling-tenant-web-next.onrender.com/site/new-studio/services");
+  });
+
+  it("keeps transactional return links on the current public host when explicitly requested", () => {
     const status = {
       company_slug: "web-design",
       is_live: true,
@@ -115,6 +135,7 @@ describe("public website resolver", () => {
       currentOrigin: "https://app.schedulaa.com",
       nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
       gateway: { enabled: false },
+      preferCurrentPublicHost: true,
     })).toBe("https://app.schedulaa.com/web-design/products");
   });
 

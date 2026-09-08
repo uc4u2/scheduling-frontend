@@ -52,6 +52,7 @@ export default function ManagerTicketsView() {
   const [subject, setSubject] = useState("website");
   const [subSubject, setSubSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [showWebsiteDesignSuccess, setShowWebsiteDesignSuccess] = useState(false);
   const [supportNotice, setSupportNotice] = useState("");
@@ -168,12 +169,18 @@ export default function ManagerTicketsView() {
   }, [selectedId, lastMessageId, selectedTicket?.status]);
 
   const createTicket = async () => {
-    if (!subject || !description.trim()) return;
+    const trimmedDescription = description.trim();
+    if (!trimmedDescription) {
+      setDescriptionError("Describe what you need help with before creating the ticket.");
+      return;
+    }
     try {
+      setDescriptionError("");
+      setError("");
       const payload = {
         subject,
         sub_subject: subSubject || undefined,
-        description: description.trim(),
+        description: trimmedDescription,
       };
       const { data } = await api.post("/api/support/tickets", payload);
       setDescription("");
@@ -183,8 +190,12 @@ export default function ManagerTicketsView() {
         setSelectedId(data.id);
         setDetail(data);
       }
-    } catch {
-      setError("Unable to create ticket.");
+    } catch (err) {
+      if (err?.response?.data?.error === "subject_and_description_required") {
+        setDescriptionError("Describe what you need help with before creating the ticket.");
+      } else {
+        setError("Unable to create ticket. Please try again.");
+      }
     }
   };
 
@@ -296,11 +307,17 @@ export default function ManagerTicketsView() {
           </Stack>
           <TextField
             fullWidth
+            required
             multiline
             minRows={3}
             label="Describe the issue"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (descriptionError && e.target.value.trim()) setDescriptionError("");
+            }}
+            error={Boolean(descriptionError)}
+            helperText={descriptionError || "Required. Include what you want support to fix, add, or update."}
             sx={{ mt: 2 }}
           />
           <Button variant="contained" sx={{ mt: 2 }} onClick={createTicket}>
