@@ -85,6 +85,7 @@ export function addProductToCart(product, quantity = 1, variant = null) {
       variant?.image?.url_public ||
       variant?.image?.url ||
       (product.images && product.images.length ? product.images[0].url : null),
+    is_digital: Boolean(product.is_digital),
     display: variantId
       ? {
           variant_label: variant?.label || "",

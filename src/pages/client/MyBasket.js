@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Container,
-  Grid,
   IconButton,
   List,
   ListItem,
@@ -376,6 +375,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
           return [
             productId,
             {
+              isDigital: Boolean(data?.is_digital),
               blocked,
               message: blocked
                 ? "This product is temporarily unavailable because delivery is not configured right now."
@@ -389,7 +389,20 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     )
       .then((entries) => {
         if (cancelled) return;
-        setProductDeliveryStatus(Object.fromEntries(entries));
+        const nextStatus = Object.fromEntries(entries);
+        setProductDeliveryStatus(nextStatus);
+        setItems((currentItems) => {
+          let changed = false;
+          const nextItems = currentItems.map((item) => {
+            if (item.type !== CartTypes.PRODUCT) return item;
+            const status = nextStatus[Number(item.product_id)];
+            if (!status || item.is_digital === status.isDigital) return item;
+            changed = true;
+            return { ...item, is_digital: status.isDigital };
+          });
+          if (changed) saveCart(nextItems);
+          return changed ? nextItems : currentItems;
+        });
       })
       .finally(() => {
         if (cancelled) return;
@@ -594,7 +607,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         ...(styleVars || {}),
       }}
     >
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={2}>
           <Box>
@@ -627,7 +640,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                 variant="contained"
                 startIcon={<ShoppingCartCheckoutIcon />}
                 onClick={proceed}
-                disabled={mixedCart}
+                disabled={mixedCart || productCheckoutBlocked || productDeliveryLoading}
                 sx={{
                   width: { xs: "100%", sm: "auto" },
                   borderRadius: "var(--page-btn-radius, 12px)",
@@ -691,12 +704,22 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             </Button>
           </Box>
         ) : (
-          <Grid container spacing={{ xs: 3, md: 4 }}>
-            <Grid item xs={12} md={7}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                md: "minmax(0, 7fr) minmax(300px, 5fr)",
+              },
+              gap: { xs: 3, md: 4 },
+              alignItems: "start",
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
               <Stack spacing={2}>
                 {items.map((item) => (
                   <Card key={item.id} variant="outlined" sx={{ borderRadius: 3 }}>
-                    <CardContent>
+                    <CardContent sx={{ p: { xs: 2, md: 2.5 }, "&:last-child": { pb: { xs: 2, md: 2.5 } } }}>
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }}>
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="h6" fontWeight={700}>
@@ -752,7 +775,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                               {item.artist_name || "Service"}
                             </Typography>
                           )}
-                          <IconButton onClick={() => removeItem(item.id)}>
+                          <IconButton onClick={() => removeItem(item.id)} aria-label={`Remove ${item.name || "item"}`}>
                             <DeleteIcon />
                           </IconButton>
                         </Stack>
@@ -761,23 +784,27 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                   </Card>
                 ))}
               </Stack>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={5}>
-              <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardContent>
+            <Box sx={{ minWidth: 0 }}>
+              <Card variant="outlined" sx={{ borderRadius: 3, position: { md: "sticky" }, top: { md: 24 } }}>
+                <CardContent sx={{ p: { xs: 2, md: 2.5 }, "&:last-child": { pb: { xs: 2, md: 2.5 } } }}>
                   <Typography variant="h6" fontWeight={700} gutterBottom>
                     Order summary
                   </Typography>
                   <Stack spacing={1.5}>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary">Services</Typography>
-                      <Typography fontWeight={600}>{money(totals.serviceTotal)}</Typography>
-                    </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary">Products</Typography>
-                      <Typography fontWeight={600}>{money(totals.productTotal)}</Typography>
-                    </Stack>
+                    {serviceItems.length > 0 && (
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography color="text.secondary">Services</Typography>
+                        <Typography fontWeight={600}>{money(totals.serviceTotal)}</Typography>
+                      </Stack>
+                    )}
+                    {productItems.length > 0 && (
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography color="text.secondary">Products</Typography>
+                        <Typography fontWeight={600}>{money(totals.productTotal)}</Typography>
+                      </Stack>
+                    )}
                     <Box sx={{ borderTop: "1px solid", borderColor: "divider", pt: 1.5 }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="h6" fontWeight={800}>
@@ -799,8 +826,8 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                   </Stack>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         )}
       </Stack>
       <Snackbar
@@ -813,14 +840,16 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         fullWidth
-        maxWidth="lg"
+        maxWidth="md"
         sx={modalVars || undefined}
         PaperProps={{
           sx: {
-            width: "100%",
-            maxWidth: 1200,
-            mx: 0,
-            borderRadius: 2,
+            width: "calc(100% - 24px)",
+            maxWidth: 960,
+            mx: { xs: 1.5, sm: 2 },
+            maxHeight: "calc(100dvh - 32px)",
+            borderRadius: { xs: 2, sm: 3 },
+            overflow: "hidden",
             backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, rgba(255,255,255,0.95)))",
             backgroundImage: "var(--checkout-modal-bg-image, none)",
             color: "var(--page-body-color, #111827)",
@@ -829,7 +858,8 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
       >
         <DialogTitle
           sx={{
-            py: 1.5,
+            px: { xs: 2, sm: 2.5 },
+            py: 1.25,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",

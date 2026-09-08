@@ -413,6 +413,39 @@ describe("CheckoutFormCore", () => {
     expect(screen.queryByRole("button", { name: /add-on\(s\)/i })).not.toBeInTheDocument();
   });
 
+  test("digital product checkout omits delivery controls", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "product-1",
+        type: "product",
+        product_id: 1,
+        name: "Website setup",
+        price: 500,
+        quantity: 1,
+        is_digital: true,
+      },
+    ]);
+
+    render(
+      <CheckoutFormCore
+        companySlug="web-design"
+        businessName="Schedulaa Web Design"
+        paymentsEnabled
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        productCheckout={{ enabled: true, mode: "pay", requires_payment_during_checkout: true }}
+        displayCurrency="USD"
+        policy={{ mode: "pay" }}
+        holdMinutes={null}
+      />
+    );
+
+    expect(await screen.findByText(/website setup/i)).toBeInTheDocument();
+    expect(screen.queryByText(/delivery details/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/delivery method/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not currently available for delivery or pickup/i)).not.toBeInTheDocument();
+  });
+
   test("product-only carts show the product-specific disabled message", async () => {
     mockLoadCart.mockReturnValue([
       {

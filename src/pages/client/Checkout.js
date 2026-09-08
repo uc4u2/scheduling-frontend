@@ -763,6 +763,7 @@ export function CheckoutFormCore({
   });
   const [importChargesAcknowledged, setImportChargesAcknowledged] = useState(false);
   const [cart, setCart] = useState([]);
+  const [productMetadataLoading, setProductMetadataLoading] = useState(false);
   const [clientPackages, setClientPackages] = useState([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
   const [packagesError, setPackagesError] = useState("");
@@ -1042,6 +1043,18 @@ export function CheckoutFormCore({
     () => cart.filter((item) => isProduct(item)),
     [cart]
   );
+  const physicalProductItems = useMemo(
+    () => productItems.filter((item) => item.is_digital !== true),
+    [productItems]
+  );
+  const productIdsKey = useMemo(
+    () => productItems
+      .map((item) => Number(item.product_id ?? String(item.id || "").replace(/^product-/, "")))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .sort((a, b) => a - b)
+      .join(","),
+    [productItems]
+  );
   const packageItems = useMemo(
     () => cart.filter((item) => isPackage(item)),
     [cart]
@@ -1050,6 +1063,58 @@ export function CheckoutFormCore({
     productItems.length > 0 && serviceItems.length === 0 && packageItems.length === 0;
   const serviceOnlyCheckout =
     serviceItems.length > 0 && productItems.length === 0 && packageItems.length === 0;
+
+  useEffect(() => {
+    if (!slugLocal || !productIdsKey) {
+      setProductMetadataLoading(false);
+      return undefined;
+    }
+    const unresolved = productItems.filter((item) => typeof item.is_digital !== "boolean");
+    if (unresolved.length === 0) {
+      setProductMetadataLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setProductMetadataLoading(true);
+    Promise.all(
+      unresolved.map(async (item) => {
+        const productId = Number(item.product_id ?? String(item.id || "").replace(/^product-/, ""));
+        if (!Number.isFinite(productId) || productId <= 0) return null;
+        try {
+          const { data } = await apiClient.get(`/public/${slugLocal}/products/${productId}`, {
+            noCompanyHeader: true,
+          });
+          return [productId, Boolean(data?.is_digital)];
+        } catch {
+          return null;
+        }
+      })
+    )
+      .then((entries) => {
+        if (cancelled) return;
+        const metadata = new Map(entries.filter(Boolean));
+        if (metadata.size === 0) return;
+        setCart((currentCart) => {
+          let changed = false;
+          const nextCart = currentCart.map((item) => {
+            if (!isProduct(item)) return item;
+            const productId = Number(item.product_id ?? String(item.id || "").replace(/^product-/, ""));
+            if (!metadata.has(productId) || item.is_digital === metadata.get(productId)) return item;
+            changed = true;
+            return { ...item, is_digital: metadata.get(productId) };
+          });
+          if (changed) saveCart(nextCart);
+          return changed ? nextCart : currentCart;
+        });
+      })
+      .finally(() => {
+        if (!cancelled) setProductMetadataLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slugLocal, productIdsKey, productItems]);
+
   const selectedShippingRateSnapshot = useMemo(() => {
     if (!shippingRates?.selectedRateId) return null;
     const selected = (shippingRates?.rates || []).find(
@@ -1058,7 +1123,7 @@ export function CheckoutFormCore({
     return selected || null;
   }, [shippingRates]);
   useEffect(() => {
-    if (!slugLocal || productItems.length === 0) {
+    if (!slugLocal || physicalProductItems.length === 0) {
       setDeliveryMethodPolicy({
         loading: false,
         source: "default",
@@ -1170,7 +1235,7 @@ export function CheckoutFormCore({
     return () => {
       cancelled = true;
     };
-  }, [slugLocal, productItems.length]);
+  }, [slugLocal, physicalProductItems.length]);
 
   const serviceSubtotal = serviceItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
   const productSubtotal = productItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
@@ -1181,7 +1246,7 @@ export function CheckoutFormCore({
     ? serviceItems.reduce((sum, item) => sum + Number(item.tip_amount || 0), 0)
     : 0;
   const shippingRateTotal =
-    productItems.length > 0 && selectedShippingRateSnapshot?.amount != null
+    physicalProductItems.length > 0 && selectedShippingRateSnapshot?.amount != null
       ? Number(selectedShippingRateSnapshot.amount || 0)
       : 0;
 
@@ -1330,12 +1395,12 @@ export function CheckoutFormCore({
   const guestOk =
     guest.name.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email.trim());
   const allowedDeliveryMethods = useMemo(() => {
-    if (productItems.length === 0) return [];
+    if (physicalProductItems.length === 0) return [];
     let allowed = Array.isArray(deliveryMethodPolicy.allowedMethods)
       ? [...deliveryMethodPolicy.allowedMethods]
       : [];
     allowed = allowed.filter((m) => ["pickup", "shipping", "local_delivery"].includes(m));
-    for (const item of productItems) {
+    for (const item of physicalProductItems) {
       if (!item?.delivery_methods_override_enabled) continue;
       const itemAllowed = [];
       if (item.delivery_allow_pickup) itemAllowed.push("pickup");
@@ -1344,7 +1409,7 @@ export function CheckoutFormCore({
       allowed = allowed.filter((method) => itemAllowed.includes(method));
     }
     return Array.from(new Set(allowed));
-  }, [productItems, deliveryMethodPolicy.allowedMethods, deliveryMethodPolicy.source]);
+  }, [physicalProductItems, deliveryMethodPolicy.allowedMethods, deliveryMethodPolicy.source]);
   const deliveryMethodOptions = useMemo(() => {
     const labelsFromApi = new Map(
       (Array.isArray(deliveryMethodPolicy.methods) ? deliveryMethodPolicy.methods : []).map((row) => [
@@ -1364,23 +1429,23 @@ export function CheckoutFormCore({
     ]);
   }, [allowedDeliveryMethods, deliveryMethodPolicy.methods]);
   const policyIsApiLoadedEmpty =
-    productItems.length > 0 &&
+    physicalProductItems.length > 0 &&
     deliveryMethodPolicy.source === "api" &&
     allowedDeliveryMethods.length === 0;
   const safeDeliveryMethodValue = allowedDeliveryMethods.includes(String(productDelivery.delivery_method || "").toLowerCase())
     ? productDelivery.delivery_method || ""
     : "";
   useEffect(() => {
-    if (productItems.length === 0) return;
+    if (physicalProductItems.length === 0) return;
     if (allowedDeliveryMethods.length === 0) return;
     const current = String(productDelivery.delivery_method || "").toLowerCase();
     if (allowedDeliveryMethods.includes(current)) return;
     const fallback = allowedDeliveryMethods.length === 1 ? (deliveryMethodOptions[0]?.[0] || "") : "";
     setProductDelivery((prev) => ({ ...prev, delivery_method: fallback }));
-  }, [productItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
+  }, [physicalProductItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
 
   const requiresShippingAddress =
-    productItems.length > 0 &&
+    physicalProductItems.length > 0 &&
     allowedDeliveryMethods.length > 0 &&
     ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "").toLowerCase());
   const currentShippingCountry = normalizeDeliveryCountryCode(productDelivery.shipping?.country || "");
@@ -1396,8 +1461,12 @@ export function CheckoutFormCore({
     );
   const hasAcceptedShippingVerification = !verificationEnabled || addressVerification.status === "verified";
   const deliveryErrors = useMemo(() => {
-    if (productItems.length === 0) return [];
+    if (physicalProductItems.length === 0) return [];
     const errors = [];
+    if (productMetadataLoading) {
+      errors.push("Checking product delivery requirements.");
+      return errors;
+    }
     if (!allowedDeliveryMethods.length) {
       errors.push("This Product is not currently available for delivery or pickup.");
       return errors;
@@ -1438,7 +1507,7 @@ export function CheckoutFormCore({
       }
     }
     return errors;
-  }, [productItems.length, productDelivery, requiresShippingAddress, allowedDeliveryMethods, deliveryMethodPolicy.allowedDestinationCountries]);
+  }, [physicalProductItems.length, productMetadataLoading, productDelivery, requiresShippingAddress, allowedDeliveryMethods, deliveryMethodPolicy.allowedDestinationCountries]);
 
   const deliveryCountryOptions = useMemo(() => {
     const countries = Array.isArray(deliveryMethodPolicy.allowedDestinationCountryOptions) &&
@@ -1541,7 +1610,7 @@ export function CheckoutFormCore({
 
   useEffect(() => {
     if (
-      productItems.length === 0 ||
+      physicalProductItems.length === 0 ||
       deliveryMethodPolicy.loading ||
       deliveryMethodPolicy.source === "default" ||
       !requiresShippingAddress ||
@@ -1571,7 +1640,7 @@ export function CheckoutFormCore({
             country: normalizeDeliveryCountryCode(productDelivery.shipping?.country || ""),
             instructions: productDelivery.shipping?.instructions || "",
           },
-          items: productItems.map((item) => ({
+          items: physicalProductItems.map((item) => ({
             product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
             variant_id: item.variant_id != null ? Number(item.variant_id) : undefined,
             quantity: getQuantity(item),
@@ -1635,7 +1704,7 @@ export function CheckoutFormCore({
       clearTimeout(timer);
     };
   }, [
-    productItems,
+    physicalProductItems,
     deliveryMethodPolicy.loading,
     deliveryMethodPolicy.source,
     requiresShippingAddress,
@@ -1673,7 +1742,11 @@ export function CheckoutFormCore({
   };
 
   const ensureProductDeliveryValid = () => {
-    if (productItems.length === 0) return true;
+    if (physicalProductItems.length === 0) return true;
+    if (productMetadataLoading) {
+      setErr("Checking product delivery requirements. Please wait a moment.");
+      return false;
+    }
     if (!deliveryOk) {
       setErr(deliveryErrors[0] || "Please complete delivery details.");
       return false;
@@ -2841,16 +2914,16 @@ export function CheckoutFormCore({
   return (
     <Box
       sx={{
-        px: { xs: 2, md: 0 },
-        py: { xs: 3, md: 4 },
-        maxWidth: 760,
+        px: { xs: 1, sm: 2, md: 2.5 },
+        py: { xs: 1.5, md: 2 },
+        maxWidth: 720,
         mx: "auto",
       }}
     >
       <Paper
         sx={{
-          p: { xs: 2.5, md: 4 },
-          borderRadius: 4,
+          p: { xs: 2, md: 2.5 },
+          borderRadius: 3,
           border: `1px solid ${borderColor}`,
           backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
           backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%)",
@@ -2858,12 +2931,11 @@ export function CheckoutFormCore({
           boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.12))",
         }}
       >
-        <Stack spacing={3}>
+        <Stack spacing={2}>
         <Typography
           variant="h5"
-          gutterBottom
           fontWeight={800}
-          sx={{ color: checkoutHeadingColor, typography: { xs: "h5", md: "h4" } }}
+          sx={{ color: checkoutHeadingColor }}
         >
           Checkout
         </Typography>
@@ -2884,8 +2956,9 @@ export function CheckoutFormCore({
 
       {/* Cart */}
       <List
+        dense
         sx={{
-          mb: 2,
+          mb: 1.5,
           border: 1,
           borderColor: "divider",
           borderRadius: 3,
@@ -2894,6 +2967,7 @@ export function CheckoutFormCore({
           "& .MuiTypography-root": { color: checkoutSectionColor },
           "& .MuiListItemText-primary": { color: checkoutSectionColor },
           "& .MuiListItemText-secondary": { color: checkoutSectionColor },
+          "& .MuiListItem-root": { py: 1.25 },
         }}
       >
         {cart.map((it) => {
@@ -3314,8 +3388,8 @@ export function CheckoutFormCore({
         </Paper>
       )}
 
-      {productItems.length > 0 && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+      {physicalProductItems.length > 0 && (
+        <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mb: 1.5, borderRadius: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: checkoutSectionColor }}>
             Delivery details
           </Typography>
@@ -3326,7 +3400,7 @@ export function CheckoutFormCore({
             value={safeDeliveryMethodValue}
             onChange={handleDeliveryMethod}
             SelectProps={{ MenuProps: CHECKOUT_SELECT_MENU_PROPS }}
-            sx={{ mb: 2 }}
+            sx={{ mb: 1.5 }}
             disabled={deliveryMethodPolicy.loading || deliveryMethodOptions.length === 0}
           >
             {deliveryMethodOptions.length > 1 && (
@@ -3346,7 +3420,7 @@ export function CheckoutFormCore({
             </Typography>
           )}
           {!deliveryMethodPolicy.loading && deliveryMethodOptions.length === 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
+            <Alert severity="warning" sx={{ mb: 1.5 }}>
               {policyIsApiLoadedEmpty
                 ? "This Product is not currently available for delivery or pickup."
                 : "Delivery methods are temporarily unavailable. Please try again."}
@@ -3653,18 +3727,18 @@ export function CheckoutFormCore({
       )}
 
       {err && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 1.5 }}>
           {err}
         </Alert>
       )}
 
       {/* Card   show when either pay-now or card-on-file is enabled */}
       {packageOnlyTotal ? (
-        <Alert severity="success" sx={{ mb: 2, ...infoAlertSx }}>
+        <Alert severity="success" sx={{ mb: 1.5, ...infoAlertSx }}>
           This booking is fully covered by your package credits. No Stripe payment is required.
         </Alert>
       ) : effectivePaymentMode !== "off" ? (
-        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
+        <Alert severity="info" sx={{ mb: 1.5, ...infoAlertSx }}>
           {hasPackagePurchase && !paymentsEnabled
             ? "Online payments are disabled for this company. Package purchases require online payment."
             : effectivePaymentMode === "capture"
@@ -3672,7 +3746,7 @@ export function CheckoutFormCore({
               : "You'll enter your payment details on Stripe's secure checkout page."}
         </Alert>
       ) : (
-        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
+        <Alert severity="info" sx={{ mb: 1.5, ...infoAlertSx }}>
           {hasPackagePurchase
             ? "Online payments are disabled for this company. Package purchases require online payment."
             : <>Online payments are currently disabled for this company. Your booking will be created as <strong>unpaid</strong>.</>}
@@ -3784,7 +3858,7 @@ export function CheckoutFormCore({
               label="Your name"
               fullWidth
               required
-              sx={{ mb: 2 }}
+              sx={{ mb: 1.5 }}
               value={guest.name}
               onChange={handleGuest}
             />
@@ -3799,7 +3873,7 @@ export function CheckoutFormCore({
               onChange={handleGuest}
             />
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1.5 }}>
               <Button
                 variant="outlined"
                 size="small"
