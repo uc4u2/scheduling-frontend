@@ -3356,6 +3356,8 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [brandingSaving, setBrandingSaving] = useState(false);
 const [brandingMsg, setBrandingMsg] = useState("");
 const [brandingErr, setBrandingErr] = useState("");
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [brandingLocalDirty, setBrandingLocalDirty] = useState(false);
   const siteThemeSettings = useMemo(
     () => readSiteThemeSettings(siteSettings),
     [siteSettings]
@@ -3391,6 +3393,7 @@ const [brandingErr, setBrandingErr] = useState("");
       setHeaderDraft(headerFromServer);
       setFooterDraft(footerFromServer);
       setThemeOverridesDraft(themeOverrides || defaultThemeOverrides);
+      setBrandingLocalDirty(false);
       themeOverridesPersistedKeyRef.current = JSON.stringify(
         themeOverrides || defaultThemeOverrides || {}
       );
@@ -3399,6 +3402,20 @@ const [brandingErr, setBrandingErr] = useState("");
   );
 
   const hasDraftChanges = Boolean(siteSettings?.has_unpublished_changes);
+  const resolvedFooterContact = useMemo(() => {
+    const profile = companyProfile || siteSettings?.company || {};
+    return {
+      email: profile.contact_email || profile.email || "",
+      phone: profile.contact_phone || profile.phone || "",
+      address: profile.address || "",
+    };
+  }, [companyProfile, siteSettings?.company]);
+  const footerSiteTitle =
+    siteSettings?.site_title ||
+    siteSettings?.settings?.site_title ||
+    companyProfile?.name ||
+    siteSettings?.company?.name ||
+    "";
   const websiteStyleChoices = useMemo(
     () =>
       buildWebsiteStyleChoices({
@@ -3650,6 +3667,8 @@ useEffect(() => {
           (pagesRes?.data?.items || []);
 
         const settingsPayload = settingsRes?.data ?? settingsRes ?? null;
+        const profilePayload = profileRes?.data?.company || profileRes?.data || null;
+        setCompanyProfile(profilePayload && typeof profilePayload === "object" ? profilePayload : null);
         // Do not await this optional request.  If it completes later it still
         // improves the style/status UI without blanking the canvas.
         let statusPayload = null;
@@ -4099,6 +4118,7 @@ const handleHeaderDraftChange = useCallback(
     setHeaderDraft(normalized);
     setBrandingMsg("");
     setBrandingErr("");
+    setBrandingLocalDirty(true);
     setSiteSettings((prev) => ({
       ...(prev || {}),
       header: normalized,
@@ -4146,6 +4166,7 @@ const handleFooterDraftChange = useCallback(
     setFooterDraft(normalized);
     setBrandingMsg("");
     setBrandingErr("");
+    setBrandingLocalDirty(true);
     setSiteSettings((prev) => ({
       ...(prev || {}),
       footer: normalized,
@@ -4164,6 +4185,7 @@ const handleThemeOverridesDraftChange = useCallback(
     setThemeOverridesDraft(draft);
     setBrandingMsg("");
     setBrandingErr("");
+    setBrandingLocalDirty(true);
     setSiteSettings((prev) => ({
       ...(prev || {}),
       theme_overrides: draft,
@@ -8488,7 +8510,9 @@ const autoProvisionIfEmpty = useCallback(
       >
         <WebsiteBrandingCard
           companyId={companyId}
-          companyName={siteSettings?.company?.name || ""}
+          companyName={companyProfile?.name || siteSettings?.company?.name || ""}
+          siteTitle={footerSiteTitle}
+          resolvedContact={resolvedFooterContact}
           companySlug={
             siteSettings?.company?.slug ||
             siteSettings?.company?.name ||
@@ -8513,6 +8537,8 @@ const autoProvisionIfEmpty = useCallback(
           surface={usesConciseNextJsBrandingSurface ? nextJsBrandingThemeKey : "classic"}
           floatingSaveVisible={brandingPanelOpen}
           floatingSavePlacement="top-left"
+          hasUnsavedChanges={brandingLocalDirty}
+          hasUnpublishedChanges={hasDraftChanges}
         />
       </CollapsibleSection>
 
@@ -9394,6 +9420,12 @@ const CanvasColumn = (
       <Stack direction="row" spacing={1} alignItems="center">
         {isNextJsContentMode ? (
           <>
+            <Chip
+              size="small"
+              color={brandingLocalDirty ? "warning" : hasDraftChanges ? "info" : "success"}
+              variant={brandingLocalDirty || hasDraftChanges ? "filled" : "outlined"}
+              label={brandingLocalDirty ? "Unsaved local changes" : hasDraftChanges ? "Draft preview — not published" : "Matches published site"}
+            />
             <ToggleButtonGroup
               size="small"
               exclusive

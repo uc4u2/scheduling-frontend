@@ -46,11 +46,12 @@ export function cloneLegalLinks(template = DEFAULT_FOOTER_LEGAL_LINKS) {
   return (template || []).map((link) => ({ ...link }));
 }
 
-export function formatCopyrightText(text, { company, slug } = {}) {
+export function formatCopyrightText(text, { company, siteTitle, slug } = {}) {
   const template = (text && text.trim()) || DEFAULT_COPYRIGHT_TEXT;
   const replacements = {
     year: String(new Date().getFullYear()),
     company: company || slug || "Your company",
+    sitetitle: siteTitle || company || slug || "Your company",
   };
-  return template.replace(/\{\{(year|company)\}\}/gi, (_, key) => replacements[key.toLowerCase()] || "");
+  return template.replace(/\{\{(year|company|siteTitle)\}\}/gi, (_, key) => replacements[key.toLowerCase()] || "");
 }

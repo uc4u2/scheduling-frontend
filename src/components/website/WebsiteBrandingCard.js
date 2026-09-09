@@ -1131,15 +1131,88 @@ function HeaderPreview({ header, theme, onLogoDragStart, companySlug = "Preview 
   );
 }
 
-function FooterPreview({ footer, theme, companySlug }) {
+const normalizeComparableEmail = (value) =>
+  String(value || "").trim().toLowerCase();
+
+function footerColumnDuplicatesEmail(footer, email) {
+  const target = normalizeComparableEmail(email);
+  if (!target) return false;
+  return (footer?.columns || []).some((column) =>
+    (column?.links || []).some((link) => {
+      const href = String(link?.href || "").trim();
+      if (!/^mailto:/i.test(href)) return false;
+      return normalizeComparableEmail(href.replace(/^mailto:/i, "").split("?")[0]) === target;
+    })
+  );
+}
+
+function FooterContactControls({ footer, updateFooter, resolvedContact, onRequestContactJump }) {
+  const contact = resolvedContact || {};
+  const rows = [
+    { key: "show_public_email", label: "Show public email", value: contact.email, empty: "No Company Profile email configured" },
+    { key: "show_phone", label: "Show phone", value: contact.phone, empty: "No Company Profile phone configured" },
+    { key: "show_address", label: "Show address", value: contact.address, empty: "No Company Profile address configured" },
+  ];
+  const duplicateEmail = footerColumnDuplicatesEmail(footer, contact.email);
+  return (
+    <Stack spacing={2}>
+      <FormControlLabel
+        control={<Switch checked={footer.show_contact_card !== false} onChange={(_, value) => updateFooter({ show_contact_card: value })} />}
+        label="Show contact card"
+      />
+      {rows.map((row) => (
+        <Stack key={row.key} direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+          <FormControlLabel
+            sx={{ minWidth: 190, m: 0 }}
+            control={<Switch checked={footer[row.key] !== false} onChange={(_, value) => updateFooter({ [row.key]: value })} />}
+            label={row.label}
+          />
+          <TextField
+            size="small"
+            fullWidth
+            label="Resolved Company Profile value"
+            value={row.value || ""}
+            placeholder={row.empty}
+            multiline={row.key === "show_address"}
+            inputProps={{ readOnly: true }}
+          />
+        </Stack>
+      ))}
+      {duplicateEmail ? (
+        <Alert severity="warning" variant="outlined">
+          A Footer Column contains the same email as Company Profile. It is preserved for backward compatibility, but showing both would duplicate the public email.
+        </Alert>
+      ) : null}
+      <Button variant="outlined" size="small" onClick={onRequestContactJump} sx={{ alignSelf: "flex-start" }}>
+        Edit in Company Profile
+      </Button>
+      <TextField size="small" fullWidth label="Contact eyebrow" value={footer.contact_eyebrow || ""} placeholder="CONTACT" onChange={(event) => updateFooter({ contact_eyebrow: event.target.value })} />
+      <TextField size="small" fullWidth label="Contact introduction" value={footer.contact_introduction || ""} placeholder="Start a conversation" onChange={(event) => updateFooter({ contact_introduction: event.target.value })} />
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+        <TextField size="small" fullWidth label="Contact CTA label" value={footer.contact_cta_label || ""} placeholder="Contact us" onChange={(event) => updateFooter({ contact_cta_label: event.target.value })} />
+        <TextField size="small" fullWidth label="Contact CTA destination" value={footer.contact_cta_href || ""} placeholder="/contact" onChange={(event) => updateFooter({ contact_cta_href: event.target.value })} />
+      </Stack>
+      <Typography variant="caption" color="text.secondary">
+        These settings control presentation only. Public contact values continue to come from Company Profile.
+      </Typography>
+    </Stack>
+  );
+}
+
+function FooterPreview({ footer, theme, companySlug, companyName, siteTitle, resolvedContact }) {
   const bg = footer.bg || theme.footer?.background || "#0b1120";
   const textColor = footer.text_color || theme.footer?.text || "#e2e8f0";
   const linkColor = footer.link_color || textColor;
   const footerLogoWidth = clampValue(footer.logo_width ?? 160, 40, 360);
   const showCopyright = footer.show_copyright !== false;
   const copyrightSample = formatCopyrightText(footer.copyright_text, {
-    company: companySlug,
+    company: companyName || companySlug,
+    siteTitle,
   });
+  const contact = resolvedContact || {};
+  const socialLinks = footer.social_placement === "hidden" || footer.social_placement === "header" ? [] : footer.social_links || [];
+  const showContactCard = footer.show_contact_card !== false;
+  const duplicateProfileEmail = footerColumnDuplicatesEmail(footer, contact.email);
   return (
     <Box
       sx={{
@@ -1176,17 +1249,32 @@ function FooterPreview({ footer, theme, companySlug }) {
         >
           Footer logo
         </Box>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          Footer preview
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          {footer.text || "Add a concise description or CTA for your footer."}
-        </Typography>
-        {showCopyright && (
-          <Typography variant="caption" sx={{ mt: 2, display: "block", opacity: 0.8 }}>
-            {copyrightSample}
-          </Typography>
-        )}
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Footer preview</Typography>
+        <Typography variant="body2" sx={{ opacity: 0.9 }}>{footer.text || "Add a concise description or CTA for your footer."}</Typography>
+        <Grid container spacing={2} sx={{ mt: 0.5 }}>
+          {(footer.columns || []).map((column, index) => (
+            <Grid item xs={12} sm={4} key={`${column.title || "column"}-${index}`}>
+              <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase" }}>{column.title || "Links"}</Typography>
+              {(column.links || []).map((link, linkIndex) => <Typography variant="body2" key={`${link.href}-${linkIndex}`} sx={{ mt: 0.5, opacity: 0.9 }}>{link.label || link.href}</Typography>)}
+            </Grid>
+          ))}
+          {showContactCard ? (
+            <Grid item xs={12} sm={4}>
+              <Box sx={{ border: "1px solid rgba(255,255,255,.22)", borderRadius: 2, p: 1.5 }}>
+                <Typography variant="caption" sx={{ textTransform: "uppercase" }}>{footer.contact_eyebrow || "Contact"}</Typography>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>{footer.contact_introduction || "Start a conversation"}</Typography>
+                <Typography variant="subtitle2">{siteTitle || companyName || companySlug}</Typography>
+                {footer.show_public_email !== false && contact.email && !duplicateProfileEmail ? <Typography variant="caption" sx={{ display: "block", mt: 1, overflowWrap: "anywhere" }}>{contact.email}</Typography> : null}
+                {footer.show_phone !== false && contact.phone ? <Typography variant="caption" sx={{ display: "block" }}>{contact.phone}</Typography> : null}
+                {footer.show_address !== false && contact.address ? <Typography variant="caption" sx={{ display: "block" }}>{contact.address}</Typography> : null}
+                <Typography variant="caption" sx={{ display: "block", mt: 1 }}>{footer.contact_cta_label || "Contact us"} →</Typography>
+              </Box>
+            </Grid>
+          ) : null}
+        </Grid>
+        {socialLinks.length ? <Typography variant="caption" sx={{ mt: 1.5, display: "block" }}>Social: {socialLinks.map((link) => link.label || link.icon).join(" · ")}</Typography> : null}
+        {(footer.legal_links || []).length ? <Typography variant="caption" sx={{ mt: 1, display: "block" }}>Legal: {(footer.legal_links || []).map((link) => link.label || link.href).join(" · ")}</Typography> : null}
+        {showCopyright ? <Typography variant="caption" sx={{ mt: 2, display: "block", opacity: 0.8 }}>{copyrightSample}</Typography> : null}
       </Box>
     </Box>
   );
@@ -1264,6 +1352,9 @@ function validateConfig(header, footer, { menuSource = "pages" } = {}) {
       errors.push(`Footer social link ${idx + 1} needs a valid URL.`);
     }
   });
+  if (footer.contact_cta_href && !isValidHref(footer.contact_cta_href)) {
+    errors.push("Contact CTA destination needs a valid page path or URL.");
+  }
   (header.social_links || []).forEach((item, idx) => {
     if (!isValidHref(item.href || "")) {
       errors.push(`Header social link ${idx + 1} needs a valid URL.`);
@@ -1276,6 +1367,8 @@ export default function WebsiteBrandingCard({
   companyId,
   companySlug = "Preview Co.",
   companyName = "",
+  siteTitle = "",
+  resolvedContact = {},
   headerValue,
   footerValue,
   themeOverridesValue,
@@ -1295,6 +1388,8 @@ export default function WebsiteBrandingCard({
   surface = "classic",
   floatingSaveVisible = true,
   floatingSavePlacement = "bottom-right",
+  hasUnsavedChanges = false,
+  hasUnpublishedChanges = false,
 }) {
   const header = useMemo(
     () => normalizeHeaderConfig(headerValue || defaultHeaderConfig()),
@@ -1537,6 +1632,19 @@ export default function WebsiteBrandingCard({
           settings update that composition without changing your pages. Save
           your changes to refresh the Canvas preview.
         </Alert>
+        {hasUnsavedChanges ? (
+          <Alert severity="warning" data-testid="footer-unsaved-status">
+            Unsaved local header or footer changes. Save &amp; refresh updates the Draft Canvas only; it does not publish the public website.
+          </Alert>
+        ) : hasUnpublishedChanges ? (
+          <Alert severity="info" data-testid="footer-draft-status">
+            Draft preview: the saved Canvas configuration differs from the currently published public website. Publish when you are ready to make it live.
+          </Alert>
+        ) : (
+          <Alert severity="success" variant="outlined" data-testid="footer-published-status">
+            Published configuration: the saved footer settings match the public website.
+          </Alert>
+        )}
         {floatingSaveVisible ? (
           <Portal>
             <Box
@@ -1649,9 +1757,11 @@ export default function WebsiteBrandingCard({
         <Card variant="outlined">
           <CardHeader title="Footer Contact" subheader="Phone, email, and address are shared business contact details." />
           <CardContent>
-            <Button variant="outlined" size="small" onClick={onRequestContactJump}>
-              Edit business contact details
-            </Button>
+            {surface === "quiet-harbor" ? (
+              <FooterContactControls footer={footer} updateFooter={updateFooter} resolvedContact={resolvedContact} onRequestContactJump={onRequestContactJump} />
+            ) : (
+              <Button variant="outlined" size="small" onClick={onRequestContactJump}>Edit business contact details</Button>
+            )}
           </CardContent>
         </Card>
         <Card variant="outlined">
@@ -1730,7 +1840,7 @@ export default function WebsiteBrandingCard({
                   size="small"
                   fullWidth
                   label="Copyright text"
-                  helperText="Use {{year}} and {{company}} tokens."
+                  helperText="Use {{year}}, {{company}}, and {{siteTitle}} tokens."
                   value={footer.copyright_text || ""}
                   onChange={(event) => updateFooter({ copyright_text: event.target.value })}
                 />
@@ -1738,6 +1848,14 @@ export default function WebsiteBrandingCard({
             </Stack>
           </CardContent>
         </Card>
+        {surface === "quiet-harbor" ? (
+          <Card variant="outlined">
+            <CardHeader title="Footer Preview" subheader="Content preview using the current draft and resolved Company Profile values." />
+            <CardContent>
+              <FooterPreview footer={footer} theme={themeOverrides} companySlug={companySlug} companyName={companyName} siteTitle={siteTitle} resolvedContact={resolvedContact} />
+            </CardContent>
+          </Card>
+        ) : null}
         {uploadErr && <ErrorHelper message={uploadErr} />}
         {error && <ErrorHelper message={error} />}
         {message ? <Alert severity="success">{message}</Alert> : null}
@@ -2436,7 +2554,7 @@ export default function WebsiteBrandingCard({
                     size="small"
                     fullWidth
                     label="Copyright text"
-                    helperText="Use {{year}} and {{company}} tokens"
+                    helperText="Use {{year}}, {{company}}, and {{siteTitle}} tokens"
                     value={footer.copyright_text || ""}
                     onChange={(e) => updateFooter({ copyright_text: e.target.value })}
                   />
@@ -2455,7 +2573,7 @@ export default function WebsiteBrandingCard({
             title="Preview"
             tooltip="See how the footer will look before publishing."
           >
-            <FooterPreview footer={footer} theme={themeOverrides} companySlug={companySlug} />
+            <FooterPreview footer={footer} theme={themeOverrides} companySlug={companySlug} companyName={companyName} siteTitle={siteTitle} resolvedContact={resolvedContact} />
           </BuilderSectionAccordion>
         </CardContent>
       </Card>

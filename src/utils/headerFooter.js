@@ -149,6 +149,14 @@ export const defaultFooterConfig = () => ({
   legal_links: [],
   social_links: [],
   social_placement: "footer",
+  show_contact_card: true,
+  show_public_email: true,
+  show_phone: true,
+  show_address: true,
+  contact_eyebrow: "",
+  contact_introduction: "",
+  contact_cta_label: "",
+  contact_cta_href: "",
   show_copyright: true,
   copyright_text: DEFAULT_COPYRIGHT_TEXT,
 });
@@ -255,6 +263,38 @@ export const normalizeFooterConfig = (value, { preserveAssets = true } = {}) => 
     legal_links: cleanLinks(value.legal_links, 6),
     social_links: cleanSocial(value.social_links, 6),
     social_placement: socialPlacementChoice(value.social_placement, base.social_placement),
+    show_contact_card:
+      value.show_contact_card === undefined
+        ? base.show_contact_card
+        : Boolean(value.show_contact_card),
+    show_public_email:
+      value.show_public_email === undefined
+        ? base.show_public_email
+        : Boolean(value.show_public_email),
+    show_phone:
+      value.show_phone === undefined
+        ? base.show_phone
+        : Boolean(value.show_phone),
+    show_address:
+      value.show_address === undefined
+        ? base.show_address
+        : Boolean(value.show_address),
+    contact_eyebrow:
+      typeof value.contact_eyebrow === "string"
+        ? value.contact_eyebrow
+        : base.contact_eyebrow,
+    contact_introduction:
+      typeof value.contact_introduction === "string"
+        ? value.contact_introduction
+        : base.contact_introduction,
+    contact_cta_label:
+      typeof value.contact_cta_label === "string"
+        ? value.contact_cta_label
+        : base.contact_cta_label,
+    contact_cta_href:
+      typeof value.contact_cta_href === "string"
+        ? normalizeLegacyHref(value.contact_cta_href)
+        : base.contact_cta_href,
     show_copyright:
       value.show_copyright === undefined
         ? base.show_copyright
