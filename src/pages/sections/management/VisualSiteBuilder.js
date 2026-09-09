@@ -10348,6 +10348,7 @@ function InspectorColumn({ floating = false } = {}) {
     const normalizedNextThemeKey = String(currentStyleKey || "").trim().toLowerCase();
     const isIronEmberTheme = normalizedNextThemeKey === "iron-ember";
     const isForgeMotionTheme = normalizedNextThemeKey === "forge-motion";
+    const isQuietHarborTheme = normalizedNextThemeKey === "quiet-harbor";
     const allowsHeroVideoMedia = isIronEmberTheme || isForgeMotionTheme;
     const syncPrimaryImagePatch = (patch = {}) => {
       const next = { ...patch };
@@ -10516,6 +10517,37 @@ function InspectorColumn({ floating = false } = {}) {
         />
       </>
     );
+    const renderQuietHarborAdditionalCtaFields = () => (
+      <>
+        {["secondaryCta", "tertiaryCta"].map((key, index) => {
+          const label = index === 0 ? "Secondary" : "Tertiary";
+          return (
+            <React.Fragment key={key}>
+              <TextField
+                size="small"
+                label={`${label} CTA label`}
+                value={content[key]?.label || ""}
+                onChange={(event) => updateSelectedContent({
+                  [key]: { ...(content[key] || {}), label: event.target.value },
+                })}
+                fullWidth
+                inputProps={{ "data-module-field-path": contentPath(`${key}.label`) }}
+              />
+              <TextField
+                size="small"
+                label={`${label} CTA link`}
+                value={content[key]?.href || ""}
+                onChange={(event) => updateSelectedContent({
+                  [key]: { ...(content[key] || {}), href: event.target.value },
+                })}
+                fullWidth
+                inputProps={{ "data-module-field-path": contentPath(`${key}.href`) }}
+              />
+            </React.Fragment>
+          );
+        })}
+      </>
+    );
     return (
       <Stack spacing={2} sx={{ mt: 1 }}>
         <Alert severity="info">
@@ -10533,11 +10565,11 @@ function InspectorColumn({ floating = false } = {}) {
             inputProps={{ "data-module-field-path": contentPath("heading") }}
           />
         ) : null}
-        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Eyebrow"
-            value={content.eyebrow || ""}
+            value={content.eyebrow ?? (isQuietHarborTheme && ["cta", "bookingCta"].includes(selectedSemanticModule.type) ? "A welcoming next step" : "")}
             onChange={(event) => updateSelectedContent({ eyebrow: event.target.value })}
             fullWidth
             inputProps={{ "data-module-field-path": contentPath("eyebrow") }}
@@ -10812,7 +10844,7 @@ function InspectorColumn({ floating = false } = {}) {
             </Stack> : null}
           </>
         ) : null}
-        {!isIronEmberInnerPageHero && ["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) && !(isQuietHarborTheme && selectedSemanticModule.type === "contactIntro") ? (
           <TextField
             size="small"
             label="Body"
@@ -10824,7 +10856,20 @@ function InspectorColumn({ floating = false } = {}) {
             inputProps={{ "data-module-field-path": contentPath("body") }}
           />
         ) : null}
-        {!isIronEmberInnerPageHero && ["richText", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && isQuietHarborTheme && selectedSemanticModule.type === "contactIntro" ? (
+          <TextField
+            size="small"
+            label="Introduction"
+            value={content.intro || content.body || ""}
+            onChange={(event) => updateSelectedContent({ intro: event.target.value, body: event.target.value })}
+            fullWidth
+            multiline
+            minRows={4}
+            helperText="This is the introduction displayed in the Quiet Harbor Contact page canvas."
+            inputProps={{ "data-module-field-path": contentPath("intro") }}
+          />
+        ) : null}
+        {!isIronEmberInnerPageHero && ["richText", "contactIntro", "featureStory"].includes(selectedSemanticModule.type) && !(isQuietHarborTheme && selectedSemanticModule.type === "contactIntro") ? (
           <>
             <Box data-module-field-path={contentPath("image")}>
               <ImageField
@@ -10933,17 +10978,34 @@ function InspectorColumn({ floating = false } = {}) {
         {["cta", "bookingCta"].includes(selectedSemanticModule.type) ? (
           <>
             {renderPrimaryCtaFields()}
-            <Box data-module-field-path={contentPath("backgroundImage")}>
+            {isQuietHarborTheme ? renderQuietHarborAdditionalCtaFields() : null}
+            <Box data-module-field-path={contentPath(isQuietHarborTheme ? "image" : "backgroundImage")}>
               <ImageField
-                label={isForgeMotionTheme ? "Background image or video" : "Background image"}
+                label={isQuietHarborTheme ? "CTA image" : isForgeMotionTheme ? "Background image or video" : "Background image"}
                 allowVideo={isForgeMotionTheme}
-                value={content.backgroundImage || ""}
-                onChange={(url) => updateSelectedContent({ backgroundImage: url })}
+                value={isQuietHarborTheme ? (content.image || content.imageUrl || content.backgroundImage || "") : (content.backgroundImage || "")}
+                onChange={(url) => updateSelectedContent(isQuietHarborTheme
+                  ? { image: url, imageUrl: url, backgroundImage: url }
+                  : { backgroundImage: url })}
                 companyId={companyId}
-                fieldKey={`${selectedSemanticModule.id}:${contentPath("backgroundImage")}`}
-                {...mediaPositionControl(contentPath("backgroundImage"), content.backgroundImagePosition, (backgroundImagePosition) => updateSelectedContent({ backgroundImagePosition }))}
+                fieldKey={`${selectedSemanticModule.id}:${contentPath(isQuietHarborTheme ? "image" : "backgroundImage")}`}
+                {...mediaPositionControl(
+                  contentPath(isQuietHarborTheme ? "image" : "backgroundImage"),
+                  isQuietHarborTheme ? (content.imagePosition || content.backgroundImagePosition) : content.backgroundImagePosition,
+                  (backgroundImagePosition) => updateSelectedContent(isQuietHarborTheme
+                    ? { imagePosition: backgroundImagePosition, backgroundImagePosition }
+                    : { backgroundImagePosition })
+                )}
               />
             </Box>
+            {isQuietHarborTheme ? <TextField
+              size="small"
+              label="CTA image alt text"
+              value={content.imageAlt || content.backgroundImageAlt || ""}
+              onChange={(event) => updateSelectedContent({ imageAlt: event.target.value, backgroundImageAlt: event.target.value })}
+              fullWidth
+              inputProps={{ "data-module-field-path": contentPath("imageAlt") }}
+            /> : null}
             {isForgeMotionTheme ? <Box data-module-field-path={contentPath("backgroundPoster")}>
               <ImageField
                 label="Background video poster / fallback"
@@ -10993,6 +11055,44 @@ function InspectorColumn({ floating = false } = {}) {
         ) : null}
         {selectedSemanticModule.type === "contactForm" ? (
           <>
+            {isQuietHarborTheme ? <>
+              <Typography variant="overline" color="text.secondary">
+                Editorial media panel
+              </Typography>
+              <Box data-module-field-path={contentPath("mediaImage")}>
+                <ImageField
+                  label="Contact panel image"
+                  value={content.mediaImage || content.image || content.imageUrl || ""}
+                  onChange={(url) => updateSelectedContent({ mediaImage: url, image: url, imageUrl: url })}
+                  companyId={companyId}
+                  fieldKey={`${selectedSemanticModule.id}:${contentPath("mediaImage")}`}
+                  {...mediaPositionControl(
+                    contentPath("mediaImage"),
+                    content.mediaImagePosition || content.imagePosition,
+                    (mediaImagePosition) => updateSelectedContent({ mediaImagePosition, imagePosition: mediaImagePosition })
+                  )}
+                />
+              </Box>
+              <TextField
+                size="small"
+                label="Contact panel image alt text"
+                value={content.mediaAlt || content.imageAlt || ""}
+                onChange={(event) => updateSelectedContent({ mediaAlt: event.target.value, imageAlt: event.target.value })}
+                fullWidth
+                inputProps={{ "data-module-field-path": contentPath("mediaAlt") }}
+              />
+              <TextField
+                size="small"
+                label="Media panel statement"
+                value={content.mediaTitle ?? content.mediaCaption ?? "Support starts with a conversation."}
+                onChange={(event) => updateSelectedContent({ mediaTitle: event.target.value })}
+                helperText="Shown over the contact panel. Clear this field to hide the statement."
+                fullWidth
+                multiline
+                minRows={2}
+                inputProps={{ "data-module-field-path": contentPath("mediaTitle") }}
+              />
+            </> : null}
             {isForgeMotionTheme ? <>
               <Box data-module-field-path={contentPath("backgroundImage")}>
                 <ImageField
@@ -11268,6 +11368,17 @@ function InspectorColumn({ floating = false } = {}) {
                       minRows={2}
                       inputProps={{ "data-module-field-path": itemPath(index, selectedSemanticModule.type === "faq" ? "answer" : selectedSemanticModule.type === "team" ? "bio" : "body") }}
                     /> : null}
+                    {["contactDetails", "hoursLocation", "locations", "serviceAreas"].includes(selectedSemanticModule.type) ? (
+                      <TextField
+                        size="small"
+                        label="Link (optional)"
+                        value={item.href || item.link || ""}
+                        onChange={(event) => updateItem(index, { href: event.target.value, link: event.target.value })}
+                        helperText="Use mailto: for email, tel: for phone, or a page/website URL."
+                        fullWidth
+                        inputProps={{ "data-module-field-path": itemPath(index, "href") }}
+                      />
+                    ) : null}
                     {selectedSemanticModule.type === "pricing" ? (
                       <>
                         <TextField
