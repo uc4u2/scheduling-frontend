@@ -1,4 +1,4 @@
-import { formatCopyrightText } from "./footerDefaults";
+import { formatCompanyProfileAddress, formatCopyrightText } from "./footerDefaults";
 import { defaultFooterConfig, normalizeFooterConfig } from "./headerFooter";
 
 describe("shared footer presentation contract", () => {
@@ -61,5 +61,15 @@ describe("shared footer presentation contract", () => {
         show_address: true,
       })
     );
+  });
+
+  it("uses the Company Profile one-line address or its structured field fallback", () => {
+    expect(formatCompanyProfileAddress({ address: "100 Community Way" })).toBe("100 Community Way");
+    expect(formatCompanyProfileAddress({
+      address_street: "100 Community Way",
+      address_city: "Toronto",
+      address_state: "ON",
+      address_zip: "M1M 1M1",
+    })).toBe("100 Community Way, Toronto, ON M1M 1M1");
   });
 });

@@ -90,6 +90,7 @@ import useHistory from "../../../hooks/useHistory";
 import { parsePositiveCompanyId } from "../../../utils/authedCompany";
 import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
 import WebsiteBrandingCard from "../../../components/website/WebsiteBrandingCard";
+import { formatCompanyProfileAddress } from "../../../utils/footerDefaults";
 import WebsiteContactFormEditor from "../../../components/website/WebsiteContactFormEditor";
 import NavStyleHydrator from "../../../components/website/NavStyleHydrator";
 
@@ -3407,7 +3408,7 @@ const [brandingErr, setBrandingErr] = useState("");
     return {
       email: profile.contact_email || profile.email || "",
       phone: profile.contact_phone || profile.phone || "",
-      address: profile.address || "",
+      address: formatCompanyProfileAddress(profile),
     };
   }, [companyProfile, siteSettings?.company]);
   const footerSiteTitle =

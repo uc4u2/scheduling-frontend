@@ -55,3 +55,16 @@ export function formatCopyrightText(text, { company, siteTitle, slug } = {}) {
   };
   return template.replace(/\{\{(year|company|siteTitle)\}\}/gi, (_, key) => replacements[key.toLowerCase()] || "");
 }
+
+export function formatCompanyProfileAddress(profile = {}) {
+  const direct = String(profile.address || "").trim();
+  if (direct) return direct;
+
+  const street = String(profile.address_street || "").trim();
+  const city = String(profile.address_city || "").trim();
+  const region = String(profile.address_state || profile.province_code || "").trim();
+  const postalCode = String(profile.address_zip || "").trim();
+  const regionPostal = [region, postalCode].filter(Boolean).join(" ");
+  const locality = [city, regionPostal].filter(Boolean).join(", ");
+  return [street, locality].filter(Boolean).join(", ");
+}
