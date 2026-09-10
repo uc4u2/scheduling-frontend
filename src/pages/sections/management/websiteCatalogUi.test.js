@@ -137,10 +137,11 @@ describe("website catalog UI helpers", () => {
     ]);
   });
 
-  it("provisions backend-driven directory pages for every selected Next theme", () => {
+  it("keeps complete authored starters concise while provisioning legacy Next directories", () => {
     expect(shouldProvisionNextPublicBuilderPages("iron-ember")).toBe(true);
     expect(shouldProvisionNextPublicBuilderPages("modern-gradient")).toBe(true);
     expect(shouldProvisionNextPublicBuilderPages("forge-motion")).toBe(true);
+    expect(shouldProvisionNextPublicBuilderPages("quiet-harbor")).toBe(false);
     expect(shouldProvisionNextPublicBuilderPages("")).toBe(false);
   });
 
