@@ -194,6 +194,7 @@ export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "torque-house": { themeKey: "torque-house", pages: SHARED_PAGES },
   "velora-house": { themeKey: "velora-house", pages: SHARED_PAGES },
   "forge-motion": { themeKey: "forge-motion", pages: FORGE_MOTION_PAGES },
+  "touchline-club": { themeKey: "touchline-club", pages: SHARED_PAGES },
 };
 
 export function getThemeModuleManifest(themeKey) {

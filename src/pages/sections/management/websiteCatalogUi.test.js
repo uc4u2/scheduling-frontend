@@ -142,6 +142,7 @@ describe("website catalog UI helpers", () => {
     expect(shouldProvisionNextPublicBuilderPages("modern-gradient")).toBe(true);
     expect(shouldProvisionNextPublicBuilderPages("forge-motion")).toBe(true);
     expect(shouldProvisionNextPublicBuilderPages("quiet-harbor")).toBe(false);
+    expect(shouldProvisionNextPublicBuilderPages("touchline-club")).toBe(false);
     expect(shouldProvisionNextPublicBuilderPages("")).toBe(false);
   });
 

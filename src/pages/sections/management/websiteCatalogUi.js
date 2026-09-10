@@ -148,10 +148,10 @@ export function isNextJsStyle(style) {
  */
 export function shouldProvisionNextPublicBuilderPages(themeKey) {
   const key = String(themeKey || "").trim().toLowerCase();
-  // Quiet Harbor v2 ships a complete, intentionally concise six-route
-  // starter. Reopening the Builder must not append generic commerce,
-  // testimonial, jobs, blog, or location pages to that authored sitemap.
-  if (key === "quiet-harbor") return false;
+  // These themes ship complete, intentionally concise six-route starters.
+  // Reopening the Builder must not append generic commerce, testimonial,
+  // jobs, blog, or location pages to their authored sitemaps.
+  if (["quiet-harbor", "touchline-club"].includes(key)) return false;
   return Boolean(key);
 }
 

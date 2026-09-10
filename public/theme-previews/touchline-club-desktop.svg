@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title description">
+  <title id="title">Touchline Club theme preview</title>
+  <desc id="description">A daylight community sports website with an evergreen and gold split hero, diagonal action photography, bold typography, and pathway cards.</desc>
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17844b"/><stop offset="1" stop-color="#063c24"/></linearGradient>
+    <linearGradient id="photo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b8dda7"/><stop offset=".46" stop-color="#4e9b5c"/><stop offset="1" stop-color="#0b4e2d"/></linearGradient>
+    <clipPath id="cut"><path d="M770 120H1600V650H690Z"/></clipPath>
+  </defs>
+  <rect width="1600" height="1000" fill="#f7f5ec"/>
+  <rect width="1600" height="120" fill="#fffdf6"/>
+  <circle cx="72" cy="60" r="28" fill="#0b6b3a"/><circle cx="72" cy="60" r="18" fill="none" stroke="#fff" stroke-width="2"/>
+  <text x="116" y="56" fill="#10251a" font-family="Arial,sans-serif" font-weight="900" font-size="25">TOUCHLINE CLUB</text>
+  <text x="116" y="78" fill="#c48300" font-family="Arial,sans-serif" font-weight="700" font-size="11" letter-spacing="3">COMMUNITY IN MOTION</text>
+  <g fill="#53665b" font-family="Arial,sans-serif" font-weight="700" font-size="12" letter-spacing="2"><text x="890" y="66">ABOUT</text><text x="1005" y="66">PROGRAMS</text><text x="1150" y="66">GET INVOLVED</text></g>
+  <rect x="1335" y="38" width="210" height="46" fill="#f4b51e"/><text x="1366" y="67" fill="#10251a" font-family="Arial,sans-serif" font-weight="900" font-size="12" letter-spacing="2">EXPLORE PROGRAMS</text>
+  <rect y="120" width="1600" height="530" fill="url(#field)"/>
+  <g opacity=".11" stroke="#fff"><path d="M0 190H1600M0 260H1600M0 330H1600M0 400H1600M0 470H1600M0 540H1600M0 610H1600"/><path d="M70 120V650M140 120V650M210 120V650M280 120V650M350 120V650M420 120V650M490 120V650M560 120V650M630 120V650"/></g>
+  <g clip-path="url(#cut)"><rect x="690" y="120" width="910" height="530" fill="url(#photo)"/><circle cx="1160" cy="355" r="92" fill="#f4b51e" opacity=".92"/><path d="M1110 545l95-266 88 266z" fill="#fff" opacity=".78"/><circle cx="1270" cy="328" r="58" fill="#0c5731"/><path d="M1242 546l34-176 68 176z" fill="#10251a" opacity=".82"/><circle cx="1440" cy="435" r="265" fill="none" stroke="#fff" stroke-width="4" opacity=".46"/><circle cx="1440" cy="435" r="150" fill="none" stroke="#fff" stroke-width="3" opacity=".34"/></g>
+  <text x="72" y="208" fill="#f4b51e" font-family="Arial,sans-serif" font-weight="900" font-size="13" letter-spacing="4">COMMUNITY SOCCER • PLAY • BELONGING</text>
+  <text x="68" y="310" fill="#fff" font-family="Arial,sans-serif" font-weight="900" font-size="82" letter-spacing="-5"><tspan x="68">A PLACE TO</tspan><tspan x="68" dy="78">PLAY, LEARN</tspan><tspan x="68" dy="78">AND BELONG.</tspan></text>
+  <rect x="72" y="514" width="120" height="7" fill="#f4b51e"/>
+  <text x="72" y="560" fill="#fff" opacity=".78" font-family="Arial,sans-serif" font-size="17">A bright, welcoming starting point for players, families and volunteers.</text>
+  <rect x="72" y="588" width="186" height="44" fill="#f4b51e"/><text x="94" y="616" fill="#10251a" font-family="Arial,sans-serif" font-weight="900" font-size="11" letter-spacing="2">EXPLORE PROGRAMS →</text>
+  <rect y="650" width="1600" height="92" fill="#f4b51e"/>
+  <g fill="#10251a" font-family="Arial,sans-serif" font-weight="900" font-size="13" letter-spacing="2"><text x="72" y="705">01  PLAY WITH CONFIDENCE</text><text x="430" y="705">02  LEARN TOGETHER</text><text x="744" y="705">03  BUILD FRIENDSHIPS</text><text x="1100" y="705">04  WELCOME FAMILIES</text></g>
+  <text x="72" y="822" fill="#0b6b3a" font-family="Arial,sans-serif" font-weight="900" font-size="12" letter-spacing="4">COMMUNITY PATHWAYS</text>
+  <text x="68" y="895" fill="#10251a" font-family="Arial,sans-serif" font-weight="900" font-size="54" letter-spacing="-3">PLAY. LEARN. BELONG.</text>
+  <g><rect x="900" y="785" width="190" height="150" fill="#0b6b3a"/><rect x="1110" y="785" width="190" height="150" fill="#fff" stroke="#c9d7cc"/><rect x="1320" y="785" width="190" height="150" fill="#fff" stroke="#c9d7cc"/></g>
+  <g font-family="Arial,sans-serif" font-weight="900" font-size="18"><text x="925" y="850" fill="#fff">PLAY</text><text x="1135" y="850" fill="#10251a">LEARN</text><text x="1345" y="850" fill="#10251a">BELONG</text></g>
+</svg>

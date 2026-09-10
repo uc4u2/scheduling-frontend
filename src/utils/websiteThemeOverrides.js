@@ -139,6 +139,23 @@ const NEXTJS_PAGE_STYLE_THEME_CAPABILITIES = {
   "torque-house": { lightDarkPreference: "dark" },
   "velora-house": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.05 },
   "forge-motion": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.08 },
+  "touchline-club": {
+    lightDarkPreference: "light",
+    specialFields: ["typographyScale"],
+    typographyScale: 1.06,
+    brandPrimaryColor: "#0B6B3A",
+    accentColor: "#F4B51E",
+    pageBackground: "#F7F5EC",
+    surfaceColor: "#E9F1E8",
+    foregroundColor: "#10251A",
+    mutedForegroundColor: "#53665B",
+    cardColor: "#FFFFFF",
+    borderColor: "#C9D7CC",
+    buttonForegroundColor: "#10251A",
+    buttonTreatment: "solid",
+    buttonRadius: "square",
+    sectionSpacing: "roomy",
+  },
 };
 
 export const NEXTJS_THEME_OVERRIDE_CONTRACT = Object.fromEntries(

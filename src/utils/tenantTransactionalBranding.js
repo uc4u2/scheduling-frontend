@@ -176,6 +176,11 @@ const DEFAULT_THEME_TOKENS = {
     text: "#f7f7f2", textMuted: "#b8b8b2", border: "#30302d",
     primary: "#c7ff3d", accent: "#c7ff3d", buttonText: "#080808", radius: 4,
   },
+  "touchline-club": {
+    background: "#f7f5ec", surface: "#e9f1e8", surfaceAlt: "#dde9df",
+    text: "#10251a", textMuted: "#53665b", border: "#c9d7cc",
+    primary: "#0b6b3a", accent: "#f4b51e", buttonText: "#10251a", radius: 4,
+  },
   "harbor-line": {
     background: "#0c1014",
     surface: "#121820",

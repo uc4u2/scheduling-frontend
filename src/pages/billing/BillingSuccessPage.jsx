@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
@@ -46,6 +47,7 @@ const BillingSuccessPage = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const sid = params.get("sid") || "";
+  const hasUnresolvedSessionPlaceholder = /CHECKOUT_SESSION_ID/i.test(sid);
   const [statusPayload, setStatusPayload] = useState(null);
   const [error, setError] = useState("");
   const [phase, setPhase] = useState("checkout"); // checkout | activating | ready | action | timeout
@@ -68,15 +70,23 @@ const BillingSuccessPage = () => {
 
   useEffect(() => {
     if (mobileComplianceMode) return;
+    if (hasUnresolvedSessionPlaceholder) {
+      // Recover checkouts created before the Stripe placeholder URL fix. The
+      // authenticated billing sync/status flow can still confirm activation.
+      setError("");
+      setPhase("activating");
+      setCheckoutComplete(true);
+      return;
+    }
     if (!sid) {
       setError("Missing checkout session. Please return to pricing.");
       setPhase("timeout");
       return;
     }
-  }, [mobileComplianceMode, sid]);
+  }, [hasUnresolvedSessionPlaceholder, mobileComplianceMode, sid]);
 
   const pollCheckoutStatus = useCallback(async () => {
-    if (!sid) return;
+    if (!sid || hasUnresolvedSessionPlaceholder) return;
     try {
       const res = await api.get(`/billing/checkout-status?sid=${encodeURIComponent(sid)}`);
       const data = res?.data || {};
@@ -101,7 +111,7 @@ const BillingSuccessPage = () => {
       setPhase("checkout");
       setCheckoutAttempts((prev) => prev + 1);
     }
-  }, [sid, redirectToLogin]);
+  }, [hasUnresolvedSessionPlaceholder, sid, redirectToLogin]);
 
   const pollBillingStatus = useCallback(async () => {
     try {
@@ -146,7 +156,7 @@ const BillingSuccessPage = () => {
   useEffect(() => {
     if (mobileComplianceMode) return;
     if (checkoutComplete) return;
-    if (!sid) return;
+    if (!sid || hasUnresolvedSessionPlaceholder) return;
     if (checkoutAttempts >= 12) {
       setPhase("timeout");
       return;
@@ -157,7 +167,7 @@ const BillingSuccessPage = () => {
     return () => {
       if (retryTimer.current) clearTimeout(retryTimer.current);
     };
-  }, [checkoutAttempts, checkoutComplete, mobileComplianceMode, pollCheckoutStatus, sid]);
+  }, [checkoutAttempts, checkoutComplete, hasUnresolvedSessionPlaceholder, mobileComplianceMode, pollCheckoutStatus, sid]);
 
   useEffect(() => {
     if (mobileComplianceMode) return;
@@ -258,8 +268,10 @@ const BillingSuccessPage = () => {
         <Stack spacing={2.5} alignItems="center" textAlign="center">
           {isCheckoutPhase || isActivating ? (
             <CircularProgress size={48} />
-          ) : (
+          ) : isReady ? (
             <CheckCircleIcon color="success" sx={{ fontSize: 48 }} />
+          ) : (
+            <WarningAmberIcon color="warning" sx={{ fontSize: 48 }} />
           )}
           <Typography variant="h5" fontWeight={700}>
             {isCheckoutPhase

@@ -33,6 +33,7 @@ describe("website theme overrides", () => {
     "torque-house",
     "velora-house",
     "forge-motion",
+    "touchline-club",
   ];
 
   it.each(registeredNextThemeKeys)("exposes the base palette and preset gallery for %s", (themeKey) => {
