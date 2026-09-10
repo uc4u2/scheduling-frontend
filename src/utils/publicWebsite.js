@@ -2,7 +2,6 @@ const configuredNextBaseUrl = process.env.REACT_APP_TENANT_WEB_NEXT_URL || "";
 const configuredGatewayEnabled = /^(1|true|yes|on)$/i.test(
   String(process.env.REACT_APP_PUBLIC_TENANT_GATEWAY_ENABLED || "")
 );
-const configuredGatewayCohortSlugs = process.env.REACT_APP_PUBLIC_TENANT_GATEWAY_COHORT_SLUGS || "";
 const configuredGatewayCustomHosts = process.env.REACT_APP_PUBLIC_TENANT_GATEWAY_CUSTOM_HOSTS || "";
 
 const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)$/i;
@@ -117,17 +116,20 @@ export function isPublicTenantGatewayEnabled(
   status = {},
   {
     enabled = configuredGatewayEnabled,
-    cohortSlugs = configuredGatewayCohortSlugs,
     customHosts = configuredGatewayCustomHosts,
   } = {}
 ) {
   if (!enabled) return false;
   const contract = getPublicUrlContract(status);
   const slug = String(status?.company_slug || contract?.company_slug || "").trim().toLowerCase();
-  if (slug && csvSet(cohortSlugs).has(slug)) return true;
   const customUrl = String(contract?.custom_domain_url || "").trim();
+  // Custom-domain routing retains its separate, explicitly managed lifecycle.
+  // Standard app.schedulaa.com/<slug> tenants are gateway-ready whenever the
+  // published URL contract identifies the tenant; no infrastructure slug list
+  // participates in the application routing decision.
+  if (!customUrl) return Boolean(slug && (contract?.primary_public_url || contract?.schedulaa_url));
   try {
-    return Boolean(customUrl) && csvSet(customHosts).has(new URL(customUrl).hostname.toLowerCase());
+    return csvSet(customHosts).has(new URL(customUrl).hostname.toLowerCase());
   } catch {
     return false;
   }
@@ -189,9 +191,9 @@ export function buildPublishedWebsiteUrl({
   const selection = getPublishedRendererSelection(status);
   if (selection.rendererEngine === "nextjs") {
     // A verified custom domain must stay branded. Other same-host URLs are
-    // retained only for transaction return links that explicitly request it;
-    // manager/public entry links need the direct renderer fallback when their
-    // app-host tenant is not yet in the gateway cohort.
+    // retained only for transaction return links that explicitly request it.
+    // Manager/public entry links use the stable platform URL whenever the
+    // generic gateway is globally enabled.
     const currentCustomDomainBase = !isLocalCurrentOrigin
       ? sameHostPublicContractUrl(
           contract?.custom_domain_url

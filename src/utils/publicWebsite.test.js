@@ -57,7 +57,7 @@ describe("public website resolver", () => {
     }
   });
 
-  it("uses the stable public contract for a gateway-enabled Next tenant", () => {
+  it("uses the stable public contract for every published platform-slug Next tenant", () => {
     const status = {
       company_slug: "web-design",
       is_live: true,
@@ -68,15 +68,37 @@ describe("public website resolver", () => {
         primary_public_url: "https://app.schedulaa.com/web-design",
       },
     };
-    expect(isPublicTenantGatewayEnabled(status, { enabled: true, cohortSlugs: "web-design" })).toBe(true);
+    expect(isPublicTenantGatewayEnabled(status, { enabled: true })).toBe(true);
     expect(buildPublishedWebsiteUrl({
       status,
       pagePath: "services/strength",
       search: "?ref=manager",
       currentOrigin: "https://app.schedulaa.com",
       nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
-      gateway: { enabled: true, cohortSlugs: "web-design" },
+      gateway: { enabled: true },
     })).toBe("https://app.schedulaa.com/web-design/services/strength?ref=manager");
+  });
+
+  it("requires zero frontend configuration for a brand-new platform-slug Next tenant", () => {
+    const status = {
+      company_slug: "future-next-tenant-8472",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      published_visual_theme_key: "quiet-harbor",
+      public_url_contract: {
+        company_slug: "future-next-tenant-8472",
+        primary_public_url: "https://app.schedulaa.com/future-next-tenant-8472",
+        schedulaa_url: "https://app.schedulaa.com/future-next-tenant-8472",
+      },
+    };
+    expect(isPublicTenantGatewayEnabled(status, { enabled: true })).toBe(true);
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "contact",
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
+      gateway: { enabled: true },
+    })).toBe("https://app.schedulaa.com/future-next-tenant-8472/contact");
   });
 
   it("uses a verified custom-domain contract without exposing the company slug", () => {
@@ -99,7 +121,7 @@ describe("public website resolver", () => {
     })).toBe("https://www.vandaorchidjewel.com/contact");
   });
 
-  it("uses the direct Next renderer for a non-cohort site opened on the app host", () => {
+  it("retains the direct Next fallback only when the global gateway is disabled", () => {
     const status = {
       company_slug: "new-studio",
       is_live: true,
