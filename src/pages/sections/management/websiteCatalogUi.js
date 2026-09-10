@@ -115,6 +115,8 @@ const PREVIEW_PAGE_DEFINITIONS = {
   home: { key: "home", label: "Home", path: [] },
   about: { key: "about", label: "About", path: ["about"] },
   services: { key: "services", label: "Services", path: ["services"] },
+  "get-involved": { key: "get-involved", label: "Get Involved", path: ["get-involved"] },
+  events: { key: "events", label: "Events", path: ["events"] },
   reviews: { key: "reviews", label: "Reviews", path: ["reviews"] },
   contact: { key: "contact", label: "Contact", path: ["contact"] },
   gallery: { key: "gallery", label: "Gallery / Work", path: ["projects"] },

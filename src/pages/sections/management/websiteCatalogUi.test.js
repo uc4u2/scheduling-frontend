@@ -117,6 +117,26 @@ describe("website catalog UI helpers", () => {
     ]);
   });
 
+  it("includes Quiet Harbor's neutral community routes when the catalog declares them", () => {
+    expect(
+      buildWebsiteStylePreviewPages([
+        "home",
+        "about",
+        "services",
+        "get-involved",
+        "events",
+        "contact",
+      ])
+    ).toEqual([
+      { key: "home", label: "Home", path: [] },
+      { key: "about", label: "About", path: ["about"] },
+      { key: "services", label: "Services", path: ["services"] },
+      { key: "get-involved", label: "Get Involved", path: ["get-involved"] },
+      { key: "events", label: "Events", path: ["events"] },
+      { key: "contact", label: "Contact", path: ["contact"] },
+    ]);
+  });
+
   it("provisions backend-driven directory pages for every selected Next theme", () => {
     expect(shouldProvisionNextPublicBuilderPages("iron-ember")).toBe(true);
     expect(shouldProvisionNextPublicBuilderPages("modern-gradient")).toBe(true);
