@@ -7,6 +7,16 @@ const source = fs.readFileSync(
 );
 
 describe("Quiet Harbor contact Canvas and Inspector parity", () => {
+  it("edits the same Quiet Harbor hero video and fallback fields rendered by the tenant site", () => {
+    expect(source).toContain('import SectionInspector, { ImageField, VideoField }');
+    expect(source).toContain('isQuietHarborTheme ? "Hero fallback image"');
+    expect(source).toContain('label="Hero background video (optional)"');
+    expect(source).toContain('value={content.videoUrl || ""}');
+    expect(source).toContain('updateSelectedContent({ videoUrl: url })');
+    expect(source).toContain('label="Video poster / mobile fallback"');
+    expect(source).toContain('value={content.posterImage || content.image || content.imageUrl || ""}');
+  });
+
   it("exposes the authored contact-panel content rendered by the theme", () => {
     expect(source).toContain('const isQuietHarborTheme = normalizedNextThemeKey === "quiet-harbor"');
     expect(source).toContain('label="Contact panel image"');

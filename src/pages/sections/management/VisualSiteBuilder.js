@@ -104,7 +104,7 @@ import { SCHEMA_REGISTRY } from "../../../components/website/schemas";
 import SchemaInspector from "../../../components/website/SchemaInspector";
 
 /** Moved out pieces */
-import SectionInspector, { ImageField } from "../../../components/website/BuilderInspectorParts";
+import SectionInspector, { ImageField, VideoField } from "../../../components/website/BuilderInspectorParts";
 import { NEW_BLOCKS } from "../../../components/website/BuilderBlockTemplates";
 import {
   emptyPage,
@@ -10690,9 +10690,31 @@ function InspectorColumn({ floating = false } = {}) {
             </Stack>
             <Stack spacing={1.5} sx={{ order: 1 }}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
-              <Box data-module-field-path={contentPath("image")}><ImageField label={allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))} /></Box>
+              <Box data-module-field-path={contentPath("image")}><ImageField label={isQuietHarborTheme ? "Hero fallback image" : allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url, imageUrl: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))} /></Box>
               <TextField size="small" label={allowsHeroVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
-              {isForgeMotionTheme ? <Box data-module-field-path={contentPath("posterImage")}>
+              {isQuietHarborTheme ? <>
+                <Box data-module-field-path={contentPath("videoUrl")}>
+                  <VideoField
+                    label="Hero background video (optional)"
+                    value={content.videoUrl || ""}
+                    onChange={(url) => updateSelectedContent({ videoUrl: url })}
+                    companyId={companyId}
+                  />
+                </Box>
+                <Alert severity="info" variant="outlined">
+                  Upload an MP4/WebM or paste a direct video URL. Clear the video to show the fallback image instead.
+                </Alert>
+                <Box data-module-field-path={contentPath("posterImage")}>
+                  <ImageField
+                    label="Video poster / mobile fallback"
+                    value={content.posterImage || content.image || content.imageUrl || ""}
+                    onChange={(url) => updateSelectedContent({ posterImage: url })}
+                    companyId={companyId}
+                    fieldKey={`${selectedSemanticModule.id}:${contentPath("posterImage")}`}
+                    {...mediaPositionControl(contentPath("posterImage"), content.posterImagePosition, (posterImagePosition) => updateSelectedContent({ posterImagePosition }))}
+                  />
+                </Box>
+              </> : isForgeMotionTheme ? <Box data-module-field-path={contentPath("posterImage")}>
                 <ImageField
                   label="Hero video poster / mobile fallback"
                   value={content.posterImage || ""}
