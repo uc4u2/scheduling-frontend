@@ -88,6 +88,7 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
 
     expect(screen.getByTestId("footer-draft-status")).toHaveTextContent("differs from the currently published");
     expect(screen.getByLabelText("Show contact card")).toBeChecked();
+    expect(screen.getByLabelText("Repeat header page navigation in footer")).toBeChecked();
     expect(screen.getByLabelText("Show public email")).toBeChecked();
     expect(screen.getByLabelText("Show phone")).toBeChecked();
     expect(screen.getByLabelText("Show address")).toBeChecked();
@@ -99,6 +100,9 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
 
     fireEvent.click(screen.getByLabelText("Show phone"));
     expect(onChangeFooter).toHaveBeenCalledWith(expect.objectContaining({ show_phone: false }));
+
+    fireEvent.click(screen.getByLabelText("Repeat header page navigation in footer"));
+    expect(onChangeFooter).toHaveBeenCalledWith(expect.objectContaining({ show_navigation: false }));
   });
 
   it("distinguishes unsaved local settings from saved draft and published settings", () => {
