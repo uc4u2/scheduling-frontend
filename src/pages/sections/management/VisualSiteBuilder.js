@@ -503,27 +503,27 @@ const makeNextPublicBuilderModules = (entry) => {
   }
   if (entry.key === "about") {
     return [
-      intro("The studio behind the work.", "A considered approach to craft, consultation, and an easier everyday routine.", "Tell the story of the business, the standards behind the work, and what clients can expect."),
+      intro("The people behind the work.", "A clear introduction to the organization, its purpose, and the people visitors will meet.", "Tell the story of the organization, the values behind its work, and what people can expect."),
       {
         ...createSemanticModule("richText", page, "about.story"),
-        content: { eyebrow: "The standard", heading: "Built around the details.", intro: "A clear point of view, carried through every appointment.", body: "Use this section to explain the studio's approach, craft, and values.", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85", imageAlt: "A carefully prepared barber studio and chair" },
+        content: { eyebrow: "Our story", heading: "Built around people and purpose.", intro: "A thoughtful point of view, carried through every interaction.", body: "Use this section to explain the organization's approach, purpose, and values.", image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=85", imageUrl: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1400&q=85", imageAlt: "People gathering and connecting outdoors" },
       },
       {
         ...createSemanticModule("team", page, "about.team"),
-        content: { eyebrow: "The studio", heading: "Meet the team.", intro: "Introduce the people clients will meet.", items: [
-          { id: "about-team-1", title: "Lead barber", role: "Founder / Barber", bio: "Add a short biography, specialty, and point of view.", image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=85", imageAlt: "Barber at work in the studio" },
-          { id: "about-team-2", title: "Studio barber", role: "Barber", bio: "Add a short biography, specialty, and point of view.", image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=85", imageAlt: "Barber consulting with a client" },
+        content: { eyebrow: "Our people", heading: "Meet the team.", intro: "Introduce the people visitors will meet.", items: [
+          { id: "about-team-1", title: "Team member", role: "Leadership", bio: "Add a short biography, area of responsibility, and point of view.", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=85", imageAlt: "Professional team member portrait" },
+          { id: "about-team-2", title: "Team member", role: "Community & Client Support", bio: "Add a short biography, area of responsibility, and point of view.", image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=85", imageUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1200&q=85", imageAlt: "Professional team member portrait" },
         ] },
       },
       {
         ...createSemanticModule("process", page, "about.story"),
-        content: { eyebrow: "What to expect", heading: "A clear appointment rhythm.", intro: "Keep the experience easy to understand before a client arrives.", items: [
-          { id: "about-process-1", title: "Consult", body: "Start with the routine, preferences, and finish that matters." },
-          { id: "about-process-2", title: "Shape", body: "Build the service around proportion, texture, and maintenance." },
-          { id: "about-process-3", title: "Finish", body: "Leave with practical direction for the days between visits." },
+        content: { eyebrow: "What to expect", heading: "A clear way of working.", intro: "Make the experience easy to understand before someone gets in touch.", items: [
+          { id: "about-process-1", title: "Listen", body: "Begin with each person's needs, questions, and priorities." },
+          { id: "about-process-2", title: "Plan", body: "Create a clear next step shaped around the situation." },
+          { id: "about-process-3", title: "Support", body: "Follow through with practical guidance and thoughtful care." },
         ] },
       },
-      cta("Ready for a considered appointment?", "View services", "/services"),
+      cta("Ready to take the next step?", "Contact us", "/contact"),
     ].map((module) => module.slot?.endsWith(".supporting") ? { ...module, slot: "about.reviews" } : module);
   }
   if (entry.key === "contact") {
@@ -635,7 +635,7 @@ const findNextPublicBuilderPage = (pagesList, entry) => {
     products: ["products"],
     reviews: ["reviews"],
     jobs: ["jobs"],
-    about: ["about", "our-team"],
+    about: ["about-us", "about", "our-team"],
     contact: ["contact", "request-quote", "request-service"],
     blog: ["blog", "journal", "news"],
     "service-areas": ["locations", "service-areas"],
