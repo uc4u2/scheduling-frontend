@@ -50,6 +50,42 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
     );
   });
 
+  it("treats text-brand visibility and the optional subtitle as independent settings", () => {
+    const onChangeHeader = jest.fn();
+    render(
+      <WebsiteBrandingCard
+        companyId={37}
+        companySlug="dr-behnaz"
+        companyName="Bridge of Care Community Services"
+        headerValue={{
+          ...defaultHeaderConfig(),
+          logo_asset: null,
+          logo_asset_id: null,
+          show_brand_text: false,
+          tagline: "",
+        }}
+        footerValue={defaultFooterConfig()}
+        themeOverridesValue={{}}
+        navOverridesValue={{}}
+        surface="quiet-harbor"
+        floatingSaveVisible={false}
+        onChangeHeader={onChangeHeader}
+        onChangeFooter={jest.fn()}
+        onChangeThemeOverrides={jest.fn()}
+        onChangeNavOverrides={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("Show text brand")).not.toBeChecked();
+    expect(screen.getByText(/header has no visible brand/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Text brand subtitle")).toHaveValue("");
+    expect(screen.getByText(/leave blank to hide this line in every Next\.js template/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Show text brand"));
+    expect(onChangeHeader).toHaveBeenCalledWith(expect.objectContaining({ show_brand_text: true }));
+  });
+
   it("shows Quiet Harbor footer visibility controls, resolved values, duplicate warnings, and draft status", () => {
     const onChangeFooter = jest.fn();
     render(

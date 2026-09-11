@@ -1689,7 +1689,7 @@ export default function WebsiteBrandingCard({
         <Card variant="outlined">
           <CardHeader
             title="Header Brand"
-            subheader="Use the shared logo asset. Enable the text brand to show its name and subtitle alongside the logo."
+            subheader="Use the shared logo asset and independently choose whether the editable text name and subtitle appear."
           />
           <CardContent>
             <Stack spacing={2}>
@@ -1703,8 +1703,13 @@ export default function WebsiteBrandingCard({
               />
               <FormControlLabel
                 control={<Switch checked={header.show_brand_text !== false} onChange={(_, value) => updateHeader({ show_brand_text: value })} />}
-                label="Show text brand alongside logo"
+                label="Show text brand"
               />
+              {header.show_brand_text === false && !header.logo_asset && !header.logo_asset_id ? (
+                <Alert severity="warning">
+                  The header has no visible brand. Upload a logo or enable the text brand before publishing if you want visitors to see an identity mark.
+                </Alert>
+              ) : null}
               <TextField
                 size="small"
                 label="Text brand"
@@ -1722,6 +1727,7 @@ export default function WebsiteBrandingCard({
                 label="Text brand subtitle"
                 value={header.tagline || ""}
                 onChange={(event) => updateHeader({ tagline: event.target.value })}
+                helperText="Optional. Leave blank to hide this line in every Next.js template."
                 fullWidth
               />
             </Stack>
