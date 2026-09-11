@@ -128,6 +128,8 @@ const SOCIAL_POSITION_OPTIONS = [
 
 const LOGO_WIDTH_MIN = 48;
 const LOGO_WIDTH_MAX = 320;
+const LOGO_HEIGHT_MIN = 20;
+const LOGO_HEIGHT_MAX = 200;
 const HEADER_PADDING_MIN = 8;
 const HEADER_PADDING_MAX = 160;
 
@@ -1701,6 +1703,67 @@ export default function WebsiteBrandingCard({
                 uploading={uploading}
                 disabled={!companyId}
               />
+              <Box>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} flexWrap="wrap" useFlexGap>
+                  <Typography variant="subtitle2">Logo size</Typography>
+                  <Stack direction="row" spacing={1}>
+                    <TextField
+                      size="small"
+                      type="number"
+                      label="Logo width (px)"
+                      value={Math.round(header.logo_width ?? 140)}
+                      onChange={(event) =>
+                        updateHeader({
+                          logo_width: clampValue(
+                            event.target.value,
+                            LOGO_WIDTH_MIN,
+                            LOGO_WIDTH_MAX
+                          ),
+                        })
+                      }
+                      inputProps={{ min: LOGO_WIDTH_MIN, max: LOGO_WIDTH_MAX }}
+                      sx={{ width: 145 }}
+                    />
+                    <TextField
+                      size="small"
+                      type="number"
+                      label="Max height (px)"
+                      value={header.logo_height ?? ""}
+                      placeholder="Auto"
+                      onChange={(event) =>
+                        updateHeader({
+                          logo_height: event.target.value === ""
+                            ? null
+                            : clampValue(
+                                event.target.value,
+                                LOGO_HEIGHT_MIN,
+                                LOGO_HEIGHT_MAX
+                              ),
+                        })
+                      }
+                      inputProps={{ min: LOGO_HEIGHT_MIN, max: LOGO_HEIGHT_MAX }}
+                      sx={{ width: 145 }}
+                    />
+                  </Stack>
+                </Stack>
+                <Slider
+                  size="small"
+                  min={LOGO_WIDTH_MIN}
+                  max={LOGO_WIDTH_MAX}
+                  value={header.logo_width ?? 140}
+                  valueLabelDisplay="auto"
+                  onChange={(_, value) =>
+                    typeof value === "number" &&
+                    updateHeader({
+                      logo_width: clampValue(value, LOGO_WIDTH_MIN, LOGO_WIDTH_MAX),
+                    })
+                  }
+                  aria-label="Header logo size"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Width follows the legacy website setting. Add an optional maximum height for square or portrait marks; proportions are always preserved.
+                </Typography>
+              </Box>
               <FormControlLabel
                 control={<Switch checked={header.show_brand_text !== false} onChange={(_, value) => updateHeader({ show_brand_text: value })} />}
                 label="Show text brand"

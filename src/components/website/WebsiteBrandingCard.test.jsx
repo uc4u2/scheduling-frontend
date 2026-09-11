@@ -63,6 +63,8 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
           logo_asset_id: null,
           show_brand_text: false,
           tagline: "",
+          logo_width: 88,
+          logo_height: 36,
         }}
         footerValue={defaultFooterConfig()}
         themeOverridesValue={{}}
@@ -80,7 +82,14 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
     expect(screen.getByLabelText("Show text brand")).not.toBeChecked();
     expect(screen.getByText(/header has no visible brand/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Text brand subtitle")).toHaveValue("");
+    expect(screen.getByLabelText("Logo width (px)")).toHaveValue(88);
+    expect(screen.getByLabelText("Max height (px)")).toHaveValue(36);
     expect(screen.getByText(/leave blank to hide this line in every Next\.js template/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Logo width (px)"), { target: { value: "104" } });
+    expect(onChangeHeader).toHaveBeenCalledWith(expect.objectContaining({ logo_width: 104 }));
+    fireEvent.change(screen.getByLabelText("Max height (px)"), { target: { value: "42" } });
+    expect(onChangeHeader).toHaveBeenCalledWith(expect.objectContaining({ logo_height: 42 }));
 
     fireEvent.click(screen.getByLabelText("Show text brand"));
     expect(onChangeHeader).toHaveBeenCalledWith(expect.objectContaining({ show_brand_text: true }));
