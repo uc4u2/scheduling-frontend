@@ -17,6 +17,7 @@ import FinanceMetricCard from "./components/FinanceMetricCard";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceSalesTaxProfileCard from "./components/FinanceSalesTaxProfileCard";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
+import FinanceDocumentIdentityCard from "./components/FinanceDocumentIdentityCard";
 import { getFinanceOverview, getFinanceOwnerSnapshot, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
 
 const firstDayOfMonth = () => {
@@ -233,6 +234,8 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
           "These are the current company defaults for Business Finance estimates, expenses, purchases, reports, and month-end review."
         )}
       />
+
+      <FinanceDocumentIdentityCard />
 
       <FinanceSalesTaxProfileCard onUpdatedTaxContext={setTaxContext} />
 
