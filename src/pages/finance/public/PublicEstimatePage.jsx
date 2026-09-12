@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Container,
   Divider,
+  Link,
   Paper,
   Stack,
   Table,
@@ -20,6 +21,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useParams, useSearchParams } from "react-router-dom";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
+import { CA_PROVINCES, COUNTRIES, US_STATES } from "../../../constants/jobMetadata";
 import { formatCurrency } from "../../../utils/formatters";
 import { getPublicEstimate, respondPublicEstimate } from "../financeApi";
 
@@ -47,17 +49,100 @@ function EstimateTotals({ estimate }) {
   );
 }
 
-function buildCompanyLines(estimate) {
-  const cityState = [estimate?.company_address_city, estimate?.company_address_state].filter(Boolean).join(", ");
-  const locality = [cityState, estimate?.company_address_zip].filter(Boolean).join(" ").trim();
+function optionLabel(options, value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  return options.find((option) => option.code === normalized)?.label || String(value || "").trim();
+}
+
+function formatPublicPhone(value) {
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 ${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return raw;
+}
+
+function websiteHref(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  return /^(?:https?:)?\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+
+function buildCompanyDetails(estimate) {
+  const countryCode = String(estimate?.company_country || "").trim().toUpperCase();
+  const regionCode = String(estimate?.company_address_state || "").trim().toUpperCase();
+  const country = optionLabel(COUNTRIES, countryCode);
+  const regionOptions = countryCode === "CA" ? CA_PROVINCES : countryCode === "US" ? US_STATES : [];
+  const region = optionLabel(regionOptions, regionCode);
+  const street = String(estimate?.company_address_street || "").trim();
+  const city = String(estimate?.company_address_city || "").trim();
+  const postal = String(estimate?.company_address_zip || "").trim();
+  const localityParts = [city, region].filter(Boolean);
+  if ((street || city) && postal) localityParts.push(postal);
+  const locality = localityParts.join(", ");
+  const location = [locality, country].filter(Boolean).join(", ");
+  const phone = formatPublicPhone(estimate?.company_phone);
+  const website = String(estimate?.company_website || "").trim();
+
   return [
-    estimate?.company_address_street,
-    locality || null,
-    estimate?.company_country,
-    estimate?.company_phone,
-    estimate?.company_email,
-    estimate?.company_website,
+    street ? { key: "street", label: street } : null,
+    location ? { key: "location", label: location } : null,
+    phone ? { key: "phone", label: phone, href: `tel:${String(estimate.company_phone).replace(/[^+\d]/g, "")}` } : null,
+    estimate?.company_email ? { key: "email", label: estimate.company_email, href: `mailto:${estimate.company_email}` } : null,
+    website ? { key: "website", label: website.replace(/^https?:\/\//i, "").replace(/\/$/, ""), href: websiteHref(website) } : null,
   ].filter(Boolean);
+}
+
+function formatPublicDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ""));
+  if (!match) return value || "-";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatPublicDateTime(value, timezone) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) ? raw : `${raw}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return raw;
+  try {
+    const resolvedTimezone = timezone || "UTC";
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: resolvedTimezone,
+    }).format(date);
+    const timeLabel = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: resolvedTimezone,
+    }).format(date);
+    return `${dateLabel} at ${timeLabel}`;
+  } catch {
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+    const timeLabel = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC",
+    }).format(date);
+    return `${dateLabel} at ${timeLabel}`;
+  }
 }
 
 function estimateStatusLabel(status) {
@@ -81,7 +166,7 @@ export default function PublicEstimatePage() {
     () => Boolean(estimate?.client_accepted_at || estimate?.client_rejected_at),
     [estimate]
   );
-  const companyLines = useMemo(() => buildCompanyLines(estimate), [estimate]);
+  const companyDetails = useMemo(() => buildCompanyDetails(estimate), [estimate]);
   const receiptLabel = estimate?.client_accepted_at
     ? "Approved"
     : estimate?.client_rejected_at
@@ -158,9 +243,23 @@ export default function PublicEstimatePage() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: theme.palette.background.default, py: { xs: 3, md: 5 } }}>
-      <Container maxWidth="md">
-        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 2 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: theme.palette.background.default,
+        py: { xs: 3, md: 5 },
+        "@media print": { bgcolor: "#fff", py: 0 },
+      }}
+    >
+      <Container maxWidth="md" sx={{ "@media print": { maxWidth: "none", px: 0 } }}>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 2.5, md: 4 },
+            borderRadius: 2,
+            "@media print": { border: 0, p: 0 },
+          }}
+        >
           <Stack spacing={3}>
             <Stack
               direction={{ xs: "column", md: "row" }}
@@ -181,7 +280,7 @@ export default function PublicEstimatePage() {
                 <Stack direction="row" spacing={1} sx={{ pt: 0.5, flexWrap: "wrap" }}>
                   <Chip size="small" label={estimateStatusLabel(estimate?.status)} variant="outlined" />
                 </Stack>
-                <Stack direction="row" spacing={1} sx={{ pt: 0.5 }}>
+                <Stack direction="row" spacing={1} sx={{ pt: 0.5, "@media print": { display: "none" } }}>
                   <Button
                     variant="outlined"
                     size="small"
@@ -193,29 +292,49 @@ export default function PublicEstimatePage() {
                 </Stack>
               </Stack>
 
-              <Stack spacing={1} alignItems={{ xs: "flex-start", md: "flex-end" }} sx={{ width: { xs: "100%", md: "auto" } }}>
-                {estimate?.company_logo_url ? (
-                  <Box
-                    component="img"
-                    src={estimate.company_logo_url}
-                    alt={estimate?.company_name || "Business logo"}
-                    sx={{ maxHeight: 76, maxWidth: 220, objectFit: "contain" }}
-                  />
-                ) : null}
-                <Typography variant="h6" fontWeight={700}>
-                  {estimate?.company_name || "Business"}
-                </Typography>
-                {companyLines.map((row) => (
-                  <Typography key={row} color="text.secondary" sx={{ textAlign: { xs: "left", md: "right" } }}>
-                    {row}
+              <Paper
+                component="section"
+                aria-label="Prepared by"
+                variant="outlined"
+                sx={{
+                  p: 2.25,
+                  borderRadius: 2,
+                  minWidth: { md: 280 },
+                  maxWidth: { xs: "100%", md: 340 },
+                  width: { xs: "100%", md: "auto" },
+                }}
+              >
+                <Stack spacing={0.75} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+                  <Typography variant="overline" color="text.secondary">
+                    Prepared by
                   </Typography>
-                ))}
-                {estimate?.company_tax_id ? (
-                  <Typography color="text.secondary" sx={{ textAlign: { xs: "left", md: "right" } }}>
-                    Business / Tax ID: {estimate.company_tax_id}
+                  {estimate?.company_logo_url ? (
+                    <Box
+                      component="img"
+                      src={estimate.company_logo_url}
+                      alt={estimate?.company_name || "Business logo"}
+                      sx={{ maxHeight: 76, maxWidth: 220, objectFit: "contain" }}
+                    />
+                  ) : null}
+                  <Typography variant="h6" fontWeight={700}>
+                    {estimate?.company_name || "Business"}
                   </Typography>
-                ) : null}
-              </Stack>
+                  {companyDetails.map((row) => (
+                    <Typography key={row.key} color="text.secondary" sx={{ textAlign: { xs: "left", md: "right" } }}>
+                      {row.href ? (
+                        <Link href={row.href} color="inherit" underline="hover">
+                          {row.label}
+                        </Link>
+                      ) : row.label}
+                    </Typography>
+                  ))}
+                  {estimate?.company_tax_id ? (
+                    <Typography color="text.secondary" sx={{ textAlign: { xs: "left", md: "right" } }}>
+                      Business / Tax ID: {estimate.company_tax_id}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              </Paper>
             </Stack>
 
             {error ? <Alert severity="error">{error}</Alert> : null}
@@ -258,7 +377,9 @@ export default function PublicEstimatePage() {
                     </Typography>
                   ) : null}
                   {receiptDate ? (
-                    <Typography color="text.secondary">Response date: {receiptDate}</Typography>
+                    <Typography color="text.secondary">
+                      Response date: {formatPublicDateTime(receiptDate, estimate?.company_timezone)}
+                    </Typography>
                   ) : null}
                   <Typography color="text.secondary">This is a typed approval record.</Typography>
                   {estimate?.client_response_note ? (
@@ -310,12 +431,9 @@ export default function PublicEstimatePage() {
                   <Typography variant="overline" color="text.secondary">
                     Estimate Details
                   </Typography>
-                  <Typography color="text.secondary">Issue date: {estimate?.issue_date || "-"}</Typography>
-                  <Typography color="text.secondary">Expiry date: {estimate?.expiry_date || "-"}</Typography>
+                  <Typography color="text.secondary">Issue date: {formatPublicDate(estimate?.issue_date)}</Typography>
+                  <Typography color="text.secondary">Expiry date: {formatPublicDate(estimate?.expiry_date)}</Typography>
                   <Typography color="text.secondary">Currency: {estimate?.currency || "USD"}</Typography>
-                  {estimate?.public_viewed_at ? (
-                    <Typography color="text.secondary">Viewed: {estimate.public_viewed_at}</Typography>
-                  ) : null}
                 </Stack>
               </Paper>
               <EstimateTotals estimate={estimate} />
@@ -359,10 +477,10 @@ export default function PublicEstimatePage() {
             ) : null}
 
             {!printMode && !alreadyResponded ? (
-              <>
+              <Box sx={{ "@media print": { display: "none" } }}>
                 <Divider />
 
-                <Stack spacing={1.5}>
+                <Stack spacing={1.5} sx={{ pt: 3 }}>
                   <Typography fontWeight={700}>Respond to this estimate</Typography>
                   <TextField
                     label="Your name"
@@ -399,7 +517,7 @@ export default function PublicEstimatePage() {
                     </Button>
                   </Stack>
                 </Stack>
-              </>
+              </Box>
             ) : null}
           </Stack>
         </Paper>
