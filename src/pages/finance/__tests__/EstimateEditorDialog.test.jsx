@@ -7,6 +7,7 @@ import EstimateEditorDialog from "../EstimateEditorDialog";
 const mockPreviewFinanceTransaction = jest.fn();
 const mockEnqueueSnackbar = jest.fn();
 const mockUpdateEstimate = jest.fn();
+const mockCreateEstimate = jest.fn();
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -19,7 +20,7 @@ jest.mock("notistack", () => ({
 }));
 
 jest.mock("../financeApi", () => ({
-  createEstimate: jest.fn(),
+  createEstimate: (...args) => mockCreateEstimate(...args),
   createManagerClient: jest.fn(),
   previewFinanceTransaction: (...args) => mockPreviewFinanceTransaction(...args),
   updateEstimate: (...args) => mockUpdateEstimate(...args),
@@ -76,6 +77,7 @@ function renderDialog(props = {}) {
 describe("EstimateEditorDialog", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCreateEstimate.mockResolvedValue({ id: 12, currency: "CAD" });
     mockUpdateEstimate.mockResolvedValue({ id: 11, currency: "CAD" });
     mockPreviewFinanceTransaction.mockResolvedValue({
       currency: "CAD",
@@ -167,5 +169,24 @@ describe("EstimateEditorDialog", () => {
       11,
       expect.objectContaining({ currency: "CAD" })
     );
+  });
+
+  test("shows a 2,000-character counter and blocks an oversized line-item description", async () => {
+    renderDialog();
+
+    const description = screen.getByLabelText("Description");
+    expect(description).toHaveAttribute("maxlength", "2000");
+    expect(description.tagName).toBe("TEXTAREA");
+
+    fireEvent.change(description, { target: { value: "Website design" } });
+    expect(screen.getByText("14 / 2,000 characters")).toBeInTheDocument();
+
+    fireEvent.change(description, { target: { value: "x".repeat(2001) } });
+    fireEvent.click(screen.getByRole("button", { name: "Create estimate" }));
+
+    expect(
+      (await screen.findAllByText("Line-item descriptions must be 2,000 characters or fewer.")).length
+    ).toBeGreaterThan(0);
+    expect(mockCreateEstimate).not.toHaveBeenCalled();
   });
 });

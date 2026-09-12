@@ -55,6 +55,8 @@ const makeLine = (line = {}, index = 0) => ({
   tax_rate: line.tax_rate ?? "",
 });
 
+export const LINE_ITEM_DESCRIPTION_MAX_LENGTH = 2000;
+
 const LINE_ITEM_PRESETS = {
   service: {
     key: "service",
@@ -365,6 +367,19 @@ export default function EstimateEditorDialog({
     if (!form.client_id || !form.title || !form.issue_date) {
       setError(tEstimate("errors.requiredFields", "Client, title, and issue date are required."));
       setLineItemError({ lineId: null, field: "" });
+      return;
+    }
+    const overlyLongLine = form.line_items.find(
+      (line) => String(line.description || "").length > LINE_ITEM_DESCRIPTION_MAX_LENGTH
+    );
+    if (overlyLongLine) {
+      setError(
+        tEstimate(
+          "errors.lineItemDescriptionTooLong",
+          `Line-item descriptions must be ${LINE_ITEM_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters or fewer.`
+        )
+      );
+      setLineItemError({ lineId: overlyLongLine.id, field: "description_length" });
       return;
     }
     const validLineItems = form.line_items.filter((line) => String(line.description || "").trim());
@@ -823,6 +838,9 @@ export default function EstimateEditorDialog({
                   const presetMeta = presetMetaFor(line);
                   const linePreview = computePreviewLine(line, effectiveTaxContext);
                   const lineTotalPreview = roundMoney(linePreview.base + linePreview.tax);
+                  const descriptionLength = String(line.description || "").length;
+                  const descriptionNearLimit =
+                    descriptionLength >= LINE_ITEM_DESCRIPTION_MAX_LENGTH * 0.9;
                   return (
                 <Grid container spacing={1.5} alignItems="flex-start">
                   <Grid item xs={12} md={3}>
@@ -851,24 +869,52 @@ export default function EstimateEditorDialog({
                   <Grid item xs={12} md={3}>
                     <TextField
                       fullWidth
+                      multiline
+                      minRows={2}
+                      maxRows={6}
                       label={tEstimate("lineItems.fields.description", "Description")}
                       placeholder={presetMeta.descriptionPlaceholder}
                       value={line.description}
                       onChange={(e) => {
                         setLineField(line.id, "description", e.target.value);
-                        if (lineItemError.lineId === line.id && lineItemError.field === "description") {
+                        if (
+                          lineItemError.lineId === line.id &&
+                          ["description", "description_length"].includes(lineItemError.field)
+                        ) {
                           const nextValue = String(e.target.value || "").trim();
-                          if (nextValue) {
+                          if (
+                            nextValue &&
+                            nextValue.length <= LINE_ITEM_DESCRIPTION_MAX_LENGTH
+                          ) {
                             setLineItemError({ lineId: null, field: "" });
                             setError("");
                           }
                         }
                       }}
-                      error={lineItemError.lineId === line.id && lineItemError.field === "description"}
+                      inputProps={{ maxLength: LINE_ITEM_DESCRIPTION_MAX_LENGTH }}
+                      FormHelperTextProps={{
+                        sx: descriptionNearLimit ? { color: "warning.main", fontWeight: 600 } : undefined,
+                      }}
+                      error={
+                        lineItemError.lineId === line.id &&
+                        ["description", "description_length"].includes(lineItemError.field)
+                      }
                       helperText={
                         lineItemError.lineId === line.id && lineItemError.field === "description"
                           ? tEstimate("errors.lineItemDescriptionInline", "Description is required for at least one line item.")
-                          : " "
+                          : lineItemError.lineId === line.id && lineItemError.field === "description_length"
+                            ? tEstimate(
+                                "errors.lineItemDescriptionTooLongInline",
+                                `Maximum ${LINE_ITEM_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters.`
+                              )
+                            : tEstimate(
+                                "lineItems.descriptionCounter",
+                                `${descriptionLength.toLocaleString()} / ${LINE_ITEM_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters${
+                                  descriptionLength >= LINE_ITEM_DESCRIPTION_MAX_LENGTH
+                                    ? " — maximum reached"
+                                    : ""
+                                }`
+                              )
                       }
                     />
                   </Grid>
