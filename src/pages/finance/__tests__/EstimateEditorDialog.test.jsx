@@ -6,6 +6,7 @@ import EstimateEditorDialog from "../EstimateEditorDialog";
 
 const mockPreviewFinanceTransaction = jest.fn();
 const mockEnqueueSnackbar = jest.fn();
+const mockUpdateEstimate = jest.fn();
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -21,7 +22,7 @@ jest.mock("../financeApi", () => ({
   createEstimate: jest.fn(),
   createManagerClient: jest.fn(),
   previewFinanceTransaction: (...args) => mockPreviewFinanceTransaction(...args),
-  updateEstimate: jest.fn(),
+  updateEstimate: (...args) => mockUpdateEstimate(...args),
 }));
 
 jest.mock("../ClientLookupField", () => (props) => (
@@ -38,12 +39,15 @@ jest.mock("../../../components/ui/ThemedDateField", () => (props) => (
 ));
 jest.mock("../../../utils/currency", () => ({
   getActiveCurrency: () => "CAD",
-  getCurrencyOptions: () => [{ code: "CAD", label: "CAD - Canadian Dollar" }],
+  getCurrencyOptions: () => [
+    { code: "CAD", label: "CAD - Canadian Dollar" },
+    { code: "USD", label: "USD - US Dollar" },
+  ],
   normalizeCurrency: (value) => value || "CAD",
   subscribeToActiveCurrency: () => () => {},
 }));
 
-function renderDialog() {
+function renderDialog(props = {}) {
   return render(
     <ThemeProvider theme={createTheme()}>
       <EstimateEditorDialog
@@ -63,6 +67,7 @@ function renderDialog() {
           client_id: "7",
           title: "Preview estimate",
         }}
+        {...props}
       />
     </ThemeProvider>
   );
@@ -71,6 +76,7 @@ function renderDialog() {
 describe("EstimateEditorDialog", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUpdateEstimate.mockResolvedValue({ id: 11, currency: "CAD" });
     mockPreviewFinanceTransaction.mockResolvedValue({
       currency: "CAD",
       customer_view: {
@@ -114,5 +120,52 @@ describe("EstimateEditorDialog", () => {
     fireEvent.change(screen.getByLabelText("Estimate title"), { target: { value: "Updated title" } });
 
     expect(screen.getByText(/The Estimate changed after this preview/i)).toBeInTheDocument();
+  });
+
+  test("keeps the banner, unsaved preview, and save payload on the selected Estimate currency", async () => {
+    renderDialog({
+      estimate: {
+        id: 11,
+        client_id: 7,
+        estimate_number: "EST-000001",
+        title: "Historical estimate",
+        issue_date: "2026-09-11",
+        currency: "USD",
+        tax_context: {
+          display_currency: "USD",
+          tax_country_code: "CA",
+          tax_region_code: "ON",
+          prices_include_tax: false,
+          default_tax_rate: 13,
+        },
+        line_items: [
+          { id: 1, description: "Service", quantity: 1, unit_price: 100, taxable: true, tax_rate: 13 },
+        ],
+      },
+    });
+
+    expect(screen.getByText("USD", { selector: "strong" })).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByLabelText("Currency"));
+    fireEvent.click(await screen.findByRole("option", { name: "CAD - Canadian Dollar" }));
+    expect(screen.getByText("CAD", { selector: "strong" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview taxes and total" }));
+    await waitFor(() => expect(mockPreviewFinanceTransaction).toHaveBeenCalled());
+    expect(mockPreviewFinanceTransaction.mock.calls.at(-1)[0]).toEqual(
+      expect.objectContaining({ source_type: "draft", currency: "CAD" })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: /Preview customer total/i })
+      ).not.toBeInTheDocument();
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mockUpdateEstimate).toHaveBeenCalled());
+    expect(mockUpdateEstimate).toHaveBeenCalledWith(
+      11,
+      expect.objectContaining({ currency: "CAD" })
+    );
   });
 });

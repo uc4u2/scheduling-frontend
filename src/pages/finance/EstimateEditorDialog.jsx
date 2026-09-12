@@ -438,6 +438,7 @@ export default function EstimateEditorDialog({
     return {
       source_type: "draft",
       document_type: "estimate",
+      currency: form.currency || getDefaultEstimateCurrency(currentCompanyTaxContext),
       line_items: (validLineItems.length ? validLineItems : form.line_items).map((line) => ({
         description: line.description || "Line item",
         quantity: toNumber(line.quantity, 1),
@@ -663,7 +664,7 @@ export default function EstimateEditorDialog({
                         {tEstimate("taxContext.title", "Tax & currency context")}
                       </Typography>
                       <Typography variant="body2">
-                        {tEstimate("taxContext.displayCurrency", "Display currency")}: <strong>{effectiveTaxContext?.display_currency || form.currency || "USD"}</strong>
+                        {tEstimate("taxContext.displayCurrency", "Display currency")}: <strong>{form.currency || effectiveTaxContext?.display_currency || "USD"}</strong>
                         {" • "}
                         {tEstimate("taxContext.taxRegion", "Tax country/region")}: <strong>{effectiveTaxContext?.tax_country_code || "—"} / {effectiveTaxContext?.tax_region_code || "—"}</strong>
                         {" • "}

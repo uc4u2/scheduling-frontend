@@ -60,6 +60,7 @@ import { buildClientCreatePayload, getClientDisplayName } from "./clientUtils";
 import FinanceStatusChip from "./components/FinanceStatusChip";
 import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinancePagination from "./components/FinancePagination";
+import { getCurrencyOptions, normalizeCurrency } from "../../utils/currency";
 
 const blankForm = {
   client_id: "",
@@ -67,6 +68,7 @@ const blankForm = {
   request_type: "",
   description: "",
   preferred_timeline: "",
+  currency: "",
   contact_name: "",
   contact_email: "",
   contact_phone: "",
@@ -185,6 +187,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const timezone = useMemo(() => getUserTimezone(), []);
+  const currencyOptions = useMemo(() => getCurrencyOptions(), []);
   const tQuote = useCallback(
     (key, fallback, options = {}) => t(`manager.finance.quotes.${key}`, { defaultValue: fallback, ...options }),
     [t]
@@ -263,6 +266,7 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
       request_type: item.request_type || "",
       description: item.description || "",
       preferred_timeline: item.preferred_timeline || "",
+      currency: normalizeCurrency(item.currency) || "",
       contact_name: item.contact_name || "",
       contact_email: item.contact_email || "",
       contact_phone: item.contact_phone || "",
@@ -869,6 +873,24 @@ export default function QuoteRequestsPage({ createNonce, onNavigate }) {
                 <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.source", "Source")} placeholder={tQuote("dialog.fields.sourcePlaceholder", "Phone call")} value={form.request_type} onChange={(e) => setForm((prev) => ({ ...prev, request_type: e.target.value }))} helperText={tQuote("dialog.fields.sourceHelp", "Examples: Phone call, WhatsApp note, Website form.")} /></Grid>
                 <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.preferredTimeline", "Preferred timeline")} placeholder={tQuote("dialog.fields.preferredTimelinePlaceholder", "This week")} value={form.preferred_timeline} onChange={(e) => setForm((prev) => ({ ...prev, preferred_timeline: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={6}><TextField fullWidth label={tQuote("dialog.fields.serviceAddress", "Service address")} placeholder={tQuote("dialog.fields.serviceAddressPlaceholder", "120 King St W, Toronto, ON")} value={form.service_address} onChange={(e) => setForm((prev) => ({ ...prev, service_address: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{tQuote("dialog.fields.currency", "Estimate currency")}</InputLabel>
+                    <Select
+                      label={tQuote("dialog.fields.currency", "Estimate currency")}
+                      value={form.currency || ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value }))}
+                    >
+                      <MenuItem value="">{tQuote("dialog.fields.currencyDefault", "Use company currency at estimate creation")}</MenuItem>
+                      {currencyOptions.map((option) => (
+                        <MenuItem key={option.code} value={option.code}>{option.label}</MenuItem>
+                      ))}
+                    </Select>
+                    <FormHelperText>
+                      {tQuote("dialog.fields.currencyHelp", "Leave this on company currency unless this request explicitly requires another currency.")}
+                    </FormHelperText>
+                  </FormControl>
+                </Grid>
                 <Grid item xs={12}><TextField fullWidth label={tQuote("dialog.fields.description", "Description")} placeholder={tQuote("dialog.fields.descriptionPlaceholder", "Restaurant needs kitchen exhaust and duct cleaning for one location.")} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} multiline minRows={3} /></Grid>
               </Grid>
             </Box>
