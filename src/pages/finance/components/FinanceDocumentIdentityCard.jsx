@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, Button, CircularProgress, Divider, FormControlLabel, Grid,
   MenuItem, Paper, Stack, Switch, TextField, Typography,
@@ -64,7 +64,7 @@ function CurrentValue({ field, hidden }) {
   );
 }
 
-export default function FinanceDocumentIdentityCard() {
+export default function FinanceDocumentIdentityCard({ onSettingsLoaded }) {
   const companyId = getAuthedCompanyId();
   const firstFieldRef = useRef(null);
   const [settings, setSettings] = useState(null);
@@ -76,10 +76,11 @@ export default function FinanceDocumentIdentityCard() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const applyPayload = (payload) => {
+  const applyPayload = useCallback((payload) => {
     setSettings(payload || {});
     setForm(hydrateForm(payload));
-  };
+    onSettingsLoaded?.(payload || {});
+  }, [onSettingsLoaded]);
 
   useEffect(() => {
     let active = true;
@@ -101,11 +102,11 @@ export default function FinanceDocumentIdentityCard() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [companyId]);
+  }, [applyPayload, companyId]);
 
   const identity = settings?.finance_document_identity || {};
-  const resolved = identity.resolved || {};
-  const resolvedFields = resolved.fields || {};
+  const resolved = useMemo(() => identity.resolved || {}, [identity.resolved]);
+  const resolvedFields = useMemo(() => resolved.fields || {}, [resolved.fields]);
   const selectedLogo = media.find((item) => String(item.id) === String(form.logo_media_id));
   const preview = useMemo(() => {
     const valueFor = (key) => {

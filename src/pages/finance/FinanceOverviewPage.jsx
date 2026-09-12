@@ -3,11 +3,13 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Grid,
   Paper,
   Stack,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "../../utils/formatters";
@@ -18,7 +20,34 @@ import FinanceEmptyState from "./components/FinanceEmptyState";
 import FinanceSalesTaxProfileCard from "./components/FinanceSalesTaxProfileCard";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import FinanceDocumentIdentityCard from "./components/FinanceDocumentIdentityCard";
+import FinanceOverviewSection from "./components/FinanceOverviewSection";
 import { getFinanceOverview, getFinanceOwnerSnapshot, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
+import { getAuthedCompanyId } from "../../utils/authedCompany";
+
+const SECTION_DEFAULTS = {
+  setup: false,
+  attention: false,
+  money: true,
+  operations: false,
+  owner: false,
+};
+
+const financeOverviewPreferenceKey = () => {
+  if (typeof window === "undefined") return "finance-overview-sections:v1:anonymous";
+  const companyId = getAuthedCompanyId() || "company";
+  const userId = window.localStorage.getItem("user_id") || window.localStorage.getItem("userId") || "manager";
+  return `finance-overview-sections:v1:${companyId}:${userId}`;
+};
+
+const readSectionPreferences = (key) => {
+  if (typeof window === "undefined") return {};
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) || "{}");
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+};
 
 const firstDayOfMonth = () => {
   const now = new Date();
@@ -100,8 +129,25 @@ const buildAttentionCards = (overview = {}, actions = [], tFinance) => {
   ];
 };
 
+const formatAttentionSummaryItem = (card) => {
+  const count = Number(card?.count || 0);
+  const labels = {
+    quote: `new quote${count === 1 ? "" : "s"}`,
+    estimate: `draft estimate${count === 1 ? "" : "s"}`,
+    "work-order": `work order${count === 1 ? " needs" : "s need"} scheduling`,
+    "field-report": `field report${count === 1 ? " needs" : "s need"} review`,
+    "low-stock": `low stock item${count === 1 ? "" : "s"}`,
+    "missing-receipts": `missing receipt${count === 1 ? "" : "s"}`,
+    "month-end": `month-end missing item${count === 1 ? "" : "s"}`,
+  };
+  return `${count} ${labels[card?.key] || String(card?.label || "item").toLowerCase()}`;
+};
+
 export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   const { t } = useTranslation();
+  const isCompactViewport = useMediaQuery("(max-width:899.95px)");
+  const preferenceKey = useMemo(financeOverviewPreferenceKey, []);
+  const savedPreferences = useMemo(() => readSectionPreferences(preferenceKey), [preferenceKey]);
   const tFinance = React.useCallback(
     (key, fallback, options = {}) => t(`manager.finance.overview.${key}`, { defaultValue: fallback, ...options }),
     [t]
@@ -110,12 +156,18 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   const [summary, setSummary] = useState(null);
   const [ownerSnapshot, setOwnerSnapshot] = useState(null);
   const [taxContext, setTaxContext] = useState(null);
+  const [documentSettings, setDocumentSettings] = useState(null);
+  const [expandedSections, setExpandedSections] = useState(() => ({
+    ...SECTION_DEFAULTS,
+    ...savedPreferences,
+  }));
   const [snapshotDateFrom, setSnapshotDateFrom] = useState(firstDayOfMonth());
   const [snapshotDateTo, setSnapshotDateTo] = useState(formatDate(new Date()));
   const [loading, setLoading] = useState(true);
   const [snapshotLoading, setSnapshotLoading] = useState(true);
   const [error, setError] = useState("");
   const [snapshotError, setSnapshotError] = useState("");
+  const automaticSectionDefaultsApplied = React.useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -183,6 +235,14 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
     () => buildAttentionCards(overview || {}, actions, tFinance),
     [overview, actions, tFinance]
   );
+  const actionableAttentionCards = useMemo(
+    () => attentionCards.filter((card) => Number(card.count) > 0),
+    [attentionCards]
+  );
+  const actionableAttentionTotal = actionableAttentionCards.reduce(
+    (total, card) => total + Number(card.count || 0),
+    0
+  );
   const currency = summary?.currency || "USD";
   const ownerCurrency = ownerSnapshot?.currency || currency;
   const readiness = ownerSnapshot?.readiness || {};
@@ -212,6 +272,84 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
       ? tFinance("ownerSnapshot.readinessStatus.almostReady", "Almost ready")
       : tFinance("ownerSnapshot.readinessStatus.needsAttention", "Needs attention");
 
+  const hasMeaningfulOperations = [
+    overview?.work_orders_active_count,
+    overview?.work_orders_needing_scheduling_count,
+    overview?.field_reports_pending_review_count,
+    overview?.low_stock_count,
+  ].some((value) => Number(value || 0) > 0);
+
+  useEffect(() => {
+    if (loading || automaticSectionDefaultsApplied.current) return;
+    automaticSectionDefaultsApplied.current = true;
+    setExpandedSections((current) => ({
+      ...current,
+      setup: isCompactViewport ? false : current.setup,
+      attention: actionableAttentionTotal > 0,
+      operations:
+        typeof savedPreferences.operations === "boolean"
+          ? savedPreferences.operations
+          : hasMeaningfulOperations,
+    }));
+  }, [actionableAttentionTotal, hasMeaningfulOperations, isCompactViewport, loading, savedPreferences.operations]);
+
+  const setSectionExpanded = React.useCallback(
+    (section, nextExpanded) => {
+      setExpandedSections((current) => {
+        const next = { ...current, [section]: nextExpanded };
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(preferenceKey, JSON.stringify(next));
+          } catch {
+            // Browser storage can be unavailable in private/restricted contexts.
+          }
+        }
+        return next;
+      });
+    },
+    [preferenceKey]
+  );
+
+  const taxRateLabel = taxContext?.default_tax_rate != null
+    ? `${Number(taxContext.default_tax_rate).toFixed(2).replace(/\.00$/, "")}%`
+    : "Rate needs review";
+  const taxProfileLabel = taxContext?.tax_label
+    ? `${taxContext.tax_label} ${taxRateLabel}`
+    : taxRateLabel;
+  const jurisdictionLabel = `${taxContext?.tax_country_code || "—"} / ${taxContext?.tax_region_code || "—"}`;
+  const financeIdentity = documentSettings?.finance_document_identity || {};
+  const resolvedIdentity = financeIdentity?.resolved || {};
+  const identityName = resolvedIdentity?.business_name || "Loading identity";
+  const identityLogoLabel = resolvedIdentity?.logo_url ? "Logo configured" : "No logo";
+  const visibleIdentityContacts = [
+    financeIdentity?.show_email !== false && resolvedIdentity?.public_email ? "Email" : "",
+    financeIdentity?.show_phone !== false && resolvedIdentity?.public_phone ? "Phone" : "",
+  ].filter(Boolean).join("/") || "Contact details hidden";
+  const identityStateLabel = documentSettings
+    ? financeIdentity?.needs_review ? "Review needed" : "Reviewed"
+    : "Loading";
+  const attentionSummary = actionableAttentionCards.length
+    ? actionableAttentionCards
+        .slice(0, 3)
+        .map(formatAttentionSummaryItem)
+        .join(" • ")
+    : "Nothing urgent";
+  const moneySummary = [
+    `Estimates ${formatCurrency(summary?.estimate_total, currency)}`,
+    `Invoices ${formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)}`,
+    `Expenses ${formatCurrency(summary?.expense_total, currency)}`,
+  ].join(" • ");
+  const operationsSummary = [
+    `${Number(overview?.work_orders_active_count || 0)} active jobs`,
+    `${Number(overview?.work_orders_needing_scheduling_count || 0)} need scheduling`,
+    `${Number(overview?.field_reports_pending_review_count || 0)} reports pending`,
+  ].join(" • ");
+  const setupSummary = [
+    `${currency} • ${jurisdictionLabel}`,
+    `Sales Tax: ${taxProfileLabel} • Prices ${taxContext?.prices_include_tax ? "include" : "exclude"} tax`,
+    `Finance Identity: ${identityName} • ${identityLogoLabel} • ${visibleIdentityContacts}`,
+  ].join(" • ");
+
   if (loading) {
     return (
       <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
@@ -225,27 +363,71 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
   }
 
   return (
-    <Stack spacing={3}>
-      <FinanceSettingsSnapshotCard
-        taxContext={taxContext}
-        title={tFinance("taxContext.snapshotTitle", "Finance settings snapshot")}
-        helper={tFinance(
-          "taxContext.snapshotHelper",
-          "These are the current company defaults for Business Finance estimates, expenses, purchases, reports, and month-end review."
-        )}
-      />
+    <Stack
+      spacing={2}
+      data-testid="finance-overview-dashboard"
+      style={{ width: "100%", maxWidth: "100%", overflowX: "hidden" }}
+      sx={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}
+    >
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 1.5, minWidth: 0 }}>
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography variant="h5" fontWeight={900}>
+              {tFinance("summary.title", "Business Finance overview")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {tFinance("summary.helper", "Your current Finance setup, priorities, money, and operations at a glance.")}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Chip size="small" variant="outlined" label={`Currency ${currency}`} />
+            <Chip size="small" variant="outlined" label={`Jurisdiction ${jurisdictionLabel}`} />
+            <Chip size="small" variant="outlined" label={`Tax ${taxProfileLabel}`} />
+            <Chip
+              size="small"
+              variant="outlined"
+              color={identityStateLabel === "Review needed" ? "warning" : "default"}
+              label={`Finance identity ${identityStateLabel}`}
+            />
+            <Chip
+              size="small"
+              color={actionableAttentionTotal > 0 ? "warning" : "success"}
+              label={actionableAttentionTotal > 0 ? `${actionableAttentionTotal} items need attention` : "No urgent items"}
+            />
+          </Stack>
+        </Stack>
+      </Paper>
 
-      <FinanceDocumentIdentityCard />
-
-      <FinanceSalesTaxProfileCard onUpdatedTaxContext={setTaxContext} />
-
-      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5 }}>
+      <FinanceOverviewSection
+        sectionId="setup"
+        title={tFinance("sections.setup", "Finance Setup & Configuration")}
+        summary={setupSummary}
+        expanded={expandedSections.setup}
+        onChange={(next) => setSectionExpanded("setup", next)}
+      >
         <Stack spacing={2}>
-          <Typography variant="h6" fontWeight={900}>
-            {tFinance("sections.attention", "Today needs your attention")}
-          </Typography>
+          <FinanceSettingsSnapshotCard
+            taxContext={taxContext}
+            title={tFinance("taxContext.snapshotTitle", "Finance settings snapshot")}
+            helper={tFinance(
+              "taxContext.snapshotHelper",
+              "These are the current company defaults for Business Finance estimates, expenses, purchases, reports, and month-end review."
+            )}
+          />
+          <FinanceDocumentIdentityCard onSettingsLoaded={setDocumentSettings} />
+          <FinanceSalesTaxProfileCard onUpdatedTaxContext={setTaxContext} />
+        </Stack>
+      </FinanceOverviewSection>
 
-          {attentionCards.some((card) => Number(card.count) > 0) ? (
+      <FinanceOverviewSection
+        sectionId="attention"
+        title={tFinance("sections.attention", "Today Needs Your Attention")}
+        summary={attentionSummary}
+        expanded={expandedSections.attention}
+        onChange={(next) => setSectionExpanded("attention", next)}
+      >
+        <Stack spacing={2}>
+          {actionableAttentionCards.length ? (
             <Grid container spacing={2}>
               {attentionCards.map((card) => (
                 <Grid item xs={12} sm={6} lg={4} key={card.key}>
@@ -269,12 +451,59 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
             />
           )}
         </Stack>
-      </Paper>
+      </FinanceOverviewSection>
 
-      <Box>
-        <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
-          {tFinance("sections.ownerSnapshot", "Owner snapshot")}
-        </Typography>
+      <FinanceOverviewSection
+        sectionId="money"
+        title={tFinance("sections.money", "Money Snapshot")}
+        summary={moneySummary}
+        expanded={expandedSections.money}
+        onChange={(next) => setSectionExpanded("money", next)}
+      >
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimateTotal", "Estimate total")} value={formatCurrency(summary?.estimate_total, currency)} accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossInvoiceTotal", "Gross invoice total")} value={formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.refunds", "Refunds")} value={formatCurrency(summary?.refund_total, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netInvoiceTotal", "Net invoice total")} value={formatCurrency(summary?.net_invoice_total, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.expenseTotal", "Expense total")} value={formatCurrency(summary?.expense_total, currency)} accent="error" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossTaxCollected", "Gross tax collected")} value={formatCurrency(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxRefunded", "Tax refunded")} value={formatCurrency(summary?.tax_refunded, currency)} accent="warning" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netTaxCollected", "Net tax collected")} value={formatCurrency(summary?.net_tax_collected, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxPaidOnExpenses", "Tax paid on expenses")} value={formatCurrency(summary?.tax_paid_on_expenses, currency)} accent="success" /></Grid>
+          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimatedNetTaxNet", "Estimated net tax net")} value={formatCurrency(summary?.estimated_net_tax_net ?? summary?.estimated_net_tax, currency)} accent="warning" /></Grid>
+        </Grid>
+        {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            {tFinance(
+              "money.paymentScopeInfo",
+              "Payment collection totals are not available yet for all invoice payment methods."
+            )}
+          </Alert>
+        ) : null}
+      </FinanceOverviewSection>
+
+      <FinanceOverviewSection
+        sectionId="operations"
+        title={tFinance("sections.operations", "Operations Snapshot")}
+        summary={operationsSummary}
+        expanded={expandedSections.operations}
+        onChange={(next) => setSectionExpanded("operations", next)}
+      >
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.activeJobs.label", "Active jobs")} value={String(overview?.work_orders_active_count ?? 0)} helper={tFinance("operations.activeJobs.helper", "Scheduled or in progress.")} accent="primary" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.plannedLabor.label", "Planned labor this month")} value={formatCurrency(overview?.planned_labor_cost_this_month || 0)} helper={tFinance("operations.plannedLabor.helper", "Work order planning only.")} accent="secondary" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.inventoryValue.label", "Inventory value estimate")} value={formatCurrency(overview?.inventory_value_estimate || summary?.inventory_value_estimate || 0)} helper={tFinance("operations.inventoryValue.helper", "Current stock multiplied by cost per unit.")} accent="info" /></Grid>
+          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.approvedMaterialCost.label", "Approved material cost")} value={formatCurrency(summary?.approved_material_cost || 0)} helper={tFinance("operations.approvedMaterialCost.helper", "Materials made official through manager review.")} accent="error" /></Grid>
+        </Grid>
+      </FinanceOverviewSection>
+
+      <FinanceOverviewSection
+        sectionId="owner"
+        title={tFinance("sections.ownerSnapshot", "Owner / Reporting Snapshot")}
+        summary={`${snapshotDateFrom} – ${snapshotDateTo} • ${readinessStatusLabel}`}
+        expanded={expandedSections.owner}
+        onChange={(next) => setSectionExpanded("owner", next)}
+      >
         <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1.5, mb: 2 }}>
           <Stack spacing={2}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
@@ -551,45 +780,7 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
             )}
           </Stack>
         </Paper>
-      </Box>
-
-      <Box>
-        <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
-          {tFinance("sections.money", "Money snapshot")}
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimateTotal", "Estimate total")} value={formatCurrency(summary?.estimate_total, currency)} accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossInvoiceTotal", "Gross invoice total")} value={formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.refunds", "Refunds")} value={formatCurrency(summary?.refund_total, currency)} accent="warning" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netInvoiceTotal", "Net invoice total")} value={formatCurrency(summary?.net_invoice_total, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.expenseTotal", "Expense total")} value={formatCurrency(summary?.expense_total, currency)} accent="error" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossTaxCollected", "Gross tax collected")} value={formatCurrency(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxRefunded", "Tax refunded")} value={formatCurrency(summary?.tax_refunded, currency)} accent="warning" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netTaxCollected", "Net tax collected")} value={formatCurrency(summary?.net_tax_collected, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxPaidOnExpenses", "Tax paid on expenses")} value={formatCurrency(summary?.tax_paid_on_expenses, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimatedNetTaxNet", "Estimated net tax net")} value={formatCurrency(summary?.estimated_net_tax_net ?? summary?.estimated_net_tax, currency)} accent="warning" /></Grid>
-        </Grid>
-        {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            {tFinance(
-              "money.paymentScopeInfo",
-              "Payment collection totals are not available yet for all invoice payment methods."
-            )}
-          </Alert>
-        ) : null}
-      </Box>
-
-      <Box>
-        <Typography variant="h6" fontWeight={900} sx={{ mb: 1.5 }}>
-          {tFinance("sections.operations", "Operations snapshot")}
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.activeJobs.label", "Active jobs")} value={String(overview?.work_orders_active_count ?? 0)} helper={tFinance("operations.activeJobs.helper", "Scheduled or in progress.")} accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.plannedLabor.label", "Planned labor this month")} value={formatCurrency(overview?.planned_labor_cost_this_month || 0)} helper={tFinance("operations.plannedLabor.helper", "Work order planning only.")} accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.inventoryValue.label", "Inventory value estimate")} value={formatCurrency(overview?.inventory_value_estimate || summary?.inventory_value_estimate || 0)} helper={tFinance("operations.inventoryValue.helper", "Current stock multiplied by cost per unit.")} accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={3}><FinanceMetricCard label={tFinance("operations.approvedMaterialCost.label", "Approved material cost")} value={formatCurrency(summary?.approved_material_cost || 0)} helper={tFinance("operations.approvedMaterialCost.helper", "Materials made official through manager review.")} accent="error" /></Grid>
-        </Grid>
-      </Box>
+      </FinanceOverviewSection>
 
     </Stack>
   );
