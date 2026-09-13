@@ -107,6 +107,7 @@ jest.mock("../../finance/financeApi", () => {
     createManagerClient360SessionNote: jest.fn(),
     deleteManagerClient360EmailTemplate: jest.fn(),
     deleteManagerClient360Document: jest.fn(),
+    deleteManagerClient360FieldPhoto: jest.fn(),
     getManagerClient360ReviewRequestDraft: jest.fn(),
     revokeManagerClient360PhotoShareLink: jest.fn(),
     sendManagerClient360PhotoShareLinkEmail: jest.fn(),
@@ -258,7 +259,11 @@ function renderWorkspace() {
     pagination: { total: 0, page: 1, per_page: 25 },
   });
   mockFinanceApi.getManagerClient360.mockResolvedValue(detailPayload);
-  mockFinanceApi.listManagerClient360FieldPhotos.mockResolvedValue({ items: [], summary: { total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 } });
+  mockFinanceApi.listManagerClient360FieldPhotos.mockResolvedValue({
+    items: [],
+    summary: { total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 },
+    entitlement: { addon_active: true, upload_enabled: true, read_only: false, max_image_mb: 10, max_image_bytes: 10 * 1024 * 1024 },
+  });
   mockFinanceApi.getManagerClient360PhotoShareLink.mockResolvedValue({});
   mockFinanceApi.listManagerClient360Documents.mockResolvedValue({ documents: [] });
   mockFinanceApi.listManagerClient360DocumentRequests.mockResolvedValue({ requests: [] });

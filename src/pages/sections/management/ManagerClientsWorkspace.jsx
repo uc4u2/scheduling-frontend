@@ -96,6 +96,7 @@ import {
   createManagerClient360SessionNote,
   deleteManagerClient360EmailTemplate,
   deleteManagerClient360Document,
+  deleteManagerClient360FieldPhoto,
   getManagerClient360,
   getManagerClient360ReviewRequestDraft,
   getManagerClient360PhotoShareLink,
@@ -496,7 +497,7 @@ const getClientPhotoUploaderLabel = (row = {}) => {
     return uploadedBy.name.trim();
   }
   if (typeof row.employee_name === "string" && row.employee_name.trim()) return row.employee_name.trim();
-  return row.source === "manager_client_photo" ? "Manager" : "Team member";
+  return ["manager_client_photo", "manager_field_photo"].includes(row.source) ? "Manager" : "Team member";
 };
 
 const getClientDocumentCategoryLabel = (value) =>
@@ -2153,6 +2154,7 @@ function ClientTimeline({ items, timezone }) {
 }
 
 function TrendCharts({ detail }) {
+  const financeCurrency = detail?.currency_context?.finance_default_currency || detail?.summary?.currency || CURRENCY;
   const bookings = useMemo(() => {
     const rows = [...(detail?.bookings?.past || []), ...(detail?.bookings?.upcoming || [])];
     const map = new Map();
@@ -2241,7 +2243,7 @@ function TrendCharts({ detail }) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="label" />
                   <YAxis />
-                  <RechartsTooltip formatter={(value) => formatMoney(value)} />
+                  <RechartsTooltip formatter={(value) => formatMoney(value, financeCurrency)} />
                   <Legend />
                   <Line type="monotone" dataKey="invoices" stroke="#2563eb" strokeWidth={2} name="Invoices" />
                   <Line type="monotone" dataKey="estimates" stroke="#7c3aed" strokeWidth={2} name="Estimates" />
@@ -2366,7 +2368,7 @@ function Client360ListTable({ rows, sort, onOpen, onQuickNote }) {
                 <TableCell sx={{ minWidth: 190 }}>
                   <Stack spacing={0.5}>
                     <Typography variant="body2" fontWeight={700}>
-                      {formatMoney(row.unpaid_balance || 0)}
+                      {formatMoney(row.unpaid_balance || 0, row.currency || CURRENCY)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {row.linked_counts?.open_invoices ?? 0} open invoices
@@ -2486,6 +2488,7 @@ export default function ManagerClientsWorkspace() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [photosError, setPhotosError] = useState("");
   const [photoSummary, setPhotoSummary] = useState({ total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+  const [photoEntitlement, setPhotoEntitlement] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [photoNote, setPhotoNote] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -2585,10 +2588,12 @@ export default function ManagerClientsWorkspace() {
       const rows = Array.isArray(payload?.items) ? payload.items : [];
       setPhotos(rows);
       setPhotoSummary(payload?.summary || { total: rows.length, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+      setPhotoEntitlement(payload?.entitlement || null);
       return rows;
     } catch (err) {
       setPhotos([]);
       setPhotoSummary({ total: 0, employee_uploaded: 0, manager_uploaded: 0, ready: 0, processing: 0 });
+      setPhotoEntitlement(null);
       setPhotosError(err?.response?.data?.error || err?.message || "Unable to load client photos.");
       return [];
     } finally {
@@ -2697,6 +2702,7 @@ export default function ManagerClientsWorkspace() {
   const profile = detail?.client || {};
   const bookingAccess = profile?.booking_access || {};
   const summary = detail?.summary || {};
+  const companyCurrency = detail?.currency_context?.finance_default_currency || summary.currency || CURRENCY;
   const auth = detail?.auth || {};
   const cardOnFile = detail?.card_on_file || {};
   const notes = useMemo(() => detail?.notes || [], [detail]);
@@ -2790,7 +2796,7 @@ export default function ManagerClientsWorkspace() {
     let cancelled = false;
     const loadProtectedPreviews = async () => {
       const employeeRowsNeedingPreview = sortedPhotos.filter(
-        (row) => row?.source === "employee_field_photo" && row?.id && !photoPreviewUrls[row.id]
+        (row) => ["employee_field_photo", "manager_field_photo"].includes(row?.source) && row?.id && !photoPreviewUrls[row.id]
       );
       for (const row of employeeRowsNeedingPreview) {
         try {
@@ -2842,7 +2848,7 @@ export default function ManagerClientsWorkspace() {
     if (!detail) return [];
     const alerts = [];
     if (Number(summary.open_invoice_count || 0) > 0 || Number(summary.unpaid_balance || 0) > 0) {
-      alerts.push({ key: "billing", label: "Billing follow-up", tone: "warning", helper: `${summary.open_invoice_count || 0} open invoices • ${formatMoney(summary.unpaid_balance || 0)} unpaid` });
+      alerts.push({ key: "billing", label: "Billing follow-up", tone: "warning", helper: `${summary.open_invoice_count || 0} open invoices • ${formatMoney(summary.unpaid_balance || 0, companyCurrency)} unpaid` });
     }
     if (Number(summary.no_show_count || 0) > 0) {
       alerts.push({ key: "no_show", label: "Attendance risk", tone: "default", helper: `${summary.no_show_count || 0} no-shows on record.` });
@@ -2865,7 +2871,7 @@ export default function ManagerClientsWorkspace() {
       alerts.push({ key: "portal", label: "No portal login", tone: "default", helper: "Client history exists without a portal-linked login." });
     }
     return alerts;
-  }, [auth.has_login, bookingAccess.blocked, cardOnFile?.expired, cardOnFile?.update_required, detail, pendingDocumentRequests.length, profile.email, summary]);
+  }, [auth.has_login, bookingAccess.blocked, cardOnFile?.expired, cardOnFile?.update_required, companyCurrency, detail, pendingDocumentRequests.length, profile.email, summary]);
 
   const secondaryOverviewChips = useMemo(() => ([
     {
@@ -2880,7 +2886,7 @@ export default function ManagerClientsWorkspace() {
     },
     {
       key: "revenue",
-      label: `Lifetime revenue ${formatMoney(summary.ltv || summary.gross || 0)}`,
+      label: `Lifetime revenue ${formatMoney(summary.ltv || summary.gross || 0, companyCurrency)}`,
       tone: "success",
     },
     {
@@ -2888,7 +2894,7 @@ export default function ManagerClientsWorkspace() {
       label: "Package status not tracked",
       tone: "default",
     },
-  ]), [summary]);
+  ]), [companyCurrency, summary]);
 
   const pageMetrics = useMemo(() => ({
     total: Number(pagination?.total || listItems.length || 0),
@@ -3245,7 +3251,7 @@ export default function ManagerClientsWorkspace() {
       enqueueSnackbar("Client photo uploaded.", { variant: "success" });
       await loadPhotos();
     } catch (err) {
-      const message = err?.response?.data?.error || err?.message || "Unable to upload client photo.";
+      const message = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Unable to upload client photo.";
       setPhotosError(message);
       enqueueSnackbar(message, { variant: "error" });
     } finally {
@@ -3253,11 +3259,29 @@ export default function ManagerClientsWorkspace() {
     }
   };
 
+  const handleSelectPhoto = (file) => {
+    const maxBytes = Number(photoEntitlement?.max_image_bytes || 10 * 1024 * 1024);
+    if (file && Number(file.size || 0) > maxBytes) {
+      const maxMb = Number(photoEntitlement?.max_image_mb || 10);
+      const message = `Photo is too large. Maximum allowed size is ${maxMb} MB.`;
+      setPhotoFile(null);
+      setPhotosError(message);
+      enqueueSnackbar(message, { variant: "error" });
+      return;
+    }
+    setPhotosError("");
+    setPhotoFile(file || null);
+  };
+
   const handleDeletePhoto = async (row) => {
-    if (!clientId || !row?.id || row?.source !== "manager_client_photo") return;
+    if (!clientId || !row?.id || !["manager_client_photo", "manager_field_photo"].includes(row?.source)) return;
     setDeletingPhotoId(row.id);
     try {
-      await deleteManagerClient360Document(clientId, row.id);
+      if (row.source === "manager_field_photo") {
+        await deleteManagerClient360FieldPhoto(clientId, row.id);
+      } else {
+        await deleteManagerClient360Document(clientId, row.id);
+      }
       enqueueSnackbar("Client photo removed.", { variant: "success" });
       await loadPhotos();
     } catch (err) {
@@ -3279,7 +3303,7 @@ export default function ManagerClientsWorkspace() {
           return;
         }
       }
-      if (row.source === "employee_field_photo") {
+      if (["employee_field_photo", "manager_field_photo"].includes(row.source)) {
         const res = await api.get(`/manager/field-photos/${row.id}/download`);
         const url = res?.data?.url;
         if (url) {
@@ -3631,7 +3655,7 @@ export default function ManagerClientsWorkspace() {
       ? pendingRequestTitles.slice(0, 3).join(", ")
       : "the requested document";
     const openInvoiceCount = Number(summary.open_invoice_count || 0);
-    const unpaidBalance = formatMoney(summary.unpaid_balance || 0);
+    const unpaidBalance = formatMoney(summary.unpaid_balance || 0, companyCurrency);
     const estimateCount = Number(detail?.finance?.estimates?.length || 0);
     const estimateTitle = detail?.finance?.estimates?.[0]?.title || detail?.finance?.estimates?.[0]?.estimate_number || "the estimate";
 
@@ -4141,7 +4165,7 @@ export default function ManagerClientsWorkspace() {
                           <Grid item xs={12} sm={6}>
                             <FinanceMetricCard
                               label="Outstanding balance"
-                              value={formatMoney(summary.unpaid_balance || 0)}
+                              value={formatMoney(summary.unpaid_balance || 0, companyCurrency)}
                               helper={`${summary.open_invoice_count ?? 0} open invoice${Number(summary.open_invoice_count || 0) === 1 ? "" : "s"}`}
                               accent="warning"
                             />
@@ -4702,6 +4726,16 @@ export default function ManagerClientsWorkspace() {
                       <SectionCard title="Upload photos" description="Add manager photos directly to the client record without using the employee shift flow.">
                         <Stack spacing={1.5}>
                           {photosError ? <Alert severity="error">{photosError}</Alert> : null}
+                          {photoEntitlement && !photoEntitlement.upload_enabled ? (
+                            <Alert
+                              severity="warning"
+                              action={<Button color="inherit" size="small" component={RouterLink} to="/manager/field-photos">Open Field Photos</Button>}
+                            >
+                              {photoEntitlement.read_only
+                                ? "Field Photos is read-only. Existing private photos remain available, but new uploads are disabled."
+                                : "Activate the Field Photos add-on before managers or employees upload client photos."}
+                            </Alert>
+                          ) : null}
                           <Grid container spacing={2}>
                             <Grid item xs={12} md={5}>
                               <Button
@@ -4709,15 +4743,15 @@ export default function ManagerClientsWorkspace() {
                                 variant="outlined"
                                 startIcon={<UploadFileOutlinedIcon />}
                                 fullWidth
-                                disabled={photoUploading}
+                                disabled={photoUploading || !photoEntitlement?.upload_enabled}
                                 sx={{ justifyContent: "flex-start", py: 1.4 }}
                               >
                                 {photoFile ? photoFile.name : "Choose photo"}
                                 <input
                                   hidden
                                   type="file"
-                                  accept="image/png,image/jpeg,image/webp"
-                                  onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                                  accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                                  onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                                 />
                               </Button>
                             </Grid>
@@ -4732,13 +4766,13 @@ export default function ManagerClientsWorkspace() {
                           </Grid>
                           <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap>
                             <Typography variant="caption" color="text.secondary">
-                              Upload progress photos, before/after images, or client-approved reference shots.
+                              JPG, PNG, WebP, HEIC, or HEIF. Maximum {photoEntitlement?.max_image_mb || 10} MB per photo. HEIC/HEIF is converted to JPG securely.
                             </Typography>
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                               <Button variant="text" onClick={loadPhotos} disabled={photosLoading || photoUploading}>
                                 Refresh photos
                               </Button>
-                              <Button variant="contained" onClick={handleUploadPhoto} disabled={!photoFile || photoUploading}>
+                              <Button variant="contained" onClick={handleUploadPhoto} disabled={!photoFile || photoUploading || !photoEntitlement?.upload_enabled}>
                                 {photoUploading ? "Uploading..." : "Upload photo"}
                               </Button>
                             </Stack>
@@ -4826,14 +4860,18 @@ export default function ManagerClientsWorkspace() {
                         </Stack>
                       </Stack>
                       {photoShareLink?.public_url ? (
-                        <TextField
-                          fullWidth
-                          size="small"
-                          label="Client photo gallery link"
-                          value={photoShareLink.public_url}
-                          InputProps={{ readOnly: true }}
-                          sx={{ mb: 1.5 }}
-                        />
+                        <Stack spacing={0.5} sx={{ mb: 1.5 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Client photo gallery link"
+                            value={photoShareLink.public_url}
+                            InputProps={{ readOnly: true }}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            This private gallery expires {formatDateTime(photoShareLink.expires_at, timezone)}. Revoke it sooner whenever access is no longer needed.
+                          </Typography>
+                        </Stack>
                       ) : null}
                       {photosLoading ? (
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
@@ -4896,9 +4934,9 @@ export default function ManagerClientsWorkspace() {
                                         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                                           <Chip
                                             size="small"
-                                            label={row.source === "manager_client_photo" ? "Manager upload" : "Employee field photo"}
+                                            label={["manager_client_photo", "manager_field_photo"].includes(row.source) ? "Manager upload" : "Employee field photo"}
                                             variant="outlined"
-                                            sx={readableChipSx(row.source === "manager_client_photo" ? "primary" : "info")}
+                                            sx={readableChipSx(["manager_client_photo", "manager_field_photo"].includes(row.source) ? "primary" : "info")}
                                           />
                                           {row.security_status_label ? (
                                             <Chip size="small" label={row.security_status_label} variant="outlined" sx={readableChipSx(statusTone(row.scan_status || row.security_status_label))} />
@@ -4930,7 +4968,7 @@ export default function ManagerClientsWorkspace() {
                                       >
                                         Open / download
                                       </Button>
-                                      {row.source === "manager_client_photo" ? (
+                                      {["manager_client_photo", "manager_field_photo"].includes(row.source) ? (
                                         <Button
                                           size="small"
                                           color="error"
@@ -4962,13 +5000,13 @@ export default function ManagerClientsWorkspace() {
                               title="No photos yet"
                               description="Employee field photos linked to this client will appear here, and managers can add more photos directly."
                               primaryAction={(
-                                <Button component="label" variant="contained" size="small" startIcon={<UploadFileOutlinedIcon />}>
+                                <Button component="label" variant="contained" size="small" startIcon={<UploadFileOutlinedIcon />} disabled={!photoEntitlement?.upload_enabled}>
                                   Choose photo
                                   <input
                                     hidden
                                     type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                                    onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                                   />
                                 </Button>
                               )}

@@ -81,4 +81,25 @@ describe("FieldPhotosBillingModal", () => {
       expect(mockApiPost).toHaveBeenCalledWith("/billing/field-photos/activate", {});
     });
   });
+
+  it("shows the exact add-on price but blocks activation until a base plan exists", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        recurring_amount_formatted: "29.00 CAD",
+        interval: "month",
+        included_storage_label: "5 GB",
+        retention_days: 90,
+        amount_due_today_formatted: "29.00 CAD",
+        requires_base_subscription: true,
+        activation_message: "Start a Schedulaa plan before activating Field Photos.",
+      },
+    });
+
+    renderModal();
+
+    expect(await screen.findByText(/29\.00 CAD\/month/i)).toBeInTheDocument();
+    expect(screen.getByText(/Start a Schedulaa plan before activating Field Photos/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /confirm activation/i })).toBeDisabled();
+    expect(mockApiPost).not.toHaveBeenCalled();
+  });
 });

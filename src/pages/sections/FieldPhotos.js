@@ -702,7 +702,7 @@ const FieldPhotos = () => {
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>Field Photos</Typography>
-            <Typography variant="body2" color="text.secondary">Review shift-linked proof-of-work photos from your team.</Typography>
+            <Typography variant="body2" color="text.secondary">Review private proof-of-work photos from employees and Client 360.</Typography>
           </Box>
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }}>
             <Button size="small" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
@@ -738,7 +738,7 @@ const FieldPhotos = () => {
                   <Box>
                     <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>Field Photos</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.65, maxWidth: 660, lineHeight: 1.65 }}>
-                      Enable shift-linked proof photos so managers can review uploaded work images securely in one place.
+                      Enable private proof photos so employees and managers can keep client work images securely in one place.
                     </Typography>
                     {fieldPhotosPreviewLoading ? (
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.1 }}>

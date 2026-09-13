@@ -50,6 +50,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const viewerTimezone = getUserTimezone();
   const [workOrder, setWorkOrder] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [photoEntitlement, setPhotoEntitlement] = useState(null);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -93,6 +94,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
         if (!mounted) return;
         setWorkOrder(res?.work_order || res);
         setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
+        setPhotoEntitlement(photoRes?.summary || null);
         setDispatch(dispatchRes?.dispatch || null);
         setDispatchSettings(dispatchRes?.settings || null);
         setDispatchRoute(dispatchRes?.route || null);
@@ -174,13 +176,25 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       await uploadMyWorkOrderFieldPhoto(workOrder.id, formData);
       const photoRes = await listMyWorkOrderFieldPhotos(workOrder.id);
       setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
+      setPhotoEntitlement(photoRes?.summary || null);
       setPhotoFile(null);
       setPhotoNote("");
     } catch (err) {
-      setPhotoError(err?.response?.data?.error || err?.message || "Unable to upload work-order photo.");
+      setPhotoError(err?.response?.data?.message || err?.response?.data?.error || err?.message || "Unable to upload work-order photo.");
     } finally {
       setUploadingPhoto(false);
     }
+  };
+
+  const handleSelectPhoto = (file) => {
+    const maxBytes = Number(photoEntitlement?.max_image_bytes || 10 * 1024 * 1024);
+    if (file && Number(file.size || 0) > maxBytes) {
+      setPhotoFile(null);
+      setPhotoError(`Photo is too large. Maximum allowed size is ${photoEntitlement?.max_image_mb || 10} MB.`);
+      return;
+    }
+    setPhotoError("");
+    setPhotoFile(file || null);
   };
 
   const stopDispatchTracking = useCallback(() => {
@@ -619,25 +633,35 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                   </Typography>
                 </Stack>
                 {photoError ? <Alert severity="error">{photoError}</Alert> : null}
+                {photoEntitlement && !photoEntitlement.upload_enabled ? (
+                  <Alert severity="warning">
+                    {photoEntitlement.read_only
+                      ? "Field Photos is read-only. You can view existing photos, but new uploads are disabled."
+                      : "Field Photos is not active for this company. Ask your manager to activate it."}
+                  </Alert>
+                ) : null}
+                <Typography variant="caption" color="text.secondary">
+                  JPG, PNG, WebP, HEIC, or HEIF. Maximum {photoEntitlement?.max_image_mb || 10} MB per photo. HEIC/HEIF is converted to JPG.
+                </Typography>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
-                    <Button component="label" variant="contained" startIcon={<PhotoCameraIcon />}>
+                    <Button component="label" variant="contained" startIcon={<PhotoCameraIcon />} disabled={!photoEntitlement?.upload_enabled}>
                       {photoFile ? photoFile.name : "Take photo"}
                       <input
                         hidden
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
                         capture="environment"
-                        onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                        onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                       />
                     </Button>
-                    <Button component="label" variant="outlined">
+                    <Button component="label" variant="outlined" disabled={!photoEntitlement?.upload_enabled}>
                       {photoFile ? photoFile.name : "Choose from gallery"}
                       <input
                         hidden
                         type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                        accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                        onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                       />
                     </Button>
                   </Stack>
@@ -648,7 +672,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                     onChange={(event) => setPhotoNote(event.target.value)}
                     sx={{ minWidth: { xs: "100%", md: 260 } }}
                   />
-                  <Button variant="contained" disabled={!photoFile || uploadingPhoto} onClick={handleUploadPhoto}>
+                  <Button variant="contained" disabled={!photoFile || uploadingPhoto || !photoEntitlement?.upload_enabled} onClick={handleUploadPhoto}>
                     {uploadingPhoto ? "Uploading..." : "Upload photo"}
                   </Button>
                 </Stack>

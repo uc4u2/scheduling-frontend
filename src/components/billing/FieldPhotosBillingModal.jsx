@@ -65,9 +65,9 @@ const FieldPhotosBillingModal = ({
   const title = isStorage ? "Add Field Photos storage" : "Activate Field Photos";
   const itemLabel = isStorage ? "Field Photos Storage Expansion" : "Field Photos Add-on";
   const modalSubtitle = isStorage
-    ? "Expand storage for shift-linked proof photos."
-    : "Enable secure, shift-linked proof photos for your team.";
-  const itemDescription = isStorage ? "+10 GB" : "Secure proof-of-work photo uploads";
+    ? "Expand storage for private client and proof-of-work photos."
+    : "Enable secure employee and manager photo uploads.";
+  const itemDescription = isStorage ? "+10 GB" : "Private client and proof-of-work photo uploads";
   const billingNotice = isStorage
     ? "Confirming will add 10 GB of Field Photos storage to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate."
     : "Confirming will add this add-on to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate.";
@@ -85,7 +85,7 @@ const FieldPhotosBillingModal = ({
   const blocksConfirm = useMemo(() => {
     const code = preview?.error || "";
     const text = String(previewError || "").toLowerCase();
-    return code.includes("price_missing") || text.includes("not configured");
+    return Boolean(preview?.requires_base_subscription) || code.includes("price_missing") || text.includes("not configured");
   }, [preview, previewError]);
 
   useEffect(() => {
@@ -227,6 +227,11 @@ const FieldPhotosBillingModal = ({
               {preview.next_billing_date && <Typography variant="caption" color="text.secondary">{nextBillingLabel}</Typography>}
             </Stack>
           )}
+          {preview?.requires_base_subscription ? (
+            <Alert severity="warning">
+              {preview.activation_message || "Start a Schedulaa plan before activating Field Photos."}
+            </Alert>
+          ) : null}
           {!loadingPreview && !preview && (
             <Typography variant="body2" color={blocksConfirm ? "error" : "text.secondary"}>
               {previewError || "We could not load an estimate right now. You can still continue."}

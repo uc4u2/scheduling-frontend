@@ -582,6 +582,30 @@ const openFieldPhotoUpload = (shift) => {
   setPhotoUploadProgress("");
 };
 
+const addFieldPhotoFiles = (files) => {
+  const maxBytes = Number(fieldPhotosStatus?.max_image_bytes || 10 * 1024 * 1024);
+  const maxMb = Number(fieldPhotosStatus?.max_image_mb || 10);
+  const candidates = Array.from(files || []);
+  const oversized = candidates.filter((file) => Number(file?.size || 0) > maxBytes);
+  const accepted = candidates.filter((file) => Number(file?.size || 0) <= maxBytes);
+  if (oversized.length) {
+    setSnackbar({
+      open: true,
+      msg: `${oversized.length} photo${oversized.length === 1 ? " is" : "s are"} larger than the ${maxMb} MB limit and ${oversized.length === 1 ? "was" : "were"} not selected.`,
+      error: true,
+    });
+  }
+  setPhotoUploadFiles((prev) => {
+    const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+    const next = [...prev];
+    accepted.forEach((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      if (!existing.has(key)) next.push(file);
+    });
+    return next;
+  });
+};
+
 const submitFieldPhotoUpload = async () => {
   if (!photoUploadShift?.id || !photoUploadFiles.length) {
     setSnackbar({ open: true, msg: "Choose one or more photos to upload.", error: true });
@@ -613,7 +637,7 @@ const submitFieldPhotoUpload = async () => {
       } catch (err) {
         failed.push({
           name: file.name,
-          message: err?.response?.data?.error || "Upload failed.",
+          message: err?.response?.data?.message || err?.response?.data?.error || "Upload failed.",
         });
       }
     }
@@ -626,7 +650,7 @@ const submitFieldPhotoUpload = async () => {
     setPhotoUploadNote("");
     await loadShifts();
   } catch (err) {
-    const backendMessage = err?.response?.data?.error || "";
+    const backendMessage = err?.response?.data?.message || err?.response?.data?.error || "";
     setSnackbar({
       open: true,
       msg: backendMessage === "Shift not found."
@@ -4158,20 +4182,12 @@ const polishedPanelSx = employeePolish
                     hidden
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
                     capture="environment"
                     onChange={(event) => {
                       const files = Array.from(event.target.files || []);
                       event.target.value = "";
-                      setPhotoUploadFiles((prev) => {
-                        const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
-                        const next = [...prev];
-                        files.forEach((file) => {
-                          const key = `${file.name}-${file.size}-${file.lastModified}`;
-                          if (!existing.has(key)) next.push(file);
-                        });
-                        return next;
-                      });
+                      addFieldPhotoFiles(files);
                     }}
                   />
                 </Button>
@@ -4181,25 +4197,17 @@ const polishedPanelSx = employeePolish
                     hidden
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                     onChange={(event) => {
                       const files = Array.from(event.target.files || []);
                       event.target.value = "";
-                      setPhotoUploadFiles((prev) => {
-                        const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
-                        const next = [...prev];
-                        files.forEach((file) => {
-                          const key = `${file.name}-${file.size}-${file.lastModified}`;
-                          if (!existing.has(key)) next.push(file);
-                        });
-                        return next;
-                      });
+                      addFieldPhotoFiles(files);
                     }}
                   />
                 </Button>
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                Use Take photo for camera-first capture, or choose existing JPG, PNG, or WebP photos from your device.
+                JPG, PNG, WebP, HEIC, or HEIF. Maximum {fieldPhotosStatus?.max_image_mb || 10} MB per photo. HEIC/HEIF is converted to JPG securely.
               </Typography>
             </Stack>
             {photoUploadFiles.length > 0 && (
