@@ -115,6 +115,8 @@ const PREVIEW_PAGE_DEFINITIONS = {
   home: { key: "home", label: "Home", path: [] },
   about: { key: "about", label: "About", path: ["about"] },
   services: { key: "services", label: "Services", path: ["services"] },
+  maintenance: { key: "maintenance", label: "Maintenance", path: ["maintenance"] },
+  "service-areas": { key: "service-areas", label: "Service Areas", path: ["service-areas"] },
   "get-involved": { key: "get-involved", label: "Get Involved", path: ["get-involved"] },
   events: { key: "events", label: "Events", path: ["events"] },
   reviews: { key: "reviews", label: "Reviews", path: ["reviews"] },
@@ -151,7 +153,7 @@ export function shouldProvisionNextPublicBuilderPages(themeKey) {
   // These themes ship complete, intentionally concise six-route starters.
   // Reopening the Builder must not append generic commerce, testimonial,
   // jobs, blog, or location pages to their authored sitemaps.
-  if (["quiet-harbor", "touchline-club"].includes(key)) return false;
+  if (["quiet-harbor", "touchline-club", "eldora-dark", "aerogrid-hvac"].includes(key)) return false;
   return Boolean(key);
 }
 

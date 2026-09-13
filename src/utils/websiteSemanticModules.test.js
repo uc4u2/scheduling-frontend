@@ -26,6 +26,7 @@ import { createLumeaClinicOriginalHomeModules } from "./lumeaClinicHomeBlueprint
 import { createNorthstarHealthOriginalHomeModules } from "./northstarHealthHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
+import { createAeroGridHvacHomeModules } from "./aeroGridHvacHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
 import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
@@ -617,15 +618,33 @@ describe("website semantic modules", () => {
 
   it("provides Eldora Dark's complete editable cinematic rhythm without fake customer claims", () => {
     const modules = createEldoraDarkOriginalHomeModules();
-    expect(modules).toHaveLength(13);
+    expect(modules).toHaveLength(12);
     expect(modules.map((module) => module.id)).toEqual([
-      "eldora-home-hero", "eldora-home-trust", "eldora-home-services", "eldora-home-bento-story", "eldora-home-showcase", "eldora-home-faq", "eldora-home-pricing", "eldora-home-contact-intro", "eldora-home-contact-details", "eldora-home-hours", "eldora-home-map", "eldora-home-contact-form", "eldora-home-cta",
+      "eldora-home-hero", "eldora-home-trust", "eldora-home-services", "eldora-home-process", "eldora-home-maintenance", "eldora-home-gallery", "eldora-home-areas", "eldora-home-reviews", "eldora-home-faq", "eldora-home-contact-form", "eldora-home-map", "eldora-home-cta",
     ]);
     expect(modules.find((module) => module.id === "eldora-home-services").content.source).toBe("operational");
+    expect(modules.find((module) => module.id === "eldora-home-services").settings.presentation).toBe("comfort-selector");
+    expect(modules.find((module) => module.id === "eldora-home-reviews").content.source).toBe("operational");
     expect(modules.find((module) => module.id === "eldora-home-trust").settings.claimsMode).toBe("capabilities");
-    expect(modules.find((module) => module.id === "eldora-home-faq").content.items).toHaveLength(4);
+    expect(modules.find((module) => module.id === "eldora-home-faq").content.items).toHaveLength(3);
+    expect(modules.some((module) => module.type === "pricing")).toBe(false);
     expect(modules.every((module) => module.settings.starterBlueprint === "eldora-dark-original")).toBe(true);
     modules.forEach((module, index) => expect(module.order).toBe(index));
+  });
+
+  it("provides AeroGrid as a separate editable HVAC homepage", () => {
+    const modules = createAeroGridHvacHomeModules();
+    const hero = modules.find((module) => module.type === "hero");
+    const services = modules.find((module) => module.type === "services");
+
+    expect(modules).toHaveLength(13);
+    expect(hero.content.heading).toBe("Comfort service without the runaround.");
+    expect(hero.content.quickPoints).toHaveLength(3);
+    expect(services.content.source).toBe("authored");
+    expect(services.content.items).toHaveLength(6);
+    expect(services.settings.dataSource).toBe("authored");
+    expect(modules.find((module) => module.type === "team").content.items).toHaveLength(2);
+    expect(modules.every((module) => module.settings.starterBlueprint === "aerogrid-hvac-original")).toBe(true);
   });
 
   it("provides the approved Modern Gradient web-design sales homepage", () => {

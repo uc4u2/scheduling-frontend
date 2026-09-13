@@ -175,6 +175,7 @@ export function getThemeModuleDisplayLabel(themeKey, moduleType, slot) {
 export const WEBSITE_THEME_MODULE_MANIFESTS = {
   "modern-gradient": { themeKey: "modern-gradient", pages: SHARED_PAGES },
   "eldora-dark": { themeKey: "eldora-dark", pages: SHARED_PAGES },
+  "aerogrid-hvac": { themeKey: "aerogrid-hvac", pages: SHARED_PAGES },
   "motion-editorial": { themeKey: "motion-editorial", pages: SHARED_PAGES },
   finwise: { themeKey: "finwise", pages: SHARED_PAGES },
   "iron-ember": { themeKey: "iron-ember", pages: IRON_EMBER_PAGES },

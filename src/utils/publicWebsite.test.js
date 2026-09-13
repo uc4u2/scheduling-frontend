@@ -39,6 +39,7 @@ describe("public website resolver", () => {
     for (const visualThemeKey of [
       "modern-gradient",
       "eldora-dark",
+      "aerogrid-hvac",
       "motion-editorial",
       "finwise",
     ]) {

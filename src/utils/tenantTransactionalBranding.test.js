@@ -118,6 +118,11 @@ describe("tenantTransactionalBranding", () => {
       primary: "#d4a95f",
       buttonText: "#0f1117",
     });
+    expect(resolveTransactionalThemeTokens("aerogrid-hvac")).toMatchObject({
+      primary: "#f2b544",
+      buttonText: "#071018",
+      mode: "dark",
+    });
     expect(resolveTransactionalThemeTokens("finwise")).toMatchObject({
       primary: "#1b4ddb",
       radius: 12,

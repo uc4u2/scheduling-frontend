@@ -120,6 +120,7 @@ export const NEXTJS_PAGE_STYLE_PRESET_KEYS = [
 const NEXTJS_PAGE_STYLE_THEME_CAPABILITIES = {
   "modern-gradient": { lightDarkPreference: "light", specialFields: ["gradientAccent"], gradientAccent: true },
   "eldora-dark": { lightDarkPreference: "dark" },
+  "aerogrid-hvac": { lightDarkPreference: "dark" },
   "motion-editorial": { lightDarkPreference: "dark", specialFields: ["typographyScale"], typographyScale: 1.05 },
   finwise: { lightDarkPreference: "light", buttonTreatment: "soft" },
   "iron-ember": { lightDarkPreference: "dark" },

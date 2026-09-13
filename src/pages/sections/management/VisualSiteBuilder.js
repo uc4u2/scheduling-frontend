@@ -116,6 +116,7 @@ import {
   createIronEmberProjectGalleryModule,
   createSemanticModule,
   inferPageKind,
+  isWebsiteVideoReference,
   normalizeSemanticFieldPath,
   normalizeSemanticModules,
   normalizePageContent,
@@ -10349,7 +10350,12 @@ function InspectorColumn({ floating = false } = {}) {
     const isIronEmberTheme = normalizedNextThemeKey === "iron-ember";
     const isForgeMotionTheme = normalizedNextThemeKey === "forge-motion";
     const isQuietHarborTheme = normalizedNextThemeKey === "quiet-harbor";
-    const allowsHeroVideoMedia = isIronEmberTheme || isForgeMotionTheme;
+    const isAeroGridTheme = normalizedNextThemeKey === "aerogrid-hvac";
+    // Hero media is a shared Next.js contract. Every semantic Next.js theme
+    // receives the same MP4/WebM selection surface; the shared renderer swaps
+    // an image presentation for a safe muted video while preserving each
+    // theme's layout, poster fallback, and reduced-motion behaviour.
+    const allowsHeroVideoMedia = Boolean(normalizedNextThemeKey);
     const syncPrimaryImagePatch = (patch = {}) => {
       const next = { ...patch };
       if (Object.prototype.hasOwnProperty.call(next, "image")) {
@@ -10690,7 +10696,11 @@ function InspectorColumn({ floating = false } = {}) {
             </Stack>
             <Stack spacing={1.5} sx={{ order: 1 }}>
               <Typography variant="overline" color="text.secondary">Media</Typography>
-              <Box data-module-field-path={contentPath("image")}><ImageField label={isQuietHarborTheme ? "Hero fallback image" : allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({ image: url, imageUrl: url })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))} /></Box>
+              <Box data-module-field-path={contentPath("image")}><ImageField label={isQuietHarborTheme ? "Hero fallback image" : allowsHeroVideoMedia ? "Hero image or video" : "Hero image"} allowVideo={allowsHeroVideoMedia} value={content.image || content.imageUrl || ""} onChange={(url) => updateSelectedContent({
+                image: url,
+                imageUrl: url,
+                ...(isQuietHarborTheme ? {} : { videoUrl: isWebsiteVideoReference(url) ? url : "" }),
+              })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))} /></Box>
               <TextField size="small" label={allowsHeroVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
               {isQuietHarborTheme ? <>
                 <Box data-module-field-path={contentPath("videoUrl")}>
@@ -10717,6 +10727,15 @@ function InspectorColumn({ floating = false } = {}) {
               </> : isForgeMotionTheme ? <Box data-module-field-path={contentPath("posterImage")}>
                 <ImageField
                   label="Hero video poster / mobile fallback"
+                  value={content.posterImage || ""}
+                  onChange={(url) => updateSelectedContent({ posterImage: url })}
+                  companyId={companyId}
+                  fieldKey={`${selectedSemanticModule.id}:${contentPath("posterImage")}`}
+                  {...mediaPositionControl(contentPath("posterImage"), content.posterImagePosition, (posterImagePosition) => updateSelectedContent({ posterImagePosition }))}
+                />
+              </Box> : allowsHeroVideoMedia ? <Box data-module-field-path={contentPath("posterImage")}>
+                <ImageField
+                  label="Video poster / mobile fallback"
                   value={content.posterImage || ""}
                   onChange={(url) => updateSelectedContent({ posterImage: url })}
                   companyId={companyId}
@@ -10915,6 +10934,18 @@ function InspectorColumn({ floating = false } = {}) {
         ) : null}
         {selectedSemanticModule.type === "featureStory" ? (
           <>
+            {isAeroGridTheme ? (
+              <TextField
+                size="small"
+                label="YouTube video URL (optional)"
+                value={content.videoUrl || ""}
+                onChange={(event) => updateSelectedContent({ videoUrl: event.target.value })}
+                helperText="Paste a YouTube watch, Shorts, youtu.be, or embed URL. When empty, the feature image remains visible."
+                placeholder="https://www.youtube.com/watch?v=..."
+                fullWidth
+                inputProps={{ "data-module-field-path": contentPath("videoUrl") }}
+              />
+            ) : null}
             <Box data-module-field-path={contentPath("secondaryImage")}>
               <ImageField
                 label="Secondary image"

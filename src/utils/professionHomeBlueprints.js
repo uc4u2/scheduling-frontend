@@ -7,6 +7,7 @@ import { createQuietHarborOriginalHomeModules } from "./quietHarborHomeBlueprint
 import { createFieldcraftOriginalHomeModules } from "./fieldcraftHomeBlueprint";
 import { createMotionEditorialOriginalHomeModules } from "./motionEditorialHomeBlueprint";
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
+import { createAeroGridHvacHomeModules } from "./aeroGridHvacHomeBlueprint";
 import { createModernGradientOriginalHomeModules } from "./modernGradientHomeBlueprint";
 import { createFinwiseOriginalHomeModules } from "./finwiseHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
@@ -107,9 +108,15 @@ const BLUEPRINTS = {
   },
   "eldora-dark": {
     label: "Eldora Dark",
-    description: "its original cinematic hero, capability ticker, service bento, planning showcase, animated FAQ, options, and dark lead ending",
-    pageTitle: "Comfort systems, made clearer.",
+    description: "its v2 thermal-field hero, operational comfort selector, diagnosis sequence, maintenance story, project media, service areas, verified reviews, FAQ, and shared inquiry ending",
+    pageTitle: "Clarity for every season at home.",
     createModules: createEldoraDarkOriginalHomeModules,
+  },
+  "aerogrid-hvac": {
+    label: "AeroGrid HVAC",
+    description: "its conversion-led video-ready hero, HVAC service paths, customer journey, verified review wall, and combined contact and map ending",
+    pageTitle: "Comfort service without the runaround.",
+    createModules: createAeroGridHvacHomeModules,
   },
   "modern-gradient": {
     label: "Modern Gradient",

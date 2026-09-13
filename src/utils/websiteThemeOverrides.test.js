@@ -14,6 +14,7 @@ describe("website theme overrides", () => {
   const registeredNextThemeKeys = [
     "modern-gradient",
     "eldora-dark",
+    "aerogrid-hvac",
     "motion-editorial",
     "finwise",
     "iron-ember",
