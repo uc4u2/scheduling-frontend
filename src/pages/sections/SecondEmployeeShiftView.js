@@ -60,6 +60,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import api from "../../utils/api";
+import { FIELD_PHOTO_ACCEPT, FIELD_PHOTO_HELP, fieldPhotoAuthorizePath, uploadFieldPhoto, validateFieldPhoto } from "../../utils/fieldPhotoUpload";
 import { STATUS } from "../../utils/shiftSwap";
 import { POLL_MS } from "../../utils/shiftSwap";
 import ShiftSwapPanel from "../../components/ShiftSwapPanel";
@@ -583,15 +584,17 @@ const openFieldPhotoUpload = (shift) => {
 };
 
 const addFieldPhotoFiles = (files) => {
-  const maxBytes = Number(fieldPhotosStatus?.max_image_bytes || 10 * 1024 * 1024);
-  const maxMb = Number(fieldPhotosStatus?.max_image_mb || 10);
+  const maxBytes = Number(fieldPhotosStatus?.direct_upload_enabled ? fieldPhotosStatus?.max_input_bytes : fieldPhotosStatus?.max_image_bytes) || 10 * 1024 * 1024;
   const candidates = Array.from(files || []);
-  const oversized = candidates.filter((file) => Number(file?.size || 0) > maxBytes);
-  const accepted = candidates.filter((file) => Number(file?.size || 0) <= maxBytes);
-  if (oversized.length) {
+  const accepted = [];
+  const rejected = [];
+  candidates.forEach((file) => {
+    try { validateFieldPhoto(file, maxBytes); accepted.push(file); } catch (error) { rejected.push(error.message); }
+  });
+  if (rejected.length) {
     setSnackbar({
       open: true,
-      msg: `${oversized.length} photo${oversized.length === 1 ? " is" : "s are"} larger than the ${maxMb} MB limit and ${oversized.length === 1 ? "was" : "were"} not selected.`,
+      msg: rejected[0],
       error: true,
     });
   }
@@ -620,18 +623,29 @@ const submitFieldPhotoUpload = async () => {
     for (let index = 0; index < photoUploadFiles.length; index += 1) {
       const file = photoUploadFiles[index];
       setPhotoUploadProgress(`Uploading ${index + 1} of ${photoUploadFiles.length}`);
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("note", photoUploadNote || "");
       const loc = locationPayload?.location || {};
-      Object.entries(loc).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          formData.append(`location[${key}]`, value);
-        }
-      });
       try {
-        await api.post(`/employee/shifts/${photoUploadShift.id}/field-photos`, formData, {
-          headers: { ...authHeader, "Content-Type": "multipart/form-data" },
+        await uploadFieldPhoto({
+          file,
+          directUploadEnabled: fieldPhotosStatus?.direct_upload_enabled,
+          authorizePath: fieldPhotoAuthorizePath.employeeShift(photoUploadShift.id),
+          metadata: {
+            note: photoUploadNote || "",
+            location: loc,
+            fallbackMaxBytes: fieldPhotosStatus?.max_image_bytes,
+          },
+          onStatus: (status) => setPhotoUploadProgress(status === "uploading" ? `Uploading ${index + 1} of ${photoUploadFiles.length}` : "Preparing your photo securely…"),
+          fallbackUpload: async (fallbackFile, metadata) => {
+            const formData = new FormData();
+            formData.append("file", fallbackFile);
+            formData.append("note", metadata.note || "");
+            Object.entries(metadata.location || {}).forEach(([key, value]) => {
+              if (value !== undefined && value !== null && value !== "") formData.append(`location[${key}]`, value);
+            });
+            return api.post(`/employee/shifts/${photoUploadShift.id}/field-photos`, formData, {
+              headers: { ...authHeader, "Content-Type": "multipart/form-data" },
+            });
+          },
         });
         uploaded += 1;
       } catch (err) {
@@ -4182,7 +4196,7 @@ const polishedPanelSx = employeePolish
                     hidden
                     type="file"
                     multiple
-                    accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                    accept={FIELD_PHOTO_ACCEPT}
                     capture="environment"
                     onChange={(event) => {
                       const files = Array.from(event.target.files || []);
@@ -4197,7 +4211,7 @@ const polishedPanelSx = employeePolish
                     hidden
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+                    accept={FIELD_PHOTO_ACCEPT}
                     onChange={(event) => {
                       const files = Array.from(event.target.files || []);
                       event.target.value = "";
@@ -4207,7 +4221,7 @@ const polishedPanelSx = employeePolish
                 </Button>
               </Stack>
               <Typography variant="caption" color="text.secondary">
-                JPG, PNG, WebP, HEIC, or HEIF. Maximum {fieldPhotosStatus?.max_image_mb || 10} MB per photo. HEIC/HEIF is converted to JPG securely.
+                {fieldPhotosStatus?.direct_upload_enabled ? FIELD_PHOTO_HELP : `JPG, PNG, WebP, HEIC, or HEIF. Maximum ${fieldPhotosStatus?.max_image_mb || 10} MB per photo.`}
               </Typography>
             </Stack>
             {photoUploadFiles.length > 0 && (

@@ -28,7 +28,7 @@ import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer } from "react-leaflet";
-import { acceptEmployeeDispatchAcknowledgement, getEmployeeDispatchAcknowledgement, getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, previewMyWorkOrderDispatchRoute, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhoto } from "../financeApi";
+import { acceptEmployeeDispatchAcknowledgement, getEmployeeDispatchAcknowledgement, getMyWorkOrder, getMyWorkOrderDispatch, listMyWorkOrderFieldPhotos, previewMyWorkOrderDispatchRoute, updateMyWorkOrderDispatchLocation, updateMyWorkOrderDispatchStatus, uploadMyWorkOrderFieldPhotoFromDevice } from "../financeApi";
 import FinanceStatusChip from "../components/FinanceStatusChip";
 import { API_BASE_URL } from "../../../utils/api";
 import { getAuthedCompanyId } from "../../../utils/authedCompany";
@@ -37,6 +37,7 @@ import { getUserTimezone } from "../../../utils/timezone";
 import { captureDispatchStatusLocation } from "./dispatchLocation";
 import { formatAssignmentScheduleLabel, groupAssignmentRows } from "../assignmentGrouping";
 import "leaflet/dist/leaflet.css";
+import { FIELD_PHOTO_ACCEPT, FIELD_PHOTO_HELP, validateFieldPhoto } from "../../../utils/fieldPhotoUpload";
 
 const DISPATCH_STATUS_LABELS = {
   not_started: "Not started",
@@ -58,6 +59,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
   const [photoFile, setPhotoFile] = useState(null);
   const [photoNote, setPhotoNote] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoUploadStatus, setPhotoUploadStatus] = useState("");
   const [dispatch, setDispatch] = useState(null);
   const [dispatchSettings, setDispatchSettings] = useState(null);
   const [dispatchRoute, setDispatchRoute] = useState(null);
@@ -170,10 +172,12 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
     setUploadingPhoto(true);
     setPhotoError("");
     try {
-      const formData = new FormData();
-      formData.append("file", photoFile);
-      if (photoNote.trim()) formData.append("note", photoNote.trim());
-      await uploadMyWorkOrderFieldPhoto(workOrder.id, formData);
+      await uploadMyWorkOrderFieldPhotoFromDevice(workOrder.id, photoFile, {
+        note: photoNote.trim(),
+        directUploadEnabled: photoEntitlement?.direct_upload_enabled,
+        fallbackMaxBytes: photoEntitlement?.max_image_bytes,
+        onStatus: setPhotoUploadStatus,
+      });
       const photoRes = await listMyWorkOrderFieldPhotos(workOrder.id);
       setPhotos(Array.isArray(photoRes?.items) ? photoRes.items : []);
       setPhotoEntitlement(photoRes?.summary || null);
@@ -183,14 +187,17 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
       setPhotoError(err?.response?.data?.message || err?.response?.data?.error || err?.message || "Unable to upload work-order photo.");
     } finally {
       setUploadingPhoto(false);
+      setPhotoUploadStatus("");
     }
   };
 
   const handleSelectPhoto = (file) => {
-    const maxBytes = Number(photoEntitlement?.max_image_bytes || 10 * 1024 * 1024);
-    if (file && Number(file.size || 0) > maxBytes) {
+    const maxBytes = Number(photoEntitlement?.direct_upload_enabled ? photoEntitlement?.max_input_bytes : photoEntitlement?.max_image_bytes) || 10 * 1024 * 1024;
+    try {
+      if (file) validateFieldPhoto(file, maxBytes);
+    } catch (error) {
       setPhotoFile(null);
-      setPhotoError(`Photo is too large. Maximum allowed size is ${photoEntitlement?.max_image_mb || 10} MB.`);
+      setPhotoError(error.message);
       return;
     }
     setPhotoError("");
@@ -633,6 +640,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                   </Typography>
                 </Stack>
                 {photoError ? <Alert severity="error">{photoError}</Alert> : null}
+                {uploadingPhoto ? <Alert severity="info">{photoUploadStatus === "uploading" ? "Uploading…" : "Preparing your photo securely…"}</Alert> : null}
                 {photoEntitlement && !photoEntitlement.upload_enabled ? (
                   <Alert severity="warning">
                     {photoEntitlement.read_only
@@ -641,7 +649,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                   </Alert>
                 ) : null}
                 <Typography variant="caption" color="text.secondary">
-                  JPG, PNG, WebP, HEIC, or HEIF. Maximum {photoEntitlement?.max_image_mb || 10} MB per photo. HEIC/HEIF is converted to JPG.
+                  {photoEntitlement?.direct_upload_enabled ? FIELD_PHOTO_HELP : `JPG, PNG, WebP, HEIC, or HEIF. Maximum ${photoEntitlement?.max_image_mb || 10} MB per photo.`}
                 </Typography>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
@@ -650,7 +658,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                       <input
                         hidden
                         type="file"
-                        accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                        accept={FIELD_PHOTO_ACCEPT}
                         capture="environment"
                         onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                       />
@@ -660,7 +668,7 @@ export default function EmployeeWorkOrderDetailDialog({ open, workOrderId, onClo
                       <input
                         hidden
                         type="file"
-                        accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                        accept={FIELD_PHOTO_ACCEPT}
                         onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                       />
                     </Button>

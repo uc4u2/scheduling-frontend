@@ -52,7 +52,7 @@ const SECTIONS = [
     title: "Storage and billing",
     icon: <StorageOutlinedIcon color="primary" />,
     items: [
-      "Field Photos includes 5 GB of storage and photos are kept for 90 days.",
+      "Field Photos includes 10 GB of storage and photos are kept for 90 days.",
       "If storage gets close to full, use Add 10 GB to expand storage from the manager billing flow.",
       "If the add-on is cancelled or unpaid, employees cannot upload new photos. Existing photos stay read-only during the grace period.",
     ],

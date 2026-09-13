@@ -45,7 +45,7 @@ describe("FieldPhotosBillingModal", () => {
       data: {
         recurring_amount_formatted: "29.00 USD",
         interval: "month",
-        included_storage_label: "5 GB",
+        included_storage_label: "10 GB",
         retention_days: 90,
         amount_due_today_formatted: "29.00 USD",
       },
@@ -57,7 +57,7 @@ describe("FieldPhotosBillingModal", () => {
     renderModal();
 
     expect(await screen.findByText(/29\.00 USD\/month/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes 5 GB · 90-day retention/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes 10 GB · 90-day retention/i)).toBeInTheDocument();
   });
 
   it("shows neutral unavailable copy when preview omits storage and retention values", async () => {
@@ -87,7 +87,7 @@ describe("FieldPhotosBillingModal", () => {
       data: {
         recurring_amount_formatted: "29.00 CAD",
         interval: "month",
-        included_storage_label: "5 GB",
+        included_storage_label: "10 GB",
         retention_days: 90,
         amount_due_today_formatted: "29.00 CAD",
         requires_base_subscription: true,

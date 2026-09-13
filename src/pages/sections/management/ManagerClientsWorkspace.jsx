@@ -84,6 +84,7 @@ import SectionCard from "../../../components/ui/SectionCard";
 import api from "../../../utils/api";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
+import { FIELD_PHOTO_ACCEPT, FIELD_PHOTO_HELP, validateFieldPhoto } from "../../../utils/fieldPhotoUpload";
 import {
   archiveFinanceClient,
   blockManagerClient360Bookings,
@@ -3243,8 +3244,9 @@ export default function ManagerClientsWorkspace() {
     setPhotosError("");
     try {
       await uploadManagerClient360PhotoFromDevice(clientId, photoFile, {
-        category: "photos",
         note: photoNote?.trim() || "",
+        directUploadEnabled: photoEntitlement?.direct_upload_enabled,
+        fallbackMaxBytes: photoEntitlement?.max_image_bytes,
       });
       setPhotoFile(null);
       setPhotoNote("");
@@ -3260,10 +3262,11 @@ export default function ManagerClientsWorkspace() {
   };
 
   const handleSelectPhoto = (file) => {
-    const maxBytes = Number(photoEntitlement?.max_image_bytes || 10 * 1024 * 1024);
-    if (file && Number(file.size || 0) > maxBytes) {
-      const maxMb = Number(photoEntitlement?.max_image_mb || 10);
-      const message = `Photo is too large. Maximum allowed size is ${maxMb} MB.`;
+    const maxBytes = Number(photoEntitlement?.direct_upload_enabled ? photoEntitlement?.max_input_bytes : photoEntitlement?.max_image_bytes) || 10 * 1024 * 1024;
+    try {
+      if (file) validateFieldPhoto(file, maxBytes);
+    } catch (error) {
+      const message = error.message;
       setPhotoFile(null);
       setPhotosError(message);
       enqueueSnackbar(message, { variant: "error" });
@@ -4750,7 +4753,7 @@ export default function ManagerClientsWorkspace() {
                                 <input
                                   hidden
                                   type="file"
-                                  accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif"
+                                  accept={FIELD_PHOTO_ACCEPT}
                                   onChange={(event) => handleSelectPhoto(event.target.files?.[0] || null)}
                                 />
                               </Button>
@@ -4766,7 +4769,7 @@ export default function ManagerClientsWorkspace() {
                           </Grid>
                           <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap>
                             <Typography variant="caption" color="text.secondary">
-                              JPG, PNG, WebP, HEIC, or HEIF. Maximum {photoEntitlement?.max_image_mb || 10} MB per photo. HEIC/HEIF is converted to JPG securely.
+                              {photoEntitlement?.direct_upload_enabled ? FIELD_PHOTO_HELP : `JPG, PNG, WebP, HEIC, or HEIF. Maximum ${photoEntitlement?.max_image_mb || 10} MB per photo.`}
                             </Typography>
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                               <Button variant="text" onClick={loadPhotos} disabled={photosLoading || photoUploading}>

@@ -1,5 +1,6 @@
 import api, { API_BASE_URL } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
+import { fieldPhotoAuthorizePath, uploadFieldPhoto } from "../../utils/fieldPhotoUpload";
 
 const unwrap = async (promise) => {
   const res = await promise;
@@ -324,6 +325,24 @@ export const uploadMyWorkOrderFieldPhoto = (id, formData) =>
   unwrap(api.post(`/finance/my-work-orders/${id}/field-photos`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   }));
+export const uploadMyWorkOrderFieldPhotoFromDevice = (id, file, options = {}) =>
+  uploadFieldPhoto({
+    file,
+    directUploadEnabled: Boolean(options.directUploadEnabled),
+    authorizePath: fieldPhotoAuthorizePath.employeeWorkOrder(id),
+    metadata: {
+      note: options.note || "",
+      location: options.location || {},
+      fallbackMaxBytes: options.fallbackMaxBytes,
+    },
+    onStatus: options.onStatus,
+    fallbackUpload: async (fallbackFile, metadata) => {
+      const form = new FormData();
+      form.append("file", fallbackFile);
+      if (metadata.note) form.append("note", metadata.note);
+      return uploadMyWorkOrderFieldPhoto(id, form);
+    },
+  });
 export const getPublicClientPhotoGallery = (token) =>
   unwrap(api.get(`/api/public/client-photo-galleries/${encodeURIComponent(token)}`, { noAuth: true, noCompanyHeader: true }));
 export const getPublicWorkOrderTracking = (token) =>
@@ -621,20 +640,29 @@ export const uploadManagerClient360DocumentFromDevice = async (
 export const uploadManagerClient360PhotoFromDevice = async (
   clientId,
   file,
-  { note = "" } = {}
+  { note = "", directUploadEnabled = false, fallbackMaxBytes, onStatus } = {}
 ) => {
   if (!clientId || !file) {
     throw new Error("Choose a photo to upload first.");
   }
-  const form = new FormData();
-  form.append("file", file);
-  if (note?.trim()) form.append("note", note.trim());
-  const created = await unwrap(api.post(
-    `/api/manager/client-360/${clientId}/field-photos`,
-    form,
-    { headers: { "Content-Type": "multipart/form-data" } }
-  ));
-  return created?.photo || created;
+  return uploadFieldPhoto({
+    file,
+    directUploadEnabled,
+    authorizePath: fieldPhotoAuthorizePath.managerClient(clientId),
+    metadata: { note: note?.trim() || "", fallbackMaxBytes },
+    onStatus,
+    fallbackUpload: async (fallbackFile, metadata) => {
+      const form = new FormData();
+      form.append("file", fallbackFile);
+      if (metadata.note) form.append("note", metadata.note);
+      const created = await unwrap(api.post(
+        `/api/manager/client-360/${clientId}/field-photos`,
+        form,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      ));
+      return created?.photo || created;
+    },
+  });
 };
 
 export const listBillingRecipients = async (params = {}) => {

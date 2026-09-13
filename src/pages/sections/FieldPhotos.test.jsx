@@ -106,7 +106,7 @@ describe("FieldPhotos manager page", () => {
           data: {
             recurring_amount_formatted: "29.00 USD",
             interval: "month",
-            included_storage_label: "5 GB",
+            included_storage_label: "10 GB",
             retention_days: 90,
           },
         });
@@ -119,7 +119,7 @@ describe("FieldPhotos manager page", () => {
     renderPage();
 
     expect(await screen.findByText(/Starts at 29\.00 USD\/month/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes 5 GB · 90-day retention/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes 10 GB · 90-day retention/i)).toBeInTheDocument();
     expect(screen.getByText(/No charge is created until you review and confirm the billing preview\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view pricing & activate/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open billing settings/i })).toBeInTheDocument();
