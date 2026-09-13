@@ -66,7 +66,7 @@ describe("FieldPhotosBillingModal", () => {
   it("renders authoritative recurring price and included storage from preview", async () => {
     renderModal();
 
-    expect(await screen.findByText(/29\.00 USD\/month/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/29\.00 USD\/month/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/Includes 25 GB · Retention options up to 7 years/i)).toBeInTheDocument();
     expect(screen.getByText(/\+50 GB additional storage: 10\.00 USD\/month/i)).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "90 days" })).not.toBeChecked();
@@ -97,6 +97,22 @@ describe("FieldPhotosBillingModal", () => {
     });
   });
 
+  it("keeps every retention choice at the same base price and explains storage growth", async () => {
+    renderModal();
+
+    fireEvent.click(await screen.findByRole("radio", { name: "7 years" }));
+
+    expect(screen.getByText(/All retention options are included at the same 29\.00 USD\/month add-on price/i)).toBeInTheDocument();
+    expect(screen.getByText(/25 GB is included\. Longer retention may use more storage over time; additional 50 GB storage packs are 10\.00 USD\/month/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/29\.00 USD\/month/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /confirm activation/i })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm activation/i }));
+    await waitFor(() => {
+      expect(mockApiPost).toHaveBeenCalledWith("/billing/field-photos/activate", { retention_policy: "7y" });
+    });
+  });
+
   it("shows the exact add-on price but blocks activation until a base plan exists", async () => {
     mockApiGet.mockResolvedValue({
       data: {
@@ -114,7 +130,7 @@ describe("FieldPhotosBillingModal", () => {
 
     renderModal();
 
-    expect(await screen.findByText(/29\.00 CAD\/month/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/29\.00 CAD\/month/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/Start a Schedulaa plan before activating Field Photos/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /confirm activation/i })).toBeDisabled();
     expect(mockApiPost).not.toHaveBeenCalled();

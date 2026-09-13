@@ -82,6 +82,10 @@ const FieldPhotosBillingModal = ({
     : preview?.recurring_amount_formatted || null;
   const includedStorageLabel = hasValue(preview?.included_storage_label) ? preview.included_storage_label : "Included storage unavailable";
   const storageExpansionLabel = hasValue(preview?.storage_expansion_label) ? preview.storage_expansion_label : "Storage expansion information unavailable";
+  const storageExpansionAmountLabel = preview?.storage_expansion_amount_formatted
+    ? `${preview.storage_expansion_amount_formatted}${preview?.storage_expansion_interval ? `/${preview.storage_expansion_interval}` : ""}`
+    : "pricing unavailable";
+  const storageExpansionProseLabel = storageExpansionLabel.replace(/^\+\s*/, "");
   const retentionOptions = Array.isArray(preview?.retention_options) ? preview.retention_options : [];
   const selectedRetentionLabel = retentionOptions.find((option) => option.code === retentionPolicy)?.label || "No option selected";
   const itemDescription = isStorage ? storageExpansionLabel : "Private client and proof-of-work photo uploads";
@@ -256,6 +260,25 @@ const FieldPhotosBillingModal = ({
               <Typography variant="caption" color="text.secondary">
                 Choose how long your business needs Field Photos retained. Current selection: {selectedRetentionLabel}.
               </Typography>
+              <Box
+                sx={{
+                  border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                  borderRadius: 1.25,
+                  bgcolor: alpha(theme.palette.info.main, 0.055),
+                  px: 1.4,
+                  py: 1.1,
+                  mt: 1.25,
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                  {recurringLabel
+                    ? `All retention options are included at the same ${recurringLabel} add-on price.`
+                    : "All retention options are included at the same base monthly add-on price."}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.55, mt: 0.35 }}>
+                  {includedStorageLabel} is included. Longer retention may use more storage over time; additional {storageExpansionProseLabel} storage packs are {storageExpansionAmountLabel}.
+                </Typography>
+              </Box>
             </FormControl>
           )}
           {loadingPreview && (
