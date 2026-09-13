@@ -229,7 +229,7 @@ const FieldPhotosBillingModal = ({
                   {storageExpansionLabel} additional storage: {preview?.storage_expansion_amount_formatted || "Pricing unavailable"}{preview?.storage_expansion_interval ? `/${preview.storage_expansion_interval}` : ""}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Secure private storage · Secure long-term archive · Large mobile photos are automatically optimized
+                  Secure private storage · Secure long-term archive · Private AV-scanned photo uploads
                 </Typography>
               </Stack>
             )}

@@ -130,7 +130,7 @@ describe("FieldPhotos manager page", () => {
 
     expect(await screen.findByText(/Starts at 29\.00 USD\/month/i)).toBeInTheDocument();
     expect(screen.getByText(/25 GB included · Retention options up to 7 years/i)).toBeInTheDocument();
-    expect(screen.getByText(/Large mobile photos are automatically optimized/i)).toBeInTheDocument();
+    expect(screen.getByText(/Private AV-scanned uploads/i)).toBeInTheDocument();
     expect(screen.getByText(/No charge is created until you review and confirm the billing preview\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view pricing & activate/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open billing settings/i })).toBeInTheDocument();

@@ -783,7 +783,7 @@ const FieldPhotos = () => {
                           {includedStorageLabel} included · Retention options up to 7 years
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Secure long-term archive options · Large mobile photos are automatically optimized for private storage.
+                          Secure long-term archive options · Private AV-scanned uploads; current limits are shown at each upload.
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {summary?.price_configured

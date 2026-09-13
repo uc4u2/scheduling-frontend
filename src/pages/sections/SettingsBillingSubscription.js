@@ -596,7 +596,7 @@ const SettingsBillingSubscription = () => {
                     Includes {fieldPhotosIncludedStorageLabel} · Retention options up to 7 years
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Secure long-term archive · Large mobile photos are automatically optimized
+                    Secure long-term archive · Private AV-scanned photo uploads
                   </Typography>
                   {fieldPhotos.price_configured ? (
                     <Typography variant="body2" color="text.secondary">
