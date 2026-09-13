@@ -45,8 +45,18 @@ describe("FieldPhotosBillingModal", () => {
       data: {
         recurring_amount_formatted: "29.00 USD",
         interval: "month",
-        included_storage_label: "10 GB",
-        retention_days: 90,
+        included_storage_label: "25 GB",
+        retention_policy: "90d",
+        retention_label: "90 days",
+        retention_options: [
+          { code: "90d", label: "90 days" },
+          { code: "1y", label: "1 year" },
+          { code: "3y", label: "3 years" },
+          { code: "7y", label: "7 years" },
+        ],
+        storage_expansion_label: "+50 GB",
+        storage_expansion_amount_formatted: "10.00 USD",
+        storage_expansion_interval: "month",
         amount_due_today_formatted: "29.00 USD",
       },
     });
@@ -57,7 +67,10 @@ describe("FieldPhotosBillingModal", () => {
     renderModal();
 
     expect(await screen.findByText(/29\.00 USD\/month/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes 10 GB · 90-day retention/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes 25 GB · Retention options up to 7 years/i)).toBeInTheDocument();
+    expect(screen.getByText(/\+50 GB additional storage: 10\.00 USD\/month/i)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "90 days" })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: /confirm activation/i })).toBeDisabled();
   });
 
   it("shows neutral unavailable copy when preview omits storage and retention values", async () => {
@@ -65,8 +78,9 @@ describe("FieldPhotosBillingModal", () => {
 
     renderModal();
 
-    expect(await screen.findByText(/Pricing unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes Included storage unavailable · Retention information unavailable/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Pricing unavailable/i)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Includes Included storage unavailable · Retention options up to 7 years/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /confirm activation/i })).toBeDisabled();
   });
 
   it("does not activate until the manager confirms", async () => {
@@ -75,10 +89,11 @@ describe("FieldPhotosBillingModal", () => {
     expect(await screen.findByRole("button", { name: /confirm activation/i })).toBeInTheDocument();
     expect(mockApiPost).not.toHaveBeenCalled();
 
+    fireEvent.click(screen.getByRole("radio", { name: "1 year" }));
     fireEvent.click(screen.getByRole("button", { name: /confirm activation/i }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith("/billing/field-photos/activate", {});
+      expect(mockApiPost).toHaveBeenCalledWith("/billing/field-photos/activate", { retention_policy: "1y" });
     });
   });
 
@@ -87,8 +102,10 @@ describe("FieldPhotosBillingModal", () => {
       data: {
         recurring_amount_formatted: "29.00 CAD",
         interval: "month",
-        included_storage_label: "10 GB",
-        retention_days: 90,
+        included_storage_label: "25 GB",
+        retention_policy: "90d",
+        retention_label: "90 days",
+        retention_options: [{ code: "90d", label: "90 days" }],
         amount_due_today_formatted: "29.00 CAD",
         requires_base_subscription: true,
         activation_message: "Start a Schedulaa plan before activating Field Photos.",

@@ -491,7 +491,6 @@ const Communications = () => {
   const [announcements, setAnnouncements] = useState({ items: [], context: {} });
   const [files, setFiles] = useState({ items: [], context: {} });
   const [fieldPhotos, setFieldPhotos] = useState({ items: [], context: {}, summary: {} });
-  const [billingStatus, setBillingStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -520,8 +519,7 @@ const Communications = () => {
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [scanRefreshUntil, setScanRefreshUntil] = useState(0);
-  const [activatingFieldPhotos, setActivatingFieldPhotos] = useState(false);
-  const fieldPhotosEntitlement = billingStatus?.field_photos || fieldPhotos.summary || {};
+  const fieldPhotosEntitlement = fieldPhotos.summary || {};
   const fieldPhotosVisible = Boolean(fieldPhotosEntitlement.addon_active || fieldPhotosEntitlement.read_only);
 
   const context = activeTab === "announcements" ? announcements.context || {} : files.context || announcements.context || {};
@@ -592,7 +590,7 @@ const Communications = () => {
 
   const filteredRows = activeTab === "announcements" ? announcements.items || [] : activeTab === "files" ? files.items || [] : fieldPhotos.items || [];
   const activePagination = activeTab === "announcements" ? announcements.pagination : activeTab === "files" ? files.pagination : fieldPhotos.pagination;
-  const summary = activeTab === "announcements" ? announcements.summary || files.summary || {} : activeTab === "files" ? files.summary || announcements.summary || {} : fieldPhotos.summary || billingStatus?.field_photos || {};
+  const summary = activeTab === "announcements" ? announcements.summary || files.summary || {} : activeTab === "files" ? files.summary || announcements.summary || {} : fieldPhotos.summary || {};
   const hasVisiblePendingScan = (announcements.items || []).some((row) => fileIsWaitingForScan(row.attachment_file))
     || (files.items || []).some((row) => fileIsWaitingForScan(row.file));
 
@@ -883,35 +881,7 @@ const Communications = () => {
     }
   };
 
-  const activateFieldPhotos = async () => {
-    setActivatingFieldPhotos(true);
-    setError("");
-    setSuccess("");
-    try {
-      const res = await api.post("/billing/field-photos/activate", {});
-      setBillingStatus(res.data || null);
-      setSuccess("Field Photos activated.");
-      loadData(true);
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to activate Field Photos.");
-    } finally {
-      setActivatingFieldPhotos(false);
-    }
-  };
-
-  const addFieldPhotoStorage = async () => {
-    setError("");
-    setSuccess("");
-    try {
-      const currentQty = Number(summary?.storage_addon_qty || 0);
-      const res = await api.post("/billing/field-photos/storage/set", { addon_qty: currentQty + 1 });
-      setBillingStatus(res.data || null);
-      setSuccess("Field Photos storage updated.");
-      loadData(true);
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to update Field Photos storage.");
-    }
-  };
+  const openFieldPhotos = () => navigate("/manager/field-photos");
 
   const clearFieldPhotoShiftFilter = () => {
     setFieldPhotoShiftFilter("");
@@ -1119,10 +1089,12 @@ const Communications = () => {
                     <Chip key={label} label={label} {...readableChipProps(theme, "primary")} />
                   ))}
                 </Stack>
-                <Typography variant="h6" sx={{ fontWeight: 950 }}>$29/month</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {fieldPhotosEntitlement?.included_storage_label || "Included storage is shown in billing"} · Retention options up to 7 years
+                </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                  <Button variant="contained" onClick={activateFieldPhotos} disabled={activatingFieldPhotos} startIcon={activatingFieldPhotos ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}>
-                    {activatingFieldPhotos ? "Activating..." : "Activate Field Photos"}
+                  <Button variant="contained" onClick={openFieldPhotos} startIcon={<AddIcon />}>
+                    View pricing &amp; retention options
                   </Button>
                   <Typography variant="body2" color="text.secondary">Need more storage later? You can upgrade anytime.</Typography>
                 </Stack>
@@ -1147,17 +1119,19 @@ const Communications = () => {
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>Photo storage</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {summary?.retention_days || 90} days.
+                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Retention: {summary?.retention_label || "not available"}.
                       </Typography>
                     </Box>
                     {storagePercent(summary) >= 80 && (
-                      <Button size="small" variant="outlined" onClick={addFieldPhotoStorage}>Add 10 GB</Button>
+                      <Button size="small" variant="outlined" onClick={openFieldPhotos}>
+                        Add {summary?.storage_expansion_label || "storage"}
+                      </Button>
                     )}
                   </Stack>
                   <LinearProgress variant="determinate" value={storagePercent(summary)} sx={{ height: 7, borderRadius: 1 }} />
                   {storagePercent(summary) >= 100 && <Alert severity="error">Photo storage is full. New uploads are paused until storage is upgraded or older photos are removed.</Alert>}
                   {storagePercent(summary) >= 80 && storagePercent(summary) < 100 && <Alert severity="warning">You are getting close to your included Field Photos storage.</Alert>}
-                  {summary?.read_only && <Alert severity="warning">Field Photos has been cancelled. New uploads are disabled. Existing photos remain available during the read-only grace period.</Alert>}
+                  {summary?.read_only && <Alert severity="warning">Field Photos has been cancelled. New uploads are disabled. Existing photos remain read-only for download during the 30-day cancellation grace period.</Alert>}
                 </Stack>
               </CardContent>
             </Card>

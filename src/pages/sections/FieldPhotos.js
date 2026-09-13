@@ -77,8 +77,8 @@ const resolveIncludedStorageLabel = (preview, summary) => {
 };
 
 const resolveRetentionLabel = (preview, summary) => {
-  if (hasValue(preview?.retention_days)) return `${preview.retention_days}-day retention`;
-  if (hasValue(summary?.retention_days)) return `${summary.retention_days}-day retention`;
+  if (hasValue(summary?.retention_label)) return summary.retention_label;
+  if (hasValue(preview?.retention_label)) return preview.retention_label;
   return "Retention information unavailable";
 };
 
@@ -520,6 +520,8 @@ const FieldPhotos = () => {
   const [success, setSuccess] = useState("");
   const [billingModal, setBillingModal] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [retentionDraft, setRetentionDraft] = useState("");
+  const [savingRetention, setSavingRetention] = useState(false);
   const [search, setSearch] = useState("");
   const [readiness, setReadiness] = useState("");
   const [locationStatus, setLocationStatus] = useState("");
@@ -538,6 +540,11 @@ const FieldPhotos = () => {
   const visible = Boolean(summary.addon_active || summary.read_only);
   const includedStorageLabel = useMemo(() => resolveIncludedStorageLabel(fieldPhotosPreview, summary), [fieldPhotosPreview, summary]);
   const retentionLabel = useMemo(() => resolveRetentionLabel(fieldPhotosPreview, summary), [fieldPhotosPreview, summary]);
+  const retentionOptions = Array.isArray(summary?.retention_options) && summary.retention_options.length
+    ? summary.retention_options
+    : Array.isArray(fieldPhotosPreview?.retention_options)
+    ? fieldPhotosPreview.retention_options
+    : [];
   const quotaStateValue = storageState(summary);
   const rows = data.items || [];
   const photoGroups = useMemo(() => buildPhotoGroups(rows), [rows]);
@@ -592,6 +599,10 @@ const FieldPhotos = () => {
   useEffect(() => { loadData(); }, [page, pageSize, readiness, locationStatus, departmentId, employeeId, archived, shiftId, workOrderId, dateRange.start_date, dateRange.end_date]);
 
   useEffect(() => {
+    if (summary?.retention_policy) setRetentionDraft(summary.retention_policy);
+  }, [summary?.retention_policy]);
+
+  useEffect(() => {
     let active = true;
     setFieldPhotosPreviewLoading(true);
     setFieldPhotosPreviewError("");
@@ -640,6 +651,24 @@ const FieldPhotos = () => {
     setSuccess(message);
     setBillingModal(null);
     loadData(true);
+  };
+
+  const saveRetentionPolicy = async () => {
+    if (!retentionDraft || retentionDraft === summary?.retention_policy) return;
+    setSavingRetention(true);
+    setError("");
+    try {
+      const response = await api.put("/billing/field-photos/retention", {
+        retention_policy: retentionDraft,
+      });
+      setBillingStatus(response?.data || null);
+      setSuccess("Retention updated for new Field Photos. Existing photo expiration dates were not shortened.");
+      await loadData(true);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Unable to update Field Photos retention.");
+    } finally {
+      setSavingRetention(false);
+    }
   };
 
   const downloadPhoto = async (row) => {
@@ -736,7 +765,7 @@ const FieldPhotos = () => {
                     <PhotoCameraIcon />
                   </Box>
                   <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>Field Photos</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>Secure Field Photos</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.65, maxWidth: 660, lineHeight: 1.65 }}>
                       Enable private proof photos so employees and managers can keep client work images securely in one place.
                     </Typography>
@@ -751,7 +780,10 @@ const FieldPhotos = () => {
                           Starts at {fieldPhotosPreview?.recurring_amount_formatted ? `${fieldPhotosPreview.recurring_amount_formatted}/${fieldPhotosPreview.interval}` : "Pricing unavailable"}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Includes {includedStorageLabel} · {retentionLabel}
+                          {includedStorageLabel} included · Retention options up to 7 years
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Secure long-term archive options · Large mobile photos are automatically optimized for private storage.
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {summary?.price_configured
@@ -803,16 +835,42 @@ const FieldPhotos = () => {
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>Photo storage</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {hasValue(summary?.retention_days) ? summary.retention_days : "—"} days.
+                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Retention: {retentionLabel}.
                       </Typography>
                     </Box>
                     {quotaStateValue !== "NORMAL" && <Button size="small" variant="outlined" onClick={() => setBillingModal("storage")}>Review storage upgrade</Button>}
                   </Stack>
                   <LinearProgress variant="determinate" value={storagePercent(summary)} sx={{ height: 7, borderRadius: 1 }} />
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                    <FormControl size="small" sx={{ minWidth: 210 }}>
+                      <InputLabel id="field-photos-retention-select-label">Retain new photos for</InputLabel>
+                      <Select
+                        labelId="field-photos-retention-select-label"
+                        label="Retain new photos for"
+                        value={retentionDraft}
+                        onChange={(event) => setRetentionDraft(event.target.value)}
+                        disabled={!summary?.addon_active}
+                      >
+                        {retentionOptions.map((option) => (
+                          <MenuItem key={option.code} value={option.code}>{option.label}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Button
+                      variant="outlined"
+                      onClick={saveRetentionPolicy}
+                      disabled={!summary?.addon_active || savingRetention || !retentionDraft || retentionDraft === summary?.retention_policy}
+                    >
+                      {savingRetention ? "Saving..." : "Save retention"}
+                    </Button>
+                    <Typography variant="caption" color="text.secondary">
+                      Applies to new photos only; existing photo expiration dates are not shortened.
+                    </Typography>
+                  </Stack>
                   {quotaStateValue === "WARNING" && <Alert severity="warning">Field Photos storage is 80% used.</Alert>}
                   {quotaStateValue === "CRITICAL" && <Alert severity="warning">Storage is almost full. Add storage to prevent employee uploads from being interrupted.</Alert>}
                   {quotaStateValue === "FULL" && <Alert severity="error">Storage is full. Employee photo uploads are blocked until storage is increased or files are removed.</Alert>}
-                  {summary?.read_only && <Alert severity="warning">Field Photos has been cancelled. New uploads are disabled. Existing photos remain available during the read-only grace period.</Alert>}
+                  {summary?.read_only && <Alert severity="warning">Field Photos has been cancelled. New uploads are disabled. Existing photos remain read-only for download during the 30-day cancellation grace period.</Alert>}
                 </Stack>
               </CardContent>
             </Card>
@@ -943,7 +1001,12 @@ const FieldPhotos = () => {
           billingModal === "storage" ? "Field Photos storage updated." : "Field Photos activated."
         )}
       />
-      <FieldPhotosHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <FieldPhotosHelpDrawer
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        summary={summary}
+        preview={fieldPhotosPreview}
+      />
     </ManagementFrame>
   );
 };

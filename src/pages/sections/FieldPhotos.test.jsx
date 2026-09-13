@@ -5,12 +5,14 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import FieldPhotos from "./FieldPhotos";
 
 const mockApiGet = jest.fn();
+const mockApiPut = jest.fn();
 const mockNavigate = jest.fn();
 
 jest.mock("../../utils/api", () => ({
   __esModule: true,
   default: {
     get: (...args) => mockApiGet(...args),
+    put: (...args) => mockApiPut(...args),
     post: jest.fn(() => Promise.resolve({ data: {} })),
     delete: jest.fn(() => Promise.resolve({ data: {} })),
   },
@@ -47,6 +49,7 @@ describe("FieldPhotos manager page", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockNavigate.mockReset();
+    mockApiPut.mockResolvedValue({ data: { field_photos: { retention_policy: "90d", retention_label: "90 days" } } });
     mockApiGet.mockImplementation((url) => {
       if (url === "/billing/status") {
         return Promise.resolve({
@@ -57,11 +60,13 @@ describe("FieldPhotos manager page", () => {
               price_configured: true,
               storage_addon_qty: 0,
               storage_used_bytes: 0,
-              storage_quota_bytes: 5 * 1024 * 1024 * 1024,
-              retention_days: 90,
+              storage_quota_bytes: 25 * 1024 * 1024 * 1024,
+              retention_policy: "90d",
+              retention_label: "90 days",
+              retention_options: [{ code: "90d", label: "90 days" }, { code: "7y", label: "7 years" }],
               quota_status: {
                 used_bytes: 0,
-                quota_bytes: 5 * 1024 * 1024 * 1024,
+                quota_bytes: 25 * 1024 * 1024 * 1024,
                 usage_percent: 0,
                 state: "NORMAL",
                 uploads_enabled: true,
@@ -85,11 +90,13 @@ describe("FieldPhotos manager page", () => {
               price_configured: true,
               storage_addon_qty: 0,
               storage_used_bytes: 0,
-              storage_quota_bytes: 5 * 1024 * 1024 * 1024,
-              retention_days: 90,
+              storage_quota_bytes: 25 * 1024 * 1024 * 1024,
+              retention_policy: "90d",
+              retention_label: "90 days",
+              retention_options: [{ code: "90d", label: "90 days" }, { code: "7y", label: "7 years" }],
               quota_status: {
                 used_bytes: 0,
-                quota_bytes: 5 * 1024 * 1024 * 1024,
+                quota_bytes: 25 * 1024 * 1024 * 1024,
                 usage_percent: 0,
                 state: "NORMAL",
                 uploads_enabled: true,
@@ -106,8 +113,11 @@ describe("FieldPhotos manager page", () => {
           data: {
             recurring_amount_formatted: "29.00 USD",
             interval: "month",
-            included_storage_label: "10 GB",
-            retention_days: 90,
+            included_storage_label: "25 GB",
+            retention_policy: "90d",
+            retention_label: "90 days",
+            retention_options: [{ code: "90d", label: "90 days" }, { code: "7y", label: "7 years" }],
+            storage_expansion_label: "+50 GB",
           },
         });
       }
@@ -119,7 +129,8 @@ describe("FieldPhotos manager page", () => {
     renderPage();
 
     expect(await screen.findByText(/Starts at 29\.00 USD\/month/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes 10 GB · 90-day retention/i)).toBeInTheDocument();
+    expect(screen.getByText(/25 GB included · Retention options up to 7 years/i)).toBeInTheDocument();
+    expect(screen.getByText(/Large mobile photos are automatically optimized/i)).toBeInTheDocument();
     expect(screen.getByText(/No charge is created until you review and confirm the billing preview\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view pricing & activate/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open billing settings/i })).toBeInTheDocument();
@@ -144,7 +155,8 @@ describe("FieldPhotos manager page", () => {
               storage_addon_qty: 0,
               storage_used_bytes: 0,
               storage_quota_bytes: null,
-              retention_days: null,
+              retention_policy: null,
+              retention_label: null,
               price_configured: false,
               quota_status: {
                 used_bytes: 0,
@@ -172,7 +184,8 @@ describe("FieldPhotos manager page", () => {
               storage_addon_qty: 0,
               storage_used_bytes: 0,
               storage_quota_bytes: null,
-              retention_days: null,
+              retention_policy: null,
+              retention_label: null,
               price_configured: false,
               quota_status: {
                 used_bytes: 0,
@@ -197,7 +210,7 @@ describe("FieldPhotos manager page", () => {
     renderPage();
 
     expect(await screen.findByText(/Starts at Pricing unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes Included storage unavailable · Retention information unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Included storage unavailable included · Retention options up to 7 years/i)).toBeInTheDocument();
     expect(screen.getByText(/Field Photos billing is not configured yet\. Contact support to activate this add-on\./i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /view pricing & activate/i })).not.toBeInTheDocument();
   });
@@ -212,12 +225,14 @@ describe("FieldPhotos manager page", () => {
               read_only: false,
               price_configured: true,
               storage_addon_qty: 1,
-              storage_used_bytes: 5 * 1024 * 1024 * 1024,
-              storage_quota_bytes: 5 * 1024 * 1024 * 1024,
-              retention_days: 90,
+              storage_used_bytes: 25 * 1024 * 1024 * 1024,
+              storage_quota_bytes: 25 * 1024 * 1024 * 1024,
+              retention_policy: "7y",
+              retention_label: "7 years",
+              retention_options: [{ code: "90d", label: "90 days" }, { code: "7y", label: "7 years" }],
               quota_status: {
-                used_bytes: 5 * 1024 * 1024 * 1024,
-                quota_bytes: 5 * 1024 * 1024 * 1024,
+                used_bytes: 25 * 1024 * 1024 * 1024,
+                quota_bytes: 25 * 1024 * 1024 * 1024,
                 usage_percent: 100,
                 state: "FULL",
                 uploads_enabled: false,
@@ -240,12 +255,14 @@ describe("FieldPhotos manager page", () => {
               read_only: false,
               price_configured: true,
               storage_addon_qty: 1,
-              storage_used_bytes: 5 * 1024 * 1024 * 1024,
-              storage_quota_bytes: 5 * 1024 * 1024 * 1024,
-              retention_days: 90,
+              storage_used_bytes: 25 * 1024 * 1024 * 1024,
+              storage_quota_bytes: 25 * 1024 * 1024 * 1024,
+              retention_policy: "7y",
+              retention_label: "7 years",
+              retention_options: [{ code: "90d", label: "90 days" }, { code: "7y", label: "7 years" }],
               quota_status: {
-                used_bytes: 5 * 1024 * 1024 * 1024,
-                quota_bytes: 5 * 1024 * 1024 * 1024,
+                used_bytes: 25 * 1024 * 1024 * 1024,
+                quota_bytes: 25 * 1024 * 1024 * 1024,
                 usage_percent: 100,
                 state: "FULL",
                 uploads_enabled: false,
@@ -266,9 +283,17 @@ describe("FieldPhotos manager page", () => {
     renderPage();
 
     expect(await screen.findByText(/Storage is full\. Employee photo uploads are blocked until storage is increased or files are removed\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Retention: 7 years/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /review storage upgrade/i })).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText(/Storage used: 100%/i)).toBeInTheDocument();
+    });
+
+    fireEvent.mouseDown(screen.getByLabelText(/retain new photos for/i));
+    fireEvent.click(await screen.findByRole("option", { name: "90 days" }));
+    fireEvent.click(screen.getByRole("button", { name: /save retention/i }));
+    await waitFor(() => {
+      expect(mockApiPut).toHaveBeenCalledWith("/billing/field-photos/retention", { retention_policy: "90d" });
     });
   });
 });

@@ -9,6 +9,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
   Stack,
   Typography,
 } from "@mui/material";
@@ -59,6 +64,7 @@ const FieldPhotosBillingModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [retentionPolicy, setRetentionPolicy] = useState("");
 
   const isStorage = mode === "storage";
   const targetStorageQty = Math.max(0, Number(currentStorageQty || 0)) + 1;
@@ -67,10 +73,6 @@ const FieldPhotosBillingModal = ({
   const modalSubtitle = isStorage
     ? "Expand storage for private client and proof-of-work photos."
     : "Enable secure employee and manager photo uploads.";
-  const itemDescription = isStorage ? "+10 GB" : "Private client and proof-of-work photo uploads";
-  const billingNotice = isStorage
-    ? "Confirming will add 10 GB of Field Photos storage to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate."
-    : "Confirming will add this add-on to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate.";
   const Icon = isStorage ? StorageOutlinedIcon : PhotoCameraIcon;
   const nextBillingLabel = formatBillingNextDateLabel({
     nextBillingDate: preview?.next_billing_date,
@@ -79,14 +81,22 @@ const FieldPhotosBillingModal = ({
     ? `${preview.recurring_amount_formatted}/${preview.interval}`
     : preview?.recurring_amount_formatted || null;
   const includedStorageLabel = hasValue(preview?.included_storage_label) ? preview.included_storage_label : "Included storage unavailable";
-  const retentionLabel = hasValue(preview?.retention_days) ? `${preview.retention_days}-day retention` : "Retention information unavailable";
   const storageExpansionLabel = hasValue(preview?.storage_expansion_label) ? preview.storage_expansion_label : "Storage expansion information unavailable";
+  const retentionOptions = Array.isArray(preview?.retention_options) ? preview.retention_options : [];
+  const selectedRetentionLabel = retentionOptions.find((option) => option.code === retentionPolicy)?.label || "No option selected";
+  const itemDescription = isStorage ? storageExpansionLabel : "Private client and proof-of-work photo uploads";
+  const billingNotice = isStorage
+    ? `Confirming will add ${storageExpansionLabel} of Field Photos storage to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate.`
+    : "Confirming will add this add-on to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate.";
 
   const blocksConfirm = useMemo(() => {
     const code = preview?.error || "";
     const text = String(previewError || "").toLowerCase();
-    return Boolean(preview?.requires_base_subscription) || code.includes("price_missing") || text.includes("not configured");
-  }, [preview, previewError]);
+    return Boolean(preview?.requires_base_subscription)
+      || (!isStorage && !retentionPolicy)
+      || code.includes("price_missing")
+      || text.includes("not configured");
+  }, [isStorage, preview, previewError, retentionPolicy]);
 
   useEffect(() => {
     if (!open) {
@@ -95,6 +105,7 @@ const FieldPhotosBillingModal = ({
       setError("");
       setSuccess("");
       setSubmitting(false);
+      setRetentionPolicy("");
       return undefined;
     }
     if (mobileComplianceMode) return undefined;
@@ -110,7 +121,9 @@ const FieldPhotosBillingModal = ({
       .get(url)
       .then((res) => {
         if (!active) return;
-        setPreview(res?.data || null);
+        const data = res?.data || null;
+        setPreview(data);
+        if (!isStorage) setRetentionPolicy("");
       })
       .catch((err) => {
         if (!active) return;
@@ -133,7 +146,7 @@ const FieldPhotosBillingModal = ({
     try {
       const res = isStorage
         ? await api.post("/billing/field-photos/storage/set", { addon_qty: targetStorageQty })
-        : await api.post("/billing/field-photos/activate", {});
+        : await api.post("/billing/field-photos/activate", { retention_policy: retentionPolicy });
       setSuccess(isStorage ? "Field Photos storage updated." : "Field Photos activated.");
       if (onSuccess) onSuccess(res?.data || null);
     } catch (err) {
@@ -208,11 +221,43 @@ const FieldPhotosBillingModal = ({
               </Typography>
             )}
             {!isStorage && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                Includes {includedStorageLabel} · {retentionLabel}
-              </Typography>
+              <Stack spacing={0.35} sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Includes {includedStorageLabel} · Retention options up to 7 years
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {storageExpansionLabel} additional storage: {preview?.storage_expansion_amount_formatted || "Pricing unavailable"}{preview?.storage_expansion_interval ? `/${preview.storage_expansion_interval}` : ""}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Secure private storage · Secure long-term archive · Large mobile photos are automatically optimized
+                </Typography>
+              </Stack>
             )}
           </Box>
+          {!isStorage && !loadingPreview && preview && (
+            <FormControl required>
+              <FormLabel id="field-photos-retention-label" sx={{ fontWeight: 850 }}>
+                Retain photos for
+              </FormLabel>
+              <RadioGroup
+                aria-labelledby="field-photos-retention-label"
+                value={retentionPolicy}
+                onChange={(event) => setRetentionPolicy(event.target.value)}
+              >
+                {retentionOptions.map((option) => (
+                  <FormControlLabel
+                    key={option.code}
+                    value={option.code}
+                    control={<Radio />}
+                    label={option.label}
+                  />
+                ))}
+              </RadioGroup>
+              <Typography variant="caption" color="text.secondary">
+                Choose how long your business needs Field Photos retained. Current selection: {selectedRetentionLabel}.
+              </Typography>
+            </FormControl>
+          )}
           {loadingPreview && (
             <Stack direction="row" spacing={1} alignItems="center">
               <CircularProgress size={16} />
@@ -258,6 +303,11 @@ const FieldPhotosBillingModal = ({
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.6, mt: 0.5 }}>
                   This add-on is billed through your company subscription. You can review subscription details in Billing Settings.
                 </Typography>
+                {!isStorage && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.6, mt: 0.5 }}>
+                    If Field Photos is cancelled, photos remain read-only for 30 days for download before cancellation cleanup.
+                  </Typography>
+                )}
               </Box>
             </Stack>
           </Box>

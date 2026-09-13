@@ -20,7 +20,7 @@ import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import TaskAltIcon from "@mui/icons-material/TaskAlt";
 
-const SECTIONS = [
+const STATIC_SECTIONS = [
   {
     title: "What Field Photos is for",
     icon: <PhotoCameraIcon color="primary" />,
@@ -46,15 +46,6 @@ const SECTIONS = [
       "Filter by department, employee, date period, readiness, location, or archived status.",
       "Photos opened from a shift are automatically filtered to that shift. Use Clear to return to all photos.",
       "Open shift takes you back to the related shift context when you need scheduling details.",
-    ],
-  },
-  {
-    title: "Storage and billing",
-    icon: <StorageOutlinedIcon color="primary" />,
-    items: [
-      "Field Photos includes 10 GB of storage and photos are kept for 90 days.",
-      "If storage gets close to full, use Add 10 GB to expand storage from the manager billing flow.",
-      "If the add-on is cancelled or unpaid, employees cannot upload new photos. Existing photos stay read-only during the grace period.",
     ],
   },
   {
@@ -92,8 +83,25 @@ const Section = ({ title, icon, items }) => (
   </Box>
 );
 
-export default function FieldPhotosHelpDrawer({ open, onClose }) {
+export default function FieldPhotosHelpDrawer({ open, onClose, summary, preview }) {
   const isSmall = useMediaQuery("(max-width:900px)");
+  const includedStorage = preview?.included_storage_label || "the included storage allocation";
+  const storageExpansion = preview?.storage_expansion_label || "an additional storage pack";
+  const selectedRetention = summary?.retention_label || preview?.retention_label || "the selected retention period";
+  const sections = [
+    ...STATIC_SECTIONS.slice(0, 3),
+    {
+      title: "Storage, retention, and billing",
+      icon: <StorageOutlinedIcon color="primary" />,
+      items: [
+        `Field Photos includes ${includedStorage}. Choose a retention period of 90 days, 1 year, 3 years, or 7 years; this company currently uses ${selectedRetention}.`,
+        `If storage gets close to full, add ${storageExpansion} from the manager billing flow. Quota usage is based on the final optimized photo size.`,
+        "Gallery-link expiration does not delete the underlying photo. New uploads use the retention selected when each photo is created.",
+        "If Field Photos is cancelled, uploads stop and existing photos remain read-only for download for 30 days before cancellation cleanup.",
+      ],
+    },
+    ...STATIC_SECTIONS.slice(3),
+  ];
 
   return (
     <Drawer
@@ -120,7 +128,7 @@ export default function FieldPhotosHelpDrawer({ open, onClose }) {
           Use this page to review shift-linked proof photos, check security readiness, and manage storage without leaving the manager dashboard.
         </Typography>
 
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <Section key={section.title} {...section} />
         ))}
 

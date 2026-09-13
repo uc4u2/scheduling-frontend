@@ -69,8 +69,8 @@ const resolveIncludedStorageLabel = (preview, fieldPhotos) => {
 };
 
 const resolveRetentionLabel = (preview, fieldPhotos) => {
-  if (hasValue(preview?.retention_days)) return `${preview.retention_days}-day retention`;
-  if (hasValue(fieldPhotos?.retention_days)) return `${fieldPhotos.retention_days}-day retention`;
+  if (hasValue(fieldPhotos?.retention_label)) return fieldPhotos.retention_label;
+  if (hasValue(preview?.retention_label)) return preview.retention_label;
   return "Retention information unavailable";
 };
 
@@ -531,7 +531,7 @@ const SettingsBillingSubscription = () => {
               lines={[
                 `Base recurring charge: ${formatAmountInterval(fieldPhotosPreview?.recurring_amount_formatted, fieldPhotosPreview?.interval)}.`,
                 `Included storage: ${fieldPhotosIncludedStorageLabel}.`,
-                `${fieldPhotosRetentionLabel}.`,
+                `Selected retention: ${fieldPhotosRetentionLabel}.`,
                 `Storage expansion: ${fieldPhotosStorageExpansionLabel}.`,
                 "Exact taxes and proration, when applicable, are shown in the confirmation modal before activation.",
               ]}
@@ -573,7 +573,7 @@ const SettingsBillingSubscription = () => {
           {fieldPhotosNotice && <Alert severity="success">{fieldPhotosNotice}</Alert>}
           {fieldPhotos.read_only && (
             <Alert severity="warning">
-              Field Photos is read-only. New uploads are disabled; existing photos remain available during the grace period.
+              Field Photos is read-only. New uploads are disabled; existing photos remain available for download during the 30-day cancellation grace period.
             </Alert>
           )}
           {!fieldPhotos.price_configured && (
@@ -593,7 +593,10 @@ const SettingsBillingSubscription = () => {
                     Starts at {formatAmountInterval(fieldPhotosPreview?.recurring_amount_formatted, fieldPhotosPreview?.interval)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Includes {fieldPhotosIncludedStorageLabel} · {fieldPhotosRetentionLabel}
+                    Includes {fieldPhotosIncludedStorageLabel} · Retention options up to 7 years
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Secure long-term archive · Large mobile photos are automatically optimized
                   </Typography>
                   {fieldPhotos.price_configured ? (
                     <Typography variant="body2" color="text.secondary">
@@ -637,7 +640,7 @@ const SettingsBillingSubscription = () => {
                   <strong>Storage:</strong> {formatBytes(fieldPhotos.storage_used_bytes)} of {formatBytes(fieldPhotos.storage_quota_bytes)}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Retention:</strong> {hasValue(fieldPhotos.retention_days) ? `${fieldPhotos.retention_days} days` : "Retention information unavailable"}
+                  <strong>Retention:</strong> {fieldPhotosRetentionLabel}
                 </Typography>
                 {status.next_billing_date ? (
                   <Typography variant="body2">

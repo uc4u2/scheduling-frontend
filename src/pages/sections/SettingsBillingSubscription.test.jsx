@@ -78,7 +78,14 @@ const baseFieldPhotos = {
   storage_addon_qty: 0,
   storage_used_bytes: 0,
   storage_quota_bytes: 0,
-  retention_days: 90,
+  retention_policy: "90d",
+  retention_label: "90 days",
+  retention_options: [
+    { code: "90d", label: "90 days" },
+    { code: "1y", label: "1 year" },
+    { code: "3y", label: "3 years" },
+    { code: "7y", label: "7 years" },
+  ],
   price_configured: true,
 };
 
@@ -109,9 +116,11 @@ const buildStatus = (overrides = {}) => ({
 const defaultFieldPhotosPreview = {
   recurring_amount_formatted: "29.00 USD",
   interval: "month",
-  included_storage_label: "10 GB",
-  retention_days: 90,
-  storage_expansion_label: "+10 GB",
+  included_storage_label: "25 GB",
+  retention_policy: "90d",
+  retention_label: "90 days",
+  retention_options: baseFieldPhotos.retention_options,
+  storage_expansion_label: "+50 GB",
   storage_expansion_amount_formatted: "10.00 USD",
   storage_expansion_interval: "month",
 };
@@ -143,7 +152,7 @@ describe("SettingsBillingSubscription", () => {
           data: {
             recurring_amount_formatted: "10.00 USD",
             interval: "month",
-            storage_expansion_label: "+10 GB",
+            storage_expansion_label: "+50 GB",
             amount_due_today_formatted: "10.00 USD",
           },
         });
@@ -178,7 +187,7 @@ describe("SettingsBillingSubscription", () => {
     renderPage();
 
     expect(await screen.findByText(/Starts at 29\.00 USD\/month/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes 10 GB · 90-day retention/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes 25 GB · Retention options up to 7 years/i)).toBeInTheDocument();
     expect(screen.getByText(/No charge is created until you review and confirm the billing preview\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view pricing & activate/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /open field photos/i })).toBeInTheDocument();
@@ -202,7 +211,8 @@ describe("SettingsBillingSubscription", () => {
           addon_active: false,
           read_only: false,
           storage_quota_bytes: null,
-          retention_days: null,
+          retention_policy: null,
+          retention_label: null,
           price_configured: false,
         },
       }),
@@ -220,7 +230,7 @@ describe("SettingsBillingSubscription", () => {
     renderPage();
 
     expect(await screen.findByText(/Starts at Pricing unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/Includes Included storage unavailable · Retention information unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Includes Included storage unavailable · Retention options up to 7 years/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Field Photos billing is not configured yet\. Contact support to activate this add-on\./i).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /open field photos/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /view pricing & activate/i })).not.toBeInTheDocument();
@@ -235,8 +245,9 @@ describe("SettingsBillingSubscription", () => {
           read_only: false,
           storage_addon_qty: 2,
           storage_used_bytes: 3 * 1024 * 1024 * 1024,
-          storage_quota_bytes: 5 * 1024 * 1024 * 1024,
-          retention_days: 90,
+          storage_quota_bytes: 125 * 1024 * 1024 * 1024,
+          retention_policy: "7y",
+          retention_label: "7 years",
           price_configured: true,
         },
       }),
@@ -261,10 +272,11 @@ describe("SettingsBillingSubscription", () => {
     renderPage();
 
     fireEvent.click(await screen.findByRole("button", { name: /view pricing & activate/i }));
+    fireEvent.click(await screen.findByRole("radio", { name: "90 days" }));
     fireEvent.click(await screen.findByRole("button", { name: /confirm activation/i }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith("/billing/field-photos/activate", {});
+      expect(mockApiPost).toHaveBeenCalledWith("/billing/field-photos/activate", { retention_policy: "90d" });
     });
     expect(mockRefetch).toHaveBeenCalled();
   });
@@ -278,8 +290,9 @@ describe("SettingsBillingSubscription", () => {
           read_only: false,
           storage_addon_qty: 2,
           storage_used_bytes: 3 * 1024 * 1024 * 1024,
-          storage_quota_bytes: 5 * 1024 * 1024 * 1024,
-          retention_days: 90,
+          storage_quota_bytes: 125 * 1024 * 1024 * 1024,
+          retention_policy: "7y",
+          retention_label: "7 years",
           price_configured: true,
         },
       }),
@@ -289,7 +302,7 @@ describe("SettingsBillingSubscription", () => {
 
     expect(await screen.findByText(/Storage expansions:/i)).toBeInTheDocument();
     expect(screen.getByText(/Storage:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Storage usage: 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Storage usage: 2%/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /manage storage/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /manage billing/i }).length).toBeGreaterThan(0);
   });
