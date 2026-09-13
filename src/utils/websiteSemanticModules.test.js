@@ -637,13 +637,14 @@ describe("website semantic modules", () => {
     const hero = modules.find((module) => module.type === "hero");
     const services = modules.find((module) => module.type === "services");
 
-    expect(modules).toHaveLength(13);
+    expect(modules).toHaveLength(12);
     expect(hero.content.heading).toBe("Comfort service without the runaround.");
     expect(hero.content.quickPoints).toHaveLength(3);
     expect(services.content.source).toBe("authored");
     expect(services.content.items).toHaveLength(6);
+    expect(services.content.items.every((item) => item.image?.startsWith("starter-media://eldora-dark/"))).toBe(true);
     expect(services.settings.dataSource).toBe("authored");
-    expect(modules.find((module) => module.type === "team").content.items).toHaveLength(2);
+    expect(modules.some((module) => module.type === "team")).toBe(false);
     expect(modules.every((module) => module.settings.starterBlueprint === "aerogrid-hvac-original")).toBe(true);
   });
 

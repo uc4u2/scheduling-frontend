@@ -1,12 +1,12 @@
 import { createEldoraDarkOriginalHomeModules } from "./eldoraDarkHomeBlueprint";
 
 const servicePaths = [
-  { id: "aerogrid-heating", title: "Heating service", body: "A clear starting point for furnace, boiler, and no-heat concerns when comfort changes.", cta: { label: "Ask about heating", href: "#contact" } },
-  { id: "aerogrid-cooling", title: "Cooling service", body: "Describe cooling, airflow, or uneven-temperature concerns and find the right next step.", cta: { label: "Ask about cooling", href: "#contact" } },
-  { id: "aerogrid-maintenance", title: "Maintenance planning", body: "Explore a more organized approach to seasonal system care and ongoing comfort planning.", cta: { label: "Ask about maintenance", href: "#contact" } },
-  { id: "aerogrid-heat-pumps", title: "Heat-pump guidance", body: "Start a conversation about heat-pump performance, assessment, or replacement options.", cta: { label: "Start a conversation", href: "#contact" } },
-  { id: "aerogrid-air-quality", title: "Indoor-air questions", body: "Ask about filtration, humidity, ventilation, and the way air moves through your space.", cta: { label: "Ask the team", href: "#contact" } },
-  { id: "aerogrid-diagnostics", title: "System diagnostics", body: "Share what changed and help the team understand the system concern before the next step.", cta: { label: "Describe the issue", href: "#contact" } },
+  { id: "aerogrid-heating", title: "Heating service", body: "A clear starting point for furnace, boiler, and no-heat concerns when comfort changes.", image: "starter-media://eldora-dark/winter-home", imageUrl: "starter-media://eldora-dark/winter-home", imageAlt: "Canadian home during the heating season.", cta: { label: "Ask about heating", href: "#contact" } },
+  { id: "aerogrid-cooling", title: "Cooling service", body: "Describe cooling, airflow, or uneven-temperature concerns and find the right next step.", image: "starter-media://eldora-dark/hero", imageUrl: "starter-media://eldora-dark/hero", imageAlt: "Technician inspecting residential comfort equipment.", cta: { label: "Ask about cooling", href: "#contact" } },
+  { id: "aerogrid-maintenance", title: "Maintenance planning", body: "Explore a more organized approach to seasonal system care and ongoing comfort planning.", image: "starter-media://eldora-dark/maintenance", imageUrl: "starter-media://eldora-dark/maintenance", imageAlt: "Technician checking gauges during system maintenance.", cta: { label: "Ask about maintenance", href: "#contact" } },
+  { id: "aerogrid-heat-pumps", title: "Heat-pump guidance", body: "Start a conversation about heat-pump performance, assessment, or replacement options.", image: "starter-media://eldora-dark/service-area", imageUrl: "starter-media://eldora-dark/service-area", imageAlt: "Residential exterior with comfort equipment.", cta: { label: "Start a conversation", href: "#contact" } },
+  { id: "aerogrid-air-quality", title: "Indoor-air questions", body: "Ask about filtration, humidity, ventilation, and the way air moves through your space.", image: "starter-media://eldora-dark/controls", imageUrl: "starter-media://eldora-dark/controls", imageAlt: "Wall-mounted home comfort control.", cta: { label: "Ask the team", href: "#contact" } },
+  { id: "aerogrid-diagnostics", title: "System diagnostics", body: "Share what changed and help the team understand the system concern before the next step.", image: "starter-media://eldora-dark/diagnostics", imageUrl: "starter-media://eldora-dark/diagnostics", imageAlt: "Technician using diagnostic equipment.", cta: { label: "Describe the issue", href: "#contact" } },
 ];
 
 export function createAeroGridHvacHomeModules() {
@@ -59,24 +59,6 @@ export function createAeroGridHvacHomeModules() {
     if (module.type === "contactForm") module.content = { ...module.content, intro: "Share the comfort concern, property type, and any equipment details you can safely identify." };
     if (module.type === "cta") module.content = { ...module.content, body: "Choose a service or tell the team what is happening to begin." };
     return module;
-  });
-  const storyIndex = modules.findIndex((module) => module.type === "featureStory");
-  modules.splice(storyIndex + 1, 0, {
-    id: "aerogrid-home-team",
-    type: "team",
-    slot: "home.primaryContent",
-    enabled: true,
-    order: storyIndex + 1,
-    content: {
-      eyebrow: "People behind the service",
-      heading: "Meet the team.",
-      intro: "The people who coordinate questions, appointments, and thoughtful work in the field.",
-      items: [
-        { id: "aerogrid-team-1", title: "Customer care", role: "Service team", body: "Focused on clear communication and a straightforward customer experience.", image: "starter-media://eldora-dark/hero", imageUrl: "starter-media://eldora-dark/hero", imageAlt: "HVAC service team member." },
-        { id: "aerogrid-team-2", title: "Comfort specialist", role: "Service team", body: "Helping customers understand equipment concerns and the available next steps.", image: "starter-media://eldora-dark/diagnostics", imageUrl: "starter-media://eldora-dark/diagnostics", imageAlt: "HVAC comfort specialist at work." },
-      ],
-    },
-    settings: { createdInBuilder: true, starterBlueprint: "aerogrid-hvac-original", source: "aerogrid-hvac-original" },
   });
   modules.forEach((module, index) => { module.order = index; });
   return modules;
