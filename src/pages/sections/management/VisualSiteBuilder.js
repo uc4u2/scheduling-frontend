@@ -125,7 +125,10 @@ import {
   upgradeLegacyIronEmberProjectGallery,
   withNormalizedModules,
 } from "../../../utils/websiteSemanticModules";
-import { getProfessionHomeBlueprint } from "../../../utils/professionHomeBlueprints";
+import {
+  createPublishedFeedbackModule,
+  getProfessionHomeBlueprint,
+} from "../../../utils/professionHomeBlueprints";
 import {
   FORGE_MOTION_CONTACT_STARTER_VERSION,
   upgradeForgeMotionContactModules,
@@ -4711,6 +4714,67 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
     const normalizedThemeKey = String(nextJsThemeKey).trim().toLowerCase();
     const homeBlueprint = getProfessionHomeBlueprint(normalizedThemeKey);
     const contactTarget = NEXT_PUBLIC_BUILDER_PAGE_TARGETS.find((target) => target.key === "contact");
+    for (const existingPage of [...nextPages]) {
+      if (inferPageKind(existingPage) !== "home") continue;
+      const normalizedContent = normalizePageContent(existingPage.content || {});
+      if (Number(normalizedContent.meta?.nextJsPublishedFeedbackStarterVersion || 0) >= 1) continue;
+
+      const existingModules = safeModules(existingPage);
+      const hasPublishedFeedback = existingModules.some(
+        (module) => module.type === "reviews" && module.content?.source === "operational"
+      );
+      const blueprintReview = homeBlueprint?.createModules?.(cid).find(
+        (module) => module.type === "reviews" && module.content?.source === "operational"
+      );
+      const reviewModule = blueprintReview || createPublishedFeedbackModule(normalizedThemeKey);
+      const nextModules = existingModules.map((module) =>
+        module.type === "reviews" && module.content?.source === "operational"
+          ? {
+              ...module,
+              content: {
+                ...module.content,
+                eyebrow: "Published feedback",
+                source: "operational",
+                items: [],
+              },
+              settings: {
+                ...(module.settings || {}),
+                dataSource: "published-reviews",
+              },
+            }
+          : module
+      );
+      if (!hasPublishedFeedback) {
+        const contactTypes = new Set(["contactIntro", "contactDetails", "hoursLocation", "locations", "map", "contactForm", "cta", "bookingCta"]);
+        const insertAt = nextModules.findIndex((module) => contactTypes.has(module.type));
+        nextModules.splice(insertAt >= 0 ? insertAt : nextModules.length, 0, reviewModule);
+      }
+      const upgradedPage = {
+        ...existingPage,
+        content: {
+          ...normalizedContent,
+          meta: {
+            ...normalizedContent.meta,
+            // Existing owner-authored testimonials remain untouched. This
+            // one-time upgrade adds the operational published-review source.
+            nextJsPublishedFeedbackStarterVersion: 1,
+          },
+          modules: nextModules.map((module, order) => ({ ...module, order })),
+        },
+      };
+      const updated = await wb.updatePage(
+        cid,
+        existingPage.id,
+        serializePage(ensureSectionIds(withLiftedLayout(upgradedPage)))
+      );
+      const updatedPage = normalizePage(updated?.data || updated);
+      if (updatedPage?.id) {
+        nextPages = nextPages.map((page) =>
+          String(page.id) === String(updatedPage.id) ? updatedPage : page
+        );
+      }
+    }
+
     for (const existingPage of [...nextPages]) {
       const pageKind = inferPageKind(existingPage);
       if (pageKind !== "home" && pageKind !== "contact") continue;

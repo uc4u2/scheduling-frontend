@@ -20,6 +20,7 @@ import { createAxisAndCoOriginalHomeModules } from "./axisAndCoHomeBlueprint";
 import { createTorqueHouseOriginalHomeModules } from "./torqueHouseHomeBlueprint";
 import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
 import { createForgeMotionOriginalHomeModules } from "./forgeMotionHomeBlueprint";
+import { createTouchlineClubOriginalHomeModules } from "./touchlineClubHomeBlueprint";
 
 const BLUEPRINTS = {
   "forge-motion": {
@@ -154,10 +155,84 @@ const BLUEPRINTS = {
     pageTitle: "Practice with breath, steadiness, and range.",
     createModules: createStillBloomOriginalHomeModules,
   },
+  "touchline-club": {
+    label: "Touchline Club",
+    description: "its community-sport hero, participation pathways, field journey, community gallery, published feedback, and contact ending",
+    pageTitle: "A place to play, learn, and belong.",
+    createModules: createTouchlineClubOriginalHomeModules,
+  },
 };
 
+export function createPublishedFeedbackModule(themeKey = "nextjs", order = null) {
+  const normalizedThemeKey = String(themeKey || "nextjs").trim().toLowerCase() || "nextjs";
+  return {
+    id: `${normalizedThemeKey}-home-published-feedback`,
+    type: "reviews",
+    slot: "home.afterServices",
+    order,
+    enabled: true,
+    variant: null,
+    content: {
+      eyebrow: "Published feedback",
+      heading: "What customers share.",
+      intro: "Only published customer reviews appear here.",
+      source: "operational",
+      items: [],
+    },
+    settings: {
+      createdInBuilder: true,
+      starterBlueprint: `${normalizedThemeKey}-original`,
+      source: `${normalizedThemeKey}-original`,
+      dataSource: "published-reviews",
+    },
+  };
+}
+
+export function ensurePublishedFeedbackModules(modules = [], themeKey = "nextjs") {
+  const prepared = Array.isArray(modules)
+    ? modules.map((module) => ({
+        ...module,
+        content: module?.content ? { ...module.content } : {},
+        settings: module?.settings ? { ...module.settings } : {},
+      }))
+    : [];
+  const reviewIndex = prepared.findIndex((module) => module?.type === "reviews");
+
+  if (reviewIndex >= 0) {
+    const review = prepared[reviewIndex];
+    prepared[reviewIndex] = {
+      ...review,
+      slot: review.slot || "home.afterServices",
+      content: {
+        ...review.content,
+        eyebrow: "Published feedback",
+        heading: review.content?.heading || "What customers share.",
+        intro: review.content?.intro || "Only published customer reviews appear here.",
+        source: "operational",
+        items: [],
+      },
+      settings: {
+        ...review.settings,
+        dataSource: "published-reviews",
+      },
+    };
+  } else {
+    const contactTypes = new Set(["contactIntro", "contactDetails", "hoursLocation", "locations", "map", "contactForm", "cta", "bookingCta"]);
+    const insertAt = prepared.findIndex((module) => contactTypes.has(module?.type));
+    prepared.splice(insertAt >= 0 ? insertAt : prepared.length, 0, createPublishedFeedbackModule(themeKey));
+  }
+
+  return prepared.map((module, order) => ({ ...module, order }));
+}
+
 export function getProfessionHomeBlueprint(themeKey) {
-  return BLUEPRINTS[String(themeKey || "").trim().toLowerCase()] || null;
+  const normalizedThemeKey = String(themeKey || "").trim().toLowerCase();
+  const blueprint = BLUEPRINTS[normalizedThemeKey];
+  if (!blueprint) return null;
+  return {
+    ...blueprint,
+    createModules: (...args) => ensurePublishedFeedbackModules(blueprint.createModules(...args), normalizedThemeKey),
+  };
 }
 
 export function getProfessionHomeBlueprintKeys() {

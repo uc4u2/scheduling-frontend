@@ -480,7 +480,7 @@ describe("website semantic modules", () => {
   });
 
   it("resolves source-faithful profession homepage blueprints without affecting legacy templates", () => {
-    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field", "solara-stay", "paw-and-pine"]));
+    expect(getProfessionHomeBlueprintKeys()).toEqual(expect.arrayContaining(["iron-ember", "clear-clinic", "still-bloom", "harbor-line", "black-letter", "circuit-north", "frame-and-field", "solara-stay", "paw-and-pine", "touchline-club"]));
     expect(getProfessionHomeBlueprint("clear-clinic")).toEqual(expect.objectContaining({ label: "Clear Clinic", createModules: expect.any(Function) }));
     expect(getProfessionHomeBlueprint("classic")).toBeNull();
     expect(getProfessionHomeBlueprint("")).toBeNull();
@@ -490,6 +490,23 @@ describe("website semantic modules", () => {
     getProfessionHomeBlueprintKeys().forEach((themeKey) => {
       const blueprint = getProfessionHomeBlueprint(themeKey);
       expect(blueprint.createModules().some((module) => module.type === "contactForm")).toBe(true);
+    });
+  });
+
+  it("gives every Next.js homepage one operational Published feedback section", () => {
+    getProfessionHomeBlueprintKeys().forEach((themeKey) => {
+      const modules = getProfessionHomeBlueprint(themeKey).createModules();
+      const reviews = modules.filter((module) => module.type === "reviews");
+      expect(reviews).toHaveLength(1);
+      expect(reviews[0]).toEqual(expect.objectContaining({
+        slot: "home.afterServices",
+        content: expect.objectContaining({
+          eyebrow: "Published feedback",
+          source: "operational",
+          items: [],
+        }),
+        settings: expect.objectContaining({ dataSource: "published-reviews" }),
+      }));
     });
   });
 
