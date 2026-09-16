@@ -4420,6 +4420,16 @@
       "messages": {
         "verifyHint": "لطفاً {{time}} صبر کنید سپس دوباره تلاش کنید."
       },
+      "workerRoute": {
+        "detected": "شناسایی شد",
+        "missing": "شناسایی نشد",
+        "couldNotCheck": "امکان بررسی نبود",
+        "manualRequired": "نیازمند اقدام دستی",
+        "detectedDetail": "مسیریابی لبه برای {{pattern}} شناسایی شد.",
+        "missingDetail": "مسیریابی لبه برای {{pattern}} شناسایی نشد. مسیر Cloudflare Worker را بررسی کنید.",
+        "couldNotCheckDetail": "مسیریابی لبه برای {{pattern}} قابل تأیید نبود.",
+        "manualRequiredDetail": "مسیریابی لبه برای {{pattern}} نیاز به بررسی دستی دارد."
+      },
       "notifications": {
         "connectResumed": "جلسه Domain Connect از سر گرفته شد.",
         "connectResumeFailed": "از سرگیری Domain Connect ممکن نشد.",

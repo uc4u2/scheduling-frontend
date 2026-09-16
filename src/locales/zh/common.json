@@ -4423,6 +4423,16 @@
       "messages": {
         "verifyHint": "Please wait {{time}} before trying again."
       },
+      "workerRoute": {
+        "detected": "已检测",
+        "missing": "未检测到",
+        "couldNotCheck": "无法检查",
+        "manualRequired": "需要人工检查",
+        "detectedDetail": "已检测到 {{pattern}} 的边缘路由。",
+        "missingDetail": "未检测到 {{pattern}} 的边缘路由。请检查 Cloudflare Worker 路由。",
+        "couldNotCheckDetail": "无法验证 {{pattern}} 的边缘路由。",
+        "manualRequiredDetail": "{{pattern}} 的边缘路由需要人工检查。"
+      },
       "notifications": {
         "connectResumed": "Domain Connect session resumed.",
         "connectResumeFailed": "Unable to resume Domain Connect.",

@@ -294,6 +294,34 @@ const buildWorkerRouteMeta = ({ state, error }) => {
   return { state: "manual_required", severity: "info" };
 };
 
+export const buildWorkerRouteDetail = ({ state, pattern, t }) => {
+  const routePattern = pattern || "www.example.com/*";
+  switch (state) {
+    case "detected":
+      return t("management.domainSettings.workerRoute.detectedDetail", {
+        defaultValue: "Edge routing detected for {{pattern}}.",
+        pattern: routePattern,
+      });
+    case "missing":
+      return t("management.domainSettings.workerRoute.missingDetail", {
+        defaultValue:
+          "Edge routing was not detected for {{pattern}}. Review the Cloudflare Worker route.",
+        pattern: routePattern,
+      });
+    case "could_not_check":
+      return t("management.domainSettings.workerRoute.couldNotCheckDetail", {
+        defaultValue: "Edge routing could not be verified for {{pattern}}.",
+        pattern: routePattern,
+      });
+    case "manual_required":
+    default:
+      return t("management.domainSettings.workerRoute.manualRequiredDetail", {
+        defaultValue: "Edge routing requires manual review for {{pattern}}.",
+        pattern: routePattern,
+      });
+  }
+};
+
 const buildConnectionSummaryMeta = (summary, t) => {
   if (!summary) {
     return {
@@ -478,7 +506,6 @@ const DomainSettingsCard = ({
     rootRedirectDetails,
     workerRouteState,
     workerRouteRequiredPattern,
-    workerRouteWorkerName,
     workerRouteError,
     workerRouteCheckedAt,
     workerRouteDetectionMode,
@@ -585,7 +612,6 @@ const DomainSettingsCard = ({
   const bootstrapOk = Boolean(bootstrapDetails?.ok);
   const workerRouteCurrentState = workerRouteDetails?.state || workerRouteState;
   const workerRoutePattern = workerRouteDetails?.required_pattern || workerRouteRequiredPattern || (canonicalDomainValue ? `${canonicalDomainValue}/*` : "www.example.com/*");
-  const workerName = workerRouteDetails?.worker_name || workerRouteWorkerName || "schedulaa-edge-router";
   const rootRedirectCurrentState = rootRedirectDetails?.state || rootRedirectState;
 
   const domainIsConnected =
@@ -618,6 +644,14 @@ const DomainSettingsCard = ({
     state: workerRouteCurrentState,
     error: workerRouteError,
   });
+  const workerRouteDetail = buildWorkerRouteDetail({
+    state: workerRouteMeta.state,
+    pattern: workerRoutePattern,
+    t,
+  });
+  const guidanceNextStepDetail = workerRouteMeta.state === "missing"
+    ? workerRouteDetail
+    : guidance?.next_step_detail;
   const summaryMeta = buildConnectionSummaryMeta(connectionSummary, t);
   const isVerifiedStatus = domainIsConnected || Boolean(verifiedAt) || ["verified", "ssl_active"].includes(status);
   const sslStatusDisplay = effectiveSslStatus
@@ -748,11 +782,7 @@ const DomainSettingsCard = ({
           : workerRouteMeta.state === "missing"
             ? "warning"
             : "pending",
-      detail: t("management.domainSettings.progress.workerRouteDetail", {
-        defaultValue: "Required route: {{pattern}} -> {{worker}}",
-        pattern: workerRoutePattern,
-        worker: workerName,
-      }),
+      detail: workerRouteDetail,
       advisory: true,
     },
     {
@@ -955,12 +985,11 @@ const DomainSettingsCard = ({
       `SSL status: ${sslStatusDisplay}`,
       `Bootstrap: ${bootstrapDetails?.ok ? "ok" : "not_ok"}`,
       `Bootstrap slug: ${bootstrapDetails?.slug || "—"}`,
-      `Worker route: ${workerRouteState || "—"}`,
+      `Worker route: ${workerRouteMeta.state || "—"}`,
       `Worker route pattern: ${workerRoutePattern || "—"}`,
-      `Worker name: ${workerName || "—"}`,
       `Root redirect: ${rootRedirectState || "—"}`,
       `Next step: ${guidance?.next_step || "—"}`,
-      `Next step detail: ${guidance?.next_step_detail || "—"}`,
+      `Next step detail: ${guidanceNextStepDetail || "—"}`,
     ];
     const ok = await copyToClipboard(lines.join("\n"));
     enqueueSnackbar(
@@ -1234,9 +1263,9 @@ const DomainSettingsCard = ({
                     defaultValue: "Review the next setup step below.",
                   })}
                 </Typography>
-                {guidance?.next_step_detail && (
+                {guidanceNextStepDetail && (
                   <Typography variant="body2" color="text.secondary">
-                    {guidance.next_step_detail}
+                    {guidanceNextStepDetail}
                   </Typography>
                 )}
               </Box>
@@ -1711,11 +1740,7 @@ const DomainSettingsCard = ({
                 })}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {t("management.domainSettings.workerRoute.required", {
-                  defaultValue: "Required route: {{pattern}} -> {{worker}}",
-                  pattern: workerRoutePattern,
-                  worker: workerName,
-                })}
+                {workerRouteDetail}
               </Typography>
               {workerRouteError && (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -1748,16 +1773,6 @@ const DomainSettingsCard = ({
               </Button>
               <Button
                 variant="outlined"
-                startIcon={<ContentCopyIcon fontSize="small" />}
-                onClick={() => handleCopy(workerName, "management.domainSettings.workerRoute.title")}
-                disabled={!workerName}
-              >
-                {t("management.domainSettings.buttons.copyWorkerName", {
-                  defaultValue: "Copy worker name",
-                })}
-              </Button>
-              <Button
-                variant="outlined"
                 startIcon={processing && action === "diagnose" ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
                 onClick={handleDiagnose}
                 disabled={processing || !companyId}
@@ -1775,21 +1790,6 @@ const DomainSettingsCard = ({
               >
                 {t("management.domainSettings.buttons.openCloudflare", {
                   defaultValue: "Open Cloudflare",
-                })}
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<ContentCopyIcon fontSize="small" />}
-                onClick={() =>
-                  handleCopy(
-                    `${workerRoutePattern} -> ${workerName}`,
-                    "management.domainSettings.workerRoute.title"
-                  )
-                }
-                disabled={!workerRoutePattern || !workerName}
-              >
-                {t("management.domainSettings.buttons.copyFullInstruction", {
-                  defaultValue: "Copy full instruction",
                 })}
               </Button>
             </Stack>
@@ -1901,15 +1901,14 @@ const DomainSettingsCard = ({
                 <Typography variant="body2"><strong>SSL status:</strong> {sslStatusDisplay}</Typography>
                 <Typography variant="body2"><strong>Bootstrap:</strong> {bootstrapDetails?.ok ? "ok" : "not_ok"}</Typography>
                 <Typography variant="body2"><strong>Bootstrap slug:</strong> {bootstrapDetails?.slug || "—"}</Typography>
-                <Typography variant="body2"><strong>Worker route state:</strong> {workerRouteState || "—"}</Typography>
+                <Typography variant="body2"><strong>Worker route state:</strong> {workerRouteMeta.state || "—"}</Typography>
                 <Typography variant="body2"><strong>Worker route pattern:</strong> {workerRoutePattern || "—"}</Typography>
-                <Typography variant="body2"><strong>Worker name:</strong> {workerName || "—"}</Typography>
                 <Typography variant="body2"><strong>Worker route checked:</strong> {workerRouteCheckedAt ? formatDateTime(workerRouteCheckedAt, t) : "—"}</Typography>
                 <Typography variant="body2"><strong>Root redirect state:</strong> {rootRedirectState || "—"}</Typography>
                 <Typography variant="body2"><strong>Root redirect checked:</strong> {rootRedirectCheckedAt ? formatDateTime(rootRedirectCheckedAt, t) : "—"}</Typography>
                 <Typography variant="body2"><strong>Next step:</strong> {guidance?.next_step || "—"}</Typography>
-                {guidance?.next_step_detail && (
-                  <Typography variant="body2"><strong>Next step detail:</strong> {guidance.next_step_detail}</Typography>
+                {guidanceNextStepDetail && (
+                  <Typography variant="body2"><strong>Next step detail:</strong> {guidanceNextStepDetail}</Typography>
                 )}
               </Stack>
             </AccordionDetails>

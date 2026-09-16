@@ -4421,6 +4421,16 @@
       "messages": {
         "verifyHint": "Пожалуйста, подождите {{time}} перед следующей попыткой."
       },
+      "workerRoute": {
+        "detected": "Обнаружено",
+        "missing": "Не обнаружено",
+        "couldNotCheck": "Не удалось проверить",
+        "manualRequired": "Требуется ручная проверка",
+        "detectedDetail": "Пограничная маршрутизация обнаружена для {{pattern}}.",
+        "missingDetail": "Пограничная маршрутизация не обнаружена для {{pattern}}. Проверьте маршрут Cloudflare Worker.",
+        "couldNotCheckDetail": "Не удалось проверить пограничную маршрутизацию для {{pattern}}.",
+        "manualRequiredDetail": "Пограничная маршрутизация для {{pattern}} требует ручной проверки."
+      },
       "notifications": {
         "connectResumed": "Сессия Domain Connect восстановлена.",
         "connectResumeFailed": "Не удалось возобновить Domain Connect.",

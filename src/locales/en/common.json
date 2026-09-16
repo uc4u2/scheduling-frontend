@@ -4504,6 +4504,16 @@
       "messages": {
         "verifyHint": "Please wait {{time}} before trying again."
       },
+      "workerRoute": {
+        "detected": "Detected",
+        "missing": "Not detected",
+        "couldNotCheck": "Could not check",
+        "manualRequired": "Manual step required",
+        "detectedDetail": "Edge routing detected for {{pattern}}.",
+        "missingDetail": "Edge routing was not detected for {{pattern}}. Review the Cloudflare Worker route.",
+        "couldNotCheckDetail": "Edge routing could not be verified for {{pattern}}.",
+        "manualRequiredDetail": "Edge routing requires manual review for {{pattern}}."
+      },
       "notifications": {
         "connectResumed": "Domain Connect session resumed.",
         "connectResumeFailed": "Unable to resume Domain Connect.",
@@ -4846,7 +4856,7 @@
           "title": "Edge routing (Cloudflare advisory)",
           "bullets": [
             "In the current Cloudflare setup, the live host may still need a manual Worker route in Cloudflare.",
-            "The required pattern is usually www.yourdomain.com/* -> schedulaa-edge-router.",
+            "The route pattern is usually www.yourdomain.com/*; the serving Worker depends on the site's approved renderer migration state.",
             "Schedulaa now checks this as an advisory diagnostic and will show whether edge routing is detected, not detected, could not check, or still a manual step."
           ]
         }
