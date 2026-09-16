@@ -116,6 +116,21 @@ const normalizeUploadUrl = (url) => {
   return "";
 };
 
+const readImageDimensions = (file) => new Promise((resolve, reject) => {
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    const dimensions = { width: image.naturalWidth || 0, height: image.naturalHeight || 0 };
+    URL.revokeObjectURL(objectUrl);
+    resolve(dimensions);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    reject(new Error("Could not read image dimensions."));
+  };
+  image.src = objectUrl;
+});
+
 const resolveLogoUrl = (logoAsset, fallback) => {
   const candidate =
     logoAsset?.url ||
@@ -208,6 +223,7 @@ const SeoSettingsCard = ({
   const [uploadingSchemaLogo, setUploadingSchemaLogo] = useState(false);
   const [ogImageWarning, setOgImageWarning] = useState("");
   const [faviconWarning, setFaviconWarning] = useState("");
+  const [faviconDimensions, setFaviconDimensions] = useState(null);
   const [draftNotice, setDraftNotice] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [error, setError] = useState(null);
@@ -233,6 +249,7 @@ const SeoSettingsCard = ({
         settings?.website?.favicon_url ||
         "";
     setFaviconUrl(nextFavicon);
+    setFaviconDimensions(null);
     setUseLogoFavicon(!nextFavicon);
     setCanonicalMode(nextSeo.canonicalMode || (domainVerified ? "custom" : "slug"));
     setCanonicalHost(nextSeo.canonicalHost || customDomain || "");
@@ -356,7 +373,13 @@ const SeoSettingsCard = ({
 
   const previewTitle = ogTitle || metaTitle || settings?.site_title || companySlug || "Your business";
   const previewDescription = ogDescription || metaDescription || "Your summary will appear in chat previews.";
-  const previewImage = ogImage || "";
+  const effectiveOgImage = ogImage || seo.effectiveOgImage || "";
+  const previewImage = effectiveOgImage;
+  const previewImageSource = ogImage
+    ? tt("management.domainSettings.seo.preview.explicitImage", "Explicit image")
+    : effectiveOgImage
+    ? tt("management.domainSettings.seo.preview.fallbackImage", "Fallback image")
+    : tt("management.domainSettings.seo.preview.noImage", "No image available");
   const faviconFallback = useMemo(() => {
     const header = settings?.header || {};
     const footer = settings?.footer || {};
@@ -378,13 +401,20 @@ const SeoSettingsCard = ({
     );
   }, [settings, companyLogoUrl]);
   const previewHost = useMemo(() => {
-    const url = canonicalHostUrl || slugBaseUrl;
+    const url = searchPreviewUrl || canonicalHostUrl || slugBaseUrl;
     try {
       return new URL(url).host;
     } catch {
       return url || "";
     }
-  }, [canonicalHostUrl, slugBaseUrl]);
+  }, [searchPreviewUrl, canonicalHostUrl, slugBaseUrl]);
+
+  const effectiveCanonicalPreviewUrl = useMemo(() => {
+    const candidate = canonicalMode === "custom" && !canonicalLocked
+      ? ensureUrl(canonicalHost || customDomain || "")
+      : (seo.effectiveCanonicalUrl || canonicalHostUrl || slugBaseUrl);
+    return String(candidate || "").replace(/\/$/, "") || "—";
+  }, [canonicalMode, canonicalLocked, canonicalHost, customDomain, seo.effectiveCanonicalUrl, canonicalHostUrl, slugBaseUrl]);
 
   const effectiveFaviconUrl = useMemo(
     () => (useLogoFavicon ? "" : faviconUrl),
@@ -392,8 +422,8 @@ const SeoSettingsCard = ({
   );
 
   const faviconPreviewUrl = useMemo(
-    () => (useLogoFavicon ? faviconFallback : faviconUrl),
-    [useLogoFavicon, faviconFallback, faviconUrl]
+    () => (useLogoFavicon ? (settings?.effective_favicon_url || "") : faviconUrl),
+    [useLogoFavicon, settings?.effective_favicon_url, faviconUrl]
   );
 
   const ogTestCurrentUrl = useMemo(() => {
@@ -445,12 +475,20 @@ const SeoSettingsCard = ({
     if (useLogoFavicon) return;
     setUploadingFavicon(true);
     try {
+      const dimensions = await readImageDimensions(file);
+      if (!dimensions.width || dimensions.width !== dimensions.height) {
+        throw new Error("Favicon must be a square 1:1 image. Use a square PNG such as 96×96, 192×192, or 512×512.");
+      }
+      if (dimensions.width < 48) {
+        throw new Error("Favicon must be at least 48×48 pixels. A 192×192 square PNG is recommended.");
+      }
       const res = await wb.mediaUpload(companyId, file);
       const url = normalizeUploadUrl(res?.data?.items?.[0]?.url);
       if (!url) {
         throw new Error("Upload returned no URL");
       }
       setFaviconUrl(url);
+      setFaviconDimensions({ ...dimensions, checked: true, square: true });
       enqueueSnackbar(tt("management.domainSettings.seo.notifications.uploadFaviconSuccess", "Favicon uploaded"), {
         variant: "success",
       });
@@ -533,6 +571,7 @@ const SeoSettingsCard = ({
     let alive = true;
     const target = useLogoFavicon ? faviconFallback : faviconUrl;
     if (!target || !isHttpsUrl(target)) {
+      setFaviconDimensions(null);
       setFaviconWarning("");
       return undefined;
     }
@@ -545,14 +584,19 @@ const SeoSettingsCard = ({
         setFaviconWarning("");
         return;
       }
-      if (Math.max(w, h) > 64) {
-        setFaviconWarning("Recommended favicon size is 32×32 or 48×48 (max 64×64).");
+      const square = w === h;
+      setFaviconDimensions({ width: w, height: h, checked: true, square });
+      if (!square) {
+        setFaviconWarning("This image is not square. Use a square PNG such as 96×96, 192×192, or 512×512.");
+      } else if (w < 48) {
+        setFaviconWarning("This favicon is too small. Use a square image at least 48×48 pixels; 192×192 is recommended.");
       } else {
         setFaviconWarning("");
       }
     };
     img.onerror = () => {
       if (!alive) return;
+      setFaviconDimensions(null);
       setFaviconWarning("Could not load the favicon to verify dimensions.");
     };
     img.src = target;
@@ -568,6 +612,15 @@ const SeoSettingsCard = ({
     }
     if (!useLogoFavicon && faviconUrl && !isHttpsUrl(faviconUrl)) {
       setError(tt("management.domainSettings.seo.errors.invalidFavicon", "Favicon must be a valid https:// URL."));
+      return false;
+    }
+    const storedFavicon = settings?.favicon_url || settings?.settings?.favicon_url || settings?.website?.favicon_url || "";
+    if (!useLogoFavicon && faviconUrl && faviconUrl !== storedFavicon && faviconDimensions?.checked && !faviconDimensions.square) {
+      setError("Favicon must be a square 1:1 image. Use a square PNG such as 96×96, 192×192, or 512×512.");
+      return false;
+    }
+    if (useLogoFavicon && faviconFallback && faviconDimensions?.checked && !faviconDimensions.square) {
+      setError("The selected header logo is not square. Upload a dedicated square favicon instead.");
       return false;
     }
     if (canonicalMode === "custom" && canonicalLocked) {
@@ -752,7 +805,7 @@ const SeoSettingsCard = ({
             {tt("management.domainSettings.seo.sections.searchHint", "Set the title and description Google shows most often.")}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-            Example: “Award-winning tattoo artists in Toronto | Book in minutes.”
+            Example: “Trusted local services in Toronto | Book or connect today.”
           </Typography>
           <SearchSnippetPreview
             title={metaTitle || settings?.site_title}
@@ -804,10 +857,10 @@ const SeoSettingsCard = ({
               )}
               value={metaKeywords}
               onChange={(event) => setMetaKeywords(event.target.value.slice(0, MAX_KEYWORDS))}
-              helperText={tt("management.domainSettings.seo.helpers.keywords", "Comma separated (e.g., tattoo, piercing, studio)")}
+              helperText={tt("management.domainSettings.seo.helpers.keywords", "Comma separated (e.g., local services, consultations, Toronto)")}
             />
             <Typography variant="caption" color="text.secondary">
-              Tip: Stick to 4–6 phrases such as “fine line tattoo, cosmetic tattoo, Toronto studio”.
+              Tip: Stick to 4–6 phrases that describe the organization, service, audience, and location.
             </Typography>
           </Stack>
         </Box>
@@ -831,7 +884,7 @@ const SeoSettingsCard = ({
             {tt("management.domainSettings.seo.sections.socialHint", "Customize the preview cards shown in chat, SMS, and social media.")}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-            Use a 1200×630 hero image and a title like “Schedulaa — Enterprise Tattoo Studio”.
+            Use a 1200×630 image and a concise title that identifies the organization and purpose.
           </Typography>
           <Box
             sx={{
@@ -851,13 +904,11 @@ const SeoSettingsCard = ({
               Preview domain: {previewHost || "your-domain.com"}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              Canonical: {canonicalMode === "custom" && !canonicalLocked ? "custom domain" : "schedulaa.com slug"}
+              Canonical: {effectiveCanonicalPreviewUrl}
             </Typography>
-            {!ogImage && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                Fallback: homepage hero image will be used for social previews.
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+              {previewImageSource}{effectiveOgImage ? `: ${effectiveOgImage}` : ""}
+            </Typography>
           </Box>
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
@@ -889,7 +940,7 @@ const SeoSettingsCard = ({
                 helperText={
                   ogImage
                     ? tt("management.domainSettings.seo.helpers.ogImage", "Use a 1200×630 HTTPS image.")
-                    : tt("management.domainSettings.seo.helpers.ogImageFallback", "Fallback: homepage hero image will be used for social previews.")
+                    : tt("management.domainSettings.seo.helpers.ogImageFallback", "Fallback: the effective published homepage image is shown above.")
                 }
                 fullWidth
               />
@@ -908,15 +959,15 @@ const SeoSettingsCard = ({
                   flexShrink: 0,
                 }}
               >
-                {ogImage ? (
+                {effectiveOgImage ? (
                   <img
                     alt="OG preview"
-                    src={ogImage}
+                    src={effectiveOgImage}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
                   <Typography variant="caption" color="text.secondary" align="center">
-                    Using hero fallback
+                    No published image
                   </Typography>
                 )}
               </Box>
@@ -952,8 +1003,8 @@ const SeoSettingsCard = ({
                   />
                 }
                 label={labelWithTip(
-                  tt("management.domainSettings.seo.fields.useLogoFavicon", "Use header/logo as favicon (recommended)"),
-                  "If enabled, we use your header logo as the browser tab icon."
+                  tt("management.domainSettings.seo.fields.useLogoFavicon", "Use square header logo when eligible"),
+                  "Only a square tenant logo can be used safely as a favicon. Otherwise upload a dedicated square image."
                 )}
               />
             </Stack>
@@ -961,7 +1012,7 @@ const SeoSettingsCard = ({
               <TextField
                 label={labelWithTip(
                   tt("management.domainSettings.seo.fields.favicon", "Favicon URL"),
-                  "Small icon shown in browser tabs (32×32 or 48×48)."
+                  "Square tenant icon shown in browser tabs and search results."
                 )}
                 value={effectiveFaviconUrl}
                 onChange={(event) => setFaviconUrl(event.target.value)}
@@ -969,12 +1020,12 @@ const SeoSettingsCard = ({
                 error={Boolean(effectiveFaviconUrl && !isHttpsUrl(effectiveFaviconUrl))}
                 helperText={
                   useLogoFavicon
-                    ? tt("management.domainSettings.seo.helpers.faviconFallback", "Fallback: your header logo will be used until you upload a favicon.")
+                    ? tt("management.domainSettings.seo.helpers.faviconFallback", "A square header logo is used only when it passes favicon validation.")
                     : effectiveFaviconUrl
-                    ? tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")
+                    ? tt("management.domainSettings.seo.helpers.favicon", "Use a square PNG such as 96×96, 192×192, or 512×512 over HTTPS.")
                     : faviconFallback
-                    ? tt("management.domainSettings.seo.helpers.faviconFallback", "Fallback: your header logo will be used until you upload a favicon.")
-                    : tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")
+                    ? tt("management.domainSettings.seo.helpers.faviconFallback", "A square header logo is used only when it passes favicon validation.")
+                    : tt("management.domainSettings.seo.helpers.favicon", "Use a square PNG such as 96×96, 192×192, or 512×512 over HTTPS.")
                 }
                 disabled={useLogoFavicon}
                 fullWidth
@@ -1016,7 +1067,7 @@ const SeoSettingsCard = ({
                 {uploadingFavicon ? tt("management.domainSettings.seo.buttons.uploading", "Uploading...") : tt("management.domainSettings.seo.buttons.uploadFavicon", "Upload favicon")}
                 <input
                   type="file"
-                  accept="image/png,image/x-icon,.ico"
+                  accept="image/png,image/webp,image/jpeg"
                   hidden
                   onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -1028,7 +1079,7 @@ const SeoSettingsCard = ({
             </Stack>
             {useLogoFavicon && faviconFallback && (
               <Typography variant="caption" color="text.secondary">
-                Using logo fallback
+                Using validated tenant-logo fallback when available
               </Typography>
             )}
             {faviconWarning && (

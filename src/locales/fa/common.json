@@ -4517,9 +4517,14 @@
           "customHost": "Custom canonical host"
         },
         "helpers": {
-          "keywords": "Comma separated (e.g., tattoo, piercing, studio)",
+          "keywords": "Comma separated (e.g., local services, consultations, Toronto)",
           "customHost": "Enter your verified domain, e.g., studio.example.com",
           "structuredData": "Paste valid JSON-LD to include business schema"
+        },
+        "preview": {
+          "explicitImage": "Explicit image",
+          "fallbackImage": "Fallback image",
+          "noImage": "No image available"
         },
         "sections": {
           "search": "Search result listing",
