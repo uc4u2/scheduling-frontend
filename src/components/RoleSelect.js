@@ -11,6 +11,8 @@ const RoleSelect = ({
   fullWidth = true,
   textFieldSx,
   options = [],
+  error = false,
+  inputRef,
 }) => {
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) || null,
@@ -39,6 +41,8 @@ const RoleSelect = ({
           required={required}
           disabled={disabled}
           sx={textFieldSx}
+          error={error}
+          inputRef={inputRef}
           helperText={helperText}
           fullWidth={fullWidth}
         />

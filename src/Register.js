@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Button,
   Alert,
@@ -7,7 +7,7 @@ import {
   Box,
   Stack,
   Tooltip,
-  IconButton,
+  FormHelperText,
   FormControlLabel,
   Checkbox,
   Link as MuiLink,
@@ -16,7 +16,6 @@ import {
   useTheme,
 } from "@mui/material";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
 import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
@@ -25,6 +24,12 @@ import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/Auth
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingLegalUrl, buildMarketingUrl } from "./config/origins";
 import { getUserTimezone, formatTimezoneLabel } from "./utils/timezone";
+import {
+  getPasswordRequirements,
+  getPhoneValidationError,
+  getRegistrationApiMessage,
+  normalizeRegistrationPhone,
+} from "./utils/registrationValidation";
 
 const ROLE_OPTIONS = [
   {
@@ -45,6 +50,17 @@ const getRoleMeta = (value) =>
   ROLE_OPTIONS.find((option) => option.value === value) || ROLE_OPTIONS[1];
 
 const AGREEMENT_VERSION = "2025-11";
+const REGISTRATION_FIELD_ORDER = [
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "password",
+  "password_confirm",
+  "timezone",
+  "role",
+  "agreed_to_terms",
+];
 const USER_AGREEMENT_URL = buildMarketingLegalUrl("/user-agreement");
 const TERMS_URL = buildMarketingLegalUrl("/terms");
 const PRIVACY_URL = buildMarketingLegalUrl("/privacy");
@@ -66,6 +82,9 @@ const Register = ({ slugOverride = "" }) => {
   const [authChecking, setAuthChecking] = useState(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
+  const fieldRefs = useRef({});
 
   const navigate = useNavigate();
   const theme = useTheme();
@@ -81,30 +100,68 @@ const Register = ({ slugOverride = "" }) => {
     () => String(slugOverride || "").trim() || siteParam || persistedSite,
     [persistedSite, siteParam, slugOverride]
   );
-  const passwordChecklist = useMemo(
-    () => [
-      { label: "At least 8 characters", pass: password.length >= 8 },
-      { label: "One uppercase letter", pass: /[A-Z]/.test(password) },
-      { label: "One lowercase letter", pass: /[a-z]/.test(password) },
-      { label: "One number", pass: /\d/.test(password) },
-      { label: "One symbol", pass: /[^A-Za-z0-9]/.test(password) },
-    ],
-    [password]
-  );
+  const passwordChecklist = useMemo(() => getPasswordRequirements(password), [password]);
 
   const passwordIsStrong = passwordChecklist.every((req) => req.pass);
   const passwordsMatch = password && password === confirmPassword;
-  const canSubmit =
-    Boolean(firstName && lastName && email && phone && password && timezone && role) &&
-    passwordIsStrong &&
-    passwordsMatch &&
-    !loading &&
-    acceptedTerms;
+
+  const setFieldRef = (field) => (node) => {
+    if (node) fieldRefs.current[field] = node;
+  };
+
+  const clearFieldError = (field) => {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const markFieldTouched = (field) => {
+    setTouchedFields((current) => ({ ...current, [field]: true }));
+  };
+
+  const focusFirstError = (errors) => {
+    const firstField = REGISTRATION_FIELD_ORDER.find((field) => errors[field]);
+    if (!firstField) return;
+    window.requestAnimationFrame(() => {
+      const target = fieldRefs.current[firstField];
+      target?.focus?.();
+      target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    });
+  };
+
+  const validateRegistrationForm = () => {
+    const errors = {};
+    if (!firstName.trim()) errors.first_name = "First name is required.";
+    if (!lastName.trim()) errors.last_name = "Last name is required.";
+    if (!email.trim()) errors.email = "Email is required.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = "Enter a valid email address.";
+
+    const phoneError = getPhoneValidationError(phone);
+    if (phoneError) errors.phone = phoneError;
+    if (!password) errors.password = "Password is required.";
+    else if (!passwordIsStrong) errors.password = "Password does not meet all requirements below.";
+    if (!confirmPassword) errors.password_confirm = "Confirm your password.";
+    else if (!passwordsMatch) errors.password_confirm = "Passwords do not match.";
+    if (!timezone) errors.timezone = "Timezone is required.";
+    if (!role) errors.role = "Select an account type.";
+    if (!acceptedTerms) errors.agreed_to_terms = "You must accept the agreements to create an account.";
+    return errors;
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!canSubmit) {
-      setError("Double-check the fields above and try again.");
+    const clientErrors = validateRegistrationForm();
+    if (Object.keys(clientErrors).length) {
+      setFieldErrors(clientErrors);
+      setTouchedFields((current) => ({
+        ...current,
+        ...Object.keys(clientErrors).reduce((result, field) => ({ ...result, [field]: true }), {}),
+      }));
+      setError("Please correct the highlighted fields and try again.");
+      focusFirstError(clientErrors);
       return;
     }
     setLoading(true);
@@ -122,7 +179,7 @@ const Register = ({ slugOverride = "" }) => {
         first_name: firstName,
         last_name: lastName,
         email,
-        phone,
+        phone: normalizeRegistrationPhone(phone),
         password,
         password_confirm: confirmPassword,
         timezone,
@@ -145,7 +202,15 @@ const Register = ({ slugOverride = "" }) => {
       const nextPath = loginParams.toString() ? `/login?${loginParams.toString()}` : "/login";
       setTimeout(() => navigate(nextPath), 1500);
     } catch (err) {
-      setError(err.response?.data?.error || "Registration failed!");
+      const data = err.response?.data || {};
+      const apiFieldErrors = data.field_errors && typeof data.field_errors === "object" ? data.field_errors : {};
+      setFieldErrors(apiFieldErrors);
+      setTouchedFields((current) => ({
+        ...current,
+        ...Object.keys(apiFieldErrors).reduce((result, field) => ({ ...result, [field]: true }), {}),
+      }));
+      setError(getRegistrationApiMessage(data));
+      focusFirstError(apiFieldErrors);
     }
     setLoading(false);
   };
@@ -191,6 +256,23 @@ const Register = ({ slugOverride = "" }) => {
       } catch {}
     }
   }, [intervalParam, searchParams]);
+
+  const phoneInlineError =
+    fieldErrors.phone || (touchedFields.phone ? getPhoneValidationError(phone) : "");
+  const passwordInlineError =
+    fieldErrors.password ||
+    (touchedFields.password && !password
+      ? "Password is required."
+      : touchedFields.password && !passwordIsStrong
+        ? "Password does not meet all requirements below."
+        : "");
+  const confirmPasswordInlineError =
+    fieldErrors.password_confirm ||
+    (touchedFields.password_confirm && !confirmPassword
+      ? "Confirm your password."
+      : touchedFields.password_confirm && !passwordsMatch
+        ? "Passwords do not match."
+        : "");
 
   if (authChecking) {
     return (
@@ -272,7 +354,14 @@ const Register = ({ slugOverride = "" }) => {
                   fullWidth
                   sx={authInputSx}
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    clearFieldError("first_name");
+                  }}
+                  onBlur={() => markFieldTouched("first_name")}
+                  inputRef={setFieldRef("first_name")}
+                  error={Boolean(fieldErrors.first_name)}
+                  helperText={fieldErrors.first_name || ""}
                   autoComplete="given-name"
                   inputProps={{ autoCapitalize: "words" }}
                   required
@@ -282,7 +371,14 @@ const Register = ({ slugOverride = "" }) => {
                   fullWidth
                   sx={authInputSx}
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    clearFieldError("last_name");
+                  }}
+                  onBlur={() => markFieldTouched("last_name")}
+                  inputRef={setFieldRef("last_name")}
+                  error={Boolean(fieldErrors.last_name)}
+                  helperText={fieldErrors.last_name || ""}
                   autoComplete="family-name"
                   inputProps={{ autoCapitalize: "words" }}
                   required
@@ -294,7 +390,14 @@ const Register = ({ slugOverride = "" }) => {
                 sx={authInputSx}
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearFieldError("email");
+                }}
+                onBlur={() => markFieldTouched("email")}
+                inputRef={setFieldRef("email")}
+                error={Boolean(fieldErrors.email)}
+                helperText={fieldErrors.email || ""}
                 inputProps={{ inputMode: "email", autoCapitalize: "none" }}
                 autoComplete="email"
                 required
@@ -305,9 +408,17 @@ const Register = ({ slugOverride = "" }) => {
                 sx={authInputSx}
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  clearFieldError("phone");
+                }}
+                onBlur={() => markFieldTouched("phone")}
+                inputRef={setFieldRef("phone")}
                 inputProps={{ inputMode: "tel" }}
                 autoComplete="tel"
+                placeholder="+1 416 444 8839"
+                error={Boolean(phoneInlineError)}
+                helperText={phoneInlineError || "Example: +1 416 444 8839"}
                 required
               />
               <PasswordField
@@ -315,7 +426,12 @@ const Register = ({ slugOverride = "" }) => {
                 fullWidth
                 sx={authInputSx}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearFieldError("password");
+                }}
+                onBlur={() => markFieldTouched("password")}
+                inputRef={setFieldRef("password")}
                 InputLabelProps={{
                   shrink: true,
                   sx: {
@@ -323,31 +439,52 @@ const Register = ({ slugOverride = "" }) => {
                   },
                 }}
                 autoComplete="new-password"
-                helperText={
-                  isMobile ? (
-                    ""
-                  ) : (
-                    <Box display="inline-flex" alignItems="center" gap={0.5}>
-                      Use 12+ characters with numbers, letters, and symbols.
-                      <Tooltip
-                        title="At least 12 characters · One uppercase letter · One lowercase letter · One number · One symbol"
-                      >
-                        <IconButton size="small" sx={{ p: 0 }}>
-                          <InfoOutlinedIcon fontSize="inherit" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )
-                }
+                error={Boolean(passwordInlineError)}
+                helperText={passwordInlineError}
                 required
               />
+
+              <Box
+                component="ul"
+                aria-label="Password requirements"
+                aria-live="polite"
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+                  gap: 0.5,
+                  m: 0,
+                  mt: "-0.5rem !important",
+                  pl: 0,
+                  listStyle: "none",
+                }}
+              >
+                {passwordChecklist.map((requirement) => (
+                  <Typography
+                    component="li"
+                    variant="caption"
+                    key={requirement.key}
+                    color={requirement.pass ? "success.main" : "text.secondary"}
+                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                  >
+                    <Box component="span" aria-hidden="true" sx={{ fontWeight: 800 }}>
+                      {requirement.pass ? "✓" : "○"}
+                    </Box>
+                    {requirement.label}
+                  </Typography>
+                ))}
+              </Box>
 
               <PasswordField
                 label="Confirm Password"
                 fullWidth
                 sx={authInputSx}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  clearFieldError("password_confirm");
+                }}
+                onBlur={() => markFieldTouched("password_confirm")}
+                inputRef={setFieldRef("password_confirm")}
                 InputLabelProps={{
                   shrink: true,
                   sx: {
@@ -355,10 +492,8 @@ const Register = ({ slugOverride = "" }) => {
                   },
                 }}
                 autoComplete="new-password"
-                error={Boolean(confirmPassword) && !passwordsMatch}
-                helperText={
-                  confirmPassword && !passwordsMatch ? "Passwords must match" : ""
-                }
+                error={Boolean(confirmPasswordInlineError)}
+                helperText={confirmPasswordInlineError}
                 required
               />
 
@@ -393,9 +528,14 @@ const Register = ({ slugOverride = "" }) => {
                     <TimezoneSelect
                       label="Timezone"
                       value={timezone}
-                      onChange={setTimezone}
+                      onChange={(value) => {
+                        setTimezone(value);
+                        clearFieldError("timezone");
+                      }}
                       textFieldSx={authInputSx}
-                      helperText={isMobile ? "" : undefined}
+                      helperText={fieldErrors.timezone || (isMobile ? "" : undefined)}
+                      error={Boolean(fieldErrors.timezone)}
+                      inputRef={setFieldRef("timezone")}
                       showQuickAction={!isMobile}
                       required
                     />
@@ -405,13 +545,18 @@ const Register = ({ slugOverride = "" }) => {
                 <TimezoneSelect
                   label="Timezone"
                   value={timezone}
-                  onChange={setTimezone}
+                  onChange={(value) => {
+                    setTimezone(value);
+                    clearFieldError("timezone");
+                  }}
                   textFieldSx={authInputSx}
                   helperText={
-                    isMobile
+                    fieldErrors.timezone || (isMobile
                       ? ""
-                      : undefined
+                      : undefined)
                   }
+                  error={Boolean(fieldErrors.timezone)}
+                  inputRef={setFieldRef("timezone")}
                   showQuickAction={!isMobile}
                   required
                 />
@@ -420,14 +565,19 @@ const Register = ({ slugOverride = "" }) => {
               <RoleSelect
                 label="Role"
                 value={role}
-                onChange={setRole}
+                onChange={(value) => {
+                  setRole(value);
+                  clearFieldError("role");
+                }}
                 options={ROLE_OPTIONS}
                 textFieldSx={authInputSx}
+                error={Boolean(fieldErrors.role)}
+                inputRef={setFieldRef("role")}
                 required
                 helperText={
-                  isMobile
+                  fieldErrors.role || (isMobile
                     ? ""
-                    : "Select your account type to ensure the right dashboard experience."
+                    : "Select your account type to ensure the right dashboard experience.")
                 }
               />
               <Typography
@@ -452,7 +602,11 @@ const Register = ({ slugOverride = "" }) => {
                 control={
                   <Checkbox
                     checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    onChange={(e) => {
+                      setAcceptedTerms(e.target.checked);
+                      clearFieldError("agreed_to_terms");
+                    }}
+                    inputRef={setFieldRef("agreed_to_terms")}
                     color="primary"
                     size={isMobile ? "small" : "medium"}
                   />
@@ -484,12 +638,17 @@ const Register = ({ slugOverride = "" }) => {
                 }
                 sx={{ alignItems: "flex-start", ml: -0.25 }}
               />
+              {fieldErrors.agreed_to_terms ? (
+                <FormHelperText error sx={{ mt: "-1rem !important", ml: 1.75 }}>
+                  {fieldErrors.agreed_to_terms}
+                </FormHelperText>
+              ) : null}
 
               <Button
                 variant="contained"
                 fullWidth
                 type="submit"
-                disabled={!canSubmit}
+                disabled={loading}
                 sx={authButtonSx}
               >
                 {loading ? "Registering..." : "Create account"}

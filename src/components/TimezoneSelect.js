@@ -15,6 +15,8 @@ const TimezoneSelect = ({
   disabled,
   fullWidth = true,
   textFieldSx,
+  error = false,
+  inputRef,
 }) => {
   const detected = useMemo(detectBrowserTimezone, []);
 
@@ -55,6 +57,8 @@ const TimezoneSelect = ({
             required={required}
             disabled={disabled}
             sx={textFieldSx}
+            error={error}
+            inputRef={inputRef}
             helperText={
               helperText !== undefined
                 ? helperText
