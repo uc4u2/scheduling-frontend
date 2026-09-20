@@ -3334,6 +3334,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const nextJsThemeOverrideSaveTimerRef = useRef(null);
   const nextJsDraftSyncTimerRef = useRef(null);
   const nextJsDraftSyncSnapshotRef = useRef(null);
+  const brandingDraftUpdatedAtRef = useRef(null);
   const [pages, setPages] = useState([]);
   const [checkpoints, setCheckpoints] = useState([]);
   const [protectedCheckpointCount, setProtectedCheckpointCount] = useState(0);
@@ -3399,6 +3400,8 @@ const [brandingErr, setBrandingErr] = useState("");
       setFooterDraft(footerFromServer);
       setThemeOverridesDraft(themeOverrides || defaultThemeOverrides);
       setBrandingLocalDirty(false);
+      brandingDraftUpdatedAtRef.current =
+        settingsObj.branding_draft_updated_at || null;
       themeOverridesPersistedKeyRef.current = JSON.stringify(
         themeOverrides || defaultThemeOverrides || {}
       );
@@ -5133,7 +5136,10 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
           nav_overrides: navOverridesPayload,
           site_theme: siteThemePayload,
         },
-        { publish: false }
+        {
+          publish: false,
+          expectedDraftUpdatedAt: brandingDraftUpdatedAtRef.current,
+        }
       );
       const refreshed = await wb.getSettings(companyId).catch(() => null);
       const root = refreshed?.data || refreshed || {};
@@ -5879,11 +5885,23 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
   const saveNavSettingsWithPreviewRefresh = useCallback(
     async (draft) => {
       await saveNavSettings(draft);
+      const refreshed = await wb.getSettings(companyId).catch(() => null);
+      const refreshedRoot = refreshed?.data || refreshed || null;
+      if (refreshedRoot) {
+        applyBrandingFromServer(refreshedRoot);
+        setSiteSettings(refreshedRoot);
+      }
       if (isNextJsContentMode) {
         await refreshNextJsPreview();
       }
     },
-    [isNextJsContentMode, refreshNextJsPreview, saveNavSettings]
+    [
+      applyBrandingFromServer,
+      companyId,
+      isNextJsContentMode,
+      refreshNextJsPreview,
+      saveNavSettings,
+    ]
   );
 
   // Client account and commerce entry points are system-owned routes rather
@@ -6170,6 +6188,24 @@ const autoProvisionIfEmpty = useCallback(
   }
 };
 
+  const refreshEditorAndPreview = async () => {
+    if (!companyId) return;
+    if (brandingLocalDirty || pageSettingsDirty) {
+      setErr(
+        "Save or discard your unsaved controls before reloading the server draft."
+      );
+      return;
+    }
+    const preferredPage = editing
+      ? { id: editing.id, slug: editing.slug, locale: editing.locale }
+      : null;
+    await loadAll(companyId, preferredPage);
+    await refreshNextJsPreview(
+      null,
+      preferredPage ? normalizeNextJsPreviewPagePath(preferredPage) : null
+    );
+  };
+
   /* ----- save & publish (HOISTED) ----- */
   const onSavePage = useCallback(async () => {
     if (!companyId) return;
@@ -6340,11 +6376,10 @@ const autoProvisionIfEmpty = useCallback(
       );
       const payload = serializePage(snapshot);
 
-      if (payload.id) {
-        await wb.updatePage(companyId, payload.id, payload);
-        setEditing(snapshot);
-        setPages((prev) => prev.map((p) => (p.id === payload.id ? snapshot : p)));
-      } else {
+      // Existing Next.js page edits are persisted by the explicit Save action
+      // and semantic draft sync. Publishing must not PUT the entire browser
+      // snapshot again because another tab may have saved a newer revision.
+      if (!payload.id) {
         try {
           const r = await wb.createPage(companyId, payload);
           const created = ensureSectionIds(withLiftedLayout(normalizePage(r.data)));
@@ -6393,6 +6428,8 @@ const autoProvisionIfEmpty = useCallback(
       };
       const brandingRes = await wb.saveSettings(companyId, publishPayload, {
         publish: true,
+        expectedDraftUpdatedAt:
+          latestPayload?.branding_draft_updated_at || null,
       });
       const brandingPayload = brandingRes?.data || brandingRes || {};
       if (brandingPayload?.branding_published_at) {
@@ -7513,7 +7550,13 @@ const autoProvisionIfEmpty = useCallback(
           </Tooltip>
           <Tooltip title={t("manager.visualBuilder.controls.tooltips.publish")}>
             <span>
-              <Button size="small" startIcon={<PublishIcon />} variant="contained" disabled={busy || !companyId} onClick={onPublish}>
+              <Button
+                size="small"
+                startIcon={<PublishIcon />}
+                variant="contained"
+                disabled={busy || !companyId || brandingLocalDirty || pageSettingsDirty}
+                onClick={onPublish}
+              >
                 {t("manager.visualBuilder.controls.buttons.publish")}
               </Button>
             </span>
@@ -9506,7 +9549,7 @@ const CanvasColumn = (
               size="small"
               variant="outlined"
               startIcon={<RefreshIcon fontSize="small" />}
-              onClick={() => refreshNextJsPreview()}
+              onClick={refreshEditorAndPreview}
               disabled={!currentStyleKey}
             >
               Refresh preview
@@ -12678,7 +12721,8 @@ const tabs = [
 
 const builderTabDefaultIndex = builderTabIndex;
 
-const disablePublish = busy || !companyId;
+const disablePublish =
+  busy || !companyId || brandingLocalDirty || pageSettingsDirty;
 const floatingPublishText = hasDraftChanges
   ? t(
       "manager.visualBuilder.controls.publishFloatingPending",

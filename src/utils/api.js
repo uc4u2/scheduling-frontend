@@ -1604,6 +1604,7 @@ export const wb = {
         : !publishFlag;
     const schemaVersion = options.schemaVersion;
     const operationId = options.operationId;
+    const expectedDraftUpdatedAt = options.expectedDraftUpdatedAt;
 
     // 🔧 Polyfill common shapes so backends with different schemas accept it
     const flatPayload = Object.fromEntries(
@@ -1662,6 +1663,9 @@ export const wb = {
       _draft_only: Boolean(draftOnly),
       ...(schemaVersion != null ? { _schema_version: schemaVersion } : {}),
       ...(operationId ? { _operation_id: operationId } : {}),
+      ...(expectedDraftUpdatedAt
+        ? { _expected_draft_updated_at: expectedDraftUpdatedAt }
+        : {}),
     };
     const safeRequestPayload = sanitizeJsonPayload(requestPayload);
 
