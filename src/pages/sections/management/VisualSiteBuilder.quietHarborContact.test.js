@@ -41,4 +41,12 @@ describe("Quiet Harbor contact Canvas and Inspector parity", () => {
     expect(source).toContain('label="Link (optional)"');
     expect(source).toContain('helperText="Use mailto: for email, tel: for phone, or a page/website URL."');
   });
+
+  it("exposes a scoped article hero height control only where Quiet Harbor consumes it", () => {
+    expect(source).toContain('const isQuietHarborBlogArticleHero =');
+    expect(source).toContain('normalizedEditingPath.startsWith("blog/")');
+    expect(source).toContain('label="Article hero image height (px)"');
+    expect(source).toContain('? Math.max(280, Math.min(720, Number(event.target.value)))');
+    expect(source).toContain('helperText="Use 0 for the responsive theme default, or 280–720 px for a shorter or taller article image."');
+  });
 });

@@ -10458,6 +10458,14 @@ function InspectorColumn({ floating = false } = {}) {
     const isForgeMotionTheme = normalizedNextThemeKey === "forge-motion";
     const isQuietHarborTheme = normalizedNextThemeKey === "quiet-harbor";
     const isAeroGridTheme = normalizedNextThemeKey === "aerogrid-hvac";
+    const normalizedEditingPath = String(editing?.slug || editing?.path || "")
+      .trim()
+      .replace(/^\/+|\/+$/g, "")
+      .toLowerCase();
+    const isQuietHarborBlogArticleHero =
+      isQuietHarborTheme &&
+      selectedSemanticModule.type === "hero" &&
+      normalizedEditingPath.startsWith("blog/");
     // Hero media is a shared Next.js contract. Every semantic Next.js theme
     // receives the same MP4/WebM selection surface; the shared renderer swaps
     // an image presentation for a safe muted video while preserving each
@@ -10809,6 +10817,20 @@ function InspectorColumn({ floating = false } = {}) {
                 ...(isQuietHarborTheme ? {} : { videoUrl: isWebsiteVideoReference(url) ? url : "" }),
               })} companyId={companyId} fieldKey={`${selectedSemanticModule.id}:${contentPath("image")}`} {...mediaPositionControl(contentPath("image"), content.imagePosition, (imagePosition) => updateSelectedContent({ imagePosition }))} /></Box>
               <TextField size="small" label={allowsHeroVideoMedia ? "Hero media alt text" : "Hero image alt text"} value={content.imageAlt || ""} onChange={(event) => updateSelectedContent({ imageAlt: event.target.value })} fullWidth inputProps={{ "data-module-field-path": contentPath("imageAlt") }} />
+              {isQuietHarborBlogArticleHero ? <TextField
+                size="small"
+                type="number"
+                label="Article hero image height (px)"
+                value={content.imageHeight ?? 0}
+                onChange={(event) => updateSelectedContent({
+                  imageHeight: Number(event.target.value) > 0
+                    ? Math.max(280, Math.min(720, Number(event.target.value)))
+                    : 0,
+                })}
+                helperText="Use 0 for the responsive theme default, or 280–720 px for a shorter or taller article image."
+                fullWidth
+                inputProps={{ min: 0, max: 720, step: 20, "data-module-field-path": contentPath("imageHeight") }}
+              /> : null}
               {isQuietHarborTheme ? <>
                 <Box data-module-field-path={contentPath("videoUrl")}>
                   <VideoField
