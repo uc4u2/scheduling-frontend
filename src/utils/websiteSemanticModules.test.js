@@ -384,6 +384,7 @@ describe("website semantic modules", () => {
     expect(article.content.meta.websiteBlogPost).toBe(true);
     expect(article.content.modules.map((module) => module.type)).toEqual(["hero", "richText", "cta"]);
     expect(article.content.modules[0].content.image).toBe("/media/site-hero.jpg");
+    expect(article.content.modules[0].content.imagePosition).toEqual({ x: 50, y: 50 });
     expect(article.seo_description).toBe("A concise guide to choosing the right service.");
 
     Object.keys(WEBSITE_THEME_MODULE_MANIFESTS).forEach((themeKey) => {

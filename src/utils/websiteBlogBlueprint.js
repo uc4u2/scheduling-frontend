@@ -100,6 +100,7 @@ export function createWebsiteBlogPostPage(existingPages = [], options = {}) {
           image: media.image,
           imageUrl: media.image,
           imageAlt: inheritedAlt,
+          imagePosition: { x: 50, y: 50 },
           posterImage: media.posterImage,
         }),
         moduleRecord(articleKey, "body", "richText", "blog.primaryContent", 1, {
