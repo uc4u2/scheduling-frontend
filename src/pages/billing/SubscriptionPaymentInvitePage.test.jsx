@@ -82,7 +82,13 @@ describe("SubscriptionPaymentInvitePage", () => {
   it("previews safely without creating Checkout on GET", async () => {
     renderAt("/billing/subscription-invite/token-1", "token-1");
     expect(await screen.findByText("ABC Plumbing")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => (
+      element?.tagName === "P" && element.textContent.includes("Starter · monthly")
+    ))).toBeInTheDocument();
     expect(screen.getByText(/19\.99 USD\/month/i)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/choose another plan/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue to secure payment/i })).toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledWith("/public/billing/subscription-invites/token-1");
     expect(mockPost).not.toHaveBeenCalled();
   });

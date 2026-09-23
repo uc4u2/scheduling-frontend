@@ -246,6 +246,15 @@ const SettingsBillingSubscription = () => {
     }
   };
 
+  const openPaymentInviteDialog = () => {
+    setInviteForm((current) => ({
+      ...current,
+      recipient_name: billingContact.name || "",
+      recipient_email: billingContact.email || "",
+    }));
+    setInviteDialogOpen(true);
+  };
+
   const generatePaymentInvite = async (sendEmail) => {
     setInviteState({ loading: true, error: "", message: "" });
     try {
@@ -456,7 +465,7 @@ const SettingsBillingSubscription = () => {
                 <Button size="small" variant="contained" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
                   {t("billing.actions.startPlanMyself")}
                 </Button>
-                <Button size="small" variant="outlined" onClick={() => setInviteDialogOpen(true)}>
+                <Button size="small" variant="outlined" onClick={openPaymentInviteDialog}>
                   {t("billing.actions.sendPaymentLink")}
                 </Button>
               </>
@@ -640,6 +649,9 @@ const SettingsBillingSubscription = () => {
             <Alert severity="info">
               {t("billing.paymentInvite.trialExplanation")}
             </Alert>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              {t("billing.paymentInvite.exactPlanNotice")}
+            </Typography>
             <FormControl fullWidth>
               <InputLabel id="payment-invite-plan-label">{t("billing.paymentInvite.plan")}</InputLabel>
               <Select

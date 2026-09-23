@@ -9100,7 +9100,7 @@
       "name": "Name",
       "email": "Email",
       "saving": "Saving…",
-      "helper": "This contact is used for Schedulaa subscription billing only. Changing it does not change your login, company contact, payroll contact, or payment method.",
+      "helper": "This contact is used for Schedulaa subscription billing only. Changing it does not change your login, company contact, payroll contact, or payment method. Saving this billing contact does not send a payment link.",
       "saved": "Billing contact saved.",
       "saveError": "Unable to save billing contact."
     },
@@ -9115,6 +9115,7 @@
       "noRecovery": "For security, the original link cannot be recovered after it leaves the creation response. Replace it to generate a new link; the old link will stop working.",
       "dialogTitle": "Send a subscription payment link",
       "trialExplanation": "If this workspace is still eligible, the existing 14-day trial applies. Stripe securely saves the client's payment method for renewal.",
+      "exactPlanNotice": "You are creating a payment link for the exact plan selected below.",
       "plan": "Plan",
       "interval": "Billing interval",
       "recipientName": "Recipient name",

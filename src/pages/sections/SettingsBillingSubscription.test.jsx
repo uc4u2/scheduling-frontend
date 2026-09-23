@@ -67,7 +67,7 @@ jest.mock("react-i18next", () => ({
       "billing.contact.name": "Name",
       "billing.contact.email": "Email",
       "billing.contact.saving": "Saving…",
-      "billing.contact.helper": "Billing contact helper",
+      "billing.contact.helper": "Saving this billing contact does not send a payment link.",
       "billing.paymentInvite.pending": "Payment invitation pending",
       "billing.paymentInvite.monthly": "Monthly",
       "billing.paymentInvite.annual": "Annual",
@@ -78,6 +78,7 @@ jest.mock("react-i18next", () => ({
       "billing.paymentInvite.noRecovery": "Original links cannot be recovered.",
       "billing.paymentInvite.dialogTitle": "Send a subscription payment link",
       "billing.paymentInvite.trialExplanation": "The existing 14-day trial applies when eligible.",
+      "billing.paymentInvite.exactPlanNotice": "You are creating a payment link for the exact plan selected below.",
       "billing.paymentInvite.plan": "Plan",
       "billing.paymentInvite.interval": "Billing interval",
       "billing.paymentInvite.recipientName": "Recipient name",
@@ -212,6 +213,65 @@ describe("SettingsBillingSubscription", () => {
     expect(screen.getByRole("button", { name: /send payment link/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^manage billing$/i })).not.toBeInTheDocument();
     await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith("/billing/payment-invites/current"));
+  });
+
+  it("prefills the payer from billing contact while allowing an exact-plan override", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({
+        status: "inactive",
+        subscription_state: "none",
+        billing_contact: { name: "Saved Billing Owner", email: "billing@example.com" },
+      }),
+    };
+    mockApiPost.mockResolvedValueOnce({
+      data: {
+        invite: { id: 23, status: "pending", plan_key: "pro", billing_interval: "annual", recipient_email_masked: "pa***@example.com" },
+        public_url: "https://app.schedulaa.com/billing/subscription-invite/exact-plan-token",
+      },
+    });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /send payment link/i }));
+    expect(screen.getByLabelText(/recipient name/i)).toHaveValue("Saved Billing Owner");
+    expect(screen.getByLabelText(/recipient email/i)).toHaveValue("billing@example.com");
+    expect(screen.getByText(/exact plan selected below/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/recipient name/i), { target: { value: "Payment Approver" } });
+    fireEvent.change(screen.getByLabelText(/recipient email/i), { target: { value: "payer@example.com" } });
+    fireEvent.mouseDown(screen.getByLabelText(/^plan$/i));
+    fireEvent.click(await screen.findByRole("option", { name: "Pro" }));
+    fireEvent.mouseDown(screen.getByLabelText(/billing interval/i));
+    fireEvent.click(await screen.findByRole("option", { name: "Annual" }));
+    fireEvent.click(screen.getByRole("button", { name: /^generate link$/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith("/billing/payment-invites", {
+      plan_key: "pro",
+      interval: "annual",
+      recipient_name: "Payment Approver",
+      recipient_email: "payer@example.com",
+      send_email: false,
+    }));
+    expect(mockApiPatch).not.toHaveBeenCalled();
+  });
+
+  it("saving billing contact does not create a payment invitation", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({ status: "inactive", subscription_state: "none", billing_contact: {} }),
+    };
+    renderPage();
+
+    expect(await screen.findByText(/saving this billing contact does not send a payment link/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "Billing Owner" } });
+    fireEvent.change(screen.getByLabelText(/^email$/i), { target: { value: "billing-owner@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /save billing contact/i }));
+
+    await waitFor(() => expect(mockApiPatch).toHaveBeenCalledWith("/billing/contact", {
+      billing_contact_name: "Billing Owner",
+      billing_contact_email: "billing-owner@example.com",
+    }));
+    expect(mockApiPost).not.toHaveBeenCalled();
   });
 
   it("does not expose external purchase actions in mobile compliance mode", () => {
