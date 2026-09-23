@@ -7,10 +7,12 @@ import SettingsBillingSubscription from "./SettingsBillingSubscription";
 const mockRefetch = jest.fn();
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
+const mockApiPatch = jest.fn();
 const mockOpenBillingPortal = jest.fn(() => Promise.resolve());
 const mockNavigate = jest.fn();
 
 let mockBillingState;
+let mockMobileMode = false;
 
 jest.mock("../../components/billing/useBillingStatus", () => ({
   __esModule: true,
@@ -22,6 +24,7 @@ jest.mock("../../utils/api", () => ({
   default: {
     get: (...args) => mockApiGet(...args),
     post: (...args) => mockApiPost(...args),
+    patch: (...args) => mockApiPatch(...args),
   },
 }));
 
@@ -30,8 +33,9 @@ jest.mock("../../components/billing/billingHelpers", () => ({
 }));
 
 jest.mock("../../utils/mobileCompliance", () => ({
-  isMobileComplianceMode: () => false,
+  isMobileComplianceMode: () => mockMobileMode,
   MOBILE_PAYMENTS_MESSAGE: "web only",
+  toWebAppUrl: (path) => `https://app.schedulaa.com${path}`,
 }));
 
 jest.mock("react-router-dom", () => ({
@@ -40,7 +44,7 @@ jest.mock("react-router-dom", () => ({
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key) => ({
+    t: (key, values = {}) => ({
       "billing.title": "Billing & Subscription",
       "billing.subtitle": "Manage your plan and billing.",
       "billing.loading": "Loading",
@@ -50,8 +54,38 @@ jest.mock("react-i18next", () => ({
       "billing.actions.syncFromStripe": "Sync from Stripe",
       "billing.actions.syncing": "Syncing",
       "billing.actions.startPlan": "Start plan",
+      "billing.actions.startPlanMyself": "Start plan myself",
+      "billing.actions.sendPaymentLink": "Send payment link",
+      "billing.actions.saveBillingContact": "Save billing contact",
+      "billing.actions.replacePaymentLink": "Replace link",
+      "billing.actions.replaceAndEmail": "Replace & email",
+      "billing.actions.revokePaymentLink": "Revoke",
       "billing.actions.viewLastInvoice": "View last invoice",
       "billing.actions.cancelSubscription": "Cancel subscription",
+      "billing.mobileWebOnly": "Billing is web-only in mobile app mode",
+      "billing.contact.title": "Billing contact",
+      "billing.contact.name": "Name",
+      "billing.contact.email": "Email",
+      "billing.contact.saving": "Saving…",
+      "billing.contact.helper": "Billing contact helper",
+      "billing.paymentInvite.pending": "Payment invitation pending",
+      "billing.paymentInvite.monthly": "Monthly",
+      "billing.paymentInvite.annual": "Annual",
+      "billing.paymentInvite.sentTo": `Sent to ${values.email || ""}`,
+      "billing.paymentInvite.expires": `Expires ${values.date || ""}`,
+      "billing.paymentInvite.newLinkLabel": "New payment link",
+      "billing.paymentInvite.copyLink": "Copy link",
+      "billing.paymentInvite.noRecovery": "Original links cannot be recovered.",
+      "billing.paymentInvite.dialogTitle": "Send a subscription payment link",
+      "billing.paymentInvite.trialExplanation": "The existing 14-day trial applies when eligible.",
+      "billing.paymentInvite.plan": "Plan",
+      "billing.paymentInvite.interval": "Billing interval",
+      "billing.paymentInvite.recipientName": "Recipient name",
+      "billing.paymentInvite.recipientEmail": "Recipient email",
+      "billing.paymentInvite.ownershipNotice": "Payment does not transfer ownership.",
+      "billing.paymentInvite.cancel": "Cancel",
+      "billing.paymentInvite.generateLink": "Generate link",
+      "billing.paymentInvite.generateAndEmail": "Generate & email",
       "billing.labels.plan": "Plan",
       "billing.labels.status": "Status",
       "billing.labels.subscription": "Subscription",
@@ -137,6 +171,7 @@ describe("SettingsBillingSubscription", () => {
     jest.clearAllMocks();
     jest.useRealTimers();
     mockNavigate.mockReset();
+    mockMobileMode = false;
     mockBillingState = {
       status: buildStatus(),
       loading: false,
@@ -163,6 +198,72 @@ describe("SettingsBillingSubscription", () => {
       return Promise.resolve({ data: {} });
     });
     mockApiPost.mockResolvedValue({ data: buildStatus() });
+    mockApiPatch.mockResolvedValue({ data: { billing_contact: { name: "Owner", email: "owner@example.com" } } });
+  });
+
+  it("offers self-pay and client-pay actions only for an inactive subscription", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({ status: "inactive", subscription_state: "none", billing_contact: {} }),
+    };
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: /start plan myself/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send payment link/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^manage billing$/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith("/billing/payment-invites/current"));
+  });
+
+  it("does not expose external purchase actions in mobile compliance mode", () => {
+    mockMobileMode = true;
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({ status: "inactive", subscription_state: "none" }),
+    };
+    renderPage();
+    expect(screen.getByText(/billing is web-only in mobile app mode/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /send payment link/i })).not.toBeInTheDocument();
+  });
+
+  it("does not reconstruct an existing payment link after reload", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({ status: "inactive", subscription_state: "none", billing_contact: {} }),
+    };
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/billing/payment-invites/current") {
+        return Promise.resolve({ data: { invite: { id: 14, status: "pending", plan_key: "starter", billing_interval: "monthly", recipient_email_masked: "ow***@example.com", expires_at: "2026-09-29T00:00:00Z" } } });
+      }
+      if (url === "/billing/field-photos/preview") return Promise.resolve({ data: defaultFieldPhotosPreview });
+      return Promise.resolve({ data: {} });
+    });
+    renderPage();
+
+    expect(await screen.findByText(/payment invitation pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/ow\*\*\*@example\.com/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^copy link$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /replace link/i })).toBeInTheDocument();
+  });
+
+  it("generates a fresh link and exposes copy only for the fresh response", async () => {
+    mockBillingState = {
+      ...mockBillingState,
+      status: buildStatus({ status: "inactive", subscription_state: "none", billing_contact: {} }),
+    };
+    mockApiPost.mockResolvedValueOnce({
+      data: {
+        invite: { id: 22, status: "pending", plan_key: "pro", billing_interval: "annual", recipient_email_masked: "cl***@example.com" },
+        public_url: "https://app.schedulaa.com/pay/subscription/fresh-token",
+      },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /send payment link/i }));
+    fireEvent.change(screen.getByLabelText(/recipient name/i), { target: { value: "Client Owner" } });
+    fireEvent.change(screen.getByLabelText(/recipient email/i), { target: { value: "client@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /^generate link$/i }));
+
+    expect(await screen.findByRole("button", { name: /^copy link$/i })).toBeInTheDocument();
+    expect(mockApiPost).toHaveBeenCalledWith("/billing/payment-invites", expect.objectContaining({ recipient_email: "client@example.com", send_email: false }));
   });
 
   it("renders Copilot and Field Photos in separate cards and removes the old free-launch alert", async () => {
