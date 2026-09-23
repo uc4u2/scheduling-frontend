@@ -5,11 +5,20 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
   LinearProgress,
+  MenuItem,
   Popover,
+  Select,
   Stack,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -168,6 +177,13 @@ const SettingsBillingSubscription = () => {
   const [fieldPhotosPreviewError, setFieldPhotosPreviewError] = useState("");
   const [aiCommerceBusy, setAiCommerceBusy] = useState(false);
   const [aiCommerceNotice, setAiCommerceNotice] = useState("");
+  const [billingContact, setBillingContact] = useState({ name: "", email: "" });
+  const [billingContactState, setBillingContactState] = useState({ loading: false, error: "", message: "" });
+  const [paymentInvite, setPaymentInvite] = useState(null);
+  const [freshPaymentLink, setFreshPaymentLink] = useState("");
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ plan_key: "starter", interval: "monthly", recipient_name: "", recipient_email: "" });
+  const [inviteState, setInviteState] = useState({ loading: false, error: "", message: "" });
   const mobileComplianceMode = isMobileComplianceMode();
   const fieldPhotos = status?.field_photos || {};
   const aiCommerce = status?.ai_commerce_copilot || {};
@@ -186,6 +202,99 @@ const SettingsBillingSubscription = () => {
   const trialDisplay = useMemo(() => resolveTrialDisplay(status), [status]);
   const fieldPhotosUsagePercent = useMemo(() => quotaUsagePercent(fieldPhotos), [fieldPhotos]);
   const fieldPhotosQuotaState = quotaState(fieldPhotos);
+  const subscriptionState = String(status?.subscription_state || status?.status || "none").toLowerCase();
+  const hasRecoverableSubscription = ["active", "trialing", "past_due", "unpaid", "incomplete", "paused"].includes(subscriptionState);
+
+  useEffect(() => {
+    setBillingContact({
+      name: status?.billing_contact?.name || "",
+      email: status?.billing_contact?.email || "",
+    });
+  }, [status?.billing_contact?.name, status?.billing_contact?.email]);
+
+  useEffect(() => {
+    if (mobileComplianceMode || !status || hasRecoverableSubscription) {
+      setPaymentInvite(null);
+      return;
+    }
+    let active = true;
+    api.get("/billing/payment-invites/current")
+      .then((response) => {
+        if (active) setPaymentInvite(response?.data?.invite || null);
+      })
+      .catch(() => {
+        if (active) setPaymentInvite(null);
+      });
+    return () => { active = false; };
+  }, [hasRecoverableSubscription, mobileComplianceMode, status]);
+
+  const saveBillingContact = async () => {
+    setBillingContactState({ loading: true, error: "", message: "" });
+    try {
+      const response = await api.patch("/billing/contact", {
+        billing_contact_name: billingContact.name,
+        billing_contact_email: billingContact.email,
+      });
+      setBillingContact({
+        name: response?.data?.billing_contact?.name || billingContact.name,
+        email: response?.data?.billing_contact?.email || billingContact.email,
+      });
+      setBillingContactState({ loading: false, error: "", message: t("billing.contact.saved") });
+      await refetch();
+    } catch (err) {
+      setBillingContactState({ loading: false, error: err?.response?.data?.message || t("billing.contact.saveError"), message: "" });
+    }
+  };
+
+  const generatePaymentInvite = async (sendEmail) => {
+    setInviteState({ loading: true, error: "", message: "" });
+    try {
+      const response = await api.post("/billing/payment-invites", { ...inviteForm, send_email: sendEmail });
+      setPaymentInvite(response?.data?.invite || null);
+      setFreshPaymentLink(response?.data?.public_url || "");
+      setInviteDialogOpen(false);
+      setInviteState({ loading: false, error: "", message: sendEmail ? t("billing.paymentInvite.generatedAndQueued") : t("billing.paymentInvite.generated") });
+    } catch (err) {
+      setInviteState({ loading: false, error: err?.response?.data?.message || err?.response?.data?.error || t("billing.paymentInvite.generateError"), message: "" });
+    }
+  };
+
+  const replacePaymentInvite = async (sendEmail) => {
+    if (!paymentInvite?.id) return;
+    setInviteState({ loading: true, error: "", message: "" });
+    try {
+      const suffix = sendEmail ? "replace-and-send" : "replace";
+      const response = await api.post(`/billing/payment-invites/${paymentInvite.id}/${suffix}`);
+      setPaymentInvite(response?.data?.invite || null);
+      setFreshPaymentLink(response?.data?.public_url || "");
+      setInviteState({ loading: false, error: "", message: sendEmail ? t("billing.paymentInvite.replacedAndEmailed") : t("billing.paymentInvite.replaced") });
+    } catch (err) {
+      setInviteState({ loading: false, error: err?.response?.data?.message || t("billing.paymentInvite.replaceError"), message: "" });
+    }
+  };
+
+  const revokePaymentInvite = async () => {
+    if (!paymentInvite?.id) return;
+    setInviteState({ loading: true, error: "", message: "" });
+    try {
+      await api.post(`/billing/payment-invites/${paymentInvite.id}/revoke`);
+      setPaymentInvite(null);
+      setFreshPaymentLink("");
+      setInviteState({ loading: false, error: "", message: t("billing.paymentInvite.revoked") });
+    } catch (err) {
+      setInviteState({ loading: false, error: err?.response?.data?.message || t("billing.paymentInvite.revokeError"), message: "" });
+    }
+  };
+
+  const copyFreshPaymentLink = async () => {
+    if (!freshPaymentLink) return;
+    try {
+      await navigator.clipboard.writeText(freshPaymentLink);
+      setInviteState({ loading: false, error: "", message: t("billing.paymentInvite.copied") });
+    } catch {
+      setInviteState({ loading: false, error: t("billing.paymentInvite.copyError"), message: "" });
+    }
+  };
 
   const handleAddSeats = () => {
     if (mobileComplianceMode) {
@@ -324,7 +433,7 @@ const SettingsBillingSubscription = () => {
         subtitle={t("billing.subtitle")}
       >
         <MobileWebOnlyNotice
-          title="Billing is web-only in mobile app mode"
+          title={t("billing.mobileWebOnly")}
           webPath="/manager/dashboard?view=settings&tab=billing"
         />
       </SectionCard>
@@ -338,18 +447,33 @@ const SettingsBillingSubscription = () => {
         subtitle={t("billing.subtitle")}
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button size="small" variant="outlined" onClick={handleManageBilling}>
-              {t("billing.actions.manageBilling")}
-            </Button>
+            {hasRecoverableSubscription ? (
+              <Button size="small" variant="outlined" onClick={handleManageBilling}>
+                {t("billing.actions.manageBilling")}
+              </Button>
+            ) : (
+              <>
+                <Button size="small" variant="contained" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
+                  {t("billing.actions.startPlanMyself")}
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => setInviteDialogOpen(true)}>
+                  {t("billing.actions.sendPaymentLink")}
+                </Button>
+              </>
+            )}
             <Button size="small" variant="outlined" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
               {t("billing.actions.viewPlans")}
             </Button>
-            <Button size="small" variant="contained" onClick={handleAddSeats}>
-              {t("billing.actions.addSeats")}
-            </Button>
-            <Button size="small" variant="outlined" onClick={handleSync} disabled={syncState.loading}>
-              {syncState.loading ? t("billing.actions.syncing") : t("billing.actions.syncFromStripe")}
-            </Button>
+            {hasRecoverableSubscription && (
+              <>
+                <Button size="small" variant="contained" onClick={handleAddSeats}>
+                  {t("billing.actions.addSeats")}
+                </Button>
+                <Button size="small" variant="outlined" onClick={handleSync} disabled={syncState.loading}>
+                  {syncState.loading ? t("billing.actions.syncing") : t("billing.actions.syncFromStripe")}
+                </Button>
+              </>
+            )}
           </Stack>
         }
       >
@@ -387,6 +511,63 @@ const SettingsBillingSubscription = () => {
             {syncState.message && <Alert severity="success">{syncState.message}</Alert>}
             {syncState.error && <Alert severity="error">{syncState.error}</Alert>}
             {portalError && <Alert severity="error">{portalError}</Alert>}
+            {billingContactState.message && <Alert severity="success">{billingContactState.message}</Alert>}
+            {billingContactState.error && <Alert severity="error">{billingContactState.error}</Alert>}
+            {inviteState.message && <Alert severity="success">{inviteState.message}</Alert>}
+            {inviteState.error && <Alert severity="error">{inviteState.error}</Alert>}
+            <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 2 }}>
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{t("billing.contact.title")}</Typography>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                  <TextField
+                    size="small"
+                    label={t("billing.contact.name")}
+                    value={billingContact.name}
+                    onChange={(event) => setBillingContact((current) => ({ ...current, name: event.target.value }))}
+                    fullWidth
+                  />
+                  <TextField
+                    size="small"
+                    type="email"
+                    label={t("billing.contact.email")}
+                    value={billingContact.email}
+                    onChange={(event) => setBillingContact((current) => ({ ...current, email: event.target.value }))}
+                    fullWidth
+                  />
+                  <Button variant="outlined" onClick={saveBillingContact} disabled={billingContactState.loading || !billingContact.name || !billingContact.email}>
+                    {billingContactState.loading ? t("billing.contact.saving") : t("billing.actions.saveBillingContact")}
+                  </Button>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {t("billing.contact.helper")}
+                </Typography>
+              </Stack>
+            </Box>
+            {!hasRecoverableSubscription && paymentInvite && (
+              <Alert severity="info">
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{t("billing.paymentInvite.pending")}</Typography>
+                  <Typography variant="body2">
+                    {planLabel(paymentInvite.plan_key, t)} · {paymentInvite.billing_interval === "annual" ? t("billing.paymentInvite.annual") : t("billing.paymentInvite.monthly")} · {t("billing.paymentInvite.sentTo", { email: paymentInvite.recipient_email_masked })}
+                    {paymentInvite.expires_at ? ` · ${t("billing.paymentInvite.expires", { date: formatDate(paymentInvite.expires_at, t) })}` : ""}
+                  </Typography>
+                  {freshPaymentLink && (
+                    <TextField size="small" label={t("billing.paymentInvite.newLinkLabel")} value={freshPaymentLink} InputProps={{ readOnly: true }} fullWidth />
+                  )}
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {freshPaymentLink && <Button size="small" variant="contained" onClick={copyFreshPaymentLink}>{t("billing.paymentInvite.copyLink")}</Button>}
+                    <Button size="small" onClick={() => replacePaymentInvite(false)} disabled={inviteState.loading}>{t("billing.actions.replacePaymentLink")}</Button>
+                    <Button size="small" onClick={() => replacePaymentInvite(true)} disabled={inviteState.loading}>{t("billing.actions.replaceAndEmail")}</Button>
+                    <Button size="small" color="error" onClick={revokePaymentInvite} disabled={inviteState.loading}>{t("billing.actions.revokePaymentLink")}</Button>
+                  </Stack>
+                  {!freshPaymentLink && (
+                    <Typography variant="caption">
+                      {t("billing.paymentInvite.noRecovery")}
+                    </Typography>
+                  )}
+                </Stack>
+              </Alert>
+            )}
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
                 <strong>{t("billing.labels.plan")}:</strong> {planLabel(status.plan_key, t)}
@@ -442,13 +623,84 @@ const SettingsBillingSubscription = () => {
                   {t("billing.actions.viewLastInvoice")}
                 </Button>
               )}
-              <Button size="small" variant="text" onClick={handleManageBilling}>
-                {t("billing.actions.cancelSubscription")}
-              </Button>
+              {hasRecoverableSubscription && (
+                <Button size="small" variant="text" onClick={handleManageBilling}>
+                  {t("billing.actions.cancelSubscription")}
+                </Button>
+              )}
             </Stack>
           </Stack>
         )}
       </SectionCard>
+
+      <Dialog open={inviteDialogOpen} onClose={() => !inviteState.loading && setInviteDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>{t("billing.paymentInvite.dialogTitle")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Alert severity="info">
+              {t("billing.paymentInvite.trialExplanation")}
+            </Alert>
+            <FormControl fullWidth>
+              <InputLabel id="payment-invite-plan-label">{t("billing.paymentInvite.plan")}</InputLabel>
+              <Select
+                labelId="payment-invite-plan-label"
+                label={t("billing.paymentInvite.plan")}
+                value={inviteForm.plan_key}
+                onChange={(event) => setInviteForm((current) => ({ ...current, plan_key: event.target.value }))}
+              >
+                <MenuItem value="starter">Starter</MenuItem>
+                <MenuItem value="pro">Pro</MenuItem>
+                <MenuItem value="business">Business</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel id="payment-invite-interval-label">{t("billing.paymentInvite.interval")}</InputLabel>
+              <Select
+                labelId="payment-invite-interval-label"
+                label={t("billing.paymentInvite.interval")}
+                value={inviteForm.interval}
+                onChange={(event) => setInviteForm((current) => ({ ...current, interval: event.target.value }))}
+              >
+                <MenuItem value="monthly">{t("billing.paymentInvite.monthly")}</MenuItem>
+                <MenuItem value="annual">{t("billing.paymentInvite.annual")}</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label={t("billing.paymentInvite.recipientName")}
+              value={inviteForm.recipient_name}
+              onChange={(event) => setInviteForm((current) => ({ ...current, recipient_name: event.target.value }))}
+              required
+            />
+            <TextField
+              label={t("billing.paymentInvite.recipientEmail")}
+              type="email"
+              value={inviteForm.recipient_email}
+              onChange={(event) => setInviteForm((current) => ({ ...current, recipient_email: event.target.value }))}
+              required
+            />
+            <Typography variant="body2" color="text.secondary">
+              {t("billing.paymentInvite.ownershipNotice")}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInviteDialogOpen(false)} disabled={inviteState.loading}>{t("billing.paymentInvite.cancel")}</Button>
+          <Button
+            variant="outlined"
+            onClick={() => generatePaymentInvite(false)}
+            disabled={inviteState.loading || !inviteForm.recipient_name || !inviteForm.recipient_email}
+          >
+            {t("billing.paymentInvite.generateLink")}
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => generatePaymentInvite(true)}
+            disabled={inviteState.loading || !inviteForm.recipient_name || !inviteForm.recipient_email}
+          >
+            {t("billing.paymentInvite.generateAndEmail")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <SectionCard
         title={

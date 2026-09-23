@@ -40,6 +40,7 @@ import BillingUpgradeController from "./components/billing/BillingUpgradeControl
 import { BillingBannerProvider } from "./components/billing/BillingBannerContext";
 import BillingSuccessPage from "./pages/billing/BillingSuccessPage";
 import BillingCancelPage from "./pages/billing/BillingCancelPage";
+import SubscriptionPaymentInvitePage from "./pages/billing/SubscriptionPaymentInvitePage";
 import UpgradeBridgePage from "./pages/UpgradeBridgePage";
 import FeaturePage from "./landing/pages/FeaturePage";
 import WorkforcePage from "./landing/pages/WorkforcePage";
@@ -1140,6 +1141,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/reset-password/temp" element={<ResetPassword />} />
           <Route path="/billing/success" element={<BillingSuccessPage />} />
           <Route path="/billing/cancel" element={<BillingCancelPage />} />
+          <Route path="/pay/subscription/:token" element={<SubscriptionPaymentInvitePage />} />
+          <Route path="/pay/subscription/:token/success" element={<SubscriptionPaymentInvitePage />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/client-document-request/:token" element={<DocumentRequestUploadPage />} />
