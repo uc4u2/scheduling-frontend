@@ -1141,8 +1141,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/reset-password/temp" element={<ResetPassword />} />
           <Route path="/billing/success" element={<BillingSuccessPage />} />
           <Route path="/billing/cancel" element={<BillingCancelPage />} />
-          <Route path="/pay/subscription/:token" element={<SubscriptionPaymentInvitePage />} />
-          <Route path="/pay/subscription/:token/success" element={<SubscriptionPaymentInvitePage />} />
+          <Route path="/billing/subscription-invite/:token" element={<SubscriptionPaymentInvitePage />} />
+          <Route path="/billing/subscription-invite/:token/success" element={<SubscriptionPaymentInvitePage />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/client-document-request/:token" element={<DocumentRequestUploadPage />} />

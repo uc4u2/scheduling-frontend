@@ -5,7 +5,7 @@ import SubscriptionPaymentInvitePage from "./SubscriptionPaymentInvitePage";
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
-let mockPath = "/pay/subscription/token-1";
+let mockPath = "/billing/subscription-invite/token-1";
 let mockToken = "token-1";
 const mockTranslate = (key, values = {}) => ({
   "billing.publicInvite.brand": "Schedulaa billing",
@@ -80,7 +80,7 @@ describe("SubscriptionPaymentInvitePage", () => {
   });
 
   it("previews safely without creating Checkout on GET", async () => {
-    renderAt("/pay/subscription/token-1", "token-1");
+    renderAt("/billing/subscription-invite/token-1", "token-1");
     expect(await screen.findByText("ABC Plumbing")).toBeInTheDocument();
     expect(screen.getByText(/19\.99 USD\/month/i)).toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledWith("/public/billing/subscription-invites/token-1");
@@ -88,7 +88,7 @@ describe("SubscriptionPaymentInvitePage", () => {
   });
 
   it("creates Checkout only after the payer continues", async () => {
-    renderAt("/pay/subscription/token-2", "token-2");
+    renderAt("/billing/subscription-invite/token-2", "token-2");
     fireEvent.click(await screen.findByRole("button", { name: /continue to secure payment/i }));
     await waitFor(() => expect(mockPost).toHaveBeenCalledWith("/public/billing/subscription-invites/token-2/checkout", {}));
     expect(await screen.findByText(/secure Checkout is not available yet/i)).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("SubscriptionPaymentInvitePage", () => {
       if (String(url).endsWith("/status")) return Promise.resolve({ data: { state: "trialing", activated: true } });
       return Promise.resolve({ data: { company_name: "ABC Plumbing", plan_name: "Starter", billing_interval: "monthly", price: {}, trial_days: 14, state: "processing" } });
     });
-    renderAt("/pay/subscription/token-3/success", "token-3");
+    renderAt("/billing/subscription-invite/token-3/success", "token-3");
     expect(await screen.findByText(/subscription activated\. the trial has started/i)).toBeInTheDocument();
     expect(screen.getByText(/does not create a Schedulaa login/i)).toBeInTheDocument();
   });

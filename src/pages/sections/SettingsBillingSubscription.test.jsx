@@ -253,7 +253,7 @@ describe("SettingsBillingSubscription", () => {
     mockApiPost.mockResolvedValueOnce({
       data: {
         invite: { id: 22, status: "pending", plan_key: "pro", billing_interval: "annual", recipient_email_masked: "cl***@example.com" },
-        public_url: "https://app.schedulaa.com/pay/subscription/fresh-token",
+        public_url: "https://app.schedulaa.com/billing/subscription-invite/fresh-token",
       },
     });
     renderPage();
