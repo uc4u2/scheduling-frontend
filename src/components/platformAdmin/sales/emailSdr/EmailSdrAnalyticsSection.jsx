@@ -27,6 +27,7 @@ import {
   getEmailSdrResults,
   pauseEmailCampaign,
 } from "../../../../api/platformAdminSales";
+import { formatEmailSdrDateTime } from "./emailSdrDateTime";
 
 const resultTabs = [
   { key: "campaigns", label: "Campaigns" },
@@ -48,13 +49,6 @@ const issueTone = {
   warning: "warning",
   danger: "error",
 };
-
-function formatDateTime(value) {
-  if (!value) return "Not set";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-}
 
 function compactText(value, max = 140) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
@@ -578,7 +572,7 @@ export default function EmailSdrAnalyticsSection({
                       Bounce {row.bounce_rate}% • Unsub {row.unsubscribe_rate}%
                     </Typography>
                   </Stack>
-                  <Typography variant="body2" color="text.secondary">{formatDateTime(row.last_activity_at)}</Typography>
+                  <Typography variant="body2" color="text.secondary">{formatEmailSdrDateTime(row.last_activity_at)}</Typography>
                   <Stack spacing={1} alignItems="flex-start">
                     <Button variant="outlined" size="small" onClick={() => onOpenWorkspace?.(row.campaign_id)}>Open workspace</Button>
                     <Button
@@ -609,7 +603,7 @@ export default function EmailSdrAnalyticsSection({
                       <Typography variant="body2" color="text.secondary">
                         {[row.reason, row.source, row.company_name, row.campaign_name].filter(Boolean).join(" • ")}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">{formatDateTime(row.created_at)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{formatEmailSdrDateTime(row.created_at)}</Typography>
                     </Stack>
                     <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                       {row.lead_id ? (
@@ -648,7 +642,7 @@ export default function EmailSdrAnalyticsSection({
                     </Stack>
                     <Typography variant="body2">{row.body_snippet}</Typography>
                     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-                      <Typography variant="caption" color="text.secondary">{formatDateTime(row.received_at)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{formatEmailSdrDateTime(row.received_at)}</Typography>
                       {row.campaign_guess ? <Button variant="outlined" size="small" onClick={() => onOpenWorkspace?.(row.campaign_guess)}>Open campaign</Button> : null}
                     </Stack>
                   </Stack>
@@ -679,7 +673,7 @@ export default function EmailSdrAnalyticsSection({
                           Open lead
                         </Button>
                       ) : null}
-                      <Typography variant="caption" color="text.secondary">{formatDateTime(row.time)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{formatEmailSdrDateTime(row.time)}</Typography>
                     </Stack>
                   </Stack>
                 </Paper>
@@ -700,7 +694,7 @@ export default function EmailSdrAnalyticsSection({
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>{row.name}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {[row.provider, row.status, `Last event ${row.last_event_received_at ? formatDateTime(row.last_event_received_at) : "never"}`].join(" • ")}
+                          {[row.provider, row.status, `Last event ${row.last_event_received_at ? formatEmailSdrDateTime(row.last_event_received_at) : "never"}`].join(" • ")}
                         </Typography>
                       </Box>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>

@@ -16,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { formatEmailSdrDateTime } from "./emailSdrDateTime";
 
 const PAGE_SIZE = 5;
 
@@ -107,7 +108,7 @@ function ReplyRow({
             </Stack>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            Original: {matchedMessage.subject || "No original message"}{matchedMessage.sent_at ? ` • sent ${matchedMessage.sent_at}` : ""}
+            Original: {matchedMessage.subject || "No original message"}{matchedMessage.sent_at ? ` • sent ${formatEmailSdrDateTime(matchedMessage.sent_at)}` : ""}
           </Typography>
           <Typography variant="body2">{replyExcerpt(event.body_text)}</Typography>
         </Stack>

@@ -13,6 +13,12 @@
 ### Display rules
 - Keep the existing contract: UI shows full ISO with offset, API payloads stay local strings.
 - Invitation/booking pages should show dual display when possible (slot TZ + viewer TZ); Candidate Intake now does this with a picker.
+- Email SDR stores operational timestamps in UTC. Reply Engine, campaign
+  workspace, message lifecycle, suppression, provider-health, and recent-event
+  timestamps must render through `formatDateTimeInTz(...)` using
+  `getUserTimezone()`. Legacy timezone-less Email SDR API timestamps are UTC,
+  never browser-local input. Show the resolved IANA timezone with the formatted
+  value so administrators can distinguish local display time from UTC storage.
 
 ### Backend rules
 - Accept/validate any IANA timezone; do not restrict to the top list.

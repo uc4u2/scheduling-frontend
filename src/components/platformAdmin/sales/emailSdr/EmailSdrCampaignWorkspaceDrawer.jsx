@@ -19,6 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { formatEmailSdrDateTime } from "./emailSdrDateTime";
 
 const PAGE_SIZE = 5;
 
@@ -30,13 +31,6 @@ function compactText(value, max = 240) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "No content.";
   return text.length > max ? `${text.slice(0, max)}…` : text;
-}
-
-function formatDateTime(value) {
-  if (!value) return "Not set";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
 }
 
 function SectionPagination({ page, setPage, pageCount }) {
@@ -142,7 +136,7 @@ function RepliesTab({
                       </Stack>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      Original: {row.original_subject || "No original subject"} • {formatDateTime(row.replied_at)}
+                      Original: {row.original_subject || "No original subject"} • {formatEmailSdrDateTime(row.replied_at)}
                     </Typography>
                     <Typography variant="body2">{compactText(row.reply_text)}</Typography>
                   </Stack>
@@ -428,10 +422,10 @@ function MessagesTab({ messages = [] }) {
                 <Stack spacing={1}>
                   <Typography variant="body2"><strong>Provider message id:</strong> {row.provider_message_id || "Not available"}</Typography>
                   <Typography variant="body2"><strong>Reply-To:</strong> {row.reply_to_email || "Default reply-to"}</Typography>
-                  <Typography variant="body2"><strong>Sent:</strong> {formatDateTime(row.sent_at)}</Typography>
-                  <Typography variant="body2"><strong>Delivered:</strong> {formatDateTime(row.delivered_at)}</Typography>
-                  <Typography variant="body2"><strong>Replied:</strong> {formatDateTime(row.replied_at)}</Typography>
-                  <Typography variant="body2"><strong>Bounced:</strong> {formatDateTime(row.bounced_at)}</Typography>
+                  <Typography variant="body2"><strong>Sent:</strong> {formatEmailSdrDateTime(row.sent_at)}</Typography>
+                  <Typography variant="body2"><strong>Delivered:</strong> {formatEmailSdrDateTime(row.delivered_at)}</Typography>
+                  <Typography variant="body2"><strong>Replied:</strong> {formatEmailSdrDateTime(row.replied_at)}</Typography>
+                  <Typography variant="body2"><strong>Bounced:</strong> {formatEmailSdrDateTime(row.bounced_at)}</Typography>
                   {row.unsubscribe_url ? (
                     <Typography variant="body2" sx={{ wordBreak: "break-all" }}><strong>Unsubscribe URL:</strong> {row.unsubscribe_url}</Typography>
                   ) : null}
@@ -596,7 +590,7 @@ function CampaignWorkspacePanel({
                       Provider: {campaign.provider_connection?.name || campaign.provider_connection_name || "Fallback"}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Created: {formatDateTime(campaign.created_at)}
+                      Created: {formatEmailSdrDateTime(campaign.created_at)}
                     </Typography>
                     <Divider />
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Selected email agents</Typography>
