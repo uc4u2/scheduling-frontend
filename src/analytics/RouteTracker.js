@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { trackEvent, trackPageview } from "./ga";
+import { trackPageview } from "./ga";
+import { captureCampaignAttribution } from "./campaignAttribution";
 import { api } from "../utils/api";
 import { getOrCreateTelemetrySessionId, isStaffSession } from "./staffTelemetry";
 
@@ -51,17 +52,12 @@ const RouteTracker = () => {
   };
 
   useEffect(() => {
-    const path = `${location.pathname}${location.search || ""}`;
-    if (lastPathRef.current === path) return;
-    lastPathRef.current = path;
+    const routeKey = `${location.pathname}${location.search || ""}`;
+    if (lastPathRef.current === routeKey) return;
+    lastPathRef.current = routeKey;
 
-    trackPageview({ path, title: document.title });
-
-    if (location.pathname === "/register") {
-      trackEvent({ action: "signup_start", label: path });
-    } else if (location.pathname === "/demo") {
-      trackEvent({ action: "demo_request", label: path });
-    }
+    captureCampaignAttribution(location.search || "");
+    trackPageview({ path: location.pathname, title: document.title });
 
     if (routePingTimerRef.current) {
       window.clearTimeout(routePingTimerRef.current);

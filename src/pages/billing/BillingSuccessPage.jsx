@@ -15,6 +15,7 @@ import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
+import { trackGAEventOnce } from "../../analytics/ga";
 
 const PLAN_LABELS = {
   starter: "Starter",
@@ -120,6 +121,16 @@ const BillingSuccessPage = () => {
       setStatusPayload(payload);
       const status = String(payload?.status || "").toLowerCase();
       if (READY_STATUSES.has(status)) {
+        if (status === "trialing") {
+          trackGAEventOnce(`trial_activated:${sid || "legacy"}`, "trial_activated", {
+            plan_key: payload?.plan_key || "unknown",
+          });
+        } else if (status === "active") {
+          trackGAEventOnce(`subscription_activated:${sid || "legacy"}`, "subscription_activated", {
+            subscription_status: status,
+            plan_key: payload?.plan_key || "unknown",
+          });
+        }
         try {
           window.sessionStorage.removeItem("billing_refresh_pending");
         } catch (e) {}
@@ -151,7 +162,7 @@ const BillingSuccessPage = () => {
       setPhase("activating");
       setBillingAttempts((prev) => prev + 1);
     }
-  }, [navigate, redirectToLogin]);
+  }, [navigate, redirectToLogin, sid]);
 
   useEffect(() => {
     if (mobileComplianceMode) return;

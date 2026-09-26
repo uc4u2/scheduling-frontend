@@ -5,6 +5,7 @@ import api from "../utils/api";
 import { getSessionUser } from "../utils/authRedirect";
 import { isMobileComplianceMode } from "../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../components/mobile/MobileWebOnlyNotice";
+import { trackGAEvent } from "../analytics/ga";
 
 const VALID_PLANS = new Set(["starter", "pro", "business"]);
 const VALID_INTERVALS = new Set(["monthly", "annual", "yearly"]);
@@ -75,6 +76,9 @@ const UpgradeBridgePage = () => {
           const res = await api.post("/api/manager/website-design/checkout");
           const url = res?.data?.checkout_url || res?.data?.url;
           if (!url) throw new Error("Checkout URL missing.");
+          trackGAEvent("checkout_started", {
+            checkout_type: "website_design",
+          });
           window.location.href = url;
         } catch (error) {
           if (!active) return;
@@ -112,6 +116,11 @@ const UpgradeBridgePage = () => {
         const res = await api.post("/billing/checkout", { plan_key: plan, interval });
         const url = res?.data?.url;
         if (!url) throw new Error("Checkout URL missing.");
+        trackGAEvent("checkout_started", {
+          checkout_type: "subscription",
+          plan_key: plan,
+          billing_interval: interval,
+        });
         window.location.href = url;
       } catch (error) {
         if (!active) return;

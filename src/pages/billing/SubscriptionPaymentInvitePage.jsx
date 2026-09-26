@@ -5,6 +5,7 @@ import { useLocation, useParams } from "react-router-dom";
 
 import api from "../../utils/api";
 import { isMobileComplianceMode, MOBILE_PAYMENTS_MESSAGE } from "../../utils/mobileCompliance";
+import { trackGAEvent, trackGAEventOnce } from "../../analytics/ga";
 
 const terminalStates = new Set(["trialing", "active", "failed", "expired", "revoked"]);
 
@@ -36,9 +37,20 @@ const SubscriptionPaymentInvitePage = () => {
   const loadStatus = useCallback(async () => {
     try {
       const response = await api.get(`/public/billing/subscription-invites/${encodeURIComponent(token)}/status`);
-      setState(response.data?.state || "processing");
+      const nextState = response.data?.state || "processing";
+      setState(nextState);
+      if (nextState === "trialing") {
+        trackGAEventOnce(`payment_invite_trial:${token}`, "trial_activated", {
+          checkout_type: "payment_invite",
+        });
+      } else if (nextState === "active") {
+        trackGAEventOnce(`payment_invite_subscription:${token}:active`, "subscription_activated", {
+          subscription_status: nextState,
+          checkout_type: "payment_invite",
+        });
+      }
       setError("");
-      return response.data?.state;
+      return nextState;
     } catch (err) {
       setError(t("billing.publicInvite.statusError"));
       return null;
@@ -73,6 +85,13 @@ const SubscriptionPaymentInvitePage = () => {
     setError("");
     try {
       const response = await api.post(`/public/billing/subscription-invites/${encodeURIComponent(token)}/checkout`, {});
+      if (response.data?.url || response.data?.status_url) {
+        trackGAEvent("checkout_started", {
+          checkout_type: "payment_invite",
+          plan_key: preview?.plan_key || "unknown",
+          billing_interval: preview?.billing_interval || "unknown",
+        });
+      }
       if (response.data?.url) window.location.assign(response.data.url);
       else if (response.data?.status_url) window.location.assign(response.data.status_url);
       else setError(t("billing.publicInvite.checkoutUnavailable"));

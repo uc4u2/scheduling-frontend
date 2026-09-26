@@ -5,6 +5,8 @@ import SubscriptionPaymentInvitePage from "./SubscriptionPaymentInvitePage";
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
+const mockTrackGAEvent = jest.fn();
+const mockTrackGAEventOnce = jest.fn();
 let mockPath = "/billing/subscription-invite/token-1";
 let mockToken = "token-1";
 const mockTranslate = (key, values = {}) => ({
@@ -48,6 +50,11 @@ jest.mock("../../utils/api", () => ({
 jest.mock("../../utils/mobileCompliance", () => ({
   isMobileComplianceMode: () => false,
   MOBILE_PAYMENTS_MESSAGE: "web only",
+}));
+
+jest.mock("../../analytics/ga", () => ({
+  trackGAEvent: (...args) => mockTrackGAEvent(...args),
+  trackGAEventOnce: (...args) => mockTrackGAEventOnce(...args),
 }));
 
 jest.mock("react-i18next", () => ({
@@ -108,5 +115,15 @@ describe("SubscriptionPaymentInvitePage", () => {
     renderAt("/billing/subscription-invite/token-3/success", "token-3");
     expect(await screen.findByText(/subscription activated\. the trial has started/i)).toBeInTheDocument();
     expect(screen.getByText(/does not create a Schedulaa login/i)).toBeInTheDocument();
+    expect(mockTrackGAEventOnce).toHaveBeenCalledWith(
+      "payment_invite_trial:token-3",
+      "trial_activated",
+      { checkout_type: "payment_invite" }
+    );
+    expect(mockTrackGAEventOnce).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "subscription_activated",
+      expect.anything()
+    );
   });
 });

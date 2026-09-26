@@ -4,6 +4,17 @@ Allow: /
 Disallow: /client/
 Disallow: /recruiter/
 Disallow: /manager/
+Disallow: /employee/
 Disallow: /admin/
+Disallow: /platform-admin/
+Disallow: /sales/
+Disallow: /billing/
+Disallow: /dashboard
+Disallow: /upgrade
+Disallow: /login
+Disallow: /register
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
 
 Sitemap: https://www.schedulaa.com/sitemap.xml

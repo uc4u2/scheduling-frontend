@@ -1,6 +1,22 @@
 module.exports = {
   baseUrl: "https://www.schedulaa.com",
-  disallow: ["/client/", "/recruiter/", "/manager/", "/admin/"],
+  disallow: [
+    "/client/",
+    "/recruiter/",
+    "/manager/",
+    "/employee/",
+    "/admin/",
+    "/platform-admin/",
+    "/sales/",
+    "/billing/",
+    "/dashboard",
+    "/upgrade",
+    "/login",
+    "/register",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+  ],
   routes: [
     { path: "/", changefreq: "daily", priority: "1.0" },
     { path: "/features", changefreq: "weekly", priority: "0.9" },

@@ -6,6 +6,7 @@ import BillingSuccessPage from "./BillingSuccessPage";
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockNavigate = jest.fn();
+const mockTrackGAEventOnce = jest.fn();
 
 jest.mock("../../utils/api", () => ({
   __esModule: true,
@@ -17,6 +18,10 @@ jest.mock("../../utils/api", () => ({
 
 jest.mock("../../utils/mobileCompliance", () => ({
   isMobileComplianceMode: () => false,
+}));
+
+jest.mock("../../analytics/ga", () => ({
+  trackGAEventOnce: (...args) => mockTrackGAEventOnce(...args),
 }));
 
 jest.mock("react-router-dom", () => ({
@@ -40,6 +45,18 @@ describe("BillingSuccessPage", () => {
     await waitFor(() => {
       expect(mockApiPost).toHaveBeenCalledWith("/billing/sync-from-stripe");
     });
+    await waitFor(() => {
+      expect(mockTrackGAEventOnce).toHaveBeenCalledWith(
+        "subscription_activated:{CHECKOUT_SESSION_ID}",
+        "subscription_activated",
+        { subscription_status: "active", plan_key: "starter" }
+      );
+    }, { timeout: 3500 });
+    expect(mockTrackGAEventOnce).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "trial_activated",
+      expect.anything()
+    );
     expect(mockApiGet).not.toHaveBeenCalledWith(
       expect.stringContaining("/billing/checkout-status")
     );

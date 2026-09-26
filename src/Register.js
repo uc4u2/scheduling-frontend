@@ -25,6 +25,7 @@ import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/Auth
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingLegalUrl, buildMarketingUrl } from "./config/origins";
 import { getUserTimezone, formatTimezoneLabel } from "./utils/timezone";
+import { trackGAEvent, trackGAEventOnce } from "./analytics/ga";
 
 const ROLE_OPTIONS = [
   {
@@ -131,6 +132,10 @@ const Register = ({ slugOverride = "" }) => {
         agreed_to_terms: acceptedTerms,
         terms_version: AGREEMENT_VERSION,
         terms_agreed_at: new Date().toISOString(),
+      });
+      trackGAEvent("registration_complete", {
+        account_role: targetRole,
+        selected_plan: selectedPlan || "none",
       });
       setMessage(response.data.message);
       if (targetRole === "client" && clientSite) {
@@ -254,7 +259,16 @@ const Register = ({ slugOverride = "" }) => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleRegister} noValidate>
+          <Box
+            component="form"
+            onSubmit={handleRegister}
+            onChangeCapture={() =>
+              trackGAEventOnce("registration_start", "registration_start", {
+                page_path: "/register",
+              })
+            }
+            noValidate
+          >
             <Stack spacing={isMobile ? 1.8 : 2.5}>
               <Typography
                 variant="overline"
