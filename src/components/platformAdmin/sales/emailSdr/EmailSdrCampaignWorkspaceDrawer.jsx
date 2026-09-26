@@ -136,7 +136,10 @@ function RepliesTab({
                       </Stack>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      Original: {row.original_subject || "No original subject"} • {formatEmailSdrDateTime(row.replied_at)}
+                      Original: {row.original_subject || "No original subject"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Reply received: {formatEmailSdrDateTime(row.replied_at)}
                     </Typography>
                     <Typography variant="body2">{compactText(row.reply_text)}</Typography>
                   </Stack>

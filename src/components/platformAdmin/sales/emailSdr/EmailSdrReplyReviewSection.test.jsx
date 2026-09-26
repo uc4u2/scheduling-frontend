@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import EmailSdrReplyReviewSection from "./EmailSdrReplyReviewSection";
 
 jest.mock("./emailSdrDateTime", () => ({
-  formatEmailSdrDateTime: () => "Sep 25, 2026, 6:06:31 PM (America/Toronto)",
+  formatEmailSdrDateTime: (value) => (
+    value.includes("23:50")
+      ? "Sep 25, 2026, 7:50:32 PM (America/Toronto)"
+      : "Sep 25, 2026, 6:06:31 PM (America/Toronto)"
+  ),
 }));
 
 test("renders the original message timestamp through the viewer-timezone formatter", () => {
@@ -13,6 +17,8 @@ test("renders the original message timestamp through the viewer-timezone formatt
           issues: ["needs_classification"],
           event: {
             id: 6,
+            event_type: "reply",
+            created_at: "2026-09-25T23:50:32.913133",
             from_email: "photoartisto.ca@gmail.com",
             body_text: "Final Email SDR test received.",
             suggested_classification: "auto_reply",
@@ -42,5 +48,9 @@ test("renders the original message timestamp through the viewer-timezone formatt
   expect(
     screen.getByText(/sent Sep 25, 2026, 6:06:31 PM \(America\/Toronto\)/)
   ).toBeInTheDocument();
+  expect(
+    screen.getByText(/Reply received: Sep 25, 2026, 7:50:32 PM \(America\/Toronto\)/)
+  ).toBeInTheDocument();
   expect(screen.queryByText(/2026-09-25T22:06:31\.321824/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/2026-09-25T23:50:32\.913133/)).not.toBeInTheDocument();
 });

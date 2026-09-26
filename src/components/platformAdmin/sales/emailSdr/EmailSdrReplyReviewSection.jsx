@@ -85,6 +85,7 @@ function ReplyRow({
   const selectedText = inboundReplyText[event.id] || "";
   const classificationLabel = latest.classification || event.suggested_classification || "pending";
   const nextActionLabel = latest.suggested_next_action || event.suggested_next_action || "review";
+  const receivedLabel = event.event_type === "reply" ? "Reply received" : "Event received";
 
   return (
     <Accordion disableGutters variant="outlined" sx={{ borderRadius: 2, "&:before": { display: "none" } }}>
@@ -110,6 +111,11 @@ function ReplyRow({
           <Typography variant="body2" color="text.secondary">
             Original: {matchedMessage.subject || "No original message"}{matchedMessage.sent_at ? ` • sent ${formatEmailSdrDateTime(matchedMessage.sent_at)}` : ""}
           </Typography>
+          {event.created_at ? (
+            <Typography variant="body2" color="text.secondary">
+              {receivedLabel}: {formatEmailSdrDateTime(event.created_at)}
+            </Typography>
+          ) : null}
           <Typography variant="body2">{replyExcerpt(event.body_text)}</Typography>
         </Stack>
       </AccordionSummary>
