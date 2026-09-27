@@ -77,6 +77,11 @@ Only three items block article publication:
 - Summary
 - Article text
 
+The Builder presents these as numbered, clickable steps. If publication is
+blocked, a visible warning names the missing requirement and provides a direct
+action that opens the correct field. The disabled Publish button also exposes
+the reason in a tooltip.
+
 A cover image is optional. If an image is added, provide useful alternative
 text for accessibility. The selected Modern theme is responsive by contract;
 authors do not approve a separate mobile version and there is no manual

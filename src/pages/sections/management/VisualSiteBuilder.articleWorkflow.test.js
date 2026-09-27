@@ -10,8 +10,11 @@ describe("Visual Site Builder article workflow", () => {
   it("offers a single-step article workflow without technical approval gates", () => {
     expect(source).toContain("Save draft");
     expect(source).toContain("Publish article");
-    expect(source).toContain("Ready to publish");
-    expect(source).toContain("no manual mobile approval is required");
+    expect(source).toContain("Publishing checklist");
+    expect(source).toContain("Complete the highlighted step to enable Publish");
+    expect(source).toContain("Select any step to open its field");
+    expect(source).toContain("mobile layout is handled automatically");
+    expect(source).toContain("articlePublishBlockedReason");
     expect(source).toContain("This article uses a simple fixed layout");
     expect(source).not.toContain(">SEO reviewed<");
     expect(source).not.toContain(">Mobile preview reviewed<");

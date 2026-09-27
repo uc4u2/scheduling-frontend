@@ -9852,6 +9852,15 @@ const articleChecklist = useMemo(
       : null,
   [articleWorkflowPage, isCurrentBlogArticle]
 );
+const missingRequiredArticleItems = articleChecklist?.items?.filter(
+  (item) => item.required && !item.complete
+) || [];
+const nextMissingArticleItem = missingRequiredArticleItems[0] || null;
+const articlePublishBlockedReason = missingRequiredArticleItems.length
+  ? `${missingRequiredArticleItems.length} required ${missingRequiredArticleItems.length === 1 ? "step is" : "steps are"} missing: ${missingRequiredArticleItems
+      .map((item) => item.label)
+      .join(", ")}.`
+  : "";
 
 const handleArticleChecklistItemClick = useCallback((key) => {
   const modules = safeModules(articleWorkflowPage || {});
@@ -9960,19 +9969,18 @@ const PageWorkspaceBar = isNextJsContentMode ? (
               title={
                 articleChecklist?.complete
                   ? "Save this article and publish it to the live website."
-                  : `Add ${articleChecklist?.items
-                      ?.filter((item) => item.required && !item.complete)
-                      .map((item) => item.label.toLowerCase())
-                      .join(" and ") || "the required article content"} before publishing.`
+                  : `${articlePublishBlockedReason} Select the highlighted step below to complete it before publishing.`
               }
+              arrow
             >
-              <span>
+              <span title={articleChecklist?.complete ? "Publish this article" : articlePublishBlockedReason}>
                 <Button
                   size="small"
                   variant="contained"
                   startIcon={<PublishIcon fontSize="small" />}
                   onClick={() => publishWebsiteBlogArticle(articleWorkflowPage)}
                   disabled={busy || !articleChecklist?.complete}
+                  aria-describedby="article-publish-guidance"
                 >
                   {articleWorkflowPage?.published ? "Publish update" : "Publish article"}
                 </Button>
@@ -10019,10 +10027,14 @@ const PageWorkspaceBar = isNextJsContentMode ? (
         {nextJsPreviewStale ? " Saved edits are ready; refresh the preview when you want to review them." : ""}
       </Typography>
       {isCurrentBlogArticle && articleChecklist ? (
-        <Paper variant="outlined" sx={{ p: 1, bgcolor: "background.default" }}>
+        <Paper
+          id="article-publish-guidance"
+          variant="outlined"
+          sx={{ p: 1, bgcolor: "background.default" }}
+        >
           <Stack spacing={0.75}>
             <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-              <Typography variant="subtitle2">Ready to publish</Typography>
+              <Typography variant="subtitle2">Publishing checklist</Typography>
               <Chip
                 size="small"
                 variant="outlined"
@@ -10041,30 +10053,55 @@ const PageWorkspaceBar = isNextJsContentMode ? (
                 })}
               />
             </Stack>
+            {articleChecklist.complete ? (
+              <Alert severity="success" sx={{ py: 0.25 }}>
+                All required content is complete. You can publish the article now.
+              </Alert>
+            ) : (
+              <Alert
+                severity="warning"
+                sx={{ py: 0.25 }}
+                action={nextMissingArticleItem ? (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => handleArticleChecklistItemClick(nextMissingArticleItem.key)}
+                    sx={{ whiteSpace: "nowrap", fontWeight: 800 }}
+                  >
+                    Add {nextMissingArticleItem.label}
+                  </Button>
+                ) : null}
+              >
+                <strong>{articlePublishBlockedReason}</strong>{" "}
+                Complete the highlighted step to enable Publish.
+              </Alert>
+            )}
             <Typography variant="caption" color="text.secondary">
-              A title, summary, and article text are required. A cover image is optional. The website is already responsive, so no manual mobile approval is required.
+              Complete steps 1–3. Select any step to open its field. A cover image is optional, and mobile layout is handled automatically.
             </Typography>
             <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
               {articleChecklist.items
                 .filter((item) => item.required)
-                .map((item) => (
+                .map((item, index) => (
                   <Chip
                     key={item.key}
                     size="small"
                     variant="outlined"
-                    label={`${item.complete ? "✓" : "○"} ${item.label}`}
+                    label={`${index + 1}. ${item.label} ${item.complete ? "✓" : "— required"}`}
                     onClick={() => handleArticleChecklistItemClick(item.key)}
+                    aria-label={`${item.label}: ${item.complete ? "complete" : "required and missing"}. Select to edit.`}
                     sx={(theme) => ({
                       cursor: "pointer",
                       color: item.complete
                         ? theme.palette.success.dark
-                        : theme.palette.text.primary,
+                        : theme.palette.warning.dark,
                       bgcolor: item.complete
                         ? alpha(theme.palette.success.main, 0.12)
-                        : theme.palette.background.paper,
+                        : alpha(theme.palette.warning.main, 0.16),
                       borderColor: item.complete
                         ? theme.palette.success.main
-                        : theme.palette.divider,
+                        : theme.palette.warning.main,
+                      borderWidth: item.complete ? 1 : 2,
                       fontWeight: 700,
                     })}
                   />
