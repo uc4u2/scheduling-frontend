@@ -29,15 +29,21 @@ const findArticleModule = (page, type) => {
   const modules = Array.isArray(page?.content?.modules)
     ? page.content.modules
     : [];
-  return modules.find((module) => module?.type === type) || null;
+  return (
+    modules.find(
+      (module) => module?.type === type && module?.enabled !== false
+    ) || null
+  );
 };
 
 export const getWebsiteBlogArticleChecklist = (page) => {
-  const hero = findArticleModule(page, "hero")?.content || {};
-  const richText = findArticleModule(page, "richText")?.content || {};
-  const title = normalizeText(hero.heading || page?.title);
+  const heroModule = findArticleModule(page, "hero");
+  const richTextModule = findArticleModule(page, "richText");
+  const hero = heroModule?.content || {};
+  const richText = richTextModule?.content || {};
+  const title = normalizeText(hero.heading);
   const description = normalizeText(
-    hero.subheading || page?.seo_description || richText.intro
+    hero.subheading || hero.intro || hero.body
   );
   const coverImage = normalizeText(
     hero.image || hero.imageUrl || hero.backgroundImage
@@ -48,18 +54,27 @@ export const getWebsiteBlogArticleChecklist = (page) => {
   const articleBody = normalizeText(richText.body);
 
   const items = [
-    { key: "title", label: "Title", complete: Boolean(title), required: true },
+    {
+      key: "title",
+      label: "Title",
+      complete: Boolean(heroModule && title),
+      required: true,
+    },
     {
       key: "description",
       label: "Summary",
-      complete: Boolean(description) && description !== STARTER_DESCRIPTION,
+      complete:
+        Boolean(heroModule && description) &&
+        description !== STARTER_DESCRIPTION,
       required: true,
     },
     {
       key: "content",
       label: "Article text",
       complete:
-        articleBody.length >= 20 && !articleBody.includes(STARTER_BODY_MARKER),
+        Boolean(richTextModule) &&
+        articleBody.length >= 20 &&
+        !articleBody.includes(STARTER_BODY_MARKER),
       required: true,
     },
     {

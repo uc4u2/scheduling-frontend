@@ -12,6 +12,7 @@ describe("Visual Site Builder article workflow", () => {
     expect(source).toContain("Publish article");
     expect(source).toContain("Ready to publish");
     expect(source).toContain("no manual mobile approval is required");
+    expect(source).toContain("This article uses a simple fixed layout");
     expect(source).not.toContain(">SEO reviewed<");
     expect(source).not.toContain(">Mobile preview reviewed<");
   });

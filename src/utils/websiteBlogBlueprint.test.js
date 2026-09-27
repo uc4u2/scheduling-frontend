@@ -72,6 +72,31 @@ describe("website blog article workflow", () => {
     expect(checklist.completedCount).toBe(checklist.totalCount);
   });
 
+  it("does not treat a hidden required article section as publish-ready", () => {
+    const article = createWebsiteBlogPostPage([], {
+      title: "Community visit",
+      description: "News from our recent community visit.",
+    });
+    article.content.modules = article.content.modules.map((module) => {
+      if (module.type === "hero") return { ...module, enabled: false };
+      if (module.type === "richText") {
+        return {
+          ...module,
+          content: {
+            ...module.content,
+            body: "We visited the community centre and shared a wonderful afternoon together.",
+          },
+        };
+      }
+      return module;
+    });
+
+    const checklist = getWebsiteBlogArticleChecklist(article);
+    expect(checklist.complete).toBe(false);
+    expect(checklist.items.find((item) => item.key === "title").complete).toBe(false);
+    expect(checklist.items.find((item) => item.key === "description").complete).toBe(false);
+  });
+
   it("syncs search and social metadata from the visible article hero", () => {
     const article = createWebsiteBlogPostPage([], {
       title: "Original title",

@@ -9134,6 +9134,7 @@ const autoProvisionIfEmpty = useCallback(
         />
       </CollapsibleSection>
 
+      {!isWebsiteBlogArticlePage(editing) ? (
       <CollapsibleSection
         id="builder-sections-panel"
         title={t("manager.visualBuilder.sections.title")}
@@ -9403,6 +9404,7 @@ const autoProvisionIfEmpty = useCallback(
         </Paper>
         {unsupportedModuleWarning ? <Alert severity="warning" sx={{ mt: 2 }}>{unsupportedModuleWarning}</Alert> : null}
       </CollapsibleSection>
+      ) : null}
       {!isWebsiteBlogArticlePage(editing) ? SeoSettingsSection : null}
     </Stack>
   );
@@ -12446,48 +12448,58 @@ function InspectorColumn({ floating = false } = {}) {
             >
               Redo
             </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => moveSemanticModule(selectedSemanticModule.id, "up")}
-              disabled={!canMoveSemanticModule(selectedSemanticModule.id, "up")}
-            >
-              Move up
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => moveSemanticModule(selectedSemanticModule.id, "down")}
-              disabled={!canMoveSemanticModule(selectedSemanticModule.id, "down")}
-            >
-              Move down
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => duplicateSemanticModule(selectedSemanticModule.id)}
-            >
-              Duplicate
-            </Button>
+            {!isCurrentBlogArticle ? (
+              <>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => moveSemanticModule(selectedSemanticModule.id, "up")}
+                  disabled={!canMoveSemanticModule(selectedSemanticModule.id, "up")}
+                >
+                  Move up
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => moveSemanticModule(selectedSemanticModule.id, "down")}
+                  disabled={!canMoveSemanticModule(selectedSemanticModule.id, "down")}
+                >
+                  Move down
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => duplicateSemanticModule(selectedSemanticModule.id)}
+                >
+                  Duplicate
+                </Button>
+              </>
+            ) : null}
           </Stack>
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="small"
-              color="warning"
-              variant="outlined"
-              onClick={() =>
-                updateSemanticModule(selectedSemanticModule.id, (module) => ({
-                  ...module,
-                  enabled: module.enabled === false,
-                }))
-              }
-            >
-              {selectedSemanticModule.enabled === false ? "Show section" : "Hide section"}
-            </Button>
-            <Button size="small" color="error" variant="outlined" onClick={() => deleteSemanticModule(selectedSemanticModule.id)}>
-              Remove section
-            </Button>
-          </Stack>
+          {isCurrentBlogArticle ? (
+            <Alert severity="info" variant="outlined">
+              This article uses a simple fixed layout. Edit the section content here; Schedulaa keeps the article structure safe automatically.
+            </Alert>
+          ) : (
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                color="warning"
+                variant="outlined"
+                onClick={() =>
+                  updateSemanticModule(selectedSemanticModule.id, (module) => ({
+                    ...module,
+                    enabled: module.enabled === false,
+                  }))
+                }
+              >
+                {selectedSemanticModule.enabled === false ? "Show section" : "Hide section"}
+              </Button>
+              <Button size="small" color="error" variant="outlined" onClick={() => deleteSemanticModule(selectedSemanticModule.id)}>
+                Remove section
+              </Button>
+            </Stack>
+          )}
         </Stack>
       </Stack>
     );

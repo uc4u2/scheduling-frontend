@@ -92,6 +92,11 @@ site-wide floating **Publish** controls are hidden. They must not provide a
 second route that bypasses **Publish article**. Article deletion, duplication,
 and unpublishing remain under **More**.
 
+The article's title/summary, body, and closing section use a protected fixed
+layout. Authors edit their content, but do not move, duplicate, hide, or remove
+those structural sections. This prevents an accidental click from deleting the
+headline or producing duplicate article blocks.
+
 ## Step 5: Connect a domain (optional)
 
 1. Manager Portal → Website & Pages → Domain Settings.
