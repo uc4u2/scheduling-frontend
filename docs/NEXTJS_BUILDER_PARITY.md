@@ -1,6 +1,6 @@
 # Next.js Builder Parity Matrix
 
-Last updated: 2026-09-05
+Last updated: 2026-09-26
 
 This matrix tracks how the existing Visual Site Builder behavior maps into the
 Next.js semantic-module workflow. Code remains the source of truth if this file
@@ -33,7 +33,8 @@ Host limitation note:
 | Add New Blocks / Add Section | Add raw template blocks | Add compatible semantic modules only | Existing Add Blocks interaction pattern | Theme/page/slot compatibility filtering | Next.js Add Section labels and warnings | VERIFIED LIVE | `websiteSemanticModules.test.js`, live Builder |
 | SEO | First-class page SEO editing | Same SEO data feeds Next.js metadata | Existing SEO panel | Next.js metadata mapping | None | PARTIAL LIVE VERIFICATION | backend render-model verified; final live Builder smoke pending host stability |
 | page add | Create `WebsitePage` | Same | Existing CRUD | none | none | IMPLEMENTED / VERIFIED AUTOMATED | existing CRUD smoke |
-| page delete | Delete `WebsitePage` | Same | Existing CRUD | none | none | IMPLEMENTED / VERIFIED AUTOMATED | existing CRUD smoke |
+| page delete | Delete `WebsitePage` | Recoverable article Trash in both page-action menus; homepage, blog index, and system pages protected | Existing WebsitePage `deleted_at` field | title/URL confirmation, published-article unpublish, restore-as-draft, permanent delete only from Trash | None | IMPLEMENTED / VERIFIED AUTOMATED | backend website design tests; frontend article workflow tests; production UI smoke pending |
+| article workflow | Generic page controls and separate page/site publish steps | Save draft, Preview, Publish article, readiness checklist, search/status filters, save state, slug protection | Existing page save, preview, and website publish paths | One-step publish, persisted review/publication dates, clickable checklist navigation | none | IMPLEMENTED / VERIFIED AUTOMATED | `websiteBlogBlueprint.test.js`; `VisualSiteBuilder.articleWorkflow.test.js`; production UI smoke pending |
 | page duplicate | Clone `WebsitePage` | Same | Existing CRUD | semantic content preserved | none | PARTIAL LIVE VERIFICATION | live Builder smoke pending host stability |
 | page show/hide | `show_in_menu` toggle | Same | Existing CRUD | none | none | VERIFIED LIVE | live Builder |
 | publish/unpublish page | Existing per-page publish state | Same | Existing CRUD | render-model respects published state | none | PARTIAL LIVE VERIFICATION | render-model tests + live Builder smoke pending host stability |

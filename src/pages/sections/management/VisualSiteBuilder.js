@@ -142,8 +142,13 @@ import {
   upgradeForgeMotionMarketingPage,
 } from "../../../utils/forgeMotionPageBlueprint";
 import {
+  canDeleteWebsiteBlogArticle,
   createWebsiteBlogPostPage,
+  getWebsiteBlogArticleChecklist,
+  isWebsiteBlogArticlePage,
+  isWebsiteBlogIndexPage,
   slugifyWebsiteArticle,
+  withWebsiteBlogReviewFlag,
 } from "../../../utils/websiteBlogBlueprint";
 import {
   getCompatibleModuleChoices,
@@ -420,6 +425,16 @@ const ensureSectionIds = (page) => {
 };
 
 const safeModules = (page) => normalizeSemanticModules(page || {});
+
+const formatArticleTimestamp = (value) => {
+  if (!value) return "Not saved yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Saved";
+  return `Last saved ${date.toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })}`;
+};
 
 const LEGACY_REVIEWS_PAGE_SLUG = "reviews";
 
@@ -3296,12 +3311,37 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [pageMenuTarget, setPageMenuTarget] = useState(null);
   const [canvasPageMenuAnchor, setCanvasPageMenuAnchor] = useState(null);
   const [newArticleDialogOpen, setNewArticleDialogOpen] = useState(false);
+  const [articleDeleteDialog, setArticleDeleteDialog] = useState({
+    open: false,
+    page: null,
+    mode: "trash",
+  });
+  const [trashedPages, setTrashedPages] = useState([]);
+  const [articleSearch, setArticleSearch] = useState("");
+  const [articleStatusFilter, setArticleStatusFilter] = useState("all");
   const [newArticleDraft, setNewArticleDraft] = useState({
     title: "",
     slug: "",
     description: "",
     slugTouched: false,
   });
+  useEffect(() => {
+    let active = true;
+    if (!companyId) {
+      setTrashedPages([]);
+      return () => { active = false; };
+    }
+    wb.listPages(companyId, { status: "trash" })
+      .then((response) => {
+        if (!active) return;
+        const rows = Array.isArray(response?.data) ? response.data : response?.data?.items || [];
+        setTrashedPages(rows.map(normalizePage));
+      })
+      .catch(() => {
+        if (active) setTrashedPages([]);
+      });
+    return () => { active = false; };
+  }, [companyId]);
   const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
   const rawNavOverrides = useMemo(
     () =>
@@ -6455,6 +6495,7 @@ const autoProvisionIfEmpty = useCallback(
         t("manager.visualBuilder.messages.sitePublished") || "Site published"
       } ✔`;
       setMsg(publishedMsg);
+      return true;
     } catch (e) {
       setErr(
         t("manager.visualBuilder.errors.publishFailed", {
@@ -6465,6 +6506,7 @@ const autoProvisionIfEmpty = useCallback(
             t("manager.visualBuilder.errors.unknown"),
         })
       );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -6488,6 +6530,291 @@ const autoProvisionIfEmpty = useCallback(
     websiteStyleChoices,
     footerDraft,
   ]);
+
+  const saveWebsiteBlogArticle = useCallback(
+    async (page, patch = {}) => {
+      if (!companyId || !page?.id || !isWebsiteBlogArticlePage(page)) {
+        throw new Error("Only nested blog articles can use the article workflow.");
+      }
+      let source = page;
+      if (
+        page.id !== editing?.id &&
+        (!page?.content || !Array.isArray(page?.content?.modules))
+      ) {
+        const full = await wb.getPage(companyId, page.id);
+        source = full?.data || full || page;
+      } else if (page.id === editing?.id) {
+        source = editing;
+      }
+      const next = ensureSectionIds(
+        withLiftedLayout({
+          ...source,
+          ...patch,
+          show_in_menu: false,
+          is_homepage: false,
+        })
+      );
+      const payload = serializePage(next);
+      const response = await wb.updatePage(companyId, payload.id, payload);
+      const saved = ensureSectionIds(
+        withLiftedLayout(normalizePage(response?.data || payload))
+      );
+      setPages((current) =>
+        current.map((candidate) =>
+          candidate.id === saved.id ? saved : candidate
+        )
+      );
+      if (editing?.id === saved.id) setEditing(saved);
+      return saved;
+    },
+    [companyId, editing, setEditing, setPages]
+  );
+
+  const publishWebsiteBlogArticle = useCallback(
+    async (page = editing) => {
+      if (!page || !isWebsiteBlogArticlePage(page)) return;
+      setBusy(true);
+      setErr("");
+      setMsg("");
+      try {
+        let source = page;
+        if (
+          page.id !== editing?.id &&
+          (!page?.content || !Array.isArray(page?.content?.modules))
+        ) {
+          const full = await wb.getPage(companyId, page.id);
+          source = full?.data || full || page;
+        } else if (page.id === editing?.id) {
+          source = editing;
+        }
+        const checklist = getWebsiteBlogArticleChecklist(source);
+        if (!checklist.complete) {
+          const missing = checklist.items
+            .filter((item) => !item.complete)
+            .map((item) => item.label)
+            .join(", ");
+          setErr(`Finish the article checklist before publishing: ${missing}.`);
+          return;
+        }
+        const wasPublished = Boolean(source.published ?? true);
+        const now = new Date().toISOString();
+        const content = normalizePageContent(source.content || {});
+        const meta = content.meta || {};
+        const workflow = meta.articleWorkflow || {};
+        const datedSource = {
+          ...source,
+          content: {
+            ...content,
+            meta: {
+              ...meta,
+              articleWorkflow: {
+                ...workflow,
+                publishedAt: workflow.publishedAt || now,
+                modifiedAt: now,
+              },
+            },
+          },
+        };
+        const saved = await saveWebsiteBlogArticle(datedSource, { published: true });
+        const sitePublished = await onPublish();
+        if (sitePublished) {
+          setMsg(`“${saved.title || "Article"}” is published on the live website.`);
+          await refreshNextJsPreview(
+            null,
+            normalizeNextJsPreviewPagePath(saved)
+          );
+        } else if (!wasPublished) {
+          await saveWebsiteBlogArticle(saved, { published: false });
+        }
+      } catch (error) {
+        console.error(error);
+        setErr(
+          error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Unable to publish the article."
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [
+      companyId,
+      editing,
+      onPublish,
+      refreshNextJsPreview,
+      saveWebsiteBlogArticle,
+    ]
+  );
+
+  const previewWebsiteBlogArticle = useCallback(
+    async (page = editing) => {
+      if (!page || !isWebsiteBlogArticlePage(page)) return;
+      setBusy(true);
+      setErr("");
+      setMsg("");
+      try {
+        const saved = await saveWebsiteBlogArticle(page, {
+          published: Boolean(page.published ?? false),
+        });
+        await refreshNextJsPreview(
+          null,
+          normalizeNextJsPreviewPagePath(saved)
+        );
+        setNextJsPreviewStale(false);
+        requestAnimationFrame(() => scrollCanvasToTop());
+        setMsg(`Preview refreshed for “${saved.title || "Article"}”.`);
+      } catch (error) {
+        console.error(error);
+        setErr(
+          error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Unable to refresh the article preview."
+        );
+      } finally {
+        setBusy(false);
+      }
+    }, [editing, refreshNextJsPreview, saveWebsiteBlogArticle]);
+
+  const unpublishWebsiteBlogArticle = useCallback(
+    async (page) => {
+      if (!page || !isWebsiteBlogArticlePage(page)) return;
+      setBusy(true);
+      setErr("");
+      setMsg("");
+      try {
+        const saved = await saveWebsiteBlogArticle(page, { published: false });
+        const sitePublished = await onPublish();
+        if (sitePublished) {
+          setMsg(`“${saved.title || "Article"}” is now unpublished.`);
+          await refreshNextJsPreview(
+            null,
+            normalizeNextJsPreviewPagePath(saved)
+          );
+        }
+      } catch (error) {
+        console.error(error);
+        setErr(
+          error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Unable to unpublish the article."
+        );
+      } finally {
+        setBusy(false);
+      }
+    }, [onPublish, refreshNextJsPreview, saveWebsiteBlogArticle]);
+
+  const openArticleDeleteDialog = useCallback((page, mode = "trash") => {
+    if (!canDeleteWebsiteBlogArticle(page)) {
+      setErr("Only individual blog articles can be deleted here. Required website pages are protected.");
+      return;
+    }
+    setArticleDeleteDialog({ open: true, page, mode });
+  }, []);
+
+  const closeArticleDeleteDialog = useCallback(() => {
+    if (busy) return;
+    setArticleDeleteDialog({ open: false, page: null, mode: "trash" });
+  }, [busy]);
+
+  const confirmDeleteWebsiteBlogArticle = useCallback(async () => {
+    const target = articleDeleteDialog.page;
+    if (!companyId || !canDeleteWebsiteBlogArticle(target)) {
+      setErr("This page is protected and cannot be deleted from the article workflow.");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      if (articleDeleteDialog.mode === "permanent") {
+        await wb.permanentlyDeletePage(companyId, target.id);
+        setTrashedPages((current) => current.filter((page) => page.id !== target.id));
+        setArticleDeleteDialog({ open: false, page: null, mode: "trash" });
+        setMsg(`“${target.title || "Article"}” was permanently deleted.`);
+        return;
+      }
+      const wasPublished = Boolean(target.published ?? true);
+      const response = await wb.trashPage(companyId, target.id);
+      const trashed = normalizePage(response?.data?.page || target);
+      setTrashedPages((current) => [trashed, ...current.filter((page) => page.id !== target.id)]);
+
+      const remaining = pages.filter((page) => page.id !== target.id);
+      let blogPage = remaining.find(isWebsiteBlogIndexPage) || null;
+      if (blogPage?.id) {
+        const full = await wb.getPage(companyId, blogPage.id).catch(() => null);
+        blogPage = full?.data || full || blogPage;
+      }
+      setPages(remaining);
+      setSelectedPageIds((current) =>
+        current.filter((id) => id !== target.id)
+      );
+      setSelectedId(blogPage?.id || null);
+      setEditing(
+        blogPage
+          ? ensureSectionIds(withLiftedLayout(blogPage))
+          : ensureSectionIds(withLiftedLayout(emptyPage()))
+      );
+      setSelectedBlock(-1);
+      setCanvasPageMenuAnchor(null);
+      setPageMenuAnchor(null);
+      setPageMenuTarget(null);
+      setArticleDeleteDialog({ open: false, page: null, mode: "trash" });
+
+      const sitePublished = wasPublished ? await onPublish() : true;
+      await refreshNextJsPreview(null, ["blog"]);
+      if (!sitePublished) {
+        setErr(
+          `“${target.title || "Article"}” was moved to trash, but the live website refresh failed. Publish the website again before leaving the builder.`
+        );
+        return;
+      }
+      setMsg(
+        `“${target.title || "Article"}” was moved to trash. You are back on the blog page.`
+      );
+    } catch (error) {
+      console.error(error);
+      setErr(
+        error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to update the article trash."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    articleDeleteDialog.mode,
+    articleDeleteDialog.page,
+    companyId,
+    onPublish,
+    pages,
+    refreshNextJsPreview,
+    saveWebsiteBlogArticle,
+    setEditing,
+    setPages,
+    setSelectedId,
+  ]);
+
+  const restoreWebsiteBlogArticle = useCallback(async (page) => {
+    if (!companyId || !page?.id) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const response = await wb.restorePage(companyId, page.id);
+      const restored = ensureSectionIds(withLiftedLayout(normalizePage(response?.data?.page || page)));
+      setTrashedPages((current) => current.filter((candidate) => candidate.id !== page.id));
+      setPages((current) => [restored, ...current.filter((candidate) => candidate.id !== page.id)]);
+      setArticleStatusFilter("draft");
+      setMsg(`“${restored.title || "Article"}” was restored as a draft.`);
+    } catch (error) {
+      setErr(error?.response?.data?.error || error?.message || "Unable to restore the article.");
+    } finally {
+      setBusy(false);
+    }
+  }, [companyId, setPages]);
 
   const onUnpublish = useCallback(async () => {
     if (!companyId) return;
@@ -7215,7 +7542,7 @@ const autoProvisionIfEmpty = useCallback(
         const source =
           id === editing?.id ? editing : pages.find((p) => p.id === id);
         if (!source) continue;
-        const next = JSON.parse(JSON.stringify(source));
+        let next = JSON.parse(JSON.stringify(source));
         delete next.id;
         next.slug = buildDuplicateSlug(next.slug || next.title || "page", existingSlugs);
         next.path = next.slug;
@@ -7224,6 +7551,13 @@ const autoProvisionIfEmpty = useCallback(
         if (next.seo_title) next.seo_title = prefixDuplicate(next.seo_title, "Page");
         if (next.og_title) next.og_title = prefixDuplicate(next.og_title, "Page");
         next.canonical_path = "";
+        if (isWebsiteBlogArticlePage(next)) {
+          next.published = false;
+          next.show_in_menu = false;
+          next.is_homepage = false;
+          next = withWebsiteBlogReviewFlag(next, "seoReviewed", false);
+          next = withWebsiteBlogReviewFlag(next, "mobilePreviewReviewed", false);
+        }
         const payload = serializePage(ensureSectionIds(withLiftedLayout(next)));
         const r = await wb.createPage(companyId, payload);
         const created = ensureSectionIds(
@@ -7259,7 +7593,7 @@ const autoProvisionIfEmpty = useCallback(
       const source =
         id === editing?.id ? editing : pages.find((p) => p.id === id);
       if (!source) return;
-      const next = JSON.parse(JSON.stringify(source));
+      let next = JSON.parse(JSON.stringify(source));
       delete next.id;
       next.slug = buildDuplicateSlug(next.slug || next.title || "page", existingSlugs);
       next.path = next.slug;
@@ -7268,6 +7602,13 @@ const autoProvisionIfEmpty = useCallback(
       if (next.seo_title) next.seo_title = prefixDuplicate(next.seo_title, "Page");
       if (next.og_title) next.og_title = prefixDuplicate(next.og_title, "Page");
       next.canonical_path = "";
+      if (isWebsiteBlogArticlePage(next)) {
+        next.published = false;
+        next.show_in_menu = false;
+        next.is_homepage = false;
+        next = withWebsiteBlogReviewFlag(next, "seoReviewed", false);
+        next = withWebsiteBlogReviewFlag(next, "mobilePreviewReviewed", false);
+      }
       const payload = serializePage(ensureSectionIds(withLiftedLayout(next)));
       const r = await wb.createPage(companyId, payload);
       const created = ensureSectionIds(
@@ -7321,7 +7662,7 @@ const autoProvisionIfEmpty = useCallback(
       setPagesListOpen(false);
       setPageSettingsOpen(false);
       setNewArticleDialogOpen(false);
-      setMsg("Draft article created. Edit it on the Canvas, review Page settings and SEO, then publish it when ready.");
+      setMsg("Draft article created. Edit it on the Canvas, complete the checklist, preview it, then use Publish article when ready.");
       if (isNextJsContentMode && nextJsPreviewUrl) {
         await refreshNextJsPreview(null, normalizeNextJsPreviewPagePath(created));
       }
@@ -7885,6 +8226,32 @@ const autoProvisionIfEmpty = useCallback(
   const selectedModule =
     selectedModuleIndex >= 0 ? semanticModules[selectedModuleIndex] : null;
 
+  const persistedEditingPage = pages.find(
+    (page) => String(page?.id) === String(editing?.id || "")
+  );
+  const publishedArticleSlugChanged = Boolean(
+    editing?.published &&
+    isWebsiteBlogArticlePage(editing) &&
+    persistedEditingPage?.slug &&
+    String(editing.slug || "") !== String(persistedEditingPage.slug)
+  );
+
+  const filteredArticlePages = useMemo(() => {
+    const source = articleStatusFilter === "trash"
+      ? trashedPages
+      : pages.filter((page) => {
+          if (!isWebsiteBlogArticlePage(page)) return false;
+          if (articleStatusFilter === "published") return Boolean(page.published);
+          if (articleStatusFilter === "draft") return !page.published;
+          return true;
+        });
+    const query = articleSearch.trim().toLowerCase();
+    return source
+      .filter((page) => isWebsiteBlogArticlePage(page))
+      .filter((page) => !query || `${page.title || ""} ${page.slug || page.path || ""}`.toLowerCase().includes(query))
+      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+  }, [articleSearch, articleStatusFilter, pages, trashedPages]);
+
   const LeftColumn = (
     <Stack spacing={1.5}>
       <InspectorColumn />
@@ -7985,6 +8352,69 @@ const autoProvisionIfEmpty = useCallback(
             Services, Products, Reviews, and Jobs use their existing workspaces for business records. Edit this page&apos;s composition, modules, and SEO here; booking, commerce, applications, and account flows stay system-owned.
           </Alert>
         ) : null}
+        {isNextJsContentMode ? (
+          <Paper variant="outlined" sx={{ p: 1.25, mb: 1.5, borderRadius: 1.5 }}>
+            <Stack spacing={1}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Articles</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Search drafts and published articles, or restore an article from Trash.
+                </Typography>
+              </Box>
+              <TextField
+                size="small"
+                label="Search articles"
+                value={articleSearch}
+                onChange={(event) => setArticleSearch(event.target.value)}
+                placeholder="Title or URL"
+              />
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={articleStatusFilter}
+                onChange={(_, value) => value && setArticleStatusFilter(value)}
+                aria-label="Article status"
+                sx={{ alignSelf: "flex-start", flexWrap: "wrap" }}
+              >
+                <ToggleButton value="all">All</ToggleButton>
+                <ToggleButton value="draft">Draft</ToggleButton>
+                <ToggleButton value="published">Published</ToggleButton>
+                <ToggleButton value="trash">Trash ({trashedPages.length})</ToggleButton>
+              </ToggleButtonGroup>
+              {filteredArticlePages.length ? (
+                <List dense disablePadding>
+                  {filteredArticlePages.map((page) => (
+                    <ListItem key={`${articleStatusFilter}-${page.id}`} disablePadding secondaryAction={
+                      articleStatusFilter === "trash" ? (
+                        <Stack direction="row" spacing={0.5}>
+                          <Button size="small" onClick={() => restoreWebsiteBlogArticle(page)} disabled={busy}>Restore</Button>
+                          <IconButton size="small" color="error" aria-label={`Permanently delete ${page.title || "article"}`} onClick={() => openArticleDeleteDialog(page, "permanent")} disabled={busy}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      ) : null
+                    }>
+                      <ListItemButton disabled={articleStatusFilter === "trash"} onClick={() => openBuilderPage(page)}>
+                        <ListItemText
+                          primary={page.title || "Untitled article"}
+                          secondary={`/${String(page.slug || page.path || "").replace(/^\/+/, "")} · ${articleStatusFilter === "trash" ? "In trash" : page.published ? "Published" : "Draft"}`}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Alert severity="info" variant="outlined">
+                  {articleSearch
+                    ? "No articles match this search and status. Try a different title or filter."
+                    : articleStatusFilter === "trash"
+                    ? "Trash is empty. Articles moved here can be restored as drafts."
+                    : `No ${articleStatusFilter === "all" ? "articles" : `${articleStatusFilter} articles`} yet.`}
+                </Alert>
+              )}
+            </Stack>
+          </Paper>
+        ) : null}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {selectedPageIds.length
@@ -8037,49 +8467,74 @@ const autoProvisionIfEmpty = useCallback(
         open={Boolean(pageMenuAnchor)}
         onClose={handlePageMenuClose}
       >
-        <MenuItem
-          onClick={() => {
-            if (!pageMenuTarget) return;
-            const current = Boolean(pageMenuTarget.published ?? true);
-            applyPageActionPatch(pageMenuTarget.id, { published: !current });
-            handlePageMenuClose();
-          }}
-        >
-          {pageMenuTarget?.published ?? true ? "Unpublish" : "Publish"}
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (!pageMenuTarget) return;
-            const current = Boolean(pageMenuTarget.show_in_menu ?? true);
-            applyPageActionPatch(pageMenuTarget.id, { show_in_menu: !current });
-            handlePageMenuClose();
-          }}
-        >
-          {pageMenuTarget?.show_in_menu ?? true ? "Hide from menu" : "Show in menu"}
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (!pageMenuTarget) return;
-            if (pageMenuTarget.is_homepage) {
-              applyPageActionPatch(pageMenuTarget.id, { is_homepage: false });
-            } else {
-              applyPageActionPatch(pageMenuTarget.id, {}, { setHomepage: true });
-            }
-            handlePageMenuClose();
-          }}
-        >
-          {pageMenuTarget?.is_homepage ? "Unset homepage" : "Set as homepage"}
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (!pageMenuTarget) return;
-            const current = Boolean(pageMenuTarget.autosave ?? true);
-            applyPageActionPatch(pageMenuTarget.id, { autosave: !current });
-            handlePageMenuClose();
-          }}
-        >
-          {pageMenuTarget?.autosave ?? true ? "Disable autosave" : "Enable autosave"}
-        </MenuItem>
+        {isWebsiteBlogArticlePage(pageMenuTarget) ? (
+          <>
+            <MenuItem
+              onClick={() => {
+                if (pageMenuTarget) openBuilderPage(pageMenuTarget);
+                handlePageMenuClose();
+              }}
+            >
+              Edit article
+            </MenuItem>
+            {pageMenuTarget?.published ? (
+              <MenuItem
+                onClick={() => {
+                  unpublishWebsiteBlogArticle(pageMenuTarget);
+                  handlePageMenuClose();
+                }}
+              >
+                Unpublish article
+              </MenuItem>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <MenuItem
+              onClick={() => {
+                if (!pageMenuTarget) return;
+                const current = Boolean(pageMenuTarget.published ?? true);
+                applyPageActionPatch(pageMenuTarget.id, { published: !current });
+                handlePageMenuClose();
+              }}
+            >
+              {pageMenuTarget?.published ?? true ? "Unpublish" : "Publish"}
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                if (!pageMenuTarget) return;
+                const current = Boolean(pageMenuTarget.show_in_menu ?? true);
+                applyPageActionPatch(pageMenuTarget.id, { show_in_menu: !current });
+                handlePageMenuClose();
+              }}
+            >
+              {pageMenuTarget?.show_in_menu ?? true ? "Hide from menu" : "Show in menu"}
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                if (!pageMenuTarget) return;
+                if (pageMenuTarget.is_homepage) {
+                  applyPageActionPatch(pageMenuTarget.id, { is_homepage: false });
+                } else {
+                  applyPageActionPatch(pageMenuTarget.id, {}, { setHomepage: true });
+                }
+                handlePageMenuClose();
+              }}
+            >
+              {pageMenuTarget?.is_homepage ? "Unset homepage" : "Set as homepage"}
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                if (!pageMenuTarget) return;
+                const current = Boolean(pageMenuTarget.autosave ?? true);
+                applyPageActionPatch(pageMenuTarget.id, { autosave: !current });
+                handlePageMenuClose();
+              }}
+            >
+              {pageMenuTarget?.autosave ?? true ? "Disable autosave" : "Enable autosave"}
+            </MenuItem>
+          </>
+        )}
         <MenuItem
           onClick={() => {
             if (!pageMenuTarget) return;
@@ -8087,8 +8542,25 @@ const autoProvisionIfEmpty = useCallback(
             handlePageMenuClose();
           }}
         >
-          Duplicate
+          {isWebsiteBlogArticlePage(pageMenuTarget) ? "Duplicate article" : "Duplicate"}
         </MenuItem>
+        {isWebsiteBlogArticlePage(pageMenuTarget) ? (
+          <>
+            <Divider />
+            <MenuItem
+              sx={{ color: "error.main" }}
+              onClick={() => {
+                openArticleDeleteDialog(pageMenuTarget);
+                handlePageMenuClose();
+              }}
+            >
+              <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+              {pageMenuTarget?.published
+                ? "Unpublish and move to trash"
+                : "Move draft to trash"}
+            </MenuItem>
+          </>
+        ) : null}
       </Menu>
       <Alert severity="info" sx={{ mt: 1 }}>
         Need another page? Visit the {" "}
@@ -8128,9 +8600,17 @@ const autoProvisionIfEmpty = useCallback(
             size="small"
             value={editing.slug || ""}
             onChange={(e) => updatePageMeta({ slug: e.target.value })}
-            helperText={t("manager.visualBuilder.pages.settings.fields.slugHint")}
+            helperText={publishedArticleSlugChanged
+              ? "Changing a published article URL can break existing links and search rankings. Add a redirect from the old URL before publishing."
+              : t("manager.visualBuilder.pages.settings.fields.slugHint")}
+            error={publishedArticleSlugChanged}
             fullWidth
           />
+          {publishedArticleSlugChanged ? (
+            <Alert severity="warning" variant="outlined">
+              Published URL change: /{persistedEditingPage.slug} → /{editing.slug}. Save only after the old URL has a redirect plan.
+            </Alert>
+          ) : null}
           <TextField
             label={t("manager.visualBuilder.pages.settings.fields.pageTitle")}
             size="small"
@@ -9355,6 +9835,59 @@ const canvasPageTarget =
   editing ||
   null;
 
+const articleWorkflowPage =
+  editing?.id && String(editing.id) === String(canvasPageTarget?.id)
+    ? editing
+    : canvasPageTarget;
+const isCurrentBlogArticle = isWebsiteBlogArticlePage(articleWorkflowPage);
+const articleChecklist = useMemo(
+  () =>
+    isCurrentBlogArticle
+      ? getWebsiteBlogArticleChecklist(articleWorkflowPage)
+      : null,
+  [articleWorkflowPage, isCurrentBlogArticle]
+);
+
+const updateArticleReviewFlag = useCallback((flag, complete) => {
+  setEditing((current) => {
+    if (!isWebsiteBlogArticlePage(current)) return current;
+    return withWebsiteBlogReviewFlag(current, flag, complete);
+  });
+  setPageSettingsDirty(true);
+  setNextJsPreviewStale(true);
+}, [setEditing]);
+
+const handleArticleChecklistItemClick = useCallback((key) => {
+  if (key === "title") {
+    handleJumpToPageSettings();
+    return;
+  }
+  if (key === "description" || key === "seoReviewed") {
+    handleJumpToSeoSettings();
+    return;
+  }
+  if (key === "mobilePreviewReviewed") {
+    setStylePreviewViewport("mobile");
+    requestAnimationFrame(() => scrollCanvasToTop());
+    return;
+  }
+  const modules = safeModules(articleWorkflowPage || {});
+  const module = key === "articleContent"
+    ? modules.find((candidate) => ["richText", "text", "articleBody"].includes(candidate.type))
+    : modules.find((candidate) => candidate.type === "hero") || modules.find((candidate) => candidate?.content?.image || candidate?.content?.imageUrl);
+  if (!module) return;
+  setSelectedModuleId(module.id);
+  setSelectedModuleFieldPath(
+    key === "imageAlt"
+      ? "content.imageAlt"
+      : key === "articleContent"
+      ? "content.body"
+      : "content.image"
+  );
+  setInspectorOpen(true);
+  setInspectorTab("content");
+}, [articleWorkflowPage, handleJumpToPageSettings, handleJumpToSeoSettings, scrollCanvasToTop]);
+
 const closeCanvasPageMenu = () => setCanvasPageMenuAnchor(null);
 
 const PageWorkspaceBar = isNextJsContentMode ? (
@@ -9396,6 +9929,14 @@ const PageWorkspaceBar = isNextJsContentMode ? (
             {canvasPageTarget.show_in_menu ?? true ? null : (
               <Chip size="small" variant="outlined" label="Hidden from menu" />
             )}
+            {isCurrentBlogArticle ? (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={pageSettingsDirty ? "Unsaved changes" : formatArticleTimestamp(articleWorkflowPage?.updated_at)}
+                color={pageSettingsDirty ? "warning" : "default"}
+              />
+            ) : null}
           </Stack>
         ) : null}
         <Box sx={{ flex: 1 }} />
@@ -9408,6 +9949,47 @@ const PageWorkspaceBar = isNextJsContentMode ? (
         >
           New article
         </Button>
+        {isCurrentBlogArticle ? (
+          <>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<SaveIcon fontSize="small" />}
+              onClick={onSavePage}
+              disabled={busy || !articleWorkflowPage?.id}
+            >
+              Save draft
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<VisibilityIcon fontSize="small" />}
+              onClick={() => previewWebsiteBlogArticle(articleWorkflowPage)}
+              disabled={busy || !articleWorkflowPage?.id}
+            >
+              Preview
+            </Button>
+            <Tooltip
+              title={
+                articleChecklist?.complete
+                  ? "Save and publish this article to the live website."
+                  : "Complete every item in the article checklist before publishing."
+              }
+            >
+              <span>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<PublishIcon fontSize="small" />}
+                  onClick={() => publishWebsiteBlogArticle(articleWorkflowPage)}
+                  disabled={busy || !articleChecklist?.complete}
+                >
+                  {articleWorkflowPage?.published ? "Publish update" : "Publish article"}
+                </Button>
+              </span>
+            </Tooltip>
+          </>
+        ) : null}
         <Button size="small" variant="outlined" onClick={handleJumpToPageSettings}>
           Page settings
         </Button>
@@ -9437,70 +10019,168 @@ const PageWorkspaceBar = isNextJsContentMode ? (
         </Button>
       </Stack>
       <Typography variant="caption" color="text.secondary">
-        Switch pages here, edit the selected page in the Canvas, and manage its publishing without searching through the advanced page list.
+        {isCurrentBlogArticle
+          ? "Write the article, complete the checklist, preview it, then publish it in one step."
+          : "Switch pages here, edit the selected page in the Canvas, and manage its publishing without searching through the advanced page list."}
         {nextJsPreviewStale ? " Saved edits are ready; refresh the preview when you want to review them." : ""}
       </Typography>
+      {isCurrentBlogArticle && articleChecklist ? (
+        <Paper variant="outlined" sx={{ p: 1, bgcolor: "background.default" }}>
+          <Stack spacing={0.75}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Typography variant="subtitle2">Article completion</Typography>
+              <Chip
+                size="small"
+                color={articleChecklist.complete ? "success" : "default"}
+                label={`${articleChecklist.completedCount}/${articleChecklist.totalCount} complete`}
+              />
+            </Stack>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              {articleChecklist.items
+                .filter((item) => !item.manual)
+                .map((item) => (
+                  <Chip
+                    key={item.key}
+                    size="small"
+                    color={item.complete ? "success" : "default"}
+                    variant={item.complete ? "filled" : "outlined"}
+                    label={`${item.complete ? "✓" : "○"} ${item.label}`}
+                    onClick={() => handleArticleChecklistItemClick(item.key)}
+                    sx={{ cursor: "pointer" }}
+                  />
+                ))}
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0, sm: 1 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={Boolean(
+                      articleWorkflowPage?.content?.meta?.articleWorkflow?.seoReviewed
+                    )}
+                    onChange={(_, checked) =>
+                      updateArticleReviewFlag("seoReviewed", checked)
+                    }
+                  />
+                }
+                label={<ButtonBase onClick={(event) => { event.preventDefault(); event.stopPropagation(); handleArticleChecklistItemClick("seoReviewed"); }}>SEO reviewed</ButtonBase>}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={Boolean(
+                      articleWorkflowPage?.content?.meta?.articleWorkflow
+                        ?.mobilePreviewReviewed
+                    )}
+                    onChange={(_, checked) =>
+                      updateArticleReviewFlag("mobilePreviewReviewed", checked)
+                    }
+                  />
+                }
+                label={<ButtonBase onClick={(event) => { event.preventDefault(); event.stopPropagation(); handleArticleChecklistItemClick("mobilePreviewReviewed"); }}>Mobile preview reviewed</ButtonBase>}
+              />
+            </Stack>
+          </Stack>
+        </Paper>
+      ) : null}
     </Stack>
     <Menu
       anchorEl={canvasPageMenuAnchor}
       open={Boolean(canvasPageMenuAnchor)}
       onClose={closeCanvasPageMenu}
     >
-      <MenuItem
-        onClick={() => {
-          if (canvasPageTarget?.id) {
-            const current = Boolean(canvasPageTarget.published ?? true);
-            applyPageActionPatch(canvasPageTarget.id, { published: !current });
-          }
-          closeCanvasPageMenu();
-        }}
-      >
-        {canvasPageTarget?.published ?? true ? "Unpublish page" : "Publish page"}
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          if (canvasPageTarget?.id) {
-            const current = Boolean(canvasPageTarget.show_in_menu ?? true);
-            applyPageActionPatch(canvasPageTarget.id, { show_in_menu: !current });
-          }
-          closeCanvasPageMenu();
-        }}
-      >
-        {canvasPageTarget?.show_in_menu ?? true ? "Hide from menu" : "Show in menu"}
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          if (canvasPageTarget?.id) {
-            if (canvasPageTarget.is_homepage) {
-              applyPageActionPatch(canvasPageTarget.id, { is_homepage: false });
-            } else {
-              applyPageActionPatch(canvasPageTarget.id, {}, { setHomepage: true });
-            }
-          }
-          closeCanvasPageMenu();
-        }}
-      >
-        {canvasPageTarget?.is_homepage ? "Unset homepage" : "Set as homepage"}
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          if (canvasPageTarget?.id) {
-            const current = Boolean(canvasPageTarget.autosave ?? true);
-            applyPageActionPatch(canvasPageTarget.id, { autosave: !current });
-          }
-          closeCanvasPageMenu();
-        }}
-      >
-        {canvasPageTarget?.autosave ?? true ? "Disable autosave" : "Enable autosave"}
-      </MenuItem>
+      {isCurrentBlogArticle ? (
+        articleWorkflowPage?.published ? (
+          <MenuItem
+            onClick={() => {
+              unpublishWebsiteBlogArticle(articleWorkflowPage);
+              closeCanvasPageMenu();
+            }}
+          >
+            Unpublish article
+          </MenuItem>
+        ) : null
+      ) : (
+        [
+          <MenuItem
+            key="published"
+            onClick={() => {
+              if (canvasPageTarget?.id) {
+                const current = Boolean(canvasPageTarget.published ?? true);
+                applyPageActionPatch(canvasPageTarget.id, { published: !current });
+              }
+              closeCanvasPageMenu();
+            }}
+          >
+            {canvasPageTarget?.published ?? true ? "Unpublish page" : "Publish page"}
+          </MenuItem>,
+          <MenuItem
+            key="menu"
+            onClick={() => {
+              if (canvasPageTarget?.id) {
+                const current = Boolean(canvasPageTarget.show_in_menu ?? true);
+                applyPageActionPatch(canvasPageTarget.id, { show_in_menu: !current });
+              }
+              closeCanvasPageMenu();
+            }}
+          >
+            {canvasPageTarget?.show_in_menu ?? true ? "Hide from menu" : "Show in menu"}
+          </MenuItem>,
+          <MenuItem
+            key="homepage"
+            onClick={() => {
+              if (canvasPageTarget?.id) {
+                if (canvasPageTarget.is_homepage) {
+                  applyPageActionPatch(canvasPageTarget.id, { is_homepage: false });
+                } else {
+                  applyPageActionPatch(canvasPageTarget.id, {}, { setHomepage: true });
+                }
+              }
+              closeCanvasPageMenu();
+            }}
+          >
+            {canvasPageTarget?.is_homepage ? "Unset homepage" : "Set as homepage"}
+          </MenuItem>,
+          <MenuItem
+            key="autosave"
+            onClick={() => {
+              if (canvasPageTarget?.id) {
+                const current = Boolean(canvasPageTarget.autosave ?? true);
+                applyPageActionPatch(canvasPageTarget.id, { autosave: !current });
+              }
+              closeCanvasPageMenu();
+            }}
+          >
+            {canvasPageTarget?.autosave ?? true ? "Disable autosave" : "Enable autosave"}
+          </MenuItem>,
+        ]
+      )}
       <MenuItem
         onClick={() => {
           if (canvasPageTarget?.id) duplicatePageById(canvasPageTarget.id);
           closeCanvasPageMenu();
         }}
       >
-        Duplicate page
+        {isCurrentBlogArticle ? "Duplicate article" : "Duplicate page"}
       </MenuItem>
+      {isCurrentBlogArticle ? (
+        <>
+          <Divider />
+          <MenuItem
+            sx={{ color: "error.main" }}
+            onClick={() => {
+              openArticleDeleteDialog(articleWorkflowPage);
+              closeCanvasPageMenu();
+            }}
+          >
+            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+            {articleWorkflowPage?.published
+              ? "Unpublish and move to trash"
+              : "Move draft to trash"}
+          </MenuItem>
+        </>
+      ) : null}
       <Divider />
       <MenuItem
         onClick={() => {
@@ -13043,6 +13723,79 @@ if (authError) {
         onJumpToNavSettings={handleJumpToNav}
         onJumpToAssets={handleJumpToAssets}
       />
+
+      <Dialog
+        open={articleDeleteDialog.open}
+        onClose={closeArticleDeleteDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {articleDeleteDialog.mode === "permanent"
+            ? "Permanently delete article"
+            : (articleDeleteDialog.page?.published ?? true)
+            ? "Unpublish and move article to trash"
+            : "Move article draft to trash"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Alert severity={articleDeleteDialog.mode === "permanent" ? "error" : "info"} variant="outlined">
+              {articleDeleteDialog.mode === "permanent"
+                ? "This permanently deletes the article and cannot be undone."
+                : "The article will be hidden from the website and can be restored later as a draft."}
+            </Alert>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Article
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                {articleDeleteDialog.page?.title || "Untitled article"}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Website URL
+              </Typography>
+              <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                /{String(
+                  articleDeleteDialog.page?.slug ||
+                    articleDeleteDialog.page?.path ||
+                    ""
+                ).replace(/^\/+/, "")}
+              </Typography>
+            </Box>
+            {articleDeleteDialog.mode === "permanent" ? null : (articleDeleteDialog.page?.published ?? true) ? (
+              <Typography variant="body2" color="text.secondary">
+                The live article will be unpublished. The builder then returns to /blog and refreshes the preview.
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                The builder returns to /blog and refreshes the preview after moving it to Trash.
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeArticleDeleteDialog} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+            onClick={confirmDeleteWebsiteBlogArticle}
+            disabled={busy}
+          >
+            {busy
+              ? "Working…"
+              : articleDeleteDialog.mode === "permanent"
+              ? "Delete permanently"
+              : (articleDeleteDialog.page?.published ?? true)
+              ? "Unpublish and move to trash"
+              : "Move to trash"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={newArticleDialogOpen}

@@ -1683,9 +1683,9 @@ export const wb = {
     websiteAdmin.publish(is_live, { companyId }),
 
   // PAGES (CRUD)
-  listPages: (companyId, { locale } = {}) =>
+  listPages: (companyId, { locale, status } = {}) =>
     api.get(`/api/website/pages`, {
-      params: { ...(locale ? { locale } : {}), _ts: Date.now(), company_id: companyId }, // cache-bust + explicit company param
+      params: { ...(locale ? { locale } : {}), ...(status ? { status } : {}), _ts: Date.now(), company_id: companyId }, // cache-bust + explicit company param
       headers: { "X-Company-Id": companyId },
     }),
 
@@ -1705,6 +1705,15 @@ export const wb = {
 
   deletePage: (companyId, id) =>
     api.delete(`/api/website/pages/${id}`, { headers: { "X-Company-Id": companyId } }),
+
+  trashPage: (companyId, id) =>
+    api.post(`/api/website/pages/${id}/trash`, {}, { headers: { "X-Company-Id": companyId } }),
+
+  restorePage: (companyId, id) =>
+    api.post(`/api/website/pages/${id}/restore`, {}, { headers: { "X-Company-Id": companyId } }),
+
+  permanentlyDeletePage: (companyId, id) =>
+    api.delete(`/api/website/pages/${id}/permanent`, { headers: { "X-Company-Id": companyId } }),
 
   // CHECKPOINTS
   listCheckpoints: (companyId, { limit = 20 } = {}) =>

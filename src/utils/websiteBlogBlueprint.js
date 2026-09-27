@@ -1,5 +1,113 @@
 const normalizeText = (value) => String(value || "").trim();
 
+const STARTER_DESCRIPTION =
+  "Add a concise introduction that tells readers what this article explains.";
+const STARTER_BODY_MARKER = "Replace this starter copy";
+
+export const normalizeWebsitePagePath = (page) =>
+  normalizeText(page?.slug || page?.path)
+    .replace(/^\/+|\/+$/g, "")
+    .toLowerCase();
+
+export const isWebsiteBlogIndexPage = (page) =>
+  normalizeWebsitePagePath(page) === "blog";
+
+export const isWebsiteBlogArticlePage = (page) => {
+  const path = normalizeWebsitePagePath(page);
+  return path.startsWith("blog/") && path.length > "blog/".length;
+};
+
+/**
+ * The Visual Site Builder only exposes destructive article actions for true
+ * nested blog pages. This keeps home, the blog directory, and all system pages
+ * out of the deletion workflow even if the handler is called directly.
+ */
+export const canDeleteWebsiteBlogArticle = (page) =>
+  Boolean(page?.id) && !page?.is_homepage && isWebsiteBlogArticlePage(page);
+
+const findArticleModule = (page, type) => {
+  const modules = Array.isArray(page?.content?.modules)
+    ? page.content.modules
+    : [];
+  return modules.find((module) => module?.type === type) || null;
+};
+
+export const getWebsiteBlogArticleChecklist = (page) => {
+  const hero = findArticleModule(page, "hero")?.content || {};
+  const richText = findArticleModule(page, "richText")?.content || {};
+  const workflow = page?.content?.meta?.articleWorkflow || {};
+  const title = normalizeText(page?.title || hero.heading);
+  const description = normalizeText(
+    page?.seo_description || hero.subheading || richText.intro
+  );
+  const coverImage = normalizeText(
+    hero.image || hero.imageUrl || hero.backgroundImage
+  );
+  const imageAlt = normalizeText(
+    hero.imageAlt || hero.backgroundImageAlt
+  );
+  const articleBody = normalizeText(richText.body);
+
+  const items = [
+    { key: "title", label: "Title", complete: Boolean(title) },
+    {
+      key: "description",
+      label: "Description",
+      complete: Boolean(description) && description !== STARTER_DESCRIPTION,
+    },
+    { key: "coverImage", label: "Cover image", complete: Boolean(coverImage) },
+    {
+      key: "imageAlt",
+      label: "Image alt text",
+      complete: Boolean(coverImage && imageAlt),
+    },
+    {
+      key: "content",
+      label: "Article content",
+      complete:
+        articleBody.length >= 80 && !articleBody.includes(STARTER_BODY_MARKER),
+    },
+    {
+      key: "seoReviewed",
+      label: "SEO reviewed",
+      complete: workflow.seoReviewed === true,
+      manual: true,
+    },
+    {
+      key: "mobilePreviewReviewed",
+      label: "Mobile preview reviewed",
+      complete: workflow.mobilePreviewReviewed === true,
+      manual: true,
+    },
+  ];
+
+  return {
+    items,
+    complete: items.every((item) => item.complete),
+    completedCount: items.filter((item) => item.complete).length,
+    totalCount: items.length,
+  };
+};
+
+export const withWebsiteBlogReviewFlag = (page, flag, complete) => {
+  if (!["seoReviewed", "mobilePreviewReviewed"].includes(flag)) return page;
+  const content = page?.content || {};
+  const meta = content.meta || {};
+  return {
+    ...page,
+    content: {
+      ...content,
+      meta: {
+        ...meta,
+        articleWorkflow: {
+          ...(meta.articleWorkflow || {}),
+          [flag]: Boolean(complete),
+        },
+      },
+    },
+  };
+};
+
 export const slugifyWebsiteArticle = (value) =>
   normalizeText(value)
     .toLowerCase()
@@ -123,6 +231,10 @@ export function createWebsiteBlogPostPage(existingPages = [], options = {}) {
         layout: "full",
         websiteBlogStarterVersion: 1,
         websiteBlogPost: true,
+        articleWorkflow: {
+          seoReviewed: false,
+          mobilePreviewReviewed: false,
+        },
       },
     },
   };
