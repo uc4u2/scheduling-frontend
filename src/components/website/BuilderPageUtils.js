@@ -42,6 +42,9 @@ export function normalizePage(p = {}) {
     og_image_url: p.og_image_url || "",
     canonical_path: p.canonical_path || "",
     noindex: Boolean(p.noindex ?? false),
+    created_at: p.created_at || p.createdAt || null,
+    updated_at: p.updated_at || p.updatedAt || null,
+    deleted_at: p.deleted_at || p.deletedAt || null,
     content:
       p.content && typeof p.content === "object"
         ? {

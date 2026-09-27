@@ -79,7 +79,7 @@ import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { useTranslation, Trans } from "react-i18next";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { api, wb, navSettings, publicSite } from "../../../utils/api";
 import { NAV_STYLE_DEFAULT, normalizeNavStyle } from "../../../utils/navStyle";
@@ -148,6 +148,7 @@ import {
   isWebsiteBlogArticlePage,
   isWebsiteBlogIndexPage,
   slugifyWebsiteArticle,
+  withSyncedWebsiteBlogArticleMetadata,
   withWebsiteBlogReviewFlag,
 } from "../../../utils/websiteBlogBlueprint";
 import {
@@ -6548,7 +6549,7 @@ const autoProvisionIfEmpty = useCallback(
       }
       const next = ensureSectionIds(
         withLiftedLayout({
-          ...source,
+          ...withSyncedWebsiteBlogArticleMetadata(source),
           ...patch,
           show_in_menu: false,
           is_homepage: false,
@@ -8581,6 +8582,7 @@ const autoProvisionIfEmpty = useCallback(
       </Alert>
     </CollapsibleSection>
 
+      {!isWebsiteBlogArticlePage(editing) ? (
       <CollapsibleSection
         id="builder-page-settings"
         title={t("manager.visualBuilder.pages.settings.title")}
@@ -8855,6 +8857,7 @@ const autoProvisionIfEmpty = useCallback(
           </Stack>
         </Stack>
       </CollapsibleSection>
+      ) : null}
 
       <CollapsibleSection
         id="builder-checkpoints"
@@ -9400,7 +9403,7 @@ const autoProvisionIfEmpty = useCallback(
         </Paper>
         {unsupportedModuleWarning ? <Alert severity="warning" sx={{ mt: 2 }}>{unsupportedModuleWarning}</Alert> : null}
       </CollapsibleSection>
-      {SeoSettingsSection}
+      {!isWebsiteBlogArticlePage(editing) ? SeoSettingsSection : null}
     </Stack>
   );
 
@@ -9848,45 +9851,27 @@ const articleChecklist = useMemo(
   [articleWorkflowPage, isCurrentBlogArticle]
 );
 
-const updateArticleReviewFlag = useCallback((flag, complete) => {
-  setEditing((current) => {
-    if (!isWebsiteBlogArticlePage(current)) return current;
-    return withWebsiteBlogReviewFlag(current, flag, complete);
-  });
-  setPageSettingsDirty(true);
-  setNextJsPreviewStale(true);
-}, [setEditing]);
-
 const handleArticleChecklistItemClick = useCallback((key) => {
-  if (key === "title") {
-    handleJumpToPageSettings();
-    return;
-  }
-  if (key === "description" || key === "seoReviewed") {
-    handleJumpToSeoSettings();
-    return;
-  }
-  if (key === "mobilePreviewReviewed") {
-    setStylePreviewViewport("mobile");
-    requestAnimationFrame(() => scrollCanvasToTop());
-    return;
-  }
   const modules = safeModules(articleWorkflowPage || {});
-  const module = key === "articleContent"
+  const module = key === "content"
     ? modules.find((candidate) => ["richText", "text", "articleBody"].includes(candidate.type))
     : modules.find((candidate) => candidate.type === "hero") || modules.find((candidate) => candidate?.content?.image || candidate?.content?.imageUrl);
   if (!module) return;
   setSelectedModuleId(module.id);
   setSelectedModuleFieldPath(
-    key === "imageAlt"
+    key === "title"
+      ? "content.heading"
+      : key === "description"
+      ? "content.subheading"
+      : key === "imageAlt"
       ? "content.imageAlt"
-      : key === "articleContent"
+      : key === "content"
       ? "content.body"
       : "content.image"
   );
   setInspectorOpen(true);
   setInspectorTab("content");
-}, [articleWorkflowPage, handleJumpToPageSettings, handleJumpToSeoSettings, scrollCanvasToTop]);
+}, [articleWorkflowPage]);
 
 const closeCanvasPageMenu = () => setCanvasPageMenuAnchor(null);
 
@@ -9972,8 +9957,11 @@ const PageWorkspaceBar = isNextJsContentMode ? (
             <Tooltip
               title={
                 articleChecklist?.complete
-                  ? "Save and publish this article to the live website."
-                  : "Complete every item in the article checklist before publishing."
+                  ? "Save this article and publish it to the live website."
+                  : `Add ${articleChecklist?.items
+                      ?.filter((item) => item.required && !item.complete)
+                      .map((item) => item.label.toLowerCase())
+                      .join(" and ") || "the required article content"} before publishing.`
               }
             >
               <span>
@@ -9990,24 +9978,28 @@ const PageWorkspaceBar = isNextJsContentMode ? (
             </Tooltip>
           </>
         ) : null}
-        <Button size="small" variant="outlined" onClick={handleJumpToPageSettings}>
-          Page settings
-        </Button>
-        <Button size="small" variant="outlined" onClick={handleJumpToSeoSettings}>
-          SEO
-        </Button>
-        <Button
-          size="small"
-          variant={semanticFloatingInspectorOpen ? "contained" : "outlined"}
-          startIcon={<OpenWithIcon fontSize="small" />}
-          onClick={() => {
-            setSemanticFloatingInspectorOpen((current) => !current);
-            setInspectorOpen(true);
-          }}
-          disabled={!selectedModule}
-        >
-          Floating editor
-        </Button>
+        {!isCurrentBlogArticle ? (
+          <>
+            <Button size="small" variant="outlined" onClick={handleJumpToPageSettings}>
+              Page settings
+            </Button>
+            <Button size="small" variant="outlined" onClick={handleJumpToSeoSettings}>
+              SEO
+            </Button>
+            <Button
+              size="small"
+              variant={semanticFloatingInspectorOpen ? "contained" : "outlined"}
+              startIcon={<OpenWithIcon fontSize="small" />}
+              onClick={() => {
+                setSemanticFloatingInspectorOpen((current) => !current);
+                setInspectorOpen(true);
+              }}
+              disabled={!selectedModule}
+            >
+              Floating editor
+            </Button>
+          </>
+        ) : null}
         <Button
           size="small"
           variant="outlined"
@@ -10015,71 +10007,66 @@ const PageWorkspaceBar = isNextJsContentMode ? (
           onClick={(event) => setCanvasPageMenuAnchor(event.currentTarget)}
           disabled={!canvasPageTarget?.id}
         >
-          Page actions
+          {isCurrentBlogArticle ? "More" : "Page actions"}
         </Button>
       </Stack>
       <Typography variant="caption" color="text.secondary">
         {isCurrentBlogArticle
-          ? "Write the article, complete the checklist, preview it, then publish it in one step."
+          ? "Write your update, preview it if you want, then publish it in one step. Search and social details follow the visible title and summary automatically."
           : "Switch pages here, edit the selected page in the Canvas, and manage its publishing without searching through the advanced page list."}
         {nextJsPreviewStale ? " Saved edits are ready; refresh the preview when you want to review them." : ""}
       </Typography>
       {isCurrentBlogArticle && articleChecklist ? (
         <Paper variant="outlined" sx={{ p: 1, bgcolor: "background.default" }}>
           <Stack spacing={0.75}>
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Typography variant="subtitle2">Article completion</Typography>
+            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
+              <Typography variant="subtitle2">Ready to publish</Typography>
               <Chip
                 size="small"
-                color={articleChecklist.complete ? "success" : "default"}
-                label={`${articleChecklist.completedCount}/${articleChecklist.totalCount} complete`}
+                variant="outlined"
+                label={articleChecklist.complete ? "Ready" : `${articleChecklist.completedCount}/${articleChecklist.totalCount} required items complete`}
+                sx={(theme) => ({
+                  color: articleChecklist.complete
+                    ? theme.palette.success.dark
+                    : theme.palette.warning.dark,
+                  bgcolor: articleChecklist.complete
+                    ? alpha(theme.palette.success.main, 0.12)
+                    : alpha(theme.palette.warning.main, 0.14),
+                  borderColor: articleChecklist.complete
+                    ? theme.palette.success.main
+                    : theme.palette.warning.main,
+                  fontWeight: 700,
+                })}
               />
             </Stack>
+            <Typography variant="caption" color="text.secondary">
+              A title, summary, and article text are required. A cover image is optional. The website is already responsive, so no manual mobile approval is required.
+            </Typography>
             <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
               {articleChecklist.items
-                .filter((item) => !item.manual)
+                .filter((item) => item.required)
                 .map((item) => (
                   <Chip
                     key={item.key}
                     size="small"
-                    color={item.complete ? "success" : "default"}
-                    variant={item.complete ? "filled" : "outlined"}
+                    variant="outlined"
                     label={`${item.complete ? "✓" : "○"} ${item.label}`}
                     onClick={() => handleArticleChecklistItemClick(item.key)}
-                    sx={{ cursor: "pointer" }}
+                    sx={(theme) => ({
+                      cursor: "pointer",
+                      color: item.complete
+                        ? theme.palette.success.dark
+                        : theme.palette.text.primary,
+                      bgcolor: item.complete
+                        ? alpha(theme.palette.success.main, 0.12)
+                        : theme.palette.background.paper,
+                      borderColor: item.complete
+                        ? theme.palette.success.main
+                        : theme.palette.divider,
+                      fontWeight: 700,
+                    })}
                   />
                 ))}
-            </Stack>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0, sm: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={Boolean(
-                      articleWorkflowPage?.content?.meta?.articleWorkflow?.seoReviewed
-                    )}
-                    onChange={(_, checked) =>
-                      updateArticleReviewFlag("seoReviewed", checked)
-                    }
-                  />
-                }
-                label={<ButtonBase onClick={(event) => { event.preventDefault(); event.stopPropagation(); handleArticleChecklistItemClick("seoReviewed"); }}>SEO reviewed</ButtonBase>}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={Boolean(
-                      articleWorkflowPage?.content?.meta?.articleWorkflow
-                        ?.mobilePreviewReviewed
-                    )}
-                    onChange={(_, checked) =>
-                      updateArticleReviewFlag("mobilePreviewReviewed", checked)
-                    }
-                  />
-                }
-                label={<ButtonBase onClick={(event) => { event.preventDefault(); event.stopPropagation(); handleArticleChecklistItemClick("mobilePreviewReviewed"); }}>Mobile preview reviewed</ButtonBase>}
-              />
             </Stack>
           </Stack>
         </Paper>
@@ -13409,7 +13396,7 @@ const tabs = [
     label: "Website Content",
     content: (
       <Stack spacing={2}>
-        {ControlsCard}
+        {!isWebsiteBlogArticlePage(editing) ? ControlsCard : null}
         {AlertsCard}
         {builderColumns}
       </Stack>
@@ -13522,7 +13509,7 @@ if (authError) {
         </Alert>
       </Snackbar>
 
-      {pageSettingsDirty && (
+      {pageSettingsDirty && !isCurrentBlogArticle && (
         <Box
           sx={{
             position: "fixed",
@@ -13570,7 +13557,7 @@ if (authError) {
         </Box>
       )}
 
-      {companyId && (
+      {companyId && !isCurrentBlogArticle && (
         <Box
           sx={{
             position: "fixed",

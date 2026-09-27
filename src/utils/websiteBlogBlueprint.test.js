@@ -4,7 +4,7 @@ import {
   getWebsiteBlogArticleChecklist,
   isWebsiteBlogArticlePage,
   isWebsiteBlogIndexPage,
-  withWebsiteBlogReviewFlag,
+  withSyncedWebsiteBlogArticleMetadata,
 } from "./websiteBlogBlueprint";
 
 describe("website blog article workflow", () => {
@@ -30,7 +30,7 @@ describe("website blog article workflow", () => {
     expect(canDeleteWebsiteBlogArticle({ id: 3, slug: "contact" })).toBe(false);
   });
 
-  it("creates a draft with an incomplete, persisted review workflow", () => {
+  it("creates a draft that only requires the visible article essentials", () => {
     const article = createWebsiteBlogPostPage([], {
       title: "A useful guide",
       description: "A direct description for readers and search results.",
@@ -38,35 +38,23 @@ describe("website blog article workflow", () => {
     const checklist = getWebsiteBlogArticleChecklist(article);
 
     expect(article.published).toBe(false);
-    expect(article.content.meta.articleWorkflow).toEqual({
-      seoReviewed: false,
-      mobilePreviewReviewed: false,
-    });
+    expect(article.content.meta.articleWorkflow).toEqual({});
     expect(checklist.complete).toBe(false);
     expect(
       checklist.items.find((item) => item.key === "content").complete
     ).toBe(false);
+    expect(checklist.totalCount).toBe(3);
     expect(
-      checklist.items.find((item) => item.key === "seoReviewed").complete
+      checklist.items.find((item) => item.key === "coverImage").required
     ).toBe(false);
   });
 
-  it("marks an article ready only after content, media, and both reviews are complete", () => {
+  it("marks an article ready after title, summary, and useful article text", () => {
     let article = createWebsiteBlogPostPage([], {
       title: "A useful guide",
       description: "A direct description for readers and search results.",
     });
     article.content.modules = article.content.modules.map((module) => {
-      if (module.type === "hero") {
-        return {
-          ...module,
-          content: {
-            ...module.content,
-            image: "https://example.com/cover.jpg",
-            imageAlt: "A technician reviewing a service schedule.",
-          },
-        };
-      }
       if (module.type === "richText") {
         return {
           ...module,
@@ -78,15 +66,35 @@ describe("website blog article workflow", () => {
       }
       return module;
     });
-    article = withWebsiteBlogReviewFlag(article, "seoReviewed", true);
-    article = withWebsiteBlogReviewFlag(
-      article,
-      "mobilePreviewReviewed",
-      true
-    );
 
     const checklist = getWebsiteBlogArticleChecklist(article);
     expect(checklist.complete).toBe(true);
     expect(checklist.completedCount).toBe(checklist.totalCount);
+  });
+
+  it("syncs search and social metadata from the visible article hero", () => {
+    const article = createWebsiteBlogPostPage([], {
+      title: "Original title",
+      description: "Original summary.",
+    });
+    article.content.modules = article.content.modules.map((module) =>
+      module.type === "hero"
+        ? {
+            ...module,
+            content: {
+              ...module.content,
+              heading: "Church visit update",
+              subheading: "Photos and news from our community visit.",
+            },
+          }
+        : module
+    );
+
+    const synced = withSyncedWebsiteBlogArticleMetadata(article);
+    expect(synced.title).toBe("Church visit update");
+    expect(synced.seo_title).toBe("Church visit update");
+    expect(synced.seo_description).toBe(
+      "Photos and news from our community visit."
+    );
   });
 });

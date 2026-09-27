@@ -7,12 +7,13 @@ const source = fs.readFileSync(
 );
 
 describe("Visual Site Builder article workflow", () => {
-  it("offers the single-step article workflow and readiness checklist", () => {
+  it("offers a single-step article workflow without technical approval gates", () => {
     expect(source).toContain("Save draft");
     expect(source).toContain("Publish article");
-    expect(source).toContain("Article completion");
-    expect(source).toContain("SEO reviewed");
-    expect(source).toContain("Mobile preview reviewed");
+    expect(source).toContain("Ready to publish");
+    expect(source).toContain("no manual mobile approval is required");
+    expect(source).not.toContain(">SEO reviewed<");
+    expect(source).not.toContain(">Mobile preview reviewed<");
   });
 
   it("offers guarded recoverable trash from both page-action menus", () => {
@@ -35,6 +36,7 @@ describe("Visual Site Builder article workflow", () => {
     expect(source).toContain("Unsaved changes");
     expect(source).toContain("Published URL change:");
     expect(source).toContain("handleArticleChecklistItemClick");
+    expect(source).toContain("withSyncedWebsiteBlogArticleMetadata");
   });
 
   it("keeps page-only actions out of the article-specific menu branch", () => {

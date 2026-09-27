@@ -35,10 +35,9 @@ const findArticleModule = (page, type) => {
 export const getWebsiteBlogArticleChecklist = (page) => {
   const hero = findArticleModule(page, "hero")?.content || {};
   const richText = findArticleModule(page, "richText")?.content || {};
-  const workflow = page?.content?.meta?.articleWorkflow || {};
-  const title = normalizeText(page?.title || hero.heading);
+  const title = normalizeText(hero.heading || page?.title);
   const description = normalizeText(
-    page?.seo_description || hero.subheading || richText.intro
+    hero.subheading || page?.seo_description || richText.intro
   );
   const coverImage = normalizeText(
     hero.image || hero.imageUrl || hero.backgroundImage
@@ -49,43 +48,69 @@ export const getWebsiteBlogArticleChecklist = (page) => {
   const articleBody = normalizeText(richText.body);
 
   const items = [
-    { key: "title", label: "Title", complete: Boolean(title) },
+    { key: "title", label: "Title", complete: Boolean(title), required: true },
     {
       key: "description",
-      label: "Description",
+      label: "Summary",
       complete: Boolean(description) && description !== STARTER_DESCRIPTION,
-    },
-    { key: "coverImage", label: "Cover image", complete: Boolean(coverImage) },
-    {
-      key: "imageAlt",
-      label: "Image alt text",
-      complete: Boolean(coverImage && imageAlt),
+      required: true,
     },
     {
       key: "content",
-      label: "Article content",
+      label: "Article text",
       complete:
-        articleBody.length >= 80 && !articleBody.includes(STARTER_BODY_MARKER),
+        articleBody.length >= 20 && !articleBody.includes(STARTER_BODY_MARKER),
+      required: true,
     },
     {
-      key: "seoReviewed",
-      label: "SEO reviewed",
-      complete: workflow.seoReviewed === true,
-      manual: true,
+      key: "coverImage",
+      label: "Cover image",
+      complete: Boolean(coverImage),
+      required: false,
     },
     {
-      key: "mobilePreviewReviewed",
-      label: "Mobile preview reviewed",
-      complete: workflow.mobilePreviewReviewed === true,
-      manual: true,
+      key: "imageAlt",
+      label: "Image alt text",
+      complete: !coverImage || Boolean(imageAlt),
+      required: false,
     },
   ];
 
+  const requiredItems = items.filter((item) => item.required);
+
   return {
     items,
-    complete: items.every((item) => item.complete),
-    completedCount: items.filter((item) => item.complete).length,
-    totalCount: items.length,
+    complete: requiredItems.every((item) => item.complete),
+    completedCount: requiredItems.filter((item) => item.complete).length,
+    totalCount: requiredItems.length,
+  };
+};
+
+/**
+ * Article authors edit the visible hero title/summary. Keep search and social
+ * metadata in sync automatically so ordinary publishing never requires a
+ * second SEO form. Advanced users can still manage canonical/noindex fields
+ * through the dedicated website SEO tools.
+ */
+export const withSyncedWebsiteBlogArticleMetadata = (page) => {
+  if (!isWebsiteBlogArticlePage(page)) return page;
+  const hero = findArticleModule(page, "hero")?.content || {};
+  const title = normalizeText(hero.heading || page?.title);
+  const description = normalizeText(
+    hero.subheading || page?.seo_description || STARTER_DESCRIPTION
+  );
+  const coverImage = normalizeText(
+    hero.image || hero.imageUrl || hero.backgroundImage || page?.og_image_url
+  );
+  return {
+    ...page,
+    title: title || page?.title,
+    menu_title: title || page?.menu_title || page?.title,
+    seo_title: title || page?.seo_title,
+    seo_description: description,
+    og_title: title || page?.og_title,
+    og_description: description,
+    og_image_url: coverImage,
   };
 };
 
@@ -139,20 +164,6 @@ const uniqueArticleSlug = (existingPages, requestedSlug, title) => {
   return candidate;
 };
 
-const findTenantHeroMedia = (pages) => {
-  const home =
-    (pages || []).find((page) => page?.is_homepage) ||
-    (pages || []).find((page) => ["home", ""].includes(normalizeText(page?.slug || page?.path).toLowerCase()));
-  const modules = Array.isArray(home?.content?.modules) ? home.content.modules : [];
-  const hero = modules.find((module) => module?.type === "hero");
-  const content = hero?.content || {};
-  return {
-    image: normalizeText(content.image || content.imageUrl || content.backgroundImage),
-    imageAlt: normalizeText(content.imageAlt || content.backgroundImageAlt),
-    posterImage: normalizeText(content.posterImage || content.backgroundPoster),
-  };
-};
-
 const moduleRecord = (articleKey, id, type, slot, order, content) => ({
   id: `article-${articleKey}-${id}`,
   type,
@@ -180,8 +191,10 @@ export function createWebsiteBlogPostPage(existingPages = [], options = {}) {
     "Add a concise introduction that tells readers what this article explains.";
   const slug = uniqueArticleSlug(existingPages, options.slug, title);
   const articleKey = slug.slice("blog/".length);
-  const media = findTenantHeroMedia(existingPages);
-  const inheritedAlt = media.imageAlt || `Cover image for ${title}.`;
+  // A new story starts without media. Reusing a homepage image made unrelated
+  // photos look intentionally attached to a new article and falsely marked
+  // the media checklist complete.
+  const media = { image: "", imageAlt: "", posterImage: "" };
 
   return {
     slug,
@@ -207,7 +220,7 @@ export function createWebsiteBlogPostPage(existingPages = [], options = {}) {
           subheading: description,
           image: media.image,
           imageUrl: media.image,
-          imageAlt: inheritedAlt,
+          imageAlt: "",
           imagePosition: { x: 50, y: 50 },
           posterImage: media.posterImage,
         }),
@@ -231,10 +244,7 @@ export function createWebsiteBlogPostPage(existingPages = [], options = {}) {
         layout: "full",
         websiteBlogStarterVersion: 1,
         websiteBlogPost: true,
-        articleWorkflow: {
-          seoReviewed: false,
-          mobilePreviewReviewed: false,
-        },
+        articleWorkflow: {},
       },
     },
   };

@@ -59,6 +59,39 @@ Manager Portal → Website & Pages → Visual Site Builder
 - Draft changes do not affect the live site until you publish.
 - Preview shows the draft state.
 
+## Simple article workflow
+
+For an individual `/blog/...` article, the Builder intentionally uses a
+smaller workflow than an ordinary website page:
+
+1. Click **New article** and enter the title and short summary.
+2. Edit the visible article sections in the Canvas/Inspector.
+3. Click **Save draft** whenever you want to stop and return later.
+4. Click **Preview** if you want to review the draft in a separate preview.
+5. Click **Publish article** (or **Publish update**) to save the article and
+   make that version live in one action.
+
+Only three items block article publication:
+
+- Title
+- Summary
+- Article text
+
+A cover image is optional. If an image is added, provide useful alternative
+text for accessibility. The selected Modern theme is responsive by contract;
+authors do not approve a separate mobile version and there is no manual
+"mobile reviewed" publishing gate.
+
+The visible article title and summary automatically become the page's search
+and social title/description when the article is saved. This keeps ordinary
+authors out of separate SEO forms. Canonical URLs, `noindex`, redirects, and
+other advanced SEO controls remain administrator concerns.
+
+While an article is selected, the generic page **Published** switch and the
+site-wide floating **Publish** controls are hidden. They must not provide a
+second route that bypasses **Publish article**. Article deletion, duplication,
+and unpublishing remain under **More**.
+
 ## Step 5: Connect a domain (optional)
 
 1. Manager Portal → Website & Pages → Domain Settings.
