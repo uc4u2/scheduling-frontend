@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="900" viewBox="0 0 430 900" role="img" aria-labelledby="title desc">
+  <title id="title">Ivory Studio mobile theme preview</title>
+  <desc id="desc">A mobile salon website with warm editorial photography, clear branding, and booking calls to action.</desc>
+  <defs>
+    <linearGradient id="shade" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#2b1b13" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#2b1b13" stop-opacity=".8"/>
+    </linearGradient>
+  </defs>
+  <rect width="430" height="900" fill="#f8f3ec"/>
+  <rect width="430" height="92" fill="#fffaf4"/>
+  <circle cx="45" cy="46" r="27" fill="#3e2c22"/>
+  <circle cx="45" cy="46" r="22" fill="none" stroke="#cfa15a" stroke-width="2"/>
+  <text x="83" y="43" fill="#3e2c22" font-family="Georgia,serif" font-size="17" letter-spacing="4">YOUR SALON</text>
+  <text x="84" y="62" fill="#98642e" font-family="Arial,sans-serif" font-size="7" letter-spacing="4">PRIVATE STUDIO</text>
+  <rect x="363" y="31" width="38" height="30" fill="none" stroke="#98642e"/>
+  <path d="M373 40h18M373 46h18M373 52h18" stroke="#98642e"/>
+  <image href="/ivory-studio/hero.webp" x="0" y="92" width="430" height="620" preserveAspectRatio="xMidYMid slice"/>
+  <rect y="92" width="430" height="620" fill="url(#shade)"/>
+  <text x="26" y="405" fill="#f7dfb6" font-family="Arial,sans-serif" font-size="10" letter-spacing="4">PRIVATE BEAUTY STUDIO</text>
+  <text x="24" y="468" fill="#fffaf4" font-family="Georgia,serif" font-size="49">Beauty, made</text>
+  <text x="24" y="519" fill="#fffaf4" font-family="Georgia,serif" font-size="49">personal.</text>
+  <text x="26" y="558" fill="#fffaf4" font-family="Arial,sans-serif" font-size="13">Thoughtful appointments, live services,</text>
+  <text x="26" y="580" fill="#fffaf4" font-family="Arial,sans-serif" font-size="13">and connected booking.</text>
+  <rect x="26" y="614" width="236" height="55" fill="#cfa15a"/>
+  <text x="55" y="647" fill="#3e2c22" font-family="Arial,sans-serif" font-size="11" font-weight="bold" letter-spacing="2">EXPLORE SERVICES</text>
+  <rect y="712" width="430" height="188" fill="#e7d8c6"/>
+  <text x="25" y="760" fill="#98642e" font-family="Arial,sans-serif" font-size="9" letter-spacing="4">THE EXPERIENCE</text>
+  <text x="24" y="816" fill="#3e2c22" font-family="Georgia,serif" font-size="34">Personal. Polished.</text>
+  <text x="24" y="856" fill="#3e2c22" font-family="Georgia,serif" font-size="34">Considered.</text>
+</svg>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Ivory Studio desktop theme preview</title>
+  <desc id="desc">A bright ivory and champagne salon website with editorial photography and refined typography.</desc>
+  <defs>
+    <linearGradient id="shade" x1="0" x2="1">
+      <stop offset="0" stop-color="#2b1b13" stop-opacity=".78"/>
+      <stop offset=".56" stop-color="#2b1b13" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#2b1b13" stop-opacity=".05"/>
+    </linearGradient>
+    <clipPath id="hero"><rect x="0" y="116" width="1600" height="650"/></clipPath>
+  </defs>
+  <rect width="1600" height="1000" fill="#f8f3ec"/>
+  <rect width="1600" height="116" fill="#fffaf4"/>
+  <circle cx="75" cy="58" r="32" fill="#3e2c22"/>
+  <circle cx="75" cy="58" r="27" fill="none" stroke="#cfa15a" stroke-width="2"/>
+  <text x="128" y="54" fill="#3e2c22" font-family="Georgia,serif" font-size="28" letter-spacing="7">YOUR SALON</text>
+  <text x="129" y="78" fill="#98642e" font-family="Arial,sans-serif" font-size="10" letter-spacing="5">PRIVATE STUDIO</text>
+  <g fill="#78685f" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">
+    <text x="900" y="63">SERVICES</text><text x="1030" y="63">THE STUDIO</text><text x="1190" y="63">CONTACT</text>
+  </g>
+  <rect x="1350" y="33" width="205" height="50" fill="none" stroke="#98642e"/>
+  <text x="1380" y="63" fill="#98642e" font-family="Arial,sans-serif" font-size="11" letter-spacing="2">BOOK A CONSULTATION</text>
+  <g clip-path="url(#hero)">
+    <image href="/ivory-studio/hero.webp" x="0" y="116" width="1600" height="650" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="0" y="116" width="1600" height="650" fill="url(#shade)"/>
+  </g>
+  <text x="95" y="300" fill="#f7dfb6" font-family="Arial,sans-serif" font-size="13" letter-spacing="6">PRIVATE BEAUTY STUDIO</text>
+  <text x="90" y="395" fill="#fffaf4" font-family="Georgia,serif" font-size="78">Beauty, made</text>
+  <text x="90" y="475" fill="#fffaf4" font-family="Georgia,serif" font-size="78">personal.</text>
+  <text x="95" y="535" fill="#fffaf4" font-family="Arial,sans-serif" font-size="18">Thoughtful appointments shaped around every client's goals and style.</text>
+  <rect x="95" y="590" width="255" height="60" fill="#cfa15a"/>
+  <text x="127" y="627" fill="#3e2c22" font-family="Arial,sans-serif" font-size="12" font-weight="bold" letter-spacing="3">EXPLORE SERVICES</text>
+  <rect y="766" width="1600" height="234" fill="#e7d8c6"/>
+  <text x="95" y="835" fill="#98642e" font-family="Arial,sans-serif" font-size="11" letter-spacing="5">THE EXPERIENCE</text>
+  <text x="95" y="910" fill="#3e2c22" font-family="Georgia,serif" font-size="50">Personal. Polished. Considered.</text>
+  <line x1="920" y1="835" x2="920" y2="950" stroke="#d6c1a7"/>
+  <line x1="1190" y1="835" x2="1190" y2="950" stroke="#d6c1a7"/>
+  <text x="965" y="885" fill="#3e2c22" font-family="Georgia,serif" font-size="24">Live services</text>
+  <text x="1235" y="885" fill="#3e2c22" font-family="Georgia,serif" font-size="24">Easy booking</text>
+</svg>
