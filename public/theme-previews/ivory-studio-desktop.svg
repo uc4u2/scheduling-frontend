@@ -21,7 +21,7 @@
   <rect x="1350" y="33" width="205" height="50" fill="none" stroke="#98642e"/>
   <text x="1380" y="63" fill="#98642e" font-family="Arial,sans-serif" font-size="11" letter-spacing="2">BOOK A CONSULTATION</text>
   <g clip-path="url(#hero)">
-    <image href="/ivory-studio/hero.webp" x="0" y="116" width="1600" height="650" preserveAspectRatio="xMidYMid slice"/>
+    <image href="/theme-previews/ivory-studio-hero.webp" x="0" y="116" width="1600" height="650" preserveAspectRatio="xMidYMid slice"/>
     <rect x="0" y="116" width="1600" height="650" fill="url(#shade)"/>
   </g>
   <text x="95" y="300" fill="#f7dfb6" font-family="Arial,sans-serif" font-size="13" letter-spacing="6">PRIVATE BEAUTY STUDIO</text>

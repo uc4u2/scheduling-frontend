@@ -15,7 +15,7 @@
   <text x="84" y="62" fill="#98642e" font-family="Arial,sans-serif" font-size="7" letter-spacing="4">PRIVATE STUDIO</text>
   <rect x="363" y="31" width="38" height="30" fill="none" stroke="#98642e"/>
   <path d="M373 40h18M373 46h18M373 52h18" stroke="#98642e"/>
-  <image href="/ivory-studio/hero.webp" x="0" y="92" width="430" height="620" preserveAspectRatio="xMidYMid slice"/>
+  <image href="/theme-previews/ivory-studio-hero.webp" x="0" y="92" width="430" height="620" preserveAspectRatio="xMidYMid slice"/>
   <rect y="92" width="430" height="620" fill="url(#shade)"/>
   <text x="26" y="405" fill="#f7dfb6" font-family="Arial,sans-serif" font-size="10" letter-spacing="4">PRIVATE BEAUTY STUDIO</text>
   <text x="24" y="468" fill="#fffaf4" font-family="Georgia,serif" font-size="49">Beauty, made</text>
