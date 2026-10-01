@@ -49,10 +49,7 @@ import { Link as RouterLink } from "react-router-dom";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import EmployeeProfileAuditTimeline from "./EmployeeProfileAuditTimeline";
 import TimezoneSelect from "../../components/TimezoneSelect";
-
-// Temporary stabilization kill switch. The API independently rejects transfer
-// requests until concurrency and identity verification are hardened.
-const OWNERSHIP_TRANSFER_ENABLED = false;
+import OwnershipTransferDialog from "../../components/manager/OwnershipTransferDialog";
 
 const CANADA_PROVINCES = [
   "AB",
@@ -228,6 +225,7 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [retirementPlan, setRetirementPlan] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferPassword, setTransferPassword] = useState("");
   const [transferConfirmation, setTransferConfirmation] = useState("");
   const [transferSaving, setTransferSaving] = useState(false);
   const [transferError, setTransferError] = useState("");
@@ -859,16 +857,41 @@ const FRONTEND_ORIGIN = (() => {
       await api.post("/manager/ownership/transfer", {
         target_manager_id: employee.id,
         confirmation: transferConfirmation,
+        current_password: transferPassword,
       });
-      setCurrentUser((previous) => (previous ? { ...previous, is_primary: false } : previous));
+      const [currentUserResult, recruiterResult] = await Promise.allSettled([
+        api.get("/auth/me"),
+        api.get("/manager/recruiters", {
+          params: {
+            q: searchQuery,
+            department_id: departmentFilter,
+            page,
+            per_page: perPage,
+            ...(includeArchived ? { include_archived: 1 } : {}),
+          },
+        }),
+      ]);
+      if (currentUserResult.status === "fulfilled") {
+        setCurrentUser(currentUserResult.value.data || null);
+      } else {
+        setCurrentUser((previous) => (previous ? { ...previous, is_primary: false } : previous));
+      }
       setEmployee((previous) => (previous ? { ...previous, is_primary: true } : previous));
-      setRecruiters((previous) =>
-        previous.map((row) => ({
-          ...row,
-          is_primary: String(row.id) === String(employee.id),
-        }))
-      );
+      if (recruiterResult.status === "fulfilled") {
+        setRecruiters(recruiterResult.value.data?.recruiters || []);
+        setTotalPages(
+          Math.max(1, Math.ceil(Number(recruiterResult.value.data?.total || 0) / perPage))
+        );
+      } else {
+        setRecruiters((previous) =>
+          previous.map((row) => ({
+            ...row,
+            is_primary: String(row.id) === String(employee.id),
+          }))
+        );
+      }
       setTransferDialogOpen(false);
+      setTransferPassword("");
       setTransferConfirmation("");
       setMessageKey("Primary ownership transferred successfully.");
     } catch (err) {
@@ -2438,9 +2461,9 @@ const FRONTEND_ORIGIN = (() => {
             </Paper>
           )}
 
-          {OWNERSHIP_TRANSFER_ENABLED &&
-            currentUser?.is_primary &&
+          {currentUser?.is_primary &&
             employee.is_manager &&
+            employee.account_setup_complete &&
             !employee.is_primary &&
             String(currentUser.id) !== String(employee.id) &&
             String(employee.status || "active").toLowerCase() === "active" && (
@@ -2459,6 +2482,7 @@ const FRONTEND_ORIGIN = (() => {
                   variant="outlined"
                   onClick={() => {
                     setTransferError("");
+                    setTransferPassword("");
                     setTransferConfirmation("");
                     setTransferDialogOpen(true);
                   }}
@@ -2486,41 +2510,23 @@ const FRONTEND_ORIGIN = (() => {
           open={activityLogOpen}
           onClose={() => setActivityLogOpen(false)}
         />
-        <Dialog
-          open={OWNERSHIP_TRANSFER_ENABLED && transferDialogOpen}
-          onClose={() => !transferSaving && setTransferDialogOpen(false)}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle>Confirm primary ownership transfer</DialogTitle>
-          <DialogContent>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              After this transfer, only {employeeFullName} can transfer ownership again. You will remain a regular manager until the new owner archives your account.
-            </Alert>
-            {transferError && <Alert severity="error" sx={{ mb: 2 }}>{transferError}</Alert>}
-            <TextField
-              autoFocus
-              fullWidth
-              label="Type TRANSFER to confirm"
-              value={transferConfirmation}
-              onChange={(event) => setTransferConfirmation(event.target.value)}
-              disabled={transferSaving}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setTransferDialogOpen(false)} disabled={transferSaving}>
-              Cancel
-            </Button>
-            <Button
-              color="warning"
-              variant="contained"
-              onClick={handleTransferOwnership}
-              disabled={transferSaving || transferConfirmation !== "TRANSFER"}
-            >
-              {transferSaving ? "Transferring…" : "Transfer ownership"}
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <OwnershipTransferDialog
+          open={transferDialogOpen}
+          targetName={employeeFullName}
+          currentPassword={transferPassword}
+          confirmation={transferConfirmation}
+          error={transferError}
+          saving={transferSaving}
+          onPasswordChange={setTransferPassword}
+          onConfirmationChange={setTransferConfirmation}
+          onClose={() => {
+            setTransferDialogOpen(false);
+            setTransferPassword("");
+            setTransferConfirmation("");
+            setTransferError("");
+          }}
+          onConfirm={handleTransferOwnership}
+        />
         </>
       )}
 

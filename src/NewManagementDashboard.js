@@ -151,6 +151,7 @@ import EmployeeManagementHelpDrawer from "./pages/sections/management/components
 import EmployeeProfileAuditTimeline from "./pages/Payroll/EmployeeProfileAuditTimeline";
 import MobileManagerHome from "./components/manager/MobileManagerHome";
 import BusinessFinanceShell from "./pages/finance/BusinessFinanceShell";
+import OwnershipTransferDialog from "./components/manager/OwnershipTransferDialog";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -1918,6 +1919,11 @@ const NewManagementDashboard = ({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [confirmArchiveId, setConfirmArchiveId] = useState(null);
+  const [ownershipTransferTarget, setOwnershipTransferTarget] = useState(null);
+  const [ownershipTransferPassword, setOwnershipTransferPassword] = useState("");
+  const [ownershipTransferConfirmation, setOwnershipTransferConfirmation] = useState("");
+  const [ownershipTransferError, setOwnershipTransferError] = useState("");
+  const [ownershipTransferSaving, setOwnershipTransferSaving] = useState(false);
   const [selectedForComparison, setSelectedForComparison] = useState([]);
   const [comparisonData, setComparisonData] = useState([]);
   const [statsError, setStatsError] = useState("");
@@ -2113,6 +2119,55 @@ const NewManagementDashboard = ({
       fetchEmployees();
     } catch {
       setError("Failed to update role.");
+    }
+  };
+
+  const closeOwnershipTransferDialog = () => {
+    if (ownershipTransferSaving) return;
+    setOwnershipTransferTarget(null);
+    setOwnershipTransferPassword("");
+    setOwnershipTransferConfirmation("");
+    setOwnershipTransferError("");
+  };
+
+  const handleTransferOwnership = async () => {
+    if (
+      !ownershipTransferTarget?.id ||
+      !ownershipTransferPassword ||
+      ownershipTransferConfirmation !== "TRANSFER"
+    ) {
+      return;
+    }
+    setOwnershipTransferSaving(true);
+    setOwnershipTransferError("");
+    try {
+      await api.post("/manager/ownership/transfer", {
+        target_manager_id: ownershipTransferTarget.id,
+        confirmation: ownershipTransferConfirmation,
+        current_password: ownershipTransferPassword,
+      });
+      const [currentUserResult] = await Promise.allSettled([
+        api.get("/auth/me"),
+        fetchEmployees(),
+      ]);
+      if (currentUserResult.status === "fulfilled") {
+        setCurrentUserInfo(currentUserResult.value.data || null);
+      } else {
+        setCurrentUserInfo((previous) =>
+          previous ? { ...previous, is_primary: false } : previous
+        );
+      }
+      setOwnershipTransferTarget(null);
+      setOwnershipTransferPassword("");
+      setOwnershipTransferConfirmation("");
+      setMessage("Primary ownership transferred successfully.");
+    } catch (err) {
+      setOwnershipTransferError(
+        err?.response?.data?.error ||
+          "Ownership transfer failed. Confirm the manager is active and has completed account setup."
+      );
+    } finally {
+      setOwnershipTransferSaving(false);
     }
   };
 
@@ -2835,6 +2890,26 @@ const NewManagementDashboard = ({
                                     <InfoOutlined fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
+                                {currentUserInfo?.is_primary &&
+                                  e.is_manager &&
+                                  e.account_setup_complete &&
+                                  !e.is_primary &&
+                                  String(currentUserInfo.id) !== String(e.id) &&
+                                  String(e.status || "active").toLowerCase() === "active" && (
+                                    <Button
+                                      size="small"
+                                      color="warning"
+                                      variant="outlined"
+                                      onClick={() => {
+                                        setOwnershipTransferTarget(e);
+                                        setOwnershipTransferPassword("");
+                                        setOwnershipTransferConfirmation("");
+                                        setOwnershipTransferError("");
+                                      }}
+                                    >
+                                      Transfer primary ownership
+                                    </Button>
+                                  )}
                               </Stack>
                             ) : (
                               <Typography variant="body2">
@@ -3025,6 +3100,22 @@ const NewManagementDashboard = ({
                 </Button>
               </DialogActions>
             </Dialog>
+            <OwnershipTransferDialog
+              open={Boolean(ownershipTransferTarget)}
+              targetName={
+                ownershipTransferTarget
+                  ? `${ownershipTransferTarget.first_name || ""} ${ownershipTransferTarget.last_name || ""}`.trim()
+                  : ""
+              }
+              currentPassword={ownershipTransferPassword}
+              confirmation={ownershipTransferConfirmation}
+              error={ownershipTransferError}
+              saving={ownershipTransferSaving}
+              onPasswordChange={setOwnershipTransferPassword}
+              onConfirmationChange={setOwnershipTransferConfirmation}
+              onClose={closeOwnershipTransferDialog}
+              onConfirm={handleTransferOwnership}
+            />
             <Snackbar
               open={Boolean(message || error)}
               autoHideDuration={5000}
