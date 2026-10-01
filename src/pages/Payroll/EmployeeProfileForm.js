@@ -119,6 +119,39 @@ const US_STATES = [
   "WY",
 ];
 
+const MANAGER_NOTIFICATION_OPTIONS = [
+  {
+    key: "notify_own_appointments",
+    label: "My appointment emails",
+    description: "Receive booking, reschedule, and cancellation emails when you are the assigned provider.",
+  },
+  {
+    key: "notify_team_bookings",
+    label: "Team booking emails",
+    description: "Receive operational booking emails for other providers who allow manager sharing.",
+  },
+  {
+    key: "share_appointment_emails_with_managers",
+    label: "Share my appointment emails with managers",
+    description: "Allow opted-in managers to receive operational emails about appointments assigned to you.",
+  },
+  {
+    key: "notify_product_orders",
+    label: "Product order emails",
+    description: "Receive new order and order-operation notifications for the company.",
+  },
+  {
+    key: "notify_integration_alerts",
+    label: "Integration alerts",
+    description: "Receive optional calendar and integration health alerts when those alerts are enabled.",
+  },
+];
+
+const DEFAULT_MANAGER_NOTIFICATION_PREFERENCES = MANAGER_NOTIFICATION_OPTIONS.reduce(
+  (preferences, option) => ({ ...preferences, [option.key]: true }),
+  {}
+);
+
 const normalizeApiUrl = (url) => {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
@@ -189,6 +222,11 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [snapshotExpanded, setSnapshotExpanded] = useState(false);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
   const [retirementPlan, setRetirementPlan] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferConfirmation, setTransferConfirmation] = useState("");
+  const [transferSaving, setTransferSaving] = useState(false);
+  const [transferError, setTransferError] = useState("");
   const [retirementElection, setRetirementElection] = useState({
     contrib_percent: "",
     contrib_flat: "",
@@ -210,6 +248,22 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [page, setPage] = useState(1);
   const [perPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/auth/me")
+      .then((response) => {
+        if (active) setCurrentUser(response.data || null);
+      })
+      .catch((err) => {
+        console.error("Failed to load current manager ownership state", err);
+        if (active) setCurrentUser(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 const FRONTEND_ORIGIN = (() => {
@@ -318,6 +372,13 @@ const FRONTEND_ORIGIN = (() => {
         public_bio: data.public_bio || "",
         public_video_url: data.public_video_url || "",
         role: data.role || "",
+        is_manager: Boolean(data.is_manager),
+        is_primary: Boolean(data.is_primary),
+        notification_preferences: {
+          ...DEFAULT_MANAGER_NOTIFICATION_PREFERENCES,
+          ...(data.notification_preferences || {}),
+        },
+        notification_preferences_editable: Boolean(data.notification_preferences_editable),
         public_meet_token: data.public_meet_token || "",
         cpp_exempt: Boolean(data.cpp_exempt),
         ei_exempt: Boolean(data.ei_exempt),
@@ -786,6 +847,35 @@ const FRONTEND_ORIGIN = (() => {
     }
   };
 
+  const handleTransferOwnership = async () => {
+    if (!employee?.id || transferConfirmation !== "TRANSFER") return;
+    setTransferSaving(true);
+    setTransferError("");
+    try {
+      await api.post("/manager/ownership/transfer", {
+        target_manager_id: employee.id,
+        confirmation: transferConfirmation,
+      });
+      setCurrentUser((previous) => (previous ? { ...previous, is_primary: false } : previous));
+      setEmployee((previous) => (previous ? { ...previous, is_primary: true } : previous));
+      setRecruiters((previous) =>
+        previous.map((row) => ({
+          ...row,
+          is_primary: String(row.id) === String(employee.id),
+        }))
+      );
+      setTransferDialogOpen(false);
+      setTransferConfirmation("");
+      setMessageKey("Primary ownership transferred successfully.");
+    } catch (err) {
+      setTransferError(
+        err?.response?.data?.error || "Ownership transfer failed. Confirm the manager has completed account setup."
+      );
+    } finally {
+      setTransferSaving(false);
+    }
+  };
+
   const countryOptions = useMemo(
     () => [
       { value: "Canada", label: t("manager.employeeProfiles.form.country.options.canada") },
@@ -997,6 +1087,9 @@ const FRONTEND_ORIGIN = (() => {
               </Box>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 <Chip size="small" label={employmentStatus ? employmentStatus.replace(/_/g, " ") : "Status unknown"} variant="outlined" />
+                {employee.is_primary && (
+                  <Chip size="small" label="Primary owner" color="primary" variant="outlined" />
+                )}
                 <Chip
                   size="small"
                   label={employee.allow_public_booking ? "Public booking on" : "Public booking off"}
@@ -2292,6 +2385,84 @@ const FRONTEND_ORIGIN = (() => {
             </Accordion>
           )}
 
+          {employee.is_manager && employee.notification_preferences_editable && (
+            <Paper variant="outlined" sx={{ p: 2.5, mt: 3, borderRadius: 1.5 }}>
+              <Typography variant="h6" fontWeight={800} gutterBottom>
+                Email notifications & appointment privacy
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                These are your personal manager settings. Other managers cannot change them. Client confirmations and required security, billing, and ownership notices always continue.
+              </Typography>
+              <Stack spacing={1.25}>
+                {MANAGER_NOTIFICATION_OPTIONS.map((option) => (
+                  <Paper key={option.key} variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                    <FormControlLabel
+                      sx={{ alignItems: "flex-start", m: 0 }}
+                      control={
+                        <Switch
+                          checked={Boolean(employee.notification_preferences?.[option.key])}
+                          onChange={(event) =>
+                            setEmployee((previous) =>
+                              previous
+                                ? {
+                                    ...previous,
+                                    notification_preferences: {
+                                      ...DEFAULT_MANAGER_NOTIFICATION_PREFERENCES,
+                                      ...(previous.notification_preferences || {}),
+                                      [option.key]: event.target.checked,
+                                    },
+                                  }
+                                : previous
+                            )
+                          }
+                        />
+                      }
+                      label={
+                        <Box sx={{ pt: 0.5 }}>
+                          <Typography variant="body2" fontWeight={800}>
+                            {option.label}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {option.description}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+          )}
+
+          {currentUser?.is_primary &&
+            employee.is_manager &&
+            !employee.is_primary &&
+            String(currentUser.id) !== String(employee.id) &&
+            String(employee.status || "active").toLowerCase() === "active" && (
+              <Paper
+                variant="outlined"
+                sx={{ p: 2.5, mt: 3, borderRadius: 1.5, borderColor: "warning.light" }}
+              >
+                <Typography variant="h6" fontWeight={800} gutterBottom>
+                  Transfer primary ownership
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Make {employeeFullName} the protected primary owner. Your account remains a manager and can later be archived by the new owner. The transfer is available only after this manager completes account setup.
+                </Typography>
+                <Button
+                  color="warning"
+                  variant="outlined"
+                  onClick={() => {
+                    setTransferError("");
+                    setTransferConfirmation("");
+                    setTransferDialogOpen(true);
+                  }}
+                >
+                  Transfer ownership to {employee.first_name || "this manager"}
+                </Button>
+              </Paper>
+            )}
+
           <Box sx={{ mt: 3 }}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
               <Button variant="contained" onClick={handleSubmit}>
@@ -2310,6 +2481,41 @@ const FRONTEND_ORIGIN = (() => {
           open={activityLogOpen}
           onClose={() => setActivityLogOpen(false)}
         />
+        <Dialog
+          open={transferDialogOpen}
+          onClose={() => !transferSaving && setTransferDialogOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Confirm primary ownership transfer</DialogTitle>
+          <DialogContent>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              After this transfer, only {employeeFullName} can transfer ownership again. You will remain a regular manager until the new owner archives your account.
+            </Alert>
+            {transferError && <Alert severity="error" sx={{ mb: 2 }}>{transferError}</Alert>}
+            <TextField
+              autoFocus
+              fullWidth
+              label="Type TRANSFER to confirm"
+              value={transferConfirmation}
+              onChange={(event) => setTransferConfirmation(event.target.value)}
+              disabled={transferSaving}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setTransferDialogOpen(false)} disabled={transferSaving}>
+              Cancel
+            </Button>
+            <Button
+              color="warning"
+              variant="contained"
+              onClick={handleTransferOwnership}
+              disabled={transferSaving || transferConfirmation !== "TRANSFER"}
+            >
+              {transferSaving ? "Transferring…" : "Transfer ownership"}
+            </Button>
+          </DialogActions>
+        </Dialog>
         </>
       )}
 
