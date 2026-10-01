@@ -51,6 +51,7 @@ import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
 import SettingsTimeTracking from "./SettingsTimeTracking";
 import SettingsBookingReminders from "./SettingsBookingReminders";
+import SettingsBookingEmails from "./SettingsBookingEmails";
 import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettingsPanel";
 
 import SectionCard from "../../components/ui/SectionCard";
@@ -104,6 +105,8 @@ const Settings = () => {
       easypost: 7,
       'integration-activity': 7,
       activity: 7,
+      'booking-emails': 8,
+      emails: 8,
     };
     return map[tabParam] ?? 0;
   }, [tabParam]);
@@ -733,6 +736,10 @@ const Settings = () => {
     {
       label: t("settings.tabs.integrationActivity", "Integration activity"),
       content: IntegrationHub,
+    },
+    {
+      label: t("settings.tabs.bookingEmails", "Booking Emails"),
+      content: <SettingsBookingEmails />,
     },
   ];
 
