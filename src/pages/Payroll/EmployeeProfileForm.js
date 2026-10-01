@@ -50,6 +50,10 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import EmployeeProfileAuditTimeline from "./EmployeeProfileAuditTimeline";
 import TimezoneSelect from "../../components/TimezoneSelect";
 
+// Temporary stabilization kill switch. The API independently rejects transfer
+// requests until concurrency and identity verification are hardened.
+const OWNERSHIP_TRANSFER_ENABLED = false;
+
 const CANADA_PROVINCES = [
   "AB",
   "BC",
@@ -2434,7 +2438,8 @@ const FRONTEND_ORIGIN = (() => {
             </Paper>
           )}
 
-          {currentUser?.is_primary &&
+          {OWNERSHIP_TRANSFER_ENABLED &&
+            currentUser?.is_primary &&
             employee.is_manager &&
             !employee.is_primary &&
             String(currentUser.id) !== String(employee.id) &&
@@ -2482,7 +2487,7 @@ const FRONTEND_ORIGIN = (() => {
           onClose={() => setActivityLogOpen(false)}
         />
         <Dialog
-          open={transferDialogOpen}
+          open={OWNERSHIP_TRANSFER_ENABLED && transferDialogOpen}
           onClose={() => !transferSaving && setTransferDialogOpen(false)}
           fullWidth
           maxWidth="sm"
