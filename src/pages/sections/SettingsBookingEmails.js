@@ -236,15 +236,9 @@ export default function SettingsBookingEmails() {
           </Typography>
         </Stack>
         <Typography variant="body2" color="text.secondary">
-          Personalize the shared booking confirmations for this company. Branding and appointment details continue to use your existing company settings.
+          Active managers can preview, save, and reset the shared booking confirmations for this company. Branding and appointment details continue to use your existing company settings.
         </Typography>
       </Box>
-
-      {!editable && (
-        <Alert severity="info">
-          You can edit fields and preview unsaved changes. Only the current primary owner can save or reset this shared content.
-        </Alert>
-      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} lg={5}>

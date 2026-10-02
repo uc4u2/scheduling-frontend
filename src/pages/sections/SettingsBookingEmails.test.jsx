@@ -64,7 +64,7 @@ describe("SettingsBookingEmails", () => {
     mockDelete.mockResolvedValue(settingsResponse(true));
   });
 
-  test("previews unsaved content and allows an owner to save it", async () => {
+  test("previews unsaved content and allows an active manager to save it", async () => {
     renderScreen();
 
     const opening = await screen.findByLabelText("Customer opening message");
@@ -183,17 +183,24 @@ describe("SettingsBookingEmails", () => {
     expect(screen.getByText("Saved")).toBeInTheDocument();
   });
 
-  test("lets a non-owner preview but not save or reset", async () => {
-    mockGet.mockResolvedValue(settingsResponse(false));
+  test("allows a non-primary active manager to save and reset", async () => {
+    mockGet.mockResolvedValue(settingsResponse(true));
     renderScreen();
 
     const opening = await screen.findByLabelText("Customer opening message");
-    fireEvent.change(opening, { target: { value: "Unsaved manager preview" } });
+    fireEvent.change(opening, { target: { value: "Shared manager update" } });
 
     await waitFor(() => expect(mockPost).toHaveBeenCalled());
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reset to Schedulaa defaults" })).toBeDisabled();
-    expect(screen.getByText(/Only the current primary owner can save or reset/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(mockPut).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Reset to Schedulaa defaults" })).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset to Schedulaa defaults" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(mockDelete).toHaveBeenCalled());
+    expect(screen.queryByText(/Only the current primary owner/i)).not.toBeInTheDocument();
   });
 
   test("requires confirmation before resetting only the shared messages", async () => {
