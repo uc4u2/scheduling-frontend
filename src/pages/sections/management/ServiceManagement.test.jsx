@@ -7,6 +7,7 @@ import ServiceManagement from "./ServiceManagement";
 const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockApiDelete = jest.fn();
+const mockServiceDataGrid = jest.fn();
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -25,7 +26,10 @@ jest.mock("../../../utils/api", () => ({
 }));
 
 jest.mock("@mui/x-data-grid", () => ({
-  DataGrid: () => <div data-testid="services-grid" />,
+  DataGrid: (props) => {
+    mockServiceDataGrid(props);
+    return <div data-testid="services-grid" />;
+  },
 }));
 
 jest.mock("../../../components/common/CategoryAutocomplete", () => (props) => (
@@ -112,6 +116,16 @@ describe("ServiceManagement booking preview", () => {
       }
       return Promise.resolve({ data: {} });
     });
+  });
+
+  test("includes an immediately visible service image preview column", async () => {
+    renderPage();
+
+    await waitFor(() => expect(mockServiceDataGrid).toHaveBeenCalled());
+    const latestProps = mockServiceDataGrid.mock.calls.at(-1)[0];
+    const imageColumn = latestProps.columns.find((column) => column.field === "image_preview");
+
+    expect(imageColumn).toEqual(expect.objectContaining({ sortable: false, filterable: false }));
   });
 
   test("previews unsaved service values and marks stale after edits", async () => {

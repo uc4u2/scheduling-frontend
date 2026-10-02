@@ -12,6 +12,7 @@ const mockApiDelete = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
 const mockVariantPanel = jest.fn(() => null);
 const mockPreviewDialog = jest.fn(() => null);
+const mockProductDataGrid = jest.fn();
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -31,7 +32,10 @@ jest.mock("../../../utils/api", () => ({
 }));
 
 jest.mock("@mui/x-data-grid", () => ({
-  DataGrid: () => <div data-testid="product-grid" />,
+  DataGrid: (props) => {
+    mockProductDataGrid(props);
+    return <div data-testid="product-grid" />;
+  },
 }));
 
 jest.mock("../../../components/common/CategoryAutocomplete", () => () => null);
@@ -286,6 +290,20 @@ describe("ProductManagement", () => {
     });
     mockApiPatch.mockResolvedValue({ data: {} });
     mockApiDelete.mockResolvedValue({ data: {} });
+  });
+
+  test("includes an immediately visible product image preview column", async () => {
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ProductManagement token="test-token" />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => expect(mockProductDataGrid).toHaveBeenCalled());
+    const latestProps = mockProductDataGrid.mock.calls.at(-1)[0];
+    const imageColumn = latestProps.columns.find((column) => column.field === "image_preview");
+
+    expect(imageColumn).toEqual(expect.objectContaining({ sortable: false, filterable: false }));
   });
 
   test("support mode hides AI, checkout, global stock, and unapproved delivery controls", async () => {

@@ -50,6 +50,7 @@ import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import TutorialHelpCard from "../../../components/tutorials/TutorialHelpCard";
+import ManagementImageThumbnail from "../../../components/common/ManagementImageThumbnail";
 import { SERVICE_MANAGEMENT_TUTORIAL_GROUP } from "../../../tutorials/appTutorialCatalog";
 import BookingPaymentPreviewDialog, { buildBookingPreviewSummary } from "../../../components/booking/BookingPaymentPreviewDialog";
 
@@ -123,6 +124,23 @@ const ServiceManagement = ({ token, supportMode = false }) => {
 
   const columns = useMemo(
     () => [
+      {
+        field: "image_preview",
+        headerName: t("manager.service.columns.image", "Image"),
+        width: 76,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        align: "center",
+        headerAlign: "center",
+        renderCell: (params) => (
+          <ManagementImageThumbnail
+            row={params.row}
+            label={params.row.name || "service"}
+            onClick={() => openImages(params.row)}
+          />
+        ),
+      },
       { field: "name", headerName: t("manager.service.columns.name"), flex: 1 },
       {
         field: "category",
@@ -507,6 +525,9 @@ const ServiceManagement = ({ token, supportMode = false }) => {
       );
       const { data } = await api.get(`/booking/services/${imageTarget.id}`, auth);
       setImageTarget(data);
+      setServices((current) =>
+        current.map((service) => (service.id === data.id ? data : service))
+      );
       setSnk({ open: true, key: "manager.service.messages.updated" });
     } catch (err) {
       console.error("ServiceManagement upload image error", err);
@@ -525,6 +546,9 @@ const ServiceManagement = ({ token, supportMode = false }) => {
       await api.delete(`/booking/service-images/${imageId}`, auth);
       const { data } = await api.get(`/booking/services/${imageTarget.id}`, auth);
       setImageTarget(data);
+      setServices((current) =>
+        current.map((service) => (service.id === data.id ? data : service))
+      );
       setSnk({ open: true, key: "manager.service.messages.updated" });
     } catch (err) {
       console.error("ServiceManagement remove image error", err);

@@ -55,6 +55,7 @@ import {
 import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
 import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
+import ManagementImageThumbnail from "../../../components/common/ManagementImageThumbnail";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
 import ProductCheckoutPreviewDialog from "../../../components/products/ProductCheckoutPreviewDialog";
@@ -1062,6 +1063,9 @@ const ProductManagement = ({ token, supportMode = false, canManageShipping = tru
         notify(t("manager.product.messages.uploadSuccess"));
         const { data } = await api.get(`/inventory/products/${imageTarget.id}`, auth);
         setImageTarget(data);
+        setProducts((current) =>
+          current.map((product) => (product.id === data.id ? data : product))
+        );
       } catch (err) {
         console.error("Image upload failed", err);
         notify(t("manager.product.messages.uploadFailed"));
@@ -1079,6 +1083,9 @@ const ProductManagement = ({ token, supportMode = false, canManageShipping = tru
         await api.delete(`/inventory/products/${imageTarget.id}/images/${imageId}`, auth);
         const { data } = await api.get(`/inventory/products/${imageTarget.id}`, auth);
         setImageTarget(data);
+        setProducts((current) =>
+          current.map((product) => (product.id === data.id ? data : product))
+        );
       } catch (err) {
         console.error("Failed to remove image", err);
         notify(t("manager.product.messages.removeFailed"));
@@ -1089,6 +1096,23 @@ const ProductManagement = ({ token, supportMode = false, canManageShipping = tru
 
   const columns = useMemo(
     () => [
+      {
+        field: "image_preview",
+        headerName: t("manager.product.columns.image", "Image"),
+        width: 76,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        align: "center",
+        headerAlign: "center",
+        renderCell: (params) => (
+          <ManagementImageThumbnail
+            row={params.row}
+            label={params.row.name || "product"}
+            onClick={() => openImages(params.row)}
+          />
+        ),
+      },
       { field: "sku", headerName: t("manager.product.columns.sku"), width: 120 },
       { field: "name", headerName: t("manager.product.columns.name"), flex: 1 },
       {
