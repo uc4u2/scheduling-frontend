@@ -9,10 +9,12 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
   Grid,
   Paper,
   Snackbar,
   Stack,
+  Switch,
   Tab,
   Tabs,
   TextField,
@@ -26,6 +28,7 @@ const EMPTY_SETTINGS = {
   customer_closing_message: "",
   operational_opening_message: "",
   operational_closing_message: "",
+  show_company_logo: false,
 };
 
 const DEFAULT_LIMITS = {
@@ -42,40 +45,55 @@ const FIELDS = [
     label: "Customer opening message",
     help: "A short welcome shown before the appointment details.",
     rows: 3,
+    audience: "customer",
   },
   {
     key: "customer_preparation_instructions",
     label: "Preparation / arrival instructions",
     help: "Share what the client should bring, do, or know before arriving.",
     rows: 4,
+    audience: "customer",
   },
   {
     key: "customer_closing_message",
     label: "Customer closing message / signature",
     help: "A friendly sign-off shown near the end of the confirmation.",
     rows: 3,
+    audience: "customer",
   },
   {
     key: "operational_opening_message",
     label: "Artist/manager opening message",
     help: "Shared introduction for provider and permitted team-booking copies.",
     rows: 3,
+    audience: "operational",
   },
   {
     key: "operational_closing_message",
     label: "Artist/manager closing message",
     help: "Shared sign-off for provider and permitted manager copies.",
     rows: 3,
+    audience: "operational",
   },
 ];
 
 const errorMessage = (error, fallback) =>
   error?.response?.data?.error || error?.message || fallback;
 
+const normalizeSettings = (value = {}) => ({
+  ...EMPTY_SETTINGS,
+  ...value,
+  show_company_logo: Boolean(value?.show_company_logo),
+});
+
+const settingsEqual = (left, right) =>
+  Object.keys(EMPTY_SETTINGS).every((key) => left?.[key] === right?.[key]);
+
 export default function SettingsBookingEmails() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
   const [settings, setSettings] = useState(EMPTY_SETTINGS);
+  const [savedSettings, setSavedSettings] = useState(EMPTY_SETTINGS);
   const [limits, setLimits] = useState(DEFAULT_LIMITS);
   const [editable, setEditable] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -85,11 +103,29 @@ export default function SettingsBookingEmails() {
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [resolvedLogo, setResolvedLogo] = useState({
+    url: null,
+    source: "none",
+    source_label: "No company logo found",
+    manage_path: "/manager/dashboard?view=company-profile",
+  });
 
-  const applyResponse = (data) => {
-    setSettings({ ...EMPTY_SETTINGS, ...(data?.settings || {}) });
+  const dirty = useMemo(
+    () => !settingsEqual(settings, savedSettings),
+    [savedSettings, settings]
+  );
+
+  const applyResponseMetadata = (data) => {
     setLimits({ ...DEFAULT_LIMITS, ...(data?.limits || {}) });
     setEditable(Boolean(data?.editable));
+    setResolvedLogo((current) => ({ ...current, ...(data?.resolved_logo || {}) }));
+  };
+
+  const replaceWithResponse = (data) => {
+    const next = normalizeSettings(data?.settings);
+    setSettings(next);
+    setSavedSettings(next);
+    applyResponseMetadata(data);
   };
 
   useEffect(() => {
@@ -97,7 +133,14 @@ export default function SettingsBookingEmails() {
     (async () => {
       try {
         const { data } = await api.get("/api/manager/booking-email-settings", { headers });
-        if (!cancelled) applyResponse(data);
+        if (!cancelled) {
+          const next = normalizeSettings(data?.settings);
+          setSettings(next);
+          setSavedSettings(next);
+          setLimits({ ...DEFAULT_LIMITS, ...(data?.limits || {}) });
+          setEditable(Boolean(data?.editable));
+          setResolvedLogo((current) => ({ ...current, ...(data?.resolved_logo || {}) }));
+        }
       } catch (error) {
         if (!cancelled) setNotice({ severity: "error", text: errorMessage(error, "Could not load booking email settings.") });
       } finally {
@@ -139,14 +182,20 @@ export default function SettingsBookingEmails() {
   };
 
   const save = async () => {
+    const submitted = normalizeSettings(settings);
     setSaving(true);
     try {
       const { data } = await api.put(
         "/api/manager/booking-email-settings",
-        settings,
+        submitted,
         { headers }
       );
-      applyResponse(data);
+      const saved = normalizeSettings(data?.settings);
+      setSavedSettings(saved);
+      setSettings((current) => (
+        settingsEqual(current, submitted) ? saved : current
+      ));
+      applyResponseMetadata(data);
       setNotice({ severity: "success", text: "Booking email content saved." });
     } catch (error) {
       setNotice({ severity: "error", text: errorMessage(error, "Could not save booking email content.") });
@@ -159,7 +208,7 @@ export default function SettingsBookingEmails() {
     setSaving(true);
     try {
       const { data } = await api.delete("/api/manager/booking-email-settings", { headers });
-      applyResponse(data);
+      replaceWithResponse(data);
       setResetOpen(false);
       setNotice({ severity: "success", text: "Booking emails reset to Schedulaa defaults." });
     } catch (error) {
@@ -176,7 +225,16 @@ export default function SettingsBookingEmails() {
   return (
     <Stack spacing={2.5}>
       <Box>
-        <Typography variant="h6">Booking Emails</Typography>
+        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+          <Typography variant="h6">Booking Emails</Typography>
+          <Typography
+            variant="caption"
+            color={dirty ? "warning.main" : "success.main"}
+            sx={{ fontWeight: 700 }}
+          >
+            {dirty ? "Unsaved changes" : "Saved"}
+          </Typography>
+        </Stack>
         <Typography variant="body2" color="text.secondary">
           Personalize the shared booking confirmations for this company. Branding and appointment details continue to use your existing company settings.
         </Typography>
@@ -191,7 +249,7 @@ export default function SettingsBookingEmails() {
       <Grid container spacing={3}>
         <Grid item xs={12} lg={5}>
           <Stack spacing={2}>
-            {FIELDS.map((field) => {
+            {FIELDS.filter((field) => field.audience === audience).map((field) => {
               const limit = limits[field.key] || DEFAULT_LIMITS[field.key];
               const value = settings[field.key] || "";
               return (
@@ -204,12 +262,56 @@ export default function SettingsBookingEmails() {
                   minRows={field.rows}
                   fullWidth
                   inputProps={{ maxLength: limit }}
-                  helperText={`${field.help} ${value.length}/${limit}`}
+                  helperText={`${field.help} Leave blank to use the Schedulaa default message. ${value.length}/${limit}`}
                 />
               );
             })}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Stack spacing={1.25}>
+                <FormControlLabel
+                  control={(
+                    <Switch
+                      checked={Boolean(settings.show_company_logo)}
+                      onChange={(event) => updateField("show_company_logo", event.target.checked)}
+                      inputProps={{ "aria-label": "Show company logo in booking emails" }}
+                    />
+                  )}
+                  label="Show company logo in booking emails"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Shared by customer and artist/manager confirmations. Company Profile logos take priority over the published website-header fallback.
+                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  {resolvedLogo.url ? (
+                    <Box
+                      component="img"
+                      src={resolvedLogo.url}
+                      alt="Resolved company logo"
+                      sx={{ maxWidth: 140, maxHeight: 55, width: "auto", height: "auto", objectFit: "contain" }}
+                    />
+                  ) : (
+                    <Box sx={{ px: 1.5, py: 1, bgcolor: "action.hover", borderRadius: 1 }}>
+                      <Typography variant="caption" color="text.secondary">No logo</Typography>
+                    </Box>
+                  )}
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {resolvedLogo.source_label || "No company logo found"}
+                    </Typography>
+                    <Button
+                      component="a"
+                      href={resolvedLogo.manage_path || "/manager/dashboard?view=company-profile"}
+                      size="small"
+                      sx={{ px: 0, minWidth: 0 }}
+                    >
+                      Manage logo
+                    </Button>
+                  </Box>
+                </Stack>
+              </Stack>
+            </Paper>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button variant="contained" onClick={save} disabled={!editable || saving}>
+              <Button variant="contained" onClick={save} disabled={!editable || saving || !dirty}>
                 {saving ? "Saving…" : "Save changes"}
               </Button>
               <Button variant="outlined" color="inherit" onClick={() => setResetOpen(true)} disabled={!editable || saving}>
@@ -260,7 +362,7 @@ export default function SettingsBookingEmails() {
         <DialogTitle>Reset booking email content?</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
-            This clears only these five shared messages. Company branding, notification preferences, booking settings, and tenant data will not change.
+            This clears the five shared messages and turns off the booking-email logo. It does not delete the company logo or change branding, notification preferences, booking settings, or tenant data.
           </Typography>
         </DialogContent>
         <DialogActions>
