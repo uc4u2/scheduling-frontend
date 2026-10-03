@@ -3372,6 +3372,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const themeOverridesPersistedKeyRef = useRef(
     JSON.stringify(defaultThemeOverrides || {})
   );
+  const brandingHydratedRef = useRef(false);
   const nextJsThemeOverrideSaveTimerRef = useRef(null);
   const nextJsDraftSyncTimerRef = useRef(null);
   const nextJsDraftSyncSnapshotRef = useRef(null);
@@ -3437,6 +3438,15 @@ const [brandingErr, setBrandingErr] = useState("");
         settingsObj.theme_overrides ||
         settingsObj.settings?.theme_overrides ||
         defaultThemeOverrides;
+      const hydratedThemeKey = String(
+        settingsObj.visual_theme_key ||
+          settingsObj.settings_draft?.visual_theme_key ||
+          settingsObj.draft?.visual_theme_key ||
+          settingsObj.settings?.visual_theme_key ||
+          ""
+      )
+        .trim()
+        .toLowerCase();
       setHeaderDraft(headerFromServer);
       setFooterDraft(footerFromServer);
       setThemeOverridesDraft(themeOverrides || defaultThemeOverrides);
@@ -3444,8 +3454,14 @@ const [brandingErr, setBrandingErr] = useState("");
       brandingDraftUpdatedAtRef.current =
         settingsObj.branding_draft_updated_at || null;
       themeOverridesPersistedKeyRef.current = JSON.stringify(
-        themeOverrides || defaultThemeOverrides || {}
+        hydratedThemeKey
+          ? sanitizeThemeOverrideDraft(
+              hydratedThemeKey,
+              themeOverrides || defaultThemeOverrides || {}
+            )
+          : themeOverrides || defaultThemeOverrides || {}
       );
+      brandingHydratedRef.current = true;
     },
     [defaultThemeOverrides]
   );
@@ -3667,6 +3683,11 @@ useEffect(() => {
     let alive = true;
 
     async function boot() {
+      brandingHydratedRef.current = false;
+      if (nextJsThemeOverrideSaveTimerRef.current) {
+        clearTimeout(nextJsThemeOverrideSaveTimerRef.current);
+        nextJsThemeOverrideSaveTimerRef.current = null;
+      }
       setLoading(true);
       setAuthError(null);
       try {
@@ -5150,7 +5171,7 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
 }
 
   const saveBrandingSettings = useCallback(
-  async (payload) => {
+  async (payload, { themeOverridesOnly = false } = {}) => {
     if (!companyId) {
       setBrandingErr("Company id missing");
       return;
@@ -5168,15 +5189,18 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
     setBrandingMsg("");
     setBrandingErr("");
     try {
+      const settingsBody = themeOverridesOnly
+        ? { theme_overrides: themePayload }
+        : {
+            header: headerPayload,
+            footer: footerPayload,
+            theme_overrides: themePayload,
+            nav_overrides: navOverridesPayload,
+            site_theme: siteThemePayload,
+          };
       await wb.saveSettings(
         companyId,
-        {
-          header: headerPayload,
-          footer: footerPayload,
-          theme_overrides: themePayload,
-          nav_overrides: navOverridesPayload,
-          site_theme: siteThemePayload,
-        },
+        settingsBody,
         {
           publish: false,
           expectedDraftUpdatedAt: brandingDraftUpdatedAtRef.current,
@@ -5194,12 +5218,6 @@ async function ensureLegacyBuilderPages(cid, settingsObj, pagesList, { isIronEmb
       });
       applyBrandingFromServer(rootWithNav);
       setSiteSettings(rootWithNav);
-      themeOverridesPersistedKeyRef.current = JSON.stringify(
-        rootWithNav?.theme_overrides ||
-          rootWithNav?.settings?.theme_overrides ||
-          themePayload ||
-          {}
-      );
       const draftSavedMsg = t(
         "manager.visualBuilder.messages.brandingDraftSaved",
         "Branding draft saved. Publish to go live."
@@ -5979,7 +5997,10 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       currentStyleKey,
       themeOverridesDraft || {}
     );
-    await saveBrandingSettings({ theme_overrides: nextDraft });
+    await saveBrandingSettings(
+      { theme_overrides: nextDraft },
+      { themeOverridesOnly: true }
+    );
     themeOverridesPersistedKeyRef.current = JSON.stringify(nextDraft);
     await refreshNextJsPreview();
   }, [
@@ -5992,6 +6013,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
 
   useEffect(() => {
     if (!isNextJsContentMode || !companyId || !currentStyleKey) return undefined;
+    if (!brandingHydratedRef.current) return undefined;
     const nextDraft = sanitizeThemeOverrideDraft(
       currentStyleKey,
       themeOverridesDraft || {}
