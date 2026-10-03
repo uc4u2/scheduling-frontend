@@ -204,7 +204,7 @@ import EmailSdrUnsubscribeRedirectPage from "./pages/public/EmailSdrUnsubscribeR
 import CandidateLoginCallbackPage from "./pages/candidate/CandidateLoginCallbackPage";
 import CandidateDashboardPage from "./pages/candidate/CandidateDashboardPage";
 import ClientRescheduleBooking from "./pages/client/ClientRescheduleBooking";
-import Checkout from "./pages/client/Checkout";
+const Checkout = React.lazy(() => import("./pages/client/Checkout"));
 import ProductList from "./pages/client/ProductList";
 import ProductDetails from "./pages/client/ProductDetails";
 import MyBasket from "./pages/client/MyBasket";
@@ -1015,7 +1015,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/products" element={<ProductList slugOverride={tenantSlug} />} />
               <Route path="/products/:productId" element={<ProductDetails slugOverride={tenantSlug} />} />
               <Route path="/basket" element={<MyBasket slugOverride={tenantSlug} />} />
-              <Route path="/checkout" element={<Checkout slugOverride={tenantSlug} />} />
+              <Route path="/checkout" element={<React.Suspense fallback={<div role="status" aria-live="polite">Preparing secure checkout…</div>}><Checkout slugOverride={tenantSlug} /></React.Suspense>} />
               <Route path="/checkout/return" element={<BookingConfirmation slugOverride={tenantSlug} />} />
               <Route path="/book/:employeeId/:serviceId" element={<EmployeeBooking slugOverride={tenantSlug} />} />
               <Route path="/book" element={<EmployeeBooking slugOverride={tenantSlug} />} />
@@ -1173,7 +1173,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/:slug/basket" element={<MyBasket />} />
 
               {/* Checkout */}
-              <Route path="/:slug/checkout" element={<Checkout />} />
+              <Route path="/:slug/checkout" element={<React.Suspense fallback={<div role="status" aria-live="polite">Preparing secure checkout…</div>}><Checkout /></React.Suspense>} />
 
               {/* Booking */}
               <Route path="/client/book/:slug/:serviceId/:employeeId" element={<EmployeeBooking />} />

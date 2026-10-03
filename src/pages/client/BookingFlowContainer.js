@@ -25,12 +25,13 @@ import ServiceList from "./ServiceList";
 import ServiceDetails from "./ServiceDetails";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
 import BookingReview from "./BookingReview";
-import Checkout from "./Checkout";
 import BookingConfirmation from "./BookingConfirmation";
 
 import { api } from "../../utils/api";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+
+const Checkout = React.lazy(() => import("./Checkout"));
 
 export default function BookingFlowContainer({ companySlug, preselect, initialServiceId = null }) {
   /* ─────────────────────────── state ─────────────────────────── */
@@ -384,16 +385,18 @@ export default function BookingFlowContainer({ companySlug, preselect, initialSe
 
       {/* ──────────────── 5. checkout & pay ──────────────── */}
       {step === 5 && service && artist && slot && (
-        <Checkout
-          companySlug={companySlug}
-          service={service}
-          artist={artist}
-          slot={slot}
-          cart={bookingCart}
-          onSuccess={handleBookingSuccess}
-          onBack={() => goToStep(4)}
-          disableShell
-        />
+        <React.Suspense fallback={<div role="status">Preparing secure checkout…</div>}>
+          <Checkout
+            companySlug={companySlug}
+            service={service}
+            artist={artist}
+            slot={slot}
+            cart={bookingCart}
+            onSuccess={handleBookingSuccess}
+            onBack={() => goToStep(4)}
+            disableShell
+          />
+        </React.Suspense>
       )}
 
       {/* ─────────────── global calendar dialog ─────────────── */}

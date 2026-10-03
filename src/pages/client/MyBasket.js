@@ -24,7 +24,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import CloseIcon from "@mui/icons-material/Close";
 import SiteFrame from "../../components/website/SiteFrame";
-import Checkout from "./Checkout";
 import ProductBasketImage from "./ProductBasketImage";
 import TenantTransactionalShell from "./TenantTransactionalShell";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
@@ -41,6 +40,8 @@ import {
   normalizeTransactionalReturnPath,
   requestTransactionalNavigation,
 } from "../../utils/transactionalFrameBridge";
+
+const Checkout = React.lazy(() => import("./Checkout"));
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -930,11 +931,22 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             backgroundImage: "var(--checkout-modal-bg-image, none)",
           }}
         >
-          <Checkout
-            disableShell
-            companySlug={slug}
-            onRequestAddService={() => setCheckoutOpen(false)}
-          />
+          {checkoutOpen ? (
+            <React.Suspense
+              fallback={(
+                <Box sx={{ py: 8, textAlign: "center" }} role="status" aria-live="polite">
+                  <CircularProgress size={28} />
+                  <Typography sx={{ mt: 2 }}>Preparing secure checkout…</Typography>
+                </Box>
+              )}
+            >
+              <Checkout
+                disableShell
+                companySlug={slug}
+                onRequestAddService={() => setCheckoutOpen(false)}
+              />
+            </React.Suspense>
+          ) : null}
         </DialogContent>
       </Dialog>
       </Container>
