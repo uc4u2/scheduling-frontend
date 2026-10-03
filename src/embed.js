@@ -11,6 +11,7 @@ const PRESENTATION_QUERY_KEYS = [
   "text",
   "return_to",
   "returnTo",
+  "services_return_to",
 ];
 
 /** Read saved embed config from sessionStorage */

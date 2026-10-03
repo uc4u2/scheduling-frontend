@@ -28,6 +28,11 @@ import Checkout from "./Checkout";
 import ProductBasketImage from "./ProductBasketImage";
 import TenantTransactionalShell from "./TenantTransactionalShell";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
+import {
+  BasketBrowseKinds,
+  basketBrowseLabel,
+  inferBasketBrowseKind,
+} from "../../utils/basketNavigation";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
 import { api as apiClient, publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
@@ -135,8 +140,28 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     ),
     [searchParams]
   );
+  const servicesHref = useMemo(() => {
+    if (!slug) return "";
+    const keys = ["embed", "mode", "dialog", "primary", "text"];
+    const qs = new URLSearchParams();
+    qs.set("page", "services-classic");
+    keys.forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) qs.set(key, val);
+    });
+    const query = qs.toString();
+    if (isCustomDomain) {
+      return query ? `/services?${query}` : "/services";
+    }
+    return query ? `/${slug}?${query}` : `/${slug}`;
+  }, [slug, searchParams, isCustomDomain]);
+  const servicesReturnTo = useMemo(
+    () => normalizeTransactionalReturnPath(searchParams.get("services_return_to") || ""),
+    [searchParams]
+  );
 
   const [items, setItems] = useState(() => loadCart());
+  const [browseKind, setBrowseKind] = useState(() => inferBasketBrowseKind(loadCart()));
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [siteLoading, setSiteLoading] = useState(false);
   const [sitePayload, setSitePayload] = useState(null);
@@ -154,6 +179,10 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     () => items.filter((item) => item.type !== CartTypes.PRODUCT),
     [items]
   );
+
+  useEffect(() => {
+    setBrowseKind((current) => inferBasketBrowseKind(items, current));
+  }, [items]);
 
   useEffect(() => {
     const saved = loadCart();
@@ -439,16 +468,19 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     setCheckoutOpen(true);
   };
   const continueShopping = () => {
+    const browsingServices = browseKind === BasketBrowseKinds.SERVICES;
+    const returnTo = browsingServices ? servicesReturnTo : productsReturnTo;
+    const fallbackHref = browsingServices ? servicesHref : productsHref;
     if (
-      productsReturnTo &&
+      returnTo &&
       typeof window !== "undefined" &&
       window.parent !== window &&
-      requestTransactionalNavigation(window.parent, productsReturnTo)
+      requestTransactionalNavigation(window.parent, returnTo)
     ) {
       return;
     }
-    if (!productsHref) return;
-    navigate(productsHref);
+    if (!fallbackHref) return;
+    navigate(fallbackHref);
   };
 
   const totals = useMemo(() => {
@@ -701,7 +733,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
               variant="contained"
               onClick={continueShopping}
             >
-              Browse products
+              {basketBrowseLabel(browseKind)}
             </Button>
           </Box>
         ) : (
