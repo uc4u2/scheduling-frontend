@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -11,6 +11,7 @@ import { SnackbarProvider } from "notistack";
 
 import RouteTracker from "./analytics/RouteTracker";
 import { useEmbedConfig } from "./embed";
+import { revealEmbeddedApplication } from "./embeddedApplicationVisibility";
 import TenantTransactionalShell from "./pages/client/TenantTransactionalShell";
 import { resolveTenantSlug } from "./utils/clientTenant";
 
@@ -109,6 +110,13 @@ function EmbeddedThemeBoundary({ children }) {
       }),
     [primary, text]
   );
+
+  useLayoutEffect(() => {
+    // Custom-domain HTML starts hidden until the full App resolves its tenant.
+    // The lightweight embedded runtime resolves the tenant from ?site= instead,
+    // so it must release that same boot guard itself.
+    revealEmbeddedApplication();
+  }, []);
 
   useEffect(() => {
     const rootStyle = document.documentElement.style;
