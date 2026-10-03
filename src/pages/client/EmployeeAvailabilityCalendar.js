@@ -838,8 +838,8 @@ export default function EmployeeAvailabilityCalendar({
       <Box
         sx={{
           position: "absolute",
-          width: 1,
-          height: 1,
+          width: "1px",
+          height: "1px",
           margin: -1,
           padding: 0,
           overflow: "hidden",
