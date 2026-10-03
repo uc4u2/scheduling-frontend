@@ -37,10 +37,12 @@ import {
   ListItemIcon,
   Chip,
   Paper,
+  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
+import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from "@mui/material/styles";
 import api from "../../utils/api";
 import PublicBookingUnavailableDialog from "../../components/billing/PublicBookingUnavailableDialog";
@@ -369,13 +371,15 @@ function ForgotPasswordDialog({ open, onClose, companySlug }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* RegisterDialog component (unchanged) */
 function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenForgot, companySlug }) {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  const theme = useTheme();
+  const compactLayout = useMediaQuery(theme.breakpoints.down("sm"));
   const dialogPaperSx = {
     backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
     backgroundImage: "none",
     color: "var(--page-body-color, #111827)",
+    borderRadius: { xs: 0, sm: 3 },
+    maxHeight: { xs: "100dvh", sm: "min(90dvh, 760px)" },
   };
 
   const [firstName, setFirstName] = React.useState("");
@@ -454,7 +458,8 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth="xs"
+      fullScreen={compactLayout}
+      maxWidth="sm"
       PaperProps={{
         sx: {
           ...dialogPaperSx,
@@ -464,26 +469,71 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
         "& .MuiDialog-paper": dialogPaperSx,
         "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
         "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
+        "& .MuiDialogActions-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
       }}
     >
-      <DialogTitle sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" }}>
-        Client Sign Up
+      <DialogTitle
+        component="div"
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 2,
+          px: { xs: 2, sm: 3 },
+          pt: { xs: 2, sm: 2.5 },
+          pb: 1.5,
+        }}
+      >
+        <Box>
+          <Typography component="h2" variant="h6" sx={{ fontWeight: 700 }}>
+            Create your client account
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Save your details and manage your bookings in one place.
+          </Typography>
+        </Box>
+        <IconButton
+          aria-label="Close sign up"
+          onClick={onClose}
+          disabled={loading}
+          size="small"
+          sx={{ mt: -0.5, mr: -0.5, flexShrink: 0 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" }}>
+      <DialogContent
+        dividers
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          overscrollBehavior: "contain",
+        }}
+      >
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} id="register-dialog-form">
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          id="register-dialog-form"
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+            gap: 2,
+          }}
+        >
           <TextField
             label="First Name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             fullWidth
             required
-            margin="normal"
+            size="small"
+            autoComplete="given-name"
           />
           <TextField
             label="Last Name"
@@ -491,7 +541,8 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
             onChange={(e) => setLastName(e.target.value)}
             fullWidth
             required
-            margin="normal"
+            size="small"
+            autoComplete="family-name"
           />
           <TextField
             label="Email"
@@ -500,7 +551,8 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
             onChange={(e) => setEmail(e.target.value)}
             fullWidth
             required
-            margin="normal"
+            size="small"
+            autoComplete="email"
           />
           <TextField
             label="Phone"
@@ -509,7 +561,8 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
             onChange={(e) => setPhone(e.target.value)}
             fullWidth
             required
-            margin="normal"
+            size="small"
+            autoComplete="tel"
           />
           <TextField
             label="Password"
@@ -518,69 +571,98 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
             onChange={(e) => setPassword(e.target.value)}
             fullWidth
             required
-            margin="normal"
+            size="small"
+            autoComplete="new-password"
+            helperText="Use a strong password you do not use elsewhere."
+            sx={{ gridColumn: "1 / -1" }}
           />
-          {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
-          {showTimezoneSelect ? (
-            <TimezoneSelect
-              label="Timezone"
-              value={timezone}
-              onChange={setTimezone}
-            />
-          ) : null}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
+          <Box sx={{ gridColumn: "1 / -1", "& .MuiButton-root": { textTransform: "none" } }}>
+            {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
+            {showTimezoneSelect ? (
+              <TimezoneSelect
+                label="Timezone"
+                value={timezone}
+                onChange={setTimezone}
               />
-            }
-            label={
-              <span>
-                I agree to the{" "}
-                <Link
-                  href={USER_AGREEMENT_URL}
-                  target="_blank"
-                  rel="noopener"
-                >
-                  Schedulaa User Agreement
-                </Link>
-                .
-              </span>
-            }
-            sx={{ mt: 1 }}
-          />
-        </form>
-      </DialogContent>
+            ) : null}
+          </Box>
+          <Box
+            sx={{
+              gridColumn: "1 / -1",
+              border: "1px solid var(--page-border-color, rgba(15,23,42,0.12))",
+              borderRadius: 2,
+              px: 1.5,
+              py: 0.5,
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                />
+              }
+              label={
+                <Typography variant="body2">
+                  I agree to the{" "}
+                  <Link href={USER_AGREEMENT_URL} target="_blank" rel="noopener">
+                    Schedulaa User Agreement
+                  </Link>
+                  .
+                </Typography>
+              }
+              sx={{ alignItems: "center", m: 0 }}
+            />
+          </Box>
+        </Box>
 
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          form="register-dialog-form"
-          variant="contained"
-          disabled={loading}
-        >
-          {loading ? "Registering..." : "Sign Up"}
-        </Button>
-      </DialogActions>
-      <DialogContent sx={{ pt: 0 }}>
-        <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
-          <Button size="small" onClick={onOpenLogin}>
-            Already have an account? Log in
-          </Button>
-          <Button size="small" onClick={onOpenForgot}>
-            Forgot password?
-          </Button>
-        </Stack>
         {accountExists && (
-          <Alert severity="info" sx={{ mt: 1 }}>
+          <Alert severity="info" sx={{ mt: 2 }}>
             Please log in to continue. If you don’t remember your password, use “Forgot password”.
           </Alert>
         )}
       </DialogContent>
+
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          display: "flex",
+          flexDirection: { xs: "column-reverse", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+          justifyContent: "space-between",
+          gap: 1.5,
+          "& > :not(style) ~ :not(style)": { ml: 0 },
+          "& .MuiButton-root": { textTransform: "none" },
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={{ xs: 0.5, sm: 1 }}
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
+          <Button size="small" onClick={onOpenLogin} disabled={loading}>
+            Already have an account? Log in
+          </Button>
+          <Button size="small" onClick={onOpenForgot} disabled={loading}>
+            Forgot password?
+          </Button>
+        </Stack>
+        <Stack direction="row" spacing={1} justifyContent={{ xs: "stretch", sm: "flex-end" }}>
+          <Button onClick={onClose} disabled={loading} sx={{ flex: { xs: 1, sm: "initial" } }}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="register-dialog-form"
+            variant="contained"
+            disabled={loading}
+            sx={{ flex: { xs: 1, sm: "initial" }, minWidth: { sm: 150 } }}
+          >
+            {loading ? <CircularProgress size={20} color="inherit" /> : "Create account"}
+          </Button>
+        </Stack>
+      </DialogActions>
     </Dialog>
   );
 }
@@ -725,6 +807,11 @@ export function CheckoutFormCore({
     ),
     [searchParams]
   );
+  const servicesBrowsePath = useMemo(() => {
+    const target = slugLocal || companySlug;
+    if (isCustomDomain) return "/services";
+    return target ? `/${target}/services` : "";
+  }, [companySlug, isCustomDomain, slugLocal]);
 
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
@@ -3981,18 +4068,15 @@ export function CheckoutFormCore({
             startIcon={<AddIcon />}
             onClick={() => {
               onRequestAddService?.();
-              const target = slugLocal || companySlug;
-              if (!target) return;
-              const params = new URLSearchParams();
-              params.set('page', 'services-classic');
-              if (embedSuffix) {
-                try {
-                  const extra = new URLSearchParams(embedSuffix.slice(1));
-                  extra.forEach((value, key) => params.set(key, value));
-                } catch {}
+              if (!servicesBrowsePath) return;
+              if (
+                typeof window !== "undefined" &&
+                window.parent !== window &&
+                requestTransactionalNavigation(window.parent, servicesBrowsePath)
+              ) {
+                return;
               }
-              const path = isCustomDomain ? "/" : `/${target}`;
-              navigate({ pathname: path, search: `?${params.toString()}` });
+              navigate(servicesBrowsePath);
             }}
             sx={outlineButtonSx}
           >

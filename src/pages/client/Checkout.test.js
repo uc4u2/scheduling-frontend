@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import { CheckoutFormCore } from "./Checkout";
 
@@ -131,6 +131,76 @@ describe("CheckoutFormCore", () => {
     await waitFor(() => expect(onRequestAddService).toHaveBeenCalledTimes(1));
     expect(mockReleasePendingCheckout).toHaveBeenCalledWith({ slug: "vandaorchidjewels" });
     expect(mockSaveCart).toHaveBeenCalledWith([]);
+  });
+
+  test("add another service returns to the public services index instead of the legacy website page", async () => {
+    const onRequestAddService = jest.fn();
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+        holdMinutes={null}
+        onRequestAddService={onRequestAddService}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /add another service/i }));
+
+    expect(onRequestAddService).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith("/services");
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ search: expect.stringContaining("services-classic") })
+    );
+  });
+
+  test("add-ons stay inside checkout and do not navigate away", async () => {
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /add-on\(s\)/i }));
+
+    expect(await screen.findByRole("heading", { name: /add-ons for studio rental/i })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  test("client sign up uses the compact account form without leaving checkout", async () => {
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /don't have an account\? sign up/i }));
+
+    expect(await screen.findByRole("heading", { name: /create your client account/i })).toBeInTheDocument();
+    const signUpDialog = screen.getByRole("dialog");
+    expect(within(signUpDialog).getByLabelText(/first name/i)).toHaveAttribute("autocomplete", "given-name");
+    expect(within(signUpDialog).getByLabelText(/last name/i)).toHaveAttribute("autocomplete", "family-name");
+    expect(within(signUpDialog).getByLabelText(/email/i)).toHaveAttribute("autocomplete", "email");
+    expect(within(signUpDialog).getByLabelText(/phone/i)).toHaveAttribute("autocomplete", "tel");
+    expect(within(signUpDialog).getByRole("button", { name: /create account/i })).toBeInTheDocument();
+    expect(within(signUpDialog).getByRole("button", { name: /close sign up/i })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   test("normalizes shipping country to backend domestic destinations", async () => {
