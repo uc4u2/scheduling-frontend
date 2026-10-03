@@ -95,7 +95,7 @@ export default function EmployeeAvailabilityCalendar({
   serviceName,
   onSlotSelect, // optional callback({ date, start_time, timezone })
   autoSelectFirstTime = AUTO_SELECT_FIRST_TIME,
-  autoScrollToTimes = true,
+  autoScrollToTimes = false,
 }) {
   const params = useParams();
   const navigate = useNavigate();
@@ -115,6 +115,7 @@ export default function EmployeeAvailabilityCalendar({
   const [debouncedDate, setDebouncedDate] = useState(() => ymd(new Date()));
   const [slots, setSlots] = useState([]); // availability for selected day
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [err, setErr] = useState("");
   const [availableMap, setAvailableMap] = useState({});
   const cacheRef = useRef(new Map());
@@ -211,6 +212,7 @@ export default function EmployeeAvailabilityCalendar({
         (cached.data || []).some((s) => s.start_time === prev) ? prev : ""
       );
       setLoading(false);
+      setHasLoadedOnce(true);
       return;
     }
 
@@ -227,7 +229,10 @@ export default function EmployeeAvailabilityCalendar({
           setErr("Unable to load availability.");
           setSlots([]);
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          setLoading(false);
+          setHasLoadedOnce(true);
+        });
       return;
     }
 
@@ -300,6 +305,7 @@ export default function EmployeeAvailabilityCalendar({
       .finally(() => {
         inflightRef.current.delete(cacheKey);
         setLoading(false);
+        setHasLoadedOnce(true);
       });
   }, [companySlug, artistId, serviceId, departmentId, debouncedDate, userTz]);
 
@@ -462,8 +468,21 @@ export default function EmployeeAvailabilityCalendar({
 
     return (
       <Box
+        component="button"
+        type="button"
+        disabled={isPast}
+        aria-label={`${d.toLocaleDateString(undefined, {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}${hasAvail ? ", availability available" : ""}`}
+        aria-pressed={isSelected}
         key={dNum}
         sx={{
+          width: "100%",
+          minWidth: 0,
+          appearance: "none",
+          font: "inherit",
           p: 0.75,
           textAlign: "center",
           cursor: isPast ? "default" : "pointer",
@@ -478,11 +497,7 @@ export default function EmployeeAvailabilityCalendar({
           },
           "&:focus-visible": focusRing,
         }}
-        onClick={() => {
-          if (!isPast) {
-            handleDateSelect(ymdStr);
-          }
-        }}
+        onClick={() => handleDateSelect(ymdStr)}
       >
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
           <span>{dNum}</span>
@@ -551,7 +566,7 @@ export default function EmployeeAvailabilityCalendar({
   };
 
   /* ------------ UI guards ------------ */
-  if (loading)
+  if (loading && !hasLoadedOnce)
     return (
       <Box p={3} textAlign="center">
         <CircularProgress />
@@ -639,7 +654,10 @@ export default function EmployeeAvailabilityCalendar({
 
   /* ------------ JSX ------------ */
   return (
-    <Box p={{ xs: 2, md: 3 }} sx={{ width: "100%" }}>
+    <Box
+      p={{ xs: 0, md: 1 }}
+      sx={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "clip" }}
+    >
       <Paper
         elevation={0}
         sx={{
@@ -649,6 +667,10 @@ export default function EmployeeAvailabilityCalendar({
           background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
           boxShadow: "var(--page-card-shadow, 0 20px 48px rgba(124,72,92,0.08))",
           maxWidth: 860,
+          width: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+          overflow: "hidden",
           mx: "auto",
         }}
       >
@@ -693,7 +715,18 @@ export default function EmployeeAvailabilityCalendar({
                   }}
                 />
               )}
-              {slots.length > 0 ? (
+              {loading ? (
+                <Chip
+                  size="small"
+                  label="Checking selected day…"
+                  sx={{
+                    borderRadius: 1,
+                    fontWeight: 500,
+                    backgroundColor: softBg,
+                    color: bodyColor,
+                  }}
+                />
+              ) : slots.length > 0 ? (
                 <Chip
                   size="small"
                   label={`${slots.length} slot(s) today`}
@@ -736,6 +769,7 @@ export default function EmployeeAvailabilityCalendar({
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <IconButton
             onClick={goPrevMonth}
+            aria-label="Previous month"
             sx={{ color: accentColor, "&:focus-visible": focusRing }}
           >
             <ArrowBackIos fontSize="small" />
@@ -745,6 +779,7 @@ export default function EmployeeAvailabilityCalendar({
           </Typography>
           <IconButton
             onClick={goNextMonth}
+            aria-label="Next month"
             sx={{ color: accentColor, "&:focus-visible": focusRing }}
           >
             <ArrowForwardIos fontSize="small" />
@@ -779,13 +814,24 @@ export default function EmployeeAvailabilityCalendar({
         {disp.date !== "—" ? `Available times for ${disp.date}` : "Select a date above"}
       </Typography>
 
-      {slots.length === 0 && (
+      {loading ? (
+        <Box
+          role="status"
+          aria-live="polite"
+          sx={{ minHeight: 72, display: "grid", placeItems: "center", mb: 2 }}
+        >
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <CircularProgress size={20} />
+            <Typography variant="body2">Checking this day…</Typography>
+          </Stack>
+        </Box>
+      ) : slots.length === 0 && (
         <Alert severity="info" sx={{ mb: 2, ...infoAlertSx, maxWidth: 520, mx: "auto" }}>
           No free slots for this day.
         </Alert>
       )}
 
-      <Box ref={timesRef} sx={{ display: "flex", justifyContent: "center" }}>
+      <Box ref={timesRef} sx={{ display: loading ? "none" : "flex", justifyContent: "center" }}>
         <Box sx={{ maxWidth: 680 }}>{renderTimeButtons()}</Box>
       </Box>
 
@@ -867,7 +913,7 @@ export default function EmployeeAvailabilityCalendar({
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" justifyContent="center">
           <Button
             variant="contained"
-            disabled={saving || !selectedTime}
+            disabled={saving || loading || !selectedTime}
             onClick={confirmSelection}
             fullWidth={isMobile}
             sx={primaryButtonSx}

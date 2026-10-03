@@ -13,7 +13,6 @@ import {
   IconButton,
   Paper,
   Button,
-  Divider,
   Chip,
 } from "@mui/material";
 import { APP_ORIGIN } from "../../config/origins";
@@ -334,35 +333,19 @@ const EmployeeProfile = ({ slugOverride }) => {
             </Stack>
           </Paper>
         ) : (
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2.25, md: 3 },
-              borderRadius: 4,
-              border: "1px solid var(--page-border-color)",
-              background: "linear-gradient(180deg, var(--page-card-bg) 0%, var(--page-surface-bg) 100%)",
-              boxShadow: "var(--page-card-shadow, 0 18px 42px rgba(0,0,0,0.06))",
-            }}
+          <Box
+            component="section"
+            aria-label={`Choose an appointment time with ${providerName}`}
+            sx={{ width: "100%", minWidth: 0 }}
           >
-            <Stack spacing={2}>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, color: "var(--page-heading-color)", textAlign: { xs: 'center', md: 'left' } }}>
-                  Availability Calendar
-                </Typography>
-                <Typography sx={{ mt: 0.75, color: "var(--tenant-shell-muted, var(--page-body-color))", textAlign: { xs: 'center', md: 'left' } }}>
-                  Select a time to continue your booking with {providerName}.
-                </Typography>
-              </Box>
-              <Divider />
-              <EmployeeAvailabilityCalendar
-                companySlug={effectiveSlug}
-                artistId={employeeId}
-                serviceId={serviceId}
-                departmentId={departmentId}
-                onSlotSelect={handleSlotSelected}
-              />
-            </Stack>
-          </Paper>
+            <EmployeeAvailabilityCalendar
+              companySlug={effectiveSlug}
+              artistId={employeeId}
+              serviceId={serviceId}
+              departmentId={departmentId}
+              onSlotSelect={handleSlotSelected}
+            />
+          </Box>
         )}
         {profile?.allow_public_booking ? (
           <Paper
