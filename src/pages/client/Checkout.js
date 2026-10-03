@@ -742,6 +742,21 @@ export function CheckoutFormCore({
     border: `1px solid ${borderColor}`,
     "& .MuiAlert-icon": { color: accentColor },
   };
+  const mobileCheckoutActionSx = {
+    position: { xs: "sticky", sm: "static" },
+    bottom: { xs: 0, sm: "auto" },
+    zIndex: 4,
+    mt: 1,
+    mx: { xs: -1, sm: 0 },
+    px: { xs: 1, sm: 0 },
+    py: { xs: 1.25, sm: 0 },
+    borderTop: { xs: `1px solid ${borderColor}`, sm: "none" },
+    backgroundColor: {
+      xs: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+      sm: "transparent",
+    },
+    boxShadow: { xs: "0 -12px 28px rgba(15,23,42,0.08)", sm: "none" },
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = useMemo(
@@ -866,6 +881,7 @@ export function CheckoutFormCore({
 
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
+  const [couponExpanded, setCouponExpanded] = useState(false);
   const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
   const [publicUpgradeMessage, setPublicUpgradeMessage] = useState("");
   const [cardOnFileConsentAccepted, setCardOnFileConsentAccepted] = useState(false);
@@ -1344,6 +1360,11 @@ export function CheckoutFormCore({
     productSubtotal +
     packageSubtotal +
     shippingRateTotal;
+  const showOrderBreakdown =
+    totalDiscount > 0 ||
+    totalTip > 0 ||
+    shippingRateTotal > 0 ||
+    Math.abs(finalTotal - totalBeforeDiscount) > 0.005;
   const hasPackageRedemptions = serviceItems.some((item) => Boolean(item.client_package_id));
   const packageOnlyTotal = hasPackageRedemptions && productItems.length === 0 && finalTotal <= 0;
   const hasPackagePurchase = packageItems.length > 0;
@@ -1363,7 +1384,9 @@ export function CheckoutFormCore({
   })();
   const bookButtonLabel = productItems.length > 0 && serviceItems.length === 0
     ? "Place order"
-    : "Book";
+    : serviceItems.length > 1
+    ? "Book appointments"
+    : "Book appointment";
 
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
 
@@ -1618,6 +1641,24 @@ export function CheckoutFormCore({
     if (!origin || !destination) return false;
     return origin !== destination;
   }, [requiresShippingAddress, deliveryMethodPolicy.originCountry, currentShippingCountry]);
+  const checkoutTotalLabel = isCrossBorderShipping && shippingRateTotal > 0
+    ? "Total charged now"
+    : !showOnlinePayment && serviceItems.length > 0
+    ? "Amount due"
+    : "Total";
+  const mobileCheckoutTotal = (
+    <Stack
+      direction="row"
+      justifyContent="space-between"
+      alignItems="center"
+      sx={{ display: { xs: "flex", sm: "none" }, mb: 1 }}
+    >
+      <Typography variant="body2" sx={{ fontWeight: 700 }}>{checkoutTotalLabel}</Typography>
+      <Typography variant="body2" sx={{ fontWeight: 800 }}>
+        {formatCurrency(finalTotal, currencyCode)}
+      </Typography>
+    </Stack>
+  );
   const currentImportChargesNotice = useMemo(
     () => shippingRates.importChargesNoticeSnapshot || deliveryMethodPolicy.importChargesNoticeSnapshot || null,
     [shippingRates.importChargesNoticeSnapshot, deliveryMethodPolicy.importChargesNoticeSnapshot]
@@ -3029,14 +3070,17 @@ export function CheckoutFormCore({
 
       {typeof holdMinutes === "number" && holdMinutes > 0 && serviceItems.length > 0 && holdState.overall !== null && (
         <Alert
-          severity={holdState.overall > 0 ? "info" : "warning"}
+          severity={holdState.overall > 60_000 ? "info" : "warning"}
           sx={{
-            mb: 2,
-            ...(holdState.overall > 0 ? infoAlertSx : {}),
+            mb: 1,
+            py: 0.25,
+            alignItems: "center",
+            "& .MuiAlert-message": { py: 0.5, fontSize: "0.875rem" },
+            ...(holdState.overall > 60_000 ? infoAlertSx : {}),
           }}
         >
           {holdState.overall > 0
-            ? `We're holding your selected times for ${formatHoldCountdown(holdState.overall)}. Complete checkout before the timer runs out or the slots will be released.`
+            ? `Selected times reserved for ${formatHoldCountdown(holdState.overall)}. Complete checkout before they're released.`
             : "The hold window has expired. If you continue, the selected times may no longer be available."}
         </Alert>
       )}
@@ -3081,25 +3125,31 @@ export function CheckoutFormCore({
                 divider
                 alignItems="flex-start"
                 secondaryAction={
-                  <IconButton color="error" onClick={() => removeItem(it.id)}>
+                  <IconButton color="error" aria-label={`Remove ${it.name} from checkout`} onClick={() => removeItem(it.id)}>
                     <DeleteIcon />
                   </IconButton>
                 }
               >
                 <ListItemText
-                  primary={it.name}
+                  primary={
+                    <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="baseline" sx={{ pr: 2 }}>
+                      <Typography sx={{ fontWeight: 700 }}>{it.name}</Typography>
+                      <Typography sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {formatCurrency(subtotal, currencyCode)}
+                      </Typography>
+                    </Stack>
+                  }
                   secondaryTypographyProps={{ component: "div" }}
                   secondary={
                     <Box>
                       <Typography variant="body2">
                         Quantity: {quantity}
                       </Typography>
-                      <Typography variant="body2">
-                        Unit price {formatCurrency(Number(it.price || 0), currencyCode)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
-                        Line total {formatCurrency(subtotal, currencyCode)}
-                      </Typography>
+                      {quantity > 1 && (
+                        <Typography variant="body2">
+                          {quantity} × {formatCurrency(Number(it.price || 0), currencyCode)} each
+                        </Typography>
+                      )}
                     </Box>
                   }
                 />
@@ -3118,13 +3168,20 @@ export function CheckoutFormCore({
                 divider
                 alignItems="flex-start"
                 secondaryAction={
-                  <IconButton color="error" onClick={() => removeItem(it.id)}>
+                  <IconButton color="error" aria-label={`Remove ${displayName} from checkout`} onClick={() => removeItem(it.id)}>
                     <DeleteIcon />
                   </IconButton>
                 }
               >
                 <ListItemText
-                  primary={displayName}
+                  primary={
+                    <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="baseline" sx={{ pr: 2 }}>
+                      <Typography sx={{ fontWeight: 700 }}>{displayName}</Typography>
+                      <Typography sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {formatCurrency(subtotal, currencyCode)}
+                      </Typography>
+                    </Stack>
+                  }
                   secondaryTypographyProps={{ component: "div" }}
                   secondary={
                     <Box>
@@ -3159,9 +3216,6 @@ export function CheckoutFormCore({
                           <AddIcon fontSize="small" />
                         </IconButton>
                       </Stack>
-                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
-                        Line total {formatCurrency(subtotal, currencyCode)}
-                      </Typography>
                       {Number.isFinite(expiresIn) && expiresIn > 0 ? (
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                           Expires in {expiresIn} days
@@ -3186,6 +3240,10 @@ export function CheckoutFormCore({
           const discount = lineDiscount(it);
           const tip = tipAllowedNow ? Number(it.tip_amount || 0) : 0;
           const lineTotal = Math.max(0, subtotal - discount) + tip;
+          const addons = getAddons(it);
+          const basePrice = it.client_package_id ? 0 : Number(it.price || 0);
+          const hasLineAdjustments =
+            addons.length > 0 || discount > 0 || tip > 0 || Boolean(it.client_package_id);
 
           return (
             <ListItem
@@ -3193,33 +3251,86 @@ export function CheckoutFormCore({
               divider
               alignItems="flex-start"
               secondaryAction={
-                <IconButton color="error" onClick={() => removeItem(it.id)}>
+                <IconButton color="error" aria-label={`Remove ${it.service_name} from checkout`} onClick={() => removeItem(it.id)}>
                   <DeleteIcon />
                 </IconButton>
               }
-            >
+              >
               <ListItemText
-                primary={`${it.service_name}   ${it.artist_name}`}
+                primary={
+                  <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="baseline" sx={{ pr: 2 }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700 }}>{it.service_name}</Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.78 }}>
+                        With {it.artist_name}
+                      </Typography>
+                    </Box>
+                    {!hasLineAdjustments && (
+                      <Typography
+                        data-testid={`checkout-item-price-${it.id}`}
+                        sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+                      >
+                        {formatCurrency(lineTotal, currencyCode)}
+                      </Typography>
+                    )}
+                  </Stack>
+                }
                 secondaryTypographyProps={{ component: "div" }}
                 secondary={
                   <Box>
                     <Typography variant="body2">
-                      {it.date}&nbsp; &nbsp;{it.start_time}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      Subtotal&nbsp;${subtotal.toFixed(2)}
+                      {it.date}&nbsp; at&nbsp; {it.start_time}
                     </Typography>
 
-                    {getAddons(it).map((ad) => (
-                      <Typography key={ad.id} variant="body2" sx={{ pl: 2 }}>
-                        - {ad.name}&nbsp;
-                        <Chip
-                          size="small"
-                          label={`$${Number(ad.base_price).toFixed(2)}`}
-                          sx={{ ml: 0.5 }}
-                        />
-                      </Typography>
-                    ))}
+                    {hasLineAdjustments && (
+                      <Stack
+                        spacing={0.65}
+                        sx={{
+                          mt: 1.25,
+                          pt: 1.25,
+                          borderTop: `1px solid ${borderColor}`,
+                          maxWidth: 520,
+                        }}
+                      >
+                        {!it.client_package_id && (
+                          <Stack direction="row" justifyContent="space-between" spacing={2}>
+                            <Typography variant="body2">Service price</Typography>
+                            <Typography variant="body2">{formatCurrency(basePrice, currencyCode)}</Typography>
+                          </Stack>
+                        )}
+                        {addons.map((ad) => (
+                          <Stack key={ad.id} direction="row" justifyContent="space-between" spacing={2}>
+                            <Typography variant="body2">{ad.name}</Typography>
+                            <Typography variant="body2">
+                              +{formatCurrency(Number(ad.base_price || 0), currencyCode)}
+                            </Typography>
+                          </Stack>
+                        ))}
+                        {!!discount && (
+                          <Stack direction="row" justifyContent="space-between" spacing={2}>
+                            <Typography variant="body2">Discount</Typography>
+                            <Typography variant="body2">−{formatCurrency(discount, currencyCode)}</Typography>
+                          </Stack>
+                        )}
+                        {tipAllowedNow && !!tip && (
+                          <Stack direction="row" justifyContent="space-between" spacing={2}>
+                            <Typography variant="body2">Tip</Typography>
+                            <Typography variant="body2">+{formatCurrency(tip, currencyCode)}</Typography>
+                          </Stack>
+                        )}
+                        <Divider />
+                        <Stack direction="row" justifyContent="space-between" spacing={2}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>Item total</Typography>
+                          <Typography
+                            data-testid={`checkout-item-total-${it.id}`}
+                            variant="body2"
+                            sx={{ fontWeight: 700 }}
+                          >
+                            {formatCurrency(lineTotal, currencyCode)}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    )}
 
                     {it.couponApplied && it.coupon && (
                       <Chip
@@ -3361,20 +3472,6 @@ export function CheckoutFormCore({
                         </>
                       )}
 
-                      {!!discount && (
-                        <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>
-                          Discount&nbsp;-${discount.toFixed(2)}
-                        </Typography>
-                      )}
-                      {tipAllowedNow && !!tip && (
-                        <Typography variant="caption" sx={{ display: "block" }}>
-                          Tip&nbsp;+${tip.toFixed(2)}
-                        </Typography>
-                      )}
-
-                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
-                        Line total&nbsp;{formatCurrency(lineTotal, currencyCode)}
-                      </Typography>
                     </Box>
                   </Box>
                 }
@@ -3384,55 +3481,62 @@ export function CheckoutFormCore({
         })}
 
         <Divider />
-        <ListItem>
-          <Typography variant="h6">
-            Subtotal: {formatCurrency(totalBeforeDiscount, currencyCode)}
-          </Typography>
-        </ListItem>
-
-        {/* Coupon input */}
-        <ListItem
-          sx={{
-            flexDirection: { xs: "column", sm: "row" },
-            alignItems: { xs: "stretch", sm: "center" },
-            gap: { xs: 1, sm: 2 },
-          }}
-        >
-          <TextField
-            label="Coupon code"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
+        <ListItem sx={{ display: "block", py: 1 }}>
+          <Button
+            variant="text"
             size="small"
-            fullWidth
-            error={!!couponError}
-            helperText={couponError}
-          />
-      <Button
-        variant="outlined"
-        onClick={applyCoupon}
-        disabled={loading || !couponCode.trim()}
-        sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
-      >
-        Apply
-      </Button>
+            onClick={() => setCouponExpanded((value) => !value)}
+            aria-expanded={couponExpanded || Boolean(couponError)}
+            sx={{ ...textButtonSx, px: 0 }}
+          >
+            {couponExpanded || couponError ? "Hide coupon code" : "Have a coupon code?"}
+          </Button>
+          {(couponExpanded || couponError) && (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
+              <TextField
+                label="Coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                size="small"
+                fullWidth
+                error={!!couponError}
+                helperText={couponError}
+              />
+              <Button
+                variant="outlined"
+                onClick={applyCoupon}
+                disabled={loading || !couponCode.trim()}
+                sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
+              >
+                Apply
+              </Button>
+            </Stack>
+          )}
         </ListItem>
 
         <Divider />
+        {showOrderBreakdown && (
+          <ListItem sx={{ justifyContent: "space-between", gap: 2 }}>
+            <Typography>Subtotal</Typography>
+            <Typography>{formatCurrency(totalBeforeDiscount, currencyCode)}</Typography>
+          </ListItem>
+        )}
         {totalDiscount > 0 && (
-          <ListItem>
-            <Typography variant="h6">
-              Discount: -${totalDiscount.toFixed(2)}
-            </Typography>
+          <ListItem sx={{ justifyContent: "space-between", gap: 2 }}>
+            <Typography>Discount</Typography>
+            <Typography>−{formatCurrency(totalDiscount, currencyCode)}</Typography>
           </ListItem>
         )}
         {totalTip > 0 && (
-          <ListItem>
-            <Typography variant="h6">Tip: +{formatCurrency(totalTip, currencyCode)}</Typography>
+          <ListItem sx={{ justifyContent: "space-between", gap: 2 }}>
+            <Typography>Tip</Typography>
+            <Typography>+{formatCurrency(totalTip, currencyCode)}</Typography>
           </ListItem>
         )}
         {shippingRateTotal > 0 && (
-          <ListItem>
-            <Typography variant="h6">Shipping: {formatCurrency(shippingRateTotal, currencyCode)}</Typography>
+          <ListItem sx={{ justifyContent: "space-between", gap: 2 }}>
+            <Typography>Shipping</Typography>
+            <Typography>+{formatCurrency(shippingRateTotal, currencyCode)}</Typography>
           </ListItem>
         )}
         {isCrossBorderShipping && shippingRateTotal > 0 && (
@@ -3447,9 +3551,12 @@ export function CheckoutFormCore({
             </Typography>
           </ListItem>
         )}
-      <ListItem>
-          <Typography variant="h6">
-            {isCrossBorderShipping && shippingRateTotal > 0 ? "Total charged now" : "Total"}: {formatCurrency(finalTotal, currencyCode)}
+        <ListItem sx={{ justifyContent: "space-between", gap: 2, py: 1.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            {checkoutTotalLabel}
+          </Typography>
+          <Typography data-testid="checkout-order-total" variant="h6" sx={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+            {formatCurrency(finalTotal, currencyCode)}
           </Typography>
         </ListItem>
       </List>
@@ -3836,7 +3943,9 @@ export function CheckoutFormCore({
         <Alert severity="info" sx={{ mb: 1.5, ...infoAlertSx }}>
           {hasPackagePurchase
             ? "Online payments are disabled for this company. Package purchases require online payment."
-            : <>Online payments are currently disabled for this company. Your booking will be created as <strong>unpaid</strong>.</>}
+            : finalTotal > 0
+            ? <>No payment is required online. Your booking will be created with an outstanding balance of <strong>{formatCurrency(finalTotal, currencyCode)}</strong>.</>
+            : <>No online payment is required. Your booking can be confirmed now.</>}
         </Alert>
       )}
 
@@ -3888,53 +3997,62 @@ export function CheckoutFormCore({
 
           {/* If Stripe on ? show Pay & Book, and if allowed ? Save Card & Book */}
           {packageOnlyTotal ? (
-            <Button
-              fullWidth
-              variant="contained"
-              disabled={loading}
-              onClick={bookWithoutPayment}
-              sx={primaryButtonSx}
-            >
-              {loading ? <CircularProgress size={24} /> : "Confirm booking"}
-            </Button>
+            <Box sx={mobileCheckoutActionSx}>
+              {mobileCheckoutTotal}
+              <Button
+                fullWidth
+                variant="contained"
+                disabled={loading}
+                onClick={bookWithoutPayment}
+                sx={primaryButtonSx}
+              >
+                {loading ? <CircularProgress size={24} /> : "Confirm booking"}
+              </Button>
+            </Box>
           ) : showOnlinePayment ? (
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1 }}>
-              {(showPayOption || hasPackagePurchase) && (
-                <Button
-                  fullWidth
-                  variant="contained"
-                  disabled={loading || (!showPayOption && hasPackagePurchase) || !deliveryOk}
-                  onClick={payAndBook}
-                  sx={primaryButtonSx}
-                >
-                  {loading ? <CircularProgress size={24} /> : payButtonLabel}
-                </Button>
-              )}
-              {showCaptureOption &&
-                serviceItems.length > 0 &&
-                productItems.length === 0 &&
-                packageItems.length === 0 && (
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  disabled={loading}
-                  onClick={saveCardAndBook}
-                  sx={outlineButtonSx}
-                >
-                  {loading ? <CircularProgress size={24} /> : "Save Card & Book"}
-                </Button>
-              )}
-            </Stack>
+            <Box sx={mobileCheckoutActionSx}>
+              {mobileCheckoutTotal}
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1 }}>
+                {(showPayOption || hasPackagePurchase) && (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    disabled={loading || (!showPayOption && hasPackagePurchase) || !deliveryOk}
+                    onClick={payAndBook}
+                    sx={primaryButtonSx}
+                  >
+                    {loading ? <CircularProgress size={24} /> : payButtonLabel}
+                  </Button>
+                )}
+                {showCaptureOption &&
+                  serviceItems.length > 0 &&
+                  productItems.length === 0 &&
+                  packageItems.length === 0 && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      disabled={loading}
+                      onClick={saveCardAndBook}
+                      sx={outlineButtonSx}
+                    >
+                      {loading ? <CircularProgress size={24} /> : "Save Card & Book"}
+                    </Button>
+                  )}
+              </Stack>
+            </Box>
           ) : (
-            <Button
-              fullWidth
-              variant="contained"
-              disabled={loading || !deliveryOk}
-              onClick={bookWithoutPayment}
-              sx={primaryButtonSx}
-            >
-              {loading ? <CircularProgress size={24} /> : bookButtonLabel}
-            </Button>
+            <Box sx={mobileCheckoutActionSx}>
+              {mobileCheckoutTotal}
+              <Button
+                fullWidth
+                variant="contained"
+                disabled={loading || !deliveryOk}
+                onClick={bookWithoutPayment}
+                sx={primaryButtonSx}
+              >
+                {loading ? <CircularProgress size={24} /> : bookButtonLabel}
+              </Button>
+            </Box>
           )}
         </>
       ) : (
@@ -3981,8 +4099,10 @@ export function CheckoutFormCore({
             </Stack>
 
             {/* Guest buttons mirror the client section */}
-            {showOnlinePayment ? (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Box sx={mobileCheckoutActionSx}>
+              {mobileCheckoutTotal}
+              {showOnlinePayment ? (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 {(showPayOption || hasPackagePurchase) && (
                   <Button
                     fullWidth
@@ -4010,19 +4130,20 @@ export function CheckoutFormCore({
                     {loading ? <CircularProgress size={24} /> : "Save Card & Book"}
                   </Button>
                 )}
-              </Stack>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                type="button"
-                disabled={loading || !guestOk || !deliveryOk}
-                onClick={bookWithoutPayment}
-                sx={primaryButtonSx}
-              >
-                {loading ? <CircularProgress size={24} /> : bookButtonLabel}
-              </Button>
-            )}
+                </Stack>
+              ) : (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  type="button"
+                  disabled={loading || !guestOk || !deliveryOk}
+                  onClick={bookWithoutPayment}
+                  sx={primaryButtonSx}
+                >
+                  {loading ? <CircularProgress size={24} /> : bookButtonLabel}
+                </Button>
+              )}
+            </Box>
             {hasPackagePurchase && !showPayOption && (
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 Package purchases require online payment. Enable checkout to sell packages.
@@ -4033,10 +4154,15 @@ export function CheckoutFormCore({
       )}
 
       {/* Footer actions */}
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mt={2}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1}
+        mt={2}
+        justifyContent="center"
+        alignItems={{ xs: "stretch", sm: "center" }}
+      >
         {productOnlyCheckout && (
           <Button
-            fullWidth
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={() => {
@@ -4056,14 +4182,13 @@ export function CheckoutFormCore({
               const path = isCustomDomain ? "/products" : `/${target}`;
               navigate({ pathname: path, search: isCustomDomain ? "" : `?${params.toString()}` });
             }}
-            sx={outlineButtonSx}
+            sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
           >
             Add Another Product
           </Button>
         )}
         {serviceOnlyCheckout && (
           <Button
-            fullWidth
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={() => {
@@ -4078,23 +4203,26 @@ export function CheckoutFormCore({
               }
               navigate(servicesBrowsePath);
             }}
-            sx={outlineButtonSx}
+            sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
           >
             Add Another Service
           </Button>
         )}
         {serviceOnlyCheckout && (
           <Button
-            fullWidth
-            variant="outlined"
+            variant="text"
             startIcon={<AddIcon />}
             onClick={openAddons}
-            sx={outlineButtonSx}
+            sx={{ ...textButtonSx, width: { xs: "100%", sm: "auto" } }}
           >
             Add-on(s)
           </Button>
         )}
-        <Button fullWidth variant="text" onClick={onBack} sx={textButtonSx}>
+        <Button
+          variant="text"
+          onClick={onBack}
+          sx={{ ...textButtonSx, width: { xs: "100%", sm: "auto" } }}
+        >
           Back
         </Button>
       </Stack>

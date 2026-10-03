@@ -177,6 +177,78 @@ describe("CheckoutFormCore", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  test("uses a compact summary when a service has no price adjustments", async () => {
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+        holdMinutes={null}
+      />
+    );
+
+    expect(await screen.findByText(/studio rental/i)).toBeInTheDocument();
+    expect(screen.getByTestId("checkout-item-price-107-2026-07-30-10:00")).toHaveTextContent("320.00");
+    expect(screen.getByTestId("checkout-order-total")).toHaveTextContent("320.00");
+    expect(screen.queryByText("Subtotal", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("Item total", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/coupon code/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Amount due", { exact: true }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /book appointment/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /have a coupon code/i }));
+    expect(screen.getByLabelText(/coupon code/i)).toBeInTheDocument();
+  });
+
+  test("shows the full existing calculation breakdown only when adjustments change a service", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "107-adjusted",
+        type: "service",
+        service_id: 107,
+        service_name: "Studio rental",
+        price: 320,
+        allow_packages: false,
+        artist_name: "Vanda Orchid",
+        artist_id: 16,
+        date: "2026-07-30",
+        start_time: "10:00",
+        end_time: "16:00",
+        addon_ids: [9],
+        addons: [{ id: 9, name: "Extended cleanup", base_price: 20 }],
+        couponApplied: true,
+        coupon: { code: "SAVE10", discount_percent: 10 },
+        tip_mode: "amount",
+        tip_value: 0,
+        tip_amount: 5,
+        quantity: 1,
+        hold_started_at: new Date().toISOString(),
+      },
+    ]);
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled
+        tipEnabled
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "pay" }}
+        holdMinutes={null}
+      />
+    );
+
+    expect(await screen.findByText("Service price", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("Extended cleanup", { exact: true })).toBeInTheDocument();
+    expect(screen.getByTestId("checkout-item-total-107-adjusted")).toHaveTextContent("311.00");
+    expect(screen.getByText("Subtotal", { exact: true })).toBeInTheDocument();
+    expect(screen.getByTestId("checkout-order-total")).toHaveTextContent("311.00");
+    expect(screen.getByText("Coupon: SAVE10", { exact: true })).toBeInTheDocument();
+  });
+
   test("client sign up uses the compact account form without leaving checkout", async () => {
     render(
       <CheckoutFormCore
@@ -353,7 +425,9 @@ describe("CheckoutFormCore", () => {
       expect.stringContaining("/shipping/rates"),
       expect.any(Object)
     ));
-    await screen.findByText(/Shipping:\s*CA\$12\.50/i);
+    const shippingSummary = (await screen.findAllByText("Shipping", { exact: true }))
+      .find((element) => element.tagName === "P");
+    expect(shippingSummary.parentElement).toHaveTextContent("CA$12.50");
 
     const payButton = await screen.findByRole("button", { name: /pay/i });
     fireEvent.click(payButton);
@@ -899,6 +973,8 @@ describe("CheckoutFormCore", () => {
         expect.any(Object)
       )
     );
-    expect(await screen.findByText(/Shipping:\s*CA\$24\.00/i)).toBeInTheDocument();
+    const shippingSummary = (await screen.findAllByText("Shipping", { exact: true }))
+      .find((element) => element.tagName === "P");
+    expect(shippingSummary.parentElement).toHaveTextContent("CA$24.00");
   });
 });

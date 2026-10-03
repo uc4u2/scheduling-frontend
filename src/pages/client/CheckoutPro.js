@@ -190,6 +190,7 @@ function CheckoutShell({
   const [addonOptions, setAddonOptions] = useState([]); // fetched options for the service
   const [couponInput, setCouponInput] = useState("");
   const [couponMsg, setCouponMsg] = useState("");
+  const [couponExpanded, setCouponExpanded] = useState(false);
 
   // hydrate client
   useEffect(() => {
@@ -656,10 +657,16 @@ function CheckoutShell({
                       }
                     />
                     <Stack alignItems="flex-end" minWidth={160}>
-                      <Typography variant="body2">{currencyFmt(line)}</Typography>
-                      {!!disc && <Typography variant="caption">−{currencyFmt(disc)}</Typography>}
-                      {!!tipLine && <Typography variant="caption">+{currencyFmt(tipLine)} tip</Typography>}
-                      <Typography variant="subtitle2">{currencyFmt(lineTotal)}</Typography>
+                      {disc || tipLine ? (
+                        <>
+                          <Typography variant="body2">{currencyFmt(line)}</Typography>
+                          {!!disc && <Typography variant="caption">−{currencyFmt(disc)} discount</Typography>}
+                          {!!tipLine && <Typography variant="caption">+{currencyFmt(tipLine)} tip</Typography>}
+                          <Typography variant="subtitle2">Item total {currencyFmt(lineTotal)}</Typography>
+                        </>
+                      ) : (
+                        <Typography variant="subtitle2">{currencyFmt(lineTotal)}</Typography>
+                      )}
                     </Stack>
                   </Stack>
 
@@ -681,30 +688,62 @@ function CheckoutShell({
           </List>
 
           {/* Coupon row */}
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
-            <TextField
-              label="Coupon code"
-              value={couponInput}
-              onChange={(e) => setCouponInput(e.target.value)}
-              sx={{ maxWidth: 260 }}
-            />
-            <Button variant="outlined" onClick={applyCouponAll} sx={outlineButtonSx}>
-              Apply to all lines
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="text"
+              size="small"
+              onClick={() => setCouponExpanded((value) => !value)}
+              aria-expanded={couponExpanded || Boolean(couponMsg)}
+              sx={{ ...textButtonSx, px: 0 }}
+            >
+              {couponExpanded || couponMsg ? "Hide coupon code" : "Have a coupon code?"}
             </Button>
-            <Button variant="text" onClick={clearCouponAll} sx={textButtonSx}>
-              Clear coupon
-            </Button>
-            {couponMsg && <Typography variant="body2" sx={{ alignSelf: "center" }}>{couponMsg}</Typography>}
-          </Stack>
+            {(couponExpanded || couponMsg) && (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
+                <TextField
+                  label="Coupon code"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  sx={{ maxWidth: 260 }}
+                />
+                <Button variant="outlined" onClick={applyCouponAll} sx={outlineButtonSx}>
+                  Apply to all lines
+                </Button>
+                <Button variant="text" onClick={clearCouponAll} sx={textButtonSx}>
+                  Clear coupon
+                </Button>
+                {couponMsg && <Typography variant="body2" sx={{ alignSelf: "center" }}>{couponMsg}</Typography>}
+              </Stack>
+            )}
+          </Box>
 
           <Divider sx={{ my: 2 }} />
 
           {/* Totals (client calc shown; charge will use server quote) */}
-          <Stack direction="row" spacing={2} justifyContent="flex-end" flexWrap="wrap">
-            <Typography>Subtotal: <b>{currencyFmt(subtotal)}</b></Typography>
-            <Typography>Discount: <b>−{currencyFmt(discount)}</b></Typography>
-            <Typography>Tip: <b>+{currencyFmt(tip)}</b></Typography>
-            <Typography>Total: <b>{currencyFmt(grandTotalCents / 100)}</b></Typography>
+          <Stack spacing={0.75} sx={{ ml: "auto", maxWidth: 360 }}>
+            {(discount > 0 || tip > 0) && (
+              <Stack direction="row" justifyContent="space-between" spacing={3}>
+                <Typography>Subtotal</Typography>
+                <Typography>{currencyFmt(subtotal)}</Typography>
+              </Stack>
+            )}
+            {discount > 0 && (
+              <Stack direction="row" justifyContent="space-between" spacing={3}>
+                <Typography>Discount</Typography>
+                <Typography>−{currencyFmt(discount)}</Typography>
+              </Stack>
+            )}
+            {tip > 0 && (
+              <Stack direction="row" justifyContent="space-between" spacing={3}>
+                <Typography>Tip</Typography>
+                <Typography>+{currencyFmt(tip)}</Typography>
+              </Stack>
+            )}
+            <Divider />
+            <Stack direction="row" justifyContent="space-between" spacing={3}>
+              <Typography sx={{ fontWeight: 700 }}>Total</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{currencyFmt(grandTotalCents / 100)}</Typography>
+            </Stack>
           </Stack>
 
           {mixedCart && (
