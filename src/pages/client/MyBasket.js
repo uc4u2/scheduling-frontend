@@ -25,6 +25,7 @@ import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import CloseIcon from "@mui/icons-material/Close";
 import SiteFrame from "../../components/website/SiteFrame";
 import Checkout from "./Checkout";
+import ProductBasketImage from "./ProductBasketImage";
 import TenantTransactionalShell from "./TenantTransactionalShell";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
@@ -720,16 +721,31 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                 {items.map((item) => (
                   <Card key={item.id} variant="outlined" sx={{ borderRadius: 3 }}>
                     <CardContent sx={{ p: { xs: 2, md: 2.5 }, "&:last-child": { pb: { xs: 2, md: 2.5 } } }}>
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }}>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }}>
+                        {item.type === CartTypes.PRODUCT ? <ProductBasketImage item={item} /> : null}
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="h6" fontWeight={700}>
                             {item.name}
                           </Typography>
                           {item.type === CartTypes.PRODUCT ? (
                             <Stack spacing={0.75}>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{
+                                  display: "-webkit-box",
+                                  WebkitBoxOrient: "vertical",
+                                  WebkitLineClamp: 3,
+                                  overflow: "hidden",
+                                }}
+                              >
                                 {item.description || ""}
                               </Typography>
+                              {item.display?.variant_label ? (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                  {item.display.variant_label}
+                                </Typography>
+                              ) : null}
                               {productDeliveryStatus[Number(item.product_id)]?.blocked ? (
                                 <Typography variant="body2" color="error">
                                   {productDeliveryStatus[Number(item.product_id)]?.message}
@@ -756,7 +772,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                           )}
                         </Box>
 
-                        <Stack spacing={1} alignItems={{ xs: "stretch", sm: "flex-end" }}>
+                        <Stack spacing={1} alignItems={{ xs: "stretch", sm: "flex-end" }} sx={{ width: { xs: "100%", sm: 112 }, flexShrink: 0 }}>
                           <Typography variant="subtitle1" fontWeight={700}>
                             {money(lineSubtotal(item))}
                           </Typography>

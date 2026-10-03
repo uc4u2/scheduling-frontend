@@ -1,4 +1,5 @@
 const CART_KEY = "booking_cart";
+export const CART_CHANGED_EVENT = "schedulaa:basket-changed";
 
 export const CartTypes = {
   SERVICE: "service",
@@ -49,6 +50,7 @@ export function loadCart() {
 export function saveCart(items) {
   try {
     sessionStorage.setItem(CART_KEY, JSON.stringify(items));
+    announceCartChange(items);
   } catch (err) {
     console.warn("cart: failed to persist", err);
   }
@@ -57,8 +59,31 @@ export function saveCart(items) {
 export function clearCart() {
   try {
     sessionStorage.removeItem(CART_KEY);
+    announceCartChange([]);
   } catch (err) {
     console.warn("cart: failed to clear", err);
+  }
+}
+
+function announceCartChange(items) {
+  const count = (Array.isArray(items) ? items : []).reduce(
+    (total, item) => total + Math.max(1, Number(item?.quantity) || 1),
+    0
+  );
+  const detail = { count };
+
+  try {
+    window.dispatchEvent(new CustomEvent(CART_CHANGED_EVENT, { detail }));
+  } catch {
+    // The cart remains usable in older or constrained browser contexts.
+  }
+
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: CART_CHANGED_EVENT, ...detail }, "*");
+    }
+  } catch {
+    // Parent notification is progressive enhancement for the tenant header.
   }
 }
 
