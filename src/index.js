@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import AppBootstrap from "./AppBootstrap";
 import "./index.css";
 import "./i18n";
 import "./utils/resizeObserverErrorGuard";
@@ -34,7 +34,7 @@ root.render(
   <React.StrictMode>
     <ThemeProvider theme={activeTheme}>
       <CssBaseline />
-      <App />
+      <AppBootstrap />
     </ThemeProvider>
   </React.StrictMode>
 );
