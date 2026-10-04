@@ -4589,7 +4589,13 @@ export default function Checkout(props) {
       {...props}
       companySlug={companySlug}
       slugOverride={slugOverride}
-      businessName={sitePayload?.name || sitePayload?.site_title || undefined}
+      businessName={
+        sitePayload?.company_name ||
+        sitePayload?.company?.name ||
+        sitePayload?.name ||
+        sitePayload?.site_title ||
+        undefined
+      }
       paymentsEnabled={paymentsEnabled}
       tipEnabled={tipEnabled}
       cardOnFileEnabled={cardOnFileEnabled}
