@@ -6,6 +6,7 @@ import { TOP_TIMEZONES, ALL_TIMEZONES } from "../constants/timezones";
 import { detectBrowserTimezone, formatTimezoneLabel, normalizeTimezoneValue } from "../utils/timezone";
 
 const TimezoneSelect = ({
+  inputId,
   label = "Timezone",
   value,
   onChange,
@@ -32,6 +33,7 @@ const TimezoneSelect = ({
   return (
     <Stack spacing={1}>
       <Autocomplete
+        id={inputId}
         freeSolo
         options={options}
         value={normalizeTimezoneValue(value || "")}

@@ -28,7 +28,7 @@ describe("PublicClientAuth", () => {
     jest.clearAllMocks();
   });
 
-  it("keeps autofilled login values clear of their field labels", () => {
+  it("keeps autofilled values separate from accessible field labels", () => {
     render(<PublicClientAuth slug="web-design" />);
 
     const email = screen.getByLabelText(/^Email/);
@@ -38,8 +38,10 @@ describe("PublicClientAuth", () => {
 
     expect(email).toHaveAttribute("autocomplete", "email");
     expect(password).toHaveAttribute("autocomplete", "current-password");
-    expect(emailLabel).toHaveClass("MuiInputLabel-shrink");
-    expect(passwordLabel).toHaveClass("MuiInputLabel-shrink");
+    expect(emailLabel).toHaveAttribute("for", email.id);
+    expect(passwordLabel).toHaveAttribute("for", password.id);
+    expect(emailLabel).not.toHaveClass("MuiInputLabel-root");
+    expect(passwordLabel).not.toHaveClass("MuiInputLabel-root");
   });
 
   it("presents a clear sign-in experience with accessible password visibility", () => {

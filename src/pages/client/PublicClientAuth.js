@@ -67,7 +67,38 @@ const authFieldSx = {
     minHeight: 54,
     borderRadius: 2,
   },
+  "& input:-webkit-autofill": {
+    WebkitBoxShadow: "0 0 0 1000px var(--page-card-bg, var(--tenant-shell-card, #fff)) inset",
+    WebkitTextFillColor: "var(--page-body-color, currentColor)",
+    caretColor: "var(--page-body-color, currentColor)",
+    transition: "background-color 9999s ease-out 0s",
+  },
 };
+
+const AuthFieldLabel = ({ htmlFor, children, required = false }) => (
+  <Typography
+    component="label"
+    htmlFor={htmlFor}
+    variant="body2"
+    sx={{ px: 0.25, color: "text.primary", fontWeight: 700, lineHeight: 1.25 }}
+  >
+    {children}
+    {required ? <Box component="span" sx={{ ml: 0.35, color: "primary.main" }} aria-hidden="true">*</Box> : null}
+  </Typography>
+);
+
+const AuthField = ({ id, label, required = false, containerSx, ...textFieldProps }) => (
+  <Stack spacing={0.75} sx={containerSx}>
+    <AuthFieldLabel htmlFor={id} required={required}>{label}</AuthFieldLabel>
+    <TextField
+      {...textFieldProps}
+      id={id}
+      required={required}
+      fullWidth
+      sx={authFieldSx}
+    />
+  </Stack>
+);
 
 const accountBenefits = [
   "Review upcoming and past bookings",
@@ -390,15 +421,16 @@ export default function PublicClientAuth({ slug }) {
             <Stack spacing={2}>
               {tab === "register" && (
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                  <TextField required label="First name" name="given-name" autoComplete="given-name" value={first} onChange={(event) => setFirst(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
-                  <TextField required label="Last name" name="family-name" autoComplete="family-name" value={last} onChange={(event) => setLast(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+                  <AuthField id="client-first-name" label="First name" required name="given-name" autoComplete="given-name" value={first} onChange={(event) => setFirst(event.target.value)} containerSx={{ flex: 1 }} />
+                  <AuthField id="client-last-name" label="Last name" required name="family-name" autoComplete="family-name" value={last} onChange={(event) => setLast(event.target.value)} containerSx={{ flex: 1 }} />
                 </Stack>
               )}
-              <TextField required label="Email" name="email" autoComplete="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+              <AuthField id="client-email" label="Email" required name="email" autoComplete="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
               {tab === "register" && (
-                <TextField required label="Phone" name="phone" autoComplete="tel" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+                <AuthField id="client-phone" label="Phone" required name="phone" autoComplete="tel" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} />
               )}
-              <TextField
+              <AuthField
+                id="client-password"
                 required
                 label="Password"
                 name="password"
@@ -406,20 +438,18 @@ export default function PublicClientAuth({ slug }) {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                InputLabelProps={{ shrink: true }}
                 InputProps={{ endAdornment: passwordAdornment(showPassword, () => setShowPassword((value) => !value), "password") }}
-                sx={authFieldSx}
-                fullWidth
               />
               {tab === "login" && (
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "-4px !important" }}>
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "4px !important" }}>
                   <Link component="button" type="button" variant="body2" onClick={() => { setForgotEmail(email); setForgotOpen(true); }} sx={{ fontWeight: 650 }}>
                     Forgot password?
                   </Link>
                 </Box>
               )}
               {tab === "register" && (
-                <TextField
+                <AuthField
+                  id="client-password-confirmation"
                   required
                   label="Confirm password"
                   name="password-confirmation"
@@ -427,15 +457,17 @@ export default function PublicClientAuth({ slug }) {
                   type={showPasswordConfirm ? "text" : "password"}
                   value={passwordConfirm}
                   onChange={(event) => setPasswordConfirm(event.target.value)}
-                  InputLabelProps={{ shrink: true }}
                   InputProps={{ endAdornment: passwordAdornment(showPasswordConfirm, () => setShowPasswordConfirm((value) => !value), "confirmed password") }}
-                  sx={authFieldSx}
-                  fullWidth
                 />
               )}
 
               {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((previous) => !previous))}
-              {showTimezoneSelect ? <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} /> : null}
+              {showTimezoneSelect ? (
+                <Stack spacing={0.75}>
+                  <AuthFieldLabel htmlFor="client-timezone">Timezone</AuthFieldLabel>
+                  <TimezoneSelect inputId="client-timezone" label="" value={timezone} onChange={setTimezone} textFieldSx={authFieldSx} />
+                </Stack>
+              ) : null}
 
               {tab === "register" && (
                 <FormControlLabel
@@ -479,17 +511,15 @@ export default function PublicClientAuth({ slug }) {
           </Typography>
           {forgotError && <Alert severity="error" sx={{ mb: 2 }}>{forgotError}</Alert>}
           {forgotMessage && <Alert severity="success" sx={{ mb: 2 }}>{forgotMessage}</Alert>}
-          <TextField
+          <AuthField
+            id="client-reset-email"
             label="Email"
             name="reset-email"
             autoComplete="email"
             type="email"
-            fullWidth
-            margin="normal"
             value={forgotEmail}
             onChange={(e) => setForgotEmail(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={authFieldSx}
+            containerSx={{ mt: 2 }}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
