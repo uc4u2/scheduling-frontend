@@ -14,6 +14,7 @@ import {
   Box,
   Typography,
   Alert,
+  AlertTitle,
   TextField,
   MenuItem,
   Divider,
@@ -2827,6 +2828,24 @@ export function CheckoutFormCore({
     syncClientFromToken(token);
   };
 
+  const handleContinueProductShopping = () => {
+    onRequestAddService?.();
+    if (
+      productsReturnTo &&
+      typeof window !== "undefined" &&
+      window.parent !== window &&
+      requestTransactionalNavigation(window.parent, productsReturnTo)
+    ) {
+      return;
+    }
+    const target = slugLocal || companySlug;
+    if (!target) return;
+    const params = new URLSearchParams();
+    params.set("page", "products");
+    const path = isCustomDomain ? "/products" : `/${target}`;
+    navigate({ pathname: path, search: isCustomDomain ? "" : `?${params.toString()}` });
+  };
+
   if (done) {
     const { customer, serviceResults = [], productOrder } = done;
     const productItems = Array.isArray(productOrder?.items) ? productOrder.items : [];
@@ -3032,6 +3051,51 @@ export function CheckoutFormCore({
               >
                 Back to home
               </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      </Box>
+    );
+  }
+
+  if (productItems.length > 0 && !productCheckoutEnabled) {
+    return (
+      <Box
+        sx={{
+          px: { xs: 1, sm: 2, md: 2.5 },
+          py: { xs: 1.5, md: 2 },
+          maxWidth: 720,
+          mx: "auto",
+        }}
+      >
+        <Paper
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            borderRadius: 3,
+            border: `1px solid ${borderColor}`,
+            backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+            color: checkoutTextColor,
+            boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.12))",
+          }}
+        >
+          <Stack spacing={2}>
+            <Alert severity="info" sx={infoAlertSx}>
+              <AlertTitle>Online product checkout is currently unavailable</AlertTitle>
+              This store is not accepting online product orders right now.
+            </Alert>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button
+                variant="contained"
+                onClick={handleContinueProductShopping}
+                sx={{ ...primaryButtonSx, width: { xs: "100%", sm: "auto" } }}
+              >
+                Continue shopping
+              </Button>
+              {onBack ? (
+                <Button variant="text" onClick={onBack} sx={textButtonSx}>
+                  Back
+                </Button>
+              ) : null}
             </Stack>
           </Stack>
         </Paper>
@@ -3933,19 +3997,36 @@ export function CheckoutFormCore({
         </Alert>
       ) : effectivePaymentMode !== "off" ? (
         <Alert severity="info" sx={{ mb: 1.5, ...infoAlertSx }}>
-          {hasPackagePurchase && !paymentsEnabled
-            ? "Online payments are disabled for this company. Package purchases require online payment."
-            : effectivePaymentMode === "capture"
-              ? "We'll save your card securely with Stripe. You'll be charged later by the manager."
-              : "You'll enter your payment details on Stripe's secure checkout page."}
+          {productItems.length > 0 ? (
+            <>
+              <AlertTitle>Secure online payment</AlertTitle>
+              Product orders must be paid online. You&apos;ll continue to Stripe to complete your purchase.
+            </>
+          ) : hasPackagePurchase ? (
+            <>
+              <AlertTitle>Secure online payment</AlertTitle>
+              You&apos;ll continue to Stripe to complete your purchase.
+            </>
+          ) : effectivePaymentMode === "capture" ? (
+            <>
+              <AlertTitle>Card required to reserve</AlertTitle>
+              No payment will be collected now. Your card will be securely saved with Stripe for charges authorized under the business&apos;s booking and cancellation policy.
+            </>
+          ) : (
+            <>
+              <AlertTitle>Secure online payment</AlertTitle>
+              You&apos;ll continue to Stripe to pay and complete your booking.
+            </>
+          )}
         </Alert>
       ) : (
         <Alert severity="info" sx={{ mb: 1.5, ...infoAlertSx }}>
           {hasPackagePurchase
             ? "Online payments are disabled for this company. Package purchases require online payment."
-            : finalTotal > 0
-            ? <>No payment is required online. Your booking will be created with an outstanding balance of <strong>{formatCurrency(finalTotal, currencyCode)}</strong>.</>
-            : <>No online payment is required. Your booking can be confirmed now.</>}
+            : <>
+                <AlertTitle>{businessName ? `Payment handled by ${businessName}` : "Payment handled separately"}</AlertTitle>
+                No online payment is required. {businessName || "The business"} will collect payment separately.
+              </>}
         </Alert>
       )}
 
@@ -4165,23 +4246,7 @@ export function CheckoutFormCore({
           <Button
             variant="outlined"
             startIcon={<AddIcon />}
-            onClick={() => {
-              onRequestAddService?.();
-              if (
-                productsReturnTo &&
-                typeof window !== "undefined" &&
-                window.parent !== window &&
-                requestTransactionalNavigation(window.parent, productsReturnTo)
-              ) {
-                return;
-              }
-              const target = slugLocal || companySlug;
-              if (!target) return;
-              const params = new URLSearchParams();
-              params.set("page", "products");
-              const path = isCustomDomain ? "/products" : `/${target}`;
-              navigate({ pathname: path, search: isCustomDomain ? "" : `?${params.toString()}` });
-            }}
+            onClick={handleContinueProductShopping}
             sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
           >
             Add Another Product

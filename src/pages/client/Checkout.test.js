@@ -197,6 +197,8 @@ describe("CheckoutFormCore", () => {
     expect(screen.queryByText("Item total", { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/coupon code/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("Amount due", { exact: true }).length).toBeGreaterThan(0);
+    expect(screen.getByText("Payment handled separately", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText(/No online payment is required\. The business will collect payment separately\./i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /book appointment/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /have a coupon code/i }));
@@ -522,6 +524,26 @@ describe("CheckoutFormCore", () => {
     expect(
       screen.getByText(/Saving a card does not guarantee that a future charge will be approved\./i),
     ).toBeInTheDocument();
+    expect(screen.getByText("Card required to reserve", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText(/No payment will be collected now\./i)).toBeInTheDocument();
+  });
+
+  test("explains secure Stripe payment for pay-during-checkout appointments", async () => {
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        businessName="Vanda Orchid Jewels"
+        paymentsEnabled
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "pay" }}
+        holdMinutes={null}
+      />
+    );
+
+    expect(await screen.findByText("Secure online payment", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText(/continue to Stripe to pay and complete your booking/i)).toBeInTheDocument();
   });
 
   test("product-only carts ignore booking capture mode and continue with pay now", async () => {
@@ -551,6 +573,8 @@ describe("CheckoutFormCore", () => {
     );
 
     expect(await screen.findByRole("button", { name: /pay now/i })).toBeInTheDocument();
+    expect(screen.getByText("Secure online payment", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText(/Product orders must be paid online\./i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/may securely save my card with Stripe/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add another product/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add another service/i })).not.toBeInTheDocument();
@@ -590,7 +614,7 @@ describe("CheckoutFormCore", () => {
     expect(screen.queryByText(/not currently available for delivery or pickup/i)).not.toBeInTheDocument();
   });
 
-  test("product-only carts show the product-specific disabled message", async () => {
+  test("product-only carts block checkout when online product payments are disabled", async () => {
     mockLoadCart.mockReturnValue([
       {
         id: "product-1",
@@ -629,18 +653,14 @@ describe("CheckoutFormCore", () => {
       />
     );
 
-    fireEvent.change(await screen.findByLabelText(/your name/i), {
-      target: { value: "Yousef Jalali" },
-    });
-    fireEvent.change(screen.getByLabelText(/your email/i), {
-      target: { value: "yousef@example.com" },
-    });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /place order/i })).not.toBeDisabled()
-    );
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
-
-    expect(await screen.findByText(/not currently accepting online Product payments/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Online product checkout is currently unavailable", { exact: true })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/not accepting online product orders right now/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue shopping/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/your name/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/your email/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /place order/i })).not.toBeInTheDocument();
   });
 
   test("shows cross-border customs notice and safe international unavailability message", async () => {
