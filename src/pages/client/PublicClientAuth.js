@@ -368,7 +368,15 @@ export default function PublicClientAuth({ slug }) {
               bgcolor: "action.hover",
               p: 0.5,
               "& .MuiTabs-indicator": { display: "none" },
-              "& .MuiTab-root": { minHeight: 36, borderRadius: 1.5, textTransform: "none", fontWeight: 700 },
+              "& .MuiTab-root": {
+                minHeight: 36,
+                borderRadius: 1.5,
+                px: { xs: 1, sm: 2 },
+                fontSize: { xs: "0.78rem", sm: "0.875rem" },
+                fontWeight: 700,
+                textTransform: "none",
+                whiteSpace: "nowrap",
+              },
               "& .Mui-selected": { bgcolor: "background.paper", boxShadow: 1 },
             }}
           >
