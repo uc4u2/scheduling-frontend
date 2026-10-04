@@ -71,6 +71,7 @@ import {
 import SettingsLeaveSettings from "./SettingsLeaveSettings";
 import SettingsLeaveInsights from "./SettingsLeaveInsights";
 import SettingsLeaveReports from "./SettingsLeaveReports";
+import LeaveAdminAuditTimeline from "./LeaveAdminAuditTimeline";
 
 const token = () => localStorage.getItem("token");
 
@@ -577,6 +578,8 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
   const [availabilityWarningDetail, setAvailabilityWarningDetail] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false, severity: undefined });
   const [leaveHelpOpen, setLeaveHelpOpen] = useState(false);
+  const [requestActivityOpen, setRequestActivityOpen] = useState(false);
+  const [balanceActivityOpen, setBalanceActivityOpen] = useState(false);
 
   const theme = useTheme();
   const leaveDetailsMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -1283,6 +1286,9 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               <Button size="small" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setLeaveHelpOpen(true)}>
                 Help
               </Button>
+              <Button size="small" variant="outlined" onClick={() => setRequestActivityOpen(true)}>
+                Activity log
+              </Button>
               <IconButton onClick={closeLeaveDetails} aria-label="Close leave details">
                 <CloseIcon />
               </IconButton>
@@ -1467,12 +1473,23 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={1.25}>
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={800}>
-                    Leave balances
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Balances are HR tracking. Manual adjustments and approved balance-managed leave can update the ledger, but payroll calculations remain separate.
-                  </Typography>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800}>
+                        Leave balances
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Balances are HR tracking. Manual adjustments and approved balance-managed leave can update the ledger, but payroll calculations remain separate.
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setBalanceActivityOpen(true)}
+                    >
+                      Adjustment history
+                    </Button>
+                  </Stack>
                 </Box>
                 {balanceLoading ? (
                   <Box display="flex" justifyContent="center" py={2}>
@@ -2097,6 +2114,23 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
           {snackbar.msg}
         </Alert>
       </Snackbar>
+      <LeaveAdminAuditTimeline
+        open={requestActivityOpen}
+        onClose={() => setRequestActivityOpen(false)}
+        title="Leave request activity"
+        emptyText="No leave-request activity recorded yet."
+        entityTypes={["leave_request"]}
+        entityId={selectedLeave?.id}
+      />
+      <LeaveAdminAuditTimeline
+        open={balanceActivityOpen}
+        onClose={() => setBalanceActivityOpen(false)}
+        title="Leave balance adjustment activity"
+        emptyText="No balance adjustment activity recorded yet."
+        entityTypes={["leave_balance_adjustment"]}
+        employeeId={selectedLeave?.recruiter_id}
+        leaveType={balanceDraft.leave_type || selectedLeave?.leave_type}
+      />
       <LeaveWorkspaceHelpDrawer open={leaveHelpOpen} onClose={() => setLeaveHelpOpen(false)} />
         </>
       ) : leaveWorkspaceTab === "settings" && canAdministerLeave ? (
