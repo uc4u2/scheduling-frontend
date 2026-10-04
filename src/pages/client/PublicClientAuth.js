@@ -1,7 +1,31 @@
 import React, { useMemo, useState } from "react";
 import {
-  Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Link, Checkbox, FormControlLabel
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  Link,
+  Paper,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
 } from "@mui/material";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { api } from "../../utils/api";
 import { getTenantHostMode } from "../../utils/tenant";
 import TimezoneSelect from "../../components/TimezoneSelect";
@@ -10,17 +34,46 @@ import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
 
 const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
-  <Stack spacing={1} sx={{ mt: 1 }}>
-    <Alert severity="info" sx={{ mb: showManual ? 1 : 0 }}>
-      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
-    </Alert>
-    <Box>
-      <Button size="small" onClick={onToggle}>
-        {showManual ? "Hide timezone change" : "Change timezone"}
-      </Button>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1.25,
+      border: "1px solid",
+      borderColor: "divider",
+      borderRadius: 2,
+      bgcolor: "action.hover",
+      px: 1.5,
+      py: 1.25,
+    }}
+  >
+    <AccessTimeRoundedIcon color="primary" sx={{ fontSize: 20, flex: "0 0 auto" }} />
+    <Box sx={{ minWidth: 0, flex: 1 }}>
+      <Typography variant="caption" sx={{ display: "block", color: "text.secondary", lineHeight: 1.2 }}>
+        Booking timezone
+      </Typography>
+      <Typography variant="body2" sx={{ mt: 0.25, fontWeight: 700, lineHeight: 1.35 }}>
+        {formatTimezoneLabel(timezone) || timezone || "UTC"}
+      </Typography>
     </Box>
-  </Stack>
+    <Button size="small" onClick={onToggle} sx={{ flex: "0 0 auto", minWidth: 0, px: 1 }}>
+      {showManual ? "Done" : "Change"}
+    </Button>
+  </Box>
 );
+
+const authFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    minHeight: 54,
+    borderRadius: 2,
+  },
+};
+
+const accountBenefits = [
+  "Review upcoming and past bookings",
+  "Keep appointments and details together",
+  "Book again with less repetition",
+];
 
 export default function PublicClientAuth({ slug }) {
   const userAgreementUrl = buildMarketingLegalUrl("/user-agreement");
@@ -38,6 +91,8 @@ export default function PublicClientAuth({ slug }) {
   const [forgotBusy, setForgotBusy] = useState(false);
   const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [timezone, setTimezone] = useState(() => getUserTimezone());
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
     const siteLabel = slug ? `${slug} client account` : "Client account";
@@ -178,88 +233,242 @@ export default function PublicClientAuth({ slug }) {
     }
   };
 
+  const switchTab = (nextTab) => {
+    setTab(nextTab);
+    setError("");
+  };
+
+  const submitAuth = (event) => {
+    event.preventDefault();
+    if (!busy) {
+      if (tab === "login") doLogin();
+      else doRegister();
+    }
+  };
+
+  const passwordAdornment = (visible, onToggle, label) => (
+    <InputAdornment position="end">
+      <IconButton
+        edge="end"
+        onClick={onToggle}
+        onMouseDown={(event) => event.preventDefault()}
+        aria-label={visible ? `Hide ${label}` : `Show ${label}`}
+      >
+        {visible ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
+      </IconButton>
+    </InputAdornment>
+  );
+
   return (
-    <Box sx={{ maxWidth: 420, mx: "auto", mt: 6 }}>
+    <Box sx={{ width: "100%", maxWidth: 980, mx: "auto", px: { xs: 1.5, sm: 2.5 }, py: { xs: 2, sm: 4 } }}>
       <Meta title={seoTitle} robots="noindex, nofollow" />
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h5" sx={{ mb: 1 }}>Client Account</Typography>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-          <Tab value="login" label="Login" />
-          <Tab value="register" label="Sign Up" />
-        </Tabs>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Stack spacing={2}>
-          {tab === "register" && (
-            <Stack direction="row" spacing={1}>
-              <TextField label="First" name="given-name" autoComplete="given-name" value={first} onChange={e=>setFirst(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
-              <TextField label="Last" name="family-name" autoComplete="family-name" value={last} onChange={e=>setLast(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
-            </Stack>
-          )}
-          <TextField label="Email" name="email" autoComplete="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
-          {tab === "register" && (
-            <TextField label="Phone" name="phone" autoComplete="tel" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
-          )}
-          <TextField label="Password" name="password" autoComplete={tab === "login" ? "current-password" : "new-password"} type="password" value={password} onChange={e=>setPassword(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
-          {tab === "register" && (
-            <TextField
-              label="Confirm password"
-              name="password-confirmation"
-              autoComplete="new-password"
-              type="password"
-              value={passwordConfirm}
-              onChange={e => setPasswordConfirm(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          )}
-          {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
-          {showTimezoneSelect ? (
-            <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
-          ) : null}
-          {tab === "login" && (
-            <Box>
-              <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
-                Forgot password?
-              </Link>
+      <Paper
+        elevation={0}
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(260px, .82fr) minmax(0, 1.18fr)" },
+          overflow: "hidden",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: { xs: 2.5, sm: 3 },
+          boxShadow: (theme) => `0 24px 70px ${theme.palette.action.disabledBackground}`,
+        }}
+      >
+        <Box
+          sx={{
+            position: "relative",
+            display: { xs: "none", md: "flex" },
+            minHeight: 590,
+            flexDirection: "column",
+            justifyContent: "space-between",
+            overflow: "hidden",
+            p: { md: 4, lg: 5 },
+            color: "primary.contrastText",
+            bgcolor: "primary.main",
+            backgroundImage: (theme) =>
+              `radial-gradient(circle at 85% 12%, ${theme.palette.secondary.main}55, transparent 32%), linear-gradient(150deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+          }}
+        >
+          <Box
+            aria-hidden="true"
+            sx={{
+              position: "absolute",
+              right: -70,
+              bottom: -80,
+              width: 250,
+              height: 250,
+              border: "1px solid",
+              borderColor: "currentColor",
+              borderRadius: "50%",
+              opacity: 0.16,
+            }}
+          />
+          <Box sx={{ position: "relative" }}>
+            <Box
+              sx={{
+                display: "grid",
+                width: 48,
+                height: 48,
+                placeItems: "center",
+                border: "1px solid",
+                borderColor: "currentColor",
+                borderRadius: 2,
+                bgcolor: "rgba(255,255,255,.12)",
+              }}
+            >
+              <CalendarMonthOutlinedIcon />
             </Box>
-          )}
-          {tab === "register" && (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                />
-              }
-              label={
-                <span>
-                  I agree to the{" "}
-                  <Link
-                    href={userAgreementUrl}
-                    target="_blank"
-                    rel="noopener"
-                  >
-                    Schedulaa User Agreement
+            <Typography variant="overline" sx={{ display: "block", mt: 4, fontWeight: 800, letterSpacing: ".18em", opacity: 0.78 }}>
+              Client portal
+            </Typography>
+            <Typography component="h2" variant="h3" sx={{ mt: 1, fontSize: { md: "2.25rem", lg: "2.65rem" }, fontWeight: 700, lineHeight: 1.08 }}>
+              Your appointments, organized.
+            </Typography>
+            <Typography sx={{ mt: 2, lineHeight: 1.7, opacity: 0.82 }}>
+              Use your secure client account to manage every visit in one place.
+            </Typography>
+            <Stack spacing={1.5} sx={{ mt: 4 }}>
+              {accountBenefits.map((benefit) => (
+                <Stack key={benefit} direction="row" spacing={1.25} alignItems="center">
+                  <CheckCircleOutlineRoundedIcon sx={{ fontSize: 19, opacity: 0.85 }} />
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>{benefit}</Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ position: "relative", mt: 5, opacity: 0.75 }}>
+            <LockOutlinedIcon sx={{ fontSize: 17 }} />
+            <Typography variant="caption">Secure account access</Typography>
+          </Stack>
+        </Box>
+
+        <Box sx={{ p: { xs: 2.25, sm: 4, lg: 5 } }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography component="h1" variant="h4" sx={{ fontWeight: 750, letterSpacing: "-.02em" }}>
+              {tab === "login" ? "Welcome back" : "Create your account"}
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1, color: "text.secondary", lineHeight: 1.6 }}>
+              {tab === "login"
+                ? "Sign in to view and manage your bookings."
+                : "Create a client account for faster booking and easy appointment access."}
+            </Typography>
+          </Box>
+
+          <Tabs
+            value={tab}
+            onChange={(_, value) => switchTab(value)}
+            variant="fullWidth"
+            aria-label="Client account options"
+            sx={{
+              mb: 3,
+              minHeight: 44,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              bgcolor: "action.hover",
+              p: 0.5,
+              "& .MuiTabs-indicator": { display: "none" },
+              "& .MuiTab-root": { minHeight: 36, borderRadius: 1.5, textTransform: "none", fontWeight: 700 },
+              "& .Mui-selected": { bgcolor: "background.paper", boxShadow: 1 },
+            }}
+          >
+            <Tab value="login" label="Sign in" />
+            <Tab value="register" label="Create account" />
+          </Tabs>
+
+          {error && <Alert severity="error" role="alert" sx={{ mb: 2.5 }}>{error}</Alert>}
+
+          <Box component="form" onSubmit={submitAuth} noValidate>
+            <Stack spacing={2}>
+              {tab === "register" && (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <TextField required label="First name" name="given-name" autoComplete="given-name" value={first} onChange={(event) => setFirst(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+                  <TextField required label="Last name" name="family-name" autoComplete="family-name" value={last} onChange={(event) => setLast(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+                </Stack>
+              )}
+              <TextField required label="Email" name="email" autoComplete="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+              {tab === "register" && (
+                <TextField required label="Phone" name="phone" autoComplete="tel" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} InputLabelProps={{ shrink: true }} sx={authFieldSx} fullWidth />
+              )}
+              <TextField
+                required
+                label="Password"
+                name="password"
+                autoComplete={tab === "login" ? "current-password" : "new-password"}
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                InputLabelProps={{ shrink: true }}
+                InputProps={{ endAdornment: passwordAdornment(showPassword, () => setShowPassword((value) => !value), "password") }}
+                sx={authFieldSx}
+                fullWidth
+              />
+              {tab === "login" && (
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "-4px !important" }}>
+                  <Link component="button" type="button" variant="body2" onClick={() => { setForgotEmail(email); setForgotOpen(true); }} sx={{ fontWeight: 650 }}>
+                    Forgot password?
                   </Link>
-                  .
-                </span>
-              }
-            />
-          )}
-          {tab === "login" ? (
-            <Button variant="contained" onClick={doLogin} disabled={busy}>
-              {busy ? "Logging in..." : "Login"}
-            </Button>
-          ) : (
-            <Button variant="contained" onClick={doRegister} disabled={busy}>
-              {busy ? "Creating account..." : "Create account"}
-            </Button>
-          )}
-        </Stack>
+                </Box>
+              )}
+              {tab === "register" && (
+                <TextField
+                  required
+                  label="Confirm password"
+                  name="password-confirmation"
+                  autoComplete="new-password"
+                  type={showPasswordConfirm ? "text" : "password"}
+                  value={passwordConfirm}
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  InputProps={{ endAdornment: passwordAdornment(showPasswordConfirm, () => setShowPasswordConfirm((value) => !value), "confirmed password") }}
+                  sx={authFieldSx}
+                  fullWidth
+                />
+              )}
+
+              {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((previous) => !previous))}
+              {showTimezoneSelect ? <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} /> : null}
+
+              {tab === "register" && (
+                <FormControlLabel
+                  sx={{ alignItems: "flex-start", m: 0, "& .MuiCheckbox-root": { pt: 0.1, pl: 0 } }}
+                  control={<Checkbox checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} />}
+                  label={
+                    <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.55 }}>
+                      I agree to the{" "}
+                      <Link href={userAgreementUrl} target="_blank" rel="noopener">Schedulaa User Agreement</Link>.
+                    </Typography>
+                  }
+                />
+              )}
+
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={busy}
+                endIcon={!busy ? <ArrowForwardRoundedIcon /> : null}
+                sx={{ minHeight: 50, mt: 0.5, fontWeight: 800, textTransform: "none" }}
+              >
+                {busy ? (tab === "login" ? "Signing in…" : "Creating account…") : (tab === "login" ? "Sign in" : "Create account")}
+              </Button>
+
+              <Typography variant="body2" align="center" sx={{ color: "text.secondary", pt: 0.5 }}>
+                {tab === "login" ? "New here?" : "Already have an account?"}{" "}
+                <Link component="button" type="button" onClick={() => switchTab(tab === "login" ? "register" : "login")} sx={{ fontWeight: 750 }}>
+                  {tab === "login" ? "Create an account" : "Sign in"}
+                </Link>
+              </Typography>
+            </Stack>
+          </Box>
+        </Box>
       </Paper>
       <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Reset Password</DialogTitle>
+        <DialogTitle sx={{ pb: 1, fontWeight: 750 }}>Reset your password</DialogTitle>
         <DialogContent>
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 1 }}>
+            Enter the email connected to your client account. We’ll send reset instructions if the account exists.
+          </Typography>
           {forgotError && <Alert severity="error" sx={{ mb: 2 }}>{forgotError}</Alert>}
           {forgotMessage && <Alert severity="success" sx={{ mb: 2 }}>{forgotMessage}</Alert>}
           <TextField
@@ -272,14 +481,15 @@ export default function PublicClientAuth({ slug }) {
             value={forgotEmail}
             onChange={(e) => setForgotEmail(e.target.value)}
             InputLabelProps={{ shrink: true }}
+            sx={authFieldSx}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setForgotOpen(false)} disabled={forgotBusy}>
-            Close
+            Cancel
           </Button>
           <Button variant="contained" onClick={doForgotPassword} disabled={forgotBusy}>
-            {forgotBusy ? "Sending..." : "Send reset email"}
+            {forgotBusy ? "Sending…" : "Send reset email"}
           </Button>
         </DialogActions>
       </Dialog>
