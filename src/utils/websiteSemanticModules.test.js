@@ -290,6 +290,18 @@ describe("website semantic modules", () => {
     expect(module.slot).toBe("home.afterServices");
     expect(module.content).toEqual(expect.objectContaining({ heading: "Schedule", items: [] }));
     expect(getCompatibleSlots("forge-motion", "home")["home.afterServices"].allowedModuleTypes).toContain("schedule");
+    expect(getCompatibleSlots("quiet-harbor", "home")["home.beforeContact"].allowedModuleTypes).toContain("latestArticles");
+    expect(getCompatibleSlots("quiet-harbor", "home")["home.afterServices"].allowedModuleTypes).toContain("latestArticles");
+    expect(createSemanticModule("latestArticles", { slug: "home", is_homepage: true })).toEqual(expect.objectContaining({
+      type: "latestArticles",
+      slot: "home.beforeContact",
+      content: expect.objectContaining({
+        heading: "Latest articles",
+        limit: 6,
+        primaryCta: expect.objectContaining({ label: "View all articles", href: "/blog" }),
+      }),
+    }));
+    expect(getCompatibleModuleChoices("quiet-harbor", "home").some((choice) => choice.type === "latestArticles")).toBe(true);
     expect(getCompatibleModuleChoices("forge-motion", "home", []).some((choice) => choice.type === "schedule")).toBe(true);
   });
 

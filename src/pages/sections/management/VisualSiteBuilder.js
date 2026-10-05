@@ -11403,7 +11403,7 @@ function InspectorColumn({ floating = false } = {}) {
           Editing {isIronEmberInnerPageHero ? "Hero" : semanticModuleDisplayLabel(selectedSemanticModule)}
           {selectedSemanticModule.slot ? ` in ${selectedSemanticModule.slot}` : ""}.
         </Alert>
-        {!isIronEmberInnerPageHero && ["richText", "services", "reviews", "faq", "gallery", "selectedCuts", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "video", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["richText", "services", "reviews", "faq", "gallery", "selectedCuts", "map", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "latestArticles", "video", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Heading"
@@ -11414,7 +11414,7 @@ function InspectorColumn({ floating = false } = {}) {
             inputProps={{ "data-module-field-path": contentPath("heading") }}
           />
         ) : null}
-        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
+        {!isIronEmberInnerPageHero && ["services", "reviews", "faq", "gallery", "selectedCuts", "contactForm", "contactIntro", "contactDetails", "hoursLocation", "locations", "cta", "bookingCta", "team", "pricing", "stats", "trustRail", "serviceAreas", "beforeAfter", "portfolio", "process", "featureStory", "latestArticles", "proofBand", "reviewSummary", "schedule"].includes(selectedSemanticModule.type) ? (
           <TextField
             size="small"
             label="Eyebrow"
@@ -11742,16 +11742,16 @@ function InspectorColumn({ floating = false } = {}) {
             </Stack> : null}
           </>
         ) : null}
-        {!isIronEmberInnerPageHero && ["richText", "cta", "bookingCta", "contactIntro", "featureStory", "video"].includes(selectedSemanticModule.type) && !(isQuietHarborTheme && selectedSemanticModule.type === "contactIntro") ? (
+        {!isIronEmberInnerPageHero && ["richText", "cta", "bookingCta", "contactIntro", "featureStory", "latestArticles", "video"].includes(selectedSemanticModule.type) && !(isQuietHarborTheme && selectedSemanticModule.type === "contactIntro") ? (
           <TextField
             size="small"
-            label="Body"
+            label={selectedSemanticModule.type === "latestArticles" ? "Introduction" : "Body"}
             value={content.body || content.intro || ""}
             onChange={(event) => updateSelectedContent({ body: event.target.value, intro: event.target.value })}
             fullWidth
             multiline
             minRows={4}
-            inputProps={{ "data-module-field-path": contentPath("body") }}
+            inputProps={{ "data-module-field-path": contentPath(selectedSemanticModule.type === "latestArticles" ? "intro" : "body") }}
           />
         ) : null}
         {!isIronEmberInnerPageHero && isQuietHarborTheme && selectedSemanticModule.type === "contactIntro" ? (
@@ -11883,6 +11883,15 @@ function InspectorColumn({ floating = false } = {}) {
               ))}
               <Button variant="outlined" startIcon={<AddIcon />} onClick={addItem}>Add story panel</Button>
             </Stack>
+          </>
+        ) : null}
+        {selectedSemanticModule.type === "latestArticles" ? (
+          <>
+            <Typography variant="overline" color="text.secondary">Articles</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Shows the latest published blog articles for this business automatically. Draft and noindex articles stay hidden.
+            </Typography>
+            {renderPrimaryCtaFields()}
           </>
         ) : null}
         {["cta", "bookingCta"].includes(selectedSemanticModule.type) ? (

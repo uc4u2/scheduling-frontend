@@ -26,6 +26,7 @@ export const SEMANTIC_MODULE_LABELS = {
   portfolio: "Portfolio",
   process: "Process",
   featureStory: "Feature / Story",
+  latestArticles: "Latest Articles",
   proofBand: "Proof / Results",
   reviewSummary: "Review Summary",
   schedule: "Schedule",
@@ -55,6 +56,7 @@ export const SEMANTIC_MODULE_GROUPS = {
   stats: "BUSINESS",
   process: "BUSINESS",
   featureStory: "BUSINESS",
+  latestArticles: "BUSINESS",
   reviews: "TRUST",
   trustRail: "TRUST",
   faq: "TRUST",
@@ -447,7 +449,7 @@ export function defaultSlotForModule(pageKind, moduleType) {
     if (moduleType === "selectedCuts") return "home.selectedCuts";
     if (["services", "stats", "trustRail", "pricing"].includes(moduleType)) return "home.primaryContent";
     if (["reviews", "gallery", "faq", "serviceAreas", "beforeAfter", "portfolio", "proofBand", "reviewSummary", "schedule"].includes(moduleType)) return "home.afterServices";
-    if (["cta", "contactForm", "contactIntro", "contactDetails", "map", "hoursLocation", "locations", "bookingCta"].includes(moduleType)) return "home.beforeContact";
+    if (["cta", "contactForm", "contactIntro", "contactDetails", "map", "hoursLocation", "locations", "bookingCta", "latestArticles"].includes(moduleType)) return "home.beforeContact";
     return "home.afterHero";
   }
   return `${page}.primaryContent`;
@@ -884,6 +886,15 @@ export function createSemanticModule(moduleType, page = {}, slot) {
         secondaryImage: "",
         secondaryImageAlt: "",
         primaryCta: { label: "", href: "" },
+      };
+      break;
+    case "latestArticles":
+      base.content = {
+        eyebrow: "Published insights",
+        heading: "Latest articles",
+        intro: "Practical ideas, guidance, and updates from the team.",
+        limit: 6,
+        primaryCta: { label: "View all articles", href: "/blog" },
       };
       break;
     case "selectedCuts":

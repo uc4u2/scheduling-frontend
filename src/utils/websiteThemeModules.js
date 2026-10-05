@@ -5,9 +5,9 @@ const SHARED_PAGES = {
     slotRules: {
       "home.hero": { allowedModuleTypes: ["hero"], maxInstances: 1, required: true },
       "home.afterHero": { allowedModuleTypes: ["richText", "stats", "trustRail", "process", "featureStory", "cta"], maxInstances: 4, fallbackSlot: "home.primaryContent" },
-      "home.primaryContent": { allowedModuleTypes: ["services", "reviews", "pricing", "team", "stats", "trustRail"], maxInstances: 6, required: true },
-      "home.afterServices": { allowedModuleTypes: ["reviews", "faq", "gallery", "portfolio", "beforeAfter", "serviceAreas", "proofBand", "reviewSummary"], maxInstances: 6, fallbackSlot: "home.primaryContent" },
-      "home.beforeContact": { allowedModuleTypes: ["contactIntro", "contactDetails", "map", "hoursLocation", "locations", "contactForm", "bookingCta", "cta"], maxInstances: 6, fallbackSlot: "home.afterServices" },
+      "home.primaryContent": { allowedModuleTypes: ["services", "reviews", "pricing", "team", "stats", "trustRail", "latestArticles"], maxInstances: 6, required: true },
+      "home.afterServices": { allowedModuleTypes: ["reviews", "faq", "gallery", "portfolio", "beforeAfter", "serviceAreas", "proofBand", "reviewSummary", "latestArticles"], maxInstances: 6, fallbackSlot: "home.primaryContent" },
+      "home.beforeContact": { allowedModuleTypes: ["contactIntro", "contactDetails", "map", "hoursLocation", "locations", "contactForm", "bookingCta", "cta", "latestArticles"], maxInstances: 6, fallbackSlot: "home.afterServices" },
       "home.finalCta": { allowedModuleTypes: ["cta", "contactForm", "bookingCta"], maxInstances: 2, fallbackSlot: "home.beforeContact" },
     },
   },
