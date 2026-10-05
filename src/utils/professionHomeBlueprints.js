@@ -21,6 +21,7 @@ import { createTorqueHouseOriginalHomeModules } from "./torqueHouseHomeBlueprint
 import { createVeloraHouseOriginalHomeModules } from "./veloraHouseHomeBlueprint";
 import { createForgeMotionOriginalHomeModules } from "./forgeMotionHomeBlueprint";
 import { createTouchlineClubOriginalHomeModules } from "./touchlineClubHomeBlueprint";
+import { ensureHomepageLatestArticlesModules } from "./websiteSemanticModules";
 
 const BLUEPRINTS = {
   "forge-motion": {
@@ -231,7 +232,19 @@ export function getProfessionHomeBlueprint(themeKey) {
   if (!blueprint) return null;
   return {
     ...blueprint,
-    createModules: (...args) => ensurePublishedFeedbackModules(blueprint.createModules(...args), normalizedThemeKey),
+    createModules: (...args) => {
+      const withFeedback = ensurePublishedFeedbackModules(
+        blueprint.createModules(...args),
+        normalizedThemeKey
+      );
+      // Every Next.js homepage starter includes one Latest Articles module
+      // before the footer band (contact / final CTA).
+      return ensureHomepageLatestArticlesModules(withFeedback, {
+        slug: "home",
+        is_homepage: true,
+        content: { modules: withFeedback },
+      }).modules;
+    },
   };
 }
 

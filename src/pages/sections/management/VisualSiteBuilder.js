@@ -123,6 +123,8 @@ import {
   normalizeSemanticModuleMediaReferences,
   sanitizeNextJsEditableText,
   upgradeLegacyIronEmberProjectGallery,
+  ensureHomepageLatestArticlesModules,
+  withHomepageLatestArticlesRemoved,
   withNormalizedModules,
 } from "../../../utils/websiteSemanticModules";
 import {
@@ -154,6 +156,7 @@ import {
 import {
   getCompatibleModuleChoices,
   getThemeModuleDisplayLabel,
+  getSemanticSlotDisplayLabel,
   getPageManifest,
   resolveFallbackSlot,
   WEBSITE_THEME_MODULE_MANIFESTS,
@@ -3831,12 +3834,41 @@ useEffect(() => {
         // and produces a 400/blank Next.js canvas after reload.
         const home =
           normalizedPages.find((page) => page.is_homepage) ||
-          normalizedPages.find((page) => String(page.slug || "").toLowerCase() === "home") ||
+          normalizedPages.find((page) => String(page.slug || "").trim().toLowerCase() === "home") ||
           normalizedPages.find((page) => Number(page.sort_order) === 0) ||
           normalizedPages[0];
         if (home) {
           setSelectedId(home.id);
           setEditing(home);
+        }
+        // Persist one-time Latest Articles ensure for existing Next.js homes
+        // that predate the automatic module (respects intentional removal meta).
+        const homesToPersist = normalizedPages.filter((page) => {
+          if (!page?.id) return false;
+          const kind = inferPageKind(page);
+          if (kind !== "home") return false;
+          const raw = (normalizedLegacy.pages || pagesList).find((candidate) => candidate?.id === page.id) || page;
+          const before = normalizeSemanticModules(normalizePage(raw));
+          const after = ensureHomepageLatestArticlesModules(before, ensureSectionIds(withLiftedLayout(normalizePage(raw))));
+          return after.changed;
+        });
+        if (homesToPersist.length) {
+          await Promise.all(
+            homesToPersist.map(async (page) => {
+              try {
+                const payload = serializePage(page);
+                const response = await wb.updatePage(companyId, payload.id, payload);
+                const saved = ensureSectionIds(withLiftedLayout(normalizePage(response?.data || payload)));
+                if (!alive) return;
+                setPages((prev) => prev.map((item) => (item.id === saved.id ? saved : item)));
+                setEditing((current) =>
+                  current?.id && String(current.id) === String(saved.id) ? saved : current
+                );
+              } catch (persistError) {
+                console.warn("[VisualSiteBuilder] latestArticles ensure persist failed", persistError);
+              }
+            })
+          );
         }
         await loadCheckpoints(companyId);
         setLoading(false);
@@ -9234,7 +9266,7 @@ const autoProvisionIfEmpty = useCallback(
                     fullWidth
                   >
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
-                      <Chip size="small" label={module.slot || "section"} />
+                      <Chip size="small" label={getSemanticSlotDisplayLabel(module.slot)} />
                       <Box sx={{ minWidth: 0 }}>
                         {index + 1}. {semanticModuleDisplayLabel(module)}
                       </Box>
@@ -9357,7 +9389,9 @@ const autoProvisionIfEmpty = useCallback(
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {isNextJsContentMode
-                    ? "Choose from the semantic sections supported by the current page and website style."
+                    ? editingPageKind === "home"
+                      ? "Add Latest Articles to show your newest blog posts on the homepage automatically (up to 6). Pick a placement, then Save and Publish."
+                      : "Choose from the sections supported by the current page and website style."
                     : "Click a preview to see the block, then add it to the page."}
                 </Typography>
               </Box>
@@ -9398,8 +9432,15 @@ const autoProvisionIfEmpty = useCallback(
                               <Stack spacing={0.5} alignItems="flex-start">
                                 <Typography variant="subtitle2">{choice.label}</Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  {choice.slot}
+                                  {choice.type === "latestArticles"
+                                    ? "Auto-fills from published blog posts"
+                                    : (choice.slotLabel || getSemanticSlotDisplayLabel(choice.slot))}
                                 </Typography>
+                                {choice.type === "latestArticles" ? (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {choice.slotLabel || getSemanticSlotDisplayLabel(choice.slot)}
+                                  </Typography>
+                                ) : null}
                               </Stack>
                             </Button>
                           ))}
@@ -9585,31 +9626,92 @@ const addSemanticModule = useCallback(
       editingPageKind === "projects"
         ? createIronEmberProjectGalleryModule(editing)
         : createSemanticModule(moduleType, editing, nextSlot);
-    updateSemanticModules((currentModules) => {
-      if (moduleType !== "selectedCuts" || String(currentStyleKey || "").trim().toLowerCase() !== "iron-ember") {
-        return [...currentModules, created];
-      }
+
+    const insertModule = (currentModules) => {
       const ordered = currentModules
         .map((module, index) => ({ ...module, order: Number.isFinite(Number(module.order)) ? Number(module.order) : index }))
         .sort((left, right) => left.order - right.order);
-      const nextSectionIndex = ordered.findIndex((module) => ["gallery", "portfolio", "process", "reviews", "pricing", "faq"].includes(module.type));
-      ordered.splice(nextSectionIndex >= 0 ? nextSectionIndex : ordered.length, 0, created);
+
+      if (moduleType === "selectedCuts" && String(currentStyleKey || "").trim().toLowerCase() === "iron-ember") {
+        const nextSectionIndex = ordered.findIndex((module) => ["gallery", "portfolio", "process", "reviews", "pricing", "faq"].includes(module.type));
+        ordered.splice(nextSectionIndex >= 0 ? nextSectionIndex : ordered.length, 0, created);
+        return ordered.map((module, order) => ({ ...module, order }));
+      }
+
+      // Insert into the chosen slot's band so new sections land where the owner
+      // picked (e.g. Latest Articles before contact), not stranded at page end.
+      const slotOrder = Object.keys(manifest?.slotRules || {});
+      const slotOrderIndex = (candidateSlot) => {
+        const index = slotOrder.indexOf(String(candidateSlot || ""));
+        return index >= 0 ? index : Number.MAX_SAFE_INTEGER;
+      };
+      const sameSlotIndices = ordered.reduce((acc, module, index) => {
+        if (String(module?.slot || "") === String(nextSlot || "")) acc.push(index);
+        return acc;
+      }, []);
+      let insertIndex;
+      if (sameSlotIndices.length) {
+        insertIndex = sameSlotIndices[sameSlotIndices.length - 1] + 1;
+      } else {
+        const desired = slotOrderIndex(nextSlot);
+        const firstLaterIndex = ordered.findIndex((module) => slotOrderIndex(module?.slot) > desired);
+        insertIndex = firstLaterIndex >= 0 ? firstLaterIndex : ordered.length;
+      }
+      ordered.splice(insertIndex, 0, created);
       return ordered.map((module, order) => ({ ...module, order }));
-    });
+    };
+
+    if (moduleType === "latestArticles") {
+      setEditing((current) => {
+        const base = withHomepageLatestArticlesRemoved(current || {}, false);
+        const content = normalizePageContent(base.content || {});
+        const nextPage = withNormalizedModules({
+          ...base,
+          content: {
+            ...content,
+            modules: normalizeSemanticModuleMediaReferences(insertModule(normalizeSemanticModules(base))),
+          },
+        });
+        queueNextJsDraftSync(nextPage);
+        return nextPage;
+      });
+      setPageSettingsDirty(true);
+    } else {
+      updateSemanticModules(insertModule);
+    }
     setSelectedModuleId(created.id);
     setInspectorOpen(true);
     setInspectorTab("content");
     setUnsupportedModuleWarning("");
   },
-  [currentStyleKey, editing, editingPageKind, isNextJsContentMode, updateSemanticModules]
+  [currentStyleKey, editing, editingPageKind, isNextJsContentMode, queueNextJsDraftSync, updateSemanticModules]
 );
 
 const deleteSemanticModule = useCallback(
   (moduleId) => {
-    updateSemanticModules((currentModules) => currentModules.filter((module) => module.id !== moduleId));
+    const removed = safeModules(editing || {}).find((module) => module.id === moduleId);
+    setEditing((current) => {
+      const base =
+        removed?.type === "latestArticles"
+          ? withHomepageLatestArticlesRemoved(current || {}, true)
+          : current || {};
+      const content = normalizePageContent(base.content || {});
+      const modules = normalizeSemanticModules(base).filter((module) => module.id !== moduleId);
+      const ensured = ensureHomepageLatestArticlesModules(modules, base);
+      const nextPage = {
+        ...base,
+        content: {
+          ...content,
+          modules: ensured.modules,
+        },
+      };
+      queueNextJsDraftSync(nextPage);
+      return nextPage;
+    });
+    setPageSettingsDirty(true);
     if (selectedModuleId === moduleId) setSelectedModuleId("");
   },
-  [selectedModuleId, updateSemanticModules]
+  [editing, queueNextJsDraftSync, selectedModuleId]
 );
 
 const duplicateSemanticModule = useCallback(

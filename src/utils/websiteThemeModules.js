@@ -165,6 +165,41 @@ const THEME_SLOT_LABELS = {
   },
 };
 
+export const SEMANTIC_SLOT_LABELS = {
+  "home.hero": "Hero",
+  "home.afterHero": "After hero",
+  "home.primaryContent": "Main content",
+  "home.afterServices": "After main content",
+  "home.beforeContact": "Before footer",
+  "home.finalCta": "Final call to action",
+  "home.selectedCuts": "Selected Cuts",
+  "about.intro": "About intro",
+  "about.story": "About story",
+  "about.team": "About team",
+  "about.reviews": "About reviews",
+  "services.intro": "Services intro",
+  "services.list": "Services list",
+  "services.afterList": "After services",
+  "contact.intro": "Contact intro",
+  "contact.details": "Contact details",
+  "contact.form": "Contact form",
+  "contact.map": "Map",
+  "contact.hours": "Hours",
+  "contact.locations": "Locations",
+  "contact.booking": "Booking",
+  "blog.intro": "Blog intro",
+  "blog.primaryContent": "Blog content",
+  "blog.supporting": "Blog supporting",
+  "blog.finalCta": "Blog call to action",
+  "generic.primaryContent": "Page content",
+};
+
+export function getSemanticSlotDisplayLabel(slot) {
+  const normalizedSlot = String(slot || "").trim();
+  if (!normalizedSlot) return "Section";
+  return SEMANTIC_SLOT_LABELS[normalizedSlot] || SEMANTIC_SLOT_LABELS[normalizedSlot.toLowerCase()] || normalizedSlot;
+}
+
 export function getThemeModuleDisplayLabel(themeKey, moduleType, slot) {
   const normalizedThemeKey = String(themeKey || "").trim().toLowerCase();
   const normalizedSlot = String(slot || "").trim().toLowerCase();
@@ -229,6 +264,7 @@ export function getCompatibleModuleChoices(themeKey, pageKind, modules = []) {
         slot,
         type: moduleType,
         label: getThemeModuleDisplayLabel(themeKey, moduleType, slot),
+        slotLabel: getSemanticSlotDisplayLabel(slot),
         group: SEMANTIC_MODULE_GROUPS[moduleType] || "OTHER",
       });
     });

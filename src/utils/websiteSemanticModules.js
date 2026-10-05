@@ -771,13 +771,117 @@ export function normalizeSemanticModules(page = {}) {
   return modules;
 }
 
-export function withNormalizedModules(page = {}) {
-  const content = normalizePageContent(page.content);
+const HOMEPAGE_LATEST_ARTICLES_CONTACT_TYPES = new Set([
+  "contactIntro",
+  "contactDetails",
+  "hoursLocation",
+  "locations",
+  "map",
+  "contactForm",
+  "cta",
+  "bookingCta",
+]);
+
+export function isHomepageLatestArticlesRemoved(page = {}) {
+  const meta = normalizePageContent(page?.content).meta || {};
+  return meta.homepageLatestArticlesRemoved === true;
+}
+
+export function withHomepageLatestArticlesRemoved(page = {}, removed = true) {
+  const content = normalizePageContent(page?.content || {});
+  const meta = { ...(content.meta && typeof content.meta === "object" ? content.meta : {}) };
+  if (removed) meta.homepageLatestArticlesRemoved = true;
+  else delete meta.homepageLatestArticlesRemoved;
   return {
     ...page,
     content: {
       ...content,
-      modules: normalizeSemanticModules(page),
+      meta,
+    },
+  };
+}
+
+/**
+ * Ensure every Next.js homepage has one Latest Articles module before the
+ * footer band, unless the owner intentionally removed it. Existing modules
+ * (including Bridge's custom placement) are preserved; duplicates collapse to one.
+ */
+export function ensureHomepageLatestArticlesModules(modules = [], page = {}) {
+  const pageKind = inferPageKind(page);
+  if (pageKind !== "home") {
+    return { modules: Array.isArray(modules) ? modules : [], changed: false };
+  }
+  if (isHomepageLatestArticlesRemoved(page)) {
+    return { modules: Array.isArray(modules) ? modules : [], changed: false };
+  }
+
+  const ordered = (Array.isArray(modules) ? modules : [])
+    .map((module, index) => ({
+      ...module,
+      order: Number.isFinite(Number(module?.order)) ? Number(module.order) : index,
+    }))
+    .sort((left, right) => left.order - right.order);
+
+  const isNextJsHomeComposition = ordered.some((module) => /^home\./.test(String(module?.slot || "")));
+  if (!isNextJsHomeComposition) {
+    return { modules: ordered.map((module, order) => ({ ...module, order })), changed: false };
+  }
+
+  const latestIndexes = ordered
+    .map((module, index) => (module?.type === "latestArticles" ? index : -1))
+    .filter((index) => index >= 0);
+
+  if (latestIndexes.length > 1) {
+    // Keep only the first latestArticles occurrence.
+    const once = [];
+    let kept = false;
+    ordered.forEach((module) => {
+      if (module?.type === "latestArticles") {
+        if (kept) return;
+        kept = true;
+      }
+      once.push(module);
+    });
+    return {
+      modules: once.map((module, order) => ({ ...module, order })),
+      changed: true,
+    };
+  }
+
+  if (latestIndexes.length === 1) {
+    return { modules: ordered.map((module, order) => ({ ...module, order })), changed: false };
+  }
+
+  const created = createSemanticModule("latestArticles", page, "home.beforeContact");
+  created.settings = {
+    ...(created.settings || {}),
+    autoEnsuredLatestArticles: true,
+  };
+  const insertAt = (() => {
+    const contactIndex = ordered.findIndex((module) => HOMEPAGE_LATEST_ARTICLES_CONTACT_TYPES.has(module?.type));
+    if (contactIndex >= 0) return contactIndex;
+    const beforeContactIndex = ordered.findIndex((module) => {
+      const slot = String(module?.slot || "");
+      return slot === "home.beforeContact" || slot === "home.finalCta";
+    });
+    return beforeContactIndex >= 0 ? beforeContactIndex : ordered.length;
+  })();
+  ordered.splice(insertAt, 0, created);
+  return {
+    modules: ordered.map((module, order) => ({ ...module, order })),
+    changed: true,
+  };
+}
+
+export function withNormalizedModules(page = {}) {
+  const content = normalizePageContent(page.content);
+  const normalizedModules = normalizeSemanticModules(page);
+  const ensured = ensureHomepageLatestArticlesModules(normalizedModules, page);
+  return {
+    ...page,
+    content: {
+      ...content,
+      modules: ensured.modules,
     },
   };
 }

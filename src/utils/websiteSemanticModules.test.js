@@ -9,7 +9,12 @@ import {
   normalizeSemanticModules,
   sanitizeNextJsEditableText,
   upgradeLegacyIronEmberProjectGallery,
+  ensureHomepageLatestArticlesModules,
+  isHomepageLatestArticlesRemoved,
+  withHomepageLatestArticlesRemoved,
+  withNormalizedModules,
 } from "./websiteSemanticModules";
+import { getSemanticSlotDisplayLabel } from "./websiteThemeModules";
 import { createIronEmberOriginalHomeModules } from "./ironEmberHomeBlueprint";
 import { createClearClinicOriginalHomeModules } from "./clearClinicHomeBlueprint";
 import { createHarborLineOriginalHomeModules } from "./harborLineHomeBlueprint";
@@ -395,7 +400,7 @@ describe("website semantic modules", () => {
     expect(article.show_in_menu).toBe(false);
     expect(article.content.meta.websiteBlogPost).toBe(true);
     expect(article.content.modules.map((module) => module.type)).toEqual(["hero", "richText", "cta"]);
-    expect(article.content.modules[0].content.image).toBe("/media/site-hero.jpg");
+    expect(article.content.modules[0].content.image).toBe("");
     expect(article.content.modules[0].content.imagePosition).toEqual({ x: 50, y: 50 });
     expect(article.seo_description).toBe("A concise guide to choosing the right service.");
 
@@ -521,6 +526,80 @@ describe("website semantic modules", () => {
         settings: expect.objectContaining({ dataSource: "published-reviews" }),
       }));
     });
+  });
+
+  it("gives every Next.js homepage starter exactly one Latest Articles module before the footer band", () => {
+    getProfessionHomeBlueprintKeys().forEach((themeKey) => {
+      const modules = getProfessionHomeBlueprint(themeKey).createModules();
+      const latest = modules.filter((module) => module.type === "latestArticles");
+      expect(latest).toHaveLength(1);
+      const contactIndex = modules.findIndex((module) =>
+        ["contactIntro", "contactDetails", "hoursLocation", "locations", "map", "contactForm", "cta", "bookingCta"].includes(module.type)
+      );
+      const latestIndex = modules.findIndex((module) => module.type === "latestArticles");
+      expect(latestIndex).toBeGreaterThanOrEqual(0);
+      if (contactIndex >= 0) {
+        expect(latestIndex).toBeLessThan(contactIndex);
+      }
+      expect(latest[0].content.limit).toBe(6);
+    });
+  });
+
+  it("ensures missing homepage Latest Articles once, preserves existing placement, and respects removal opt-out", () => {
+    const without = [
+      { id: "hero", type: "hero", slot: "home.hero", order: 0, enabled: true, content: {} },
+      { id: "who", type: "richText", slot: "home.afterServices", order: 1, enabled: true, content: { heading: "Who we support" } },
+      { id: "contact", type: "contactForm", slot: "home.beforeContact", order: 2, enabled: true, content: {} },
+    ];
+    const page = { slug: "home", is_homepage: true, content: { modules: without } };
+    const ensured = ensureHomepageLatestArticlesModules(without, page);
+    expect(ensured.changed).toBe(true);
+    expect(ensured.modules.filter((module) => module.type === "latestArticles")).toHaveLength(1);
+    expect(ensured.modules.map((module) => module.type)).toEqual([
+      "hero",
+      "richText",
+      "latestArticles",
+      "contactForm",
+    ]);
+
+    const bridge = [
+      { id: "hero", type: "hero", slot: "home.hero", order: 0, enabled: true, content: {} },
+      { id: "who", type: "richText", slot: "home.afterServices", order: 1, enabled: true, content: { heading: "Who we support" } },
+      {
+        id: "bridge-latest",
+        type: "latestArticles",
+        slot: "home.afterServices",
+        order: 2,
+        enabled: true,
+        content: { heading: "Bridge articles", limit: 6 },
+      },
+      { id: "contact", type: "contactForm", slot: "home.beforeContact", order: 3, enabled: true, content: {} },
+    ];
+    const preserved = ensureHomepageLatestArticlesModules(bridge, {
+      slug: "home",
+      is_homepage: true,
+      content: { modules: bridge },
+    });
+    expect(preserved.changed).toBe(false);
+    expect(preserved.modules.filter((module) => module.type === "latestArticles")).toHaveLength(1);
+    expect(preserved.modules[2].id).toBe("bridge-latest");
+
+    const duplicates = ensureHomepageLatestArticlesModules(
+      [...bridge, { id: "dup", type: "latestArticles", slot: "home.beforeContact", order: 4, enabled: true, content: {} }],
+      { slug: "home", is_homepage: true, content: { modules: bridge } }
+    );
+    expect(duplicates.changed).toBe(true);
+    expect(duplicates.modules.filter((module) => module.type === "latestArticles")).toHaveLength(1);
+    expect(duplicates.modules.find((module) => module.type === "latestArticles").id).toBe("bridge-latest");
+
+    const removedPage = withHomepageLatestArticlesRemoved(page, true);
+    expect(isHomepageLatestArticlesRemoved(removedPage)).toBe(true);
+    const skipped = ensureHomepageLatestArticlesModules(without, removedPage);
+    expect(skipped.changed).toBe(false);
+    expect(skipped.modules.some((module) => module.type === "latestArticles")).toBe(false);
+
+    expect(getSemanticSlotDisplayLabel("home.beforeContact")).toBe("Before footer");
+    expect(getSemanticSlotDisplayLabel("home.afterServices")).toBe("After main content");
   });
 
   it("provides Black Letter's complete editable legal rhythm", () => {
