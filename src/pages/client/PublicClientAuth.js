@@ -34,6 +34,7 @@ import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
 import { publishClientSessionState } from "../../utils/clientSession";
 import {
+  normalizeClientOrderReturnPath,
   normalizePackageCheckoutReturnPath,
   normalizeTransactionalReturnPath,
 } from "../../utils/transactionalFrameBridge";
@@ -118,7 +119,19 @@ export function resolveClientAuthCompletionPath({
   activeSearch = "",
   hostMode = "platform",
 } = {}) {
-  const safeReturnTo = normalizeTransactionalReturnPath(returnTo);
+  const trustedReturnTo =
+    normalizePackageCheckoutReturnPath(returnTo, slug) ||
+    normalizeClientOrderReturnPath(returnTo, slug);
+  const genericReturnTo = normalizeTransactionalReturnPath(returnTo);
+  let safeReturnTo = trustedReturnTo;
+  if (!safeReturnTo && genericReturnTo) {
+    const parsed = new URL(genericReturnTo, "https://schedulaa.local");
+    const sensitiveContinuation =
+      parsed.pathname.endsWith("/packages/return") ||
+      parsed.pathname.endsWith("/my-bookings") ||
+      parsed.searchParams.get("view") === "orders";
+    if (!sensitiveContinuation) safeReturnTo = genericReturnTo;
+  }
   if (safeReturnTo) return safeReturnTo;
 
   const activeQuery = new URLSearchParams(activeSearch || "");
@@ -153,12 +166,13 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
   const [timezone, setTimezone] = useState(() => getUserTimezone());
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const packageReturnTo = useMemo(() => {
+  const trustedReturnTo = useMemo(() => {
     if (returnTo || typeof window === "undefined") return "";
     const query = new URLSearchParams(window.location.search || "");
-    return normalizePackageCheckoutReturnPath(
-      query.get("return_to") || query.get("returnTo") || "",
-      slug,
+    const requested = query.get("return_to") || query.get("returnTo") || "";
+    return (
+      normalizePackageCheckoutReturnPath(requested, slug) ||
+      normalizeClientOrderReturnPath(requested, slug)
     );
   }, [returnTo, slug]);
   const seoTitle = useMemo(() => {
@@ -188,7 +202,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
     const target = resolveClientAuthCompletionPath({
-      returnTo: returnTo || packageReturnTo,
+      returnTo: returnTo || trustedReturnTo,
       embedded,
       slug,
       activeSearch: window.location.search,

@@ -1,4 +1,8 @@
-import { normalizePackageCheckoutReturnPath } from "./transactionalFrameBridge";
+import {
+  buildClientOrderDashboardReturnPath,
+  normalizeClientOrderReturnPath,
+  normalizePackageCheckoutReturnPath,
+} from "./transactionalFrameBridge";
 
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
@@ -68,10 +72,11 @@ export const buildClientLoginTarget = (tenantSlug, search = "", returnTo = "") =
     if (source.has(key)) query.set(key, source.get(key));
   });
   const siteSlug = source.get("site") || String(tenantSlug || "").trim();
-  const safeReturnTo = normalizePackageCheckoutReturnPath(
-    returnTo || source.get("return_to") || source.get("returnTo") || "",
-    siteSlug,
-  );
+  const requestedReturnTo = returnTo || source.get("return_to") || source.get("returnTo") || "";
+  const safeReturnTo =
+    normalizePackageCheckoutReturnPath(requestedReturnTo, siteSlug) ||
+    normalizeClientOrderReturnPath(requestedReturnTo, siteSlug) ||
+    buildClientOrderDashboardReturnPath(search, siteSlug);
   if (safeReturnTo) query.set("return_to", safeReturnTo);
   if (siteSlug) query.set("site", siteSlug);
   query.set("client", "1");

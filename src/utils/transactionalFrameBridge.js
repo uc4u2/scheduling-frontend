@@ -47,6 +47,73 @@ export function normalizePackageCheckoutReturnPath(value = "", tenantSlug = "") 
   return `${parsed.pathname}${parsed.search}`;
 }
 
+export function parseClientOrderDestination(search = "", tenantSlug = "") {
+  const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
+  if (params.get("view") !== "orders") {
+    return { requested: false, valid: false, orderId: null };
+  }
+
+  const rawOrderId = String(params.get("order_id") || "").trim();
+  const resolvedTenant = String(tenantSlug || "").trim();
+  const requestedTenant = String(params.get("site") || "").trim();
+  const numericOrderId = Number(rawOrderId);
+  const validOrderId = /^[1-9]\d*$/.test(rawOrderId) && Number.isSafeInteger(numericOrderId);
+  const tenantMatches = !requestedTenant || !resolvedTenant || requestedTenant === resolvedTenant;
+  return {
+    requested: true,
+    valid: Boolean(validOrderId && resolvedTenant && tenantMatches),
+    orderId: validOrderId ? numericOrderId : null,
+  };
+}
+
+export function normalizeClientOrderReturnPath(value = "", tenantSlug = "") {
+  const safePath = normalizeTransactionalReturnPath(value);
+  const slug = String(tenantSlug || "").trim();
+  if (!safePath || !slug) return "";
+
+  const parsed = new URL(safePath, "https://schedulaa.local");
+  const destination = parseClientOrderDestination(parsed.search, slug);
+  if (!destination.valid) return "";
+
+  const encodedSlug = encodeURIComponent(slug);
+  const cleanPath = parsed.pathname.length > 1
+    ? parsed.pathname.replace(/\/+$/, "")
+    : parsed.pathname;
+  const allowedPaths = new Set([
+    "/my-bookings",
+    `/${encodedSlug}/my-bookings`,
+    "/dashboard",
+    `/${encodedSlug}/client/bookings`,
+  ]);
+  if (!allowedPaths.has(cleanPath)) return "";
+
+  const query = new URLSearchParams();
+  if (cleanPath === "/dashboard") query.set("site", slug);
+  query.set("view", "orders");
+  query.set("order_id", String(destination.orderId));
+  ["embed", "mode", "dialog", "primary", "text"].forEach((key) => {
+    if (parsed.searchParams.has(key)) query.set(key, parsed.searchParams.get(key));
+  });
+  return `${cleanPath}?${query.toString()}`;
+}
+
+export function buildClientOrderDashboardReturnPath(search = "", tenantSlug = "") {
+  const slug = String(tenantSlug || "").trim();
+  const destination = parseClientOrderDestination(search, slug);
+  if (!destination.valid) return "";
+
+  const source = new URLSearchParams(String(search || "").replace(/^\?/, ""));
+  const query = new URLSearchParams({
+    site: slug,
+    view: "orders",
+    order_id: String(destination.orderId),
+  });
+  ["embed", "mode", "dialog", "primary", "text"].forEach((key) => {
+    if (source.has(key)) query.set(key, source.get(key));
+  });
+  return `/dashboard?${query.toString()}`;
+}
+
 export function requestTransactionalNavigation(targetWindow, value = "") {
   const href = normalizeTransactionalReturnPath(value);
   if (!href || !targetWindow?.postMessage) return false;

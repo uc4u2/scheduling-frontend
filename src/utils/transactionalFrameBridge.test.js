@@ -1,7 +1,10 @@
 import {
+  buildClientOrderDashboardReturnPath,
   measureTransactionalContent,
+  normalizeClientOrderReturnPath,
   normalizePackageCheckoutReturnPath,
   normalizeTransactionalReturnPath,
+  parseClientOrderDestination,
   publishTransactionalMeasurement,
   requestTransactionalNavigation,
 } from "./transactionalFrameBridge";
@@ -97,6 +100,47 @@ describe("transactionalFrameBridge", () => {
     )).toBe("");
     expect(normalizePackageCheckoutReturnPath(
       "/studio/packages/return?session_id={CHECKOUT_SESSION_ID}",
+      "studio",
+    )).toBe("");
+  });
+
+  it("accepts only tenant-scoped positive order destinations", () => {
+    expect(parseClientOrderDestination("?view=orders&order_id=51", "studio"))
+      .toEqual({ requested: true, valid: true, orderId: 51 });
+    expect(parseClientOrderDestination("?view=orders&order_id=0", "studio"))
+      .toEqual({ requested: true, valid: false, orderId: null });
+    expect(parseClientOrderDestination("?view=orders&order_id=999999999999999999999", "studio"))
+      .toEqual({ requested: true, valid: false, orderId: null });
+    expect(parseClientOrderDestination("?view=orders&order_id=51&site=other", "studio"))
+      .toEqual({ requested: true, valid: false, orderId: 51 });
+    expect(parseClientOrderDestination("?order_id=51", "studio"))
+      .toEqual({ requested: false, valid: false, orderId: null });
+
+    expect(normalizeClientOrderReturnPath(
+      "/studio/my-bookings?view=orders&order_id=51&site=studio&unsafe=secret",
+      "studio",
+    )).toBe("/studio/my-bookings?view=orders&order_id=51");
+    expect(normalizeClientOrderReturnPath(
+      "/dashboard?site=studio&view=orders&order_id=51&embed=1",
+      "studio",
+    )).toBe("/dashboard?site=studio&view=orders&order_id=51&embed=1");
+    expect(normalizeClientOrderReturnPath(
+      "/other/my-bookings?view=orders&order_id=51",
+      "studio",
+    )).toBe("");
+    expect(normalizeClientOrderReturnPath(
+      "/studio/my-bookings?view=orders&order_id=-1",
+      "studio",
+    )).toBe("");
+  });
+
+  it("builds a direct dashboard continuation only from a valid scoped order query", () => {
+    expect(buildClientOrderDashboardReturnPath(
+      "?site=studio&view=orders&order_id=91&embed=1",
+      "studio",
+    )).toBe("/dashboard?site=studio&view=orders&order_id=91&embed=1");
+    expect(buildClientOrderDashboardReturnPath(
+      "?site=other&view=orders&order_id=91",
       "studio",
     )).toBe("");
   });

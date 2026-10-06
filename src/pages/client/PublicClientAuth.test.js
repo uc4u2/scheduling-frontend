@@ -104,6 +104,19 @@ describe("PublicClientAuth", () => {
     })).toContain("/dashboard?");
   });
 
+  it("returns to a validated tenant order destination after authentication", () => {
+    expect(resolveClientAuthCompletionPath({
+      returnTo: "/web-design/my-bookings?view=orders&order_id=81",
+      embedded: true,
+      slug: "web-design",
+    })).toBe("/web-design/my-bookings?view=orders&order_id=81");
+    expect(resolveClientAuthCompletionPath({
+      returnTo: "/other/my-bookings?view=orders&order_id=81",
+      embedded: true,
+      slug: "web-design",
+    })).not.toBe("/other/my-bookings?view=orders&order_id=81");
+  });
+
   it("resumes the same package checkout from a validated login continuation", async () => {
     const continuation = "/web-design/packages/return?session_id=cs_resume_1&site=web-design";
     const assign = jest.fn();
@@ -124,5 +137,25 @@ describe("PublicClientAuth", () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith(continuation));
     expect(localStorage.getItem("token")).toBe("fresh-token");
     expect(localStorage.getItem("role")).toBe("client");
+  });
+
+  it("resumes the same tenant order from a validated login continuation", async () => {
+    const continuation = "/web-design/my-bookings?view=orders&order_id=87";
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      search: `?site=web-design&return_to=${encodeURIComponent(continuation)}`,
+      assign,
+    };
+    api.post.mockResolvedValueOnce({ data: { access_token: "fresh-order-token" } });
+
+    render(<PublicClientAuth slug="web-design" />);
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "client@example.com" } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(continuation));
   });
 });

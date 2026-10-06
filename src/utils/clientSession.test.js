@@ -45,6 +45,24 @@ describe("client session lifecycle", () => {
       "?site=beauty-salon",
       "/other/packages/return?session_id=cs_wrong_tenant",
     )).toBe("/login?site=beauty-salon&client=1");
+    expect(buildClientLoginTarget(
+      "beauty-salon",
+      "?site=beauty-salon&view=orders&order_id=73&embed=1",
+    )).toBe(
+      "/login?return_to=%2Fdashboard%3Fsite%3Dbeauty-salon%26view%3Dorders%26order_id%3D73%26embed%3D1&site=beauty-salon&client=1&embed=1&dialog=1",
+    );
+    expect(buildClientLoginTarget(
+      "beauty-salon",
+      "?site=beauty-salon",
+      "/beauty-salon/my-bookings?view=orders&order_id=73",
+    )).toBe(
+      "/login?return_to=%2Fbeauty-salon%2Fmy-bookings%3Fview%3Dorders%26order_id%3D73&site=beauty-salon&client=1",
+    );
+    expect(buildClientLoginTarget(
+      "beauty-salon",
+      "?site=beauty-salon",
+      "/other/my-bookings?view=orders&order_id=73",
+    )).toBe("/login?site=beauty-salon&client=1");
   });
 
   it("invalidates only a rejection for the active client token", () => {

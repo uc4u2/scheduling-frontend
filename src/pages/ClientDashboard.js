@@ -15,6 +15,7 @@ import {
   CLIENT_SESSION_STATE_EVENT,
   publishClientSessionState,
 } from "../utils/clientSession";
+import { parseClientOrderDestination } from "../utils/transactionalFrameBridge";
 
 // Tab names for display and logic
 const tabLabels = [
@@ -47,14 +48,14 @@ function getRoleFromToken(token) {
   return null;
 }
 
-export default function ClientDashboard() {
+export default function ClientDashboard({ tenantSlug: explicitTenantSlug = "" }) {
   const [tab, setTab] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const dashboardSurface = "var(--page-card-bg, var(--checkout-card-bg, #ffffff))";
   const dashboardText = "var(--page-body-color, #111827)";
   const dashboardBorder = "var(--page-border-color, rgba(15,23,42,0.12))";
-  const tenantSlug = resolveTenantSlug({ search: location.search });
+  const tenantSlug = resolveTenantSlug({ explicitSlug: explicitTenantSlug, search: location.search });
 
   // Restrict page to clients only
   useEffect(() => {
@@ -73,8 +74,11 @@ export default function ClientDashboard() {
     }
     publishClientSessionState(true, { reason: "active-client-session" });
     // Optionally, set tab by URL hash
+    const orderDestination = parseClientOrderDestination(location.search, tenantSlug);
     const hash = window.location.hash.toLowerCase();
-    if (tabHashMap.hasOwnProperty(hash)) {
+    if (orderDestination.requested) {
+      setTab(1);
+    } else if (tabHashMap.hasOwnProperty(hash)) {
       setTab(tabHashMap[hash]);
     }
   }, [location.search, navigate, tenantSlug]);
@@ -142,7 +146,7 @@ export default function ClientDashboard() {
         }}
       >
         {tab === 0 && <ClientDashboardOverview />}
-        {tab === 1 && <ClientBookings />}
+        {tab === 1 && <ClientBookings tenantSlug={tenantSlug} />}
         {tab === 2 && <ClientPackages />}
         {tab === 3 && <ClientNotifications />}
         {tab === 4 && <ClientProfile />}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Box,
@@ -23,6 +23,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
+import { parseClientOrderDestination } from "../../utils/transactionalFrameBridge";
 
 const toTitle = (value) => {
   const raw = String(value || "").trim();
@@ -150,7 +151,7 @@ const formatVariantOptions = (options) =>
     .map((row) => `${row.option_name}: ${row.value}`)
     .join(" • ");
 
-export default function ClientBookings() {
+export default function ClientBookings({ tenantSlug: explicitTenantSlug = "" }) {
   const [activeSlice, setActiveSlice] = useState(0);
 
   const [bookings, setBookings] = useState([]);
@@ -169,14 +170,23 @@ export default function ClientBookings() {
   const [orderDigitalAccess, setOrderDigitalAccess] = useState(null);
   const [orderDigitalAccessLoading, setOrderDigitalAccessLoading] = useState(false);
   const [orderDigitalAccessError, setOrderDigitalAccessError] = useState("");
+  const [orderDestinationError, setOrderDestinationError] = useState("");
+  const orderDetailRequestRef = useRef(0);
+  const orderListRequestRef = useRef(0);
+  const activeOrderContextRef = useRef("");
+  const dismissedOrderContextRef = useRef("");
 
   const navigate = useNavigate();
   const location = useLocation();
   const { slug: routeSlug } = useParams();
 
   const tenantSlug = useMemo(() => {
-    return resolveTenantSlug({ routeSlug, search: location.search });
-  }, [routeSlug, location.search]);
+    return resolveTenantSlug({ explicitSlug: explicitTenantSlug, routeSlug, search: location.search });
+  }, [explicitTenantSlug, routeSlug, location.search]);
+  const orderDestination = useMemo(
+    () => parseClientOrderDestination(location.search, tenantSlug),
+    [location.search, tenantSlug]
+  );
 
   useEffect(() => {
     if (tenantSlug) persistTenantSlug(tenantSlug);
@@ -208,12 +218,12 @@ export default function ClientBookings() {
         : { ...to, search: location.search }
     );
 
-  const authHeaders = () => {
+  const authHeaders = useCallback(() => {
     const token = localStorage.getItem("token");
     return { Authorization: `Bearer ${token}` };
-  };
+  }, []);
 
-  const loadBookings = () => {
+  const loadBookings = useCallback(() => {
     api
       .get("/api/client/bookings", {
         headers: authHeaders(),
@@ -224,9 +234,19 @@ export default function ClientBookings() {
         setBookings(Array.isArray(data) ? data : []);
       })
       .catch((err) => console.error("Failed to load bookings:", err));
-  };
+  }, [authHeaders, tenantSlug]);
 
-  const loadOrders = () => {
+  const loadOrders = useCallback(() => {
+    const scopedTenant = String(tenantSlug || "").trim();
+    const token = localStorage.getItem("token") || "";
+    const role = localStorage.getItem("role") || "";
+    const requestId = ++orderListRequestRef.current;
+    if (!scopedTenant) {
+      setOrders([]);
+      setOrdersLoading(false);
+      setOrdersError("Order history is unavailable without a business context.");
+      return;
+    }
     setOrdersLoading(true);
     setOrdersError("");
     api
@@ -235,24 +255,36 @@ export default function ClientBookings() {
         params: {
           page: 1,
           per_page: 50,
-          ...tenantParams(tenantSlug),
+          slug: scopedTenant,
         },
       })
       .then((res) => {
+        if (
+          requestId !== orderListRequestRef.current ||
+          localStorage.getItem("token") !== token ||
+          localStorage.getItem("role") !== role
+        ) return;
         const data = res.data?.orders || [];
         setOrders(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
+        if (
+          requestId !== orderListRequestRef.current ||
+          localStorage.getItem("token") !== token ||
+          localStorage.getItem("role") !== role
+        ) return;
         console.error("Failed to load orders:", err);
         setOrdersError("Could not load your product orders.");
       })
-      .finally(() => setOrdersLoading(false));
-  };
+      .finally(() => {
+        if (requestId === orderListRequestRef.current) setOrdersLoading(false);
+      });
+  }, [authHeaders, tenantSlug]);
 
   useEffect(() => {
     loadBookings();
     loadOrders();
-  }, []);
+  }, [loadBookings, loadOrders]);
 
   useEffect(() => {
     const handler = () => {
@@ -262,7 +294,7 @@ export default function ClientBookings() {
 
     window.addEventListener("booking:changed", handler);
     return () => window.removeEventListener("booking:changed", handler);
-  }, [tenantSlug]);
+  }, [loadBookings, loadOrders]);
 
   function handleCancel(row) {
     if (row.status === "cancelled" || row.status === "unavailable") return;
@@ -319,49 +351,122 @@ export default function ClientBookings() {
       .finally(() => setDetailLoading(false));
   }
 
-  const openOrderDetail = (row) => {
+  const isCurrentOrderRequest = useCallback((requestId, contextKey, token) => (
+    requestId === orderDetailRequestRef.current &&
+    activeOrderContextRef.current === contextKey &&
+    localStorage.getItem("token") === token &&
+    localStorage.getItem("role") === "client"
+  ), []);
+
+  const openOrderDetailById = useCallback((orderId, row = null, { fromDestination = false } = {}) => {
+    const scopedTenant = String(tenantSlug || "").trim();
+    const numericOrderId = Number(orderId);
+    if (!scopedTenant || !Number.isSafeInteger(numericOrderId) || numericOrderId <= 0) {
+      setOrderDestinationError("This order is unavailable.");
+      return;
+    }
+
+    const token = localStorage.getItem("token") || "";
+    const contextKey = `${scopedTenant}:${numericOrderId}:${token}`;
+    if (fromDestination && dismissedOrderContextRef.current === contextKey) return;
+    const requestId = ++orderDetailRequestRef.current;
+    activeOrderContextRef.current = contextKey;
+    dismissedOrderContextRef.current = "";
+    setOrderDestinationError("");
     setOrderOpen(true);
     setOrderLoading(true);
-    setSelectedOrder(null);
+    setSelectedOrder(row || null);
     setOrderDigitalAccess(null);
     setOrderDigitalAccessError("");
     setOrderDigitalAccessLoading(true);
     api
-      .get(`/api/client/product-orders/${row.id}`, {
+      .get(`/api/client/product-orders/${numericOrderId}`, {
         headers: authHeaders(),
-        params: tenantParams(tenantSlug),
+        params: { slug: scopedTenant },
       })
-      .then((res) => setSelectedOrder(res.data || null))
+      .then((res) => {
+        if (!isCurrentOrderRequest(requestId, contextKey, token)) return;
+        setSelectedOrder(res.data || null);
+      })
       .catch((err) => {
+        if (!isCurrentOrderRequest(requestId, contextKey, token)) return;
         console.error("Failed to load order detail:", err);
-        setSelectedOrder({ error: "Could not load order details." });
+        setSelectedOrder({ error: "This order is unavailable." });
       })
-      .finally(() => setOrderLoading(false));
+      .finally(() => {
+        if (isCurrentOrderRequest(requestId, contextKey, token)) setOrderLoading(false);
+      });
 
     api
-      .get(`/api/client/product-orders/${row.id}/digital-access`, {
+      .get(`/api/client/product-orders/${numericOrderId}/digital-access`, {
         headers: authHeaders(),
-        params: tenantParams(tenantSlug),
+        params: { slug: scopedTenant },
       })
-      .then((res) => setOrderDigitalAccess(res.data || null))
-      .catch((err) => {
-        const text =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Could not load digital access details.";
-        setOrderDigitalAccessError(text);
+      .then((res) => {
+        if (!isCurrentOrderRequest(requestId, contextKey, token)) return;
+        setOrderDigitalAccess(res.data || null);
       })
-      .finally(() => setOrderDigitalAccessLoading(false));
-  };
+      .catch(() => {
+        if (!isCurrentOrderRequest(requestId, contextKey, token)) return;
+        setOrderDigitalAccessError("Digital access is unavailable for this order.");
+      })
+      .finally(() => {
+        if (isCurrentOrderRequest(requestId, contextKey, token)) {
+          setOrderDigitalAccessLoading(false);
+        }
+      });
+  }, [authHeaders, isCurrentOrderRequest, tenantSlug]);
+
+  const openOrderDetail = useCallback((row) => {
+    openOrderDetailById(row?.id, row);
+  }, [openOrderDetailById]);
+
+  const closeOrderDetail = useCallback(() => {
+    dismissedOrderContextRef.current = activeOrderContextRef.current;
+    activeOrderContextRef.current = "";
+    orderDetailRequestRef.current += 1;
+    setOrderOpen(false);
+    setOrderLoading(false);
+    setOrderDigitalAccessLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!orderDestination.requested) {
+      setOrderDestinationError("");
+      return;
+    }
+    setActiveSlice(1);
+    if (!orderDestination.valid) {
+      orderDetailRequestRef.current += 1;
+      activeOrderContextRef.current = "";
+      setOrderOpen(false);
+      setOrderLoading(false);
+      setOrderDigitalAccessLoading(false);
+      setOrderDestinationError("This order is unavailable.");
+      return;
+    }
+    openOrderDetailById(orderDestination.orderId, null, { fromDestination: true });
+  }, [openOrderDetailById, orderDestination.orderId, orderDestination.requested, orderDestination.valid]);
 
   const refreshDigitalAccessLink = async (entitlementId) => {
-    if (!entitlementId || !selectedOrder?.id) return;
+    const scopedTenant = String(tenantSlug || "").trim();
+    if (!entitlementId || !selectedOrder?.id || !scopedTenant) {
+      setOrderDigitalAccessError("Digital access is unavailable for this order.");
+      return;
+    }
+    const token = localStorage.getItem("token") || "";
+    const contextKey = activeOrderContextRef.current;
     try {
       const res = await api.post(
         `/api/client/digital-access/${entitlementId}/refresh`,
         {},
-        { headers: authHeaders() }
+        { headers: authHeaders(), params: { slug: scopedTenant } }
       );
+      if (
+        activeOrderContextRef.current !== contextKey ||
+        localStorage.getItem("token") !== token ||
+        localStorage.getItem("role") !== "client"
+      ) return;
       const nextUrl = String(res?.data?.public_access_url || "").trim();
       const nextExpiry = String(res?.data?.access_url_expires_at || "").trim();
       setOrderDigitalAccess((prev) => {
@@ -384,6 +489,11 @@ export default function ClientBookings() {
       });
       return nextUrl || "";
     } catch (err) {
+      if (
+        activeOrderContextRef.current !== contextKey ||
+        localStorage.getItem("token") !== token ||
+        localStorage.getItem("role") !== "client"
+      ) return;
       const text =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
@@ -570,6 +680,11 @@ export default function ClientBookings() {
         </div>
       ) : (
         <Box>
+          {orderDestinationError && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {orderDestinationError}
+            </Alert>
+          )}
           {ordersError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {ordersError}
@@ -767,7 +882,7 @@ export default function ClientBookings() {
 
       <Dialog
         open={orderOpen}
-        onClose={() => setOrderOpen(false)}
+        onClose={closeOrderDetail}
         maxWidth="md"
         fullWidth
         BackdropProps={{
@@ -1096,6 +1211,9 @@ export default function ClientBookings() {
             </Stack>
           ) : null}
         </DialogContent>
+        <DialogActions sx={{ justifyContent: "flex-end", p: 2 }}>
+          <Button onClick={closeOrderDetail}>Close</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

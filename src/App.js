@@ -29,6 +29,7 @@ import {
   shouldUseNextJsPublicRenderer,
 } from "./utils/publicWebsite";
 import { getSupportWorkspaceContext } from "./utils/supportWorkspaceAccess";
+import { normalizeClientOrderReturnPath } from "./utils/transactionalFrameBridge";
 
 // Components
 import MainNav from "./landing/components/MainNav";
@@ -506,11 +507,17 @@ const TenantScopedClientLogin = () => {
   );
 };
 
-const TenantScopedClientAccount = () => {
-  const { slug } = useParams();
+const TenantScopedClientAccount = ({ slugOverride = "" }) => {
+  const { slug: routeSlug } = useParams();
+  const location = useLocation();
+  const slug = String(slugOverride || routeSlug || "").trim();
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
   const role = typeof localStorage !== "undefined" ? localStorage.getItem("role") : "";
   const clientLoggedIn = Boolean(token && role === "client");
+  const orderReturnTo = normalizeClientOrderReturnPath(
+    `${location.pathname}${location.search || ""}`,
+    slug,
+  );
   return (
     <TenantTransactionalShell
       slugOverride={slug}
@@ -522,7 +529,7 @@ const TenantScopedClientAccount = () => {
         </TenantLegacySiteFrame>
       )}
     >
-      {clientLoggedIn ? <ClientDashboard /> : <PublicClientAuth slug={slug} />}
+      {clientLoggedIn ? <ClientDashboard tenantSlug={slug} /> : <PublicClientAuth slug={slug} returnTo={orderReturnTo} />}
     </TenantTransactionalShell>
   );
 };
@@ -1006,6 +1013,7 @@ const AppContent = ({ token, setToken }) => {
                   otherwise send /:slug/* through the public-site fallback. */}
               <Route path="/:slug/login" element={<TenantScopedClientLogin />} />
               <Route path="/:slug/client/bookings" element={<TenantScopedClientAccount />} />
+              <Route path="/my-bookings" element={<TenantScopedClientAccount slugOverride={tenantSlug} />} />
               <Route path="/" element={<CompanyPublic slugOverride={tenantSlug} />} />
               <Route path="/jobs" element={<PublicJobsListPage slugOverride={tenantSlug} />} />
               <Route path="/jobs/:jobSlug" element={<PublicJobDetailPage slugOverride={tenantSlug} />} />
@@ -1164,6 +1172,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/:slug/services" element={<ServiceList />} />
               <Route path="/:slug/login" element={<TenantScopedClientLogin />} />
               <Route path="/:slug/client/bookings" element={<TenantScopedClientAccount />} />
+              <Route path="/:slug/my-bookings" element={<TenantScopedClientAccount />} />
               <Route path="/:slug/services/:serviceId" element={<TenantTransactionalShell activeKey="__services" pagePath="services"><ServiceDetails /></TenantTransactionalShell>} />
               <Route path="/:slug/services/:serviceId/employees" element={<EmployeeList />} />
               <Route path="/:slug/services/:serviceId/employees/:employeeId" element={<TenantTransactionalShell activeKey="__services" pagePath="services"><EmployeeProfile /></TenantTransactionalShell>} />
