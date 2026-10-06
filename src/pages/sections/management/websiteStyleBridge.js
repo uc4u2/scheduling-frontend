@@ -79,6 +79,52 @@ export function normalizeNextJsPreviewPagePath(editing) {
   return canonical ? [canonical] : pagePath;
 }
 
+function normalizePreviewSessionPagePath(value) {
+  const parts = Array.isArray(value)
+    ? value
+    : String(value || "").split("/");
+  return parts
+    .map((part) => String(part || "").trim().replace(/^\/+|\/+$/g, ""))
+    .filter(Boolean);
+}
+
+export function buildPreviewSessionContextKey({ companyId, themeKey, pagePath } = {}) {
+  const normalizedCompanyId = Number(companyId);
+  const normalizedThemeKey = String(themeKey || "").trim().toLowerCase();
+  if (!Number.isSafeInteger(normalizedCompanyId) || normalizedCompanyId <= 0 || !normalizedThemeKey) {
+    return "";
+  }
+  return JSON.stringify([
+    normalizedCompanyId,
+    normalizedThemeKey,
+    normalizePreviewSessionPagePath(pagePath).join("/"),
+  ]);
+}
+
+export function isCurrentPreviewSessionResponse({
+  requestId,
+  latestRequestId,
+  requestedContextKey,
+  activeContextKey,
+  payload,
+} = {}) {
+  if (!requestId || requestId !== latestRequestId) return false;
+  if (!requestedContextKey || requestedContextKey !== activeContextKey) return false;
+
+  let requestedContext;
+  try {
+    requestedContext = JSON.parse(requestedContextKey);
+  } catch {
+    return false;
+  }
+  const [requestedCompanyId, requestedThemeKey, requestedPagePath] = requestedContext;
+  const responseCompanyId = payload?.company_id ?? payload?.companyId;
+  if (responseCompanyId != null && Number(responseCompanyId) !== requestedCompanyId) return false;
+  if (String(payload?.visual_theme_key || "").trim().toLowerCase() !== requestedThemeKey) return false;
+  if (normalizePreviewSessionPagePath(payload?.page_path).join("/") !== requestedPagePath) return false;
+  return Boolean(payload?.token);
+}
+
 export function isAcceptedPreviewMessage({
   eventOrigin,
   expectedOrigin,

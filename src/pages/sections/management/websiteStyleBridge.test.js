@@ -1,5 +1,6 @@
 import {
   buildWebsiteBuilderUrl,
+  buildPreviewSessionContextKey,
   buildClassicRestorePayload,
   buildWebsiteStyleApplyPayload,
   getBuilderTabDefaultIndex,
@@ -10,6 +11,7 @@ import {
   normalizePreviewPagePath,
   normalizeNextJsPreviewPagePath,
   resolveBuilderRendererMode,
+  isCurrentPreviewSessionResponse,
 } from "./websiteStyleBridge";
 
 describe("websiteStyleBridge", () => {
@@ -135,5 +137,75 @@ describe("websiteStyleBridge", () => {
     expect(buildWebsiteBuilderUrl(17)).toBe(
       "/manage/website/builder?company_id=17"
     );
+  });
+
+  it("accepts only the latest preview response for the active tenant, theme, and page", () => {
+    const lumiereHome = buildPreviewSessionContextKey({
+      companyId: 41,
+      themeKey: "IRON-EMBER",
+      pagePath: [],
+    });
+    const bridgeHome = buildPreviewSessionContextKey({
+      companyId: 37,
+      themeKey: "quiet-harbor",
+      pagePath: [],
+    });
+
+    expect(
+      isCurrentPreviewSessionResponse({
+        requestId: 8,
+        latestRequestId: 8,
+        requestedContextKey: lumiereHome,
+        activeContextKey: lumiereHome,
+        payload: {
+          token: "lumiere-token",
+          company_id: 41,
+          visual_theme_key: "iron-ember",
+          page_path: [],
+        },
+      })
+    ).toBe(true);
+
+    expect(
+      isCurrentPreviewSessionResponse({
+        requestId: 7,
+        latestRequestId: 8,
+        requestedContextKey: bridgeHome,
+        activeContextKey: lumiereHome,
+        payload: {
+          token: "stale-bridge-token",
+          company_id: 37,
+          visual_theme_key: "quiet-harbor",
+          page_path: [],
+        },
+      })
+    ).toBe(false);
+  });
+
+  it("rejects mismatched preview response provenance even for the latest request", () => {
+    const expected = buildPreviewSessionContextKey({
+      companyId: 41,
+      themeKey: "iron-ember",
+      pagePath: ["services"],
+    });
+    const base = {
+      requestId: 3,
+      latestRequestId: 3,
+      requestedContextKey: expected,
+      activeContextKey: expected,
+    };
+
+    expect(isCurrentPreviewSessionResponse({
+      ...base,
+      payload: { token: "wrong-company", company_id: 37, visual_theme_key: "iron-ember", page_path: ["services"] },
+    })).toBe(false);
+    expect(isCurrentPreviewSessionResponse({
+      ...base,
+      payload: { token: "wrong-theme", company_id: 41, visual_theme_key: "modern-gradient", page_path: ["services"] },
+    })).toBe(false);
+    expect(isCurrentPreviewSessionResponse({
+      ...base,
+      payload: { token: "wrong-page", company_id: 41, visual_theme_key: "iron-ember", page_path: ["about"] },
+    })).toBe(false);
   });
 });

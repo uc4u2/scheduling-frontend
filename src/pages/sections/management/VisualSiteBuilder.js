@@ -202,6 +202,7 @@ import {
 } from "../../../utils/websiteCheckpointHistory";
 import {
   getBuilderTabDefaultIndex,
+  buildPreviewSessionContextKey,
   buildWebsiteStyleApplyPayload,
   isNextJsBuilderMode,
   usesDockedSemanticInspector,
@@ -210,6 +211,7 @@ import {
   normalizePreviewPagePath,
   requiresRendererSwitchConfirmation,
   resolveBuilderRendererMode,
+  isCurrentPreviewSessionResponse,
 } from "./websiteStyleBridge";
 
 /** UI wrappers per design system */
@@ -3299,6 +3301,8 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [pendingRendererStyle, setPendingRendererStyle] = useState(null);
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
+  const [nextJsPreviewContextKey, setNextJsPreviewContextKey] = useState("");
+  const nextJsPreviewRequestIdRef = useRef(0);
   const [nextJsPreviewStale, setNextJsPreviewStale] = useState(false);
   const [styleGalleryPreviewUrl, setStyleGalleryPreviewUrl] = useState("");
   // The content Canvas is an editing surface. Keep its frame identity distinct
@@ -3583,8 +3587,16 @@ const [brandingErr, setBrandingErr] = useState("");
       ? Number(publishedRendererSelection.visualThemeVersion || 1)
       : 1;
   const effectivePreviewFamily = stylePreviewFamily || currentStyleKey || "classic";
+  const siteSettingsCompanyId = parsePositiveCompanyId(
+    siteSettings?.company_id ?? siteSettings?.company?.id
+  );
+  const siteSettingsMatchCurrentCompany = Boolean(
+    siteSettingsCompanyId && Number(siteSettingsCompanyId) === Number(companyId)
+  );
   const isNextJsContentMode =
-    isNextJsBuilderMode(builderRendererMode) && Boolean(currentStyleKey);
+    siteSettingsMatchCurrentCompany &&
+    isNextJsBuilderMode(builderRendererMode) &&
+    Boolean(currentStyleKey);
   const usesSemanticDockedInspector = usesDockedSemanticInspector(builderRendererMode);
   const activeStyleChoice = websiteStyleChoices.find(
     (style) =>
@@ -5821,6 +5833,20 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     () => (currentPreviewPagePathKey ? currentPreviewPagePathKey.split("/") : []),
     [currentPreviewPagePathKey]
   );
+  const currentCanvasPreviewContextKey = buildPreviewSessionContextKey({
+    companyId,
+    themeKey: currentStyleKey,
+    pagePath: currentPreviewPagePath,
+  });
+  const activeCanvasPreviewContextKeyRef = useRef("");
+  activeCanvasPreviewContextKeyRef.current = isNextJsContentMode
+    ? currentCanvasPreviewContextKey
+    : "";
+  const currentNextJsPreviewUrl =
+    nextJsPreviewContextKey &&
+    nextJsPreviewContextKey === activeCanvasPreviewContextKeyRef.current
+      ? nextJsPreviewUrl
+      : "";
 
   const refreshNextJsPreview = useCallback(
     async (style = null, pagePathOverride = null, commitToCanvas = true) => {
@@ -5840,18 +5866,42 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
           : null);
       if (!companyId || !nextStyle || !isNextJsStyle(nextStyle)) {
         if (commitToCanvas) {
+          nextJsPreviewRequestIdRef.current += 1;
           setNextJsPreviewToken("");
           setNextJsPreviewUrl("");
+          setNextJsPreviewContextKey("");
         }
         return "";
       }
       if (!hasConfiguredNextJsThemeBaseUrl()) {
         setStyleErr(NEXTJS_THEME_PREVIEW_CONFIG_ERROR);
         if (commitToCanvas) {
+          nextJsPreviewRequestIdRef.current += 1;
           setNextJsPreviewToken("");
           setNextJsPreviewUrl("");
+          setNextJsPreviewContextKey("");
         }
         return "";
+      }
+      const requestedPagePath = Array.isArray(pagePathOverride)
+        ? pagePathOverride
+        : currentPreviewPagePath;
+      const requestedContextKey = buildPreviewSessionContextKey({
+        companyId,
+        themeKey: nextStyle.key,
+        pagePath: requestedPagePath,
+      });
+      const requestId = commitToCanvas
+        ? nextJsPreviewRequestIdRef.current + 1
+        : 0;
+      if (commitToCanvas) {
+        nextJsPreviewRequestIdRef.current = requestId;
+        // Never display an earlier tenant/theme/page while a replacement
+        // session is in flight. The canvas shows its neutral reconnecting
+        // state until the response proves it still matches this context.
+        setNextJsPreviewToken("");
+        setNextJsPreviewUrl("");
+        setNextJsPreviewContextKey("");
       }
       try {
         // Do not leave an old iframe visible while a new signed session is
@@ -5859,9 +5909,6 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         // retaining that URL is what previously left the Builder as a blank
         // white canvas.
         setStyleErr("");
-        const requestedPagePath = Array.isArray(pagePathOverride)
-          ? pagePathOverride
-          : currentPreviewPagePath;
         const res = await wb.createPreviewSession(companyId, {
           visual_theme_key: nextStyle.key,
           page_path: requestedPagePath,
@@ -5871,6 +5918,18 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         if (!token) {
           throw new Error("Preview session did not return a token.");
         }
+        if (
+          commitToCanvas &&
+          !isCurrentPreviewSessionResponse({
+            requestId,
+            latestRequestId: nextJsPreviewRequestIdRef.current,
+            requestedContextKey,
+            activeContextKey: activeCanvasPreviewContextKeyRef.current,
+            payload,
+          })
+        ) {
+          return "";
+        }
         const previewUrl = buildNextJsPreviewUrl({
           token,
           pagePath: requestedPagePath,
@@ -5878,6 +5937,7 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         if (commitToCanvas) {
           setNextJsPreviewToken(token);
           setNextJsPreviewUrl(previewUrl);
+          setNextJsPreviewContextKey(requestedContextKey);
           setNextJsPreviewStale(false);
         }
         setStyleErr("");
@@ -5886,16 +5946,23 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
         // A failed refresh must never retain an expired signed iframe URL.
         // Clearing it gives the manager a visible error and a working Refresh
         // Preview action instead of an opaque white document.
-        if (commitToCanvas) {
+        const requestIsStillCurrent =
+          commitToCanvas &&
+          requestId === nextJsPreviewRequestIdRef.current &&
+          requestedContextKey === activeCanvasPreviewContextKeyRef.current;
+        if (requestIsStillCurrent) {
           setNextJsPreviewToken("");
           setNextJsPreviewUrl("");
+          setNextJsPreviewContextKey("");
         }
-        setStyleErr(
-          e?.response?.data?.error ||
-            e?.response?.data?.message ||
-            e?.message ||
-            "Failed to create Next.js preview session."
-        );
+        if (!commitToCanvas || requestIsStillCurrent) {
+          setStyleErr(
+            e?.response?.data?.error ||
+              e?.response?.data?.message ||
+              e?.message ||
+              "Failed to create Next.js preview session."
+          );
+        }
         return "";
       }
     },
@@ -5908,6 +5975,18 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
       websiteStyleChoices,
     ]
   );
+
+  useEffect(() => {
+    // A manager/support-session tenant switch must synchronously invalidate
+    // every preview response started for the prior company. Keeping the URL
+    // state empty also prevents the prior tenant from flashing in the canvas
+    // while the new tenant settings are loading.
+    nextJsPreviewRequestIdRef.current += 1;
+    setNextJsPreviewToken("");
+    setNextJsPreviewUrl("");
+    setNextJsPreviewContextKey("");
+    setStylePreviewFamily("");
+  }, [companyId]);
 
   const queueNextJsDraftSync = useCallback(
     (snapshot) => {
@@ -10389,10 +10468,10 @@ const CanvasColumn = (
               variant="outlined"
               startIcon={<OpenInNewIcon fontSize="small" />}
               component="a"
-              href={nextJsPreviewUrl || undefined}
+              href={currentNextJsPreviewUrl || undefined}
               target="_blank"
               rel="noreferrer"
-              disabled={!nextJsPreviewUrl}
+              disabled={!currentNextJsPreviewUrl}
             >
               Open in new tab
             </Button>
@@ -10437,7 +10516,7 @@ const CanvasColumn = (
     <Box id="visual-builder-canvas">
       {PageWorkspaceBar}
       {isNextJsContentMode ? (
-        nextJsPreviewUrl ? (
+        currentNextJsPreviewUrl ? (
           <Box
             sx={{
               width:
@@ -10460,7 +10539,7 @@ const CanvasColumn = (
               component="iframe"
               ref={nextJsContentPreviewIframeRef}
               title="Next.js website content preview"
-              src={nextJsPreviewUrl}
+              src={currentNextJsPreviewUrl}
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
               sx={{
                 width: "100%",

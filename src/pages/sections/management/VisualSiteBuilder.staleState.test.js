@@ -36,4 +36,24 @@ describe("Visual Site Builder stale-state protection", () => {
       "await wb.updatePage(companyId, payload.id, payload)"
     );
   });
+
+  it("never mounts an out-of-order preview session in the content canvas", () => {
+    expect(source).toContain("const nextJsPreviewRequestIdRef = useRef(0)");
+    expect(source).toContain("isCurrentPreviewSessionResponse({");
+    expect(source).toContain(
+      "requestedContextKey === activeCanvasPreviewContextKeyRef.current"
+    );
+    expect(source).toContain(
+      "nextJsPreviewContextKey === activeCanvasPreviewContextKeyRef.current"
+    );
+    expect(source).toContain("src={currentNextJsPreviewUrl}");
+  });
+
+  it("invalidates the prior preview immediately when the active company changes", () => {
+    expect(source).toContain(
+      "A manager/support-session tenant switch must synchronously invalidate"
+    );
+    expect(source).toContain("setNextJsPreviewContextKey(\"\")");
+    expect(source).toContain("setStylePreviewFamily(\"\")");
+  });
 });
