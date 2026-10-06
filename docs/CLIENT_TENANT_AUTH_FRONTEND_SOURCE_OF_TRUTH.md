@@ -129,6 +129,25 @@ These were audited and left unchanged because they were already sufficiently slu
 
 ## Current Frontend Rules
 
+### Client session lifecycle
+
+`frontend/src/utils/clientSession.js` is the shared presentation/session bridge.
+Login and registration publish `signedIn=true`; explicit logout and a verified
+rejection of the active client token publish `signedIn=false`. Direct React
+navigation returns to `/login?site=<tenant>&client=1`; embedded navigation also
+preserves the audited presentation parameters.
+
+Only a request stamped with the active client token may invalidate that client
+session. A failed login (`noAuth`), an unrelated 401/403, a manager or employee
+request, or a delayed response for an older token must not clear the current
+session. Account-disabled handling retains the existing manager/employee path
+and uses the client lifecycle only when the rejected request belongs to the
+active client session.
+
+The browser event and iframe message are presentation signals only. They never
+grant API authorization; backend JWT and tenant-membership checks remain
+authoritative.
+
 ### Auth entry points
 
 Critical client auth requests must send tenant context when available:

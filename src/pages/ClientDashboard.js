@@ -9,7 +9,12 @@ import ClientNotifications from "./client/ClientNotifications";
 import ClientPackages from "./client/ClientPackages";
 import { jwtDecode } from "jwt-decode";
 import { useLocation, useNavigate } from "react-router-dom";
-import { buildTenantDashboardPath, buildTenantLoginPath, persistTenantSlug, resolveTenantSlug } from "../utils/clientTenant";
+import { persistTenantSlug, resolveTenantSlug } from "../utils/clientTenant";
+import {
+  buildClientLoginTarget,
+  CLIENT_SESSION_STATE_EVENT,
+  publishClientSessionState,
+} from "../utils/clientSession";
 
 // Tab names for display and logic
 const tabLabels = [
@@ -31,16 +36,6 @@ const tabHashMap = {
 };
 
 const LOGOUT_TAB_INDEX = 5;
-
-function withPresentationQuery(path, search) {
-  const source = new URLSearchParams(search || "");
-  const [pathname, rawQuery = ""] = String(path || "").split("?");
-  const query = new URLSearchParams(rawQuery);
-  ["embed", "mode", "dialog", "site", "primary", "text", "return_to", "returnTo"].forEach((key) => {
-    if (source.has(key)) query.set(key, source.get(key));
-  });
-  return query.toString() ? `${pathname}?${query.toString()}` : pathname;
-}
 
 function getRoleFromToken(token) {
   if (!token) return null;
@@ -72,11 +67,11 @@ export default function ClientDashboard() {
     const storedRole = String(localStorage.getItem("role") || "").toLowerCase();
     const isClientSession = storedRole === "client" || getRoleFromToken(token) === "client";
     if (!isClientSession) {
-      window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: false }, "*");
-      navigate(withPresentationQuery(buildTenantLoginPath(tenantSlug), location.search));
+      publishClientSessionState(false, { reason: "missing-client-session" });
+      navigate(buildClientLoginTarget(tenantSlug, location.search));
       return;
     }
-    window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: true }, "*");
+    publishClientSessionState(true, { reason: "active-client-session" });
     // Optionally, set tab by URL hash
     const hash = window.location.hash.toLowerCase();
     if (tabHashMap.hasOwnProperty(hash)) {
@@ -84,41 +79,21 @@ export default function ClientDashboard() {
     }
   }, [location.search, navigate, tenantSlug]);
 
+  useEffect(() => {
+    const onClientSessionState = (event) => {
+      if (event?.detail?.signedIn !== false) return;
+      window.location.assign(buildClientLoginTarget(tenantSlug, location.search));
+    };
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+    return () => window.removeEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+  }, [location.search, tenantSlug]);
+
   const handleTabChange = (_, value) => {
     if (value === LOGOUT_TAB_INDEX) {
       localStorage.removeItem("token");
       localStorage.removeItem("clientToken");
       localStorage.removeItem("role");
-      window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: false }, "*");
-      const params = new URLSearchParams(window.location.search);
-      const siteSlug = params.get("site");
-      // A Next public page frames this dashboard with embed=1. Keep logout
-      // inside the tenant-scoped client-auth surface so it does not fall back
-      // to the legacy public page/header.
-      if (params.get("embed") === "1" && (siteSlug || tenantSlug)) {
-        const tenant = siteSlug || tenantSlug;
-        const loginParams = new URLSearchParams();
-        ["mode", "dialog", "primary", "text", "return_to", "returnTo"].forEach((key) => {
-          if (params.has(key)) loginParams.set(key, params.get(key));
-        });
-        loginParams.set("site", tenant);
-        loginParams.set("client", "1");
-        loginParams.set("embed", "1");
-        loginParams.set("dialog", "1");
-        window.location.assign(
-          `/login?${loginParams.toString()}`,
-        );
-        return;
-      }
-      if (params.get("page") === "my-bookings") {
-        window.location.assign(buildTenantDashboardPath(tenantSlug, { page: "my-bookings" }));
-        return;
-      }
-      if (siteSlug || tenantSlug) {
-        window.location.assign(`/${siteSlug || tenantSlug}?page=my-bookings`);
-      } else {
-        navigate(withPresentationQuery(buildTenantLoginPath(tenantSlug), location.search));
-      }
+      publishClientSessionState(false, { reason: "logout" });
       return;
     }
     setTab(value);

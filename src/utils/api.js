@@ -4,6 +4,10 @@ import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
 import { canonicalWebsitePagePath } from "./websitePageApi";
 import { uploadWebsiteMediaFile } from "./websiteMediaUpload";
+import {
+  invalidateActiveClientSession,
+  markActiveClientSessionRequest,
+} from "./clientSession";
 
 /* ------------------------------ Base URL ------------------------------ */
 const viteBase =
@@ -280,8 +284,17 @@ api.interceptors.response.use(
       code === "TENANT_DISABLED" ||
       code === "USER_DISABLED" ||
       data?.error === "account_access_denied";
+    const clientSessionInvalidated = invalidateActiveClientSession(error, {
+      reason: isAccountDisabled ? "account-disabled" : "authentication-rejected",
+      code: code || null,
+    });
+    if (clientSessionInvalidated) {
+      error.clientSessionInvalidated = true;
+      error.accountDisabled = isAccountDisabled;
+      return Promise.reject(error);
+    }
     if (isAccountDisabled) {
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && !error?.config?.noAuth) {
         try {
           localStorage.removeItem("token");
           localStorage.removeItem("role");
@@ -382,6 +395,7 @@ api.interceptors.request.use((config) => {
   const token =
     typeof localStorage !== "undefined" && localStorage.getItem("token");
   if (token && !config.noAuth) config.headers.Authorization = `Bearer ${token}`;
+  markActiveClientSessionRequest(config);
 
   // Don’t attach company for public routes or when explicitly disabled
   const fullUrl =

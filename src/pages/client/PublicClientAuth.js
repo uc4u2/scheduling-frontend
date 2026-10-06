@@ -32,6 +32,7 @@ import TimezoneSelect from "../../components/TimezoneSelect";
 import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
+import { publishClientSessionState } from "../../utils/clientSession";
 
 const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
   <Box
@@ -146,7 +147,7 @@ export default function PublicClientAuth({ slug }) {
     // Next public pages live on a different origin from this legacy iframe.
     // Notify only the presentation shell that a client session now exists;
     // authentication remains entirely in the existing legacy client flow.
-    window.parent?.postMessage({ type: "schedulaa:client-session", signedIn: true }, "*");
+    publishClientSessionState(true, { reason: "authenticated" });
     const embedded =
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
