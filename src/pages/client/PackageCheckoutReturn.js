@@ -6,6 +6,7 @@ import { useLocation, useParams } from "react-router-dom";
 
 import api from "../../utils/api";
 import { buildTenantDashboardPath, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
+import { buildClientLoginTarget, CLIENT_SESSION_STATE_EVENT } from "../../utils/clientSession";
 import { requestTransactionalNavigation } from "../../utils/transactionalFrameBridge";
 import PublicClientAuth from "./PublicClientAuth";
 
@@ -63,6 +64,15 @@ export default function PackageCheckoutReturn() {
   useEffect(() => () => {
     if (timer.current) window.clearTimeout(timer.current);
   }, []);
+
+  useEffect(() => {
+    const onClientSessionState = (event) => {
+      if (event?.detail?.signedIn !== false) return;
+      window.location.assign(buildClientLoginTarget(tenantSlug, location.search));
+    };
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+    return () => window.removeEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+  }, [location.search, tenantSlug]);
 
   useEffect(() => {
     if (!signedIn || !returnTo) return undefined;

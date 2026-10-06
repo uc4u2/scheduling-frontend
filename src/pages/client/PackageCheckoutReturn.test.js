@@ -2,6 +2,7 @@ import React from "react";
 import { act, render, screen } from "@testing-library/react";
 
 import api from "../../utils/api";
+import { CLIENT_SESSION_STATE_EVENT } from "../../utils/clientSession";
 import PackageCheckoutReturn, {
   completePackageReturn,
   PACKAGE_RETURN_MAX_ATTEMPTS,
@@ -25,6 +26,8 @@ describe("package checkout return helpers", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    delete window.location;
+    window.location = { assign: jest.fn(), reload: jest.fn(), search: "" };
   });
 
   const renderReturn = () => render(<PackageCheckoutReturn />);
@@ -69,6 +72,19 @@ describe("package checkout return helpers", () => {
   it("keeps a logged-out return inside tenant-aware client authentication", () => {
     renderReturn();
     expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+  });
+
+  it("returns an expired direct session to tenant-aware login", () => {
+    localStorage.setItem("token", "client-token");
+    localStorage.setItem("role", "client");
+    api.get.mockReturnValue(new Promise(() => {}));
+    renderReturn();
+
+    window.dispatchEvent(new CustomEvent(CLIENT_SESSION_STATE_EVENT, {
+      detail: { signedIn: false, reason: "authentication-rejected" },
+    }));
+
+    expect(window.location.assign).toHaveBeenCalledWith("/login?site=studio&client=1");
   });
 
   it("uses bounded polling and never calls a timeout a failed payment", async () => {
