@@ -45,6 +45,12 @@ const setClientSession = (token = "client-token") => {
   localStorage.setItem("company_id", "41");
 };
 
+const setSession = ({ role, token, companyId = "41" }) => {
+  localStorage.setItem("role", role);
+  localStorage.setItem("token", token);
+  localStorage.setItem("company_id", companyId);
+};
+
 describe("api client-session interceptors", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -174,26 +180,93 @@ describe("api client-session interceptors", () => {
     window.removeEventListener("schedulaa:account-disabled", genericListener);
   });
 
-  it("preserves the existing manager disabled-account behavior", async () => {
-    localStorage.setItem("role", "manager");
-    localStorage.setItem("token", "manager-token");
-    localStorage.setItem("company_id", "41");
+  it.each(["manager", "employee"])(
+    "preserves the existing %s disabled-account behavior",
+    async (role) => {
+      localStorage.setItem("role", role);
+      localStorage.setItem("token", `${role}-token`);
+      localStorage.setItem("company_id", "41");
+      const events = [];
+      const listener = (event) => events.push(event.detail);
+      window.addEventListener("schedulaa:account-disabled", listener);
+
+      await expect(api.get("/_test/disabled-manager", {
+        adapter: rejectedResponseAdapter(403, {
+          error: "account_access_denied",
+          code: "TENANT_DISABLED",
+        }),
+      })).rejects.toMatchObject({ accountDisabled: true });
+
+      expect(localStorage.getItem("token")).toBeNull();
+      expect(localStorage.getItem("role")).toBeNull();
+      expect(events).toEqual([
+        expect.objectContaining({ code: "TENANT_DISABLED" }),
+      ]);
+      window.removeEventListener("schedulaa:account-disabled", listener);
+    },
+  );
+
+  it.each([
+    ["manager", "manager-a", "client", "client-b"],
+    ["employee", "employee-a", "client", "client-b"],
+    ["client", "client-a", "manager", "manager-b"],
+    ["manager", "manager-a", "manager", "manager-b"],
+    ["employee", "employee-a", "employee", "employee-b"],
+    ["client", "client-a", "client", "client-b"],
+  ])(
+    "ignores a stale disabled response after %s to %s account/session changes",
+    async (requestRole, requestToken, activeRole, activeToken) => {
+      setSession({ role: requestRole, token: requestToken, companyId: "41" });
+      const delayed = deferredRejectedResponseAdapter();
+      const events = [];
+      const accountListener = (event) => events.push(event.detail);
+      const clientListener = (event) => events.push(event.detail);
+      window.addEventListener("schedulaa:account-disabled", accountListener);
+      window.addEventListener(CLIENT_SESSION_STATE_EVENT, clientListener);
+      const request = api.get("/_test/role-change", {
+        adapter: delayed.adapter,
+      }).catch((error) => error);
+      await delayed.waitUntilStarted();
+
+      setSession({ role: activeRole, token: activeToken, companyId: "41" });
+      delayed.reject(403, {
+        error: "account_access_denied",
+        code: "USER_DISABLED",
+      });
+      await request;
+
+      expect(localStorage.getItem("token")).toBe(activeToken);
+      expect(localStorage.getItem("role")).toBe(activeRole);
+      expect(localStorage.getItem("company_id")).toBe("41");
+      expect(events).toEqual([]);
+      expect(window.location.pathname).toBe("/login");
+      window.removeEventListener("schedulaa:account-disabled", accountListener);
+      window.removeEventListener(CLIENT_SESSION_STATE_EVENT, clientListener);
+    },
+  );
+
+  it("ignores a stale disabled response after the active company changes", async () => {
+    setSession({ role: "manager", token: "manager-token", companyId: "41" });
+    const delayed = deferredRejectedResponseAdapter();
     const events = [];
     const listener = (event) => events.push(event.detail);
     window.addEventListener("schedulaa:account-disabled", listener);
+    const request = api.get("/_test/company-change", {
+      adapter: delayed.adapter,
+    }).catch((error) => error);
+    await delayed.waitUntilStarted();
 
-    await expect(api.get("/_test/disabled-manager", {
-      adapter: rejectedResponseAdapter(403, {
-        error: "account_access_denied",
-        code: "TENANT_DISABLED",
-      }),
-    })).rejects.toMatchObject({ accountDisabled: true });
+    setSession({ role: "manager", token: "manager-token", companyId: "99" });
+    delayed.reject(403, {
+      error: "account_access_denied",
+      code: "TENANT_DISABLED",
+    });
+    await request;
 
-    expect(localStorage.getItem("token")).toBeNull();
-    expect(localStorage.getItem("role")).toBeNull();
-    expect(events).toEqual([
-      expect.objectContaining({ code: "TENANT_DISABLED" }),
-    ]);
+    expect(localStorage.getItem("token")).toBe("manager-token");
+    expect(localStorage.getItem("role")).toBe("manager");
+    expect(localStorage.getItem("company_id")).toBe("99");
+    expect(events).toEqual([]);
     window.removeEventListener("schedulaa:account-disabled", listener);
   });
 });

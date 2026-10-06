@@ -81,6 +81,8 @@ describe("package checkout return helpers", () => {
       await Promise.resolve();
     });
     expect(api.get).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Waiting for payment and package confirmation…")).toBeInTheDocument();
+    expect(screen.queryByText(/payment received/i)).not.toBeInTheDocument();
     for (let attempt = 1; attempt < PACKAGE_RETURN_MAX_ATTEMPTS; attempt += 1) {
       await act(async () => {
         jest.advanceTimersByTime(PACKAGE_RETURN_POLL_INTERVAL_MS);

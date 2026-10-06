@@ -1,5 +1,6 @@
 import {
   invalidateActiveClientSession,
+  isActiveAuthenticatedSessionRequest,
   isAccountDisabledResponse,
   markActiveClientSessionRequest,
   wasClientSessionRequest,
@@ -29,11 +30,14 @@ export const installClientSessionInterceptors = (apiClient) => {
         return Promise.reject(error);
       }
 
-      // A request marked with a client-session token must never fall through
-      // to the generic manager/employee account handler. It may now be stale
-      // because a newer client logged in or the active role changed while it
-      // was pending.
-      if (isAccountDisabled && !originatedFromClientSession) {
+      // Client requests never fall through to the manager/employee handler.
+      // Other authenticated requests may clear storage only while their
+      // captured token, role, and company still own the active session.
+      if (
+        isAccountDisabled &&
+        !originatedFromClientSession &&
+        isActiveAuthenticatedSessionRequest(error)
+      ) {
         if (typeof window !== "undefined" && !error?.config?.noAuth) {
           try {
             localStorage.removeItem("token");

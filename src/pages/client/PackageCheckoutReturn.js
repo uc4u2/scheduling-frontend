@@ -88,7 +88,7 @@ export default function PackageCheckoutReturn() {
           return;
         }
         setState("checking");
-        setMessage("Payment received. Waiting for package confirmation…");
+        setMessage("Waiting for payment and package confirmation…");
         timer.current = window.setTimeout(verify, PACKAGE_RETURN_POLL_INTERVAL_MS);
       } catch (error) {
         if (cancelled) return;

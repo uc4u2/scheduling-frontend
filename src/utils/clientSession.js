@@ -1,6 +1,7 @@
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
 const CLIENT_SESSION_REQUEST_TOKEN = "__schedulaaClientSessionToken";
+const AUTHENTICATED_REQUEST_CONTEXT = "__schedulaaAuthenticatedRequestContext";
 const TRUSTED_AUTHENTICATION_REJECTION_CODES = new Set([
   "TOKEN_EXPIRED",
   "TOKEN_INVALID",
@@ -21,6 +22,26 @@ const readStorage = (key) => {
     return "";
   }
 };
+
+const readHeader = (headers, name) => {
+  if (!headers) return "";
+  if (typeof headers.get === "function") {
+    return String(headers.get(name) || "").trim();
+  }
+  const match = Object.keys(headers).find(
+    (key) => key.toLowerCase() === name.toLowerCase()
+  );
+  return match ? String(headers[match] || "").trim() : "";
+};
+
+const requestBearerToken = (config = {}) => {
+  const authorization = readHeader(config.headers, "Authorization");
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return String(match?.[1] || readStorage("token")).trim();
+};
+
+const requestCompanyId = (config = {}) =>
+  readHeader(config.headers, "X-Company-Id") || readStorage("company_id");
 
 export const publishClientSessionState = (signedIn, detail = {}) => {
   if (typeof window === "undefined" || typeof signedIn !== "boolean") return false;
@@ -53,13 +74,30 @@ export const buildClientLoginTarget = (tenantSlug, search = "") => {
 export const markActiveClientSessionRequest = (config = {}) => {
   if (config.noAuth) return config;
   const role = readStorage("role").toLowerCase();
-  const token = readStorage("token");
+  const token = requestBearerToken(config);
+  if (role && token) {
+    config[AUTHENTICATED_REQUEST_CONTEXT] = {
+      role,
+      token,
+      companyId: requestCompanyId(config),
+    };
+  }
   if (role === "client" && token) config[CLIENT_SESSION_REQUEST_TOKEN] = token;
   return config;
 };
 
 export const wasClientSessionRequest = (error) =>
   Boolean(error?.config?.[CLIENT_SESSION_REQUEST_TOKEN]);
+
+export const isActiveAuthenticatedSessionRequest = (error) => {
+  if (error?.config?.noAuth) return false;
+  const context = error?.config?.[AUTHENTICATED_REQUEST_CONTEXT];
+  if (!context?.role || !context?.token) return false;
+  if (readStorage("role").toLowerCase() !== context.role) return false;
+  if (readStorage("token") !== context.token) return false;
+  if (readStorage("company_id") !== String(context.companyId || "")) return false;
+  return true;
+};
 
 const isTrustedClientAuthenticationRejection = (error) => {
   const data = error?.response?.data || {};
