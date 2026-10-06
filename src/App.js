@@ -1018,7 +1018,6 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/basket" element={<MyBasket slugOverride={tenantSlug} />} />
               <Route path="/checkout" element={<React.Suspense fallback={<div role="status" aria-live="polite">Preparing secure checkout…</div>}><Checkout slugOverride={tenantSlug} /></React.Suspense>} />
               <Route path="/checkout/return" element={<BookingConfirmation slugOverride={tenantSlug} />} />
-              <Route path="/packages/return" element={<PackageCheckoutReturn />} />
               <Route path="/book/:employeeId/:serviceId" element={<EmployeeBooking slugOverride={tenantSlug} />} />
               <Route path="/book" element={<EmployeeBooking slugOverride={tenantSlug} />} />
               <Route path="/booking-confirmation/:bookingId" element={<BookingConfirmation slugOverride={tenantSlug} />} />
@@ -1120,6 +1119,7 @@ const AppContent = ({ token, setToken }) => {
             path="/login"
             element={<ClientAwareLoginRoute setToken={setToken} />}
           />
+          <Route path="/packages/return" element={<PackageCheckoutReturn />} />
           <Route path="/signup" element={<Navigate to="/register" replace />} />
           <Route
             path="/register"
