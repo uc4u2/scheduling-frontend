@@ -33,7 +33,10 @@ import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
 import { publishClientSessionState } from "../../utils/clientSession";
-import { normalizeTransactionalReturnPath } from "../../utils/transactionalFrameBridge";
+import {
+  normalizePackageCheckoutReturnPath,
+  normalizeTransactionalReturnPath,
+} from "../../utils/transactionalFrameBridge";
 
 const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
   <Box
@@ -150,6 +153,14 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
   const [timezone, setTimezone] = useState(() => getUserTimezone());
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const packageReturnTo = useMemo(() => {
+    if (returnTo || typeof window === "undefined") return "";
+    const query = new URLSearchParams(window.location.search || "");
+    return normalizePackageCheckoutReturnPath(
+      query.get("return_to") || query.get("returnTo") || "",
+      slug,
+    );
+  }, [returnTo, slug]);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
     const siteLabel = slug ? `${slug} client account` : "Client account";
@@ -177,7 +188,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
     const target = resolveClientAuthCompletionPath({
-      returnTo,
+      returnTo: returnTo || packageReturnTo,
       embedded,
       slug,
       activeSearch: window.location.search,

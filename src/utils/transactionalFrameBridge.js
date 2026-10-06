@@ -15,6 +15,38 @@ export function normalizeTransactionalReturnPath(value = "") {
   }
 }
 
+export function normalizePackageCheckoutReturnPath(value = "", tenantSlug = "") {
+  const safePath = normalizeTransactionalReturnPath(value);
+  if (!safePath) return "";
+
+  const parsed = new URL(safePath, "https://schedulaa.local");
+  const sessionId = String(parsed.searchParams.get("session_id") || "").trim();
+  if (
+    !sessionId ||
+    sessionId.length > 128 ||
+    !sessionId.startsWith("cs_") ||
+    /CHECKOUT_SESSION_ID/i.test(sessionId)
+  ) {
+    return "";
+  }
+
+  const slug = String(tenantSlug || "").trim();
+  const cleanPath = parsed.pathname.length > 1
+    ? parsed.pathname.replace(/\/+$/, "")
+    : parsed.pathname;
+  const rootReturn = cleanPath === "/packages/return";
+  const tenantReturn = slug && cleanPath === `/${encodeURIComponent(slug)}/packages/return`;
+  const dashboardReturn =
+    cleanPath === "/dashboard" &&
+    parsed.searchParams.get("package_return") === "1";
+  if (!rootReturn && !tenantReturn && !dashboardReturn) return "";
+
+  const requestedSite = String(parsed.searchParams.get("site") || "").trim();
+  if (dashboardReturn && !requestedSite) return "";
+  if (slug && requestedSite && requestedSite !== slug) return "";
+  return `${parsed.pathname}${parsed.search}`;
+}
+
 export function requestTransactionalNavigation(targetWindow, value = "") {
   const href = normalizeTransactionalReturnPath(value);
   if (!href || !targetWindow?.postMessage) return false;

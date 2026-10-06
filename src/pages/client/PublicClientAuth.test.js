@@ -26,6 +26,8 @@ jest.mock("../../config/origins", () => ({
 describe("PublicClientAuth", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    window.history.replaceState({}, "", "/login");
   });
 
   it("keeps autofilled values separate from accessible field labels", () => {
@@ -100,5 +102,27 @@ describe("PublicClientAuth", () => {
       embedded: true,
       slug: "web-design",
     })).toContain("/dashboard?");
+  });
+
+  it("resumes the same package checkout from a validated login continuation", async () => {
+    const continuation = "/web-design/packages/return?session_id=cs_resume_1&site=web-design";
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      search: `?site=web-design&return_to=${encodeURIComponent(continuation)}`,
+      assign,
+    };
+    api.post.mockResolvedValueOnce({ data: { access_token: "fresh-token" } });
+
+    render(<PublicClientAuth slug="web-design" />);
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "client@example.com" } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(continuation));
+    expect(localStorage.getItem("token")).toBe("fresh-token");
+    expect(localStorage.getItem("role")).toBe("client");
   });
 });

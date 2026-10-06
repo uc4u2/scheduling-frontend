@@ -1,5 +1,6 @@
 import {
   measureTransactionalContent,
+  normalizePackageCheckoutReturnPath,
   normalizeTransactionalReturnPath,
   publishTransactionalMeasurement,
   requestTransactionalNavigation,
@@ -67,5 +68,36 @@ describe("transactionalFrameBridge", () => {
       },
       "*"
     );
+  });
+
+  it("accepts only tenant-scoped package checkout continuations", () => {
+    expect(normalizePackageCheckoutReturnPath(
+      "/studio/packages/return?session_id=cs_test_1&site=studio",
+      "studio",
+    )).toBe("/studio/packages/return?session_id=cs_test_1&site=studio");
+    expect(normalizePackageCheckoutReturnPath(
+      "/packages/return?session_id=cs_custom_1&site=studio",
+      "studio",
+    )).toBe("/packages/return?session_id=cs_custom_1&site=studio");
+    expect(normalizePackageCheckoutReturnPath(
+      "/dashboard?package_return=1&session_id=cs_direct_1&site=studio",
+      "studio",
+    )).toBe("/dashboard?package_return=1&session_id=cs_direct_1&site=studio");
+    expect(normalizePackageCheckoutReturnPath(
+      "/dashboard?package_return=1&session_id=cs_unscoped_1",
+      "studio",
+    )).toBe("");
+    expect(normalizePackageCheckoutReturnPath(
+      "/other/packages/return?session_id=cs_wrong_1",
+      "studio",
+    )).toBe("");
+    expect(normalizePackageCheckoutReturnPath(
+      "/studio/packages/return?session_id=cs_wrong_2&site=other",
+      "studio",
+    )).toBe("");
+    expect(normalizePackageCheckoutReturnPath(
+      "/studio/packages/return?session_id={CHECKOUT_SESSION_ID}",
+      "studio",
+    )).toBe("");
   });
 });

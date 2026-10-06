@@ -1,3 +1,5 @@
+import { normalizePackageCheckoutReturnPath } from "./transactionalFrameBridge";
+
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
 const CLIENT_SESSION_REQUEST_TOKEN = "__schedulaaClientSessionToken";
@@ -13,6 +15,10 @@ const TRUSTED_AUTHENTICATION_REJECTION_CODES = new Set([
 const TRUSTED_ACCOUNT_ACCESS_CODES = new Set([
   "USER_DISABLED",
   "TENANT_DISABLED",
+]);
+const TENANT_SCOPED_CLIENT_REJECTION_CODES = new Set([
+  "TENANT_DISABLED",
+  "CLIENT_MEMBERSHIP_NOT_FOUND",
 ]);
 
 const readStorage = (key) => {
@@ -55,13 +61,18 @@ export const publishClientSessionState = (signedIn, detail = {}) => {
   return true;
 };
 
-export const buildClientLoginTarget = (tenantSlug, search = "") => {
+export const buildClientLoginTarget = (tenantSlug, search = "", returnTo = "") => {
   const source = new URLSearchParams(search || "");
   const query = new URLSearchParams();
-  ["mode", "dialog", "primary", "text", "return_to", "returnTo"].forEach((key) => {
+  ["mode", "dialog", "primary", "text"].forEach((key) => {
     if (source.has(key)) query.set(key, source.get(key));
   });
   const siteSlug = source.get("site") || String(tenantSlug || "").trim();
+  const safeReturnTo = normalizePackageCheckoutReturnPath(
+    returnTo || source.get("return_to") || source.get("returnTo") || "",
+    siteSlug,
+  );
+  if (safeReturnTo) query.set("return_to", safeReturnTo);
   if (siteSlug) query.set("site", siteSlug);
   query.set("client", "1");
   if (source.get("embed") === "1") {
@@ -130,6 +141,14 @@ export const isActiveClientAuthenticationRejection = (error) => {
   if (!requestToken || error?.config?.noAuth) return false;
   if (readStorage("role").toLowerCase() !== "client") return false;
   if (readStorage("token") !== requestToken) return false;
+  const data = error?.response?.data || {};
+  const code = data.code || data.error || data.error_code;
+  if (TENANT_SCOPED_CLIENT_REJECTION_CODES.has(code)) {
+    const requestContext = error?.config?.[AUTHENTICATED_REQUEST_CONTEXT];
+    if (readStorage("company_id") !== String(requestContext?.companyId || "")) {
+      return false;
+    }
+  }
   return isTrustedClientAuthenticationRejection(error);
 };
 
@@ -140,6 +159,14 @@ export const invalidateActiveClientSession = (error, detail = {}) => {
   const requestToken = error.config[CLIENT_SESSION_REQUEST_TOKEN];
   if (readStorage("role").toLowerCase() !== "client" || readStorage("token") !== requestToken) {
     return false;
+  }
+  const data = error?.response?.data || {};
+  const code = data.code || data.error || data.error_code;
+  if (TENANT_SCOPED_CLIENT_REJECTION_CODES.has(code)) {
+    const requestContext = error?.config?.[AUTHENTICATED_REQUEST_CONTEXT];
+    if (readStorage("company_id") !== String(requestContext?.companyId || "")) {
+      return false;
+    }
   }
   try {
     localStorage.removeItem("token");

@@ -74,7 +74,7 @@ describe("package checkout return helpers", () => {
     expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
   });
 
-  it("returns an expired direct session to tenant-aware login", () => {
+  it("preserves the same checkout continuation when a direct session expires", () => {
     localStorage.setItem("token", "client-token");
     localStorage.setItem("role", "client");
     api.get.mockReturnValue(new Promise(() => {}));
@@ -84,7 +84,36 @@ describe("package checkout return helpers", () => {
       detail: { signedIn: false, reason: "authentication-rejected" },
     }));
 
-    expect(window.location.assign).toHaveBeenCalledWith("/login?site=studio&client=1");
+    expect(window.location.assign).toHaveBeenCalledWith(
+      "/login?return_to=%2Fstudio%2Fpackages%2Freturn%3Fsession_id%3Dcs_test_1%26site%3Dstudio&site=studio&client=1",
+    );
+  });
+
+  it("polls the same checkout after authentication and opens the Packages tab when fulfilled", async () => {
+    localStorage.setItem("token", "reauthenticated-client-token");
+    localStorage.setItem("role", "client");
+    api.get
+      .mockResolvedValueOnce({ data: { state: "pending" } })
+      .mockResolvedValueOnce({ data: { state: "fulfilled" } });
+    jest.useFakeTimers();
+    renderReturn();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.get).toHaveBeenNthCalledWith(1, "/me/packages/checkout/status", {
+      params: { slug: "studio", session_id: "cs_test_1" },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(PACKAGE_RETURN_POLL_INTERVAL_MS);
+      await Promise.resolve();
+    });
+
+    expect(api.get).toHaveBeenNthCalledWith(2, "/me/packages/checkout/status", {
+      params: { slug: "studio", session_id: "cs_test_1" },
+    });
+    expect(window.location.assign).toHaveBeenCalledWith("/dashboard?site=studio#packages");
+    jest.useRealTimers();
   });
 
   it("uses bounded polling and never calls a timeout a failed payment", async () => {

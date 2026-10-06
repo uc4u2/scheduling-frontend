@@ -7,7 +7,10 @@ import { useLocation, useParams } from "react-router-dom";
 import api from "../../utils/api";
 import { buildTenantDashboardPath, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 import { buildClientLoginTarget, CLIENT_SESSION_STATE_EVENT } from "../../utils/clientSession";
-import { requestTransactionalNavigation } from "../../utils/transactionalFrameBridge";
+import {
+  normalizePackageCheckoutReturnPath,
+  requestTransactionalNavigation,
+} from "../../utils/transactionalFrameBridge";
 import PublicClientAuth from "./PublicClientAuth";
 
 export const PACKAGE_RETURN_POLL_INTERVAL_MS = 2000;
@@ -20,12 +23,12 @@ export function isPackageCheckoutReturnDashboard(search = "", pathname = "") {
 
 export function packageReturnPath(search = "", pathname = "/packages/return") {
   const query = new URLSearchParams(search || "");
-  const sessionId = String(query.get("session_id") || "").trim();
-  if (!sessionId || !sessionId.startsWith("cs_") || /CHECKOUT_SESSION_ID/i.test(sessionId)) return "";
-  const cleanPath = String(pathname || "").trim().replace(/\/$/, "");
-  const packagePath = /^\/(?:[^/?#]+\/)?packages\/return$/.test(cleanPath);
-  if (!packagePath && !isPackageCheckoutReturnDashboard(search, cleanPath)) return "";
-  return `${cleanPath}?${query.toString()}`;
+  const tenantSlug = String(query.get("site") || "").trim() ||
+    String(pathname || "").match(/^\/([^/?#]+)\/packages\/return\/?$/)?.[1] || "";
+  return normalizePackageCheckoutReturnPath(
+    `${String(pathname || "").trim()}?${query.toString()}`,
+    tenantSlug,
+  );
 }
 
 export function packagesDashboardPath(slug = "") {
@@ -68,11 +71,11 @@ export default function PackageCheckoutReturn() {
   useEffect(() => {
     const onClientSessionState = (event) => {
       if (event?.detail?.signedIn !== false) return;
-      window.location.assign(buildClientLoginTarget(tenantSlug, location.search));
+      window.location.assign(buildClientLoginTarget(tenantSlug, location.search, returnTo));
     };
     window.addEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
     return () => window.removeEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
-  }, [location.search, tenantSlug]);
+  }, [location.search, returnTo, tenantSlug]);
 
   useEffect(() => {
     if (!signedIn || !returnTo) return undefined;

@@ -33,6 +33,18 @@ describe("client session lifecycle", () => {
       .toBe("/login?site=beauty-salon&client=1");
     expect(buildClientLoginTarget("beauty-salon", "?site=beauty-salon&embed=1&primary=%23c90"))
       .toBe("/login?primary=%23c90&site=beauty-salon&client=1&embed=1&dialog=1");
+    expect(buildClientLoginTarget(
+      "beauty-salon",
+      "?session_id=cs_test_1&site=beauty-salon&embed=1",
+      "/beauty-salon/packages/return?session_id=cs_test_1&site=beauty-salon&embed=1",
+    )).toBe(
+      "/login?return_to=%2Fbeauty-salon%2Fpackages%2Freturn%3Fsession_id%3Dcs_test_1%26site%3Dbeauty-salon%26embed%3D1&site=beauty-salon&client=1&embed=1&dialog=1",
+    );
+    expect(buildClientLoginTarget(
+      "beauty-salon",
+      "?site=beauty-salon",
+      "/other/packages/return?session_id=cs_wrong_tenant",
+    )).toBe("/login?site=beauty-salon&client=1");
   });
 
   it("invalidates only a rejection for the active client token", () => {
@@ -97,6 +109,41 @@ describe("client session lifecycle", () => {
     };
 
     expect(invalidateActiveClientSession(error, { reason: "account-disabled" })).toBe(true);
+    expect(localStorage.getItem("token")).toBeNull();
+  });
+
+  it("does not invalidate a client for a stale tenant-scoped rejection", () => {
+    localStorage.setItem("role", "client");
+    localStorage.setItem("token", "active-token");
+    localStorage.setItem("company_id", "41");
+    const config = markActiveClientSessionRequest({ headers: {} });
+    localStorage.setItem("company_id", "99");
+
+    expect(invalidateActiveClientSession({
+      config,
+      response: {
+        status: 403,
+        data: { error: "account_access_denied", code: "TENANT_DISABLED" },
+      },
+    })).toBe(false);
+    expect(localStorage.getItem("token")).toBe("active-token");
+    expect(localStorage.getItem("company_id")).toBe("99");
+  });
+
+  it("still invalidates a globally rejected active credential after a tenant switch", () => {
+    localStorage.setItem("role", "client");
+    localStorage.setItem("token", "active-token");
+    localStorage.setItem("company_id", "41");
+    const config = markActiveClientSessionRequest({ headers: {} });
+    localStorage.setItem("company_id", "99");
+
+    expect(invalidateActiveClientSession({
+      config,
+      response: {
+        status: 401,
+        data: { error: "authentication_rejected", code: "TOKEN_EXPIRED" },
+      },
+    })).toBe(true);
     expect(localStorage.getItem("token")).toBeNull();
   });
 });

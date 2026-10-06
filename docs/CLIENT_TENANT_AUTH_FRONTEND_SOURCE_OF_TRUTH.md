@@ -144,6 +144,20 @@ session. Account-disabled handling retains the existing manager/employee path
 and uses the client lifecycle only when the rejected request belongs to the
 active client session.
 
+Tenant-scoped client rejections such as `TENANT_DISABLED` and
+`CLIENT_MEMBERSHIP_NOT_FOUND` must also match the company context captured when
+the request started. A delayed response from tenant A cannot clear the same
+client token after the active tenant changes to B. Credential-global rejection
+codes such as `TOKEN_EXPIRED` and `TOKEN_REVOKED` still invalidate the matching
+active token regardless of a later tenant switch.
+
+An authenticated package return is an audited continuation. If its client
+session expires, the validated tenant-relative package return path and Stripe
+`session_id` are carried through `/login` in `return_to`, then resumed after
+authentication. Direct React preserves the tenant `site`; the Next public shell
+restores either the trusted platform slug prefix or the custom-domain root. A
+generic login-to-My-Bookings transition must not override this continuation.
+
 The browser event and iframe message are presentation signals only. They never
 grant API authorization; backend JWT and tenant-membership checks remain
 authoritative.
@@ -184,6 +198,7 @@ Use this checklist when verifying frontend behavior after tenant-auth changes:
 6. client dashboard overview/history/packages/payment methods/profile/reviews/support
 7. website-viewer login and My Bookings special pages
 8. cross-tenant browser-state mismatch forces tenant-correct entry instead of silent reuse
+9. package return expiry resumes the same checkout and opens `#packages` after fulfillment
 
 ## Related Backend Source Of Truth
 

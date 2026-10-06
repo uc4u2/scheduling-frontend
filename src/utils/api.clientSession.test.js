@@ -269,4 +269,53 @@ describe("api client-session interceptors", () => {
     expect(events).toEqual([]);
     window.removeEventListener("schedulaa:account-disabled", listener);
   });
+
+  it("keeps an active client session when an old tenant rejects the same token", async () => {
+    setClientSession("shared-client-token");
+    const delayed = deferredRejectedResponseAdapter();
+    const events = [];
+    const clientListener = (event) => events.push(event.detail);
+    const disabledListener = (event) => events.push(event.detail);
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, clientListener);
+    window.addEventListener("schedulaa:account-disabled", disabledListener);
+    const request = api.get("/_test/client-tenant-change", {
+      adapter: delayed.adapter,
+    }).catch((error) => error);
+    await delayed.waitUntilStarted();
+
+    localStorage.setItem("company_id", "99");
+    delayed.reject(403, {
+      error: "account_access_denied",
+      code: "TENANT_DISABLED",
+    });
+    await request;
+
+    expect(localStorage.getItem("token")).toBe("shared-client-token");
+    expect(localStorage.getItem("role")).toBe("client");
+    expect(localStorage.getItem("company_id")).toBe("99");
+    expect(events).toEqual([]);
+    expect(window.location.pathname).toBe("/login");
+    window.removeEventListener(CLIENT_SESSION_STATE_EVENT, clientListener);
+    window.removeEventListener("schedulaa:account-disabled", disabledListener);
+  });
+
+  it("still clears a globally expired active credential after a tenant switch", async () => {
+    setClientSession("shared-client-token");
+    const delayed = deferredRejectedResponseAdapter();
+    const request = api.get("/_test/client-token-expiry", {
+      adapter: delayed.adapter,
+    }).catch((error) => error);
+    await delayed.waitUntilStarted();
+
+    localStorage.setItem("company_id", "99");
+    delayed.reject(401, {
+      error: "authentication_rejected",
+      code: "TOKEN_EXPIRED",
+    });
+    const error = await request;
+
+    expect(error).toMatchObject({ clientSessionInvalidated: true });
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("role")).toBeNull();
+  });
 });
