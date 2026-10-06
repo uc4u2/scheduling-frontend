@@ -4,10 +4,7 @@ import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
 import { canonicalWebsitePagePath } from "./websitePageApi";
 import { uploadWebsiteMediaFile } from "./websiteMediaUpload";
-import {
-  invalidateActiveClientSession,
-  markActiveClientSessionRequest,
-} from "./clientSession";
+import { installClientSessionInterceptors } from "./clientSessionInterceptors";
 
 /* ------------------------------ Base URL ------------------------------ */
 const viteBase =
@@ -197,6 +194,7 @@ const api = axios.create({
   withCredentials: false,
 });
 export { api };
+installClientSessionInterceptors(api);
 
 api.interceptors.request.use((config) => {
   const supportSession = getSupportSessionId();
@@ -280,49 +278,6 @@ api.interceptors.response.use(
       }
     }
 
-    const isAccountDisabled =
-      code === "TENANT_DISABLED" ||
-      code === "USER_DISABLED" ||
-      data?.error === "account_access_denied";
-    const clientSessionInvalidated = invalidateActiveClientSession(error, {
-      reason: isAccountDisabled ? "account-disabled" : "authentication-rejected",
-      code: code || null,
-    });
-    if (clientSessionInvalidated) {
-      error.clientSessionInvalidated = true;
-      error.accountDisabled = isAccountDisabled;
-      return Promise.reject(error);
-    }
-    if (isAccountDisabled) {
-      if (typeof window !== "undefined" && !error?.config?.noAuth) {
-        try {
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
-          localStorage.removeItem("company_id");
-        } catch {}
-        window.dispatchEvent(
-          new CustomEvent("schedulaa:account-disabled", {
-            detail: {
-              code: code || (data?.error === "account_access_denied" ? "ACCOUNT_ACCESS_DENIED" : null),
-              message:
-                userMessage ||
-                data?.error_description ||
-                "This account is currently disabled.",
-            },
-          })
-        );
-        const currentPath = String(window.location?.pathname || "");
-        if (!currentPath.startsWith("/login")) {
-          const reason = encodeURIComponent(
-            userMessage || data?.error_description || "This account is currently disabled."
-          );
-          window.location.assign(`/login?reason=${reason}`);
-        }
-      }
-      error.accountDisabled = true;
-      return Promise.reject(error);
-    }
-
     if (
       !skipBillingModal &&
       status === 402 &&
@@ -395,7 +350,6 @@ api.interceptors.request.use((config) => {
   const token =
     typeof localStorage !== "undefined" && localStorage.getItem("token");
   if (token && !config.noAuth) config.headers.Authorization = `Bearer ${token}`;
-  markActiveClientSessionRequest(config);
 
   // Don’t attach company for public routes or when explicitly disabled
   const fullUrl =

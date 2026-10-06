@@ -39,7 +39,13 @@ describe("client session lifecycle", () => {
     localStorage.setItem("role", "client");
     localStorage.setItem("token", "active-token");
     const config = markActiveClientSessionRequest({ headers: {} });
-    const error = { config, response: { status: 401, data: { msg: "Token has expired" } } };
+    const error = {
+      config,
+      response: {
+        status: 401,
+        data: { error: "authentication_rejected", code: "TOKEN_EXPIRED" },
+      },
+    };
 
     expect(invalidateActiveClientSession(error, { reason: "authentication-rejected" })).toBe(true);
     expect(localStorage.getItem("token")).toBeNull();
@@ -52,7 +58,13 @@ describe("client session lifecycle", () => {
     const config = markActiveClientSessionRequest({ headers: {} });
     localStorage.setItem("token", "new-token");
 
-    expect(invalidateActiveClientSession({ config, response: { status: 401 } })).toBe(false);
+    expect(invalidateActiveClientSession({
+      config,
+      response: {
+        status: 401,
+        data: { error: "authentication_rejected", code: "TOKEN_EXPIRED" },
+      },
+    })).toBe(false);
     expect(localStorage.getItem("token")).toBe("new-token");
   });
 
@@ -63,6 +75,7 @@ describe("client session lifecycle", () => {
     expect(invalidateActiveClientSession({ config: loginConfig, response: { status: 401 } })).toBe(false);
 
     const clientConfig = markActiveClientSessionRequest({ headers: {} });
+    expect(invalidateActiveClientSession({ config: clientConfig, response: { status: 401, data: {} } })).toBe(false);
     expect(invalidateActiveClientSession({ config: clientConfig, response: { status: 403, data: {} } })).toBe(false);
 
     localStorage.setItem("role", "manager");

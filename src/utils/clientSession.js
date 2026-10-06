@@ -1,6 +1,18 @@
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
 const CLIENT_SESSION_REQUEST_TOKEN = "__schedulaaClientSessionToken";
+const TRUSTED_AUTHENTICATION_REJECTION_CODES = new Set([
+  "TOKEN_EXPIRED",
+  "TOKEN_INVALID",
+  "TOKEN_REVOKED",
+  "TOKEN_SUBJECT_NOT_FOUND",
+  "TOKEN_VERIFICATION_FAILED",
+  "CLIENT_MEMBERSHIP_NOT_FOUND",
+]);
+const TRUSTED_ACCOUNT_ACCESS_CODES = new Set([
+  "USER_DISABLED",
+  "TENANT_DISABLED",
+]);
 
 const readStorage = (key) => {
   try {
@@ -46,13 +58,32 @@ export const markActiveClientSessionRequest = (config = {}) => {
   return config;
 };
 
-const isAccountDisabledResponse = (error) => {
+export const wasClientSessionRequest = (error) =>
+  Boolean(error?.config?.[CLIENT_SESSION_REQUEST_TOKEN]);
+
+const isTrustedClientAuthenticationRejection = (error) => {
   const data = error?.response?.data || {};
   const code = data.code || data.error || data.error_code;
+  const status = error?.response?.status;
+  const isAuthenticationRejection =
+    data.error === "authentication_rejected" &&
+    TRUSTED_AUTHENTICATION_REJECTION_CODES.has(code) &&
+    (status === 401 || status === 422);
+  const isAccountAccessRejection =
+    data.error === "account_access_denied" &&
+    (TRUSTED_ACCOUNT_ACCESS_CODES.has(code) ||
+      TRUSTED_AUTHENTICATION_REJECTION_CODES.has(code)) &&
+    (status === 401 || status === 403);
+  return isAuthenticationRejection || isAccountAccessRejection;
+};
+
+export const isAccountDisabledResponse = (error) => {
+  const data = error?.response?.data || {};
+  const code = data.code || data.error_code;
   return (
-    code === "TENANT_DISABLED" ||
-    code === "USER_DISABLED" ||
-    data.error === "account_access_denied"
+    data.error === "account_access_denied" &&
+    TRUSTED_ACCOUNT_ACCESS_CODES.has(code) &&
+    error?.response?.status === 403
   );
 };
 
@@ -61,7 +92,7 @@ export const isActiveClientAuthenticationRejection = (error) => {
   if (!requestToken || error?.config?.noAuth) return false;
   if (readStorage("role").toLowerCase() !== "client") return false;
   if (readStorage("token") !== requestToken) return false;
-  return error?.response?.status === 401 || isAccountDisabledResponse(error);
+  return isTrustedClientAuthenticationRejection(error);
 };
 
 export const invalidateActiveClientSession = (error, detail = {}) => {
