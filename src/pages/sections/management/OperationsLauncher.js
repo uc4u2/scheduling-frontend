@@ -34,7 +34,10 @@ import ProfessionSettings from "../ProfessionSetting";
 import { PROFESSION_OPTIONS } from "../../../constants/professions";
 import { ensureCompanyId } from "../../../utils/company";
 import { settingsApi, website } from "../../../utils/api";
-import { buildProgressChecklist } from "./operationsLauncherLogic";
+import {
+  buildProgressChecklist,
+  resolveOperationsPublicWebsiteUrl,
+} from "./operationsLauncherLogic";
 import { executeTemplateInstallAction } from "./operationsLauncherInstall";
 import { buildWebsiteBuilderUrl } from "./websiteStyleBridge";
 import {
@@ -875,12 +878,19 @@ export default function OperationsLauncher() {
       }),
     [recommendedActionKeys, effectiveProfession]
   );
+  const publicWebsiteUrl = useMemo(() => {
+    return resolveOperationsPublicWebsiteUrl({
+      websiteStatus,
+      companySlug,
+      currentOrigin: typeof window !== "undefined" ? window.location.origin : "",
+    });
+  }, [companySlug, websiteStatus]);
 
   const openAction = (action) => {
     if (!action) return;
     if (action.kind === "external") {
-      if (companySlug && typeof window !== "undefined") {
-        window.open(`/${companySlug}`, "_blank", "noopener,noreferrer");
+      if (publicWebsiteUrl && typeof window !== "undefined") {
+        window.open(publicWebsiteUrl, "_blank", "noopener,noreferrer");
       } else {
         setBanner({
           type: "error",

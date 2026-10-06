@@ -122,6 +122,58 @@ describe("public website resolver", () => {
     })).toBe("https://www.vandaorchidjewel.com/contact");
   });
 
+  it("trusts a backend-confirmed operational custom domain without a stale frontend host allowlist", () => {
+    const status = {
+      company_slug: "beauty-salon",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      published_visual_theme_key: "iron-ember",
+      public_url_contract: {
+        company_slug: "beauty-salon",
+        primary_public_url: "https://www.lumiereprivatesalon.com/",
+        schedulaa_url: "https://app.schedulaa.com/beauty-salon",
+        custom_domain_url: "https://www.lumiereprivatesalon.com/",
+        custom_domain_active: true,
+      },
+    };
+
+    expect(isPublicTenantGatewayEnabled(status, {
+      enabled: false,
+      customHosts: "www.some-older-tenant.example",
+    })).toBe(true);
+    expect(buildPublishedWebsiteUrl({
+      status,
+      pagePath: "services",
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
+      gateway: { enabled: false, customHosts: "www.some-older-tenant.example" },
+    })).toBe("https://www.lumiereprivatesalon.com/services");
+  });
+
+  it("keeps a configured but non-operational domain on the platform tenant URL", () => {
+    const status = {
+      company_slug: "pending-salon",
+      is_live: true,
+      published_renderer_engine: "nextjs",
+      published_visual_theme_key: "iron-ember",
+      custom_domain: "www.pending-salon.example",
+      public_url_contract: {
+        company_slug: "pending-salon",
+        primary_public_url: "https://app.schedulaa.com/pending-salon",
+        schedulaa_url: "https://app.schedulaa.com/pending-salon",
+        custom_domain_url: null,
+        custom_domain_active: false,
+      },
+    };
+
+    expect(buildPublishedWebsiteUrl({
+      status,
+      currentOrigin: "https://app.schedulaa.com",
+      nextBaseUrl: "https://scheduling-tenant-web-next.onrender.com",
+      gateway: { enabled: true, customHosts: "" },
+    })).toBe("https://app.schedulaa.com/pending-salon");
+  });
+
   it("retains the direct Next fallback only when the global gateway is disabled", () => {
     const status = {
       company_slug: "new-studio",

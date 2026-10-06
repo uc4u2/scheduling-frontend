@@ -1,3 +1,18 @@
+import { buildPublishedWebsiteUrl } from "../../../utils/publicWebsite";
+
+export function resolveOperationsPublicWebsiteUrl({
+  websiteStatus,
+  companySlug,
+  currentOrigin = "",
+} = {}) {
+  const slug = String(companySlug || "").trim();
+  if (!slug) return "";
+  return buildPublishedWebsiteUrl({
+    status: websiteStatus || { company_slug: slug, is_live: true },
+    currentOrigin,
+  }) || `/${slug}`;
+}
+
 export const buildProgressChecklist = ({ profession, answers, websiteStatus }) => {
   const serverProgress = websiteStatus?.progress || {};
   const items = [

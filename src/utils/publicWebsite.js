@@ -119,10 +119,16 @@ export function isPublicTenantGatewayEnabled(
     customHosts = configuredGatewayCustomHosts,
   } = {}
 ) {
-  if (!enabled) return false;
   const contract = getPublicUrlContract(status);
   const slug = String(status?.company_slug || contract?.company_slug || "").trim().toLowerCase();
   const customUrl = String(contract?.custom_domain_url || "").trim();
+  // The backend publishes custom_domain_url only after the domain has passed
+  // the canonical operational-readiness contract.  That contract is newer
+  // and more authoritative than the historical build-time hostname list, so
+  // a newly connected domain must not wait for a frontend redeploy before
+  // manager/public links can use it.
+  if (contract?.custom_domain_active === true && customUrl) return true;
+  if (!enabled) return false;
   // Custom-domain routing retains its separate, explicitly managed lifecycle.
   // Standard app.schedulaa.com/<slug> tenants are gateway-ready whenever the
   // published URL contract identifies the tenant; no infrastructure slug list
