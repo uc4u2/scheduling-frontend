@@ -6,6 +6,7 @@ import PackageCheckoutReturn, {
   completePackageReturn,
   PACKAGE_RETURN_MAX_ATTEMPTS,
   PACKAGE_RETURN_POLL_INTERVAL_MS,
+  isPackageCheckoutReturnDashboard,
   packageReturnPath,
   packagesDashboardPath,
 } from "./PackageCheckoutReturn";
@@ -33,6 +34,10 @@ describe("package checkout return helpers", () => {
       .toBe("/packages/return?session_id=cs_test_1&site=studio&embed=1");
     expect(packageReturnPath("?session_id=cs_test_1&site=studio&embed=1", "/studio/packages/return"))
       .toBe("/studio/packages/return?session_id=cs_test_1&site=studio&embed=1");
+    expect(packageReturnPath("?session_id=cs_test_1&site=studio&package_return=1", "/dashboard"))
+      .toBe("/dashboard?session_id=cs_test_1&site=studio&package_return=1");
+    expect(isPackageCheckoutReturnDashboard("?package_return=1", "/dashboard")).toBe(true);
+    expect(isPackageCheckoutReturnDashboard("?package_return=1", "/manage/dashboard")).toBe(false);
     expect(packageReturnPath("?site=studio")).toBe("");
     expect(packageReturnPath("?session_id={CHECKOUT_SESSION_ID}")).toBe("");
     expect(packageReturnPath("?session_id=cs_test_1", "/checkout/return")).toBe("");

@@ -4,11 +4,16 @@ import { useLocation } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
 import TenantTransactionalShell from "./TenantTransactionalShell";
 import ClientDashboard from "../ClientDashboard"; // adjust if your dashboard path differs
+import PackageCheckoutReturn, { isPackageCheckoutReturnDashboard } from "./PackageCheckoutReturn";
 
 export default function DashboardShellGate() {
   const { search } = useLocation();
   const params = new URLSearchParams(search);
   const siteSlug = params.get("site"); // ?site=photo-artisto-corp
+
+  if (isPackageCheckoutReturnDashboard(search, "/dashboard")) {
+    return <PackageCheckoutReturn />;
+  }
 
   if (!siteSlug) {
     // Normal dashboard (no site wrapper)

@@ -12,12 +12,18 @@ import PublicClientAuth from "./PublicClientAuth";
 export const PACKAGE_RETURN_POLL_INTERVAL_MS = 2000;
 export const PACKAGE_RETURN_MAX_ATTEMPTS = 15;
 
+export function isPackageCheckoutReturnDashboard(search = "", pathname = "") {
+  const query = new URLSearchParams(search || "");
+  return pathname === "/dashboard" && query.get("package_return") === "1";
+}
+
 export function packageReturnPath(search = "", pathname = "/packages/return") {
   const query = new URLSearchParams(search || "");
   const sessionId = String(query.get("session_id") || "").trim();
   if (!sessionId || !sessionId.startsWith("cs_") || /CHECKOUT_SESSION_ID/i.test(sessionId)) return "";
   const cleanPath = String(pathname || "").trim().replace(/\/$/, "");
-  if (!/^\/(?:[^/?#]+\/)?packages\/return$/.test(cleanPath)) return "";
+  const packagePath = /^\/(?:[^/?#]+\/)?packages\/return$/.test(cleanPath);
+  if (!packagePath && !isPackageCheckoutReturnDashboard(search, cleanPath)) return "";
   return `${cleanPath}?${query.toString()}`;
 }
 
