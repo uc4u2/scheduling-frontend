@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import PublicClientAuth from "./PublicClientAuth";
+import PublicClientAuth, { resolveClientAuthCompletionPath } from "./PublicClientAuth";
 import { api } from "../../utils/api";
 
 jest.mock("../../utils/api", () => ({
@@ -87,5 +87,18 @@ describe("PublicClientAuth", () => {
     expect(screen.getByLabelText(/^First name/)).toHaveAttribute("autocomplete", "given-name");
     expect(screen.getByLabelText(/^Last name/)).toHaveAttribute("autocomplete", "family-name");
     expect(screen.getByLabelText(/^Confirm password/)).toHaveAttribute("autocomplete", "new-password");
+  });
+
+  it("returns only to a validated internal package path after authentication", () => {
+    expect(resolveClientAuthCompletionPath({
+      returnTo: "/packages/return?session_id=cs_test_1&site=web-design&embed=1",
+      embedded: true,
+      slug: "web-design",
+    })).toBe("/packages/return?session_id=cs_test_1&site=web-design&embed=1");
+    expect(resolveClientAuthCompletionPath({
+      returnTo: "https://evil.example/packages/return?session_id=cs_test_1",
+      embedded: true,
+      slug: "web-design",
+    })).toContain("/dashboard?");
   });
 });

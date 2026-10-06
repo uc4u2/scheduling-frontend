@@ -160,6 +160,7 @@ import PayrollDownloadPage from "./pages/sections/PayrollDownloadPage";
 import EmployeePayslipPortal from "./pages/sections/EmployeePayslipPortal";
 import DashboardShellGate from "./pages/client/DashboardShellGate";
 import ClientDashboard from "./pages/ClientDashboard";
+import PackageCheckoutReturn from "./pages/client/PackageCheckoutReturn";
 
 // Website management
 import WebsiteBuilder from "./pages/sections/management/WebsiteBuilder";
@@ -1017,6 +1018,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/basket" element={<MyBasket slugOverride={tenantSlug} />} />
               <Route path="/checkout" element={<React.Suspense fallback={<div role="status" aria-live="polite">Preparing secure checkout…</div>}><Checkout slugOverride={tenantSlug} /></React.Suspense>} />
               <Route path="/checkout/return" element={<BookingConfirmation slugOverride={tenantSlug} />} />
+              <Route path="/packages/return" element={<PackageCheckoutReturn />} />
               <Route path="/book/:employeeId/:serviceId" element={<EmployeeBooking slugOverride={tenantSlug} />} />
               <Route path="/book" element={<EmployeeBooking slugOverride={tenantSlug} />} />
               <Route path="/booking-confirmation/:bookingId" element={<BookingConfirmation slugOverride={tenantSlug} />} />
@@ -1184,6 +1186,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/client/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
               <Route path="/:slug/booking-confirmation/:bookingId" element={<BookingConfirmation />} />
               <Route path="/:slug/checkout/return" element={<BookingConfirmation />} />
+              <Route path="/:slug/packages/return" element={<PackageCheckoutReturn />} />
               <Route path="/client/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
               <Route path="/:slug/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
               <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />

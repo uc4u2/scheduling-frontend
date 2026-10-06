@@ -33,6 +33,7 @@ import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
 import { publishClientSessionState } from "../../utils/clientSession";
+import { normalizeTransactionalReturnPath } from "../../utils/transactionalFrameBridge";
 
 const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
   <Box
@@ -107,7 +108,31 @@ const accountBenefits = [
   "Book again with less repetition",
 ];
 
-export default function PublicClientAuth({ slug }) {
+export function resolveClientAuthCompletionPath({
+  returnTo = "",
+  embedded = false,
+  slug = "",
+  activeSearch = "",
+  hostMode = "platform",
+} = {}) {
+  const safeReturnTo = normalizeTransactionalReturnPath(returnTo);
+  if (safeReturnTo) return safeReturnTo;
+
+  const activeQuery = new URLSearchParams(activeSearch || "");
+  const embeddedQuery = new URLSearchParams();
+  ["mode", "dialog", "site", "primary", "text", "return_to", "returnTo"].forEach((key) => {
+    if (activeQuery.has(key)) embeddedQuery.set(key, activeQuery.get(key));
+  });
+  if (slug) embeddedQuery.set("site", slug);
+  embeddedQuery.set("embed", "1");
+  embeddedQuery.set("dialog", "1");
+  if (embedded && slug) return `/dashboard?${embeddedQuery.toString()}`;
+  if (hostMode === "custom") return "/?page=my-bookings";
+  if (slug) return `/dashboard?site=${encodeURIComponent(slug)}`;
+  return "/dashboard";
+}
+
+export default function PublicClientAuth({ slug, returnTo = "" }) {
   const userAgreementUrl = buildMarketingLegalUrl("/user-agreement");
   const [tab, setTab] = useState(() => (
     typeof window !== "undefined" && new URLSearchParams(window.location.search || "").get("tab") === "register"
@@ -151,26 +176,13 @@ export default function PublicClientAuth({ slug }) {
     const embedded =
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
-    const activeQuery = new URLSearchParams(window.location.search || "");
-    const embeddedQuery = new URLSearchParams();
-    ["mode", "dialog", "site", "primary", "text", "return_to", "returnTo"].forEach((key) => {
-      if (activeQuery.has(key)) embeddedQuery.set(key, activeQuery.get(key));
+    const target = resolveClientAuthCompletionPath({
+      returnTo,
+      embedded,
+      slug,
+      activeSearch: window.location.search,
+      hostMode: getTenantHostMode(),
     });
-    if (slug) embeddedQuery.set("site", slug);
-    embeddedQuery.set("embed", "1");
-    embeddedQuery.set("dialog", "1");
-    const target =
-      // A Next transactional bridge frames the established client login.
-      // Return to DashboardShellGate, the mounted client-panel route used by
-      // the Next bridge, instead of a tenant-prefixed URL that custom-domain
-      // public routing can treat as a marketing page.
-      embedded && slug
-        ? `/dashboard?${embeddedQuery.toString()}`
-        : getTenantHostMode() === "custom"
-        ? "/?page=my-bookings"
-        : slug
-          ? `/dashboard?site=${encodeURIComponent(slug)}`
-          : "/dashboard";
     window.location.assign(target);
   };
 
