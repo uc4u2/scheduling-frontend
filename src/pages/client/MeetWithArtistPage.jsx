@@ -476,7 +476,7 @@ const MeetWithArtistPageContent = ({
 
       setSnack({
         open: true,
-        message: "Your meeting has been booked!",
+        message: "Your meeting is booked. Check your email for confirmation details.",
         severity: "success",
       });
       setNote("");
@@ -485,7 +485,7 @@ const MeetWithArtistPageContent = ({
       const msg =
         err?.response?.data?.error ||
         err?.displayMessage ||
-        "Unable to book this time. Please try another slot.";
+        "Unable to book this time. Please choose another available time.";
       setError(msg);
       setSnack({
         open: true,
@@ -816,7 +816,7 @@ const MeetWithArtistPageContent = ({
                       <Box component="li">Pick an available time slot.</Box>
                       <Box component="li">Book at least 30 minutes before the start time.</Box>
                       <Box component="li">Complete the required fields.</Box>
-                      <Box component="li">You will receive a confirmation after booking.</Box>
+                      <Box component="li">We’ll email your booking confirmation and meeting details.</Box>
                     </Box>
                     {availabilityTz && (
                       <Stack direction="row" spacing={1} alignItems="center">
@@ -1017,7 +1017,7 @@ const MeetWithArtistPageContent = ({
                         gutterBottom
                         sx={{ color: "var(--page-heading-color, inherit)" }}
                       >
-                        Your details
+                        Contact information
                       </Typography>
                       <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
@@ -1050,7 +1050,7 @@ const MeetWithArtistPageContent = ({
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <TextField
-                            label="WhatsApp Phone Number (optional)"
+                            label="Phone or WhatsApp (optional)"
                             fullWidth
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
@@ -1129,7 +1129,7 @@ const MeetWithArtistPageContent = ({
                                 },
                               }}
                             >
-                              {booking ? "Booking…" : "Confirm meeting"}
+                              {booking ? "Booking…" : "Confirm booking"}
                             </Button>
                           </Box>
                         </Grid>
