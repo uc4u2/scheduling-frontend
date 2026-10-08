@@ -46,6 +46,10 @@ import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import FinanceEmailTemplatePicker from "./components/FinanceEmailTemplatePicker";
 import FinanceEmailTemplateManagerDialog from "./components/FinanceEmailTemplateManagerDialog";
+import {
+  createManualEmailDeliveryVersion,
+  isFinanceInvoiceEmailTemplate,
+} from "./financeEmailTemplatePolicy";
 import FinanceInvoiceOfflinePaymentDialog from "./FinanceInvoiceOfflinePaymentDialog";
 import FinanceInvoiceRefundDialog from "./FinanceInvoiceRefundDialog";
 import FinanceTransactionPreviewDialog, { buildFinancePreviewSummary } from "./components/FinanceTransactionPreviewDialog";
@@ -258,7 +262,7 @@ const buildInvoiceDetailEmailTemplateOptions = ({ invoice, tDetail, customTempla
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])
-    .filter((row) => row?.is_active)
+    .filter(isFinanceInvoiceEmailTemplate)
     .map((row) => ({
       key: `custom:${row.id}`,
       label: `${row.name}${row.is_default ? " (Default)" : ""}`,
@@ -368,6 +372,7 @@ export default function FinanceInvoiceDetailDialog({
   const [sendEmailSubject, setSendEmailSubject] = useState("");
   const [sendEmailMessage, setSendEmailMessage] = useState("");
   const [sendEmailTemplateKey, setSendEmailTemplateKey] = useState("");
+  const [sendEmailDeliveryVersion, setSendEmailDeliveryVersion] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendEmailAttachInvoicePdf, setSendEmailAttachInvoicePdf] = useState(true);
   const [sendEmailIncludePaymentLink, setSendEmailIncludePaymentLink] = useState(true);
@@ -1062,6 +1067,7 @@ export default function FinanceInvoiceDetailDialog({
     sendEmailCapabilityRequestRef.current = capabilityRequestId;
     const recipientEmail = getPreferredInvoiceRecipientEmail(sourceInvoice);
     setSendEmailTo(recipientEmail);
+    setSendEmailDeliveryVersion(createManualEmailDeliveryVersion());
     const deliveryDefaults = getDefaultInvoiceDeliveryOptions({
       status: sourceInvoice?.payment_status || sourceInvoice?.status,
       remainingBalance:
@@ -1077,7 +1083,7 @@ export default function FinanceInvoiceDetailDialog({
     setSendEmailIncludeReviewCta(false);
     setSendEmailReviewCapability(null);
     setSendEmailReviewCapabilityLoading(true);
-    const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
+    const defaultCustom = emailTemplates.find((entry) => isFinanceInvoiceEmailTemplate(entry) && entry?.is_default);
     if (defaultCustom) {
       setSendEmailTemplateKey(`custom:${defaultCustom.id}`);
       setSendEmailSubject(defaultCustom.subject || "");
@@ -1250,6 +1256,8 @@ export default function FinanceInvoiceDetailDialog({
         include_payment_link: sendEmailIncludePaymentLink,
         include_review_cta: sendEmailIncludeReviewCta,
         client_document_ids: emailDocumentIds,
+        email_delivery_version: sendEmailDeliveryVersion,
+        template_id: selectedEmailTemplate?.is_custom ? selectedEmailTemplate.template_id : undefined,
       });
       const nextInvoice = payload?.invoice || null;
       if (nextInvoice) {
@@ -1277,7 +1285,7 @@ export default function FinanceInvoiceDetailDialog({
     [emailTemplateOptions, sendEmailTemplateKey]
   );
   const customEmailTemplateCount = useMemo(
-    () => emailTemplates.filter((entry) => entry?.is_active).length,
+    () => emailTemplates.filter(isFinanceInvoiceEmailTemplate).length,
     [emailTemplates]
   );
 

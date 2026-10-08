@@ -68,6 +68,10 @@ import {
   getInvoiceReviewCtaHelperText,
   isInvoicePaymentLinkActionable,
 } from "./invoiceDeliveryOptions";
+import {
+  createManualEmailDeliveryVersion,
+  isFinanceInvoiceEmailTemplate,
+} from "./financeEmailTemplatePolicy";
 
 const downloadBlob = (response, fallbackName) => {
   const blob =
@@ -131,7 +135,7 @@ const buildInvoiceEmailTemplateOptions = ({ row, tInvoice, customTemplates = [] 
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])
-    .filter((rowTemplate) => rowTemplate?.is_active)
+    .filter(isFinanceInvoiceEmailTemplate)
     .map((rowTemplate) => ({
       key: `custom:${rowTemplate.id}`,
       label: `${rowTemplate.name}${rowTemplate.is_default ? " (Default)" : ""}`,
@@ -315,6 +319,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [emailTemplateKey, setEmailTemplateKey] = useState("");
+  const [emailDeliveryVersion, setEmailDeliveryVersion] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [emailDocuments, setEmailDocuments] = useState([]);
   const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
@@ -341,6 +346,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
   const requestedClientId = searchParams.get("clientId") || "";
   const requestedAction = searchParams.get("action") || "";
   const requestedInvoiceId = searchParams.get("invoiceId") || "";
+  const expiredMessageUuid = searchParams.get("expiredMessage") || "";
   const initialEmailActionRef = useRef("");
 
   const load = useCallback(async () => {
@@ -460,6 +466,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     const capabilityRequestId = emailCapabilityRequestRef.current + 1;
     emailCapabilityRequestRef.current = capabilityRequestId;
     setEmailTarget(row);
+    setEmailDeliveryVersion(createManualEmailDeliveryVersion());
     const recipientEmail = getPreferredInvoiceRowEmail(row);
     setEmailTo(recipientEmail);
     const deliveryDefaults = getDefaultInvoiceDeliveryOptions({
@@ -475,7 +482,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     setEmailIncludeReviewCta(false);
     setEmailReviewCapability(null);
     setEmailReviewCapabilityLoading(true);
-    const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
+    const defaultCustom = emailTemplates.find((entry) => isFinanceInvoiceEmailTemplate(entry) && entry?.is_default);
     if (defaultCustom) {
       setEmailTemplateKey(`custom:${defaultCustom.id}`);
       setEmailSubject(defaultCustom.subject || "");
@@ -650,6 +657,12 @@ export default function FinanceInvoicesPage({ onNavigate }) {
         include_payment_link: emailIncludePaymentLink,
         include_review_cta: emailIncludeReviewCta,
         client_document_ids: emailDocumentIds,
+        email_delivery_version: emailDeliveryVersion,
+        template_id: selectedEmailTemplate?.is_custom ? selectedEmailTemplate.template_id : undefined,
+        replaces_message_uuid:
+          String(invoiceId) === String(requestedInvoiceId) && String(expiredMessageUuid || "").trim()
+            ? String(expiredMessageUuid).trim()
+            : undefined,
       });
       enqueueSnackbar(tInvoice("snackbar.invoiceEmailQueued", "Invoice email queued."), {
         variant: "success",
@@ -674,7 +687,7 @@ export default function FinanceInvoicesPage({ onNavigate }) {
     [emailTemplateKey, emailTemplateOptions]
   );
   const customEmailTemplateCount = useMemo(
-    () => emailTemplates.filter((entry) => entry?.is_active).length,
+    () => emailTemplates.filter(isFinanceInvoiceEmailTemplate).length,
     [emailTemplates]
   );
 

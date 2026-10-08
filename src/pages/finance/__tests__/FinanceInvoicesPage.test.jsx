@@ -155,6 +155,35 @@ describe("FinanceInvoicesPage", () => {
     expect(mockEnqueueSnackbar).toHaveBeenCalledWith("Invoice email queued.", { variant: "success" });
   });
 
+  test("ignores a document-reminder default when composing a Finance invoice email", async () => {
+    mockListManagerClient360EmailTemplates.mockResolvedValueOnce({
+      templates: [
+        {
+          id: 99,
+          name: "Document reminder",
+          subject: "Upload your document",
+          body: "This is a document reminder.",
+          category: "document_reminder",
+          is_active: true,
+          is_default: true,
+        },
+      ],
+    });
+    mockLocationSearch = "?invoiceId=43&action=send-email&expiredMessage=expired-message-1";
+
+    render(<FinanceInvoicesPage />);
+    await screen.findByText("Send invoice");
+    await waitFor(() => expect(mockListManagerClient360EmailTemplates).toHaveBeenCalled());
+    userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(mockSendFinanceInvoiceEmail).toHaveBeenCalledTimes(1));
+    const payload = mockSendFinanceInvoiceEmail.mock.calls[0][1];
+    expect(payload.subject).not.toBe("Upload your document");
+    expect(payload.message).not.toBe("This is a document reminder.");
+    expect(payload.template_id).toBeUndefined();
+    expect(payload.replaces_message_uuid).toBe("expired-message-1");
+  });
+
   test("disables payment link for paid invoice while keeping PDF enabled", async () => {
     mockListFinanceInvoices.mockResolvedValueOnce({
       items: [

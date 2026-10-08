@@ -94,6 +94,11 @@ import FinanceAuditTimeline from "./components/FinanceAuditTimeline";
 import ClientDocumentAttachmentPanel from "./components/ClientDocumentAttachmentPanel";
 import FinanceEmailTemplatePicker from "./components/FinanceEmailTemplatePicker";
 import FinanceEmailTemplateManagerDialog from "./components/FinanceEmailTemplateManagerDialog";
+import {
+  createManualEmailDeliveryVersion,
+  isFinanceEstimateEmailTemplate,
+  isFinanceInvoiceEmailTemplate,
+} from "./financeEmailTemplatePolicy";
 import TutorialHelpCard from "../../components/tutorials/TutorialHelpCard";
 import { BUSINESS_FINANCE_TUTORIAL_GROUP } from "./financeTutorials";
 import { extractApiErrorMessage, isLikelyDownloadHandoffError } from "../../utils/apiError";
@@ -215,7 +220,7 @@ const buildEstimateEmailTemplateOptions = ({ item, customTemplates = [] }) => {
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])
-    .filter((row) => row?.is_active)
+    .filter(isFinanceEstimateEmailTemplate)
     .map((row) => ({
       key: `custom:${row.id}`,
       label: `${row.name}${row.is_default ? " (Default)" : ""}`,
@@ -262,7 +267,7 @@ const buildEstimateInvoiceEmailTemplateOptions = ({ item, customTemplates = [] }
     },
   ].map((template) => ({ ...template, is_custom: false }));
   const customs = (customTemplates || [])
-    .filter((row) => row?.is_active)
+    .filter(isFinanceInvoiceEmailTemplate)
     .map((row) => ({
       key: `custom:${row.id}`,
       label: `${row.name}${row.is_default ? " (Default)" : ""}`,
@@ -396,6 +401,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const [invoiceEmailMessage, setInvoiceEmailMessage] = useState("");
   const [invoiceEmailDocumentIds, setInvoiceEmailDocumentIds] = useState([]);
   const [invoiceEmailTemplateKey, setInvoiceEmailTemplateKey] = useState("");
+  const [invoiceEmailDeliveryVersion, setInvoiceEmailDeliveryVersion] = useState("");
   const [emailDocuments, setEmailDocuments] = useState([]);
   const [emailDocumentsLoading, setEmailDocumentsLoading] = useState(false);
   const [emailDocumentsError, setEmailDocumentsError] = useState("");
@@ -660,7 +666,7 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
   const openSendEmailDialog = (item) => {
     setEmailTarget(item);
     setEmailTo(item?.client_email || "");
-    const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
+    const defaultCustom = emailTemplates.find((entry) => isFinanceEstimateEmailTemplate(entry) && entry?.is_default);
     if (defaultCustom) {
       setEmailTemplateKey(`custom:${defaultCustom.id}`);
       setEmailSubject(defaultCustom.subject || "");
@@ -921,8 +927,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
 
   const openSendPaymentLinkEmailDialog = (item) => {
     setInvoiceEmailTarget(item);
+    setInvoiceEmailDeliveryVersion(createManualEmailDeliveryVersion());
     setInvoiceEmailTo(String(item?.client_email || "").trim());
-    const defaultCustom = emailTemplates.find((entry) => entry?.is_active && entry?.is_default);
+    const defaultCustom = emailTemplates.find((entry) => isFinanceInvoiceEmailTemplate(entry) && entry?.is_default);
     if (defaultCustom) {
       setInvoiceEmailTemplateKey(`custom:${defaultCustom.id}`);
       setInvoiceEmailSubject(defaultCustom.subject || "");
@@ -951,6 +958,8 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
         subject: String(invoiceEmailSubject || "").trim() || undefined,
         message: String(invoiceEmailMessage || "").trim() || undefined,
         client_document_ids: invoiceEmailDocumentIds,
+        email_delivery_version: invoiceEmailDeliveryVersion,
+        template_id: selectedActiveEmailTemplate?.is_custom ? selectedActiveEmailTemplate.template_id : undefined,
       });
       enqueueSnackbar(tEstimate("snackbar.paymentLinkEmailSent", "Payment link email sent."), { variant: "success" });
       setInvoiceEmailDialogOpen(false);
@@ -978,7 +987,9 @@ export default function EstimatesPage({ createNonce, onNavigate }) {
     [activeTemplateKey, activeTemplateOptions]
   );
   const customEmailTemplateCount = useMemo(
-    () => emailTemplates.filter((entry) => entry?.is_active).length,
+    () => emailTemplates.filter(
+      (entry) => isFinanceEstimateEmailTemplate(entry) || isFinanceInvoiceEmailTemplate(entry)
+    ).length,
     [emailTemplates]
   );
 
