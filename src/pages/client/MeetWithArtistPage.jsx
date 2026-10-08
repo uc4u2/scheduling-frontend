@@ -155,6 +155,52 @@ const toYouTubeEmbedUrl = (raw) => {
   return "";
 };
 
+const toYouTubeVideoId = (embedUrl) => {
+  const match = String(embedUrl || "").match(/\/embed\/([a-zA-Z0-9_-]{6,})/i);
+  return match?.[1] || "";
+};
+
+const BookingLoadingNotice = ({ delayed = false }) => (
+  <Box
+    role="status"
+    aria-live="polite"
+    sx={{
+      minHeight: 280,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      px: 3,
+      py: 8,
+      textAlign: "center",
+    }}
+  >
+    <Stack spacing={2} alignItems="center" sx={{ maxWidth: 420 }}>
+      <CircularProgress size={34} />
+      <Typography variant="h6" fontWeight={700}>
+        Loading live availability…
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {delayed
+          ? "This is taking a little longer than usual. Your booking options are still loading."
+          : "Please wait a moment while we prepare the available dates and times."}
+      </Typography>
+    </Stack>
+  </Box>
+);
+
+const useDelayedLoadingNotice = (active, delayMs = 3500) => {
+  const [delayed, setDelayed] = useState(false);
+
+  useEffect(() => {
+    setDelayed(false);
+    if (!active) return undefined;
+    const timer = window.setTimeout(() => setDelayed(true), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [active, delayMs]);
+
+  return delayed;
+};
+
 /* Normalize + filter backend slots (drop anything in the past) */
 function normalizeSlots(raw, fallbackTz) {
   const now = new Date();
@@ -208,6 +254,7 @@ const MeetWithArtistPageContent = ({
   siteContext,
   schedulerOnly = false,
   hideIntroVideo = false,
+  initialMeetData = null,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -231,6 +278,7 @@ const MeetWithArtistPageContent = ({
   const [note, setNote] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [meetingDetailsExpanded, setMeetingDetailsExpanded] = useState(false);
+  const [introVideoActive, setIntroVideoActive] = useState(false);
   const [challenge, setChallenge] = useState(() => {
     const a = Math.floor(Math.random() * 4) + 2;
     const b = Math.floor(Math.random() * 4) + 2;
@@ -313,6 +361,7 @@ const MeetWithArtistPageContent = ({
   const calendarAccentContrast =
     "var(--page-calendar-accent-contrast, var(--page-btn-color, #fff))";
   const meetingDetailsPreviewLimit = 420;
+  const loadingDelayed = useDelayedLoadingNotice(loading);
 
   /* Load artist + availability */
   useEffect(() => {
@@ -322,41 +371,51 @@ const MeetWithArtistPageContent = ({
     setLoading(true);
     setError("");
 
+    const applyMeetData = (artistData, availData) => {
+      if (!alive) return;
+
+      setArtist(artistData);
+
+      const slotsRaw = Array.isArray(availData?.slots)
+        ? availData.slots
+        : Array.isArray(availData)
+        ? availData
+        : [];
+
+      const { byDate, dates, timezone } = normalizeSlots(
+        slotsRaw,
+        availData?.timezone
+      );
+
+      setAvailabilityTz(timezone);
+      setSlotsByDate(byDate);
+      setSortedDates(dates);
+
+      if (dates.length > 0) {
+        setSelectedDate((prev) => prev || dates[0]);
+        const firstSlot = byDate[dates[0]]?.[0];
+        if (firstSlot) {
+          setSelectedSlotId(firstSlot.id);
+          const firstDt = firstSlot.when;
+          setMonthView(new Date(firstDt.getFullYear(), firstDt.getMonth(), 1));
+        }
+      }
+    };
+
+    if (initialMeetData?.artist && initialMeetData?.availability) {
+      applyMeetData(initialMeetData.artist, initialMeetData.availability);
+      setLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+
     Promise.all([
       publicSite.getArtist(slug, artistKey),
       publicSite.getArtistAvailability(slug, artistKey),
     ])
       .then(([artistData, availData]) => {
-        if (!alive) return;
-
-        setArtist(artistData);
-
-        const slotsRaw = Array.isArray(availData?.slots)
-          ? availData.slots
-          : Array.isArray(availData)
-          ? availData
-          : [];
-
-        const { byDate, dates, timezone } = normalizeSlots(
-          slotsRaw,
-          availData?.timezone
-        );
-
-        setAvailabilityTz(timezone);
-        setSlotsByDate(byDate);
-        setSortedDates(dates);
-
-        if (dates.length > 0) {
-          setSelectedDate((prev) => prev || dates[0]);
-          const firstSlot = byDate[dates[0]]?.[0];
-          if (firstSlot) {
-            setSelectedSlotId(firstSlot.id);
-            const firstDt = firstSlot.when;
-            setMonthView(
-              new Date(firstDt.getFullYear(), firstDt.getMonth(), 1)
-            );
-          }
-        }
+        applyMeetData(artistData, availData);
       })
       .catch(() => {
         if (!alive) return;
@@ -367,7 +426,29 @@ const MeetWithArtistPageContent = ({
     return () => {
       alive = false;
     };
-  }, [slug, artistKey]);
+  }, [slug, artistKey, initialMeetData]);
+
+  useEffect(() => {
+    if (loading || !artist || typeof window === "undefined" || window.parent === window) {
+      return undefined;
+    }
+
+    const notifyParent = () => {
+      let targetOrigin = "*";
+      try {
+        if (document.referrer) targetOrigin = new URL(document.referrer).origin;
+      } catch {
+        targetOrigin = "*";
+      }
+      window.parent.postMessage(
+        { type: "schedulaa:booking-ready", version: 1 },
+        targetOrigin
+      );
+    };
+
+    const frame = window.requestAnimationFrame(notifyParent);
+    return () => window.cancelAnimationFrame(frame);
+  }, [loading, artist]);
 
   const selectedSlotsForDate = useMemo(
     () => (selectedDate && slotsByDate[selectedDate]) || [],
@@ -660,9 +741,7 @@ const MeetWithArtistPageContent = ({
       >
         <Container maxWidth="lg" sx={{ p: 0 }}>
           {loading ? (
-            <Box sx={{ textAlign: "center", py: 8 }}>
-              <CircularProgress />
-            </Box>
+            <BookingLoadingNotice delayed={loadingDelayed} />
           ) : error ? (
             <Alert severity="error">{error}</Alert>
           ) : !artist ? (
@@ -676,6 +755,7 @@ const MeetWithArtistPageContent = ({
                   const resolvedVideo =
                     toYouTubeEmbedUrl(artist?.public_video_url) ||
                     toYouTubeEmbedUrl(DEFAULT_PUBLIC_MEET_VIDEO_URL);
+                  const resolvedVideoId = toYouTubeVideoId(resolvedVideo);
                   return (
                     <>
                 <Card sx={leftCardSx}>
@@ -856,14 +936,67 @@ const MeetWithArtistPageContent = ({
                           bgcolor: "rgba(15,23,42,0.04)",
                         }}
                       >
-                        <iframe
-                          title="Provider intro video"
-                          src={resolvedVideo}
-                          style={{ width: "100%", height: "100%", border: 0 }}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          referrerPolicy="strict-origin-when-cross-origin"
-                          allowFullScreen
-                        />
+                        {introVideoActive ? (
+                          <iframe
+                            title="Provider intro video"
+                            src={`${resolvedVideo}${resolvedVideo.includes("?") ? "&" : "?"}autoplay=1`}
+                            style={{ width: "100%", height: "100%", border: 0 }}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <Box
+                            component="button"
+                            type="button"
+                            onClick={() => setIntroVideoActive(true)}
+                            aria-label="Play the Schedulaa introduction video"
+                            sx={{
+                              position: "relative",
+                              width: "100%",
+                              height: "100%",
+                              p: 0,
+                              border: 0,
+                              cursor: "pointer",
+                              overflow: "hidden",
+                              bgcolor: "#111827",
+                              color: "#fff",
+                              "&:focus-visible": {
+                                outline: "3px solid var(--sched-primary, #6366F1)",
+                                outlineOffset: -3,
+                              },
+                            }}
+                          >
+                            {resolvedVideoId ? (
+                              <Box
+                                component="img"
+                                src={`https://i.ytimg.com/vi/${resolvedVideoId}/hqdefault.jpg`}
+                                alt=""
+                                loading="lazy"
+                                sx={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  opacity: 0.82,
+                                }}
+                              />
+                            ) : null}
+                            <Box
+                              component="span"
+                              aria-hidden="true"
+                              sx={{
+                                position: "absolute",
+                                inset: 0,
+                                display: "grid",
+                                placeItems: "center",
+                                fontSize: 38,
+                                textShadow: "0 2px 14px rgba(0,0,0,0.55)",
+                              }}
+                            >
+                              ▶
+                            </Box>
+                          </Box>
+                        )}
                       </Box>
                     </CardContent>
                   </Card>
@@ -1206,26 +1339,34 @@ const MeetWithArtistPage = ({ slugOverride }) => {
   }, [routeSlug, searchParams]);
 
   const [sitePayload, setSitePayload] = useState(null);
-  const [siteLoading, setSiteLoading] = useState(false);
+  const [initialMeetData, setInitialMeetData] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(Boolean(slug));
+  const shellLoadingDelayed = useDelayedLoadingNotice(siteLoading && !sitePayload);
   useEffect(() => {
     let mounted = true;
     if (!slug) return () => {};
     setSiteLoading(true);
-    publicSite
-      .getWebsiteShell(slug)
-      .then((data) => {
-        if (mounted) setSitePayload(data || null);
-      })
-      .catch(() => {
-        if (mounted) setSitePayload(null);
-      })
-      .finally(() => {
-        if (mounted) setSiteLoading(false);
-      });
+    setInitialMeetData(null);
+
+    Promise.allSettled([
+      publicSite.getWebsiteShell(slug),
+      publicSite.getArtist(slug, artistParam),
+      publicSite.getArtistAvailability(slug, artistParam),
+    ]).then(([siteResult, artistResult, availabilityResult]) => {
+      if (!mounted) return;
+      setSitePayload(siteResult.status === "fulfilled" ? siteResult.value || null : null);
+      if (artistResult.status === "fulfilled" && availabilityResult.status === "fulfilled") {
+        setInitialMeetData({
+          artist: artistResult.value,
+          availability: availabilityResult.value,
+        });
+      }
+      setSiteLoading(false);
+    });
     return () => {
       mounted = false;
     };
-  }, [slug]);
+  }, [slug, artistParam]);
   const siteContext = useMemo(
     () => ({
       site: sitePayload,
@@ -1247,11 +1388,7 @@ const MeetWithArtistPage = ({ slugOverride }) => {
   }
 
   if (siteLoading && !sitePayload) {
-    return (
-      <Box sx={{ py: 8, textAlign: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <BookingLoadingNotice delayed={shellLoadingDelayed} />;
   }
 
   return (
@@ -1271,6 +1408,7 @@ const MeetWithArtistPage = ({ slugOverride }) => {
         siteContext={siteContext}
         schedulerOnly={schedulerOnly}
         hideIntroVideo={hideIntroVideo}
+        initialMeetData={initialMeetData}
       />
     </SiteFrame>
   );

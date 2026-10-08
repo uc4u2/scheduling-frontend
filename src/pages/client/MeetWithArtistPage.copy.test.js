@@ -16,3 +16,11 @@ test("customer booking flow uses the approved professional copy", () => {
   expect(source).not.toContain("WhatsApp Phone Number (optional)");
   expect(source).not.toContain("Confirm meeting");
 });
+
+test("booking load feedback and heavy media remain interaction-safe", () => {
+  expect(source).toContain("Loading live availability…");
+  expect(source).toContain("schedulaa:booking-ready");
+  expect(source).toContain("Promise.allSettled");
+  expect(source).toContain("introVideoActive ? (");
+  expect(source).toContain('aria-label="Play the Schedulaa introduction video"');
+});
