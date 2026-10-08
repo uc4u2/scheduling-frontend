@@ -28,6 +28,24 @@ export default function EmailSdrMarketingLeadsSection({ leads = [], consentOnly,
                       <Typography variant="caption" color="text.secondary">
                         {lead.email || "No email"}{lead.phone ? ` • ${lead.phone}` : ""} • CRM: {lead.current_crm || "Unknown"}
                       </Typography>
+                      {lead.message ? (
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            mt: 0.5,
+                            maxWidth: 760,
+                            whiteSpace: "pre-wrap",
+                            borderLeft: "3px solid",
+                            borderColor: "primary.main",
+                            bgcolor: "action.hover",
+                            borderRadius: 1,
+                            px: 1.5,
+                            py: 1,
+                          }}
+                        >
+                          <strong>Lead message:</strong> <span>{lead.message}</span>
+                        </Typography>
+                      ) : null}
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                         <Chip size="small" color={lead.consent_to_contact ? "success" : "default"} label={lead.consent_to_contact ? "Explicit opt-in" : "Stored only"} />
                         {(lead.routing_suggestion?.matched_rule_name || lead.routing_suggestion?.suggested_campaign_id || lead.routing_suggestion?.suggested_template_id) ? (
