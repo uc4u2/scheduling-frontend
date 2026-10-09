@@ -1,5 +1,5 @@
 // src/pages/NewManagementDashboard.js
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppBar,
@@ -138,6 +138,13 @@ import ManagerClientsWorkspace from "./pages/sections/management/ManagerClientsW
 import ManagementFrame from "./components/ui/ManagementFrame";
 import ManagerInvoicesPage from "./pages/sections/ManagerInvoicesPage";
 import { getUserTimezone } from "./utils/timezone";
+import {
+  bookingCalendarDateKey,
+  bookingsForCalendarDate,
+  calendarDateKey,
+  formatBookingCalendarTime,
+  formatCalendarDateLabel,
+} from "./utils/bookingCheckout";
 import TeamActivity from "./TeamActivity";
 import EnhancedMasterCalendar from "./EnhancedMasterCalendar";
 import CandidateFunnel from "./CandidateFunnel";
@@ -791,7 +798,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
 /* ─────────────────────────────────────────────────────────
    BookingCheckoutPanel — calendar + quick actions
 ─────────────────────────────────────────────────────────── */
-const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
+export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -801,6 +808,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [calendarView, setCalendarView] = useState("dayGridMonth");
+  const [selectedDate, setSelectedDate] = useState(() => calendarDateKey());
   const [selected, setSelected] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
@@ -817,6 +825,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const calendarRef = useRef(null);
   const isManager = Boolean(currentUserInfo?.is_manager);
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
@@ -923,6 +932,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const requestedClientId = bookingQuery.get("clientId") || "";
   const requestedAppointmentId = bookingQuery.get("appointmentId") || "";
   const autoOpenedClientBookingRef = useRef("");
+  const autoOpenedAppointmentRef = useRef("");
 
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
@@ -971,6 +981,33 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     })
     .filter(Boolean);
 
+  const selectedDayBookings = useMemo(
+    () => bookingsForCalendarDate(filteredBookings, selectedDate),
+    [filteredBookings, selectedDate]
+  );
+
+  const activeFilterSummary = useMemo(() => {
+    if (isSelfOnly) return "Your bookings";
+    const department = departments.find(
+      (row) => String(row.id) === String(selectedDepartment)
+    );
+    const recruiter = recruiters.find(
+      (row) => String(row.id) === String(selectedRecruiter)
+    );
+    return [
+      department?.name || "All departments",
+      recruiter?.name || recruiter?.full_name || recruiter?.email || "All employees",
+      calendarView === "timeGridDay" ? "Day view" : calendarView === "timeGridWeek" ? "Week view" : "Month view",
+    ].join(" • ");
+  }, [calendarView, departments, isSelfOnly, recruiters, selectedDepartment, selectedRecruiter]);
+
+  useEffect(() => {
+    if (!selectedRecruiter || !selectedDepartment) return;
+    if (recruiterDeptById.get(String(selectedRecruiter)) !== String(selectedDepartment)) {
+      setSelectedRecruiter("");
+    }
+  }, [recruiterDeptById, selectedDepartment, selectedRecruiter]);
+
   const renderBookingEvent = (eventInfo) => {
     const { event, timeText, view } = eventInfo;
     const props = event.extendedProps || {};
@@ -1003,8 +1040,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     );
   };
 
-  const handleEventClick = (info) => {
-    const booking = filteredBookings.find((b) => String(b.id) === String(info.event.id));
+  const openBookingDetails = useCallback((booking) => {
     if (!booking) return;
     setSelected(booking);
     const baseCandidate =
@@ -1026,33 +1062,28 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     setInvoiceUrl("");
     setBaseLocked(Boolean(hasBase && baseValue > 0));
     setDetailsOpen(true);
+  }, []);
+
+  const handleEventClick = (info) => {
+    const booking = filteredBookings.find((b) => String(b.id) === String(info.event.id));
+    if (!booking) return;
+    setSelectedDate(bookingCalendarDateKey(booking));
+    openBookingDetails(booking);
   };
 
   useEffect(() => {
     if (!requestedAppointmentId || !filteredBookings.length) return;
+    if (autoOpenedAppointmentRef.current === String(requestedAppointmentId)) return;
     const booking = filteredBookings.find((row) => String(row.id) === String(requestedAppointmentId));
     if (!booking) return;
-    setSelected(booking);
-    const baseCandidate =
-      booking?.service?.base_price ??
-      booking?.base_price ??
-      booking?.amount ??
-      booking?.total ??
-      0;
-    const baseValue = Number.isFinite(Number(baseCandidate)) ? Number(baseCandidate) : 0;
-    const hasBase =
-      booking?.service?.base_price != null ||
-      booking?.base_price != null ||
-      booking?.amount != null ||
-      booking?.total != null;
-    setBaseAmount(baseValue ? String(baseValue) : "");
-    setExtraAmount("");
-    setTipMode("0");
-    setCustomTip("");
-    setInvoiceUrl("");
-    setBaseLocked(Boolean(hasBase && baseValue > 0));
-    setDetailsOpen(true);
-  }, [requestedAppointmentId, filteredBookings]);
+    autoOpenedAppointmentRef.current = String(requestedAppointmentId);
+    const bookingDate = bookingCalendarDateKey(booking);
+    if (bookingDate) {
+      setSelectedDate(bookingDate);
+      calendarRef.current?.getApi()?.gotoDate(bookingDate);
+    }
+    openBookingDetails(booking);
+  }, [requestedAppointmentId, filteredBookings, openBookingDetails]);
 
   useEffect(() => {
     if (!requestedClientId || requestedAppointmentId || !filteredBookings.length) return;
@@ -1064,27 +1095,25 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     })[0];
     if (!booking) return;
     autoOpenedClientBookingRef.current = String(requestedClientId);
-    setSelected(booking);
-    const baseCandidate =
-      booking?.service?.base_price ??
-      booking?.base_price ??
-      booking?.amount ??
-      booking?.total ??
-      0;
-    const baseValue = Number.isFinite(Number(baseCandidate)) ? Number(baseCandidate) : 0;
-    const hasBase =
-      booking?.service?.base_price != null ||
-      booking?.base_price != null ||
-      booking?.amount != null ||
-      booking?.total != null;
-    setBaseAmount(baseValue ? String(baseValue) : "");
-    setExtraAmount("");
-    setTipMode("0");
-    setCustomTip("");
-    setInvoiceUrl("");
-    setBaseLocked(Boolean(hasBase && baseValue > 0));
-    setDetailsOpen(true);
-  }, [requestedClientId, requestedAppointmentId, filteredBookings]);
+    const bookingDate = bookingCalendarDateKey(booking);
+    if (bookingDate) {
+      setSelectedDate(bookingDate);
+      calendarRef.current?.getApi()?.gotoDate(bookingDate);
+    }
+    openBookingDetails(booking);
+  }, [requestedClientId, requestedAppointmentId, filteredBookings, openBookingDetails]);
+
+  const handleCalendarViewChange = (_, nextView) => {
+    if (!nextView) return;
+    setCalendarView(nextView);
+    calendarRef.current?.getApi()?.changeView(nextView);
+  };
+
+  const handleToday = () => {
+    const today = calendarDateKey();
+    setSelectedDate(today);
+    calendarRef.current?.getApi()?.today();
+  };
 
   const handleMarkCompleted = async () => {
     if (!selected) return;
@@ -1279,6 +1308,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           ".booking-checkout-calendar .fc .fc-button": {
             borderRadius: theme.shape.borderRadius,
             textTransform: "none",
+            minHeight: 40,
           },
           ".booking-checkout-calendar .fc .fc-button-primary:not(:disabled)": {
             color: theme.palette.text.primary,
@@ -1295,6 +1325,31 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           ".booking-checkout-calendar .fc .fc-more-link": {
             color: theme.palette.text.primary,
             fontWeight: 600,
+          },
+          ".booking-checkout-calendar .fc .booking-selected-day": {
+            backgroundColor: `${alpha(theme.palette.primary.main, 0.13)} !important`,
+            boxShadow: `inset 0 0 0 2px ${alpha(theme.palette.primary.main, 0.55)}`,
+          },
+          "@media (max-width: 600px)": {
+            ".booking-checkout-calendar .fc .fc-toolbar": {
+              alignItems: "stretch",
+              gap: 8,
+              flexWrap: "wrap",
+            },
+            ".booking-checkout-calendar .fc .fc-toolbar-chunk:nth-of-type(2)": {
+              width: "100%",
+              order: -1,
+            },
+            ".booking-checkout-calendar .fc .fc-toolbar-title": {
+              fontSize: "1.15rem",
+              textAlign: "center",
+            },
+            ".booking-checkout-calendar .fc .fc-daygrid-day-frame": {
+              minHeight: 68,
+            },
+            ".booking-checkout-calendar .fc .fc-daygrid-day-number": {
+              padding: 6,
+            },
           },
         }}
       />
@@ -1329,62 +1384,80 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           </Alert>
         ) : null}
 
-        <Paper
+        <Accordion
+          defaultExpanded={false}
+          disableGutters
           sx={{
-            p: 2,
             borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
+            "&::before": { display: "none" },
           }}
         >
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
-            {isSelfOnly ? (
-              <Alert severity="info" sx={{ py: 1, width: "100%" }}>
-                Showing only your bookings.
-              </Alert>
-            ) : (
-              <>
-                <FormControl sx={{ minWidth: 220 }}>
-                  <InputLabel id="booking-checkout-department">Department</InputLabel>
-                  <Select
-                    labelId="booking-checkout-department"
-                    value={selectedDepartment}
-                    label="Department"
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                  >
-                    <MenuItem value="">All Departments</MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept.id} value={String(dept.id)}>
-                        {dept.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl sx={{ minWidth: 220 }}>
-                  <InputLabel id="booking-checkout-employee">Employee</InputLabel>
-                  <Select
-                    labelId="booking-checkout-employee"
-                    value={selectedRecruiter}
-                    label="Employee"
-                    onChange={(e) => setSelectedRecruiter(e.target.value)}
-                  >
-                    <MenuItem value="">All Employees</MenuItem>
-                    {recruiters.map((rec) => (
-                      <MenuItem key={rec.id} value={String(rec.id)}>
-                        {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </>
-            )}
-            <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="booking-checkout-filter-options"
+            id="booking-checkout-filter-options-header"
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography fontWeight={700}>Filters &amp; calendar options</Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {activeFilterSummary}
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails id="booking-checkout-filter-options">
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+              {isSelfOnly ? (
+                <Alert severity="info" sx={{ py: 1, width: "100%" }}>
+                  Showing only your bookings.
+                </Alert>
+              ) : (
+                <>
+                  <FormControl sx={{ minWidth: 220 }}>
+                    <InputLabel id="booking-checkout-department">Department</InputLabel>
+                    <Select
+                      labelId="booking-checkout-department"
+                      value={selectedDepartment}
+                      label="Department"
+                      onChange={(e) => setSelectedDepartment(e.target.value)}
+                    >
+                      <MenuItem value="">All Departments</MenuItem>
+                      {departments.map((dept) => (
+                        <MenuItem key={dept.id} value={String(dept.id)}>
+                          {dept.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl sx={{ minWidth: 220 }}>
+                    <InputLabel id="booking-checkout-employee">Employee</InputLabel>
+                    <Select
+                      labelId="booking-checkout-employee"
+                      value={selectedRecruiter}
+                      label="Employee"
+                      onChange={(e) => setSelectedRecruiter(e.target.value)}
+                    >
+                      <MenuItem value="">All Employees</MenuItem>
+                      {recruiters
+                        .filter((rec) => !selectedDepartment || String(rec.department_id || "") === String(selectedDepartment))
+                        .map((rec) => (
+                          <MenuItem key={rec.id} value={String(rec.id)}>
+                            {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </>
+              )}
               <ToggleButtonGroup
                 value={calendarView}
                 exclusive
-                onChange={(_, v) => v && setCalendarView(v)}
+                onChange={handleCalendarViewChange}
                 size="small"
+                aria-label="Calendar view"
                 sx={{
+                  ml: { md: "auto" },
                   "& .MuiToggleButton-root": pillButtonSx(false),
                   "& .MuiToggleButton-root.Mui-selected": pillButtonSx(true),
                 }}
@@ -1394,8 +1467,8 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                 <ToggleButton value="dayGridMonth">Month</ToggleButton>
               </ToggleButtonGroup>
             </Stack>
-          </Stack>
-        </Paper>
+          </AccordionDetails>
+        </Accordion>
 
         <Paper
           className="booking-checkout-calendar"
@@ -1408,21 +1481,124 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           }}
         >
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView={calendarView}
-            key={`booking-cal-${calendarView}`}
+            initialDate={selectedDate}
             events={events}
             height={isSmall ? "auto" : 700}
             headerToolbar={{
-              left: "prev,next today",
+              left: "prev,next selectToday",
               center: "title",
               right: "",
             }}
+            customButtons={{
+              selectToday: {
+                text: "Today",
+                click: handleToday,
+              },
+            }}
+            dateClick={(info) => setSelectedDate(info.dateStr.slice(0, 10))}
+            dayCellClassNames={(info) =>
+              calendarDateKey(info.date) === selectedDate ? ["booking-selected-day"] : []
+            }
             eventClick={handleEventClick}
             eventContent={renderBookingEvent}
             eventDisplay="block"
             nowIndicator
           />
+        </Paper>
+
+        <Paper
+          component="section"
+          aria-labelledby="selected-day-bookings-title"
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            borderRadius: 1,
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+          }}
+        >
+          <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }} mb={2}>
+            <Box>
+              <Typography id="selected-day-bookings-title" variant="h6" fontWeight={700}>
+                Bookings for {formatCalendarDateLabel(selectedDate)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedDayBookings.length} booking{selectedDayBookings.length === 1 ? "" : "s"}
+              </Typography>
+            </Box>
+          </Stack>
+
+          {loading && !bookings.length ? (
+            <Typography color="text.secondary">Loading bookings…</Typography>
+          ) : error ? (
+            <Alert severity="error">{error}</Alert>
+          ) : !selectedDayBookings.length ? (
+            <Box sx={{ py: 3, textAlign: "center" }}>
+              <Typography fontWeight={600}>No bookings for this day</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Choose another date or adjust the booking filters.
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={1}>
+              {selectedDayBookings.map((booking) => {
+                const bookingStatus = String(booking.status || "booked").replaceAll("_", " ");
+                const paymentStatus = String(booking.payment_status || "unpaid").replaceAll("_", " ");
+                const cancelled = String(booking.status || "").toLowerCase() === "cancelled";
+                return (
+                  <Paper
+                    key={booking.id}
+                    component="button"
+                    type="button"
+                    onClick={() => openBookingDetails(booking)}
+                    variant="outlined"
+                    sx={{
+                      width: "100%",
+                      p: 1.5,
+                      textAlign: "left",
+                      cursor: "pointer",
+                      borderColor: alpha(statusColor(booking.status), 0.4),
+                      backgroundColor: cancelled
+                        ? alpha(theme.palette.action.disabled, 0.05)
+                        : theme.palette.background.paper,
+                      opacity: cancelled ? 0.75 : 1,
+                      color: "text.primary",
+                      font: "inherit",
+                      "&:hover, &:focus-visible": {
+                        borderColor: theme.palette.primary.main,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                        outline: `2px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                        outlineOffset: 1,
+                      },
+                    }}
+                  >
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ sm: "center" }}>
+                      <Box sx={{ minWidth: { sm: 130 } }}>
+                        <Typography fontWeight={800}>{formatBookingCalendarTime(booking)}</Typography>
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={700} noWrap>{booking?.service?.name || "Service"}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {booking?.client?.full_name || booking?.client?.email || "Client"} • {booking?.recruiter?.full_name || "Provider"}
+                        </Typography>
+                      </Box>
+                      <Stack direction="row" gap={0.75} flexWrap="wrap">
+                        <Chip size="small" label={bookingStatus} sx={{ textTransform: "capitalize" }} />
+                        <Chip
+                          size="small"
+                          label={paymentStatus}
+                          color={String(booking.payment_status || "").toLowerCase() === "paid" ? "success" : "default"}
+                          sx={{ textTransform: "capitalize" }}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          )}
         </Paper>
       </Stack>
 
