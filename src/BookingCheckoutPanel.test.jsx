@@ -166,6 +166,27 @@ describe("BookingCheckoutPanel", () => {
     expect(await screen.findByRole("dialog", { name: "Collect Payment" })).toBeInTheDocument();
   });
 
+  it("preserves the existing payment-link payload from a selected-day booking card", async () => {
+    api.post.mockResolvedValueOnce({ data: { checkout_url: "https://payments.example.test/session" } });
+    renderPanel();
+    fireEvent.click(await screen.findByText("Select October 13"));
+    fireEvent.click(await screen.findByText("Casey Client • Riley Artist"));
+    const dialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.change(within(dialog).getByLabelText("Base amount"), { target: { value: "25" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create payment link", exact: true }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/api/manager/manual-payments", {
+        appointment_id: 11,
+        currency: "USD",
+        description: "Booking #11 • Consultation",
+        amount_cents: 2500,
+        client_id: 6,
+      });
+    });
+    expect(await within(dialog).findByDisplayValue("https://payments.example.test/session")).toBeInTheDocument();
+  });
+
   it("auto-opens an appointment deep link only once", async () => {
     renderPanel("/manager/booking-checkout?appointmentId=10");
     expect(await screen.findByRole("dialog", { name: "Collect Payment" })).toBeInTheDocument();
