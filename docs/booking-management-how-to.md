@@ -22,6 +22,17 @@ Manager Portal → Services & Bookings → Booking Checkout
 - Department, employee, and calendar-view controls are under **Filters & calendar options**, which is collapsed by default. The active filter summary remains visible.
 - Calendar dates and the selected-day list use the same browser-local FullCalendar display timezone. Backend-localized ISO timestamps remain the source data; the UI does not truncate UTC timestamps or infer payment state from booking state.
 
+## Selected-day availability
+
+Managers and team members with **Manage shifts** permission can manage the selected day's free availability from Booking Checkout after selecting one employee.
+
+- **Edit Available Window** keeps existing free slots whose employee-local start falls inside the chosen range. It does not create, extend, or reopen availability.
+- **Close Day** removes free availability for that employee-local day. Existing bookings are preserved; attendance, payroll, refunds, and shifts are unchanged.
+- The result reports both removed free slots and booked slots that were preserved, including zero-result actions.
+- **Refresh availability** reloads the selected employee's current free/booked fragments. Individual slot editing and deletion remain in Advanced Management.
+
+These actions use the canonical bulk availability endpoints and require manager or Manage shifts permission. Payment-only permission does not grant availability access, and All Employees cannot be used as a mutation target.
+
 ## Step 1: Find a booking
 
 1. Use the date range and status filters.

@@ -825,11 +825,22 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilitySummary, setAvailabilitySummary] = useState(null);
+  const [availabilityDialog, setAvailabilityDialog] = useState(null);
+  const [availabilityStart, setAvailabilityStart] = useState("09:00");
+  const [availabilityEnd, setAvailabilityEnd] = useState("17:00");
+  const [availabilitySubmitting, setAvailabilitySubmitting] = useState(false);
   const calendarRef = useRef(null);
+  const availabilityRequestRef = useRef(0);
+  const availabilityMutationRef = useRef(0);
+  const availabilityContextRef = useRef("");
   const isManager = Boolean(currentUserInfo?.is_manager);
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
   const isSelfOnly = canCollectPaymentsSelf && !isManager && !canManageShifts;
+  const canManageAvailability = isManager || canManageShifts;
   const pillButtonSx = (active) => ({
     textTransform: "none",
     fontWeight: active ? 700 : 600,
@@ -928,6 +939,20 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     return map;
   }, [recruiters]);
 
+  const recruiterDisplayName = useCallback((recruiter) => {
+    if (!recruiter) return "Employee";
+    const fullName = [recruiter.first_name, recruiter.last_name].filter(Boolean).join(" ").trim();
+    return recruiter.name || recruiter.full_name || fullName || recruiter.email || `Employee ${recruiter.id}`;
+  }, []);
+
+  const selectedRecruiterRecord = useMemo(
+    () => recruiters.find((row) => String(row.id) === String(selectedRecruiter)) || null,
+    [recruiters, selectedRecruiter]
+  );
+  const selectedRecruiterName = recruiterDisplayName(selectedRecruiterRecord);
+  const selectedRecruiterTimezone = selectedRecruiterRecord?.timezone || "UTC";
+  const availabilityContextKey = `${selectedRecruiter || "all"}|${selectedDate}`;
+
   const bookingQuery = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const requestedClientId = bookingQuery.get("clientId") || "";
   const requestedAppointmentId = bookingQuery.get("appointmentId") || "";
@@ -991,15 +1016,13 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     const department = departments.find(
       (row) => String(row.id) === String(selectedDepartment)
     );
-    const recruiter = recruiters.find(
-      (row) => String(row.id) === String(selectedRecruiter)
-    );
+    const recruiter = recruiters.find((row) => String(row.id) === String(selectedRecruiter));
     return [
       department?.name || "All departments",
-      recruiter?.name || recruiter?.full_name || recruiter?.email || "All employees",
+      recruiter ? recruiterDisplayName(recruiter) : "All employees",
       calendarView === "timeGridDay" ? "Day view" : calendarView === "timeGridWeek" ? "Week view" : "Month view",
     ].join(" • ");
-  }, [calendarView, departments, isSelfOnly, recruiters, selectedDepartment, selectedRecruiter]);
+  }, [calendarView, departments, isSelfOnly, recruiterDisplayName, recruiters, selectedDepartment, selectedRecruiter]);
 
   useEffect(() => {
     if (!selectedRecruiter || !selectedDepartment) return;
@@ -1007,6 +1030,141 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       setSelectedRecruiter("");
     }
   }, [recruiterDeptById, selectedDepartment, selectedRecruiter]);
+
+  useEffect(() => {
+    availabilityContextRef.current = availabilityContextKey;
+    availabilityRequestRef.current += 1;
+    setAvailabilitySummary(null);
+    setAvailabilityError("");
+    setAvailabilityLoading(false);
+    setAvailabilityDialog((current) =>
+      current && current.contextKey !== availabilityContextKey ? null : current
+    );
+  }, [availabilityContextKey]);
+
+  const loadAvailabilitySummary = useCallback(async () => {
+    if (!canManageAvailability || !selectedRecruiter) {
+      setAvailabilitySummary(null);
+      setAvailabilityError("");
+      setAvailabilityLoading(false);
+      return;
+    }
+    const requestId = ++availabilityRequestRef.current;
+    const requestedContext = availabilityContextKey;
+    setAvailabilityLoading(true);
+    setAvailabilityError("");
+    try {
+      const { data } = await api.get("/manager/calendar", {
+        params: { recruiter_id: Number(selectedRecruiter), view: "fragments" },
+      });
+      if (
+        requestId !== availabilityRequestRef.current ||
+        availabilityContextRef.current !== requestedContext
+      ) return;
+      const events = Array.isArray(data?.events) ? data.events : [];
+      const dayEvents = events.filter(
+        (event) =>
+          String(event.recruiter_id) === String(selectedRecruiter) &&
+          String(event.date || "") === selectedDate
+      );
+      setAvailabilitySummary({
+        available: dayEvents.filter((event) => !event.booked).length,
+        booked: dayEvents.filter((event) => Boolean(event.booked)).length,
+      });
+    } catch (err) {
+      if (
+        requestId !== availabilityRequestRef.current ||
+        availabilityContextRef.current !== requestedContext
+      ) return;
+      setAvailabilitySummary(null);
+      setAvailabilityError(err?.response?.data?.error || "Failed to load availability.");
+    } finally {
+      if (
+        requestId === availabilityRequestRef.current &&
+        availabilityContextRef.current === requestedContext
+      ) {
+        setAvailabilityLoading(false);
+      }
+    }
+  }, [availabilityContextKey, canManageAvailability, selectedDate, selectedRecruiter]);
+
+  useEffect(() => {
+    if (!canManageAvailability || !selectedRecruiter) return;
+    loadAvailabilitySummary();
+  }, [canManageAvailability, loadAvailabilitySummary, selectedRecruiter]);
+
+  const openAvailabilityDialog = (kind) => {
+    if (!canManageAvailability || !selectedRecruiterRecord) return;
+    setAvailabilityDialog({
+      kind,
+      contextKey: availabilityContextKey,
+      recruiterId: Number(selectedRecruiterRecord.id),
+      employeeName: selectedRecruiterName,
+      date: selectedDate,
+      timezone: selectedRecruiterTimezone,
+    });
+  };
+
+  const submitAvailabilityMutation = async () => {
+    if (!availabilityDialog || availabilitySubmitting) return;
+    if (
+      availabilityDialog.kind === "keep-range" &&
+      (!availabilityStart || !availabilityEnd || availabilityEnd <= availabilityStart)
+    ) {
+      setSnackbar({
+        open: true,
+        message: "End time must be later than start time.",
+        severity: "error",
+      });
+      return;
+    }
+    const submittedContext = { ...availabilityDialog };
+    const responseGuard = ++availabilityMutationRef.current;
+    setAvailabilitySubmitting(true);
+    try {
+      const keepRange = submittedContext.kind === "keep-range";
+      const payload = {
+        recruiter_id: submittedContext.recruiterId,
+        date: submittedContext.date,
+        ...(keepRange
+          ? { start_time: availabilityStart, end_time: availabilityEnd }
+          : {}),
+      };
+      const { data } = await api.post(
+        keepRange
+          ? "/api/manager/availability/keep-range"
+          : "/api/manager/availability/close-day",
+        payload
+      );
+      if (
+        responseGuard !== availabilityMutationRef.current ||
+        availabilityContextRef.current !== submittedContext.contextKey
+      ) return;
+      const deleted = Number(data?.deleted || 0);
+      const skippedBooked = Number(data?.skipped_booked || 0);
+      setAvailabilityDialog(null);
+      setSnackbar({
+        open: true,
+        message: `${deleted} free slot${deleted === 1 ? "" : "s"} removed; ${skippedBooked} booked slot${skippedBooked === 1 ? "" : "s"} preserved.`,
+        severity: "success",
+      });
+      await Promise.all([loadBookings(), loadAvailabilitySummary()]);
+    } catch (err) {
+      if (
+        responseGuard !== availabilityMutationRef.current ||
+        availabilityContextRef.current !== submittedContext.contextKey
+      ) return;
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || "Failed to update availability.",
+        severity: "error",
+      });
+    } finally {
+      if (responseGuard === availabilityMutationRef.current) {
+        setAvailabilitySubmitting(false);
+      }
+    }
+  };
 
   const renderBookingEvent = (eventInfo) => {
     const { event, timeText, view } = eventInfo;
@@ -1443,7 +1601,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                         .filter((rec) => !selectedDepartment || String(rec.department_id || "") === String(selectedDepartment))
                         .map((rec) => (
                           <MenuItem key={rec.id} value={String(rec.id)}>
-                            {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                            {recruiterDisplayName(rec)}
                           </MenuItem>
                         ))}
                     </Select>
@@ -1600,7 +1758,161 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             </Stack>
           )}
         </Paper>
+
+        {canManageAvailability ? (
+          <Paper
+            component="section"
+            aria-labelledby="selected-day-availability-title"
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              borderRadius: 1,
+              border: `1px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.background.paper,
+            }}
+          >
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ md: "center" }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography id="selected-day-availability-title" variant="h6" fontWeight={700}>
+                  Availability for {formatCalendarDateLabel(selectedDate)}
+                </Typography>
+                {selectedRecruiterRecord ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedRecruiterName} • {selectedRecruiterTimezone}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Select one employee in Filters &amp; calendar options to manage availability.
+                  </Typography>
+                )}
+              </Box>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button
+                  variant="outlined"
+                  onClick={() => openAvailabilityDialog("keep-range")}
+                  disabled={!selectedRecruiterRecord || availabilitySubmitting}
+                >
+                  Edit Available Window
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => openAvailabilityDialog("close-day")}
+                  disabled={!selectedRecruiterRecord || availabilitySubmitting}
+                >
+                  Close Day
+                </Button>
+                <Button
+                  variant="text"
+                  onClick={loadAvailabilitySummary}
+                  disabled={!selectedRecruiterRecord || availabilityLoading || availabilitySubmitting}
+                >
+                  {availabilityLoading ? "Refreshing…" : "Refresh availability"}
+                </Button>
+              </Stack>
+            </Stack>
+
+            {!selectedRecruiterRecord ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Availability cannot be changed for All Employees. Choose a single employee first.
+              </Alert>
+            ) : (
+              <Stack spacing={1} mt={2}>
+                {availabilityError ? <Alert severity="error">{availabilityError}</Alert> : null}
+                {availabilitySummary ? (
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    <Chip
+                      label={`${availabilitySummary.available} available fragment${availabilitySummary.available === 1 ? "" : "s"}`}
+                      color="success"
+                      variant="outlined"
+                    />
+                    <Chip
+                      label={`${availabilitySummary.booked} booked fragment${availabilitySummary.booked === 1 ? "" : "s"}`}
+                      variant="outlined"
+                    />
+                  </Stack>
+                ) : availabilityLoading ? (
+                  <Typography variant="body2" color="text.secondary">Loading availability…</Typography>
+                ) : null}
+                <Typography variant="caption" color="text.secondary">
+                  Individual slot editing and deletion remain in Advanced Management.
+                </Typography>
+              </Stack>
+            )}
+          </Paper>
+        ) : null}
       </Stack>
+
+      <Dialog
+        open={Boolean(availabilityDialog)}
+        onClose={() => !availabilitySubmitting && setAvailabilityDialog(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {availabilityDialog?.kind === "close-day" ? "Close availability for this day?" : "Edit available window"}
+        </DialogTitle>
+        <DialogContent dividers>
+          {availabilityDialog ? (
+            <Stack spacing={2}>
+              <Alert severity="info">
+                {availabilityDialog.employeeName} • {formatCalendarDateLabel(availabilityDialog.date)} • {availabilityDialog.timezone}
+              </Alert>
+              {availabilityDialog.kind === "keep-range" ? (
+                <>
+                  <Typography variant="body2">
+                    This retains existing free slots whose employee-local start falls within the selected range. It does not create, extend, or reopen availability. Existing bookings are preserved.
+                  </Typography>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                    <TextField
+                      label="Start time"
+                      type="time"
+                      value={availabilityStart}
+                      onChange={(event) => setAvailabilityStart(event.target.value)}
+                      inputProps={{ step: 300 }}
+                      fullWidth
+                      disabled={availabilitySubmitting}
+                    />
+                    <TextField
+                      label="End time"
+                      type="time"
+                      value={availabilityEnd}
+                      onChange={(event) => setAvailabilityEnd(event.target.value)}
+                      inputProps={{ step: 300 }}
+                      fullWidth
+                      disabled={availabilitySubmitting}
+                    />
+                  </Stack>
+                </>
+              ) : (
+                <Alert severity="warning">
+                  Close Day removes free availability for this employee-local day. Existing bookings are not cancelled. Attendance, payroll, refunds, and shifts are unchanged.
+                </Alert>
+              )}
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAvailabilityDialog(null)} disabled={availabilitySubmitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color={availabilityDialog?.kind === "close-day" ? "error" : "primary"}
+            onClick={submitAvailabilityMutation}
+            disabled={availabilitySubmitting}
+          >
+            {availabilitySubmitting
+              ? "Updating…"
+              : availabilityDialog?.kind === "close-day"
+              ? "Close Day"
+              : "Keep This Window"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Collect Payment</DialogTitle>
