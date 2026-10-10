@@ -25,9 +25,9 @@
 - Always return `timezone` alongside date/time fields. Fallback order: browser TZ (if provided) → stored user/company TZ → UTC.
 - Inputs remain `{ date:"YYYY-MM-DD", start_time:"HH:MM", end_time? }` with a `timezone` string for context; server re-attaches zone.
 
-## Booking Checkout selected-day contract
+## Selected-day calendar contract
 
-- With one employee selected, Booking Checkout uses that employee's effective
+- With one employee selected, Booking Checkout and Team Availability use that employee's effective
   availability timezone for FullCalendar rendering, Today, selected-day cards,
   availability summaries, and keep-range/close-day mutation dates.
 - The effective availability timezone resolves employee -> company -> UTC and

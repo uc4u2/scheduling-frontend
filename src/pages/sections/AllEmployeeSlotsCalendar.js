@@ -4,6 +4,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import luxonPlugin from "@fullcalendar/luxon3";
 import {
   Box,
   Typography,
@@ -30,8 +31,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
-import { ToggleButtonGroup, ToggleButton } from "@mui/material";
 import GlobalStyles from "@mui/material/GlobalStyles";
 import AddIcon from "@mui/icons-material/Add";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -39,6 +42,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import api from "../../utils/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -52,12 +56,28 @@ import "./manager-calendar.css";
 import { isoFromParts } from "../../utils/datetime";
 import { formatSlotWithTZ } from "../../utils/timezone-wrapper";
 import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDateField";
+import {
+  buildRecruiterNameMap,
+  groupSlotsByEmployee,
+  recruiterDisplayName,
+  resolveSlotEmployeeName,
+  resolveTeamAvailabilityTimezone,
+} from "../../utils/teamAvailabilityPresentation";
+import {
+  calendarDateKey,
+  formatCalendarDateLabel,
+} from "../../utils/bookingCheckout";
 
 const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const calRef = useRef(null);
   const isRecruiter = window.location.pathname.includes("recruiter");
+  const viewerTimezone =
+    propTimezone ||
+    localStorage.getItem("timezone") ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "UTC";
 
   const accentPalette = useMemo(
     () => [
@@ -79,12 +99,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       available: {
         bg: alpha(theme.palette.success.light, 0.25),
         border: alpha(theme.palette.success.main, 0.55),
-        text: theme.palette.text.primary,
+        text: theme.palette.mode === "dark" ? theme.palette.success.light : theme.palette.success.dark,
       },
       booked: {
         bg: alpha(theme.palette.error.light, 0.25),
         border: alpha(theme.palette.error.main, 0.55),
-        text: theme.palette.text.primary,
+        text: theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark,
       },
       chips: {
         mutedBg: alpha(theme.palette.background.paper, 0.9),
@@ -109,6 +129,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     "--fc-button-active-bg-color": alpha(theme.palette.primary.main, 0.18),
     "--fc-event-text-color": theme.palette.text.primary,
     "--fc-more-link-text-color": theme.palette.text.primary,
+    "--team-calendar-event-text": theme.palette.text.primary,
   };
 
   /* ------------------------------ state ------------------------------ */
@@ -129,7 +150,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   // “Setmore-style” day rail: which day is selected in the grid?
   const [selectedDate, setSelectedDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+    calendarDateKey(new Date(), viewerTimezone)
   );
 
   // modal + form for creating/editing meetings (unchanged)
@@ -184,8 +205,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const [dayWindow, setDayWindow] = useState({
     start: "09:00", // HH:mm in employee tz
     end: "17:00",
-    tz: null,       // which tz these times are in
   });
+  const [availabilityMutationPending, setAvailabilityMutationPending] = useState(false);
+  const availabilityMutationContextRef = useRef(0);
   const [bookingCatalog, setBookingCatalog] = useState([]);
   const [bookedSlotOpen, setBookedSlotOpen] = useState(false);
   const [bookedSlotLoading, setBookedSlotLoading] = useState(false);
@@ -251,24 +273,15 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const tz =
-        propTimezone ||
-        localStorage.getItem("timezone") ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone ||
-        "UTC";
-
-      // Normalize → viewer TZ for display; DO NOT filter out booked items
+      // Preserve the API's offset-bearing instants. FullCalendar renders them in
+      // the selected calendar timezone; converting them to UTC strings here
+      // caused day grouping and employee-local mutations to disagree.
       const normalized = (data.events || []).map((ev) => {
-        const start = ev.start
-          ? moment.utc(ev.start)
-          : moment.tz(`${ev.date} ${ev.start_time}`, "YYYY-MM-DD HH:mm:ss", "UTC");
-        const end = ev.end
-          ? moment.utc(ev.end)
-          : moment.tz(`${ev.date} ${ev.end_time}`, "YYYY-MM-DD HH:mm:ss", "UTC");
+        const eventTimezone = ev.timezone || viewerTimezone;
         return {
           ...ev,
-          start: start.tz(tz).toISOString(),
-          end: end.tz(tz).toISOString(),
+          start: ev.start || isoFromParts(ev.date, ev.start_time, eventTimezone),
+          end: ev.end || isoFromParts(ev.date, ev.end_time, eventTimezone),
           __status: ev.booked ? "booked" : "available",
         };
       });
@@ -354,12 +367,35 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     return ev;
   }, [events, departmentFilter, selectedRecruiter, statusFilter]);
 
-  const tzLabel =
-    propTimezone ||
-    localStorage.getItem("timezone") ||
-    Intl.DateTimeFormat().resolvedOptions().timeZone ||
-    "UTC";
-  const userTz = tzLabel;
+  const recruiterNames = useMemo(() => buildRecruiterNameMap(recruiters), [recruiters]);
+  const getEmployeeName = (slot) => resolveSlotEmployeeName(slot, recruiterNames);
+
+  const activeFilterSummary = useMemo(() => {
+    const department = departments.find((row) => String(row.id) === String(departmentFilter));
+    const recruiter = recruiters.find((row) => String(row.id) === String(selectedRecruiter));
+    const statuses = statusFilter.length
+      ? statusFilter.map((status) => status === "booked" ? "Booked" : "Available").join(" + ")
+      : "All statuses";
+    return [
+      departmentFilter === "all" ? "All departments" : department?.name || "Department",
+      selectedRecruiter === "all" ? "All employees" : recruiterDisplayName(recruiter) || "Employee",
+      statuses,
+    ].join(" • ");
+  }, [departmentFilter, departments, recruiters, selectedRecruiter, statusFilter]);
+
+  const selectedEmployee = useMemo(
+    () => recruiters.find((row) => String(row.id) === String(selectedRecruiter)) || null,
+    [recruiters, selectedRecruiter]
+  );
+  const calendarTimezone = selectedRecruiter === "all"
+    ? viewerTimezone
+    : resolveTeamAvailabilityTimezone(selectedEmployee, viewerTimezone);
+  const tzLabel = calendarTimezone;
+
+  useEffect(() => {
+    availabilityMutationContextRef.current += 1;
+    setAvailabilityMutationPending(false);
+  }, [calendarTimezone, selectedDate, selectedRecruiter]);
 
   const bookingCatalogById = useMemo(() => {
     const map = new Map();
@@ -385,10 +421,6 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       default:
         return "Available";
     }
-  };
-
-  const getSlotChipColor = (slot) => {
-    return getSlotVisuals(slot).chipColor;
   };
 
   const buildBulkFeedbackMessage = ({ changedLabel = "Availability updated", deleted = 0, skipped = 0, employeeCount = 0 }) => {
@@ -418,6 +450,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           label: "Client Booking",
           bg: alpha(theme.palette.info.main, 0.18),
           border: alpha(theme.palette.info.main, 0.9),
+          text: theme.palette.mode === "dark" ? theme.palette.info.light : theme.palette.info.dark,
           chipColor: "info",
         };
       case "candidate_booking":
@@ -425,6 +458,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           label: "Candidate Booking",
           bg: alpha(theme.palette.warning.main, 0.18),
           border: alpha(theme.palette.warning.main, 0.9),
+          text: theme.palette.mode === "dark" ? theme.palette.warning.light : theme.palette.warning.dark,
           chipColor: "warning",
         };
       case "meeting":
@@ -432,6 +466,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           label: "Meeting",
           bg: alpha(theme.palette.secondary.main, 0.16),
           border: alpha(theme.palette.secondary.main, 0.85),
+          text: theme.palette.mode === "dark" ? theme.palette.secondary.light : theme.palette.secondary.dark,
           chipColor: "secondary",
         };
       default:
@@ -439,24 +474,25 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           label: "Available",
           bg: ui.available.bg,
           border: ui.available.border,
+          text: ui.available.text,
           chipColor: "success",
         };
     }
   };
 
   // Convert a raw event to a timezone-stable UI slot
-  // SHOW in viewer TZ (from start/end), but for writes keep provider-local strings if present
+  // Show in the active calendar timezone, while writes retain employee-local
+  // strings supplied by the backend.
   const toUiSlot = (raw) => {
-    const tz = raw.timezone || userTz;
+    const tz = raw.timezone || calendarTimezone;
 
-    // ISO for labels/tooltips (viewer TZ already set in fetchEvents)
+    // Offset-bearing ISO instants are authoritative for display/grouping.
     const startISO = raw.start || isoFromParts(raw.date, raw.start_time, tz);
     const endISO   = raw.end   || isoFromParts(raw.date, raw.end_time, tz);
 
-    // HH:mm we show in the chips (from viewer ISO)
-    const startLabelHH = moment(startISO).format("HH:mm");
-    const endLabelHH   = moment(endISO).format("HH:mm");
-    const uiDate       = moment(startISO).format("YYYY-MM-DD");
+    const startLabelHH = moment.parseZone(startISO).tz(calendarTimezone).format("HH:mm");
+    const endLabelHH   = moment.parseZone(endISO).tz(calendarTimezone).format("HH:mm");
+    const uiDate       = calendarDateKey(startISO, calendarTimezone);
 
     // What we send back to server (provider-local strings if provided)
     const localDate = raw.date || uiDate;
@@ -488,7 +524,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   // Build daySlots from ALL events for the selected day (booked + available)
   const daySlots = useMemo(() => {
     const allEventsForSelectedDay = filteredEvents.filter((e) => {
-      const day = (e.start || "").slice(0, 10); // viewer TZ date
+      const day = calendarDateKey(e.start, calendarTimezone);
       return day === selectedDate;
     });
     return allEventsForSelectedDay
@@ -498,7 +534,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         if (st !== 0) return st;
         return String(a.recruiter_id || "").localeCompare(String(b.recruiter_id || ""));
       });
-  }, [filteredEvents, selectedDate, bookingCatalogById]);
+  }, [filteredEvents, selectedDate, bookingCatalogById, calendarTimezone]);
+
+  const daySlotGroups = useMemo(
+    () => groupSlotsByEmployee(daySlots, recruiterNames),
+    [daySlots, recruiterNames]
+  );
 
   const resetForm = () => {
     setForm({
@@ -623,15 +664,20 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   };
 
   const handleDateClick = (arg) => {
-    // pick a day in the grid → update the rail and center the view there
-    setSelectedDate(arg.dateStr);
-    const api = calRef.current?.getApi?.();
-    if (api) api.changeView(calendarView || "dayGridMonth", arg.date);
+    const dateKey = calendarDateKey(arg.dateStr || arg.date, calendarTimezone);
+    if (dateKey) setSelectedDate(dateKey);
   };
 
   const onEventClick = (info) => {
     const dt = info.event.start;
-    if (dt) setSelectedDate(moment(dt).format("YYYY-MM-DD"));
+    if (dt) setSelectedDate(calendarDateKey(dt, calendarTimezone));
+  };
+
+  const handleCalendarToday = () => {
+    const today = calendarDateKey(new Date(), calendarTimezone);
+    if (!today) return;
+    setSelectedDate(today);
+    calRef.current?.getApi?.().gotoDate(today);
   };
 
   const handleChipClick = async (slot) => {
@@ -781,10 +827,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     const doc = new jsPDF();
     const rows = filteredEvents.map((e) => [
       e.title || (e.booked ? "Booked" : "Available"),
-      (e.start || "").slice(0,10),
-      moment(e.start).format("HH:mm"),
-      moment(e.end).format("HH:mm"),
-      e.recruiter_id
+      calendarDateKey(e.start, calendarTimezone),
+      moment.parseZone(e.start).tz(calendarTimezone).format("HH:mm"),
+      moment.parseZone(e.end).tz(calendarTimezone).format("HH:mm"),
+      getEmployeeName(e),
     ]);
     doc.text("Event Schedule", 14, 16);
     doc.autoTable({
@@ -832,46 +878,27 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     throw new Error("No availability delete endpoint succeeded.");
   };
 
-  // bulk manager day endpoints (optional; UI falls back to per-slot deletes if missing)
-  const tryCloseAfterBulk = async ({ recruiter_id, date, from_time }) => {
-    const urls = [`/manager/availability/close-after`, `/api/manager/availability/close-after`];
-    for (const url of urls) {
-      try {
-        const { data } = await api.post(url, { recruiter_id, date, from_time }, { headers: { Authorization: `Bearer ${token}` } });
-        return data || {};
-      } catch {}
-    }
-    return null;
+  const postAvailabilityDayAction = async (action, payload) => {
+    const { data } = await api.post(
+      `/api/manager/availability/${action}`,
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return data || {};
   };
-  const tryCloseBeforeBulk = async ({ recruiter_id, date, until_time }) => {
-    const urls = [`/manager/availability/close-before`, `/api/manager/availability/close-before`];
-    for (const url of urls) {
-      try {
-        const { data } = await api.post(url, { recruiter_id, date, until_time }, { headers: { Authorization: `Bearer ${token}` } });
-        return data || {};
-      } catch {}
-    }
-    return null;
+
+  const beginAvailabilityMutation = () => {
+    const requestId = availabilityMutationContextRef.current + 1;
+    availabilityMutationContextRef.current = requestId;
+    setAvailabilityMutationPending(true);
+    return requestId;
   };
-  const tryCloseDayBulk = async ({ recruiter_id, date }) => {
-    const urls = [`/manager/availability/close-day`, `/api/manager/availability/close-day`];
-    for (const url of urls) {
-      try {
-        const { data } = await api.post(url, { recruiter_id, date }, { headers: { Authorization: `Bearer ${token}` } });
-        return data || {};
-      } catch {}
-    }
-    return null;
-  };
-  const tryKeepRangeBulk = async ({ recruiter_id, date, start_time, end_time }) => {
-    const urls = [`/manager/availability/keep-range`, `/api/manager/availability/keep-range`];
-    for (const url of urls) {
-      try {
-        const { data } = await api.post(url, { recruiter_id, date, start_time, end_time }, { headers: { Authorization: `Bearer ${token}` } });
-        return data || {};
-      } catch {}
-    }
-    return null;
+
+  const mutationContextIsCurrent = (requestId) =>
+    availabilityMutationContextRef.current === requestId;
+
+  const finishAvailabilityMutation = (requestId) => {
+    if (mutationContextIsCurrent(requestId)) setAvailabilityMutationPending(false);
   };
 
   /* --------------------------- event rendering --------------------------- */
@@ -896,7 +923,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     const xp = arg.event.extendedProps || {};
     const visuals = getSlotVisuals(xp);
     const status = visuals.label;
-    const emp = xp.recruiter_name || xp.recruiter || `Emp ${xp.recruiter_id || ""}`;
+    const emp = getEmployeeName(xp);
     const client = xp.bookingMeta?.client?.full_name || xp.candidate_name || "";
     const svc = xp.service_name || "";
     const accent = getEmpAccent(xp.recruiter_id || 0);
@@ -920,12 +947,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               borderRadius: 1,
               background: visuals.bg,
               border: `1px solid ${visuals.border}`,
-              color: theme.palette.text.primary,
+              color: visuals.text,
+              fontWeight: 700,
             }}
           >
             {status}
           </span>
-          <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <span style={{ color: theme.palette.text.primary, fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {emp}
           </span>
         </div>
@@ -945,10 +973,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   const eventDidMount = (info) => {
     const xp = info.event.extendedProps || {};
-    const emp = xp.recruiter_name || xp.recruiter || `Emp ${xp.recruiter_id || ""}`;
+    const emp = getEmployeeName(xp);
     const status = getSlotVisuals(xp).label;
-    const start = info.event.start ? moment(info.event.start).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
-    const end = info.event.end ? moment(info.event.end).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
+    const start = info.event.start ? moment(info.event.start).tz(calendarTimezone).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
+    const end = info.event.end ? moment(info.event.end).tz(calendarTimezone).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const svc = xp.service_name ? `\nService: ${xp.service_name}` : "";
     const client = xp.bookingMeta?.client?.full_name || xp.candidate_name ? `\nClient: ${xp.bookingMeta?.client?.full_name || xp.candidate_name}` : "";
     info.el.setAttribute("title", `${status.toUpperCase()} — ${emp}\n${start}–${end}${svc}${client}`);
@@ -965,7 +993,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       end: e.end,
       backgroundColor: visuals.bg,
       borderColor: visuals.border,
-      textColor: theme.palette.text.primary,
+      textColor: visuals.text,
       classNames: [e.booked ? "slot-booked" : "slot-available", `slot-${getSlotKind(e)}`],
       extendedProps: { ...e, status: e.__status, _empColor: empColor, slotKind: getSlotKind(e), bookingMeta: e.appointment_ids?.length ? bookingCatalogById.get(String(e.appointment_ids[0])) || null : null },
     };
@@ -973,7 +1001,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   // Common props
   const baseCalProps = {
-    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin],
+    timeZone: calendarTimezone,
     events: calendarEvents,
     weekends: showWeekends,
     nowIndicator: true,
@@ -981,7 +1010,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     dayMaxEvents: 4,
     displayEventEnd: true,
     stickyHeaderDates: true,
-    navLinks: true, // click day/week names to navigate
+    navLinks: false,
     scrollTime: "08:00:00",
     slotDuration: granularity,
     slotLabelInterval: "01:00",
@@ -991,15 +1020,28 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     slotLabelFormat,
     dateClick: handleDateClick,
     eventClick: onEventClick,
+    dayCellClassNames: (info) =>
+      calendarDateKey(info.date, calendarTimezone) === selectedDate
+        ? ["team-availability-selected-day"]
+        : [],
+    datesSet: (info) => {
+      if (info.view.type !== calendarView) setCalendarView(info.view.type);
+    },
     eventContent: renderEventContent,
     eventDidMount,
     headerToolbar: isSmDown
-      ? { left: "prev", center: "title", right: "next" }
+      ? { left: "prev", center: "title", right: "selectToday,next" }
       : {
-          left: "prev,next today",
+          left: "prev,next selectToday",
           center: "title",
           right: "dayGridMonth,timeGridWeek,timeGridDay",
         },
+    customButtons: {
+      selectToday: {
+        text: "Today",
+        click: handleCalendarToday,
+      },
+    },
     titleFormat: isSmDown ? { month: "short", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" },
   };
 
@@ -1023,7 +1065,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       if (s.startHH && s.startHH < earliest) earliest = s.startHH;
       if (s.endHH && s.endHH > latest) latest = s.endHH;
     }
-    setDayWindow({ start: earliest, end: latest, tz: "per-employee local" });
+    setDayWindow({ start: earliest, end: latest });
   }, [daySlots, selectedRecruiter]);
 
   /* ------------------------------- UI --------------------------------- */
@@ -1038,62 +1080,62 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         gap: 2,
       }}
     >
-      {/* subtle global style tweaks for timegrid readability */}
+      {/* Scoped FullCalendar polish for this surface only. */}
       <GlobalStyles
         styles={{
-          ".fc .fc-timegrid-slot": {
+          ".team-availability-calendar .fc .fc-timegrid-slot": {
             height: compactDensity ? 28 : 34,
           },
-          ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": {
+          ".team-availability-calendar .fc .fc-timegrid-axis-cushion, .team-availability-calendar .fc .fc-timegrid-slot-label-cushion": {
             fontSize: 12,
           },
-          ".fc .fc-timegrid-event": {
+          ".team-availability-calendar .fc .fc-timegrid-event": {
             borderRadius: 1,
             boxShadow: theme.shadows[1],
           },
-          ".fc .fc-event, .fc .fc-daygrid-event, .fc .fc-daygrid-dot-event, .fc .fc-daygrid-block-event, .fc .fc-timegrid-event": {
+          ".team-availability-calendar .fc .fc-event, .team-availability-calendar .fc .fc-daygrid-event, .team-availability-calendar .fc .fc-daygrid-dot-event, .team-availability-calendar .fc .fc-daygrid-block-event, .team-availability-calendar .fc .fc-timegrid-event": {
             borderRadius: "6px !important",
           },
-          ".fc .fc-event-main, .fc .fc-event-main-frame": {
+          ".team-availability-calendar .fc .fc-event-main, .team-availability-calendar .fc .fc-event-main-frame": {
             borderRadius: "6px !important",
             overflow: "hidden",
           },
-          ".fc .fc-timegrid-event .fc-event-time": {
+          ".team-availability-calendar .fc .fc-timegrid-event .fc-event-time": {
             fontWeight: 700,
             fontSize: 11,
             paddingLeft: 4,
           },
-          ".fc .fc-timegrid-event .fc-event-title": {
+          ".team-availability-calendar .fc .fc-timegrid-event .fc-event-title": {
             fontSize: 11,
           },
-          ".fc .fc-button": {
+          ".team-availability-calendar .fc .fc-button": {
             color: theme.palette.text.primary,
             backgroundColor: alpha(theme.palette.background.paper, 0.9),
             borderColor: theme.palette.divider,
             boxShadow: "none",
           },
-          ".fc .fc-button:hover": {
+          ".team-availability-calendar .fc .fc-button:hover": {
             backgroundColor: alpha(theme.palette.primary.main, 0.08),
             borderColor: alpha(theme.palette.primary.main, 0.3),
           },
-          ".fc .fc-button-primary:not(:disabled).fc-button-active": {
+          ".team-availability-calendar .fc .fc-button-primary:not(:disabled).fc-button-active": {
             backgroundColor: alpha(theme.palette.primary.main, 0.18),
             borderColor: alpha(theme.palette.primary.main, 0.45),
             color: theme.palette.primary.main,
           },
-          ".fc .fc-button:focus-visible": {
+          ".team-availability-calendar .fc .fc-button:focus-visible": {
             outline: `2px solid ${theme.palette.primary.main}`,
             outlineOffset: 2,
           },
-          ".fc .fc-toolbar-title": {
+          ".team-availability-calendar .fc .fc-toolbar-title": {
             fontWeight: 700,
             color: theme.palette.text.primary,
           },
-          ".fc .fc-col-header-cell-cushion": {
+          ".team-availability-calendar .fc .fc-col-header-cell-cushion": {
             color: theme.palette.text.primary,
             fontWeight: 600,
           },
-          ".fc .fc-more-link": {
+          ".team-availability-calendar .fc .fc-more-link": {
             color: theme.palette.text.primary,
           },
         }}
@@ -1112,6 +1154,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Manage bookable slots for employees.
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Calendar timezone: {tzLabel}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
@@ -1136,13 +1181,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               setOpenModal(true);
             }}
           >
-            Add
+            Add meeting
           </Button>
           <Button variant="outlined" onClick={() => refreshAll()}>
             Refresh
           </Button>
           <Tooltip title="Export CSV/XLSX">
-            <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
+            <IconButton onClick={exportToExcel} aria-label="Export team availability"><DownloadIcon /></IconButton>
           </Tooltip>
         </Stack>
       </Stack>
@@ -1154,19 +1199,38 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         </Alert>
       )}
 
-      <Paper
+      <Accordion
+        defaultExpanded={false}
+        disableGutters
         sx={{
-          p: 2,
           mb: 2,
           borderRadius: 1,
           border: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.background.paper,
+          "&::before": { display: "none" },
         }}
         elevation={0}
       >
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          aria-controls="team-availability-filter-options"
+          id="team-availability-filter-options-header"
+          sx={{ px: { xs: 1.5, sm: 2 } }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Typography fontWeight={700}>Filters &amp; calendar options</Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {activeFilterSummary}
+            </Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails id="team-availability-filter-options" sx={{ pt: 0 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }} useFlexGap flexWrap="wrap">
-          <FormControl sx={{ minWidth: 200, flex: 1 }}>
-          <InputLabel>Department</InputLabel>
+        <FormControl sx={{ minWidth: 200, flex: 1 }}>
+          <InputLabel id="team-availability-department-label">Department</InputLabel>
           <Select
+            id="team-availability-department"
+            labelId="team-availability-department-label"
             size="small"
             value={departmentFilter}
             label="Department"
@@ -1183,8 +1247,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         </FormControl>
 
         <FormControl sx={{ minWidth: 200, flex: 1 }}>
-          <InputLabel>Employee</InputLabel>
+          <InputLabel id="team-availability-employee-label">Employee</InputLabel>
           <Select
+            id="team-availability-employee"
+            labelId="team-availability-employee-label"
             size="small"
             value={selectedRecruiter}
             label="Employee"
@@ -1193,15 +1259,17 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           >
             <MenuItem value="all">All Employees</MenuItem>
             {recruiters.map((r) => {
-              const label = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email;
+              const label = recruiterDisplayName(r);
               return <MenuItem key={r.id} value={r.id}>{label}</MenuItem>;
             })}
           </Select>
         </FormControl>
 
         <FormControl sx={{ minWidth: 200, flex: 1 }}>
-          <InputLabel>Slot Status</InputLabel>
+          <InputLabel id="team-availability-status-label">Slot Status</InputLabel>
           <Select
+            id="team-availability-status"
+            labelId="team-availability-status-label"
             multiple
             size="small"
             value={statusFilter}
@@ -1234,9 +1302,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 <Button
                   size="small"
                   variant="outlined"
+                  disabled={selectedRecruiter === "all" || availabilityMutationPending}
                   onClick={(e) => setDayMenuAnchor(e.currentTarget)}
                 >
-                  Day
+                  Day actions
                 </Button>
                 <Menu anchorEl={dayMenuAnchor} open={Boolean(dayMenuAnchor)} onClose={() => setDayMenuAnchor(null)}>
                   <MenuItem onClick={() => { setDayMode("close-day"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close entire day</MenuItem>
@@ -1246,11 +1315,6 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 </Menu>
               </>
             )}
-            <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
-              <ToggleButton value="dayGridMonth">Month</ToggleButton>
-              <ToggleButton value="timeGridWeek">Week</ToggleButton>
-              <ToggleButton value="timeGridDay">Day</ToggleButton>
-            </ToggleButtonGroup>
             {!isSmDown && (
               <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                 <Chip size="small" label="Available" sx={{ bgcolor: ui.available.bg, color: ui.available.text }} />
@@ -1259,10 +1323,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             )}
           </Stack>
         </Stack>
-      </Paper>
+        </AccordionDetails>
+      </Accordion>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: "auto", md: "calc(100vh - 260px)" } }}>
         <Paper
+          className="team-availability-calendar"
           sx={{
             p: compactDensity ? 1 : 2,
             flex: "1 1 auto",
@@ -1279,16 +1345,17 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             ref={calRef}
             {...baseCalProps}
             initialView={calendarView}
+            initialDate={selectedDate}
             height="100%"
             contentHeight="auto"
-            key={`${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
+            key={`${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
           />
         </Paper>
 
         <Paper sx={{ p: 2 }} elevation={0} variant="outlined">
         <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mb: 1 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>
-            {moment(selectedDate).format(timeFmt12h ? "ddd, MMM D" : "ddd, MMM D")} — {daySlots.length} slot(s)
+          <Typography variant="subtitle1" fontWeight={700}>
+            {formatCalendarDateLabel(selectedDate, undefined, calendarTimezone)} — {daySlots.length} slot(s)
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }} />
@@ -1300,6 +1367,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 size="small"
                 variant="outlined"
                 onClick={() => setDayWindowOpen(true)}
+                disabled={selectedRecruiter === "all" || availabilityMutationPending}
                 sx={{ minWidth: 180 }}
                 fullWidth
               >
@@ -1313,59 +1381,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 size="small"
                 variant="outlined"
                 color="error"
+                disabled={selectedRecruiter === "all" || availabilityMutationPending}
                 sx={{ minWidth: 140 }}
                 fullWidth
-                onClick={async () => {
-                  // Group free slots by employee so we know each employee's local date
-                  const groups = daySlots.reduce((m, s) => {
-                    const k = String(s.recruiter_id);
-                    (m[k] ||= []).push(s);
-                  return m;
-                }, {});
-                const targetIds =
-                  selectedRecruiter !== "all"
-                    ? [String(selectedRecruiter)]
-                    : Object.keys(groups);
-
-                let anyBulk = false;
-                let deletedTotal = 0;
-                let skippedTotal = 0;
-                for (const rid of targetIds) {
-                  const slots = groups[rid] || [];
-                  const localDate = slots[0]?.localDate || selectedDate; // employee's local date if present
-                  const result = await tryCloseDayBulk({ recruiter_id: rid, date: localDate });
-                  if (result) {
-                    anyBulk = true;
-                    deletedTotal += Number(result.deleted || 0);
-                    skippedTotal += Number(result.skipped_booked || 0);
-                  }
-                }
-
-                // Fallback: delete each free slot (per employee)
-                if (!anyBulk) {
-                  for (const rid of targetIds) {
-                    for (const s of (groups[rid] || [])) {
-                      if (!s.booked) {
-                        const id = availabilityIdFromEvent(s);
-                        if (id) {
-                          await tryDeleteAvailability(id);
-                          deletedTotal += 1;
-                        }
-                      }
-                    }
-                  }
-                }
-
-                setSuccessMessage(
-                  buildBulkFeedbackMessage({
-                    changedLabel: "Close day applied",
-                    deleted: deletedTotal,
-                    skipped: skippedTotal,
-                    employeeCount: targetIds.length,
-                  })
-                );
-                refreshAll();
-              }}
+                onClick={() => {
+                  setDayMode("close-day");
+                  setDayDialogOpen(true);
+                }}
               >
                 Close day
               </Button>
@@ -1377,47 +1399,115 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           </Stack>
         </Stack>
 
+        {canCloseSlots && selectedRecruiter === "all" && (
+          <Alert severity="info" sx={{ mb: 1.5 }}>
+            Select one employee to edit an available window or close a day. This keeps the displayed timezone and the employee-local action date aligned.
+          </Alert>
+        )}
+
         {daySlots.length === 0 ? (
-          <Typography color="text.secondary">No availability for this day.</Typography>
+          <Box sx={{ py: 3, textAlign: "center" }}>
+            <Typography fontWeight={600}>No availability or bookings for this day</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Choose another date or adjust the filters.
+            </Typography>
+          </Box>
         ) : (
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-            {daySlots.map((s) => (
-              <Box key={`${s.startISO}-${s.recruiter_id}`} sx={{ display: "inline-flex", alignItems: "center" }}>
-                <Chip
-                  clickable
-                  onClick={() => handleChipClick(s)}
-                  color={getSlotChipColor(s)}
-                  variant={s.booked ? "filled" : "outlined"}
-                  label={`${getSlotKindLabel(s)} • ${s.startHH}–${s.endHH}${selectedRecruiter === "all" ? ` • ${s.recruiter_label || s.recruiter_id}` : ""}${s.bookingMeta?.client?.full_name ? ` • ${s.bookingMeta.client.full_name}` : ""}${s.candidate_name ? ` • ${s.candidate_name}` : ""}${s.service_name ? ` • ${s.service_name}` : ""}${s.mode === "group" && Number.isFinite(s.capacity) ? ` • ${Number(s.booked_count || 0)}/${s.capacity} booked • ${Number.isFinite(s.seats_left) ? s.seats_left : 0} left` : ""}`}
+          <Stack spacing={2}>
+            {daySlotGroups.map((group) => (
+              <Box key={group.key}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {group.employeeName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {group.slots.length} slot{group.slots.length === 1 ? "" : "s"}
+                  </Typography>
+                </Stack>
+                <Box
                   sx={{
-                    borderLeft: `4px solid ${getEmpAccent(s.recruiter_id)}`,
-                    ...(s.booked
-                      ? {
-                          bgcolor: getSlotVisuals(s).bg,
-                          borderColor: getSlotVisuals(s).border,
-                          color: theme.palette.text.primary,
-                          "& .MuiChip-label": { color: theme.palette.text.primary, fontWeight: 600 },
-                        }
-                      : {}),
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" },
+                    gap: 1,
                   }}
-                  {...(!s.booked && canEditAvailability
-                    ? { onDelete: async () => {
-                        try {
-                          const id = availabilityIdFromEvent(s);
-                          if (!id) throw new Error("No availability id");
-                          await tryDeleteAvailability(id);
-                          setSuccessMessage("Availability deleted ✔");
-                          refreshAll();
-                        } catch { setError("Failed to delete slot."); }
-                      } }
-                    : {})}
-                />
-                {/* 3-dot menu for edit/delete (only for free slots & when allowed) */}
-                {!s.booked && canEditAvailability && (
-                  <IconButton size="small" onClick={(e) => { setChipSlot(s); setChipMenuAnchor(e.currentTarget); }} sx={{ ml: -0.5 }}>
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                )}
+                >
+                  {group.slots.map((s) => {
+                    const visuals = getSlotVisuals(s);
+                    const clientName = s.bookingMeta?.client?.full_name || s.candidate_name || "";
+                    const serviceName = s.service_name || s.bookingMeta?.service?.name || "";
+                    const capacityLabel = s.mode === "group" && Number.isFinite(s.capacity)
+                      ? `${Number(s.booked_count || 0)}/${s.capacity} booked • ${Number.isFinite(s.seats_left) ? s.seats_left : 0} left`
+                      : "";
+                    return (
+                      <Paper
+                        key={`${s.startISO}-${s.recruiter_id}`}
+                        variant="outlined"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleChipClick(s)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleChipClick(s);
+                          }
+                        }}
+                        sx={{
+                          p: 1.25,
+                          borderRadius: 1,
+                          borderColor: visuals.border,
+                          borderLeft: `4px solid ${getEmpAccent(s.recruiter_id)}`,
+                          bgcolor: alpha(visuals.bg, theme.palette.mode === "dark" ? 0.7 : 0.55),
+                          cursor: "pointer",
+                          minWidth: 0,
+                          "&:hover": { borderColor: getEmpAccent(s.recruiter_id), boxShadow: theme.shadows[1] },
+                          "&:focus-visible": { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="flex-start">
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                              <Typography fontWeight={700} variant="body2">
+                                {s.startHH}–{s.endHH}
+                              </Typography>
+                              <Chip
+                                size="small"
+                                label={getSlotKindLabel(s)}
+                                sx={{
+                                  height: 22,
+                                  borderRadius: 1,
+                                  bgcolor: visuals.bg,
+                                  border: `1px solid ${visuals.border}`,
+                                  color: visuals.text,
+                                  "& .MuiChip-label": { px: 0.75, fontWeight: 700 },
+                                }}
+                              />
+                            </Stack>
+                            {(serviceName || clientName || capacityLabel) ? (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                                {[serviceName, clientName, capacityLabel].filter(Boolean).join(" • ")}
+                              </Typography>
+                            ) : null}
+                          </Box>
+                          {!s.booked && canEditAvailability ? (
+                            <Tooltip title={`Edit availability for ${group.employeeName}`}>
+                              <IconButton
+                                size="small"
+                                aria-label={`Edit ${s.startHH} availability for ${group.employeeName}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setChipSlot(s);
+                                  setChipMenuAnchor(event.currentTarget);
+                                }}
+                              >
+                                <MoreVertIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    );
+                  })}
+                </Box>
               </Box>
             ))}
           </Stack>
@@ -1466,12 +1556,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 renderValue={(selected) =>
                   recruiters
                     .filter((r) => selected.includes(r.id))
-                    .map((r) => `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email)
+                    .map(recruiterDisplayName)
                     .join(", ")
                 }
               >
                 {recruiters.map((r) => {
-                  const label = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email;
+                  const label = recruiterDisplayName(r);
                   return <MenuItem key={r.id} value={r.id}>{label}</MenuItem>;
                 })}
               </Select>
@@ -1505,7 +1595,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                   {selectedBookedSlot.primaryAppointmentId ? (
                     <Typography variant="body2"><strong>Booking ID:</strong> {selectedBookedSlot.primaryAppointmentId}</Typography>
                   ) : null}
-                  <Typography variant="body2"><strong>Employee:</strong> {selectedBookedSlot.recruiter_label || selectedBookedSlot.recruiter_name || selectedBookedSlot.recruiter_id}</Typography>
+                  <Typography variant="body2"><strong>Employee:</strong> {getEmployeeName(selectedBookedSlot)}</Typography>
                   <Typography variant="body2"><strong>Service:</strong> {selectedBookedSlot.service_name || selectedBookedSlot.bookingMeta?.service?.name || "—"}</Typography>
                   <Typography variant="body2"><strong>Client:</strong> {selectedBookedSlot.bookingMeta?.client?.full_name || selectedBookedSlot.candidate_name || "—"}</Typography>
                   {selectedBookedSlot.bookingMeta?.client?.email ? (
@@ -1706,84 +1796,63 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               </Stack>
             )}
             <Alert severity="info">
-              Target: {selectedRecruiter !== "all" ? "current employee" : "all visible employees"} on {selectedDate}.
+              Target: {selectedEmployee ? recruiterDisplayName(selectedEmployee) : "Select one employee"}<br />
+              Date: {selectedDate} in {calendarTimezone}.
             </Alert>
+            {dayMode === "close-day" && (
+              <Typography variant="body2" color="text.secondary">
+                This removes free availability for the selected employee and day. Existing bookings are not cancelled, and attendance, payroll, refunds, and shifts are unchanged.
+              </Typography>
+            )}
+            {dayMode === "keep-range" && (
+              <Typography variant="body2" color="text.secondary">
+                This keeps existing free slots whose employee-local start falls inside the range. It does not create, extend, or reopen availability.
+              </Typography>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDayDialogOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
+            disabled={selectedRecruiter === "all" || availabilityMutationPending}
             onClick={async () => {
               if (!canCloseSlots) { setError("You do not have permission to change availability."); return; }
+              if (selectedRecruiter === "all") { setError("Select one employee before changing availability."); return; }
 
-              const targetRids =
-                selectedRecruiter !== "all"
-                  ? [selectedRecruiter]
-                  : Array.from(new Set(daySlots.map((s) => s.recruiter_id)));
-
+              const requestId = beginAvailabilityMutation();
               try {
-                let anyBulk = false;
-                let deletedTotal = 0;
-                let skippedTotal = 0;
-
-                for (const rid of targetRids) {
-                  let result = null;
-                  if (dayMode === "close-day") {
-                    result = await tryCloseDayBulk({ recruiter_id: rid, date: selectedDate });
-                  } else if (dayMode === "close-after") {
-                    result = await tryCloseAfterBulk({ recruiter_id: rid, date: selectedDate, from_time: dayTimeA });
-                  } else if (dayMode === "close-before") {
-                    result = await tryCloseBeforeBulk({ recruiter_id: rid, date: selectedDate, until_time: dayTimeA });
-                  } else if (dayMode === "keep-range") {
-                    result = await tryKeepRangeBulk({ recruiter_id: rid, date: selectedDate, start_time: dayTimeA, end_time: dayTimeB });
+                const payload = { recruiter_id: selectedRecruiter, date: selectedDate };
+                let action = dayMode;
+                if (dayMode === "close-after") payload.from_time = dayTimeA;
+                if (dayMode === "close-before") payload.until_time = dayTimeA;
+                if (dayMode === "keep-range") {
+                  if (!dayTimeA || !dayTimeB || dayTimeA >= dayTimeB) {
+                    setError("Start time must be earlier than end time.");
+                    return;
                   }
-                  if (result) {
-                    anyBulk = true;
-                    deletedTotal += Number(result.deleted || 0);
-                    skippedTotal += Number(result.skipped_booked || 0);
-                  }
+                  payload.start_time = dayTimeA;
+                  payload.end_time = dayTimeB;
                 }
-
-                if (!anyBulk) {
-                  // fallback per-slot for all targets (compute in userTz; slots deleted by ISO compare)
-                  const A = moment.tz(`${selectedDate} ${dayTimeA}`, "YYYY-MM-DD HH:mm", userTz);
-                  const B = moment.tz(`${selectedDate} ${dayTimeB}`, "YYYY-MM-DD HH:mm", userTz);
-
-                  for (const rid of targetRids) {
-                    for (const s of daySlots) {
-                      if (String(s.recruiter_id) !== String(rid) || s.booked) continue;
-                      const st = moment(s.startISO);
-                      const shouldDelete =
-                        (dayMode === "close-day") ? true :
-                        (dayMode === "close-after") ? st.isSameOrAfter(A) :
-                        (dayMode === "close-before") ? st.isBefore(A) :
-                        (dayMode === "keep-range") ? (st.isBefore(A) || st.isSameOrAfter(B)) :
-                        false;
-
-                      if (shouldDelete) {
-                        const id = availabilityIdFromEvent(s);
-                        if (id) {
-                          await tryDeleteAvailability(id);
-                          deletedTotal += 1;
-                        }
-                      }
-                    }
-                  }
-                }
+                const result = await postAvailabilityDayAction(action, payload);
+                if (!mutationContextIsCurrent(requestId)) return;
 
                 setDayDialogOpen(false);
                 setSuccessMessage(
                   buildBulkFeedbackMessage({
                     changedLabel: "Day availability updated",
-                    deleted: deletedTotal,
-                    skipped: skippedTotal,
-                    employeeCount: targetRids.length,
+                    deleted: Number(result.deleted || result.removed || 0),
+                    skipped: Number(result.skipped_booked || 0),
+                    employeeCount: 1,
                   })
                 );
-                refreshAll();
-              } catch {
-                setError("Failed to update day availability.");
+                await refreshAll();
+              } catch (e) {
+                if (mutationContextIsCurrent(requestId)) {
+                  setError(e?.response?.data?.error || "Failed to update day availability.");
+                }
+              } finally {
+                finishAvailabilityMutation(requestId);
               }
             }}
           >
@@ -1799,12 +1868,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           <Stack spacing={2}>
             <Alert severity="info">
               Date: <strong>{selectedDate}</strong><br/>
-              Target: <strong>
-                {selectedRecruiter !== "all"
-                  ? "1 employee"
-                  : `${Array.from(new Set(daySlots.map(s => s.recruiter_id))).length} employee(s) (all visible)`}
-              </strong><br/>
-              Timezone mode: <strong>{dayWindow.tz || "per-employee local"}</strong>
+              Employee: <strong>{selectedEmployee ? recruiterDisplayName(selectedEmployee) : "Select one employee"}</strong><br/>
+              Timezone: <strong>{calendarTimezone}</strong>
             </Alert>
 
             <Typography variant="body2" color="text.secondary">
@@ -1837,80 +1902,45 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           <Button onClick={() => setDayWindowOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
+            disabled={selectedRecruiter === "all" || availabilityMutationPending}
             onClick={async () => {
+              if (selectedRecruiter === "all") {
+                setError("Select one employee before changing availability.");
+                return;
+              }
+              const requestId = beginAvailabilityMutation();
               try {
-                // 0) Validate window
                 const start = dayWindow.start;
                 const end   = dayWindow.end;
                 if (!start || !end || start >= end) {
                   setError("Start time must be earlier than end time.");
                   return;
                 }
-
-                // 1) Group free slots by employee id
-                const groups = daySlots.reduce((m, s) => {
-                  if (s.booked) return m; // never touch booked
-                  const k = String(s.recruiter_id);
-                  (m[k] ||= []).push(s);
-                  return m;
-                }, {});
-                const targetIds =
-                  selectedRecruiter !== "all"
-                    ? [String(selectedRecruiter)]
-                    : Object.keys(groups);
-                if (!targetIds.length) { setError("No employees selected/visible for this day."); return; }
-
-                // 2) Try bulk keep-range per employee (with that employee's local date)
-                let anyBulk = false;
-                let deletedTotal = 0;
-                let skippedTotal = 0;
-                for (const rid of targetIds) {
-                  const slots = groups[rid] || [];
-                  const localDate = slots[0]?.localDate || selectedDate; // employee local date if available
-                  const result = await tryKeepRangeBulk({
-                    recruiter_id: rid,
-                    date: localDate,
-                    start_time: start,   // local "HH:MM"
-                    end_time: end,       // local "HH:MM"
-                  });
-                  if (result) {
-                    anyBulk = true;
-                    deletedTotal += Number(result.deleted || 0);
-                    skippedTotal += Number(result.skipped_booked || 0);
-                  }
-                }
-
-                // 3) Fallback: delete outside-range free slots using LOCAL HH:MM
-                if (!anyBulk) {
-                  for (const rid of targetIds) {
-                    const slots = groups[rid] || [];
-                    for (const s of slots) {
-                      const st = s.startHH; // already local "HH:MM" from API (or UI fallback)
-                      const keep = (st >= start && st < end);
-                      if (!keep) {
-                        const id = availabilityIdFromEvent(s);
-                        if (id) {
-                          await tryDeleteAvailability(id);
-                          deletedTotal += 1;
-                        }
-                      }
-                    }
-                  }
-                }
+                const result = await postAvailabilityDayAction("keep-range", {
+                  recruiter_id: selectedRecruiter,
+                  date: selectedDate,
+                  start_time: start,
+                  end_time: end,
+                });
+                if (!mutationContextIsCurrent(requestId)) return;
 
                 setDayWindowOpen(false);
                 setSuccessMessage(
                   buildBulkFeedbackMessage({
                     changedLabel: "Available window updated",
-                    deleted: deletedTotal,
-                    skipped: skippedTotal,
-                    employeeCount: targetIds.length,
+                    deleted: Number(result.deleted || 0),
+                    skipped: Number(result.skipped_booked || 0),
+                    employeeCount: 1,
                   })
                 );
-                refreshAll();
+                await refreshAll();
               } catch (e) {
-                const msg = e?.response?.data?.error || "Failed to update available window.";
-                setError(msg);
+                if (mutationContextIsCurrent(requestId)) {
+                  const msg = e?.response?.data?.error || "Failed to update available window.";
+                  setError(msg);
+                }
+              } finally {
+                finishAvailabilityMutation(requestId);
               }
             }}
           >

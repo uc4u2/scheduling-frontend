@@ -26,7 +26,9 @@ Manager Portal → Shifts & Availability → Team Availability (Enterprise views
 ## Step 1: Select a team member
 
 1. Open Team Availability.
-2. Choose the employee/recruiter from the list or filter.
+2. Expand **Filters & calendar options**.
+3. Choose the employee/recruiter from the list or filter. Calendar events and the selected-day list display employee names; internal employee IDs are not manager-facing labels.
+4. When one employee is selected, the calendar, Today action, selected-day list, and day mutations use that employee's effective timezone. With All Employees selected, availability-changing actions remain disabled.
 
 ## Step 2: Add available slots
 
@@ -48,6 +50,10 @@ Manager Portal → Shifts & Availability → Team Availability (Enterprise views
 1. Click a slot on the calendar.
 2. Update time or delete the slot.
 3. Save changes.
+
+The selected day appears below the calendar, grouped by employee. Each row keeps its existing booking/availability action, while the three-dot menu remains the place to edit or delete free availability.
+
+Day-wide changes use the canonical manager availability actions. If the server cannot verify booked-slot protection, the operation fails without falling back to deleting individual slots.
 
 ## Step 5: Confirm clients can book
 
