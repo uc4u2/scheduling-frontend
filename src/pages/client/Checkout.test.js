@@ -11,10 +11,12 @@ const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockNavigate = jest.fn();
 const mockBuildHostedCheckoutPayload = jest.fn((args) => ({ __payloadArgs: args }));
+let mockLocationSearch = "";
+let mockTenantHostMode = "custom";
 
 jest.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ search: "" }),
+  useLocation: () => ({ search: mockLocationSearch }),
   useParams: () => ({ slug: "vandaorchidjewels" }),
 }), { virtual: true });
 
@@ -53,7 +55,7 @@ jest.mock("../../utils/cart", () => ({
 }));
 
 jest.mock("../../utils/tenant", () => ({
-  getTenantHostMode: () => "custom",
+  getTenantHostMode: () => mockTenantHostMode,
 }));
 
 jest.mock("../../utils/timezone", () => ({
@@ -68,6 +70,8 @@ jest.mock("../../components/website/SiteFrame", () => ({ children }) => <>{child
 describe("CheckoutFormCore", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLocationSearch = "";
+    mockTenantHostMode = "custom";
     window.localStorage.clear();
     mockLoadCart.mockReturnValue([
       {
@@ -157,6 +161,50 @@ describe("CheckoutFormCore", () => {
     expect(mockNavigate).not.toHaveBeenCalledWith(
       expect.objectContaining({ search: expect.stringContaining("services-classic") })
     );
+  });
+
+  test("add another service honors the outer custom-domain services destination", async () => {
+    mockTenantHostMode = "platform";
+    mockLocationSearch = "?services_return_to=%2Fservices";
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /add another service/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/services");
+    expect(mockNavigate).not.toHaveBeenCalledWith("/vandaorchidjewels/services");
+  });
+
+  test("add another service preserves the outer platform-slug services destination", async () => {
+    mockTenantHostMode = "platform";
+    mockLocationSearch = "?services_return_to=%2Fsite%2Fvandaorchidjewels%2Fservices";
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /add another service/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/site/vandaorchidjewels/services");
+    expect(mockNavigate).not.toHaveBeenCalledWith("/vandaorchidjewels/services");
   });
 
   test("add-ons stay inside checkout and do not navigate away", async () => {

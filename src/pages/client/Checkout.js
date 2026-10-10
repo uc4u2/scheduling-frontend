@@ -802,7 +802,7 @@ export function CheckoutFormCore({
   const embedSuffix = useMemo(() => {
     try {
       const qs = new URLSearchParams(location.search || "");
-      const keys = ["embed", "mode", "dialog", "site", "primary", "text", "return_to", "returnTo"];
+      const keys = ["embed", "mode", "dialog", "site", "primary", "text", "return_to", "returnTo", "services_return_to"];
       const entries = keys
         .map((key) => {
           const val = qs.get(key);
@@ -824,11 +824,16 @@ export function CheckoutFormCore({
     ),
     [searchParams]
   );
+  const servicesReturnTo = useMemo(
+    () => normalizeTransactionalReturnPath(searchParams.get("services_return_to") || ""),
+    [searchParams]
+  );
   const servicesBrowsePath = useMemo(() => {
+    if (servicesReturnTo) return servicesReturnTo;
     const target = slugLocal || companySlug;
     if (isCustomDomain) return "/services";
     return target ? `/${target}/services` : "";
-  }, [companySlug, isCustomDomain, slugLocal]);
+  }, [companySlug, isCustomDomain, servicesReturnTo, slugLocal]);
 
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
