@@ -188,9 +188,9 @@ export default function EmployeeAvailabilityCalendar({
     "&:focus-visible": focusRing,
   });
   const displayTimezone =
-    userTz ||
     slots.find((s) => s?.timezone)?.timezone ||
     priceInfo?.timezone ||
+    userTz ||
     "UTC";
 
   /* ------------ load day slots when selection changes ------------ */

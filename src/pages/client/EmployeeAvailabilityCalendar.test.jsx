@@ -33,6 +33,64 @@ describe("EmployeeAvailabilityCalendar", () => {
     api.get.mockReset();
   });
 
+  const mockAvailability = ({ timezone }) => {
+    const todayKey = ymd(new Date());
+    api.get.mockImplementation((url) => {
+      if (url.endsWith("/availability")) {
+        return Promise.resolve({
+          data: {
+            slots: [
+              {
+                date: todayKey,
+                start_time: "09:00",
+                end_time: "10:00",
+                ...(timezone ? { timezone } : {}),
+              },
+            ],
+          },
+        });
+      }
+      if (url.includes("/availability-by-artist/")) {
+        return Promise.resolve({ data: { slots: [] } });
+      }
+      if (url.includes("/service/")) {
+        return Promise.resolve({ data: { name: "Consultation", base_price: 80 } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+  };
+
+  it("prefers the slot timezone over a different browser timezone", async () => {
+    mockAvailability({ timezone: "America/Los_Angeles" });
+
+    render(
+      <EmployeeAvailabilityCalendar
+        companySlug="test-studio"
+        artistId="7"
+        serviceId="12"
+        serviceName="Consultation"
+      />
+    );
+
+    expect(await screen.findByText("TZ: America/Los_Angeles")).toBeInTheDocument();
+    expect(screen.queryByText("TZ: America/Toronto")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the browser timezone when the slot timezone is missing", async () => {
+    mockAvailability({ timezone: null });
+
+    render(
+      <EmployeeAvailabilityCalendar
+        companySlug="test-studio"
+        artistId="7"
+        serviceId="12"
+        serviceName="Consultation"
+      />
+    );
+
+    expect(await screen.findByText("TZ: America/Toronto")).toBeInTheDocument();
+  });
+
   it("keeps the calendar stable while another date loads and does not auto-scroll", async () => {
     const today = new Date();
     const todayKey = ymd(today);
