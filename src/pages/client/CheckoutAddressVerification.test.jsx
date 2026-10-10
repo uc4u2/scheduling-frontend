@@ -45,6 +45,7 @@ jest.mock("../../utils/cart", () => ({
   loadCart: (...args) => mockLoadCart(...args),
   saveCart: (...args) => mockSaveCart(...args),
   clearCart: jest.fn(),
+  setCartTenantContext: jest.fn(),
 }));
 
 jest.mock("../../utils/tenant", () => ({

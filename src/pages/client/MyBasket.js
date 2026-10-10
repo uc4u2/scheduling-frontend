@@ -26,7 +26,15 @@ import CloseIcon from "@mui/icons-material/Close";
 import SiteFrame from "../../components/website/SiteFrame";
 import ProductBasketImage from "./ProductBasketImage";
 import TenantTransactionalShell from "./TenantTransactionalShell";
-import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
+import {
+  CartTypes,
+  isEmbeddedCartFrame,
+  loadCart,
+  removeCartItem,
+  saveCart,
+  setCartTenantContext,
+  startCartBridge,
+} from "../../utils/cart";
 import {
   BasketBrowseKinds,
   basketBrowseDescription,
@@ -46,6 +54,8 @@ import {
 const Checkout = React.lazy(() => import("./Checkout"));
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
+const cartItemName = (item) =>
+  item?.name || item?.service_name || item?.package_name || "Selected item";
 
 const toSolidColor = (value) => {
   if (!value) return null;
@@ -104,6 +114,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
       return routeSlug || "";
     }
   }, [routeSlug, searchParams]);
+  setCartTenantContext(slug);
   const isCustomDomain = getTenantHostMode() === "custom";
 
   const location = useLocation();
@@ -164,6 +175,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   );
 
   const [items, setItems] = useState(() => loadCart());
+  const [cartHydrating, setCartHydrating] = useState(() => isEmbeddedCartFrame());
   const [browseKind, setBrowseKind] = useState(() =>
     inferBasketBrowseKind(
       loadCart(),
@@ -193,6 +205,27 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   }, [items]);
 
   useEffect(() => {
+    let active = true;
+    const finish = (nextItems) => {
+      if (!active) return;
+      setItems(nextItems);
+      setBrowseKind((current) => inferBasketBrowseKind(nextItems, current));
+      setCartHydrating(false);
+    };
+    const stopBridge = startCartBridge({
+      tenantSlug: slug,
+      onHydrate: (nextItems) => finish(nextItems),
+    });
+    const timer = window.setTimeout(() => finish(loadCart()), 1200);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      stopBridge();
+    };
+  }, [slug]);
+
+  useEffect(() => {
+    if (cartHydrating) return;
     const saved = loadCart();
     let mutated = false;
     const normalized = saved.map((item) => {
@@ -201,10 +234,10 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
       return { ...item, hold_started_at: new Date().toISOString() };
     });
     if (mutated) {
-      saveCart(normalized);
+      saveCart(normalized, slug);
     }
     setItems(normalized);
-  }, []);
+  }, [cartHydrating, slug]);
 
   useEffect(() => {
     if (!slug) return;
@@ -723,7 +756,14 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
           </Alert>
         )}
 
-        {items.length === 0 ? (
+        {cartHydrating ? (
+          <Box sx={{ py: 6, textAlign: "center" }} role="status" aria-live="polite">
+            <CircularProgress size={28} />
+            <Typography color="text.secondary" sx={{ mt: 2 }}>
+              Loading your basket…
+            </Typography>
+          </Box>
+        ) : items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center" }}>
             <Typography color="text.secondary">Your basket is empty.</Typography>
             <Button
@@ -765,7 +805,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                         {item.type === CartTypes.PRODUCT ? <ProductBasketImage item={item} /> : null}
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="h6" fontWeight={700}>
-                            {item.name}
+                            {cartItemName(item)}
                           </Typography>
                           {item.type === CartTypes.PRODUCT ? (
                             <Stack spacing={0.75}>
@@ -831,7 +871,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                               {item.artist_name || "Service"}
                             </Typography>
                           )}
-                          <IconButton onClick={() => removeItem(item.id)} aria-label={`Remove ${item.name || "item"}`}>
+                          <IconButton onClick={() => removeItem(item.id)} aria-label={`Remove ${cartItemName(item)}`}>
                             <DeleteIcon />
                           </IconButton>
                         </Stack>

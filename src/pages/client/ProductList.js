@@ -254,7 +254,7 @@ const ProductListBase = ({
 
   const handleAdd = (product) => {
     try {
-      const next = addProductToCart(product, 1);
+      const next = addProductToCart(product, 1, null, slug);
       const entry = next.find((i) => i.id === `product-${product.id}`);
       const qty = entry?.quantity || 1;
       setSnack({ open: true, msg: `${product.name} added to basket (${qty})` });

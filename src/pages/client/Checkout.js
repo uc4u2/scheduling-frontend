@@ -6,7 +6,7 @@ import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getAct
 import { api as apiClient, API_BASE_URL } from "../../utils/api";
 import { CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE } from "../../utils/bookingErrors";
 import { buildHostedCheckoutPayload, startHostedCheckout, releasePendingCheckout } from "../../utils/hostedCheckout";
-import { CartTypes, loadCart, saveCart, clearCart } from "../../utils/cart";
+import { CartTypes, loadCart, saveCart, clearCart, setCartTenantContext } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
 
 import {
@@ -795,6 +795,7 @@ export function CheckoutFormCore({
     try { pathSlug = (window.location.pathname || '').split('/').filter(Boolean)[0] || null; } catch {}
     return pick(slugOverride, companySlug, qsSlug, pathSlug);
   }, [companySlug, slugOverride]);
+  setCartTenantContext(slugLocal);
   const isCustomDomain = getTenantHostMode() === "custom";
   const basePath = isCustomDomain ? "" : `/${slugLocal || ""}`;
   const currencyCode = useMemo(() => (displayCurrency || "USD").toUpperCase(), [displayCurrency]);

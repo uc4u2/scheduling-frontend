@@ -1,5 +1,14 @@
 const CART_KEY = "booking_cart";
+const CART_TENANT_KEY = "schedulaa:booking-cart-tenant";
 export const CART_CHANGED_EVENT = "schedulaa:basket-changed";
+export const CART_BRIDGE_VERSION = 1;
+export const CART_READY_MESSAGE = "schedulaa:cart-ready";
+export const CART_STATE_MESSAGE = "schedulaa:cart-state";
+export const CART_HYDRATE_MESSAGE = "schedulaa:cart-hydrate";
+
+const MAX_CART_ITEMS = 64;
+const MAX_CART_PAYLOAD_BYTES = 128 * 1024;
+let activeCartTenant = "";
 
 export const CartTypes = {
   SERVICE: "service",
@@ -12,6 +21,128 @@ export const CartErrorCodes = {
 };
 
 const itemType = (item) => (item?.type || CartTypes.SERVICE);
+
+const normalizeTenantSlug = (value) => {
+  const slug = String(value || "").trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9-]{0,127}$/.test(slug) ? slug : "";
+};
+
+export const validateBridgedCartItems = (value) => {
+  if (!Array.isArray(value) || value.length > MAX_CART_ITEMS) return null;
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized.length > MAX_CART_PAYLOAD_BYTES) return null;
+    const parsed = JSON.parse(serialized);
+    const valid = parsed.every((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+      const id = String(item.id || "");
+      const type = itemType(item);
+      const quantity = item.quantity == null ? 1 : Number(item.quantity);
+      return (
+        id.length > 0 &&
+        id.length <= 256 &&
+        Object.values(CartTypes).includes(type) &&
+        Number.isFinite(quantity) &&
+        quantity > 0 &&
+        quantity <= 999
+      );
+    });
+    return valid ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+function parentOrigin() {
+  if (typeof window === "undefined" || window.parent === window) return "";
+  try {
+    return new URL(document.referrer).origin;
+  } catch {
+    return "";
+  }
+}
+
+export function setCartTenantContext(tenantSlug) {
+  const nextTenant = normalizeTenantSlug(tenantSlug);
+  if (nextTenant && typeof sessionStorage !== "undefined") {
+    try {
+      const previousTenant = normalizeTenantSlug(sessionStorage.getItem(CART_TENANT_KEY));
+      if (previousTenant && previousTenant !== nextTenant) {
+        sessionStorage.removeItem(CART_KEY);
+      }
+      sessionStorage.setItem(CART_TENANT_KEY, nextTenant);
+    } catch {
+      // In-memory tenant context still protects bridge messages.
+    }
+  }
+  activeCartTenant = nextTenant;
+  return activeCartTenant;
+}
+
+export function isEmbeddedCartFrame() {
+  return Boolean(parentOrigin());
+}
+
+function postCartMessage(message) {
+  const targetOrigin = parentOrigin();
+  if (!targetOrigin) return false;
+  try {
+    window.parent.postMessage(message, targetOrigin);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function startCartBridge({ tenantSlug, onHydrate } = {}) {
+  const normalizedSlug = setCartTenantContext(tenantSlug);
+  const expectedOrigin = parentOrigin();
+  if (!normalizedSlug || !expectedOrigin) {
+    if (typeof onHydrate === "function") onHydrate(loadCart(), false);
+    return () => {};
+  }
+
+  const onMessage = (event) => {
+    if (event.source !== window.parent || event.origin !== expectedOrigin) return;
+    const data = event.data;
+    if (
+      data?.type !== CART_HYDRATE_MESSAGE ||
+      data.version !== CART_BRIDGE_VERSION ||
+      normalizeTenantSlug(data.tenantSlug) !== normalizedSlug ||
+      typeof data.hasSnapshot !== "boolean"
+    ) {
+      return;
+    }
+
+    if (!data.hasSnapshot) {
+      const current = loadCart();
+      if (typeof onHydrate === "function") onHydrate(current, false);
+      announceCartChange(current);
+      return;
+    }
+
+    const items = validateBridgedCartItems(data.items);
+    if (!items) return;
+    try {
+      if (items.length) sessionStorage.setItem(CART_KEY, JSON.stringify(items));
+      else sessionStorage.removeItem(CART_KEY);
+      sessionStorage.setItem(CART_TENANT_KEY, normalizedSlug);
+    } catch (err) {
+      console.warn("cart: failed to hydrate", err);
+      return;
+    }
+    if (typeof onHydrate === "function") onHydrate(items, true);
+    announceCartChange(items);
+  };
+
+  window.addEventListener("message", onMessage);
+  postCartMessage({
+    type: CART_READY_MESSAGE,
+    version: CART_BRIDGE_VERSION,
+    tenantSlug: normalizedSlug,
+  });
+  return () => window.removeEventListener("message", onMessage);
+}
 
 const ensureCompatibleCart = (targetType, items) => {
   const hasService = items.some((it) => itemType(it) === CartTypes.SERVICE);
@@ -47,7 +178,8 @@ export function loadCart() {
   }
 }
 
-export function saveCart(items) {
+export function saveCart(items, tenantSlug) {
+  if (tenantSlug) setCartTenantContext(tenantSlug);
   try {
     sessionStorage.setItem(CART_KEY, JSON.stringify(items));
     announceCartChange(items);
@@ -78,16 +210,20 @@ function announceCartChange(items) {
     // The cart remains usable in older or constrained browser contexts.
   }
 
-  try {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: CART_CHANGED_EVENT, ...detail }, "*");
-    }
-  } catch {
-    // Parent notification is progressive enhancement for the tenant header.
+  const bridgedItems = validateBridgedCartItems(Array.isArray(items) ? items : []);
+  if (activeCartTenant && bridgedItems) {
+    postCartMessage({
+      type: CART_STATE_MESSAGE,
+      version: CART_BRIDGE_VERSION,
+      tenantSlug: activeCartTenant,
+      items: bridgedItems,
+      count,
+    });
   }
 }
 
-export function addProductToCart(product, quantity = 1, variant = null) {
+export function addProductToCart(product, quantity = 1, variant = null, tenantSlug = "") {
+  if (tenantSlug) setCartTenantContext(tenantSlug);
   if (!product) return loadCart();
   const qty = Math.max(1, Number(quantity) || 1);
   const current = loadCart();
@@ -160,7 +296,8 @@ export function removeCartItem(id) {
   return next;
 }
 
-export function upsertServiceLine(line) {
+export function upsertServiceLine(line, tenantSlug = "") {
+  if (tenantSlug) setCartTenantContext(tenantSlug);
   if (!line || !line.id) return loadCart();
   const items = loadCart();
   ensureCompatibleCart(CartTypes.SERVICE, items);
@@ -177,7 +314,8 @@ export function upsertServiceLine(line) {
   return next;
 }
 
-export function addPackageToCart(pkg) {
+export function addPackageToCart(pkg, tenantSlug = "") {
+  if (tenantSlug) setCartTenantContext(tenantSlug);
   if (!pkg || !pkg.id) return loadCart();
   const items = loadCart();
   ensureCompatibleCart(CartTypes.PACKAGE, items);

@@ -396,7 +396,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     if (!pkg?.id) return;
     try {
       setPackageCheckoutError("");
-      addPackageToCart(pkg);
+      addPackageToCart(pkg, effectiveSlug);
       navigate(`${basePath}/checkout${embedSuffix || ""}`);
     } catch (err) {
       if (err?.code === CartErrorCodes.MIXED_TYPES) {

@@ -209,7 +209,7 @@ const ProductDetails = ({ slugOverride }) => {
     ) return;
     const qty = Math.max(1, Number(quantity) || 1);
     try {
-      addProductToCart(product, qty, selectedVariant);
+      addProductToCart(product, qty, selectedVariant, slug);
       setSnack({ open: true, msg: `${product.name} added to basket` });
     } catch (error) {
       const mixed = error?.code === CartErrorCodes.MIXED_TYPES;
