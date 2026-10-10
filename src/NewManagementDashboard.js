@@ -144,6 +144,7 @@ import {
   calendarDateKey,
   formatBookingCalendarTime,
   formatCalendarDateLabel,
+  resolveBookingCalendarTimezone,
 } from "./utils/bookingCheckout";
 import TeamActivity from "./TeamActivity";
 import EnhancedMasterCalendar from "./EnhancedMasterCalendar";
@@ -164,6 +165,7 @@ import OwnershipTransferDialog from "./components/manager/OwnershipTransferDialo
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import luxonPlugin from "@fullcalendar/luxon3";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { format, endOfMonth } from "date-fns";
 
@@ -946,11 +948,19 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   }, []);
 
   const selectedRecruiterRecord = useMemo(
-    () => recruiters.find((row) => String(row.id) === String(selectedRecruiter)) || null,
-    [recruiters, selectedRecruiter]
+    () =>
+      recruiters.find((row) => String(row.id) === String(selectedRecruiter)) ||
+      (isSelfOnly && String(currentUserInfo?.id || "") === String(selectedRecruiter)
+        ? currentUserInfo
+        : null),
+    [currentUserInfo, isSelfOnly, recruiters, selectedRecruiter]
   );
   const selectedRecruiterName = recruiterDisplayName(selectedRecruiterRecord);
-  const selectedRecruiterTimezone = selectedRecruiterRecord?.timezone || "UTC";
+  const calendarTimezone = resolveBookingCalendarTimezone(selectedRecruiterRecord);
+  const calendarTimezoneLabel = selectedRecruiterRecord
+    ? calendarTimezone
+    : getUserTimezone();
+  const selectedRecruiterTimezone = selectedRecruiterRecord ? calendarTimezone : "UTC";
   const availabilityContextKey = `${selectedRecruiter || "all"}|${selectedDate}`;
 
   const bookingQuery = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -1007,12 +1017,12 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     .filter(Boolean);
 
   const selectedDayBookings = useMemo(
-    () => bookingsForCalendarDate(filteredBookings, selectedDate),
-    [filteredBookings, selectedDate]
+    () => bookingsForCalendarDate(filteredBookings, selectedDate, calendarTimezone),
+    [calendarTimezone, filteredBookings, selectedDate]
   );
 
   const activeFilterSummary = useMemo(() => {
-    if (isSelfOnly) return "Your bookings";
+    if (isSelfOnly) return `Your bookings • Timezone: ${calendarTimezoneLabel}`;
     const department = departments.find(
       (row) => String(row.id) === String(selectedDepartment)
     );
@@ -1021,8 +1031,9 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       department?.name || "All departments",
       recruiter ? recruiterDisplayName(recruiter) : "All employees",
       calendarView === "timeGridDay" ? "Day view" : calendarView === "timeGridWeek" ? "Week view" : "Month view",
+      `Timezone: ${calendarTimezoneLabel}`,
     ].join(" • ");
-  }, [calendarView, departments, isSelfOnly, recruiterDisplayName, recruiters, selectedDepartment, selectedRecruiter]);
+  }, [calendarTimezoneLabel, calendarView, departments, isSelfOnly, recruiterDisplayName, recruiters, selectedDepartment, selectedRecruiter]);
 
   useEffect(() => {
     if (!selectedRecruiter || !selectedDepartment) return;
@@ -1225,7 +1236,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const handleEventClick = (info) => {
     const booking = filteredBookings.find((b) => String(b.id) === String(info.event.id));
     if (!booking) return;
-    setSelectedDate(bookingCalendarDateKey(booking));
+    setSelectedDate(bookingCalendarDateKey(booking, calendarTimezone));
     openBookingDetails(booking);
   };
 
@@ -1235,13 +1246,13 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     const booking = filteredBookings.find((row) => String(row.id) === String(requestedAppointmentId));
     if (!booking) return;
     autoOpenedAppointmentRef.current = String(requestedAppointmentId);
-    const bookingDate = bookingCalendarDateKey(booking);
+    const bookingDate = bookingCalendarDateKey(booking, calendarTimezone);
     if (bookingDate) {
       setSelectedDate(bookingDate);
       calendarRef.current?.getApi()?.gotoDate(bookingDate);
     }
     openBookingDetails(booking);
-  }, [requestedAppointmentId, filteredBookings, openBookingDetails]);
+  }, [calendarTimezone, requestedAppointmentId, filteredBookings, openBookingDetails]);
 
   useEffect(() => {
     if (!requestedClientId || requestedAppointmentId || !filteredBookings.length) return;
@@ -1253,13 +1264,13 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     })[0];
     if (!booking) return;
     autoOpenedClientBookingRef.current = String(requestedClientId);
-    const bookingDate = bookingCalendarDateKey(booking);
+    const bookingDate = bookingCalendarDateKey(booking, calendarTimezone);
     if (bookingDate) {
       setSelectedDate(bookingDate);
       calendarRef.current?.getApi()?.gotoDate(bookingDate);
     }
     openBookingDetails(booking);
-  }, [requestedClientId, requestedAppointmentId, filteredBookings, openBookingDetails]);
+  }, [calendarTimezone, requestedClientId, requestedAppointmentId, filteredBookings, openBookingDetails]);
 
   const handleCalendarViewChange = (_, nextView) => {
     if (!nextView) return;
@@ -1268,9 +1279,9 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   };
 
   const handleToday = () => {
-    const today = calendarDateKey();
+    const today = calendarDateKey(new Date(), calendarTimezone);
     setSelectedDate(today);
-    calendarRef.current?.getApi()?.today();
+    calendarRef.current?.getApi()?.gotoDate(today);
   };
 
   const handleMarkCompleted = async () => {
@@ -1520,6 +1531,9 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             <Typography variant="body2" color="text.secondary">
               Click a booking to mark it completed and collect payment.
             </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Calendar timezone: {calendarTimezoneLabel}
+            </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
             <Button
@@ -1640,7 +1654,8 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         >
           <FullCalendar
             ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
+            timeZone={calendarTimezone}
             initialView={calendarView}
             initialDate={selectedDate}
             events={events}
@@ -1658,7 +1673,9 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             }}
             dateClick={(info) => setSelectedDate(info.dateStr.slice(0, 10))}
             dayCellClassNames={(info) =>
-              calendarDateKey(info.date) === selectedDate ? ["booking-selected-day"] : []
+              calendarDateKey(info.date, calendarTimezone) === selectedDate
+                ? ["booking-selected-day"]
+                : []
             }
             eventClick={handleEventClick}
             eventContent={renderBookingEvent}
@@ -1680,7 +1697,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }} mb={2}>
             <Box>
               <Typography id="selected-day-bookings-title" variant="h6" fontWeight={700}>
-                Bookings for {formatCalendarDateLabel(selectedDate)}
+                Bookings for {formatCalendarDateLabel(selectedDate, undefined, calendarTimezone)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {selectedDayBookings.length} booking{selectedDayBookings.length === 1 ? "" : "s"}
@@ -1734,7 +1751,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                   >
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ sm: "center" }}>
                       <Box sx={{ minWidth: { sm: 130 } }}>
-                        <Typography fontWeight={800}>{formatBookingCalendarTime(booking)}</Typography>
+                        <Typography fontWeight={800}>{formatBookingCalendarTime(booking, undefined, calendarTimezone)}</Typography>
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography fontWeight={700} noWrap>{booking?.service?.name || "Service"}</Typography>
@@ -1777,7 +1794,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             >
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography id="selected-day-availability-title" variant="h6" fontWeight={700}>
-                  Availability for {formatCalendarDateLabel(selectedDate)}
+                  Availability for {formatCalendarDateLabel(selectedDate, undefined, calendarTimezone)}
                 </Typography>
                 {selectedRecruiterRecord ? (
                   <Typography variant="body2" color="text.secondary">
@@ -1859,7 +1876,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           {availabilityDialog ? (
             <Stack spacing={2}>
               <Alert severity="info">
-                {availabilityDialog.employeeName} • {formatCalendarDateLabel(availabilityDialog.date)} • {availabilityDialog.timezone}
+                {availabilityDialog.employeeName} • {formatCalendarDateLabel(availabilityDialog.date, undefined, availabilityDialog.timezone)} • {availabilityDialog.timezone}
               </Alert>
               {availabilityDialog.kind === "keep-range" ? (
                 <>

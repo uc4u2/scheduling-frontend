@@ -1,10 +1,22 @@
-export const calendarDateKey = (value = new Date()) => {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+import { DateTime } from "luxon";
+
+const normalizeCalendarZone = (timeZone) => timeZone || "local";
+
+const parseCalendarDateTime = (value, timeZone = "local") => {
+  const zone = normalizeCalendarZone(timeZone);
+  if (DateTime.isDateTime(value)) return value.setZone(zone);
+  if (value instanceof Date) return DateTime.fromJSDate(value, { zone });
+  if (typeof value !== "string" || !value.trim()) return DateTime.invalid("missing date");
+
+  const source = value.trim();
+  const hasOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(source);
+  const parsed = DateTime.fromISO(source, hasOffset ? { setZone: true } : { zone });
+  return hasOffset ? parsed.setZone(zone) : parsed;
+};
+
+export const calendarDateKey = (value = new Date(), timeZone = "local") => {
+  const date = parseCalendarDateTime(value, timeZone);
+  return date.isValid ? date.toFormat("yyyy-MM-dd") : "";
 };
 
 const bookingStartValue = (booking) =>
@@ -13,25 +25,25 @@ const bookingStartValue = (booking) =>
     ? `${booking.local_date}T${booking.local_start_time}`
     : "");
 
-export const bookingCalendarDateKey = (booking) => {
+export const bookingCalendarDateKey = (booking, timeZone = "local") => {
   const start = bookingStartValue(booking);
   if (!start) return "";
-  return calendarDateKey(start);
+  return calendarDateKey(start, timeZone);
 };
 
-export const bookingsForCalendarDate = (bookings, dateKey) =>
+export const bookingsForCalendarDate = (bookings, dateKey, timeZone = "local") =>
   (Array.isArray(bookings) ? bookings : [])
-    .filter((booking) => bookingCalendarDateKey(booking) === dateKey)
+    .filter((booking) => bookingCalendarDateKey(booking, timeZone) === dateKey)
     .sort((left, right) => {
-      const leftTime = new Date(bookingStartValue(left)).getTime();
-      const rightTime = new Date(bookingStartValue(right)).getTime();
+      const leftTime = parseCalendarDateTime(bookingStartValue(left), timeZone).toMillis();
+      const rightTime = parseCalendarDateTime(bookingStartValue(right), timeZone).toMillis();
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime)) {
         return leftTime - rightTime;
       }
       return bookingStartValue(left).localeCompare(bookingStartValue(right));
     });
 
-export const formatBookingCalendarTime = (booking, locale) => {
+export const formatBookingCalendarTime = (booking, locale, timeZone = "local") => {
   const start = bookingStartValue(booking);
   const end =
     booking?.end_iso_local ||
@@ -39,25 +51,27 @@ export const formatBookingCalendarTime = (booking, locale) => {
       ? `${booking.local_date}T${booking.local_end_time}`
       : "");
   const formatTime = (value) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return new Intl.DateTimeFormat(locale, {
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date);
+    const date = parseCalendarDateTime(value, timeZone);
+    if (!date.isValid) return "";
+    return date.setLocale(locale || undefined).toLocaleString(DateTime.TIME_SIMPLE);
   };
   const startLabel = formatTime(start);
   const endLabel = formatTime(end);
   return [startLabel, endLabel].filter(Boolean).join(" – ") || "Time unavailable";
 };
 
-export const formatCalendarDateLabel = (dateKey, locale) => {
-  const date = new Date(`${dateKey}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return dateKey;
-  return new Intl.DateTimeFormat(locale, {
+export const formatCalendarDateLabel = (dateKey, locale, timeZone = "local") => {
+  const date = DateTime.fromISO(dateKey, { zone: normalizeCalendarZone(timeZone) });
+  if (!date.isValid) return dateKey;
+  return date.setLocale(locale || undefined).toLocaleString({
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  }).format(date);
+  });
+};
+
+export const resolveBookingCalendarTimezone = (recruiter) => {
+  if (!recruiter) return "local";
+  return recruiter.effective_timezone || recruiter.timezone || "UTC";
 };

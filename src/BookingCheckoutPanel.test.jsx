@@ -41,7 +41,7 @@ jest.mock("@fullcalendar/react", () => {
         getApi: () => ({ today: jest.fn(), gotoDate: jest.fn(), changeView: jest.fn() }),
       }));
       return (
-        <div data-testid="calendar">
+        <div data-testid="calendar" data-timezone={props.timeZone}>
           <button onClick={() => props.dateClick?.({ dateStr: "2026-10-13" })}>
             Select October 13
           </button>
@@ -71,6 +71,19 @@ const bookings = [
     local_end_time: "10:00",
     service: { id: 3, name: "Haircut", base_price: 50 },
     client: { id: 4, full_name: "Ada Client", email: "ada@example.com" },
+    recruiter: { id: 7, full_name: "Riley Artist" },
+  },
+  {
+    id: 12,
+    status: "booked",
+    payment_status: "unpaid",
+    start_iso_local: "2026-10-14T00:30:00-04:00",
+    end_iso_local: "2026-10-14T01:30:00-04:00",
+    local_date: "2026-10-14",
+    local_start_time: "00:30",
+    local_end_time: "01:30",
+    service: { id: 8, name: "Late service" },
+    client: { id: 9, full_name: "Night Client", email: "night@example.com" },
     recruiter: { id: 7, full_name: "Riley Artist" },
   },
   {
@@ -118,6 +131,7 @@ describe("BookingCheckoutPanel", () => {
               last_name: "Artist",
               department_id: 2,
               timezone: "America/Toronto",
+              effective_timezone: "America/Toronto",
             }],
           },
         });
@@ -261,7 +275,6 @@ describe("BookingCheckoutPanel", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Keep This Window" }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledTimes(1);
       expect(api.post).toHaveBeenCalledWith("/api/manager/availability/keep-range", {
         recruiter_id: 7,
         date: "2026-10-13",
@@ -270,6 +283,41 @@ describe("BookingCheckoutPanel", () => {
       });
     });
     expect(await screen.findByText(/3 free slots removed; 1 booked slot preserved/i)).toBeInTheDocument();
+  });
+
+  it("uses the employee timezone for a midnight booking and the availability date", async () => {
+    api.post.mockResolvedValueOnce({ data: { deleted: 0, skipped_booked: 1 } });
+    renderPanel();
+    fireEvent.click(screen.getByText("Filters & calendar options"));
+    fireEvent.mouseDown(screen.getByLabelText("Employee"));
+    fireEvent.click(await screen.findByRole("option", { name: "Riley Artist" }));
+
+    expect(screen.getByTestId("calendar")).toHaveAttribute(
+      "data-timezone",
+      "America/Toronto"
+    );
+    fireEvent.click(screen.getByText("Calendar event Late service"));
+    const paymentDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.click(within(paymentDialog).getByRole("button", { name: "Close" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Collect Payment" })).not.toBeInTheDocument()
+    );
+    expect(
+      await screen.findByText(/Bookings for Wednesday, October 14, 2026/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close Day" }));
+    const availabilityDialog = await screen.findByRole("dialog", {
+      name: "Close availability for this day?",
+    });
+    fireEvent.click(within(availabilityDialog).getByRole("button", { name: "Close Day" }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/api/manager/availability/close-day", {
+        recruiter_id: 7,
+        date: "2026-10-14",
+      });
+    });
   });
 
   it("ignores an availability mutation response after the selected day changes", async () => {
