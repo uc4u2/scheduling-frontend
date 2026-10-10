@@ -63,7 +63,7 @@ Day-wide changes use the canonical manager availability actions. If the server c
 
 ## Tips
 
-- Month view grows to show every calendar week in the full-screen workspace. The selected-day panel follows the complete month instead of covering or clipping its lower weeks. Week and day views keep a bounded time-grid height.
+- Desktop month view keeps every week in a compact calendar and groups dense days behind FullCalendar's **+ more** control, leaving the selected-day workspace reachable below it. Mobile grows naturally for touch scrolling. Week and day views keep a bounded time-grid height.
 
 - Use Team Availability to control **client booking** windows.
 - Use Shift Management to control **staff labor schedules**.

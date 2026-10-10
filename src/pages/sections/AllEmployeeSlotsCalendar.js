@@ -1006,10 +1006,11 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     events: calendarEvents,
     weekends: showWeekends,
     nowIndicator: true,
-    // Month view must keep its natural height so every week remains reachable in
-    // the full-screen workspace. Week/day views can still fill their time grid.
-    expandRows: calendarView !== "dayGridMonth",
-    dayMaxEvents: 4,
+    // Desktop month view uses a compact bounded grid; FullCalendar collapses
+    // dense cells behind its accessible "+ more" control. Mobile keeps its
+    // natural height so touch users can scroll through every week.
+    expandRows: calendarView !== "dayGridMonth" || !isSmDown,
+    dayMaxEvents: calendarView === "dayGridMonth" && !isSmDown ? true : 4,
     displayEventEnd: true,
     stickyHeaderDates: true,
     navLinks: false,
@@ -1348,8 +1349,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             {...baseCalProps}
             initialView={calendarView}
             initialDate={selectedDate}
-            height={calendarView === "dayGridMonth" ? "auto" : (isSmDown ? "auto" : 700)}
-            contentHeight="auto"
+            height={calendarView === "dayGridMonth" ? (isSmDown ? "auto" : 540) : (isSmDown ? "auto" : 700)}
             key={`${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
           />
         </Paper>
