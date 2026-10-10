@@ -47,6 +47,7 @@ import { useTheme, alpha } from "@mui/material/styles";
 import LanguageSelector from "../../components/LanguageSelector";
 import LogoImage from "../../logo/logo.png";
 import { buildMarketingUrl } from "../../config/origins";
+import { requestManagerNavigation } from "../../utils/managerNavigation";
 
 const productLeftLinks = [
   { label: "Features", href: buildMarketingUrl("/en/features"), desc: "See everything included", icon: <AutoAwesomeIcon fontSize="small" /> },
@@ -233,9 +234,11 @@ const MainNav = ({ token, setToken }) => {
     pointerEvents: "all",
   };
   const logoImageSx = {
-    height: { xs: 44, md: 56 },
+    height: { xs: 38, md: 56 },
+    maxWidth: { xs: 170, sm: "none" },
     width: "auto",
-    transform: { xs: "translateY(-8px)", md: "translateY(-10px)" },
+    objectFit: "contain",
+    transform: { xs: "none", md: "translateY(-10px)" },
     filter: theme.palette.mode === "dark"
       ? "drop-shadow(0 8px 12px rgba(0,0,0,0.45))"
       : "drop-shadow(0 6px 12px rgba(0,0,0,0.18))",
@@ -630,8 +633,36 @@ const MainNav = ({ token, setToken }) => {
         mb: 0,
       }}
     >
-      <Toolbar sx={{ gap: 1, alignItems: "center", overflow: "visible", py: 0, minHeight: 56 }}>
-        <Box sx={{ display: "flex", alignItems: "center" }}>
+      <Toolbar
+        data-testid="global-mobile-toolbar"
+        sx={{
+          gap: { xs: 0.75, md: 1 },
+          alignItems: "center",
+          overflow: "visible",
+          py: 0,
+          minHeight: 56,
+          px: { xs: 1, sm: 2 },
+          position: "relative",
+        }}
+      >
+        {isManagerArea && isAuthenticated ? (
+          <IconButton
+            sx={{ display: { xs: "inline-flex", lg: "none" }, width: 40, height: 40, flexShrink: 0 }}
+            onClick={requestManagerNavigation}
+            aria-label="Open manager navigation"
+          >
+            <MenuIcon />
+          </IconButton>
+        ) : null}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            position: { xs: "absolute", md: "static" },
+            left: { xs: "50%", md: "auto" },
+            transform: { xs: "translateX(-50%)", md: "none" },
+          }}
+        >
           <Box
             component="a"
             href={buildMarketingUrl("/en")}
@@ -655,9 +686,9 @@ const MainNav = ({ token, setToken }) => {
         </Box>
 
         <IconButton
-          sx={{ display: { xs: "flex", md: "none" } }}
+          sx={{ display: { xs: "inline-flex", md: "none" }, width: 40, height: 40, flexShrink: 0 }}
           onClick={toggleMobile}
-          aria-label="Toggle navigation"
+          aria-label="Open account navigation"
         >
           <MenuIcon />
         </IconButton>

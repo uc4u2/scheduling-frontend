@@ -45,10 +45,13 @@ jest.mock("@fullcalendar/react", () => {
           <button onClick={() => props.dateClick?.({ dateStr: "2026-10-13" })}>
             Select October 13
           </button>
+          <button onClick={() => props.moreLinkClick?.({ date: new Date("2026-10-13T12:00:00Z"), jsEvent: { preventDefault: jest.fn() } })}>
+            More October 13 bookings
+          </button>
           {props.events.map((event) => (
             <button
               key={event.id}
-              onClick={() => props.eventClick?.({ event: { id: event.id, start: new Date(event.start) } })}
+              onClick={() => props.eventClick?.({ event: { id: event.id, start: new Date(event.start) }, jsEvent: { preventDefault: jest.fn() } })}
             >
               Calendar event {event.title}
             </button>
@@ -101,6 +104,19 @@ const bookings = [
   },
 ];
 
+const setMobileViewport = (mobile) => {
+  window.matchMedia = jest.fn().mockImplementation((query) => ({
+    matches: mobile && query.includes("max-width"),
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+};
+
 const renderPanel = (
   entry = "/manager/booking-checkout",
   currentUserInfo = { id: 1, is_manager: true, can_manage_shifts: true }
@@ -119,6 +135,9 @@ const renderPanel = (
 
 describe("BookingCheckoutPanel", () => {
   beforeEach(() => {
+    setMobileViewport(false);
+    window.requestAnimationFrame = (callback) => callback();
+    Element.prototype.scrollIntoView = jest.fn();
     api.get.mockImplementation((url) => {
       if (url === "/api/manager/bookings") return Promise.resolve({ data: bookings });
       if (url === "/api/departments") return Promise.resolve({ data: [{ id: 2, name: "Salon" }] });
@@ -178,6 +197,25 @@ describe("BookingCheckoutPanel", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Collect Payment" })).not.toBeInTheDocument());
     fireEvent.click(screen.getByText("Calendar event Haircut"));
     expect(await screen.findByRole("dialog", { name: "Collect Payment" })).toBeInTheDocument();
+  });
+
+  it("selects and scrolls to mobile day bookings without opening the payment dialog", async () => {
+    setMobileViewport(true);
+    renderPanel();
+
+    fireEvent.click(await screen.findByText("Calendar event Haircut"));
+
+    expect(await screen.findByText(/Bookings for Tuesday, October 13, 2026/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Collect Payment" })).not.toBeInTheDocument();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+
+    Element.prototype.scrollIntoView.mockClear();
+    fireEvent.click(screen.getByText("More October 13 bookings"));
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+
+    fireEvent.click(screen.getByText("Ada Client • Riley Artist"));
+    expect(await screen.findByRole("dialog", { name: "Collect Payment" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close payment details" })).toBeInTheDocument();
   });
 
   it("preserves the existing payment-link payload from a selected-day booking card", async () => {

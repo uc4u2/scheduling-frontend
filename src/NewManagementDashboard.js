@@ -57,6 +57,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Dashboard,
   CalendarToday,
@@ -102,6 +103,7 @@ import SecondNewManagementDashboard from "./pages/sections/management/SecondNewM
 import ZapierIntegrationPage from "./pages/settings/ZapierIntegrationPage";
 import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView";
 import ManagerTicketsView from "./pages/sections/management/ManagerTicketsView";
+import { OPEN_MANAGER_NAVIGATION_EVENT } from "./utils/managerNavigation";
 
 // Sections imports
 import Overview from "./pages/sections/Overview";
@@ -838,6 +840,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const availabilityRequestRef = useRef(0);
   const availabilityMutationRef = useRef(0);
   const availabilityContextRef = useRef("");
+  const selectedDayBookingsRef = useRef(null);
   const isManager = Boolean(currentUserInfo?.is_manager);
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
@@ -1236,9 +1239,30 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const handleEventClick = (info) => {
     const booking = filteredBookings.find((b) => String(b.id) === String(info.event.id));
     if (!booking) return;
-    setSelectedDate(bookingCalendarDateKey(booking, calendarTimezone));
+    const bookingDate = bookingCalendarDateKey(booking, calendarTimezone);
+    setSelectedDate(bookingDate);
+    if (isSmall) {
+      info.jsEvent?.preventDefault?.();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          selectedDayBookingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+      return;
+    }
     openBookingDetails(booking);
   };
+
+  const selectDateAndShowBookings = useCallback((dateKey) => {
+    if (!dateKey) return;
+    setSelectedDate(dateKey);
+    if (!isSmall) return;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        selectedDayBookingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }, [isSmall]);
 
   useEffect(() => {
     if (!requestedAppointmentId || !filteredBookings.length) return;
@@ -1500,6 +1524,18 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             boxShadow: `inset 0 0 0 2px ${alpha(theme.palette.primary.main, 0.55)}`,
           },
           "@media (max-width: 600px)": {
+            ".booking-checkout-calendar": {
+              width: "100%",
+              maxWidth: "100%",
+              overflow: "hidden",
+            },
+            ".booking-checkout-calendar .fc, .booking-checkout-calendar .fc-view-harness, .booking-checkout-calendar .fc-scrollgrid": {
+              maxWidth: "100%",
+            },
+            ".booking-checkout-calendar .fc-scrollgrid-sync-table": {
+              width: "100% !important",
+              tableLayout: "fixed",
+            },
             ".booking-checkout-calendar .fc .fc-toolbar": {
               alignItems: "stretch",
               gap: 8,
@@ -1519,23 +1555,27 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             ".booking-checkout-calendar .fc .fc-daygrid-day-number": {
               padding: 6,
             },
+            ".booking-checkout-calendar .fc .fc-event": {
+              minHeight: 24,
+              boxShadow: "none",
+            },
           },
         }}
       />
-      <Stack spacing={2}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
-          <Box>
-            <Typography variant="h5" fontWeight={700}>
+      <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: "1.25rem", sm: undefined } }}>
               Booking Checkout Calendar
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
               Click a booking to mark it completed and collect payment.
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Calendar timezone: {calendarTimezoneLabel}
+            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
+              {calendarTimezoneLabel}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+          <Stack direction="row" spacing={1} alignItems="center">
             <Button
               variant="outlined"
               size="small"
@@ -1570,10 +1610,11 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             expandIcon={<ExpandMoreIcon />}
             aria-controls="booking-checkout-filter-options"
             id="booking-checkout-filter-options-header"
+            sx={{ px: { xs: 1.5, sm: 2 }, minWidth: 0, "& .MuiAccordionSummary-content": { minWidth: 0, overflow: "hidden" } }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography fontWeight={700}>Filters &amp; calendar options</Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>
+            <Box sx={{ minWidth: 0, overflow: "hidden" }}>
+              <Typography fontWeight={700} noWrap>Filters &amp; calendar options</Typography>
+              <Typography variant="body2" color="text.secondary" noWrap sx={{ display: { xs: "none", sm: "block" } }}>
                 {activeFilterSummary}
               </Typography>
             </Box>
@@ -1645,7 +1686,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         <Paper
           className="booking-checkout-calendar"
           sx={{
-            p: 2,
+            p: { xs: 1, sm: 2 },
             borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
@@ -1671,13 +1712,17 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                 click: handleToday,
               },
             }}
-            dateClick={(info) => setSelectedDate(info.dateStr.slice(0, 10))}
+            dateClick={(info) => selectDateAndShowBookings(info.dateStr.slice(0, 10))}
             dayCellClassNames={(info) =>
               calendarDateKey(info.date, calendarTimezone) === selectedDate
                 ? ["booking-selected-day"]
                 : []
             }
             eventClick={handleEventClick}
+            moreLinkClick={isSmall ? (info) => {
+              info.jsEvent?.preventDefault?.();
+              selectDateAndShowBookings(calendarDateKey(info.date, calendarTimezone));
+            } : "popover"}
             eventContent={renderBookingEvent}
             eventDisplay="block"
             nowIndicator
@@ -1685,6 +1730,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         </Paper>
 
         <Paper
+          ref={selectedDayBookingsRef}
           component="section"
           aria-labelledby="selected-day-bookings-title"
           sx={{
@@ -1692,6 +1738,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
+            scrollMarginTop: 72,
           }}
         >
           <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }} mb={2}>
@@ -1931,11 +1978,20 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Collect Payment</DialogTitle>
-        <DialogContent dividers>
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth fullScreen={isSmall}>
+        <DialogTitle sx={{ py: { xs: 1.25, sm: 2 }, px: { xs: 2, sm: 3 } }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography component="span" variant="h6">Collect Payment</Typography>
+            {isSmall ? (
+              <IconButton onClick={() => setDetailsOpen(false)} aria-label="Close payment details" edge="end">
+                <CloseIcon />
+              </IconButton>
+            ) : null}
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
           {selected ? (
-            <Stack spacing={3}>
+            <Stack spacing={{ xs: 2, sm: 3 }}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
                   {selected?.service?.name || "Service"} • {selected?.client?.full_name || selected?.client?.email || "Client"}
@@ -2004,6 +2060,15 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                     exclusive
                     onChange={(_, v) => v && setTipMode(v)}
                     size="small"
+                    sx={{
+                      width: { xs: "100%", sm: "auto" },
+                      "& .MuiToggleButton-root": {
+                        flex: { xs: 1, sm: "initial" },
+                        minWidth: 0,
+                        px: { xs: 0.5, sm: 1.5 },
+                        fontSize: { xs: "0.74rem", sm: "0.8125rem" },
+                      },
+                    }}
                   >
                     <ToggleButton value="0">0%</ToggleButton>
                     <ToggleButton value="10">10%</ToggleButton>
@@ -2023,7 +2088,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                     />
                   )}
                 </Stack>
-                <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" mt={2}>
                   <Typography variant="subtitle2" color="text.secondary">
                     Billed in {currency}
                   </Typography>
@@ -2046,7 +2111,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                   </Alert>
                 )}
                 <Stack spacing={1.5}>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
                     <Stack spacing={1}>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Typography fontWeight={600}>Card on file</Typography>
@@ -2082,10 +2147,10 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                       >
                         Charge saved card
                       </Button>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
                         Tip: Stripe won’t add tax automatically for saved-card charges. Include tax in the total if needed.
                       </Typography>
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.5} sx={{ display: { xs: "none", sm: "flex" } }}>
                         <Typography variant="body2" color="text.secondary">
                           Want tax calculated automatically? Use a payment link.
                         </Typography>
@@ -2105,10 +2170,10 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                     </Stack>
                   </Paper>
 
-                  <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
                     <Stack spacing={1}>
                       <Typography fontWeight={600}>Payment link (invoice)</Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
                         Create a hosted payment link and share it with the client.
                       </Typography>
                       <Button
@@ -2134,10 +2199,10 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                     </Stack>
                   </Paper>
 
-                  <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
                     <Stack spacing={1}>
                       <Typography fontWeight={600}>Pay on this device</Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
                         Hand the device to the client to choose tip and pay by card.
                       </Typography>
                       <Button
@@ -2150,10 +2215,10 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                     </Stack>
                   </Paper>
 
-                  <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
                     <Stack spacing={1}>
                       <Typography fontWeight={600}>Mark as paid (offline)</Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
                         Record cash, terminal, or e-transfer payments.
                       </Typography>
                       <Button
@@ -2187,7 +2252,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             </Typography>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ display: { xs: "none", sm: "flex" }, px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
           <Button onClick={() => setDetailsOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -2438,12 +2503,19 @@ const NewManagementDashboard = ({
   const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const isMobileViewport = useMediaQuery(theme.breakpoints.down("lg"));
   const navOffset = useMediaQuery(theme.breakpoints.down("sm")) ? 56 : 64; // height of global nav bar
-  const managerBarHeight = 0; // remove extra bar on mobile; rely on floating toggle
+  const managerBarHeight = 0; // manager navigation now opens from the shared mobile toolbar
   const headerOffset = navOffset + managerBarHeight;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
   const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
   const previousSelectedViewRef = useRef(selectedView);
+
+  useEffect(() => {
+    if (!isMobileViewport) return undefined;
+    const openManagerNavigation = () => setMobileDrawerOpen(true);
+    window.addEventListener(OPEN_MANAGER_NAVIGATION_EVENT, openManagerNavigation);
+    return () => window.removeEventListener(OPEN_MANAGER_NAVIGATION_EVENT, openManagerNavigation);
+  }, [isMobileViewport]);
 
   useEffect(() => {
     localStorage.setItem("manager_selected_view", selectedView);
@@ -4483,25 +4555,6 @@ const NewManagementDashboard = ({
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", width: "100%" }}>
       <CssBaseline />
-      {isMobileViewport && (
-        <IconButton
-          color="inherit"
-          onClick={toggleDrawer}
-          size="medium"
-          sx={{
-            position: "fixed",
-            top: navOffset + 6,
-            left: 8,
-            zIndex: (theme) => theme.zIndex.drawer + 3,
-            backgroundColor: (theme) => theme.palette.background.paper,
-            border: (theme) => `1px solid ${theme.palette.divider}`,
-            boxShadow: 1,
-            p: 1,
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-      )}
       <Box
         component="nav"
         sx={{ width: { lg: drawerWidthCurrent }, flexShrink: { lg: 0 } }}
@@ -4563,7 +4616,8 @@ const NewManagementDashboard = ({
           minWidth: 0,
           width: "100%",
           maxWidth: "none",
-          mt: `${headerOffset}px`,
+          mt: 0,
+          overflowX: "hidden",
         }}
       >
         {billingStatusError && (

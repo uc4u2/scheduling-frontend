@@ -18,9 +18,9 @@ Manager Portal → Services & Bookings → Booking Checkout
 - The calendar opens with today selected.
 - Select a date to show that day's bookings below the calendar.
 - Completed and cancelled bookings remain visible with their actual booking and payment statuses.
-- Select either a calendar event or a daily booking card to open the same Collect Payment dialog.
-- Department, employee, and calendar-view controls are under **Filters & calendar options**, which is collapsed by default. The active filter summary remains visible.
-- Calendar dates and the selected-day list use the same browser-local FullCalendar display timezone. Backend-localized ISO timestamps remain the source data; the UI does not truncate UTC timestamps or infer payment state from booking state.
+- On desktop, select a calendar event or a daily booking card to open the same Collect Payment dialog. On mobile, selecting a date, event, or overflow link moves to that day's booking cards; select a card to open payment details.
+- Department, employee, and calendar-view controls are under **Filters & calendar options**, which is collapsed by default. The active filter summary remains visible on larger screens and is hidden on narrow screens to prevent clipping.
+- When one employee is selected, calendar rendering, Today, the selected-day list, and availability mutations use that employee's effective availability timezone. The All Employees view retains the viewer's display timezone and keeps mutations disabled. Backend-localized ISO timestamps remain the source data; the UI does not truncate UTC timestamps or infer payment state from booking state.
 
 ## Selected-day availability
 
