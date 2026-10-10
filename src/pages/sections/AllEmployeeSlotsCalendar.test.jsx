@@ -109,6 +109,7 @@ describe("AllEmployeeSlotsCalendar presentation", () => {
   afterEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    window.history.replaceState({}, "", "/");
   });
 
   it("shows employee names instead of internal ids and keeps filters collapsed", async () => {
@@ -127,6 +128,40 @@ describe("AllEmployeeSlotsCalendar presentation", () => {
     expect(mockFullCalendarProps.height).toBe(540);
     expect(mockFullCalendarProps.expandRows).toBe(true);
     expect(mockFullCalendarProps.dayMaxEvents).toBe(true);
+  });
+
+  it("opens a mobile deep link on the requested employee/day and scrolls to daily slots", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/manager/advanced-management?panel=slots&recruiterId=19&date=2026-10-09&focus=day-slots"
+    );
+    window.matchMedia = jest.fn().mockImplementation((query) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+    window.requestAnimationFrame = (callback) => callback();
+    Element.prototype.scrollIntoView = jest.fn();
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <AllEmployeeSlotsCalendar token="manager-token" timezone="America/Toronto" />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "start",
+    }));
+    fireEvent.click(screen.getByText("Filters & calendar options"));
+    expect(screen.getByLabelText("Employee")).toHaveTextContent("Lily Rahjoo");
+    expect(screen.getByText(/Friday, October 9, 2026/)).toBeInTheDocument();
   });
 
   it("uses the selected employee timezone for display, day grouping, and mutation dates", async () => {

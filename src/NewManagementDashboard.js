@@ -10,6 +10,7 @@ import {
   TextField,
   Button,
   Link,
+  Menu,
   MenuItem,
   Stack,
   Accordion,
@@ -90,6 +91,9 @@ import {
   PhotoCamera as PhotoCameraIcon,
   SwapHoriz as SwapHorizIcon,
   RocketLaunchOutlined,
+  MoreVert,
+  EditOutlined,
+  DeleteOutline,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
@@ -832,15 +836,26 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [availabilitySummary, setAvailabilitySummary] = useState(null);
+  const [availabilitySlots, setAvailabilitySlots] = useState([]);
   const [availabilityDialog, setAvailabilityDialog] = useState(null);
   const [availabilityStart, setAvailabilityStart] = useState("09:00");
   const [availabilityEnd, setAvailabilityEnd] = useState("17:00");
   const [availabilitySubmitting, setAvailabilitySubmitting] = useState(false);
+  const [slotMenuAnchor, setSlotMenuAnchor] = useState(null);
+  const [slotMenuTarget, setSlotMenuTarget] = useState(null);
+  const [slotDialog, setSlotDialog] = useState(null);
+  const [slotEditForm, setSlotEditForm] = useState({ date: "", start: "", end: "" });
+  const [slotSubmitting, setSlotSubmitting] = useState(false);
+  const [bookingEditOpen, setBookingEditOpen] = useState(false);
+  const [bookingCancelOpen, setBookingCancelOpen] = useState(false);
+  const [bookingEditForm, setBookingEditForm] = useState({ date: "", start: "", end: "" });
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const calendarRef = useRef(null);
   const availabilityRequestRef = useRef(0);
   const availabilityMutationRef = useRef(0);
   const availabilityContextRef = useRef("");
   const selectedDayBookingsRef = useRef(null);
+  const defaultEmployeeAppliedRef = useRef(false);
   const isManager = Boolean(currentUserInfo?.is_manager);
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
@@ -929,13 +944,6 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  useEffect(() => {
-    if (!isSelfOnly) return;
-    if (currentUserInfo?.id) {
-      setSelectedRecruiter(String(currentUserInfo.id));
-    }
-  }, [isSelfOnly, currentUserInfo]);
-
   const recruiterDeptById = useMemo(() => {
     const map = new Map();
     recruiters.forEach((r) => {
@@ -971,6 +979,30 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const requestedAppointmentId = bookingQuery.get("appointmentId") || "";
   const autoOpenedClientBookingRef = useRef("");
   const autoOpenedAppointmentRef = useRef("");
+
+  useEffect(() => {
+    if (defaultEmployeeAppliedRef.current || !currentUserInfo?.id) return;
+    if (requestedClientId || requestedAppointmentId) return;
+    if (isSelfOnly) {
+      defaultEmployeeAppliedRef.current = true;
+      setSelectedRecruiter(String(currentUserInfo.id));
+      return;
+    }
+    if (!isManager || !recruiters.length) return;
+    const currentId = String(currentUserInfo.id);
+    const currentEmail = String(currentUserInfo.email || "").trim().toLowerCase();
+    const ownEmployee = recruiters.find((row) =>
+      String(row.id) === currentId ||
+      (currentEmail && String(row.email || "").trim().toLowerCase() === currentEmail)
+    );
+    defaultEmployeeAppliedRef.current = true;
+    if (!ownEmployee) return;
+    const employeeTimezone = resolveBookingCalendarTimezone(ownEmployee);
+    const employeeToday = calendarDateKey(new Date(), employeeTimezone);
+    setSelectedRecruiter(String(ownEmployee.id));
+    setSelectedDate(employeeToday);
+    calendarRef.current?.getApi()?.gotoDate(employeeToday);
+  }, [currentUserInfo, isManager, isSelfOnly, recruiters, requestedAppointmentId, requestedClientId]);
 
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
@@ -1049,6 +1081,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     availabilityContextRef.current = availabilityContextKey;
     availabilityRequestRef.current += 1;
     setAvailabilitySummary(null);
+    setAvailabilitySlots([]);
     setAvailabilityError("");
     setAvailabilityLoading(false);
     setAvailabilityDialog((current) =>
@@ -1059,6 +1092,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const loadAvailabilitySummary = useCallback(async () => {
     if (!canManageAvailability || !selectedRecruiter) {
       setAvailabilitySummary(null);
+      setAvailabilitySlots([]);
       setAvailabilityError("");
       setAvailabilityLoading(false);
       return;
@@ -1085,12 +1119,18 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         available: dayEvents.filter((event) => !event.booked).length,
         booked: dayEvents.filter((event) => Boolean(event.booked)).length,
       });
+      setAvailabilitySlots(
+        dayEvents
+          .filter((event) => !event.booked)
+          .sort((left, right) => String(left.start || left.start_time || "").localeCompare(String(right.start || right.start_time || "")))
+      );
     } catch (err) {
       if (
         requestId !== availabilityRequestRef.current ||
         availabilityContextRef.current !== requestedContext
       ) return;
       setAvailabilitySummary(null);
+      setAvailabilitySlots([]);
       setAvailabilityError(err?.response?.data?.error || "Failed to load availability.");
     } finally {
       if (
@@ -1177,6 +1217,86 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       if (responseGuard === availabilityMutationRef.current) {
         setAvailabilitySubmitting(false);
       }
+    }
+  };
+
+  const availabilityIdForSlot = (slot) => {
+    if (slot?.availability_id != null) return slot.availability_id;
+    const match = String(slot?.id || "").match(/^avail-(\d+)/);
+    return match ? Number(match[1]) : null;
+  };
+
+  const openSlotMenu = (event, slot) => {
+    event.stopPropagation();
+    setSlotMenuTarget(slot);
+    setSlotMenuAnchor(event.currentTarget);
+  };
+
+  const closeSlotMenu = () => {
+    setSlotMenuAnchor(null);
+    setSlotMenuTarget(null);
+  };
+
+  const openSlotDialog = (kind) => {
+    const slot = slotMenuTarget;
+    const availabilityId = availabilityIdForSlot(slot);
+    if (!slot || !availabilityId || !selectedRecruiterRecord) return;
+    setSlotEditForm({
+      date: String(slot.date || selectedDate),
+      start: String(slot.start_time || "").slice(0, 5),
+      end: String(slot.end_time || "").slice(0, 5),
+    });
+    setSlotDialog({
+      kind,
+      contextKey: availabilityContextKey,
+      availabilityId,
+      employeeName: selectedRecruiterName,
+      timezone: selectedRecruiterTimezone,
+      date: String(slot.date || selectedDate),
+      start: String(slot.start_time || "").slice(0, 5),
+      end: String(slot.end_time || "").slice(0, 5),
+    });
+    closeSlotMenu();
+  };
+
+  const submitSlotMutation = async () => {
+    if (!slotDialog || slotSubmitting) return;
+    if (
+      slotDialog.kind === "edit" &&
+      (!slotEditForm.date || !slotEditForm.start || !slotEditForm.end || slotEditForm.end <= slotEditForm.start)
+    ) {
+      setSnackbar({ open: true, message: "End time must be later than start time.", severity: "error" });
+      return;
+    }
+    const submitted = { ...slotDialog };
+    setSlotSubmitting(true);
+    try {
+      if (submitted.kind === "delete") {
+        await api.delete(`/manager/availability/${submitted.availabilityId}`);
+      } else {
+        await api.put(`/manager/availability/${submitted.availabilityId}`, {
+          date: slotEditForm.date,
+          start_time: slotEditForm.start,
+          end_time: slotEditForm.end,
+        });
+      }
+      if (availabilityContextRef.current !== submitted.contextKey) return;
+      setSlotDialog(null);
+      setSnackbar({
+        open: true,
+        message: submitted.kind === "delete" ? "Availability slot deleted." : "Availability slot updated.",
+        severity: "success",
+      });
+      await Promise.all([loadBookings(), loadAvailabilitySummary()]);
+    } catch (err) {
+      if (availabilityContextRef.current !== submitted.contextKey) return;
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || `Failed to ${submitted.kind} availability slot.`,
+        severity: "error",
+      });
+    } finally {
+      if (availabilityContextRef.current === submitted.contextKey) setSlotSubmitting(false);
     }
   };
 
@@ -1462,9 +1582,104 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     }
   };
 
+  const openBookingEditDialog = () => {
+    if (!selected || !isManager) return;
+    setBookingEditForm({
+      date: String(selected.local_date || selected.date || ""),
+      start: String(selected.local_start_time || selected.start_time || "").slice(0, 5),
+      end: String(selected.local_end_time || selected.end_time || "").slice(0, 5),
+    });
+    setBookingEditOpen(true);
+  };
+
+  const submitBookingEdit = async () => {
+    if (!selected || !isManager || bookingSubmitting) return;
+    if (
+      !bookingEditForm.date ||
+      !bookingEditForm.start ||
+      !bookingEditForm.end ||
+      bookingEditForm.end <= bookingEditForm.start
+    ) {
+      setSnackbar({ open: true, message: "End time must be later than start time.", severity: "error" });
+      return;
+    }
+    const bookingId = selected.id;
+    setBookingSubmitting(true);
+    try {
+      const { data } = await api.patch(`/api/manager/bookings/${bookingId}`, {
+        date: bookingEditForm.date,
+        start_time: bookingEditForm.start,
+        end_time: bookingEditForm.end,
+      });
+      setSelected((current) => current && String(current.id) === String(bookingId)
+        ? {
+            ...current,
+            local_date: bookingEditForm.date,
+            local_start_time: bookingEditForm.start,
+            local_end_time: bookingEditForm.end,
+          }
+        : current);
+      setBookingEditOpen(false);
+      const delivery = data?.email_delivery;
+      const notificationFailed = Number(delivery?.failed_to_queue || 0) > 0;
+      const notificationQueued = Number(delivery?.queued || 0) > 0;
+      setSnackbar({
+        open: true,
+        message: notificationFailed
+          ? "Booking rescheduled, but the client notification could not be queued."
+          : notificationQueued
+            ? "Booking rescheduled and the client notification was queued."
+            : "Booking rescheduled. Payment status was unchanged.",
+        severity: notificationFailed ? "warning" : "success",
+      });
+      await Promise.all([loadBookings(), loadAvailabilitySummary()]);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || "Failed to reschedule booking.",
+        severity: "error",
+      });
+    } finally {
+      setBookingSubmitting(false);
+    }
+  };
+
+  const submitBookingCancellation = async () => {
+    if (!selected || !isManager || bookingSubmitting) return;
+    const bookingId = selected.id;
+    setBookingSubmitting(true);
+    try {
+      const { data } = await api.post(`/api/manager/bookings/${bookingId}/cancel`, {});
+      setBookingCancelOpen(false);
+      setDetailsOpen(false);
+      const delivery = data?.email_delivery;
+      const notificationFailed = Number(delivery?.failed_to_queue || 0) > 0;
+      const notificationQueued = Number(delivery?.queued || 0) > 0;
+      setSnackbar({
+        open: true,
+        message: notificationFailed
+          ? "Booking cancelled, but the client notification could not be queued. Refunds remain separate."
+          : notificationQueued
+            ? "Booking cancelled and the client notification was queued. Refunds remain separate."
+            : "Booking cancelled. Refunds remain separate.",
+        severity: notificationFailed ? "warning" : "success",
+      });
+      await Promise.all([loadBookings(), loadAvailabilitySummary()]);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || "Failed to cancel booking.",
+        severity: "error",
+      });
+    } finally {
+      setBookingSubmitting(false);
+    }
+  };
+
   const isPaid = (status) => String(status || "").toLowerCase() === "paid";
   const statusKey = String(selected?.status || "").toLowerCase().replace("-", "_");
   const paymentKey = String(selected?.payment_status || "").toLowerCase();
+  const bookingCanBeManaged = isManager && !["cancelled", "completed"].includes(statusKey);
   const hasCardOnFile = Boolean(selected?.has_card_on_file || selected?.card_on_file);
   const currency = (selected?.currency || "USD").toUpperCase();
   const baseCents = toCents(baseAmount);
@@ -1474,6 +1689,12 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       ? toCents(customTip)
       : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
   const totalCents = Math.max(0, baseCents + extraCents + tipCents);
+
+  const openDetailedSlotManagement = () => {
+    const params = new URLSearchParams({ panel: "slots", focus: "day-slots", date: selectedDate });
+    if (selectedRecruiter) params.set("recruiterId", selectedRecruiter);
+    navigate(`/manager/advanced-management?${params.toString()}`);
+  };
 
   const calendarVars = {
     "--fc-button-text-color": theme.palette.text.primary,
@@ -1887,28 +2108,163 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
               <Stack spacing={1} mt={2}>
                 {availabilityError ? <Alert severity="error">{availabilityError}</Alert> : null}
                 {availabilitySummary ? (
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <Chip
-                      label={`${availabilitySummary.available} available fragment${availabilitySummary.available === 1 ? "" : "s"}`}
-                      color="success"
-                      variant="outlined"
-                    />
-                    <Chip
-                      label={`${availabilitySummary.booked} booked fragment${availabilitySummary.booked === 1 ? "" : "s"}`}
-                      variant="outlined"
-                    />
+                  <Stack spacing={1.25}>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      <Chip
+                        label={`${availabilitySummary.available} available fragment${availabilitySummary.available === 1 ? "" : "s"}`}
+                        color="success"
+                        variant="outlined"
+                      />
+                      <Chip
+                        label={`${availabilitySummary.booked} booked fragment${availabilitySummary.booked === 1 ? "" : "s"}`}
+                        variant="outlined"
+                      />
+                    </Stack>
+                    {availabilitySlots.length ? (
+                      <Box
+                        aria-label={`Available slots for ${selectedRecruiterName}`}
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+                          gap: 1,
+                        }}
+                      >
+                        {availabilitySlots.map((slot) => (
+                          <Paper
+                            key={`${slot.id || slot.availability_id}-${slot.start || slot.start_time}`}
+                            variant="outlined"
+                            sx={{
+                              p: 1.25,
+                              borderColor: alpha(theme.palette.success.main, 0.55),
+                              borderLeft: `4px solid ${theme.palette.success.main}`,
+                              backgroundColor: alpha(theme.palette.success.main, 0.09),
+                            }}
+                          >
+                            <Stack direction="row" alignItems="center" spacing={1}>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography fontWeight={800} variant="body2">
+                                  {String(slot.start_time || "").slice(0, 5)}–{String(slot.end_time || "").slice(0, 5)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Available
+                                  {slot.service_name ? ` • ${slot.service_name}` : ""}
+                                </Typography>
+                              </Box>
+                              <Tooltip title="Edit or delete this free slot">
+                                <IconButton
+                                  size="small"
+                                  aria-label={`Manage ${String(slot.start_time || "").slice(0, 5)} availability`}
+                                  onClick={(event) => openSlotMenu(event, slot)}
+                                >
+                                  <MoreVert fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No free availability remains for this day.
+                      </Typography>
+                    )}
                   </Stack>
                 ) : availabilityLoading ? (
                   <Typography variant="body2" color="text.secondary">Loading availability…</Typography>
                 ) : null}
-                <Typography variant="caption" color="text.secondary">
-                  Individual slot editing and deletion remain in Advanced Management.
-                </Typography>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={openDetailedSlotManagement}
+                  sx={{ alignSelf: "flex-start", px: 0 }}
+                >
+                  Open detailed slot management
+                </Button>
               </Stack>
             )}
           </Paper>
         ) : null}
       </Stack>
+
+      <Menu anchorEl={slotMenuAnchor} open={Boolean(slotMenuAnchor)} onClose={closeSlotMenu}>
+        <MenuItem onClick={() => openSlotDialog("edit")}>
+          <EditOutlined fontSize="small" sx={{ mr: 1 }} />
+          Edit slot
+        </MenuItem>
+        <MenuItem onClick={() => openSlotDialog("delete")}>
+          <DeleteOutline fontSize="small" sx={{ mr: 1 }} />
+          Delete slot
+        </MenuItem>
+      </Menu>
+
+      <Dialog
+        open={Boolean(slotDialog)}
+        onClose={() => !slotSubmitting && setSlotDialog(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>{slotDialog?.kind === "delete" ? "Delete this availability slot?" : "Edit availability slot"}</DialogTitle>
+        <DialogContent dividers>
+          {slotDialog ? (
+            <Stack spacing={2}>
+              <Alert severity="info">
+                {slotDialog.employeeName} • {formatCalendarDateLabel(slotDialog.date, undefined, slotDialog.timezone)} • {slotDialog.timezone}
+              </Alert>
+              {slotDialog.kind === "delete" ? (
+                <Alert severity="warning">
+                  This removes only the selected free availability. A protected or booked slot cannot be deleted.
+                </Alert>
+              ) : (
+                <>
+                  <TextField
+                    label="Date"
+                    type="date"
+                    value={slotEditForm.date}
+                    onChange={(event) => setSlotEditForm((current) => ({ ...current, date: event.target.value }))}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                    disabled={slotSubmitting}
+                  />
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                    <TextField
+                      label="Start time"
+                      type="time"
+                      value={slotEditForm.start}
+                      onChange={(event) => setSlotEditForm((current) => ({ ...current, start: event.target.value }))}
+                      inputProps={{ step: 300 }}
+                      fullWidth
+                      disabled={slotSubmitting}
+                    />
+                    <TextField
+                      label="End time"
+                      type="time"
+                      value={slotEditForm.end}
+                      onChange={(event) => setSlotEditForm((current) => ({ ...current, end: event.target.value }))}
+                      inputProps={{ step: 300 }}
+                      fullWidth
+                      disabled={slotSubmitting}
+                    />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    Times are interpreted in {slotDialog.timezone}. Existing bookings remain protected.
+                  </Typography>
+                </>
+              )}
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSlotDialog(null)} disabled={slotSubmitting}>Cancel</Button>
+          <Button
+            variant="contained"
+            color={slotDialog?.kind === "delete" ? "error" : "primary"}
+            onClick={submitSlotMutation}
+            disabled={slotSubmitting}
+          >
+            {slotSubmitting ? "Saving…" : slotDialog?.kind === "delete" ? "Delete Slot" : "Save Slot"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={Boolean(availabilityDialog)}
@@ -2027,6 +2383,40 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                   <Chip size="small" label={selected.payment_status || "unpaid"} variant="outlined" />
                 </Stack>
               </Box>
+
+              {isManager ? (
+                <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.25}
+                    alignItems={{ sm: "center" }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography fontWeight={700}>Manage booking</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Change the appointment time or cancel it. Payment and refund status are managed separately.
+                      </Typography>
+                    </Box>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button
+                        variant="outlined"
+                        onClick={openBookingEditDialog}
+                        disabled={!bookingCanBeManaged || bookingSubmitting}
+                      >
+                        Edit date &amp; time
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => setBookingCancelOpen(true)}
+                        disabled={!bookingCanBeManaged || bookingSubmitting}
+                      >
+                        Cancel booking
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ) : null}
 
               <Box>
                 <Typography variant="subtitle1" fontWeight={700} mb={1}>
@@ -2254,6 +2644,87 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         </DialogContent>
         <DialogActions sx={{ display: { xs: "none", sm: "flex" }, px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
           <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={bookingEditOpen}
+        onClose={() => !bookingSubmitting && setBookingEditOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Edit booking date and time</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Alert severity="info">
+              {selected?.recruiter?.full_name || selectedRecruiterName || "Employee"} • {selected?.appointment_timezone || calendarTimezone}
+            </Alert>
+            <TextField
+              label="Date"
+              type="date"
+              value={bookingEditForm.date}
+              onChange={(event) => setBookingEditForm((current) => ({ ...current, date: event.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              disabled={bookingSubmitting}
+            />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Start time"
+                type="time"
+                value={bookingEditForm.start}
+                onChange={(event) => setBookingEditForm((current) => ({ ...current, start: event.target.value }))}
+                inputProps={{ step: 300 }}
+                fullWidth
+                disabled={bookingSubmitting}
+              />
+              <TextField
+                label="End time"
+                type="time"
+                value={bookingEditForm.end}
+                onChange={(event) => setBookingEditForm((current) => ({ ...current, end: event.target.value }))}
+                inputProps={{ step: 300 }}
+                fullWidth
+                disabled={bookingSubmitting}
+              />
+            </Stack>
+            <Alert severity="warning">
+              Saving reschedules the appointment and queues the existing client notification. Payment status is not changed.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBookingEditOpen(false)} disabled={bookingSubmitting}>Cancel</Button>
+          <Button variant="contained" onClick={submitBookingEdit} disabled={bookingSubmitting}>
+            {bookingSubmitting ? "Saving…" : "Save new time"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={bookingCancelOpen}
+        onClose={() => !bookingSubmitting && setBookingCancelOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Cancel this booking?</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2">
+              This cancels the client appointment and queues the existing cancellation notification.
+            </Typography>
+            <Alert severity={isPaid(paymentKey) ? "warning" : "info"}>
+              {isPaid(paymentKey)
+                ? "This booking is paid. Cancelling does not issue a refund; handle any refund separately in Payments & Refunds."
+                : "Cancelling does not create, collect, or refund a payment."}
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBookingCancelOpen(false)} disabled={bookingSubmitting}>Keep booking</Button>
+          <Button color="error" variant="contained" onClick={submitBookingCancellation} disabled={bookingSubmitting}>
+            {bookingSubmitting ? "Cancelling…" : "Cancel booking"}
+          </Button>
         </DialogActions>
       </Dialog>
 

@@ -72,7 +72,18 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const calRef = useRef(null);
+  const daySlotsRef = useRef(null);
+  const focusedDaySlotsRef = useRef(false);
   const isRecruiter = window.location.pathname.includes("recruiter");
+  const slotQuery = useMemo(
+    () => new URLSearchParams(typeof window !== "undefined" ? window.location.search || "" : ""),
+    []
+  );
+  const requestedRecruiterId = slotQuery.get("recruiterId") || "";
+  const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(slotQuery.get("date") || "")
+    ? slotQuery.get("date")
+    : "";
+  const focusDaySlots = slotQuery.get("focus") === "day-slots";
   const viewerTimezone =
     propTimezone ||
     localStorage.getItem("timezone") ||
@@ -150,7 +161,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   // “Setmore-style” day rail: which day is selected in the grid?
   const [selectedDate, setSelectedDate] = useState(() =>
-    calendarDateKey(new Date(), viewerTimezone)
+    requestedDate || calendarDateKey(new Date(), viewerTimezone)
   );
 
   // modal + form for creating/editing meetings (unchanged)
@@ -329,6 +340,20 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     fetchRecruiters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, departmentFilter, includeArchived]);
+
+  useEffect(() => {
+    if (
+      requestedRecruiterId &&
+      recruiters.some((row) => String(row.id) === String(requestedRecruiterId))
+    ) {
+      setSelectedRecruiter(requestedRecruiterId);
+    }
+    if (requestedDate) {
+      setSelectedDate(requestedDate);
+      calRef.current?.getApi?.().gotoDate?.(requestedDate);
+    }
+    focusedDaySlotsRef.current = false;
+  }, [recruiters, requestedDate, requestedRecruiterId]);
 
   // load permission flags
   useEffect(() => {
@@ -540,6 +565,17 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     () => groupSlotsByEmployee(daySlots, recruiterNames),
     [daySlots, recruiterNames]
   );
+
+  useEffect(() => {
+    if (!focusDaySlots || !isSmDown || focusedDaySlotsRef.current) return;
+    if (requestedRecruiterId && !recruiters.some((row) => String(row.id) === String(requestedRecruiterId))) return;
+    focusedDaySlotsRef.current = true;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        daySlotsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }, [daySlots.length, focusDaySlots, isSmDown, recruiters, requestedRecruiterId]);
 
   const resetForm = () => {
     setForm({
@@ -1354,7 +1390,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           />
         </Paper>
 
-        <Paper sx={{ p: 2 }} elevation={0} variant="outlined">
+        <Paper ref={daySlotsRef} sx={{ p: 2, scrollMarginTop: 72 }} elevation={0} variant="outlined">
         <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mb: 1 }}>
           <Typography variant="subtitle1" fontWeight={700}>
             {formatCalendarDateLabel(selectedDate, undefined, calendarTimezone)} — {daySlots.length} slot(s)

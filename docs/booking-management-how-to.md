@@ -29,9 +29,17 @@ Managers and team members with **Manage shifts** permission can manage the selec
 - **Edit Available Window** keeps existing free slots whose employee-local start falls inside the chosen range. It does not create, extend, or reopen availability.
 - **Close Day** removes free availability for that employee-local day. Existing bookings are preserved; attendance, payroll, refunds, and shifts are unchanged.
 - The result reports both removed free slots and booked slots that were preserved, including zero-result actions.
-- **Refresh availability** reloads the selected employee's current free/booked fragments. Individual slot editing and deletion remain in Advanced Management.
+- **Refresh availability** reloads the selected employee's current free/booked fragments.
+- Each free slot has an individual **Edit slot** and **Delete slot** menu. These actions use the same protected, audited availability contract as Advanced Management; booked slots cannot be deleted through availability controls.
+- **Open detailed slot management** opens the existing Advanced Management Slots panel on the same employee and date. On mobile, that deep link moves directly to the selected-day slot list.
 
 These actions use the canonical bulk availability endpoints and require manager or Manage shifts permission. Payment-only permission does not grant availability access, and All Employees cannot be used as a mutation target.
+
+When the signed-in manager also has an active employee record, Booking Checkout selects that employee by default and opens on today in the employee's effective timezone. The manager can still choose All Employees or another employee. Appointment/client deep links retain their requested scope instead of being replaced by the default.
+
+## Manage a booked appointment
+
+Managers can open a booking card and use **Manage booking** to change its date/time or cancel it. Rescheduling and cancellation use the established booking endpoints and queue the existing client notification. Payment status is not inferred or changed by these actions. Cancelling a paid appointment does not issue a refund; refunds remain a separate Payments & Refunds action.
 
 ## Step 1: Find a booking
 

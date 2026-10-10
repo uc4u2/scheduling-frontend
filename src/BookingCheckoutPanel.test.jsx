@@ -7,7 +7,13 @@ import { BookingCheckoutPanel } from "./NewManagementDashboard";
 
 jest.mock("./utils/api", () => ({
   __esModule: true,
-  default: { get: jest.fn(), post: jest.fn() },
+  default: {
+    get: jest.fn(),
+    post: jest.fn(),
+    patch: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+  },
 }));
 jest.mock("jspdf", () => jest.fn());
 jest.mock("html2canvas", () => jest.fn());
@@ -102,6 +108,20 @@ const bookings = [
     client: { id: 6, full_name: "Casey Client", email: "casey@example.com" },
     recruiter: { id: 7, full_name: "Riley Artist" },
   },
+  {
+    id: 13,
+    status: "booked",
+    payment_status: "paid",
+    start_iso_local: "2026-10-13T14:00:00-04:00",
+    end_iso_local: "2026-10-13T15:00:00-04:00",
+    local_date: "2026-10-13",
+    local_start_time: "14:00",
+    local_end_time: "15:00",
+    appointment_timezone: "America/Toronto",
+    service: { id: 9, name: "Colour service", base_price: 80 },
+    client: { id: 14, full_name: "Paid Client", email: "paid@example.com" },
+    recruiter: { id: 7, full_name: "Riley Artist" },
+  },
 ];
 
 const setMobileViewport = (mobile) => {
@@ -148,6 +168,7 @@ describe("BookingCheckoutPanel", () => {
               id: 7,
               first_name: "Riley",
               last_name: "Artist",
+              email: "riley@example.com",
               department_id: 2,
               timezone: "America/Toronto",
               effective_timezone: "America/Toronto",
@@ -159,7 +180,17 @@ describe("BookingCheckoutPanel", () => {
         return Promise.resolve({
           data: {
             events: [
-              { recruiter_id: 7, date: "2026-10-13", booked: false },
+              {
+                id: "avail-31-free-0",
+                availability_id: 31,
+                recruiter_id: 7,
+                date: "2026-10-13",
+                start_time: "09:00",
+                end_time: "11:00",
+                start: "2026-10-13T09:00:00-04:00",
+                end: "2026-10-13T11:00:00-04:00",
+                booked: false,
+              },
               { recruiter_id: 7, date: "2026-10-13", booked: true },
             ],
           },
@@ -183,8 +214,23 @@ describe("BookingCheckoutPanel", () => {
     expect(screen.getByText("Casey Client • Riley Artist")).toBeInTheDocument();
     expect(screen.getByText("completed")).toBeInTheDocument();
     expect(screen.getByText("cancelled")).toBeInTheDocument();
-    expect(screen.getByText("paid")).toBeInTheDocument();
+    expect(screen.getAllByText("paid").length).toBeGreaterThan(0);
     expect(screen.getByText("unpaid")).toBeInTheDocument();
+  });
+
+  it("defaults a manager to their own employee record without overriding manual selection", async () => {
+    renderPanel(
+      "/manager/booking-checkout",
+      { id: 7, email: "riley@example.com", is_manager: true, can_manage_shifts: true }
+    );
+
+    fireEvent.click(await screen.findByText("Filters & calendar options"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Employee" })).toHaveTextContent("Riley Artist"));
+    expect(screen.getByTestId("calendar")).toHaveAttribute("data-timezone", "America/Toronto");
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Employee" }));
+    fireEvent.click(screen.getByRole("option", { name: "All Employees" }));
+    expect(screen.getByText(/All departments • All employees/)).toBeInTheDocument();
   });
 
   it("opens the same payment dialog from a day card and calendar event", async () => {
@@ -321,6 +367,65 @@ describe("BookingCheckoutPanel", () => {
       });
     });
     expect(await screen.findByText(/3 free slots removed; 1 booked slot preserved/i)).toBeInTheDocument();
+  });
+
+  it("edits and deletes an individual free slot through the canonical availability endpoint", async () => {
+    api.put.mockResolvedValueOnce({ data: { status: "updated" } });
+    api.delete.mockResolvedValueOnce({ data: { status: "deleted" } });
+    renderPanel();
+    fireEvent.click(screen.getByText("Filters & calendar options"));
+    fireEvent.mouseDown(screen.getByLabelText("Employee"));
+    fireEvent.click(await screen.findByRole("option", { name: "Riley Artist" }));
+    fireEvent.click(screen.getByText("Select October 13"));
+
+    expect(await screen.findByText("1 available fragment")).toBeInTheDocument();
+    const manageSlot = await screen.findByRole("button", { name: "Manage 09:00 availability" });
+    fireEvent.click(manageSlot);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit slot" }));
+    const editDialog = await screen.findByRole("dialog", { name: "Edit availability slot" });
+    fireEvent.change(within(editDialog).getByLabelText("End time"), { target: { value: "10:30" } });
+    fireEvent.click(within(editDialog).getByRole("button", { name: "Save Slot" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/manager/availability/31", {
+      date: "2026-10-13",
+      start_time: "09:00",
+      end_time: "10:30",
+    }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit availability slot" })).not.toBeInTheDocument());
+    fireEvent.click(await screen.findByRole("button", { name: "Manage 09:00 availability" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete slot" }));
+    const deleteDialog = await screen.findByRole("dialog", { name: "Delete this availability slot?" });
+    fireEvent.click(within(deleteDialog).getByRole("button", { name: "Delete Slot" }));
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/manager/availability/31"));
+  });
+
+  it("lets managers reschedule and cancel a booking while keeping refunds separate", async () => {
+    api.patch.mockResolvedValueOnce({ data: { updated: true } });
+    api.post.mockResolvedValueOnce({ data: { message: "cancelled" } });
+    renderPanel();
+    fireEvent.click(await screen.findByText("Select October 13"));
+    fireEvent.click(await screen.findByText("Paid Client • Riley Artist"));
+
+    const paymentDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.click(within(paymentDialog).getByRole("button", { name: "Edit date & time" }));
+    const editDialog = await screen.findByRole("dialog", { name: "Edit booking date and time" });
+    fireEvent.change(within(editDialog).getByLabelText("Start time"), { target: { value: "10:00" } });
+    fireEvent.change(within(editDialog).getByLabelText("End time"), { target: { value: "11:00" } });
+    fireEvent.click(within(editDialog).getByRole("button", { name: "Save new time" }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/api/manager/bookings/13", {
+      date: "2026-10-13",
+      start_time: "10:00",
+      end_time: "11:00",
+    }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit booking date and time" })).not.toBeInTheDocument());
+    const refreshedPaymentDialog = screen.getByRole("dialog", { name: "Collect Payment" });
+
+    fireEvent.click(within(refreshedPaymentDialog).getByRole("button", { name: "Cancel booking" }));
+    const cancelDialog = await screen.findByRole("dialog", { name: "Cancel this booking?" });
+    expect(within(cancelDialog).getByText(/does not issue a refund/i)).toBeInTheDocument();
+    fireEvent.click(within(cancelDialog).getByRole("button", { name: "Cancel booking" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/manager/bookings/13/cancel", {}));
   });
 
   it("uses the employee timezone for a midnight booking and the availability date", async () => {
