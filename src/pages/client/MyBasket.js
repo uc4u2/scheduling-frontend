@@ -29,7 +29,9 @@ import TenantTransactionalShell from "./TenantTransactionalShell";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import {
   BasketBrowseKinds,
+  basketBrowseDescription,
   basketBrowseLabel,
+  defaultBasketBrowseKind,
   inferBasketBrowseKind,
 } from "../../utils/basketNavigation";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
@@ -162,7 +164,12 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   );
 
   const [items, setItems] = useState(() => loadCart());
-  const [browseKind, setBrowseKind] = useState(() => inferBasketBrowseKind(loadCart()));
+  const [browseKind, setBrowseKind] = useState(() =>
+    inferBasketBrowseKind(
+      loadCart(),
+      defaultBasketBrowseKind({ productsReturnTo, servicesReturnTo })
+    )
+  );
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [siteLoading, setSiteLoading] = useState(false);
   const [sitePayload, setSitePayload] = useState(null);
@@ -649,7 +656,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
               Your Basket
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Review services and products before completing your purchase.
+              {basketBrowseDescription(browseKind)}
             </Typography>
           </Box>
           {items.length > 0 && (
