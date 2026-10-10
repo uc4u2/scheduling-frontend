@@ -124,6 +124,8 @@ describe("AllEmployeeSlotsCalendar presentation", () => {
     expect(screen.getByText("Filters & calendar options")).toBeInTheDocument();
     expect(screen.getByText("Calendar timezone: America/Toronto")).toBeInTheDocument();
     expect(await screen.findByTestId("team-calendar")).toBeInTheDocument();
+    expect(mockFullCalendarProps.height).toBe("auto");
+    expect(mockFullCalendarProps.expandRows).toBe(false);
   });
 
   it("uses the selected employee timezone for display, day grouping, and mutation dates", async () => {

@@ -1006,7 +1006,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     events: calendarEvents,
     weekends: showWeekends,
     nowIndicator: true,
-    expandRows: true,
+    // Month view must keep its natural height so every week remains reachable in
+    // the full-screen workspace. Week/day views can still fill their time grid.
+    expandRows: calendarView !== "dayGridMonth",
     dayMaxEvents: 4,
     displayEventEnd: true,
     stickyHeaderDates: true,
@@ -1326,16 +1328,16 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         </AccordionDetails>
       </Accordion>
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: "auto", md: "calc(100vh - 260px)" } }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <Paper
           className="team-availability-calendar"
           sx={{
             p: compactDensity ? 1 : 2,
-            flex: "1 1 auto",
-            minHeight: 520,
+            minHeight: calendarView === "dayGridMonth" ? 0 : 520,
             borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
-            overflow: "hidden",
+            overflowX: "auto",
+            overflowY: "visible",
             width: "100%",
             maxWidth: "100%",
           }}
@@ -1346,7 +1348,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             {...baseCalProps}
             initialView={calendarView}
             initialDate={selectedDate}
-            height="100%"
+            height={calendarView === "dayGridMonth" ? "auto" : (isSmDown ? "auto" : 700)}
             contentHeight="auto"
             key={`${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
           />
