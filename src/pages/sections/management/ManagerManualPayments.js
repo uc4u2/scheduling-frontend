@@ -53,6 +53,11 @@ const statusChipColor = (status) => {
   return "warning";
 };
 
+const createRefundOperationKey = () => {
+  if (window.crypto?.randomUUID) return `manual-refund:${window.crypto.randomUUID()}`;
+  return `manual-refund:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+};
+
 export default function ManagerManualPayments() {
   const [mode, setMode] = useState("existing"); // existing | new
   const [clients, setClients] = useState([]);
@@ -79,6 +84,7 @@ export default function ManagerManualPayments() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundTarget, setRefundTarget] = useState(null);
   const [refundAmount, setRefundAmount] = useState("");
+  const [refundOperationKey, setRefundOperationKey] = useState("");
   const [refunding, setRefunding] = useState(false);
 
   const [snackbar, setSnackbar] = useState({ open: false, severity: "info", message: "" });
@@ -199,6 +205,7 @@ export default function ManagerManualPayments() {
   const openRefundDialog = (row) => {
     setRefundTarget(row);
     setRefundAmount("");
+    setRefundOperationKey(createRefundOperationKey());
     setRefundOpen(true);
   };
 
@@ -206,14 +213,16 @@ export default function ManagerManualPayments() {
     if (!refundTarget) return;
     setRefunding(true);
     try {
-      const payload = {};
+      const payload = { idempotency_key: refundOperationKey || createRefundOperationKey() };
       const valNum = Number(refundAmount || 0);
       if (valNum > 0) payload.amount_cents = Math.round(valNum * 100);
+      else payload.refund_remaining = true;
       const res = await api.post(`/api/manager/manual-payments/${refundTarget.id}/refund`, payload);
       openSnackbar(res?.data?.message || "Refund processed.", "success");
       setRefundOpen(false);
       setRefundTarget(null);
       setRefundAmount("");
+      setRefundOperationKey("");
       await loadManualPayments();
     } catch (e) {
       const msg = e?.response?.data?.error || "Refund failed.";
@@ -549,7 +558,8 @@ export default function ManagerManualPayments() {
         <DialogContent dividers>
           <Stack spacing={2}>
             <Alert severity="info">
-              Leave blank to refund the full amount. Set a smaller amount for a partial refund.
+              Leave blank to refund the remaining refundable balance. Set a smaller amount for a
+              partial refund.
             </Alert>
             <TextField
               label={`Refund amount (${refundTarget?.currency || currency})`}
