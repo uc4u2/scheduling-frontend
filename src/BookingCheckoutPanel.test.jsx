@@ -122,6 +122,19 @@ const bookings = [
     client: { id: 14, full_name: "Paid Client", email: "paid@example.com" },
     recruiter: { id: 7, full_name: "Riley Artist" },
   },
+  {
+    id: 14,
+    status: "booked",
+    payment_status: "unpaid",
+    start_iso_local: "2026-10-05T16:00:00-04:00",
+    end_iso_local: "2026-10-05T17:00:00-04:00",
+    local_date: "2026-10-05",
+    local_start_time: "16:00",
+    local_end_time: "17:00",
+    service: { id: 10, name: "Team booking" },
+    client: { id: 15, full_name: "Team Client", email: "team@example.com" },
+    recruiter: { id: 8, full_name: "Other Artist" },
+  },
 ];
 
 const setMobileViewport = (mobile) => {
@@ -227,10 +240,29 @@ describe("BookingCheckoutPanel", () => {
     fireEvent.click(await screen.findByText("Filters & calendar options"));
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Employee" })).toHaveTextContent("Riley Artist"));
     expect(screen.getByTestId("calendar")).toHaveAttribute("data-timezone", "America/Toronto");
+    expect(screen.queryByText("Calendar event Team booking")).not.toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Employee" }));
     fireEvent.click(screen.getByRole("option", { name: "All Employees" }));
     expect(screen.getByText(/All departments • All employees/)).toBeInTheDocument();
+  });
+
+  it("keeps a primary manager on the team-wide calendar by default", async () => {
+    renderPanel(
+      "/manager/booking-checkout",
+      {
+        id: 7,
+        email: "riley@example.com",
+        is_manager: true,
+        is_primary: true,
+        can_manage_shifts: true,
+      }
+    );
+
+    fireEvent.click(await screen.findByText("Filters & calendar options"));
+    expect(await screen.findByText(/All departments • All employees/)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Employee" })).not.toHaveTextContent("Riley Artist");
+    expect(screen.getByText("Calendar event Team booking")).toBeInTheDocument();
   });
 
   it("opens the same payment dialog from a day card and calendar event", async () => {

@@ -989,6 +989,10 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       return;
     }
     if (!isManager || !recruiters.length) return;
+    if (currentUserInfo.is_primary) {
+      defaultEmployeeAppliedRef.current = true;
+      return;
+    }
     const currentId = String(currentUserInfo.id);
     const currentEmail = String(currentUserInfo.email || "").trim().toLowerCase();
     const ownEmployee = recruiters.find((row) =>

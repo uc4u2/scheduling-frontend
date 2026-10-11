@@ -35,7 +35,7 @@ Managers and team members with **Manage shifts** permission can manage the selec
 
 These actions use the canonical bulk availability endpoints and require manager or Manage shifts permission. Payment-only permission does not grant availability access, and All Employees cannot be used as a mutation target.
 
-When the signed-in manager also has an active employee record, Booking Checkout selects that employee by default and opens on today in the employee's effective timezone. The manager can still choose All Employees or another employee. Appointment/client deep links retain their requested scope instead of being replaced by the default.
+When a signed-in non-primary manager also has an active employee record, Booking Checkout selects that employee by default and opens on today in the employee's effective timezone. Primary managers retain the team-wide All Employees calendar by default so another employee's booking is not hidden after authentication finishes. Managers can still choose All Employees or another employee. Appointment/client deep links retain their requested scope instead of being replaced by the default.
 
 ## Manage a booked appointment
 
