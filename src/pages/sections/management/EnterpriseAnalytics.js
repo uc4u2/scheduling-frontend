@@ -98,7 +98,11 @@ export default function EnterpriseAnalytics({ defaultTab } = {}) {
   const [wfErr, setWfErr] = useState("");
 
   // Helpers
-  const fmtMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
+  const fmtMoney = (n, currency = data?.kpis?.currency || "USD") =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency || "USD",
+    }).format(Number(n || 0));
   const pct = (n) => `${(Number(n || 0) * 100).toFixed(1)}%`;
   const fmtHours = (n) => `${Number(n || 0).toFixed(1)} h`;
 
@@ -125,7 +129,17 @@ export default function EnterpriseAnalytics({ defaultTab } = {}) {
         tz
       )}`;
       const { data } = await api.get(url, auth);
-      setTips(data?.tips_by_recipient || []);
+      const groups = Array.isArray(data?.currency_groups) ? data.currency_groups : [];
+      setTips(
+        groups.length
+          ? groups.flatMap((groupRow) =>
+              (groupRow?.tips_by_recipient || []).map((row) => ({
+                ...row,
+                currency: row.currency || groupRow.currency,
+              }))
+            )
+          : data?.tips_by_recipient || []
+      );
     } catch {
       setTips([]);
     }
@@ -207,10 +221,13 @@ export default function EnterpriseAnalytics({ defaultTab } = {}) {
   const k = data?.kpis || {};
   const util = data?.utilization_by_provider || [];
   const topServices = data?.top_services || [];
+  const topServiceCurrencyGroups = data?.top_services_currency_groups || [];
   const series = data?.series || [];
+  const seriesCurrencyGroups = data?.series_currency_groups || [];
   const clients = data?.clients || {};
   const coupon = data?.coupon || {};
   const win = data?.window || {};
+  const monetaryGroups = Array.isArray(k.currency_groups) ? k.currency_groups : [];
 
   // Shorthands (advanced)
   const adv = advanced || {};
@@ -501,24 +518,33 @@ const ClientsTab = (
                   help={`${k.no_show_appointments || 0} no-shows`}
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
-                <KPI label="Gross Balance" value={fmtMoney(k.gross_balance)} />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <KPI label="Tips" value={fmtMoney(k.tips_total)} />
-              </Grid>
-
-              <Grid item xs={12} md={3}>
-                <KPI label="Refunds" value={fmtMoney(k.refunds_total)} />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <KPI label="Net Revenue" value={fmtMoney(k.net_revenue)} />
-              </Grid>
+              {(monetaryGroups.length ? monetaryGroups : [{
+                currency: k.currency,
+                gross_balance: k.gross_balance,
+                gross_tips: k.tips_total,
+                confirmed_refunds: k.refunds_total,
+                net_collected: k.net_collected,
+              }]).map((money) => (
+                <React.Fragment key={money.currency || "single"}>
+                  <Grid item xs={12} md={3}>
+                    <KPI label={`Service amount${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.gross_balance, money.currency)} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <KPI label={`Gross tips${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.gross_tips, money.currency)} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <KPI label={`Confirmed refunds${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.confirmed_refunds, money.currency)} help={money.service_refund_allocation === "unallocated" ? "Refund allocation between service and tip is unknown." : undefined} />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <KPI label={`Net collected${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.net_collected, money.currency)} />
+                  </Grid>
+                </React.Fragment>
+              ))}
               <Grid item xs={12} md={3}>
                 <KPI
                   label="Tip Rate"
                   value={pct(k.tip_rate)}
-                  help={`Avg tip ${fmtMoney(k.avg_tip)}`}
+                  help={k.avg_tip != null ? `Avg tip ${fmtMoney(k.avg_tip, k.currency)}` : "Average tip is shown only for a single currency."}
                 />
               </Grid>
               <Grid item xs={12} md={3}>
@@ -599,43 +625,29 @@ const ClientsTab = (
             description="Bookings and revenue by bucket"
             sx={{ mb: 2 }}
           >
-            {series.length === 0 ? (
+            {series.length === 0 && seriesCurrencyGroups.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No data in range.
               </Typography>
             ) : (
-              <Grid container spacing={1}>
-                {series.map((row) => (
-                  <Grid item xs={12} md={6} key={row.bucket}>
-                    <Box
-                      sx={{
-                        p: 1,
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography variant="subtitle2">{row.bucket}</Typography>
-                      <Stack
-                        direction="row"
-                        spacing={2}
-                        alignItems="center"
-                        sx={{ mt: 1 }}
-                      >
-                        <Chip
-                          size="small"
-                          label={`Bookings: ${row.bookings ?? 0}`}
-                        />
-                        <Chip
-                          size="small"
-                          color="primary"
-                          label={`Revenue: ${fmtMoney(row.revenue)}`}
-                        />
-                      </Stack>
-                    </Box>
+              (seriesCurrencyGroups.length ? seriesCurrencyGroups : [{ currency: k.currency, items: series }]).map((currencyGroup) => (
+                <Box key={currencyGroup.currency || "single"} sx={{ mb: 2 }}>
+                  {currencyGroup.currency ? <Typography variant="subtitle2" sx={{ mb: 1 }}>{currencyGroup.currency}</Typography> : null}
+                  <Grid container spacing={1}>
+                    {(currencyGroup.items || []).map((row) => (
+                      <Grid item xs={12} md={6} key={`${currencyGroup.currency || "single"}-${row.bucket}`}>
+                        <Box sx={{ p: 1, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+                          <Typography variant="subtitle2">{row.bucket}</Typography>
+                          <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
+                            <Chip size="small" label={`Bookings: ${row.bookings ?? 0}`} />
+                            <Chip size="small" color="primary" label={`Revenue: ${fmtMoney(row.revenue, currencyGroup.currency)}`} />
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    ))}
                   </Grid>
-                ))}
-              </Grid>
+                </Box>
+              ))
             )}
           </SectionCard>
 
@@ -672,33 +684,27 @@ const ClientsTab = (
             {/* Top services */}
             <Grid item xs={12} md={6}>
               <SectionCard title="Top Services by Revenue">
-                {topServices.length === 0 ? (
+                {topServices.length === 0 && topServiceCurrencyGroups.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
                     No revenue yet.
                   </Typography>
                 ) : (
-                  topServices.map((s, idx) => (
-                    <Box key={s.service_id ?? idx} sx={{ mb: 1.5 }}>
-                      <Stack direction="row" justifyContent="space-between">
-                        <Typography variant="subtitle2">{s.service}</Typography>
-                        <Typography variant="subtitle2">
-                          {fmtMoney(s.revenue)}
-                        </Typography>
-                      </Stack>
-                      <LinearProgress
-                        variant="determinate"
-                        value={Math.min(
-                          100,
-                          Math.round(
-                            (100 * Number(s.revenue || 0)) /
-                              Math.max(
-                                1,
-                                Number(topServices[0]?.revenue || 0)
-                              )
-                          )
-                        )}
-                        sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
-                      />
+                  (topServiceCurrencyGroups.length ? topServiceCurrencyGroups : [{ currency: k.currency, items: topServices }]).map((currencyGroup) => (
+                    <Box key={currencyGroup.currency || "single"} sx={{ mb: 2 }}>
+                      {currencyGroup.currency ? <Typography variant="caption" color="text.secondary">{currencyGroup.currency}</Typography> : null}
+                      {(currencyGroup.items || []).map((s, idx) => (
+                        <Box key={`${currencyGroup.currency || "single"}-${s.service_id ?? idx}`} sx={{ mb: 1.5 }}>
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography variant="subtitle2">{s.service}</Typography>
+                            <Typography variant="subtitle2">{fmtMoney(s.revenue, currencyGroup.currency)}</Typography>
+                          </Stack>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(100, Math.round((100 * Number(s.revenue || 0)) / Math.max(1, Number(currencyGroup.items?.[0]?.revenue || 0))))}
+                            sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
+                          />
+                        </Box>
+                      ))}
                     </Box>
                   ))
                 )}
@@ -1502,8 +1508,8 @@ const ClientsTab = (
       {Filters}
 
       <SectionCard
-        title="Tip Leaderboard (Payroll Ready)"
-        description="Aggregate tips by recipient in the selected range"
+        title="Tip Leaderboard"
+        description="Gross captured tips by recipient and original currency. This view does not post tips to payroll."
       >
         {tips.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
@@ -1525,7 +1531,7 @@ const ClientsTab = (
                 </Typography>
                 <Stack direction="row" spacing={2} alignItems="center">
                   <Chip label={`Tips: ${t.tip_count ?? 0}`} />
-                  <Chip color="primary" label={fmtMoney(t.tip_total)} />
+                  <Chip color="primary" label={fmtMoney(t.tip_total, t.currency)} />
                 </Stack>
               </Stack>
               <LinearProgress
@@ -1534,7 +1540,12 @@ const ClientsTab = (
                   100,
                   Math.round(
                     (100 * Number(t.tip_total || 0)) /
-                      Math.max(1, Number(tips[0]?.tip_total || 0))
+                      Math.max(
+                        1,
+                        ...tips
+                          .filter((row) => (row.currency || "USD") === (t.currency || "USD"))
+                          .map((row) => Number(row.tip_total || 0))
+                      )
                   )
                 )}
                 sx={{ mt: 0.5, height: 6, borderRadius: 1 }}

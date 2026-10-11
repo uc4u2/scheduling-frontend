@@ -102,6 +102,7 @@ import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
 
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "./utils/api";
+import { withManagerBookingPaymentBreakdown } from "./utils/bookingPaymentBreakdown";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import AllEmployeeSlotsCalendar from "./pages/sections/AllEmployeeSlotsCalendar";
@@ -1502,7 +1503,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     const currency = (selected?.currency || "USD").toUpperCase();
     const description = `Booking #${selected.id} • ${selected?.service?.name || "Service"}`;
     try {
-      const payload = {
+      const payload = withManagerBookingPaymentBreakdown({
         appointment_id: selected.id,
         currency,
         description,
@@ -1513,7 +1514,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         ...(clientId
           ? { client_id: clientId }
           : { client_email: clientEmail, client_name: selected?.client?.full_name || undefined }),
-      };
+      }, { baseCents, extraCents, tipCents, currency });
       const { data } = await api.post("/api/manager/manual-payments", payload);
       const url = data?.checkout_url || data?.invoice?.hosted_invoice_url || "";
       if (data?.payment_state === "settled") setInvoiceUrl("");

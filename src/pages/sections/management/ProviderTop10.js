@@ -59,27 +59,36 @@ const METRICS = [
   { key: "new_clients",           label: "New Clients",                     fallback: true,  kind: "count" },
   { key: "returning_clients",     label: "Returning Clients",               fallback: true,  kind: "count" },
   { key: "new_client_ratio",      label: "New Client Ratio",                fallback: true,  kind: "percent" },
-  { key: "net_revenue",           label: "Net Revenue (Rev + Tip − Refund)",fallback: true,  kind: "money" },
+  { key: "net_revenue",           label: "Net Collected (Service + Tip − Refund)",fallback: true,  kind: "money" },
   { key: "refunds_total",         label: "Refunds (Total)",                 fallback: true,  kind: "money" },
   { key: "prepaid_rate",          label: "Prepaid Share",                   fallback: true,  kind: "percent" }, // paid_count/total
   { key: "card_on_file_rate",     label: "Card-on-File Share",              fallback: true,  kind: "percent" }, // card_on_file_count/total
   { key: "unpaid_rate",           label: "Unpaid Share",                    fallback: true,  kind: "percent" }, // unpaid_count/total
 ];
+const SERVER_METRICS = new Set([
+  "revenue",
+  "tips_total",
+  "bookings",
+  "no_show_rate",
+  "avg_ticket",
+  "utilization",
+  "avg_addons",
+]);
 
 /* ────────────────────────────────────────────────────────── */
 /*                        UTIL HELPERS                        */
 /* ────────────────────────────────────────────────────────── */
 
-const fmtMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
+const fmtMoney = (n, currency) => `${Number(n || 0).toFixed(2)}${currency ? ` ${currency}` : ""}`;
 const fmtPct   = (n) => `${(Number(n || 0) * 100).toFixed(1)}%`;
 const fmtHrs   = (n) => `${Number(n || 0).toFixed(2)} h`;
 
 const nameOfRecruiter = (r) =>
   r?.name || [r?.first_name, r?.last_name].filter(Boolean).join(" ") || (r?.id ? `Provider #${r.id}` : "—");
 
-const prettyValue = (kind, v) => {
+const prettyValue = (kind, v, currency) => {
   switch (kind) {
-    case "money":   return fmtMoney(v);
+    case "money":   return fmtMoney(v, currency);
     case "percent": return fmtPct(v);
     case "hours":   return fmtHrs(v);
     case "count":   return `${Number(v || 0)}`;
@@ -137,12 +146,23 @@ const ProviderTop10 = ({ token: tokenProp }) => {
   /* ───────── Server Top-10 (preferred) ───────── */
 
   const loadTop10Server = async () => {
+    if (!SERVER_METRICS.has(metricKey)) return [];
     const params = { metric: metricKey, from, to, tz };
     if (departmentId) params.department_id = departmentId;
     if (providerId)   params.provider_id   = providerId;
 
     const qs = new URLSearchParams(params).toString();
     const { data } = await api.get(`/api/manager/providers/top10?${qs}`, auth);
+    const currencyGroups = Array.isArray(data?.currency_groups) ? data.currency_groups : [];
+    if (currencyGroups.length) {
+      return currencyGroups.flatMap((group) =>
+        (group.rows || []).map((row, index) => ({
+          ...row,
+          currency: group.currency,
+          currency_rank: index + 1,
+        }))
+      );
+    }
     const list = Array.isArray(data) ? data : (data?.rows || []);
     return list;
   };
@@ -159,6 +179,9 @@ const ProviderTop10 = ({ token: tokenProp }) => {
     const k = json?.kpis || {};
     const clients = json?.clients || {};
     const util = Array.isArray(json?.utilization_by_provider) ? json.utilization_by_provider[0] : null;
+    const currencyGroups = Array.isArray(k.currency_groups) ? k.currency_groups : [];
+    const money = currencyGroups.length === 1 ? currencyGroups[0] : null;
+    const moneyCurrency = money?.currency || k.currency || null;
 
     const total   = Number(k.total_appointments || 0);
     const noShowN = Number(k.no_show_appointments || 0);
@@ -170,23 +193,24 @@ const ProviderTop10 = ({ token: tokenProp }) => {
     const bookedHr  = bookedMin / 60;
     const availHr   = shiftMin / 60;
 
-    const gross     = Number(k.gross_balance || 0);
-    const tips      = Number(k.tips_total || 0);
-    const refunds   = Number(k.refunds_total || 0);
-    const net       = Number(k.net_revenue || (gross + tips - refunds));
+    const gross     = money ? Number(money.gross_balance || 0) : (currencyGroups.length ? null : Number(k.gross_balance || 0));
+    const tips      = money ? Number(money.gross_tips || 0) : (currencyGroups.length ? null : Number(k.tips_total || 0));
+    const refunds   = money ? Number(money.confirmed_refunds || 0) : (currencyGroups.length ? null : Number(k.refunds_total || 0));
+    const net       = money ? Number(money.net_collected || 0) : (currencyGroups.length ? null : Number(k.net_collected || 0));
+    const moneyResult = (value, extra = {}) => ({ value, currency: moneyCurrency, ...extra });
 
     switch (key) {
-      case "revenue":               return { value: gross,  bookings: total, minutes: bookedMin };
-      case "tips_total":            return { value: tips,   bookings: total, minutes: bookedMin };
-      case "avg_tip":               return { value: Number(k.avg_tip || 0), bookings: total };
+      case "revenue":               return moneyResult(gross, { bookings: total, minutes: bookedMin });
+      case "tips_total":            return moneyResult(tips, { bookings: total, minutes: bookedMin });
+      case "avg_tip":               return moneyResult(k.avg_tip == null ? null : Number(k.avg_tip), { bookings: total });
       case "no_show_rate":          return { value: Number(k.no_show_rate || 0), count: noShowN, bookings: total };
       case "utilization":           return { value: util?.utilization ?? null, minutes: bookedMin, secondary: shiftMin };
       case "bookings":              return { value: total, bookings: total, minutes: bookedMin };
       case "show_ups":              return { value: keptN, count: keptN, bookings: total };
       case "show_up_rate":          return { value: total ? keptN / total : 0, count: keptN, bookings: total };
-      case "rev_per_booked_hour":   return { value: bookedHr ? (gross / bookedHr) : 0, bookings: total, minutes: bookedMin };
-      case "rev_per_avail_hour":    return { value: availHr  ? (gross / availHr)  : 0, bookings: total, minutes: shiftMin };
-      case "avg_ticket":            return { value: total ? (gross / total) : 0, bookings: total };
+      case "rev_per_booked_hour":   return moneyResult(gross == null ? null : (bookedHr ? (gross / bookedHr) : 0), { bookings: total, minutes: bookedMin });
+      case "rev_per_avail_hour":    return moneyResult(gross == null ? null : (availHr ? (gross / availHr) : 0), { bookings: total, minutes: shiftMin });
+      case "avg_ticket":            return moneyResult(gross == null ? null : (total ? (gross / total) : 0), { bookings: total });
       case "tip_rate":              return { value: Number(k.tip_rate || 0), bookings: total };
       case "avg_lead_time_hours":   return { value: k.avg_lead_time_hours ?? null };
       case "new_clients":           return { value: Number(clients.new || 0),    count: Number(clients.new || 0) };
@@ -195,8 +219,8 @@ const ProviderTop10 = ({ token: tokenProp }) => {
         const denom = Number(clients.new || 0) + Number(clients.returning || 0);
         return { value: denom ? (Number(clients.new || 0) / denom) : 0 };
       }
-      case "net_revenue":           return { value: net };
-      case "refunds_total":         return { value: refunds };
+      case "net_revenue":           return moneyResult(net);
+      case "refunds_total":         return moneyResult(refunds);
       case "prepaid_rate":          return { value: total ? (Number(k.paid_count || 0) / total) : 0, bookings: total };
       case "card_on_file_rate":     return { value: total ? (Number(k.card_on_file_count || 0) / total) : 0, bookings: total };
       case "unpaid_rate":           return { value: total ? (Number(k.unpaid_count || 0) / total) : 0, bookings: total };
@@ -342,13 +366,14 @@ const ProviderTop10 = ({ token: tokenProp }) => {
       "minutes",
       "count",
       "secondary",
+      "currency",
     ];
     const lines = rows.map((r, i) => {
       const rec  = recruiterMap.get(String(r.provider_id));
       const name = nameOfRecruiter(rec) || `Provider #${r.provider_id}`;
       const dept = rec?.department_id ? (deptMap.get(String(rec.department_id))?.name || rec.department_id) : "";
       return [
-        i + 1,
+        r.currency_rank ?? i + 1,
         r.provider_id ?? "",
         `"${String(name).replace(/"/g, '""')}"`,
         `"${String(dept || "").replace(/"/g, '""')}"`,
@@ -357,6 +382,7 @@ const ProviderTop10 = ({ token: tokenProp }) => {
         r.minutes ?? "",
         r.count ?? "",
         r.secondary ?? "",
+        r.currency ?? "",
       ].join(",");
     });
     const csv = [header.join(","), ...lines].join("\n");
@@ -567,7 +593,10 @@ const ProviderTop10 = ({ token: tokenProp }) => {
         ) : (
           <Grid container spacing={1}>
             {rows.map((r, idx) => {
-              const topValue = Math.max(1, Number(rows[0]?.value || 1));
+              const comparableRows = r.currency
+                ? rows.filter((candidate) => candidate.currency === r.currency)
+                : rows;
+              const topValue = Math.max(1, Number(comparableRows[0]?.value || 1));
               const widthPct = Math.min(100, Math.round((Number(r.value || 0) / topValue) * 100));
               const kind = metricDef.kind || "number";
               return (
@@ -575,14 +604,14 @@ const ProviderTop10 = ({ token: tokenProp }) => {
                   <Box sx={{ p: 1.25, border: "1px solid #eee", borderRadius: 1 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <Chip size="small" label={`#${idx + 1}`} />
+                        <Chip size="small" label={`#${r.currency_rank ?? idx + 1}`} />
                         {providerLine(r.provider_id)}
                       </Stack>
                       <Stack direction="row" spacing={1} alignItems="center">
                         {r.bookings != null && <Chip size="small" label={`Bookings: ${r.bookings}`} />}
                         {r.minutes  != null && <Chip size="small" label={`Minutes: ${r.minutes}`} />}
                         {r.count    != null && <Chip size="small" label={`Count: ${r.count}`} />}
-                        <Chip color="primary" label={prettyValue(kind, r.value)} />
+                        <Chip color="primary" label={prettyValue(kind, r.value, r.currency)} />
                       </Stack>
                     </Stack>
                     <LinearProgress

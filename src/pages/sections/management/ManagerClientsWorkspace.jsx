@@ -82,6 +82,7 @@ import {
 import ManagementFrame from "../../../components/ui/ManagementFrame";
 import SectionCard from "../../../components/ui/SectionCard";
 import api from "../../../utils/api";
+import { withManagerBookingPaymentBreakdown } from "../../../utils/bookingPaymentBreakdown";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 import { FIELD_PHOTO_ACCEPT, FIELD_PHOTO_HELP, validateFieldPhoto } from "../../../utils/fieldPhotoUpload";
@@ -1521,7 +1522,7 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
     setInvoiceUrl("");
     setOnboardingUrl("");
     try {
-      const payload = {
+      const payload = withManagerBookingPaymentBreakdown({
         appointment_id: booking.id,
         currency,
         description: `Booking #${booking.id} • ${booking?.service || "Service"}`,
@@ -1532,7 +1533,7 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
         ...(clientId
           ? { client_id: clientId }
           : { client_email: clientEmail, client_name: booking?.client_name || undefined }),
-      };
+      }, { baseCents, extraCents, tipCents, currency });
       const { data } = await api.post("/api/manager/manual-payments", payload);
       const url = data?.checkout_url || data?.invoice?.hosted_invoice_url || "";
       if (data?.payment_state === "settled") setInvoiceUrl("");
