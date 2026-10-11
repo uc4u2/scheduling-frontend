@@ -2444,6 +2444,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           {selected ? (
             <Stack spacing={{ xs: 1.5, sm: 2.5 }}>
               <Accordion
+                defaultExpanded
                 disableGutters
                 elevation={0}
                 sx={{
@@ -2452,35 +2453,62 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                   "&:before": { display: "none" },
                 }}
               >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="client-booking-details-content">
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography fontWeight={700}>Client &amp; appointment details</Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      Contact information{selectedMeetingLink ? " • Video meeting available" : ""}
-                    </Typography>
-                  </Box>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="booking-details-updates-content">
+                  <Typography fontWeight={700}>Booking details &amp; updates</Typography>
                 </AccordionSummary>
-                <AccordionDetails id="client-booking-details-content" sx={{ pt: 0 }}>
-                  <Stack spacing={0.75}>
-                    {selected?.client?.email ? (
-                      <Typography variant="body2">Email: {selected.client.email}</Typography>
+                <AccordionDetails id="booking-details-updates-content" sx={{ pt: 0 }}>
+                  <Stack spacing={1.5}>
+                    {isManager ? (
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={openBookingEditDialog}
+                          disabled={!bookingCanBeManaged || bookingSubmitting}
+                        >
+                          Edit date &amp; time
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => setBookingCancelOpen(true)}
+                          disabled={!bookingCanBeManaged || bookingSubmitting}
+                        >
+                          Cancel booking
+                        </Button>
+                      </Stack>
                     ) : null}
-                    {selected?.client?.phone ? (
-                      <Typography variant="body2">Phone: {selected.client.phone}</Typography>
-                    ) : null}
-                    {selectedMeetingLink ? (
-                      <Typography variant="body2">
-                        Video: {" "}
-                        <Link href={selectedMeetingLink} target="_blank" rel="noopener">
-                          Join meeting
-                        </Link>
-                      </Typography>
-                    ) : null}
-                    {!selected?.client?.email && !selected?.client?.phone && !selectedMeetingLink ? (
-                      <Typography variant="body2" color="text.secondary">
-                        No additional contact details are available.
-                      </Typography>
-                    ) : null}
+                    {isManager ? <Divider /> : null}
+                    <Stack spacing={0.75}>
+                      {selected?.client?.email ? (
+                        <Typography variant="body2">Email: {selected.client.email}</Typography>
+                      ) : null}
+                      {selected?.client?.phone ? (
+                        <Typography variant="body2">Phone: {selected.client.phone}</Typography>
+                      ) : null}
+                      {selectedMeetingLink ? (
+                        <Typography variant="body2">
+                          Video: {" "}
+                          <Link href={selectedMeetingLink} target="_blank" rel="noopener">
+                            Join meeting
+                          </Link>
+                        </Typography>
+                      ) : null}
+                      {!selected?.client?.email && !selected?.client?.phone && !selectedMeetingLink ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No additional contact details are available.
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                    <Divider />
+                    <Box>
+                      <Button
+                        variant="outlined"
+                        onClick={handleMarkCompleted}
+                        disabled={!selected || statusKey === "completed"}
+                      >
+                        Mark Completed
+                      </Button>
+                    </Box>
                   </Stack>
                 </AccordionDetails>
               </Accordion>
@@ -2717,68 +2745,6 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                 </FormControl>
               </Box>
 
-              <Accordion
-                disableGutters
-                elevation={0}
-                sx={{
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: "8px !important",
-                  "&:before": { display: "none" },
-                }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="booking-actions-content">
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography fontWeight={700}>Booking actions</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Edit the appointment, cancel it, or update its status.
-                    </Typography>
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails id="booking-actions-content" sx={{ pt: 0 }}>
-                  <Stack spacing={1.5}>
-                    {isManager ? (
-                      <>
-                        <Typography variant="body2" color="text.secondary">
-                          Payment and refund status are managed separately from appointment changes.
-                        </Typography>
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                          <Button
-                            variant="outlined"
-                            onClick={openBookingEditDialog}
-                            disabled={!bookingCanBeManaged || bookingSubmitting}
-                          >
-                            Edit date &amp; time
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            color="error"
-                            onClick={() => setBookingCancelOpen(true)}
-                            disabled={!bookingCanBeManaged || bookingSubmitting}
-                          >
-                            Cancel booking
-                          </Button>
-                        </Stack>
-                        <Divider />
-                      </>
-                    ) : null}
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography fontWeight={700}>Booking status</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ textTransform: "capitalize" }}>
-                          Current status: {String(selected.status || "booked").replaceAll("_", " ")}
-                        </Typography>
-                      </Box>
-                      <Button
-                        variant="outlined"
-                        onClick={handleMarkCompleted}
-                        disabled={!selected || statusKey === "completed"}
-                      >
-                        Mark Completed
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
             </Stack>
           ) : (
             <Typography variant="body2" color="text.secondary">

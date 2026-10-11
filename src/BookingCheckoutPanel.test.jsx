@@ -461,7 +461,8 @@ describe("BookingCheckoutPanel", () => {
     fireEvent.click(await screen.findByText("Paid Client • Riley Artist"));
 
     const paymentDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
-    fireEvent.click(within(paymentDialog).getByRole("button", { name: /Booking actions/i }));
+    expect(within(paymentDialog).getByRole("button", { name: /Booking details & updates/i })).toBeInTheDocument();
+    expect(within(paymentDialog).queryByText("Booking actions")).not.toBeInTheDocument();
     fireEvent.click(within(paymentDialog).getByRole("button", { name: "Edit date & time" }));
     const editDialog = await screen.findByRole("dialog", { name: "Edit booking date and time" });
     fireEvent.change(within(editDialog).getByLabelText("Start time"), { target: { value: "10:00" } });
