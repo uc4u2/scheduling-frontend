@@ -2501,13 +2501,21 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                     </Stack>
                     <Divider />
                     <Box>
-                      <Button
-                        variant="outlined"
-                        onClick={handleMarkCompleted}
-                        disabled={!selected || statusKey === "completed"}
+                      <Tooltip
+                        arrow
+                        enterTouchDelay={0}
+                        title="Marks the appointment as completed. It does not collect payment or change the payment status."
                       >
-                        Mark Completed
-                      </Button>
+                        <Box component="span" sx={{ display: "inline-flex" }}>
+                          <Button
+                            variant="outlined"
+                            onClick={handleMarkCompleted}
+                            disabled={!selected || statusKey === "completed"}
+                          >
+                            Mark Completed
+                          </Button>
+                        </Box>
+                      </Tooltip>
                     </Box>
                   </Stack>
                 </AccordionDetails>
