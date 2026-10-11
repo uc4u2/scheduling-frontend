@@ -34,7 +34,7 @@ import ThemedDateField from "../../../components/ui/ThemedDateField";
 const METRICS = [
   // Original, with fallback
   { key: "revenue",               label: "Revenue (Captured)",              fallback: true, kind: "money" },
-  { key: "tips_total",            label: "Tips (Captured)",                 fallback: true, kind: "money" },
+  { key: "tips_total",            label: "Gross Tips (Captured)",           fallback: true, kind: "money" },
   { key: "no_show_rate",          label: "No-Show Rate",                    fallback: true, kind: "percent" },
   { key: "utilization",           label: "Utilization (Booked/Shift)",      fallback: true, kind: "percent" },
   { key: "avg_tip",               label: "Average Tip",                     fallback: true, kind: "money" },

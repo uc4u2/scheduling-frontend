@@ -530,7 +530,15 @@ const ClientsTab = (
                     <KPI label={`Service amount${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.gross_balance, money.currency)} />
                   </Grid>
                   <Grid item xs={12} md={3}>
-                    <KPI label={`Gross tips${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.gross_tips, money.currency)} />
+                    <KPI
+                      label={`Gross tips${money.currency ? ` (${money.currency})` : ""}`}
+                      value={fmtMoney(money.gross_tips, money.currency)}
+                      help={
+                        Number(money.tip_refunds || 0) > 0
+                          ? `Refunded tips: ${fmtMoney(money.tip_refunds, money.currency)} · Net tips: ${fmtMoney(money.net_tips, money.currency)}`
+                          : undefined
+                      }
+                    />
                   </Grid>
                   <Grid item xs={12} md={3}>
                     <KPI label={`Confirmed refunds${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.confirmed_refunds, money.currency)} help={money.service_refund_allocation === "unallocated" ? "Refund allocation between service and tip is unknown." : undefined} />
@@ -1509,49 +1517,77 @@ const ClientsTab = (
 
       <SectionCard
         title="Tip Leaderboard"
-        description="Gross captured tips by recipient and original currency. This view does not post tips to payroll."
+        description="Gross, refunded, and net captured tips by recipient and original currency. This view does not post tips to payroll."
       >
         {tips.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No tips in range.
           </Typography>
         ) : (
-          tips.map((t, idx) => (
-            <Box key={t.recruiter_id ?? idx} sx={{ mb: 1.5 }}>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
+          tips.map((t, idx) => {
+            const grossTips = Number(t.gross_tip_total ?? t.tip_total ?? 0);
+            const refundedTips = Number(t.refunded_tip_total || 0);
+            const netTips = Number(t.net_tip_total ?? grossTips - refundedTips);
+            return (
+              <Box
+                key={`${t.currency || "USD"}:${t.recruiter_id ?? idx}`}
+                sx={{ mb: 1.5 }}
               >
-                <Typography variant="subtitle2">
-                  {t.recruiter_name ||
-                    t.recruiter ||
-                    [t.first_name, t.last_name].filter(Boolean).join(" ") ||
-                    "Unknown"}
-                </Typography>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Chip label={`Tips: ${t.tip_count ?? 0}`} />
-                  <Chip color="primary" label={fmtMoney(t.tip_total, t.currency)} />
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Typography variant="subtitle2">
+                    {t.recruiter_name ||
+                      t.recruiter ||
+                      [t.first_name, t.last_name].filter(Boolean).join(" ") ||
+                      "Unknown"}
+                  </Typography>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Chip label={`Tips: ${t.tip_count ?? 0}`} />
+                    {refundedTips > 0 ? (
+                      <>
+                        <Chip label={`Gross ${fmtMoney(grossTips, t.currency)}`} />
+                        <Chip
+                          color="warning"
+                          label={`Refunded ${fmtMoney(refundedTips, t.currency)}`}
+                        />
+                      </>
+                    ) : null}
+                    <Chip
+                      color="primary"
+                      label={`Net ${fmtMoney(netTips, t.currency)}`}
+                    />
+                  </Stack>
                 </Stack>
-              </Stack>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(
-                  100,
-                  Math.round(
-                    (100 * Number(t.tip_total || 0)) /
-                      Math.max(
-                        1,
-                        ...tips
-                          .filter((row) => (row.currency || "USD") === (t.currency || "USD"))
-                          .map((row) => Number(row.tip_total || 0))
-                      )
-                  )
-                )}
-                sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
-              />
-            </Box>
-          ))
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(
+                    100,
+                    Math.round(
+                      (100 * netTips) /
+                        Math.max(
+                          1,
+                          ...tips
+                            .filter(
+                              (row) =>
+                                (row.currency || "USD") ===
+                                (t.currency || "USD"),
+                            )
+                            .map((row) =>
+                              Number(
+                                row.net_tip_total ?? row.tip_total ?? 0,
+                              ),
+                            ),
+                        ),
+                    ),
+                  )}
+                  sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
+                />
+              </Box>
+            );
+          })
         )}
       </SectionCard>
 
