@@ -81,6 +81,7 @@ import {
 } from "recharts";
 import ManagementFrame from "../../../components/ui/ManagementFrame";
 import SectionCard from "../../../components/ui/SectionCard";
+import OfflineBookingPaymentDialog from "../../../components/booking/OfflineBookingPaymentDialog";
 import api from "../../../utils/api";
 import { withManagerBookingPaymentBreakdown } from "../../../utils/bookingPaymentBreakdown";
 import { formatDateTimeInTz } from "../../../utils/datetime";
@@ -409,7 +410,7 @@ const readinessLabel = (state) => {
 const bookingPaymentStateMeta = (row = {}) => {
   const bookingStatus = String(row.status || "").toLowerCase();
   const paymentStatus = String(row.payment_status || "").toLowerCase();
-  if (["paid", "package", "refunded", "partially_refunded"].includes(paymentStatus)) {
+  if (["paid", "package", "refunded", "partially_refunded", "partial_refund"].includes(paymentStatus)) {
     return { label: "Paid", tone: "success" };
   }
   if (bookingStatus === "completed") {
@@ -689,53 +690,6 @@ function ConfirmClientDialog({
         <Button onClick={onClose} disabled={saving}>Cancel</Button>
         <Button color={confirmColor} variant="contained" onClick={onConfirm} disabled={saving}>
           {saving ? "Saving..." : confirmLabel}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function OfflinePaymentDialog({ open, booking, saving, onClose, onConfirm }) {
-  const [method, setMethod] = useState("cash");
-  const [note, setNote] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setMethod("cash");
-    setNote("");
-  }, [open, booking?.id]);
-
-  return (
-    <Dialog open={open} onClose={saving ? undefined : onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Mark paid offline</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2} sx={{ mt: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            {booking?.service || "Appointment"} • {formatApptWhen(booking, getUserTimezone())}
-          </Typography>
-          <FormControl fullWidth>
-            <InputLabel>Method</InputLabel>
-            <Select label="Method" value={method} onChange={(event) => setMethod(event.target.value)}>
-              <MenuItem value="cash">Cash</MenuItem>
-              <MenuItem value="etransfer">e-Transfer</MenuItem>
-              <MenuItem value="card">Card</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            label="Note"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button variant="contained" onClick={() => onConfirm({ method, note })} disabled={saving}>
-          {saving ? "Saving..." : "Mark paid"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -1446,8 +1400,6 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
   const [customTip, setCustomTip] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
   const [offlineOpen, setOfflineOpen] = useState(false);
-  const [offlineMethod, setOfflineMethod] = useState("cash");
-  const [offlineNote, setOfflineNote] = useState("");
   const [creatingLink, setCreatingLink] = useState(false);
   const [onboardingUrl, setOnboardingUrl] = useState("");
   const [refreshingSummary, setRefreshingSummary] = useState(false);
@@ -1460,8 +1412,6 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
     setCustomTip("");
     setInvoiceUrl("");
     setOfflineOpen(false);
-    setOfflineMethod("cash");
-    setOfflineNote("");
     setCreatingLink(false);
     setOnboardingUrl("");
   }, [open, booking?.id, booking?.base_amount]);
@@ -1477,6 +1427,7 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
     : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
   const totalCents = Math.max(0, baseCents + extraCents + tipCents);
   const isPaid = paymentKey === "paid";
+  const offlinePaymentBlocked = ["paid", "package", "refunded", "partially_refunded", "partial_refund"].includes(paymentKey);
 
   const refreshClient360 = useCallback(async () => {
     if (!onSuccess) return;
@@ -1587,20 +1538,15 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
     }
   };
 
-  const handleMarkPaidOffline = async () => {
-    if (!booking?.id) return;
-    try {
-      await api.post(`/api/manager/bookings/${booking.id}/mark-paid`, {
-        method: offlineMethod,
-        note: offlineNote,
-      });
-      enqueueSnackbar("Marked paid (offline).", { variant: "success" });
-      setOfflineOpen(false);
-      await refreshClient360();
-      onClose?.();
-    } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || "Failed to mark paid.", { variant: "error" });
-    }
+  const handleOfflinePaymentRecorded = async (result) => {
+    const recordedCents = result?.payment?.total_cents;
+    const recordedCurrency = result?.payment?.currency || currency;
+    const amountLabel = Number.isInteger(recordedCents)
+      ? ` ${(recordedCents / 100).toFixed(2)} ${recordedCurrency}`
+      : "";
+    enqueueSnackbar(`Offline payment recorded.${amountLabel}`, { variant: "success" });
+    await refreshClient360();
+    onClose?.();
   };
 
   const handleMarkCompleted = async () => {
@@ -1794,12 +1740,12 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
 
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1}>
-                      <Typography fontWeight={600}>Mark as paid (offline)</Typography>
+                      <Typography fontWeight={600}>Record offline payment</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Record cash, terminal, or e-transfer payments.
+                        Record explicit cash, terminal, e-transfer, cheque, or other money received now.
                       </Typography>
-                      <Button variant="outlined" onClick={() => setOfflineOpen(true)} disabled={isPaid}>
-                        Mark paid
+                      <Button variant="outlined" onClick={() => setOfflineOpen(true)} disabled={offlinePaymentBlocked}>
+                        Record payment
                       </Button>
                     </Stack>
                   </Paper>
@@ -1826,36 +1772,21 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
         </DialogActions>
       </Dialog>
 
-      <Dialog open={offlineOpen} onClose={() => setOfflineOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Mark as paid</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <FormControl fullWidth>
-              <InputLabel>Method</InputLabel>
-              <Select label="Method" value={offlineMethod} onChange={(e) => setOfflineMethod(e.target.value)}>
-                <MenuItem value="cash">Cash</MenuItem>
-                <MenuItem value="terminal">Terminal</MenuItem>
-                <MenuItem value="etransfer">E-transfer</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Note (optional)"
-              value={offlineNote}
-              onChange={(e) => setOfflineNote(e.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOfflineOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleMarkPaidOffline}>
-            Confirm paid
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <OfflineBookingPaymentDialog
+        open={offlineOpen}
+        booking={booking}
+        initialBaseCents={baseCents}
+        initialExtraCents={extraCents}
+        initialTipCents={tipCents}
+        initialCurrency={currency}
+        onClose={() => setOfflineOpen(false)}
+        onRecorded={handleOfflinePaymentRecorded}
+        onNavigateFinance={(path) => {
+          setOfflineOpen(false);
+          onClose?.();
+          navigate(path);
+        }}
+      />
     </>
   );
 }
@@ -2495,7 +2426,6 @@ export default function ManagerClientsWorkspace() {
   const [savingClient, setSavingClient] = useState(false);
   const [collectDialogBooking, setCollectDialogBooking] = useState(null);
   const [offlineBooking, setOfflineBooking] = useState(null);
-  const [offlineSaving, setOfflineSaving] = useState(false);
   const [listQuickNoteTarget, setListQuickNoteTarget] = useState(null);
   const [listQuickNoteSaving, setListQuickNoteSaving] = useState(false);
   const [detailQuickNoteOpen, setDetailQuickNoteOpen] = useState(false);
@@ -3630,19 +3560,14 @@ export default function ManagerClientsWorkspace() {
     }
   };
 
-  const handleMarkBookingPaidOffline = async ({ method, note }) => {
-    if (!offlineBooking?.id) return;
-    setOfflineSaving(true);
-    try {
-      await api.post(`/api/manager/bookings/${offlineBooking.id}/mark-paid`, { method, note });
-      enqueueSnackbar("Booking marked paid offline.", { variant: "success" });
-      setOfflineBooking(null);
-      await loadDetail();
-    } catch (err) {
-      enqueueSnackbar(err?.response?.data?.error || err?.message || "Unable to mark booking paid.", { variant: "error" });
-    } finally {
-      setOfflineSaving(false);
-    }
+  const handleStandaloneOfflinePaymentRecorded = async (result) => {
+    const recordedCents = result?.payment?.total_cents;
+    const recordedCurrency = result?.payment?.currency || offlineBooking?.currency || companyCurrency;
+    const amountLabel = Number.isInteger(recordedCents)
+      ? ` ${(recordedCents / 100).toFixed(2)} ${recordedCurrency}`
+      : "";
+    enqueueSnackbar(`Offline payment recorded.${amountLabel}`, { variant: "success" });
+    await Promise.all([loadDetail(), loadList()]);
   };
 
   const handleListQuickNote = async (note) => {
@@ -3903,7 +3828,7 @@ export default function ManagerClientsWorkspace() {
 
   const openMarkPaidOfflineAction = useCallback((entry = actionReadiness.mark_paid_offline) => {
     if (!entry?.appointment_id || entry?.state === "blocked") {
-      explainActionState(entry, "No booking is ready to mark paid offline.");
+      explainActionState(entry, "No booking is ready for an offline payment entry.");
       return;
     }
     const booking = bookingById.get(String(entry.appointment_id));
@@ -4307,7 +4232,7 @@ export default function ManagerClientsWorkspace() {
                   <MenuItem onClick={() => runMoreAction(() => navigate(`/manager/finance-work-orders?clientId=${profile.id}&action=create`))}>Create work order</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => navigate(`/manager/advanced-management?panel=manager-bookings&clientId=${profile.id}`))}>Open manager bookings</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => openCollectPaymentAction())}>Open checkout</MenuItem>
-                  <MenuItem onClick={() => runMoreAction(() => openMarkPaidOfflineAction())}>Mark paid offline</MenuItem>
+                  <MenuItem onClick={() => runMoreAction(() => openMarkPaidOfflineAction())}>Record offline payment</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => handleSmartPaymentLink())}>Send invoice</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => openNotesComposer("email"))} disabled={!String(profile.email || "").trim()}>Send email</MenuItem>
                   <MenuItem onClick={() => runMoreAction(() => openFollowUpAction())}>Send follow-up</MenuItem>
@@ -4373,7 +4298,7 @@ export default function ManagerClientsWorkspace() {
                                   ) : null}
                                   {!isPaid ? (
                                     <Button size="small" onClick={() => setOfflineBooking(row)}>
-                                      Mark paid offline
+                                      Record offline payment
                                     </Button>
                                   ) : null}
                                   {isCompleted && !isPaid ? (
@@ -4454,7 +4379,7 @@ export default function ManagerClientsWorkspace() {
                                   ) : null}
                                   {!isPaid ? (
                                     <Button size="small" onClick={() => setOfflineBooking(row)}>
-                                      Mark paid offline
+                                      Record offline payment
                                     </Button>
                                   ) : null}
                                   {isCompleted && !isPaid ? (
@@ -5616,12 +5541,19 @@ export default function ManagerClientsWorkspace() {
             return detailPayload;
           }}
         />
-        <OfflinePaymentDialog
+        <OfflineBookingPaymentDialog
           open={Boolean(offlineBooking)}
           booking={offlineBooking}
-          saving={offlineSaving}
+          initialBaseCents={0}
+          initialExtraCents={0}
+          initialTipCents={0}
+          initialCurrency={offlineBooking?.currency || companyCurrency}
           onClose={() => setOfflineBooking(null)}
-          onConfirm={handleMarkBookingPaidOffline}
+          onRecorded={handleStandaloneOfflinePaymentRecorded}
+          onNavigateFinance={(path) => {
+            setOfflineBooking(null);
+            navigate(path);
+          }}
         />
         <QuickNoteDialog
           open={detailQuickNoteOpen}

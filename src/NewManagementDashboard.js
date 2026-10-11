@@ -53,6 +53,7 @@ import {
   GlobalStyles,
 } from "@mui/material";
 import ShiftSwapPanel from "./components/ShiftSwapPanel";
+import OfflineBookingPaymentDialog from "./components/booking/OfflineBookingPaymentDialog";
 
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -830,8 +831,6 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [invoiceUrl, setInvoiceUrl] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("payment-link");
   const [offlineOpen, setOfflineOpen] = useState(false);
-  const [offlineMethod, setOfflineMethod] = useState("cash");
-  const [offlineNote, setOfflineNote] = useState("");
   const [baseLocked, setBaseLocked] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
@@ -1583,24 +1582,13 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     }
   };
 
-  const handleMarkPaidOffline = async () => {
-    if (!selected) return;
-    try {
-      await api.post(`/api/manager/bookings/${selected.id}/mark-paid`, {
-        method: offlineMethod,
-        note: offlineNote,
-      });
-      setSnackbar({ open: true, message: "Marked paid (offline).", severity: "success" });
-      setOfflineOpen(false);
-      setDetailsOpen(false);
-      loadBookings();
-    } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err?.response?.data?.error || "Failed to mark paid.",
-        severity: "error",
-      });
-    }
+  const handleOfflinePaymentRecorded = async (result) => {
+    const totalCents = result?.payment?.total_cents;
+    const currency = result?.payment?.currency || selected?.currency || "USD";
+    const totalLabel = Number.isInteger(totalCents) ? ` ${(totalCents / 100).toFixed(2)} ${currency}` : "";
+    setSnackbar({ open: true, message: `Offline payment recorded.${totalLabel}`, severity: "success" });
+    setDetailsOpen(false);
+    await loadBookings();
   };
 
   const openBookingEditDialog = () => {
@@ -1700,6 +1688,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const isPaid = (status) => String(status || "").toLowerCase() === "paid";
   const statusKey = String(selected?.status || "").toLowerCase().replace("-", "_");
   const paymentKey = String(selected?.payment_status || "").toLowerCase();
+  const offlinePaymentBlocked = ["paid", "package", "refunded", "partially_refunded", "partial_refund"].includes(paymentKey);
   const bookingCanBeManaged = isManager && !["cancelled", "completed"].includes(statusKey);
   const hasCardOnFile = Boolean(selected?.has_card_on_file || selected?.card_on_file);
   const currency = (selected?.currency || "USD").toUpperCase();
@@ -1727,7 +1716,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       : "Create payment link";
   const paymentActionDisabled =
     !selected ||
-    isPaid(paymentKey) ||
+    (paymentMethod === "offline" ? offlinePaymentBlocked : isPaid(paymentKey)) ||
     (paymentMethod === "saved-card" && !hasCardOnFile);
 
   const handlePrimaryPaymentAction = () => {
@@ -2904,40 +2893,20 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={offlineOpen} onClose={() => setOfflineOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Mark as paid</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <FormControl fullWidth>
-              <InputLabel>Method</InputLabel>
-              <Select
-                label="Method"
-                value={offlineMethod}
-                onChange={(e) => setOfflineMethod(e.target.value)}
-              >
-                <MenuItem value="cash">Cash</MenuItem>
-                <MenuItem value="terminal">Terminal</MenuItem>
-                <MenuItem value="etransfer">E-transfer</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Note (optional)"
-              value={offlineNote}
-              onChange={(e) => setOfflineNote(e.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOfflineOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleMarkPaidOffline}>
-            Confirm paid
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <OfflineBookingPaymentDialog
+        open={offlineOpen}
+        booking={selected}
+        initialBaseCents={baseCents}
+        initialExtraCents={extraCents}
+        initialTipCents={tipCents}
+        initialCurrency={currency}
+        onClose={() => setOfflineOpen(false)}
+        onRecorded={handleOfflinePaymentRecorded}
+        onNavigateFinance={(path) => {
+          setOfflineOpen(false);
+          navigate(path);
+        }}
+      />
 
       <Snackbar
         open={snackbar.open}
