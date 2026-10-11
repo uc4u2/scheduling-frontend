@@ -317,6 +317,28 @@ describe("BookingCheckoutPanel", () => {
     expect(await within(dialog).findByDisplayValue("https://payments.example.test/session")).toBeInTheDocument();
   });
 
+  it("keeps payment methods compact and preserves the kiosk checkout contract", async () => {
+    api.post.mockResolvedValueOnce({ data: { token: "kiosk-token" } });
+    renderPanel();
+    fireEvent.click(await screen.findByText("Select October 13"));
+    fireEvent.click(await screen.findByText("Casey Client • Riley Artist"));
+
+    const dialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    expect(within(dialog).getByRole("radio", { name: /Send payment link/i })).toBeChecked();
+    expect(within(dialog).getByRole("radio", { name: /Charge saved card/i })).toBeDisabled();
+    expect(within(dialog).getByText("Pay on this device (Kiosk)")).toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByLabelText("Additional charge"), { target: { value: "7.50" } });
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Pay on this device \(Kiosk\)/i }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Start kiosk checkout" }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/api/manager/bookings/11/kiosk-token", {
+        extra_amount_cents: 750,
+      });
+    });
+  });
+
   it("auto-opens an appointment deep link only once", async () => {
     renderPanel("/manager/booking-checkout?appointmentId=10");
     expect(await screen.findByRole("dialog", { name: "Collect Payment" })).toBeInTheDocument();
@@ -439,6 +461,7 @@ describe("BookingCheckoutPanel", () => {
     fireEvent.click(await screen.findByText("Paid Client • Riley Artist"));
 
     const paymentDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.click(within(paymentDialog).getByRole("button", { name: /Booking actions/i }));
     fireEvent.click(within(paymentDialog).getByRole("button", { name: "Edit date & time" }));
     const editDialog = await screen.findByRole("dialog", { name: "Edit booking date and time" });
     fireEvent.change(within(editDialog).getByLabelText("Start time"), { target: { value: "10:00" } });

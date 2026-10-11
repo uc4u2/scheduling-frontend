@@ -24,6 +24,8 @@ import {
   InputLabel,
   FormControl,
   FormLabel,
+  Radio,
+  RadioGroup,
   InputAdornment,
   FormControlLabel,
   Drawer,
@@ -825,6 +827,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [tipMode, setTipMode] = useState("0");
   const [customTip, setCustomTip] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("payment-link");
   const [offlineOpen, setOfflineOpen] = useState(false);
   const [offlineMethod, setOfflineMethod] = useState("cash");
   const [offlineNote, setOfflineNote] = useState("");
@@ -1356,6 +1359,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     setTipMode("0");
     setCustomTip("");
     setInvoiceUrl("");
+    setPaymentMethod("payment-link");
     setBaseLocked(Boolean(hasBase && baseValue > 0));
     setDetailsOpen(true);
   }, []);
@@ -1693,6 +1697,57 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       ? toCents(customTip)
       : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
   const totalCents = Math.max(0, baseCents + extraCents + tipCents);
+  const selectedMeetingLink =
+    selected?.meeting_link ||
+    selected?.meeting_url ||
+    selected?.public_meeting_link ||
+    "";
+  const paymentActionLabel =
+    paymentMethod === "saved-card"
+      ? "Charge saved card"
+      : paymentMethod === "kiosk"
+      ? "Start kiosk checkout"
+      : paymentMethod === "offline"
+      ? "Record offline payment"
+      : invoiceUrl
+      ? "Copy payment link"
+      : "Create payment link";
+  const paymentActionDisabled =
+    !selected ||
+    isPaid(paymentKey) ||
+    (paymentMethod === "saved-card" && !hasCardOnFile);
+
+  const handlePrimaryPaymentAction = () => {
+    if (paymentMethod === "saved-card") {
+      handleCollectPayment();
+      return;
+    }
+    if (paymentMethod === "kiosk") {
+      handleStartKiosk();
+      return;
+    }
+    if (paymentMethod === "offline") {
+      setOfflineOpen(true);
+      return;
+    }
+    if (invoiceUrl) {
+      handleCopyInvoice();
+      return;
+    }
+    handleCreateInvoice();
+  };
+  const paymentOptionSx = (value) => ({
+    overflow: "hidden",
+    borderColor:
+      paymentMethod === value
+        ? alpha(theme.palette.primary.main, 0.65)
+        : theme.palette.divider,
+    backgroundColor:
+      paymentMethod === value
+        ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.16 : 0.04)
+        : theme.palette.background.paper,
+    transition: "border-color 160ms ease, background-color 160ms ease",
+  });
 
   const openDetailedSlotManagement = () => {
     const params = new URLSearchParams({ panel: "slots", focus: "day-slots", date: selectedDate });
@@ -2338,10 +2393,19 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth fullScreen={isSmall}>
-        <DialogTitle sx={{ py: { xs: 1.25, sm: 2 }, px: { xs: 2, sm: 3 } }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography component="span" variant="h6">Collect Payment</Typography>
+      <Dialog
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isSmall}
+        PaperProps={{ sx: { maxHeight: { sm: "min(900px, calc(100vh - 48px))" } } }}
+      >
+        <DialogTitle sx={{ py: { xs: 1.25, sm: 1.75 }, px: { xs: 2, sm: 3 } }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
+            <Typography component="span" variant="h6" fontWeight={700}>
+              Collect Payment
+            </Typography>
             {isSmall ? (
               <IconButton onClick={() => setDetailsOpen(false)} aria-label="Close payment details" edge="end">
                 <CloseIcon />
@@ -2349,116 +2413,124 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             ) : null}
           </Stack>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 2, sm: 3 } }}>
+        {selected ? (
+          <Box
+            sx={{
+              px: { xs: 2, sm: 3 },
+              pb: 1.5,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {selected?.client?.full_name || selected?.client?.email || "Client"} • {selected?.service?.name || "Service"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              {selected?.local_date || selected?.date} at {selected?.local_start_time || selected?.start_time}
+              {selected?.appointment_timezone ? ` • ${selected.appointment_timezone}` : ""}
+            </Typography>
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" mt={0.75}>
+              <Chip size="small" label={selected.status || "booked"} sx={{ textTransform: "capitalize" }} />
+              <Chip
+                size="small"
+                label={selected.payment_status || "unpaid"}
+                color={isPaid(paymentKey) ? "success" : "default"}
+                variant="outlined"
+                sx={{ textTransform: "capitalize" }}
+              />
+            </Stack>
+          </Box>
+        ) : null}
+        <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, overflowX: "hidden" }}>
           {selected ? (
-            <Stack spacing={{ xs: 2, sm: 3 }}>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  {selected?.service?.name || "Service"} • {selected?.client?.full_name || selected?.client?.email || "Client"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {selected?.client?.email || "—"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {selected?.client?.phone || "—"}
-                </Typography>
-                {(() => {
-                  const meetingLink =
-                    selected?.meeting_link ||
-                    selected?.meeting_url ||
-                    selected?.public_meeting_link ||
-                    "";
-                  if (!meetingLink) return null;
-                  return (
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      <b>Video:</b>{" "}
-                      <Link href={meetingLink} target="_blank" rel="noopener">
-                        Join meeting
-                      </Link>
+            <Stack spacing={{ xs: 1.5, sm: 2.5 }}>
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: "8px !important",
+                  "&:before": { display: "none" },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="client-booking-details-content">
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography fontWeight={700}>Client &amp; appointment details</Typography>
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      Contact information{selectedMeetingLink ? " • Video meeting available" : ""}
                     </Typography>
-                  );
-                })()}
-                <Typography variant="body2">
-                  {selected?.local_date || selected?.date} {selected?.local_start_time || selected?.start_time}{" "}
-                  {selected?.appointment_timezone ? `(${selected.appointment_timezone})` : ""}
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
-                  <Chip size="small" label={selected.status || "booked"} />
-                  <Chip size="small" label={selected.payment_status || "unpaid"} variant="outlined" />
-                </Stack>
-              </Box>
-
-              {isManager ? (
-                <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1.25}
-                    alignItems={{ sm: "center" }}
-                  >
-                    <Box sx={{ flex: 1 }}>
-                      <Typography fontWeight={700}>Manage booking</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Change the appointment time or cancel it. Payment and refund status are managed separately.
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails id="client-booking-details-content" sx={{ pt: 0 }}>
+                  <Stack spacing={0.75}>
+                    {selected?.client?.email ? (
+                      <Typography variant="body2">Email: {selected.client.email}</Typography>
+                    ) : null}
+                    {selected?.client?.phone ? (
+                      <Typography variant="body2">Phone: {selected.client.phone}</Typography>
+                    ) : null}
+                    {selectedMeetingLink ? (
+                      <Typography variant="body2">
+                        Video: {" "}
+                        <Link href={selectedMeetingLink} target="_blank" rel="noopener">
+                          Join meeting
+                        </Link>
                       </Typography>
-                    </Box>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                      <Button
-                        variant="outlined"
-                        onClick={openBookingEditDialog}
-                        disabled={!bookingCanBeManaged || bookingSubmitting}
-                      >
-                        Edit date &amp; time
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={() => setBookingCancelOpen(true)}
-                        disabled={!bookingCanBeManaged || bookingSubmitting}
-                      >
-                        Cancel booking
-                      </Button>
-                    </Stack>
+                    ) : null}
+                    {!selected?.client?.email && !selected?.client?.phone && !selectedMeetingLink ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No additional contact details are available.
+                      </Typography>
+                    ) : null}
                   </Stack>
-                </Paper>
-              ) : null}
+                </AccordionDetails>
+              </Accordion>
 
-              <Box>
-                <Typography variant="subtitle1" fontWeight={700} mb={1}>
-                  Amount builder
-                </Typography>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <Box component="section" aria-labelledby="booking-payment-amount-title">
+                <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={2} mb={1}>
+                  <Typography id="booking-payment-amount-title" variant="subtitle1" fontWeight={700}>
+                    Amount due
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Currency: {currency}
+                  </Typography>
+                </Stack>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                   <TextField
                     label="Base amount"
                     value={baseAmount}
                     onChange={(e) => setBaseAmount(e.target.value)}
                     fullWidth
                     disabled={baseLocked}
+                    inputProps={{ inputMode: "decimal" }}
                     InputProps={{
                       endAdornment: <InputAdornment position="end">{currency}</InputAdornment>,
                     }}
                   />
                   <TextField
-                    label="Extra amount"
+                    label="Additional charge"
                     value={extraAmount}
                     onChange={(e) => setExtraAmount(e.target.value)}
                     fullWidth
+                    inputProps={{ inputMode: "decimal" }}
                     InputProps={{
                       endAdornment: <InputAdornment position="end">{currency}</InputAdornment>,
                     }}
                   />
                 </Stack>
-                <Stack spacing={1} mt={2}>
+                <Stack spacing={1} mt={1.5}>
                   <FormLabel>Tip</FormLabel>
                   <ToggleButtonGroup
                     value={tipMode}
                     exclusive
                     onChange={(_, v) => v && setTipMode(v)}
                     size="small"
+                    aria-label="Tip amount"
                     sx={{
                       width: { xs: "100%", sm: "auto" },
                       "& .MuiToggleButton-root": {
                         flex: { xs: 1, sm: "initial" },
                         minWidth: 0,
+                        minHeight: 40,
                         px: { xs: 0.5, sm: 1.5 },
                         fontSize: { xs: "0.74rem", sm: "0.8125rem" },
                       },
@@ -2476,169 +2548,237 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                       value={customTip}
                       onChange={(e) => setCustomTip(e.target.value)}
                       sx={{ maxWidth: 240 }}
+                      inputProps={{ inputMode: "decimal" }}
                       InputProps={{
                         endAdornment: <InputAdornment position="end">{currency}</InputAdornment>,
                       }}
                     />
                   )}
                 </Stack>
-                <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center" mt={2}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Billed in {currency}
-                  </Typography>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Customer payments in {currency}
-                  </Typography>
-                </Stack>
-                <Typography variant="h6" mt={1}>
-                  Total: {(totalCents / 100).toFixed(2)} {currency}
-                </Typography>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    mt: 1.5,
+                    px: 1.5,
+                    py: 1.25,
+                    backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.14 : 0.04),
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                    <Typography fontWeight={700}>Total</Typography>
+                    <Typography variant="h6" fontWeight={800}>
+                      {(totalCents / 100).toFixed(2)} {currency}
+                    </Typography>
+                  </Stack>
+                </Paper>
               </Box>
 
-              <Box>
-                <Typography variant="subtitle1" fontWeight={700} mb={1}>
-                  Payment methods
+              <Box component="section" aria-labelledby="booking-payment-method-title">
+                <Typography id="booking-payment-method-title" variant="subtitle1" fontWeight={700} mb={1}>
+                  How would you like to collect payment?
                 </Typography>
-                {isPaid(paymentKey) && (
-                  <Alert severity="success" sx={{ mb: 2 }}>
-                    This booking is already marked as paid.
+                {isPaid(paymentKey) ? (
+                  <Alert severity="success" sx={{ mb: 1.5 }}>
+                    This booking is already marked as paid. Payment actions are disabled.
                   </Alert>
-                )}
-                <Stack spacing={1.5}>
-                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
+                ) : null}
+                <FormControl component="fieldset" fullWidth>
+                  <RadioGroup
+                    aria-label="Payment method"
+                    value={paymentMethod}
+                    onChange={(event) => setPaymentMethod(event.target.value)}
+                  >
                     <Stack spacing={1}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography fontWeight={600}>Card on file</Typography>
-                        <Tooltip
-                          title={
+                      <Paper variant="outlined" sx={paymentOptionSx("payment-link")}>
+                        <FormControlLabel
+                          value="payment-link"
+                          control={<Radio />}
+                          sx={{
+                            m: 0,
+                            px: 1.25,
+                            py: 1,
+                            width: "100%",
+                            alignItems: "flex-start",
+                            "& .MuiFormControlLabel-label": { flex: 1, minWidth: 0 },
+                          }}
+                          label={
                             <Box>
-                              <Typography variant="subtitle2" gutterBottom>
-                                Tax on Card-on-file charges
-                              </Typography>
-                              <Typography variant="body2">
-                                Tax is not calculated automatically when charging a saved card.
-                                If you charge tax (GST/HST/Sales tax), add it to the amount manually.
-                                For automatic tax calculation, use Payment link / Invoice or Pay during checkout.
-                              </Typography>
-                              <Typography variant="body2" sx={{ mt: 1 }}>
-                                Example: Service $50 + 13% tax ($6.50) → Charge $56.50.
+                              <Typography fontWeight={700}>Send payment link</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Hosted Stripe invoice; automatic tax applies when configured in Stripe.
                               </Typography>
                             </Box>
                           }
-                        >
-                          <IconButton size="small">
-                            <InfoOutlined fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">
-                        {hasCardOnFile ? "Charge the saved card on file." : "No card on file for this client."}
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        onClick={handleCollectPayment}
-                        disabled={!hasCardOnFile || isPaid(paymentKey)}
-                      >
-                        Charge saved card
-                      </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
-                        Tip: Stripe won’t add tax automatically for saved-card charges. Include tax in the total if needed.
-                      </Typography>
-                      <Stack spacing={0.5} sx={{ display: { xs: "none", sm: "flex" } }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Want tax calculated automatically? Use a payment link.
-                        </Typography>
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={handleCreateInvoice}
-                          disabled={isPaid(paymentKey)}
-                          sx={{ alignSelf: "flex-start", px: 0 }}
-                        >
-                          Create payment link (Stripe calculates tax)
-                        </Button>
-                        <Typography variant="caption" color="text.secondary">
-                          Requires Stripe Automatic Tax enabled in Stripe.
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </Paper>
+                        />
+                        <Collapse in={paymentMethod === "payment-link" && Boolean(invoiceUrl)}>
+                          <Divider />
+                          <Box sx={{ p: 1.5 }}>
+                            <TextField
+                              label="Hosted payment link"
+                              value={invoiceUrl}
+                              fullWidth
+                              InputProps={{ readOnly: true }}
+                            />
+                          </Box>
+                        </Collapse>
+                      </Paper>
 
-                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
-                    <Stack spacing={1}>
-                      <Typography fontWeight={600}>Payment link (invoice)</Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
-                        Create a hosted payment link and share it with the client.
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        onClick={handleCreateInvoice}
-                        disabled={isPaid(paymentKey)}
-                      >
-                        Create payment link
-                      </Button>
-                      {invoiceUrl && (
-                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
-                          <TextField
-                            label="Hosted payment link"
-                            value={invoiceUrl}
-                            fullWidth
-                            InputProps={{ readOnly: true }}
+                      <Paper variant="outlined" sx={paymentOptionSx("kiosk")}>
+                        <FormControlLabel
+                          value="kiosk"
+                          control={<Radio />}
+                          sx={{
+                            m: 0,
+                            px: 1.25,
+                            py: 1,
+                            width: "100%",
+                            alignItems: "flex-start",
+                            "& .MuiFormControlLabel-label": { flex: 1, minWidth: 0 },
+                          }}
+                          label={
+                            <Box>
+                              <Typography fontWeight={700}>Pay on this device (Kiosk)</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Hand the device to the client to choose a tip and pay through Stripe Checkout.
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </Paper>
+
+                      <Paper variant="outlined" sx={paymentOptionSx("saved-card")}>
+                        <Stack direction="row" alignItems="flex-start" spacing={0.5} sx={{ pr: 1 }}>
+                          <FormControlLabel
+                            value="saved-card"
+                            disabled={!hasCardOnFile}
+                            control={<Radio />}
+                            sx={{
+                              m: 0,
+                              px: 1.25,
+                              py: 1,
+                              flex: 1,
+                              alignItems: "flex-start",
+                              "& .MuiFormControlLabel-label": { flex: 1, minWidth: 0 },
+                            }}
+                            label={
+                              <Box>
+                                <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
+                                  <Typography fontWeight={700}>Charge saved card</Typography>
+                                  {!hasCardOnFile ? <Chip size="small" label="Unavailable" /> : null}
+                                </Stack>
+                                <Typography variant="body2" color="text.secondary">
+                                  {hasCardOnFile ? "Charge the client’s saved payment method." : "No card is saved for this client."}
+                                </Typography>
+                              </Box>
+                            }
                           />
-                          <Button variant="contained" onClick={handleCopyInvoice}>
-                            Copy link
+                          <Tooltip
+                            title="Stripe does not calculate tax automatically for saved-card charges. Include any required tax in the total manually."
+                          >
+                            <IconButton size="small" aria-label="Saved-card tax information" sx={{ mt: 0.75 }}>
+                              <InfoOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                        <Collapse in={paymentMethod === "saved-card" && hasCardOnFile}>
+                          <Divider />
+                          <Box sx={{ p: 1.5 }}>
+                            <Alert severity="info">
+                              Stripe does not add tax automatically to saved-card charges. Include tax in the total when required.
+                            </Alert>
+                          </Box>
+                        </Collapse>
+                      </Paper>
+
+                      <Paper variant="outlined" sx={paymentOptionSx("offline")}>
+                        <FormControlLabel
+                          value="offline"
+                          control={<Radio />}
+                          sx={{
+                            m: 0,
+                            px: 1.25,
+                            py: 1,
+                            width: "100%",
+                            alignItems: "flex-start",
+                            "& .MuiFormControlLabel-label": { flex: 1, minWidth: 0 },
+                          }}
+                          label={
+                            <Box>
+                              <Typography fontWeight={700}>Record offline payment</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Record cash, terminal, or e-transfer payment already received.
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </Paper>
+                    </Stack>
+                  </RadioGroup>
+                </FormControl>
+              </Box>
+
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: "8px !important",
+                  "&:before": { display: "none" },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="booking-actions-content">
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography fontWeight={700}>Booking actions</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Edit the appointment, cancel it, or update its status.
+                    </Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails id="booking-actions-content" sx={{ pt: 0 }}>
+                  <Stack spacing={1.5}>
+                    {isManager ? (
+                      <>
+                        <Typography variant="body2" color="text.secondary">
+                          Payment and refund status are managed separately from appointment changes.
+                        </Typography>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                          <Button
+                            variant="outlined"
+                            onClick={openBookingEditDialog}
+                            disabled={!bookingCanBeManaged || bookingSubmitting}
+                          >
+                            Edit date &amp; time
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={() => setBookingCancelOpen(true)}
+                            disabled={!bookingCanBeManaged || bookingSubmitting}
+                          >
+                            Cancel booking
                           </Button>
                         </Stack>
-                      )}
-                    </Stack>
-                  </Paper>
-
-                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
-                    <Stack spacing={1}>
-                      <Typography fontWeight={600}>Pay on this device</Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
-                        Hand the device to the client to choose tip and pay by card.
-                      </Typography>
+                        <Divider />
+                      </>
+                    ) : null}
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography fontWeight={700}>Booking status</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ textTransform: "capitalize" }}>
+                          Current status: {String(selected.status || "booked").replaceAll("_", " ")}
+                        </Typography>
+                      </Box>
                       <Button
                         variant="outlined"
-                        onClick={handleStartKiosk}
-                        disabled={isPaid(paymentKey)}
+                        onClick={handleMarkCompleted}
+                        disabled={!selected || statusKey === "completed"}
                       >
-                        Start kiosk checkout
+                        Mark Completed
                       </Button>
                     </Stack>
-                  </Paper>
-
-                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
-                    <Stack spacing={1}>
-                      <Typography fontWeight={600}>Mark as paid (offline)</Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
-                        Record cash, terminal, or e-transfer payments.
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setOfflineOpen(true)}
-                        disabled={isPaid(paymentKey)}
-                      >
-                        Mark paid
-                      </Button>
-                    </Stack>
-                  </Paper>
-                </Stack>
-              </Box>
-
-              <Box>
-                <Typography variant="subtitle1" fontWeight={700} mb={1}>
-                  Booking status
-                </Typography>
-                <Button
-                  variant="outlined"
-                  onClick={handleMarkCompleted}
-                  disabled={!selected || statusKey === "completed"}
-                >
-                  Mark Completed
-                </Button>
-              </Box>
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
             </Stack>
           ) : (
             <Typography variant="body2" color="text.secondary">
@@ -2646,8 +2786,24 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             </Typography>
           )}
         </DialogContent>
-        <DialogActions sx={{ display: { xs: "none", sm: "flex" }, px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.25, sm: 1.5 },
+            borderTop: `1px solid ${theme.palette.divider}`,
+            justifyContent: "space-between",
+            gap: 1,
+          }}
+        >
           <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+          <Button
+            variant="contained"
+            onClick={handlePrimaryPaymentAction}
+            disabled={paymentActionDisabled}
+            sx={{ minHeight: 42 }}
+          >
+            {paymentActionLabel}
+          </Button>
         </DialogActions>
       </Dialog>
 
