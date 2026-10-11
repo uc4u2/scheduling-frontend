@@ -25,6 +25,10 @@ import {
 import TabShell from "../../../components/ui/TabShell";
 import SectionCard from "../../../components/ui/SectionCard";
 import ProviderTop10 from "./ProviderTop10";
+import {
+  normalizeTipReportRow,
+  tipLeaderboardProgress,
+} from "../../../utils/tipReporting";
 import Client360 from "./Client360";
 import ClientFinder from "./ClientFinder";
 import ClientsSummaryTab from "./ClientsSummaryTab";
@@ -534,7 +538,9 @@ const ClientsTab = (
                       label={`Gross tips${money.currency ? ` (${money.currency})` : ""}`}
                       value={fmtMoney(money.gross_tips, money.currency)}
                       help={
-                        Number(money.tip_refunds || 0) > 0
+                        money.net_tips_complete === false || money.net_tips === null
+                          ? "Net unavailable—refund allocation unknown"
+                          : Number(money.tip_refunds || 0) > 0
                           ? `Refunded tips: ${fmtMoney(money.tip_refunds, money.currency)} · Net tips: ${fmtMoney(money.net_tips, money.currency)}`
                           : undefined
                       }
@@ -1525,9 +1531,13 @@ const ClientsTab = (
           </Typography>
         ) : (
           tips.map((t, idx) => {
-            const grossTips = Number(t.gross_tip_total ?? t.tip_total ?? 0);
-            const refundedTips = Number(t.refunded_tip_total || 0);
-            const netTips = Number(t.net_tip_total ?? grossTips - refundedTips);
+            const normalizedTip = normalizeTipReportRow(t);
+            const {
+              grossTipTotal: grossTips,
+              refundedTipTotal: refundedTips,
+              netTipTotal: netTips,
+            } = normalizedTip;
+            const progress = tipLeaderboardProgress(t, tips);
             return (
               <Box
                 key={`${t.currency || "USD"}:${t.recruiter_id ?? idx}`}
@@ -1557,34 +1567,21 @@ const ClientsTab = (
                     ) : null}
                     <Chip
                       color="primary"
-                      label={`Net ${fmtMoney(netTips, t.currency)}`}
+                      label={
+                        normalizedTip.netTipAvailable
+                          ? `Net ${fmtMoney(netTips, t.currency)}`
+                          : normalizedTip.netUnavailableLabel
+                      }
                     />
                   </Stack>
                 </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={Math.min(
-                    100,
-                    Math.round(
-                      (100 * netTips) /
-                        Math.max(
-                          1,
-                          ...tips
-                            .filter(
-                              (row) =>
-                                (row.currency || "USD") ===
-                                (t.currency || "USD"),
-                            )
-                            .map((row) =>
-                              Number(
-                                row.net_tip_total ?? row.tip_total ?? 0,
-                              ),
-                            ),
-                        ),
-                    ),
-                  )}
-                  sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
-                />
+                {progress !== null ? (
+                  <LinearProgress
+                    variant="determinate"
+                    value={progress}
+                    sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
+                  />
+                ) : null}
               </Box>
             );
           })
