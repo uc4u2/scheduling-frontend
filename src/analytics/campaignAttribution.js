@@ -5,6 +5,7 @@ const ATTRIBUTION_KEYS = [
   "utm_term",
   "utm_content",
   "gclid",
+  "srsltid",
 ];
 
 const STORAGE_KEY = "schedulaa_campaign_attribution";
@@ -34,3 +35,10 @@ export const captureCampaignAttribution = (search = window.location.search) => {
 
 export const getCampaignAttribution = () => captureCampaignAttribution("");
 
+export const appendCampaignAttributionToParams = (params, attribution) => {
+  ATTRIBUTION_KEYS.forEach((key) => {
+    const value = clean(attribution?.[key]);
+    if (value && !params.has(key)) params.set(key, value);
+  });
+  return params;
+};

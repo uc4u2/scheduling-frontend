@@ -6,6 +6,10 @@ import { getSessionUser } from "../utils/authRedirect";
 import { isMobileComplianceMode } from "../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../components/mobile/MobileWebOnlyNotice";
 import { trackGAEvent } from "../analytics/ga";
+import {
+  appendCampaignAttributionToParams,
+  captureCampaignAttribution,
+} from "../analytics/campaignAttribution";
 
 const VALID_PLANS = new Set(["starter", "pro", "business"]);
 const VALID_INTERVALS = new Set(["monthly", "annual", "yearly"]);
@@ -42,6 +46,10 @@ const UpgradeBridgePage = () => {
       if (addon) loginParams.set("addon", addon);
       if (interval) loginParams.set("interval", interval);
       if (returnTo) loginParams.set("returnTo", returnTo);
+      appendCampaignAttributionToParams(
+        loginParams,
+        captureCampaignAttribution(location.search || "")
+      );
 
       if (!token) {
         window.location.replace(`/login?${loginParams.toString()}`);
@@ -140,7 +148,7 @@ const UpgradeBridgePage = () => {
     return () => {
       active = false;
     };
-  }, [addon, interval, mobileComplianceMode, plan, rawInterval, returnTo]);
+  }, [addon, interval, location.search, mobileComplianceMode, plan, rawInterval, returnTo]);
 
   if (mobileComplianceMode) {
     return (
