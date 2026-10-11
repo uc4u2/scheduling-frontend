@@ -133,9 +133,18 @@ describe("FinanceOverviewPage progressive disclosure", () => {
     mockGetFinanceOverview.mockResolvedValue(zeroOverview);
     mockGetFinanceSummary.mockResolvedValue({
       currency: "CAD",
-      estimate_total: 1500,
-      gross_invoice_total: 0,
-      expense_total: 0,
+      currency_groups: [{
+        currency: "CAD",
+        estimate_total: 1500,
+        issued_invoice_amount: 0,
+        outstanding_receivable: 0,
+        recorded_payments_received: 0,
+        confirmed_refunds: 0,
+        net_collected_amount: 0,
+        expense_total: 0,
+        invoiced_tax: 0,
+        net_collected_amount_complete: true,
+      }],
     });
     mockGetFinanceTaxContext.mockResolvedValue({ tax_context: taxContext });
     mockGetFinanceOwnerSnapshot.mockResolvedValue({
@@ -161,7 +170,7 @@ describe("FinanceOverviewPage progressive disclosure", () => {
     expect(sectionButton("Money Snapshot")).toHaveAttribute("aria-expanded", "true");
     expect(sectionButton("Operations Snapshot")).toHaveAttribute("aria-expanded", "false");
     expect(sectionButton("Owner / Reporting Snapshot")).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByText(/Estimates CA\$1,500/)).toBeInTheDocument();
+    expect(screen.getByText(/CAD: issued CA\$0.00 • collected CA\$0.00/)).toBeInTheDocument();
     expect(screen.getByText(/Finance Identity: Schedulaa Web Design/)).toBeInTheDocument();
   });
 

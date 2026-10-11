@@ -13,18 +13,11 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useSnackbar } from "notistack";
-import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinanceCurrencyGroups from "./components/FinanceCurrencyGroups";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import { exportAccountantCsv, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
 import ThemedDateField from "../../components/ui/ThemedDateField";
-
-const formatMoney = (value, currency = "USD") =>
-  new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
 const firstDayOfMonth = () => {
   const now = new Date();
@@ -46,7 +39,6 @@ export default function FinanceReportsPage() {
   const [dateFrom, setDateFrom] = useState(firstDayOfMonth());
   const [dateTo, setDateTo] = useState(formatDate(new Date()));
   const [downloading, setDownloading] = useState(false);
-  const currency = summary?.currency || "USD";
 
   useEffect(() => {
     let mounted = true;
@@ -115,21 +107,23 @@ export default function FinanceReportsPage() {
         <Alert severity="error">{error}</Alert>
       ) : (
         <Stack spacing={2}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.estimateTotal", "Estimate Total")} value={formatMoney(summary?.estimate_total, currency)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.grossInvoiceTotal", "Gross Invoice Total")} value={formatMoney(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.refunds", "Refunds")} value={formatMoney(summary?.refund_total, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.netInvoiceTotal", "Net Invoice Total")} value={formatMoney(summary?.net_invoice_total, currency)} accent="success" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.expenseTotal", "Expense Total")} value={formatMoney(summary?.expense_total, currency)} accent="error" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.grossTaxCollected", "Gross Tax Collected")} value={formatMoney(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.taxRefunded", "Tax Refunded")} value={formatMoney(summary?.tax_refunded, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.netTaxCollected", "Net Tax Collected")} value={formatMoney(summary?.net_tax_collected, currency)} accent="success" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.taxPaidOnExpenses", "Tax Paid On Expenses")} value={formatMoney(summary?.tax_paid_on_expenses, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.estimatedNetTaxGross", "Estimated Net Tax Gross")} value={formatMoney(summary?.estimated_net_tax_gross ?? summary?.estimated_net_tax, currency)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.estimatedNetTaxNet", "Estimated Net Tax Net")} value={formatMoney(summary?.estimated_net_tax_net, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.refundedInvoices", "Refunded Invoices")} value={String(summary?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tReports("cards.partialRefunds", "Partial Refunds")} value={String(summary?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
-          </Grid>
+          <Alert severity="info">
+            Finance-only totals are grouped by each document's original currency. Invoice issue dates, payment dates, refund dates, and expense dates are kept distinct.
+          </Alert>
+          <FinanceCurrencyGroups
+            groups={summary?.currency_groups || []}
+            metrics={[
+              { key: "estimate_total", label: tReports("cards.estimateTotal", "Estimate total"), accent: "primary" },
+              { key: "issued_invoice_amount", label: tReports("cards.issuedInvoiceAmount", "Issued invoice amount"), accent: "secondary" },
+              { key: "outstanding_receivable", label: tReports("cards.outstandingReceivable", "Outstanding receivable"), accent: "warning" },
+              { key: "recorded_payments_received", label: tReports("cards.recordedPayments", "Recorded payments received"), accent: "success" },
+              { key: "confirmed_refunds", label: tReports("cards.confirmedRefunds", "Confirmed refunds"), accent: "warning" },
+              { key: "net_collected_amount", label: tReports("cards.netCollected", "Net collected amount"), accent: "success" },
+              { key: "expense_total", label: tReports("cards.expenseTotal", "Expense total"), accent: "error" },
+              { key: "invoiced_tax", label: tReports("cards.invoicedTax", "Invoiced tax"), accent: "info", helper: "Tax shown on issued invoices; this is not a cash-collected tax figure." },
+              { key: "expense_tax", label: tReports("cards.expenseTax", "Tax paid on expenses"), accent: "secondary" },
+            ]}
+          />
         </Stack>
       )}
 

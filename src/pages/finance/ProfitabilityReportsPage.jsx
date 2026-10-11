@@ -3,24 +3,16 @@ import {
   Alert,
   Button,
   CircularProgress,
-  Grid,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinanceCurrencyGroups from "./components/FinanceCurrencyGroups";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 import { getFinanceProfitabilityReport, getFinanceTaxContext } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
-
-const formatMoney = (value, currency = "USD") =>
-  new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
 const firstDayOfMonth = () => {
   const now = new Date();
@@ -39,8 +31,6 @@ export default function ProfitabilityReportsPage() {
   const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const currency = report?.currency || taxContext?.display_currency || "USD";
-
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -87,20 +77,27 @@ export default function ProfitabilityReportsPage() {
         <Alert severity="error">{error}</Alert>
       ) : (
         <>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.estimateTotal", "Estimate total")} value={formatMoney(report?.estimate_total, currency)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.invoiceTotal", "Invoice total")} value={formatMoney(report?.invoice_total, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.grossRevenue", "Gross revenue")} value={formatMoney(report?.gross_revenue ?? report?.invoice_total, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.refunds", "Refunds")} value={formatMoney(report?.refund_total, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.netRevenue", "Net revenue")} value={formatMoney(report?.net_revenue, currency)} accent="success" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.plannedLaborCost", "Planned labor cost")} value={formatMoney(report?.planned_labor_cost, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.approvedMaterialCost", "Approved material cost")} value={formatMoney(report?.approved_material_cost, currency)} accent="error" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.linkedExpenses", "Linked expenses")} value={formatMoney(report?.linked_expense_total, currency)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.estimatedMarginGross", "Estimated margin gross")} value={formatMoney(report?.estimated_margin_gross ?? report?.estimated_margin, currency)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tProfit("cards.estimatedMarginNet", "Estimated margin net")} value={formatMoney(report?.estimated_margin_net, currency)} accent="success" /></Grid>
-          </Grid>
+          <Alert severity="info">
+            Revenue and costs are shown in their original currencies. No exchange-rate conversion is applied.
+          </Alert>
+          <FinanceCurrencyGroups
+            groups={report?.currency_groups || []}
+            showReconciliationWarning={false}
+            metrics={[
+              { key: "estimate_total", label: tProfit("cards.estimateTotal", "Estimate total"), accent: "primary" },
+              { key: "invoice_total", label: tProfit("cards.invoiceTotal", "Invoice total"), accent: "secondary" },
+              { key: "gross_revenue", label: tProfit("cards.grossRevenue", "Gross revenue"), accent: "secondary" },
+              { key: "refund_total", label: tProfit("cards.refunds", "Refunds"), accent: "warning" },
+              { key: "net_revenue", label: tProfit("cards.netRevenue", "Net revenue"), accent: "success" },
+              { key: "planned_labor_cost", label: tProfit("cards.plannedLaborCost", "Planned labor cost"), accent: "warning" },
+              { key: "approved_material_cost", label: tProfit("cards.approvedMaterialCost", "Approved material cost"), accent: "error" },
+              { key: "linked_expense_total", label: tProfit("cards.linkedExpenses", "Linked expenses"), accent: "info" },
+              { key: "estimated_margin_gross", label: tProfit("cards.estimatedMarginGross", "Estimated margin gross"), accent: "primary" },
+              { key: "estimated_margin_net", label: tProfit("cards.estimatedMarginNet", "Estimated margin net"), accent: "success" },
+            ]}
+          />
           <Typography variant="body2" color="text.secondary">
-            {tProfit("footnote", "Calculated per work order using linked invoice totals when available, estimate fallback when not invoiced yet, and separate gross versus net margin when refund activity exists.")}
+            {tProfit("footnote", "Calculated per work order using linked invoice totals when available, estimate fallback when not invoiced yet, and separate gross versus net margin when refund activity exists. Currency groups are never added together.")}
           </Typography>
         </>
       )}

@@ -415,7 +415,9 @@ export default function ManagerPaymentsView({ connect }) {
             _capturedTipTotal: 0,
             _refundedTotal: Number(b.refunded_amount || 0),
             _remainingRefundable: Number(b.remaining_refundable_amount || 0),
-            _netCollectedAmount: Number(b.net_collected_amount || 0),
+            _netCollectedAmount: b.net_collected_amount_complete === false
+              ? null
+              : Number(b.net_collected_amount || 0),
             _sourceTypeLabel: b.source_label || "Business Finance",
             client: b.client || {
               full_name: b.client_name || "Client",

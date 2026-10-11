@@ -3,23 +3,15 @@ import {
   Alert,
   Button,
   CircularProgress,
-  Grid,
   Paper,
   Stack,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import ThemedDateField from "../../components/ui/ThemedDateField";
-import FinanceMetricCard from "./components/FinanceMetricCard";
+import FinanceCurrencyGroups from "./components/FinanceCurrencyGroups";
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import { getFinanceTaxContext, getFinanceTaxSummary } from "./financeApi";
 import { formatDate } from "../../utils/datetime";
-
-const formatMoney = (value, currency = "USD") =>
-  new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
 const firstDayOfMonth = () => {
   const now = new Date();
@@ -38,7 +30,6 @@ export default function TaxSummaryPage() {
   const [taxContext, setTaxContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const currency = report?.currency || "USD";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,19 +76,20 @@ export default function TaxSummaryPage() {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : (
-        <>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.grossTaxCollected", "Gross tax collected")} value={formatMoney(report?.gross_tax_collected ?? report?.tax_collected, currency)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.taxRefunded", "Tax refunded")} value={formatMoney(report?.tax_refunded, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.netTaxCollected", "Net tax collected")} value={formatMoney(report?.net_tax_collected, currency)} accent="success" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.taxPaidOnExpenses", "Tax paid on expenses")} value={formatMoney(report?.tax_paid_on_expenses, currency)} accent="secondary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.estimatedNetTaxGross", "Estimated net tax gross")} value={formatMoney(report?.estimated_net_tax_gross ?? report?.estimated_net_tax, currency)} accent="info" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.estimatedNetTaxNet", "Estimated net tax net")} value={formatMoney(report?.estimated_net_tax_net, currency)} accent="warning" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.refundTotal", "Refund total")} value={formatMoney(report?.refund_total, currency)} accent="error" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.refundedInvoices", "Refunded invoices")} value={String(report?.refunded_invoice_count ?? 0)} accent="primary" /></Grid>
-            <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tTax("cards.partialRefunds", "Partial refunds")} value={String(report?.partial_refund_invoice_count ?? 0)} accent="secondary" /></Grid>
-          </Grid>
-        </>
+        <Stack spacing={2}>
+          <Alert severity="info">
+            This report shows invoiced tax by original document currency. Collected tax is not shown because partial-payment and refund tax allocation is not persisted yet.
+          </Alert>
+          <FinanceCurrencyGroups
+            groups={report?.currency_groups || []}
+            showReconciliationWarning={false}
+            metrics={[
+              { key: "invoiced_tax", label: tTax("cards.invoicedTax", "Invoiced tax"), accent: "primary" },
+              { key: "tax_paid_on_expenses", label: tTax("cards.taxPaidOnExpenses", "Tax paid on expenses"), accent: "secondary" },
+              { key: "estimated_tax_position", label: tTax("cards.estimatedTaxPosition", "Estimated tax position"), accent: "info", helper: "Invoiced tax less tax recorded on expenses; accountant review is still required." },
+            ]}
+          />
+        </Stack>
       )}
     </Stack>
   );

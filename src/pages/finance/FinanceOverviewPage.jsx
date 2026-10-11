@@ -21,6 +21,7 @@ import FinanceSalesTaxProfileCard from "./components/FinanceSalesTaxProfileCard"
 import FinanceSettingsSnapshotCard from "./components/FinanceSettingsSnapshotCard";
 import FinanceDocumentIdentityCard from "./components/FinanceDocumentIdentityCard";
 import FinanceOverviewSection from "./components/FinanceOverviewSection";
+import FinanceCurrencyGroups from "./components/FinanceCurrencyGroups";
 import { getFinanceOverview, getFinanceOwnerSnapshot, getFinanceSummary, getFinanceTaxContext } from "./financeApi";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
 
@@ -59,6 +60,9 @@ const ownerShortcutAction = (label, handler) => (
     {label}
   </Button>
 );
+
+const formatOptionalMoney = (value, currency) =>
+  value === null || value === undefined ? "See currency groups" : formatCurrency(value, currency);
 
 const buildAttentionCards = (overview = {}, actions = [], tFinance) => {
   const actionMap = new Map(actions.map((row) => [row.type, row]));
@@ -243,20 +247,23 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
     (total, card) => total + Number(card.count || 0),
     0
   );
-  const currency = summary?.currency || "USD";
+  const currency = summary?.currency || taxContext?.display_currency || "USD";
   const ownerCurrency = ownerSnapshot?.currency || currency;
+  const summaryCurrencyGroups = summary?.currency_groups || [];
+  const ownerCurrencyGroups = ownerSnapshot?.currency_groups || [];
   const readiness = ownerSnapshot?.readiness || {};
   const readinessAccent =
     readiness?.status === "ready" ? "success" : readiness?.status === "almost_ready" ? "warning" : "error";
-  const pendingBalanceTotal =
-    Number(ownerSnapshot?.revenue?.pending_balance || 0) +
-    Number(ownerSnapshot?.revenue?.partial_payment_balance || 0);
-  const hasFinanceActivity = [
-    Number(ownerSnapshot?.revenue?.gross_invoice_total || 0),
-    Number(ownerSnapshot?.revenue?.net_invoice_total || 0),
-    Number(ownerSnapshot?.expenses?.expense_total || 0),
-    Number(ownerSnapshot?.revenue?.paid_total || 0),
-  ].some((value) => Math.abs(value) > 0);
+  const pendingBalanceTotal = ownerCurrencyGroups.reduce(
+    (total, group) => total + Number(group?.outstanding_receivable || 0),
+    0
+  );
+  const hasFinanceActivity = ownerCurrencyGroups.some((group) => [
+    group?.issued_invoice_amount,
+    group?.recorded_payments_received,
+    group?.expense_total,
+    group?.confirmed_refunds,
+  ].some((value) => Math.abs(Number(value || 0)) > 0));
   const attentionCounts = {
     missingReceipts: Number(ownerSnapshot?.expenses?.missing_receipts_count || 0),
     unlinkedReceipts: Number(ownerSnapshot?.expenses?.unlinked_receipts_count || 0),
@@ -334,11 +341,9 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
         .map(formatAttentionSummaryItem)
         .join(" • ")
     : "Nothing urgent";
-  const moneySummary = [
-    `Estimates ${formatCurrency(summary?.estimate_total, currency)}`,
-    `Invoices ${formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)}`,
-    `Expenses ${formatCurrency(summary?.expense_total, currency)}`,
-  ].join(" • ");
+  const moneySummary = summaryCurrencyGroups.length
+    ? summaryCurrencyGroups.map((group) => `${group.currency}: issued ${formatCurrency(group.issued_invoice_amount, group.currency)} • collected ${formatCurrency(group.recorded_payments_received, group.currency)}`).join(" | ")
+    : "No finance activity";
   const operationsSummary = [
     `${Number(overview?.work_orders_active_count || 0)} active jobs`,
     `${Number(overview?.work_orders_needing_scheduling_count || 0)} need scheduling`,
@@ -460,26 +465,19 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
         expanded={expandedSections.money}
         onChange={(next) => setSectionExpanded("money", next)}
       >
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimateTotal", "Estimate total")} value={formatCurrency(summary?.estimate_total, currency)} accent="primary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossInvoiceTotal", "Gross invoice total")} value={formatCurrency(summary?.gross_invoice_total ?? summary?.invoice_total, currency)} accent="secondary" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.refunds", "Refunds")} value={formatCurrency(summary?.refund_total, currency)} accent="warning" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netInvoiceTotal", "Net invoice total")} value={formatCurrency(summary?.net_invoice_total, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.expenseTotal", "Expense total")} value={formatCurrency(summary?.expense_total, currency)} accent="error" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.grossTaxCollected", "Gross tax collected")} value={formatCurrency(summary?.gross_tax_collected ?? summary?.tax_collected, currency)} accent="info" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxRefunded", "Tax refunded")} value={formatCurrency(summary?.tax_refunded, currency)} accent="warning" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.netTaxCollected", "Net tax collected")} value={formatCurrency(summary?.net_tax_collected, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.taxPaidOnExpenses", "Tax paid on expenses")} value={formatCurrency(summary?.tax_paid_on_expenses, currency)} accent="success" /></Grid>
-          <Grid item xs={12} sm={6} lg={4}><FinanceMetricCard label={tFinance("money.estimatedNetTaxNet", "Estimated net tax net")} value={formatCurrency(summary?.estimated_net_tax_net ?? summary?.estimated_net_tax, currency)} accent="warning" /></Grid>
-        </Grid>
-        {summary?.payment_total_scope === "not_available_without_invoice_payment_link" ? (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            {tFinance(
-              "money.paymentScopeInfo",
-              "Payment collection totals are not available yet for all invoice payment methods."
-            )}
-          </Alert>
-        ) : null}
+        <FinanceCurrencyGroups
+          groups={summaryCurrencyGroups}
+          metrics={[
+            { key: "estimate_total", label: tFinance("money.estimateTotal", "Estimate total"), accent: "primary" },
+            { key: "issued_invoice_amount", label: tFinance("money.issuedInvoiceAmount", "Issued invoice amount"), accent: "secondary" },
+            { key: "outstanding_receivable", label: tFinance("money.outstandingReceivable", "Outstanding receivable"), accent: "warning" },
+            { key: "recorded_payments_received", label: tFinance("money.recordedPayments", "Recorded payments received"), accent: "success" },
+            { key: "confirmed_refunds", label: tFinance("money.confirmedRefunds", "Confirmed refunds"), accent: "warning" },
+            { key: "net_collected_amount", label: tFinance("money.netCollected", "Net collected amount"), accent: "success" },
+            { key: "expense_total", label: tFinance("money.expenseTotal", "Expense total"), accent: "error" },
+            { key: "invoiced_tax", label: tFinance("money.invoicedTax", "Invoiced tax"), accent: "info", helper: "Tax shown on issued invoices, not cash collected tax." },
+          ]}
+        />
       </FinanceOverviewSection>
 
       <FinanceOverviewSection
@@ -543,6 +541,21 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                   />
                 ) : (
                   <>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Finance-only figures are grouped by original currency. Collected tax is intentionally unavailable until payment-level tax allocation is persisted.
+                    </Alert>
+                    <FinanceCurrencyGroups
+                      groups={ownerCurrencyGroups}
+                      metrics={[
+                        { key: "issued_invoice_amount", label: tFinance("ownerSnapshot.issued", "Issued invoice amount"), accent: "secondary" },
+                        { key: "recorded_payments_received", label: tFinance("ownerSnapshot.recordedPayments", "Recorded payments received"), accent: "success" },
+                        { key: "confirmed_refunds", label: tFinance("ownerSnapshot.refunds", "Confirmed refunds"), accent: "warning" },
+                        { key: "net_collected_amount", label: tFinance("ownerSnapshot.netCollected", "Net collected amount"), accent: "success" },
+                        { key: "outstanding_receivable", label: tFinance("ownerSnapshot.outstanding", "Outstanding receivable"), accent: "warning" },
+                        { key: "expense_total", label: tFinance("ownerSnapshot.expenses", "Expenses"), accent: "error" },
+                        { key: "invoiced_tax", label: tFinance("ownerSnapshot.invoicedTax", "Invoiced tax"), accent: "info" },
+                      ]}
+                    />
                     <Grid container spacing={2}>
                       <Grid item xs={12}>
                         <Typography variant="subtitle1" fontWeight={800}>
@@ -551,36 +564,36 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
-                          label={tFinance("ownerSnapshot.netRevenue", "Net revenue")}
-                          value={formatCurrency(ownerSnapshot?.revenue?.net_invoice_total, ownerCurrency)}
+                          label={tFinance("ownerSnapshot.netRevenue", "Net collected amount")}
+                          value={formatOptionalMoney(ownerSnapshot?.revenue?.net_collected_amount, ownerCurrency)}
                           accent="success"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.refunds", "Refunds")}
-                          value={formatCurrency(ownerSnapshot?.revenue?.refund_total, ownerCurrency)}
+                          value={formatOptionalMoney(ownerSnapshot?.revenue?.refund_total, ownerCurrency)}
                           accent="warning"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
-                          label={tFinance("ownerSnapshot.paidOnline", "Paid online")}
-                          value={formatCurrency(ownerSnapshot?.revenue?.online_paid_total, ownerCurrency)}
+                          label={tFinance("ownerSnapshot.paidOnline", "Recorded payments")}
+                          value={formatOptionalMoney(ownerSnapshot?.revenue?.recorded_payments_received, ownerCurrency)}
                           accent="info"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
-                          label={tFinance("ownerSnapshot.paidOffline", "Paid offline")}
-                          value={formatCurrency(ownerSnapshot?.revenue?.offline_paid_total, ownerCurrency)}
+                          label={tFinance("ownerSnapshot.paidOffline", "Issued invoices")}
+                          value={formatOptionalMoney(ownerSnapshot?.revenue?.issued_invoice_amount, ownerCurrency)}
                           accent="secondary"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.pendingBalance", "Pending balance")}
-                          value={formatCurrency(pendingBalanceTotal, ownerCurrency)}
+                          value={ownerCurrencyGroups.length === 1 ? formatCurrency(pendingBalanceTotal, ownerCurrency) : "See currency groups"}
                           accent="warning"
                           action={
                             pendingBalanceTotal > 0
@@ -601,14 +614,14 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.expenses", "Expenses")}
-                          value={formatCurrency(ownerSnapshot?.expenses?.expense_total, ownerCurrency)}
+                          value={formatOptionalMoney(ownerSnapshot?.expenses?.expense_total, ownerCurrency)}
                           accent="error"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.margin", "Estimated margin")}
-                          value={formatCurrency(ownerSnapshot?.profitability?.estimated_margin_net, ownerCurrency)}
+                          value={formatOptionalMoney(ownerSnapshot?.profitability?.estimated_margin_net, ownerCurrency)}
                           accent="primary"
                           helper={tFinance(
                             "ownerSnapshot.marginHelper",
@@ -619,14 +632,14 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.approvedMaterialCost", "Approved material cost")}
-                          value={formatCurrency(ownerSnapshot?.operations?.approved_material_cost, ownerCurrency)}
+                          value={formatOptionalMoney(ownerSnapshot?.operations?.approved_material_cost, ownerSnapshot?.operations?.approved_material_cost_currency || ownerCurrency)}
                           accent="warning"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={3}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.plannedLaborCost", "Planned labor cost")}
-                          value={formatCurrency(ownerSnapshot?.operations?.planned_labor_cost, ownerCurrency)}
+                          value={formatOptionalMoney(ownerSnapshot?.operations?.planned_labor_cost, ownerCurrency)}
                           accent="secondary"
                         />
                       </Grid>
@@ -638,22 +651,22 @@ export default function FinanceOverviewPage({ onNavigate, onQuickAction }) {
                       </Grid>
                       <Grid item xs={12} sm={6} lg={4}>
                         <FinanceMetricCard
-                          label={tFinance("ownerSnapshot.netTax", "Estimated net tax")}
-                          value={formatCurrency(ownerSnapshot?.tax?.estimated_net_tax_net, ownerCurrency)}
+                          label={tFinance("ownerSnapshot.netTax", "Estimated tax position")}
+                          value={formatOptionalMoney(ownerSnapshot?.tax?.estimated_tax_position, ownerCurrency)}
                           accent="warning"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={4}>
                         <FinanceMetricCard
-                          label={tFinance("ownerSnapshot.netTaxCollected", "Net tax collected")}
-                          value={formatCurrency(ownerSnapshot?.tax?.net_tax_collected, ownerCurrency)}
+                          label={tFinance("ownerSnapshot.netTaxCollected", "Invoiced tax")}
+                          value={formatOptionalMoney(ownerSnapshot?.tax?.invoiced_tax, ownerCurrency)}
                           accent="success"
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} lg={4}>
                         <FinanceMetricCard
                           label={tFinance("ownerSnapshot.taxPaidOnExpenses", "Tax paid on expenses")}
-                          value={formatCurrency(ownerSnapshot?.tax?.tax_paid_on_expenses, ownerCurrency)}
+                          value={formatOptionalMoney(ownerSnapshot?.tax?.tax_paid_on_expenses, ownerCurrency)}
                           accent="info"
                         />
                       </Grid>

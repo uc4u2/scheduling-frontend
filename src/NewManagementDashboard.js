@@ -2670,7 +2670,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                             <Box>
                               <Typography fontWeight={700}>Send payment link</Typography>
                               <Typography variant="body2" color="text.secondary">
-                                Hosted Stripe invoice; automatic tax applies when configured in Stripe.
+                                Hosted Stripe invoice for the amount shown above. Tax is not added automatically in this booking payment flow.
                               </Typography>
                             </Box>
                           }

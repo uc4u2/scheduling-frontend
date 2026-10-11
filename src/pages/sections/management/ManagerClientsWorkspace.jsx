@@ -286,6 +286,28 @@ const formatMoney = (value, currency = CURRENCY) =>
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
+const outstandingBalanceGroups = (record) => Array.isArray(record?.unpaid_balance_by_currency)
+  ? record.unpaid_balance_by_currency
+  : [];
+
+const hasOutstandingBalance = (record) => {
+  const groups = outstandingBalanceGroups(record);
+  if (groups.length) {
+    return groups.some((group) => Number(group?.outstanding_receivable || 0) > 0);
+  }
+  return Number(record?.unpaid_balance || 0) > 0;
+};
+
+const formatOutstandingBalance = (record, fallbackCurrency = CURRENCY) => {
+  const groups = outstandingBalanceGroups(record);
+  if (groups.length) {
+    return groups
+      .map((group) => formatMoney(group?.outstanding_receivable || 0, group?.currency || fallbackCurrency))
+      .join(" • ");
+  }
+  return formatMoney(record?.unpaid_balance || 0, record?.unpaid_balance_currency || record?.currency || fallbackCurrency);
+};
+
 const formatDateTime = (value, timezone) => {
   if (!value) return "—";
   try {
@@ -2369,7 +2391,7 @@ function Client360ListTable({ rows, sort, onOpen, onQuickNote }) {
                 <TableCell sx={{ minWidth: 190 }}>
                   <Stack spacing={0.5}>
                     <Typography variant="body2" fontWeight={700}>
-                      {formatMoney(row.unpaid_balance || 0, row.currency || CURRENCY)}
+                      {formatOutstandingBalance(row, row.currency || CURRENCY)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {row.linked_counts?.open_invoices ?? 0} open invoices
@@ -2848,8 +2870,8 @@ export default function ManagerClientsWorkspace() {
   const clientAlerts = useMemo(() => {
     if (!detail) return [];
     const alerts = [];
-    if (Number(summary.open_invoice_count || 0) > 0 || Number(summary.unpaid_balance || 0) > 0) {
-      alerts.push({ key: "billing", label: "Billing follow-up", tone: "warning", helper: `${summary.open_invoice_count || 0} open invoices • ${formatMoney(summary.unpaid_balance || 0, companyCurrency)} unpaid` });
+    if (Number(summary.open_invoice_count || 0) > 0 || hasOutstandingBalance(summary)) {
+      alerts.push({ key: "billing", label: "Billing follow-up", tone: "warning", helper: `${summary.open_invoice_count || 0} open invoices • ${formatOutstandingBalance(summary, companyCurrency)} unpaid` });
     }
     if (Number(summary.no_show_count || 0) > 0) {
       alerts.push({ key: "no_show", label: "Attendance risk", tone: "default", helper: `${summary.no_show_count || 0} no-shows on record.` });
@@ -3658,7 +3680,7 @@ export default function ManagerClientsWorkspace() {
       ? pendingRequestTitles.slice(0, 3).join(", ")
       : "the requested document";
     const openInvoiceCount = Number(summary.open_invoice_count || 0);
-    const unpaidBalance = formatMoney(summary.unpaid_balance || 0, companyCurrency);
+    const unpaidBalance = formatOutstandingBalance(summary, companyCurrency);
     const estimateCount = Number(detail?.finance?.estimates?.length || 0);
     const estimateTitle = detail?.finance?.estimates?.[0]?.title || detail?.finance?.estimates?.[0]?.estimate_number || "the estimate";
 
@@ -3908,13 +3930,20 @@ export default function ManagerClientsWorkspace() {
       explainActionState(entry, "Follow-up email is not ready yet.");
       return;
     }
-    const templateKey = Number(summary.unpaid_balance || 0) > 0
+    const templateKey = hasOutstandingBalance(summary)
       ? "payment_reminder"
       : summary.next_appointment
         ? "appointment_follow_up"
         : "rebooking_reminder";
     openNotesComposer("email", buildEmailTemplate(templateKey));
-  }, [actionReadiness.send_follow_up, buildEmailTemplate, explainActionState, summary.unpaid_balance, summary.next_appointment]);
+  }, [
+    actionReadiness.send_follow_up,
+    buildEmailTemplate,
+    explainActionState,
+    summary.unpaid_balance,
+    summary.unpaid_balance_by_currency,
+    summary.next_appointment,
+  ]);
 
   const billingReadinessItems = useMemo(() => {
     const items = [
@@ -4168,7 +4197,7 @@ export default function ManagerClientsWorkspace() {
                           <Grid item xs={12} sm={6}>
                             <FinanceMetricCard
                               label="Outstanding balance"
-                              value={formatMoney(summary.unpaid_balance || 0, companyCurrency)}
+                              value={formatOutstandingBalance(summary, companyCurrency)}
                               helper={`${summary.open_invoice_count ?? 0} open invoice${Number(summary.open_invoice_count || 0) === 1 ? "" : "s"}`}
                               accent="warning"
                             />
