@@ -104,6 +104,7 @@ const bookings = [
     local_date: "2026-10-13",
     local_start_time: "11:00",
     local_end_time: "12:00",
+    currency: "CAD",
     service: { id: 5, name: "Consultation" },
     client: { id: 6, full_name: "Casey Client", email: "casey@example.com" },
     recruiter: { id: 7, full_name: "Riley Artist" },
@@ -308,7 +309,7 @@ describe("BookingCheckoutPanel", () => {
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/api/manager/manual-payments", {
         appointment_id: 11,
-        currency: "USD",
+        currency: "CAD",
         description: "Booking #11 • Consultation",
         amount_cents: 2500,
         client_id: 6,

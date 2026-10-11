@@ -2413,33 +2413,6 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             ) : null}
           </Stack>
         </DialogTitle>
-        {selected ? (
-          <Box
-            sx={{
-              px: { xs: 2, sm: 3 },
-              pb: 1.5,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}
-          >
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {selected?.client?.full_name || selected?.client?.email || "Client"} • {selected?.service?.name || "Service"}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-              {selected?.local_date || selected?.date} at {selected?.local_start_time || selected?.start_time}
-              {selected?.appointment_timezone ? ` • ${selected.appointment_timezone}` : ""}
-            </Typography>
-            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" mt={0.75}>
-              <Chip size="small" label={selected.status || "booked"} sx={{ textTransform: "capitalize" }} />
-              <Chip
-                size="small"
-                label={selected.payment_status || "unpaid"}
-                color={isPaid(paymentKey) ? "success" : "default"}
-                variant="outlined"
-                sx={{ textTransform: "capitalize" }}
-              />
-            </Stack>
-          </Box>
-        ) : null}
         <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, overflowX: "hidden" }}>
           {selected ? (
             <Stack spacing={{ xs: 1.5, sm: 2.5 }}>
@@ -2453,61 +2426,106 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                   "&:before": { display: "none" },
                 }}
               >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="booking-details-updates-content">
-                  <Typography fontWeight={700}>Booking details &amp; updates</Typography>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls="booking-details-updates-content"
+                  sx={{ "&.Mui-expanded .booking-summary-context": { display: "none" } }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography fontWeight={700}>Booking details &amp; updates</Typography>
+                    <Typography className="booking-summary-context" variant="body2" color="text.secondary" noWrap>
+                      {selected?.client?.full_name || selected?.client?.email || "Client"} • {selected?.service?.name || "Service"}
+                    </Typography>
+                  </Box>
                 </AccordionSummary>
                 <AccordionDetails id="booking-details-updates-content" sx={{ pt: 0 }}>
                   <Stack spacing={1.5}>
-                    {isManager ? (
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Box
+                      sx={{
+                        p: { xs: 1.5, sm: 2 },
+                        borderRadius: 1.5,
+                        backgroundColor: alpha(
+                          theme.palette.primary.main,
+                          theme.palette.mode === "dark" ? 0.12 : 0.035
+                        ),
+                      }}
+                    >
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        {selected?.client?.full_name || selected?.client?.email || "Client"} • {selected?.service?.name || "Service"}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {selected?.local_date || selected?.date} at {selected?.local_start_time || selected?.start_time}
+                        {selected?.appointment_timezone ? ` • ${selected.appointment_timezone}` : ""}
+                      </Typography>
+                      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" mt={1}>
+                        <Chip size="small" label={selected.status || "booked"} sx={{ textTransform: "capitalize" }} />
+                        <Chip
+                          size="small"
+                          label={selected.payment_status || "unpaid"}
+                          color={isPaid(paymentKey) ? "success" : "default"}
+                          variant="outlined"
+                          sx={{ textTransform: "capitalize" }}
+                        />
+                      </Stack>
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(3, minmax(0, 1fr))" },
+                          gap: { xs: 0.5, sm: 2 },
+                          mt: 1.25,
+                        }}
+                      >
+                        {selected?.client?.email ? (
+                          <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                            Email: {selected.client.email}
+                          </Typography>
+                        ) : null}
+                        {selected?.client?.phone ? (
+                          <Typography variant="body2">Phone: {selected.client.phone}</Typography>
+                        ) : null}
+                        {selectedMeetingLink ? (
+                          <Typography variant="body2">
+                            Video: {" "}
+                            <Link href={selectedMeetingLink} target="_blank" rel="noopener">
+                              Join meeting
+                            </Link>
+                          </Typography>
+                        ) : null}
+                        {!selected?.client?.email && !selected?.client?.phone && !selectedMeetingLink ? (
+                          <Typography variant="body2" color="text.secondary">
+                            No additional contact details are available.
+                          </Typography>
+                        ) : null}
+                      </Box>
+                    </Box>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "minmax(0, 1fr)",
+                          sm: isManager ? "repeat(3, minmax(0, 1fr))" : "minmax(0, 1fr)",
+                        },
+                        gap: 1,
+                      }}
+                    >
+                      {isManager ? (
                         <Button
+                          fullWidth
                           variant="outlined"
                           onClick={openBookingEditDialog}
                           disabled={!bookingCanBeManaged || bookingSubmitting}
                         >
                           Edit date &amp; time
                         </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          onClick={() => setBookingCancelOpen(true)}
-                          disabled={!bookingCanBeManaged || bookingSubmitting}
-                        >
-                          Cancel booking
-                        </Button>
-                      </Stack>
-                    ) : null}
-                    {isManager ? <Divider /> : null}
-                    <Stack spacing={0.75}>
-                      {selected?.client?.email ? (
-                        <Typography variant="body2">Email: {selected.client.email}</Typography>
                       ) : null}
-                      {selected?.client?.phone ? (
-                        <Typography variant="body2">Phone: {selected.client.phone}</Typography>
-                      ) : null}
-                      {selectedMeetingLink ? (
-                        <Typography variant="body2">
-                          Video: {" "}
-                          <Link href={selectedMeetingLink} target="_blank" rel="noopener">
-                            Join meeting
-                          </Link>
-                        </Typography>
-                      ) : null}
-                      {!selected?.client?.email && !selected?.client?.phone && !selectedMeetingLink ? (
-                        <Typography variant="body2" color="text.secondary">
-                          No additional contact details are available.
-                        </Typography>
-                      ) : null}
-                    </Stack>
-                    <Divider />
-                    <Box>
                       <Tooltip
                         arrow
                         enterTouchDelay={0}
                         title="Marks the appointment as completed. It does not collect payment or change the payment status."
                       >
-                        <Box component="span" sx={{ display: "inline-flex" }}>
+                        <Box component="span" sx={{ display: "inline-flex", flex: 1 }}>
                           <Button
+                            fullWidth
                             variant="outlined"
                             onClick={handleMarkCompleted}
                             disabled={!selected || statusKey === "completed"}
@@ -2516,6 +2534,17 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                           </Button>
                         </Box>
                       </Tooltip>
+                      {isManager ? (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          color="error"
+                          onClick={() => setBookingCancelOpen(true)}
+                          disabled={!bookingCanBeManaged || bookingSubmitting}
+                        >
+                          Cancel booking
+                        </Button>
+                      ) : null}
                     </Box>
                   </Stack>
                 </AccordionDetails>
