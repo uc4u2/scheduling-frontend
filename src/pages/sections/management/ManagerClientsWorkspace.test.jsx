@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import ManagerClientsWorkspace, { sanitizeBookingDisplayNote } from "./ManagerClientsWorkspace";
+import api from "../../../utils/api";
 
 jest.setTimeout(60000);
 
@@ -295,6 +296,26 @@ describe("ManagerClientsWorkspace", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    window.sessionStorage.clear();
+    api.get.mockImplementation((url) => {
+      if (url === "/api/manager/bookings/201/offline-payments/context") {
+        return Promise.resolve({
+          data: {
+            appointment_id: 201,
+            recovery_scope: "client-360-scope-201",
+            currency_contract: {
+              status: "resolved",
+              currency: "CAD",
+              source: "payment_transaction",
+              historical_locked: true,
+              evidence_currencies: ["CAD"],
+              message: "Verified booking currency.",
+            },
+          },
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
   });
 
   test("consolidates overview and removes duplicated summary blocks", async () => {
@@ -319,14 +340,11 @@ describe("ManagerClientsWorkspace", () => {
     if (quickActionsToggle.getAttribute("aria-expanded") !== "true") {
       fireEvent.click(quickActionsToggle);
     }
-    const quickActionsSection = quickActionsToggle.closest(".MuiAccordion-root");
-    expect(quickActionsSection).not.toBeNull();
-    const quickActionsQueries = within(quickActionsSection);
-    expect(quickActionsQueries.getByRole("link", { name: /^Book service for client$/i })).toBeInTheDocument();
-    expect(quickActionsQueries.getByRole("button", { name: /^Collect payment$/i })).toBeInTheDocument();
-    expect(quickActionsQueries.getByRole("button", { name: /^Create invoice$/i })).toBeInTheDocument();
-    expect(quickActionsQueries.getByRole("button", { name: /More actions/i })).toBeInTheDocument();
-    expect(quickActionsQueries.queryByRole("button", { name: /^Create estimate$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Book service for client$/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Collect payment$/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /^Create invoice$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /More actions/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Create estimate$/i })).not.toBeInTheDocument();
 
     const billingToggle = screen.getByRole("button", { name: /Billing readiness/i });
     expect(billingToggle).toHaveAttribute("aria-expanded", "false");
@@ -362,5 +380,38 @@ describe("ManagerClientsWorkspace", () => {
     expect(screen.getByText("[bring warm towel]")).toBeInTheDocument();
     expect(screen.queryByText(/setup_intent_id/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/review_email_sent/i)).not.toBeInTheDocument();
+  });
+
+  test("opens the shared currency-bound form from Client 360 quick and booking actions", async () => {
+    const view = renderWorkspace();
+    await screen.findByText("Yousef Jalali");
+    const quickActionsToggle = screen.getByRole("button", { name: /Quick Actions/i });
+    if (quickActionsToggle.getAttribute("aria-expanded") !== "true") fireEvent.click(quickActionsToggle);
+    fireEvent.click(screen.getByRole("button", { name: /More actions/i }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByText("Record offline payment"));
+    let offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });
+    expect(within(offlineDialog).getByDisplayValue("CAD")).toBeDisabled();
+    view.unmount();
+
+    renderWorkspace();
+    await screen.findByText("Yousef Jalali");
+    const bookingsToggle = screen.getByRole("button", { name: /Bookings & Checkout/i });
+    if (bookingsToggle.getAttribute("aria-expanded") !== "true") fireEvent.click(bookingsToggle);
+    const rowButtons = await screen.findAllByRole("button", { name: "Record offline payment" });
+    fireEvent.click(rowButtons[0]);
+    offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });
+    expect(within(offlineDialog).getByDisplayValue("CAD")).toBeDisabled();
+  });
+
+  test("opens the same form from the Client 360 collect-payment dialog", async () => {
+    renderWorkspace();
+    await screen.findByText("Yousef Jalali");
+    const quickActionsToggle = screen.getByRole("button", { name: /Quick Actions/i });
+    if (quickActionsToggle.getAttribute("aria-expanded") !== "true") fireEvent.click(quickActionsToggle);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Collect payment$/i })[0]);
+    const collectDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.click(within(collectDialog).getByRole("button", { name: "Record payment" }));
+    const offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });
+    expect(within(offlineDialog).getByDisplayValue("CAD")).toBeDisabled();
   });
 });

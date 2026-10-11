@@ -4,6 +4,8 @@ export const OFFLINE_PAYMENT_CURRENCIES = [
 ];
 
 const MAX_COMPONENT_CENTS = 100000000;
+const OFFLINE_RECOVERY_VERSION = 1;
+const OFFLINE_RECOVERY_PREFIX = "schedulaa:offline-payment-recovery";
 
 export function amountTextToMinorUnits(value, field = "amount") {
   const text = String(value ?? "").trim();
@@ -27,6 +29,51 @@ export function createOfflinePaymentIdempotencyKey(appointmentId) {
   const random = window.crypto?.randomUUID?.()
     || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `offline-booking:${appointmentId}:${random}`;
+}
+
+export function offlinePaymentRecoveryStorageKey(recoveryScope, appointmentId) {
+  const scope = String(recoveryScope || "").trim();
+  const bookingId = String(appointmentId || "").trim();
+  if (!scope || !bookingId) return null;
+  return `${OFFLINE_RECOVERY_PREFIX}:${scope}:${bookingId}`;
+}
+
+export function savePendingOfflinePayment(recoveryScope, appointmentId, payload) {
+  const storageKey = offlinePaymentRecoveryStorageKey(recoveryScope, appointmentId);
+  if (!storageKey || !payload?.idempotency_key) return null;
+  const record = {
+    version: OFFLINE_RECOVERY_VERSION,
+    appointment_id: String(appointmentId),
+    payload,
+    saved_at: new Date().toISOString(),
+  };
+  // Session storage is tab-scoped and this record is removed immediately once
+  // the server outcome is known. No client or booking profile data is stored.
+  window.sessionStorage.setItem(storageKey, JSON.stringify(record));
+  return storageKey;
+}
+
+export function readPendingOfflinePayment(recoveryScope, appointmentId) {
+  const storageKey = offlinePaymentRecoveryStorageKey(recoveryScope, appointmentId);
+  if (!storageKey) return null;
+  try {
+    const record = JSON.parse(window.sessionStorage.getItem(storageKey) || "null");
+    if (
+      record?.version !== OFFLINE_RECOVERY_VERSION
+      || record?.appointment_id !== String(appointmentId)
+      || !record?.payload?.idempotency_key
+    ) {
+      return null;
+    }
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingOfflinePayment(recoveryScope, appointmentId) {
+  const storageKey = offlinePaymentRecoveryStorageKey(recoveryScope, appointmentId);
+  if (storageKey) window.sessionStorage.removeItem(storageKey);
 }
 
 export function buildOfflineBookingPaymentPayload({

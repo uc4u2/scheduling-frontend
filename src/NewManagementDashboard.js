@@ -2902,6 +2902,11 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         initialCurrency={currency}
         onClose={() => setOfflineOpen(false)}
         onRecorded={handleOfflinePaymentRecorded}
+        onRefreshError={() => setSnackbar({
+          open: true,
+          message: "Offline payment was saved, but the booking list could not refresh. Refresh the page before trying again.",
+          severity: "warning",
+        })}
         onNavigateFinance={(path) => {
           setOfflineOpen(false);
           navigate(path);

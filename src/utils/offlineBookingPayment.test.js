@@ -1,7 +1,10 @@
 import {
   amountTextToMinorUnits,
   buildOfflineBookingPaymentPayload,
+  clearPendingOfflinePayment,
   minorUnitsToAmountText,
+  readPendingOfflinePayment,
+  savePendingOfflinePayment,
 } from "./offlineBookingPayment";
 
 describe("offline booking payment payload", () => {
@@ -54,5 +57,25 @@ describe("offline booking payment payload", () => {
       completesPayment: false,
     })).toThrow(/greater than zero/);
     expect(minorUnitsToAmountText(1234)).toBe("12.34");
+  });
+
+  it("scopes an unresolved exact payload to the server recovery scope and booking", () => {
+    window.sessionStorage.clear();
+    const payload = buildOfflineBookingPaymentPayload({
+      idempotencyKey: "offline-recovery-1",
+      baseAmount: "25",
+      extraAmount: "0",
+      tipAmount: "5",
+      currency: "CAD",
+      paymentMethod: "etransfer",
+      completesPayment: false,
+      note: "temporary exact note",
+    });
+    savePendingOfflinePayment("tenant-account-scope", 42, payload);
+    expect(readPendingOfflinePayment("tenant-account-scope", 42)?.payload).toEqual(payload);
+    expect(readPendingOfflinePayment("other-account-scope", 42)).toBeNull();
+    expect(readPendingOfflinePayment("tenant-account-scope", 43)).toBeNull();
+    clearPendingOfflinePayment("tenant-account-scope", 42);
+    expect(readPendingOfflinePayment("tenant-account-scope", 42)).toBeNull();
   });
 });

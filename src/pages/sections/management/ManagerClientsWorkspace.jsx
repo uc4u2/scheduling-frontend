@@ -1781,6 +1781,10 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
         initialCurrency={currency}
         onClose={() => setOfflineOpen(false)}
         onRecorded={handleOfflinePaymentRecorded}
+        onRefreshError={() => enqueueSnackbar(
+          "Offline payment was saved, but Client 360 could not refresh. Refresh before trying again.",
+          { variant: "warning" },
+        )}
         onNavigateFinance={(path) => {
           setOfflineOpen(false);
           onClose?.();
@@ -5550,6 +5554,10 @@ export default function ManagerClientsWorkspace() {
           initialCurrency={offlineBooking?.currency || companyCurrency}
           onClose={() => setOfflineBooking(null)}
           onRecorded={handleStandaloneOfflinePaymentRecorded}
+          onRefreshError={() => enqueueSnackbar(
+            "Offline payment was saved, but Client 360 could not refresh. Refresh before trying again.",
+            { variant: "warning" },
+          )}
           onNavigateFinance={(path) => {
             setOfflineBooking(null);
             navigate(path);

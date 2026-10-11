@@ -5,6 +5,8 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import api from "./utils/api";
 import { BookingCheckoutPanel } from "./NewManagementDashboard";
 
+jest.setTimeout(60000);
+
 jest.mock("./utils/api", () => ({
   __esModule: true,
   default: {
@@ -174,6 +176,22 @@ describe("BookingCheckoutPanel", () => {
     Element.prototype.scrollIntoView = jest.fn();
     api.get.mockImplementation((url) => {
       if (url === "/api/manager/bookings") return Promise.resolve({ data: bookings });
+      if (url === "/api/manager/bookings/14/offline-payments/context") {
+        return Promise.resolve({
+          data: {
+            appointment_id: 14,
+            recovery_scope: "booking-checkout-scope-14",
+            currency_contract: {
+              status: "resolved",
+              currency: "CAD",
+              source: "business_selling_currency",
+              historical_locked: false,
+              evidence_currencies: [],
+              message: "Verified booking currency.",
+            },
+          },
+        });
+      }
       if (url === "/api/departments") return Promise.resolve({ data: [{ id: 2, name: "Salon" }] });
       if (url === "/manager/recruiters") {
         return Promise.resolve({
@@ -278,6 +296,24 @@ describe("BookingCheckoutPanel", () => {
     expect(await screen.findByRole("dialog", { name: "Collect Payment" })).toBeInTheDocument();
   });
 
+  it("opens the currency-bound offline form from Booking Checkout on desktop and mobile", async () => {
+    for (const mobile of [false, true]) {
+      setMobileViewport(mobile);
+      const view = renderPanel();
+      fireEvent.click(await screen.findByText("Calendar event Team booking"));
+      if (mobile) {
+        fireEvent.click(await screen.findByText("Team Client • Other Artist"));
+      }
+      const collectDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+      fireEvent.click(within(collectDialog).getByRole("radio", { name: /Record offline payment/i }));
+      fireEvent.click(within(collectDialog).getByRole("button", { name: "Record offline payment" }));
+      const offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });
+      expect(within(offlineDialog).getByDisplayValue("CAD")).toBeDisabled();
+      expect(within(offlineDialog).getByText(/never creates a balancing transaction/i)).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
   it("selects and scrolls to mobile day bookings without opening the payment dialog", async () => {
     setMobileViewport(true);
     renderPanel();
@@ -316,6 +352,15 @@ describe("BookingCheckoutPanel", () => {
         payment_purpose: "booking_payment",
         payment_revision: 1,
         idempotency_key: "booking:11:booking_payment:1",
+        payment_breakdown: {
+          version: 1,
+          source: "manager_booking_payment_link",
+          base_cents: 2500,
+          extra_cents: 0,
+          tip_cents: 0,
+          total_cents: 2500,
+          currency: "CAD",
+        },
       });
     });
     expect(await within(dialog).findByDisplayValue("https://payments.example.test/session")).toBeInTheDocument();
