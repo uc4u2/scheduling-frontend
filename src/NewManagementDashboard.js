@@ -1507,14 +1507,26 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         currency,
         description,
         amount_cents: totalCents,
+        payment_purpose: "booking_payment",
+        payment_revision: 1,
+        idempotency_key: `booking:${selected.id}:booking_payment:1`,
         ...(clientId
           ? { client_id: clientId }
           : { client_email: clientEmail, client_name: selected?.client?.full_name || undefined }),
       };
       const { data } = await api.post("/api/manager/manual-payments", payload);
       const url = data?.checkout_url || data?.invoice?.hosted_invoice_url || "";
-      if (url) setInvoiceUrl(url);
-      setSnackbar({ open: true, message: "Payment link created.", severity: "success" });
+      if (data?.payment_state === "settled") setInvoiceUrl("");
+      else if (url) setInvoiceUrl(url);
+      setSnackbar({
+        open: true,
+        message: data?.payment_state === "settled"
+          ? "This booking payment is already settled."
+          : data?.idempotent_replay
+            ? "Existing payment link reused."
+            : "Payment link created.",
+        severity: "success",
+      });
     } catch (err) {
       const status = err?.response?.status;
       if (status === 412 && err?.response?.data?.onboarding_url) {

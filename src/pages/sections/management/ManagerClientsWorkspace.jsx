@@ -1526,14 +1526,25 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
         currency,
         description: `Booking #${booking.id} • ${booking?.service || "Service"}`,
         amount_cents: totalCents,
+        payment_purpose: "booking_payment",
+        payment_revision: 1,
+        idempotency_key: `booking:${booking.id}:booking_payment:1`,
         ...(clientId
           ? { client_id: clientId }
           : { client_email: clientEmail, client_name: booking?.client_name || undefined }),
       };
       const { data } = await api.post("/api/manager/manual-payments", payload);
       const url = data?.checkout_url || data?.invoice?.hosted_invoice_url || "";
-      if (url) setInvoiceUrl(url);
-      enqueueSnackbar("Payment link created.", { variant: "success" });
+      if (data?.payment_state === "settled") setInvoiceUrl("");
+      else if (url) setInvoiceUrl(url);
+      enqueueSnackbar(
+        data?.payment_state === "settled"
+          ? "This booking payment is already settled."
+          : data?.idempotent_replay
+            ? "Existing payment link reused."
+            : "Payment link created.",
+        { variant: "success" }
+      );
       await refreshClient360();
     } catch (err) {
       if (err?.response?.status === 412 && err?.response?.data?.onboarding_url) {

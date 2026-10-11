@@ -756,6 +756,9 @@ const handleEditSave = async () => {
         currency,
         appointment_id: collectBooking.id,
         description: collectNotes || "Service payment",
+        payment_purpose: "booking_payment",
+        payment_revision: 1,
+        idempotency_key: `booking:${collectBooking.id}:booking_payment:1`,
       };
       if (collectBooking?.client?.id) {
         payload.client_id = collectBooking.client.id;
@@ -770,8 +773,17 @@ const handleEditSave = async () => {
       const invoice = body.invoice || body;
       const link = body.checkout_url || body.payment_url || invoice.hosted_invoice_url || "";
       if (invoice?.id) setCollectInvoiceId(invoice.id);
-      if (link) setCollectLink(link);
-      setSnackbar({ open: true, message: "Payment link created.", severity: "success" });
+      if (body?.payment_state === "settled") setCollectLink("");
+      else if (link) setCollectLink(link);
+      setSnackbar({
+        open: true,
+        message: body?.payment_state === "settled"
+          ? "This booking payment is already settled."
+          : body?.idempotent_replay
+            ? "Existing payment link reused."
+            : "Payment link created.",
+        severity: "success",
+      });
     } catch (e) {
       if (e?.response?.status === 412 && e?.response?.data?.onboarding_url) {
         setCollectOnboardingUrl(e.response.data.onboarding_url);
@@ -1664,8 +1676,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
 
 
 

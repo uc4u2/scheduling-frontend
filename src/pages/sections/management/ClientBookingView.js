@@ -184,6 +184,9 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
               client_email: clientEmail,
               client_name: clientName,
               description: `Booking #${appointmentId} • ${selectedService?.name || "Service"}`,
+              payment_purpose: "booking_payment",
+              payment_revision: 1,
+              idempotency_key: `booking:${appointmentId}:booking_payment:1`,
             }, auth);
             hostedLink =
               paymentRes?.data?.checkout_url ||

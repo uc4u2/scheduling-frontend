@@ -313,9 +313,32 @@ describe("BookingCheckoutPanel", () => {
         description: "Booking #11 • Consultation",
         amount_cents: 2500,
         client_id: 6,
+        payment_purpose: "booking_payment",
+        payment_revision: 1,
+        idempotency_key: "booking:11:booking_payment:1",
       });
     });
     expect(await within(dialog).findByDisplayValue("https://payments.example.test/session")).toBeInTheDocument();
+  });
+
+  it("reports a settled booking obligation without exposing its historical hosted URL", async () => {
+    api.post.mockResolvedValueOnce({
+      data: {
+        payment_state: "settled",
+        idempotent_replay: true,
+        checkout_url: null,
+        invoice: { hosted_invoice_url: "https://payments.example.test/already-paid" },
+      },
+    });
+    renderPanel();
+    fireEvent.click(await screen.findByText("Select October 13"));
+    fireEvent.click(await screen.findByText("Casey Client • Riley Artist"));
+    const dialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.change(within(dialog).getByLabelText("Base amount"), { target: { value: "25" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create payment link", exact: true }));
+
+    expect(await screen.findByText("This booking payment is already settled.")).toBeInTheDocument();
+    expect(within(dialog).queryByDisplayValue("https://payments.example.test/already-paid")).not.toBeInTheDocument();
   });
 
   it("keeps payment methods compact and preserves the kiosk checkout contract", async () => {
