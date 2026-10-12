@@ -25,6 +25,8 @@ import {
   Divider,
   Stack,
   Alert,
+  Chip,
+  Tooltip,
 } from "@mui/material";
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
@@ -35,6 +37,35 @@ import { extractApiErrorMessage } from "../../utils/apiError";
 import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const NO_STATE_INCOME_TAX_STATES = new Set(["AK", "FL", "NV", "SD", "TX", "WA", "WY", "TN", "NH"]);
+
+const PAYMENT_STATUS_LABELS = {
+  not_requested: "Not requested",
+  requested: "Requested",
+  sent_to_zapier: "Sent to Zapier",
+  processing: "Processing",
+  paid: "Paid",
+  failed: "Failed",
+  rejected: "Rejected",
+  canceled: "Canceled",
+  not_finalized: "Not finalized",
+};
+
+export const payrollPaymentStatusDisplay = (value) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return { label: "Unavailable", color: "default" };
+  }
+  const normalized = value.trim().toLowerCase();
+  const label = PAYMENT_STATUS_LABELS[normalized];
+  if (!label) return { label: "Unknown", color: "default" };
+  if (normalized === "paid") return { label, color: "success" };
+  if (["failed", "rejected", "canceled"].includes(normalized)) {
+    return { label, color: "error" };
+  }
+  if (["requested", "sent_to_zapier", "processing"].includes(normalized)) {
+    return { label, color: "warning" };
+  }
+  return { label, color: "default" };
+};
 
 export default function PayrollRawPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -178,6 +209,9 @@ export default function PayrollRawPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Accountant view: finalized rows show payroll truth; preview rows are for review only. Paid and unpaid leave hours are informational columns for reconciliation and do not change formulas here.
       </Typography>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Payroll-entered tips are manual payroll inputs. Booking tips are not automatically synchronized into payroll.
+      </Alert>
       {!showFinalizedOnly && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Raw preview ledger only. Estimated leave may appear for review, but it is not finalized paystub truth.
@@ -341,7 +375,11 @@ export default function PayrollRawPage() {
                 <TableCell align="right">Holiday Pay</TableCell>
                 <TableCell align="right">Bonus</TableCell>
                 <TableCell align="right">Commission</TableCell>
-                <TableCell align="right">Tip</TableCell>
+                <TableCell align="right">
+                  <Tooltip title="Manual payroll input; booking tips are not automatically synchronized.">
+                    <span>Payroll-entered tips</span>
+                  </Tooltip>
+                </TableCell>
                 <TableCell align="right">Shift Prem.</TableCell>
                 <TableCell align="right">Travel Allow.</TableCell>
                 <TableCell align="right">Parental Top-up</TableCell>
@@ -428,7 +466,10 @@ export default function PayrollRawPage() {
                     <strong>{moneyOrNA(row.net_pay, row.region)}</strong>
                   </TableCell>
                   <TableCell align="right">
-                    {(row.payment_status || "not_requested").toString().replace("_", " ")}
+                    {(() => {
+                      const display = payrollPaymentStatusDisplay(row.payment_status);
+                      return <Chip size="small" label={display.label} color={display.color} variant="outlined" />;
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}
@@ -508,7 +549,7 @@ export default function PayrollRawPage() {
                   ["Vacation pay", detailRow.vacation_pay],
                   ["Bonus", detailRow.bonus],
                   ["Commission", detailRow.commission],
-                  ["Tips", detailRow.tip],
+                  ["Payroll-entered tips", detailRow.tip],
                   ["Shift premium", detailRow.shift_premium],
                   ["Travel allowance", detailRow.travel_allowance],
                   ["Parental leave top-up", detailRow.parental_top_up],
