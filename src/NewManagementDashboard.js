@@ -54,6 +54,7 @@ import {
 } from "@mui/material";
 import ShiftSwapPanel from "./components/ShiftSwapPanel";
 import OfflineBookingPaymentDialog from "./components/booking/OfflineBookingPaymentDialog";
+import OfflinePaymentHistory from "./components/booking/OfflinePaymentHistory";
 
 import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -1591,6 +1592,18 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     await loadBookings();
   };
 
+  const handleOfflineCorrectionSaved = async () => {
+    const bookingId = selected?.id;
+    const { data } = await api.get("/api/manager/bookings");
+    const list = Array.isArray(data) ? data : data?.bookings || [];
+    setBookings(list);
+    setSelected((current) => {
+      if (!current || String(current.id) !== String(bookingId)) return current;
+      return list.find((row) => String(row.id) === String(bookingId)) || current;
+    });
+    setSnackbar({ open: true, message: "Erroneous payment entry corrected. No money was returned.", severity: "success" });
+  };
+
   const openBookingEditDialog = () => {
     if (!selected || !isManager) return;
     setBookingEditForm({
@@ -2551,6 +2564,16 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
                   </Stack>
                 </AccordionDetails>
               </Accordion>
+
+              <OfflinePaymentHistory
+                booking={selected}
+                onCorrected={handleOfflineCorrectionSaved}
+                onRefreshError={() => setSnackbar({
+                  open: true,
+                  message: "Correction was saved, but the booking history could not refresh. Use Refresh now before trying again.",
+                  severity: "warning",
+                })}
+              />
 
               <Box component="section" aria-labelledby="booking-payment-amount-title">
                 <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={2} mb={1}>

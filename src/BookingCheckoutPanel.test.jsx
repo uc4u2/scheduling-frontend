@@ -137,6 +137,26 @@ const bookings = [
     service: { id: 10, name: "Team booking" },
     client: { id: 15, full_name: "Team Client", email: "team@example.com" },
     recruiter: { id: 8, full_name: "Other Artist" },
+    offline_correction_recovery_scope: "booking-checkout-correction-14",
+    payment_operations: [{
+      id: "payment-operation:71",
+      balance_transaction_id: 71,
+      tip_transaction_id: 72,
+      transaction_ids: [71, 72],
+      kind: "offline_booking_payment",
+      provider: "offline",
+      status: "captured",
+      currency: "CAD",
+      total_cents: 13000,
+      base_cents: 10000,
+      extra_cents: 1000,
+      tip_cents: 2000,
+      payment_method: "cash",
+      recorded_at: "2026-10-11T15:00:00Z",
+      correction_eligible: true,
+      corrected: false,
+      correction: null,
+    }],
   },
 ];
 
@@ -305,6 +325,8 @@ describe("BookingCheckoutPanel", () => {
         fireEvent.click(await screen.findByText("Team Client • Other Artist"));
       }
       const collectDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+      expect(within(collectDialog).getByText("Payment history")).toBeInTheDocument();
+      expect(within(collectDialog).getByRole("button", { name: "Correct erroneous entry" })).toBeInTheDocument();
       fireEvent.click(within(collectDialog).getByRole("radio", { name: /Record offline payment/i }));
       fireEvent.click(within(collectDialog).getByRole("button", { name: "Record offline payment" }));
       const offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });

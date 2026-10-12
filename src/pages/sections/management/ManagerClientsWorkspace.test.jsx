@@ -220,6 +220,26 @@ const detailPayload = {
         payment_status: "pending",
         start_iso: "2026-08-05T14:00:00Z",
         notes: "[setup_intent_id=seti_123]",
+        offline_correction_recovery_scope: "client-360-correction-201",
+        payment_operations: [{
+          id: "payment-operation:81",
+          balance_transaction_id: 81,
+          tip_transaction_id: 82,
+          transaction_ids: [81, 82],
+          kind: "offline_booking_payment",
+          provider: "offline",
+          status: "captured",
+          currency: "CAD",
+          total_cents: 7500,
+          base_cents: 6500,
+          extra_cents: 0,
+          tip_cents: 1000,
+          payment_method: "terminal",
+          recorded_at: "2026-10-11T15:00:00Z",
+          correction_eligible: true,
+          corrected: false,
+          correction: null,
+        }],
       },
     ],
     past: [
@@ -410,6 +430,8 @@ describe("ManagerClientsWorkspace", () => {
     if (quickActionsToggle.getAttribute("aria-expanded") !== "true") fireEvent.click(quickActionsToggle);
     fireEvent.click(screen.getAllByRole("button", { name: /^Collect payment$/i })[0]);
     const collectDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    expect(within(collectDialog).getByText("Payment history")).toBeInTheDocument();
+    expect(within(collectDialog).getByRole("button", { name: "Correct erroneous entry" })).toBeInTheDocument();
     fireEvent.click(within(collectDialog).getByRole("button", { name: "Record payment" }));
     const offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });
     expect(within(offlineDialog).getByDisplayValue("CAD")).toBeDisabled();

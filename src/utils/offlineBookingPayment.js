@@ -6,6 +6,7 @@ export const OFFLINE_PAYMENT_CURRENCIES = [
 const MAX_COMPONENT_CENTS = 100000000;
 const OFFLINE_RECOVERY_VERSION = 1;
 const OFFLINE_RECOVERY_PREFIX = "schedulaa:offline-payment-recovery";
+const OFFLINE_CORRECTION_RECOVERY_PREFIX = "schedulaa:offline-correction-recovery";
 
 export function amountTextToMinorUnits(value, field = "amount") {
   const text = String(value ?? "").trim();
@@ -73,6 +74,55 @@ export function readPendingOfflinePayment(recoveryScope, appointmentId) {
 
 export function clearPendingOfflinePayment(recoveryScope, appointmentId) {
   const storageKey = offlinePaymentRecoveryStorageKey(recoveryScope, appointmentId);
+  if (storageKey) window.sessionStorage.removeItem(storageKey);
+}
+
+export function createOfflineCorrectionIdempotencyKey(appointmentId, transactionId) {
+  const random = window.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `offline-correction:${appointmentId}:${transactionId}:${random}`;
+}
+
+export function offlineCorrectionRecoveryStorageKey(recoveryScope, appointmentId, transactionId) {
+  const scope = String(recoveryScope || "").trim();
+  const bookingId = String(appointmentId || "").trim();
+  const paymentId = String(transactionId || "").trim();
+  if (!scope || !bookingId || !paymentId) return null;
+  return `${OFFLINE_CORRECTION_RECOVERY_PREFIX}:${scope}:${bookingId}:${paymentId}`;
+}
+
+export function savePendingOfflineCorrection(recoveryScope, appointmentId, transactionId, payload) {
+  const storageKey = offlineCorrectionRecoveryStorageKey(recoveryScope, appointmentId, transactionId);
+  if (!storageKey || !payload?.idempotency_key || !payload?.reason) return null;
+  window.sessionStorage.setItem(storageKey, JSON.stringify({
+    version: OFFLINE_RECOVERY_VERSION,
+    appointment_id: String(appointmentId),
+    transaction_id: String(transactionId),
+    payload,
+  }));
+  return storageKey;
+}
+
+export function readPendingOfflineCorrection(recoveryScope, appointmentId, transactionId) {
+  const storageKey = offlineCorrectionRecoveryStorageKey(recoveryScope, appointmentId, transactionId);
+  if (!storageKey) return null;
+  try {
+    const record = JSON.parse(window.sessionStorage.getItem(storageKey) || "null");
+    if (
+      record?.version !== OFFLINE_RECOVERY_VERSION
+      || record?.appointment_id !== String(appointmentId)
+      || record?.transaction_id !== String(transactionId)
+      || !record?.payload?.idempotency_key
+      || !record?.payload?.reason
+    ) return null;
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingOfflineCorrection(recoveryScope, appointmentId, transactionId) {
+  const storageKey = offlineCorrectionRecoveryStorageKey(recoveryScope, appointmentId, transactionId);
   if (storageKey) window.sessionStorage.removeItem(storageKey);
 }
 

@@ -82,6 +82,7 @@ import {
 import ManagementFrame from "../../../components/ui/ManagementFrame";
 import SectionCard from "../../../components/ui/SectionCard";
 import OfflineBookingPaymentDialog from "../../../components/booking/OfflineBookingPaymentDialog";
+import OfflinePaymentHistory from "../../../components/booking/OfflinePaymentHistory";
 import api from "../../../utils/api";
 import { withManagerBookingPaymentBreakdown } from "../../../utils/bookingPaymentBreakdown";
 import { formatDateTimeInTz } from "../../../utils/datetime";
@@ -1595,6 +1596,18 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
                   <Chip size="small" label={booking.payment_status || "unpaid"} variant="outlined" />
                 </Stack>
               </Box>
+
+              <OfflinePaymentHistory
+                booking={booking}
+                onCorrected={async () => {
+                  await refreshClient360();
+                  enqueueSnackbar("Erroneous payment entry corrected. No money was returned.", { variant: "success" });
+                }}
+                onRefreshError={() => enqueueSnackbar(
+                  "Correction was saved, but Client 360 could not refresh. Use Refresh now before trying again.",
+                  { variant: "warning" },
+                )}
+              />
 
               <Box>
                 <Typography variant="subtitle1" fontWeight={700} mb={1}>
@@ -3574,6 +3587,16 @@ export default function ManagerClientsWorkspace() {
     await Promise.all([loadDetail(), loadList()]);
   };
 
+  const handleOfflineCorrectionSaved = async () => {
+    await Promise.all([loadDetail(), loadList()]);
+    enqueueSnackbar("Erroneous payment entry corrected. No money was returned.", { variant: "success" });
+  };
+
+  const handleOfflineCorrectionRefreshError = () => enqueueSnackbar(
+    "Correction was saved, but Client 360 could not refresh. Use Refresh now before trying again.",
+    { variant: "warning" },
+  );
+
   const handleListQuickNote = async (note) => {
     if (!listQuickNoteTarget?.client?.id || !String(note || "").trim()) return;
     setListQuickNoteSaving(true);
@@ -4316,6 +4339,11 @@ export default function ManagerClientsWorkspace() {
                                     </Button>
                                   ) : null}
                                 </Stack>
+                                <OfflinePaymentHistory
+                                  booking={row}
+                                  onCorrected={handleOfflineCorrectionSaved}
+                                  onRefreshError={handleOfflineCorrectionRefreshError}
+                                />
                               </Stack>
                             </Paper>
                           );
@@ -4397,6 +4425,11 @@ export default function ManagerClientsWorkspace() {
                                     </Button>
                                   ) : null}
                                 </Stack>
+                                <OfflinePaymentHistory
+                                  booking={row}
+                                  onCorrected={handleOfflineCorrectionSaved}
+                                  onRefreshError={handleOfflineCorrectionRefreshError}
+                                />
                               </Stack>
                             </Paper>
                           );
