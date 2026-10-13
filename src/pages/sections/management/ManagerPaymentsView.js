@@ -92,7 +92,6 @@ const summarizeTxns = (rows = []) => {
     "service",
     "product",
     "deposit",
-    "no_show",
   ]);
 
   const totals = {
@@ -104,6 +103,9 @@ const summarizeTxns = (rows = []) => {
     softTip: 0,
     refundedAny: 0,
     refundedTip: 0,
+    capturedNoShow: 0,
+    pendingNoShow: 0,
+    refundedNoShow: 0,
   };
 
   rows.forEach((row) => {
@@ -122,6 +124,7 @@ const summarizeTxns = (rows = []) => {
     const isRefund = type === "refund";
     const isBalanceType = balanceTypes.has(type);
     const isTip = type === "tip";
+    const isNoShow = type === "no_show";
 
     if (isBalanceType) {
       if (captureStatuses.has(status)) totals.capturedBalance += amount;
@@ -139,10 +142,20 @@ const summarizeTxns = (rows = []) => {
       }
     }
 
+    if (isNoShow) {
+      if (captureStatuses.has(status) || status === "refunded") {
+        totals.capturedNoShow += amount;
+      }
+      if (pendingStatuses.has(status)) totals.pendingNoShow += amount;
+    }
+
     if (isRefund) {
       totals.refundedAny += amount;
       if (bucket === "tip") {
         totals.refundedTip += amount;
+      }
+      if (bucket === "no_show") {
+        totals.refundedNoShow += amount;
       }
     }
   });
@@ -295,6 +308,8 @@ export default function ManagerPaymentsView({ connect }) {
   const [chargeExtra, setChargeExtra] = useState("");
   const [chargeTip, setChargeTip] = useState("");
   const [chargeIntent, setChargeIntent] = useState("");
+  const [noShowFeeContext, setNoShowFeeContext] = useState(null);
+  const [noShowFeeContextError, setNoShowFeeContextError] = useState("");
   const [chargeOnboardingUrl, setChargeOnboardingUrl] = useState("");
   const [note, setNote] = useState("");
   const [charging, setCharging] = useState(false);
@@ -305,7 +320,22 @@ export default function ManagerPaymentsView({ connect }) {
     capturedTip: 0,
     pendingBalance: 0,
     pendingTip: 0,
+    capturedNoShow: 0,
+    pendingNoShow: 0,
   });
+  const isNoShowFeeCharge = chargeIntent === "no_show_fee";
+  const noShowFeeState = noShowFeeContext?.fee?.state || "not_requested";
+  const noShowFeeBlocked =
+    isNoShowFeeCharge &&
+    (Boolean(noShowFeeContextError) ||
+      !noShowFeeContext?.accepted_policy?.available ||
+      noShowFeeContext?.currency_contract?.status !== "resolved" ||
+      [
+        "captured",
+        "refunded",
+        "partially_refunded",
+        "legacy_fee_present",
+      ].includes(noShowFeeState));
 
   // Refund dialog
   const [refundOpen, setRefundOpen] = useState(false);
@@ -319,6 +349,9 @@ export default function ManagerPaymentsView({ connect }) {
   const [includeTips, setIncludeTips] = useState(true);
   const [serviceAmountInput, setServiceAmountInput] = useState("");
   const [tipAmountInput, setTipAmountInput] = useState("");
+  const [refundBucket, setRefundBucket] = useState("service");
+  const [noShowRefundAmount, setNoShowRefundAmount] = useState("");
+  const [noShowRefundKey, setNoShowRefundKey] = useState("");
 
   useEffect(() => {
     if (refundAuto) {
@@ -326,6 +359,8 @@ export default function ManagerPaymentsView({ connect }) {
       setIncludeTips(true);
       setServiceAmountInput("");
       setTipAmountInput("");
+      setNoShowRefundAmount("");
+      setNoShowRefundKey("");
     } else {
       setRefundMode("custom");
       setIncludeTips(false);
@@ -338,6 +373,8 @@ export default function ManagerPaymentsView({ connect }) {
     capturedTip: 0,
     refundedAny: 0,
     lastTip: 0,
+    capturedNoShow: 0,
+    refundedNoShow: 0,
   });
   const [displayCurrency, setDisplayCurrency] = useState(() =>
     getActiveCurrency(),
@@ -348,11 +385,19 @@ export default function ManagerPaymentsView({ connect }) {
     0,
     Number(refundSummary.capturedBalance || 0) +
       Number(refundSummary.capturedTip || 0) -
-      Number(refundSummary.refundedAny || 0),
+      Math.max(
+        0,
+        Number(refundSummary.refundedAny || 0) -
+          Number(refundSummary.refundedNoShow || 0),
+      ),
   );
   const serviceCaptured = Number(refundSummary.capturedBalance || 0);
   const tipCaptured = Number(refundSummary.capturedTip || 0);
-  const refundedAny = Number(refundSummary.refundedAny || 0);
+  const refundedAny = Math.max(
+    0,
+    Number(refundSummary.refundedAny || 0) -
+      Number(refundSummary.refundedNoShow || 0),
+  );
   const refundedAgainstService = Math.min(serviceCaptured, refundedAny);
   const serviceRemaining = Math.max(
     0,
@@ -362,6 +407,11 @@ export default function ManagerPaymentsView({ connect }) {
   const tipRemaining = Math.max(0, tipCaptured - tipRefundedEstimate);
   const fullStripeRefundAmount =
     serviceRemaining + (includeTips && tipRemaining > 0 ? tipRemaining : 0);
+  const noShowRemaining = Math.max(
+    0,
+    Number(refundSummary.capturedNoShow || 0) -
+      Number(refundSummary.refundedNoShow || 0),
+  );
 
   useEffect(() => {
     if (tipRemaining <= 0 && includeTips) {
@@ -373,9 +423,6 @@ export default function ManagerPaymentsView({ connect }) {
   // prevent double-submit in refund flow
   const [refunding, setRefunding] = useState(false);
 
-  // No-show fee (for quick-fill)
-  const [noShowFee, setNoShowFee] = useState(null);
-
   const openFinanceInvoice = (invoiceId) => {
     if (!invoiceId) return;
     setSelectedInvoiceId(invoiceId);
@@ -383,7 +430,7 @@ export default function ManagerPaymentsView({ connect }) {
   };
 
   // Load bookings
-  const loadBookings = useCallback(async () => {
+  const loadBookings = useCallback(async ({ throwOnError = false } = {}) => {
     setLoading(true);
     try {
       const { data } = await api.get("/api/manager/payments-and-refunds");
@@ -659,6 +706,7 @@ export default function ManagerPaymentsView({ connect }) {
     } catch (e) {
       setMsg(e?.response?.data?.error || "Failed to load bookings.");
       setBookings([]);
+      if (throwOnError) throw e;
     } finally {
       setLoading(false);
     }
@@ -668,7 +716,11 @@ export default function ManagerPaymentsView({ connect }) {
   }, [loadBookings]);
 
   // Load transactions for an appointment
-  const loadPayments = async (appointmentId, tzHint) => {
+  const loadPayments = async (
+    appointmentId,
+    tzHint,
+    { throwOnError = false } = {},
+  ) => {
     setLoadingPayments(true);
     try {
       const { data } = await api.get(`/api/payments/list/${appointmentId}`);
@@ -820,7 +872,10 @@ export default function ManagerPaymentsView({ connect }) {
         capturedTip: capTip,
         refundedAny: refunded,
         lastTip,
+        capturedNoShow: totals.capturedNoShow,
+        refundedNoShow: totals.refundedNoShow,
       });
+      return decorated;
     } catch (e) {
       setPayments([]);
       setMsg(e?.response?.data?.error || "Failed to load payment history.");
@@ -829,7 +884,11 @@ export default function ManagerPaymentsView({ connect }) {
         capturedTip: 0,
         refundedAny: 0,
         lastTip: 0,
+        capturedNoShow: 0,
+        refundedNoShow: 0,
       });
+      if (throwOnError) throw e;
+      return [];
     } finally {
       setLoadingPayments(false);
     }
@@ -843,7 +902,7 @@ export default function ManagerPaymentsView({ connect }) {
   };
 
   // Open refund dialog
-  const openRefund = async (booking) => {
+  const openRefund = async (booking, initialBucket = "service") => {
     setChargeOpen(false);
     setMsg("");
     setRefundBooking(booking);
@@ -855,10 +914,38 @@ export default function ManagerPaymentsView({ connect }) {
     setIncludeTips(true);
     setServiceAmountInput("");
     setTipAmountInput("");
+    setRefundBucket(initialBucket);
+    setNoShowRefundAmount("");
+    setNoShowRefundKey("");
     setRefundOpen(true);
     setRefundLoading(true);
     try {
-      await loadPayments(booking.id, booking?._tz);
+      const rows = await loadPayments(booking.id, booking?._tz);
+      const feeTxn = rows.find(
+        (row) => toLowerSafe(row?.type) === "no_show" && row?.fee_summary,
+      );
+      const feeRemaining = Number(
+        feeTxn?.fee_summary?.remaining_refundable_cents || 0,
+      );
+      const hasServicePayment = rows.some((row) =>
+        ["balance", "service", "deposit"].includes(toLowerSafe(row?.type)),
+      );
+      if (feeRemaining > 0 && (initialBucket === "no_show_fee" || !hasServicePayment)) {
+        setRefundBucket("no_show_fee");
+        setNoShowRefundAmount((feeRemaining / 100).toFixed(2));
+      }
+      if (feeTxn?.id && typeof window !== "undefined") {
+        const storageKey = `schedulaa:noshow-refund:${booking?.company_id || "current"}:${booking.id}:${feeTxn.id}`;
+        try {
+          const saved = JSON.parse(window.localStorage.getItem(storageKey) || "null");
+          if (saved?.idempotencyKey) setNoShowRefundKey(saved.idempotencyKey);
+          if (saved?.amountCents > 0) {
+            setNoShowRefundAmount((Number(saved.amountCents) / 100).toFixed(2));
+          }
+        } catch (_error) {
+          // A malformed browser recovery record is ignored; the server remains authoritative.
+        }
+      }
     } finally {
       setRefundLoading(false);
     }
@@ -888,7 +975,77 @@ export default function ManagerPaymentsView({ connect }) {
       return Math.round(numeric * 100);
     };
 
-    if (refundAuto) {
+    let noShowRecoveryStorageKey = "";
+    if (refundBucket === "no_show_fee") {
+      if (!refundAuto) {
+        setSnackbar({
+          open: true,
+          message: "No-show card fees must be refunded to their original Stripe payment.",
+          severity: "error",
+        });
+        return;
+      }
+      const feeTxn = payments.find(
+        (row) => toLowerSafe(row?.type) === "no_show" && row?.fee_summary,
+      );
+      const cents = toCents(noShowRefundAmount);
+      const remainingCents = Number(
+        feeTxn?.fee_summary?.remaining_refundable_cents || 0,
+      );
+      if (!feeTxn || !cents || cents <= 0) {
+        setSnackbar({
+          open: true,
+          message: "Enter a valid no-show fee refund amount.",
+          severity: "error",
+        });
+        return;
+      }
+      if (cents > remainingCents) {
+        setSnackbar({
+          open: true,
+          message: "Amount exceeds the remaining refundable no-show fee.",
+          severity: "error",
+        });
+        return;
+      }
+      noShowRecoveryStorageKey = `schedulaa:noshow-refund:${refundBooking?.company_id || "current"}:${refundBooking.id}:${feeTxn.id}`;
+      let operationKey = noShowRefundKey;
+      if (typeof window !== "undefined") {
+        try {
+          const saved = JSON.parse(
+            window.localStorage.getItem(noShowRecoveryStorageKey) || "null",
+          );
+          if (saved?.idempotencyKey && Number(saved.amountCents) !== cents) {
+            setSnackbar({
+              open: true,
+              message:
+                "A no-show refund outcome is unresolved. Retry its exact amount before starting a different refund.",
+              severity: "warning",
+            });
+            return;
+          }
+          operationKey = operationKey || saved?.idempotencyKey || "";
+        } catch (_error) {
+          // The server-side operation remains authoritative if recovery storage is unavailable.
+        }
+      }
+      if (!operationKey) {
+        operationKey =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `noshow-refund-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        setNoShowRefundKey(operationKey);
+      }
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          noShowRecoveryStorageKey,
+          JSON.stringify({ idempotencyKey: operationKey, amountCents: cents }),
+        );
+      }
+      payload.refund_bucket = "no_show_fee";
+      payload.no_show_refund_cents = cents;
+      payload.idempotency_key = operationKey;
+    } else if (refundAuto) {
       const serviceRemainingCents = Math.round(serviceRemaining * 100);
       const tipRemainingCents = Math.round(tipRemaining * 100);
 
@@ -1000,9 +1157,22 @@ export default function ManagerPaymentsView({ connect }) {
         };
         setPayments((prev) => [decorated, ...prev]);
       }
-
-      await loadPayments(refundBooking.id, refundBooking?._tz);
-      await loadBookings();
+      if (noShowRecoveryStorageKey && typeof window !== "undefined") {
+        window.localStorage.removeItem(noShowRecoveryStorageKey);
+        setNoShowRefundKey("");
+      }
+      try {
+        await loadPayments(refundBooking.id, refundBooking?._tz, {
+          throwOnError: true,
+        });
+        await loadBookings({ throwOnError: true });
+      } catch (_refreshError) {
+        setSnackbar({
+          open: true,
+          message: "Refund saved, but the dashboard could not refresh. Refresh to see the latest history.",
+          severity: "warning",
+        });
+      }
       setRefundAmount("");
       setRefundReason("");
       setRefundPlatformFee(false);
@@ -1042,6 +1212,7 @@ export default function ManagerPaymentsView({ connect }) {
 
   // Open charge dialog (prefill pending balance, else pending tip, else no-show fee)
   const openCharge = async (booking, opts = {}) => {
+    const requestedIntent = opts?.intent || "";
     setChargeBooking(booking);
     setChargeOpen(true);
     setPaymentMethods([]);
@@ -1050,6 +1221,8 @@ export default function ManagerPaymentsView({ connect }) {
     setChargeExtra("");
     setChargeTip("");
     setChargeIntent("");
+    setNoShowFeeContext(null);
+    setNoShowFeeContextError("");
     setChargeOnboardingUrl("");
     setChargeReviewOpen(false);
     setNote("");
@@ -1062,7 +1235,7 @@ export default function ManagerPaymentsView({ connect }) {
     });
 
     const hasPresetAmount = Boolean(opts?.amount);
-    if (opts?.intent) setChargeIntent(opts.intent);
+    if (requestedIntent) setChargeIntent(requestedIntent);
     if (opts?.amount) setAmount(opts.amount);
     if (opts?.note) setNote(opts.note);
     if (opts?.extra) setChargeExtra(opts.extra);
@@ -1076,6 +1249,40 @@ export default function ManagerPaymentsView({ connect }) {
 
     setPmLoading(true);
     try {
+      let feeContext = null;
+      if (requestedIntent === "no_show_fee") {
+        try {
+          const contextResponse = await api.get(
+            `/api/manager/bookings/${booking.id}/no-show-fee-context`,
+          );
+          feeContext = contextResponse.data || null;
+          setNoShowFeeContext(feeContext);
+          const resolvedCurrency = normalizeCurrency(
+            feeContext?.currency_contract?.currency,
+          );
+          if (resolvedCurrency) {
+            setDisplayCurrency(resolvedCurrency);
+            setActiveCurrency(resolvedCurrency);
+          }
+          const existingAmount = Number(feeContext?.fee?.amount_cents || 0) / 100;
+          const suggestedAmount =
+            feeContext?.suggestion?.status === "configured_positive"
+              ? Number(feeContext?.suggestion?.amount_cents || 0) / 100
+              : 0;
+          if (!hasPresetAmount && existingAmount > 0) {
+            setAmount(existingAmount.toFixed(2));
+          } else if (!hasPresetAmount && suggestedAmount > 0) {
+            setAmount(suggestedAmount.toFixed(2));
+          }
+          if (!opts?.note) setNote("No-show fee");
+        } catch (contextError) {
+          setNoShowFeeContextError(
+            contextError?.response?.data?.error ||
+              "No-show fee authorization and currency could not be verified.",
+          );
+        }
+      }
+
       // 1) saved cards
       const { data } = await api.get(
         `/api/manager/clients/${booking.client.id}/payment-methods`,
@@ -1103,14 +1310,6 @@ export default function ManagerPaymentsView({ connect }) {
         setAmount(s.pendingBalance.toFixed(2));
       } else if (!hasPresetAmount && s.pendingTip > 0) {
         setAmount(s.pendingTip.toFixed(2));
-      } else if (
-        !hasPresetAmount &&
-        String(booking?.status || "")
-          .toLowerCase()
-          .replace("-", "_") === "no_show" &&
-        noShowFee > 0
-      ) {
-        setAmount(Number(noShowFee).toFixed(2));
       }
     } catch (e) {
       setMsg(
@@ -1132,6 +1331,17 @@ export default function ManagerPaymentsView({ connect }) {
     const amountCents = Math.round(amt * 100);
     const extraCents = Math.round(extraVal * 100);
     const tipCents = Math.round(tipVal * 100);
+
+    if (isNoShowFeeCharge && noShowFeeBlocked) {
+      return setMsg(
+        noShowFeeContextError ||
+          noShowFeeContext?.fee?.message ||
+          "This no-show fee cannot be charged safely.",
+      );
+    }
+    if (isNoShowFeeCharge && (extraCents !== 0 || tipCents !== 0)) {
+      return setMsg("No-show fees cannot include extra charges or tips.");
+    }
 
     if (hasConnect && !connectChargesEnabled) {
       setSnackbar({
@@ -1158,6 +1368,7 @@ export default function ManagerPaymentsView({ connect }) {
         extra_amount_cents: extraCents,
         tip_amount_cents: tipCents,
         currency: (normalizeCurrency(displayCurrency) || "USD").toLowerCase(),
+        payment_purpose: isNoShowFeeCharge ? "no_show_fee" : undefined,
         reason: note || "manager_charge",
         description: note || "manager_charge",
       });
@@ -1168,9 +1379,19 @@ export default function ManagerPaymentsView({ connect }) {
       });
       setChargeOpen(false);
       setChargeBooking(null);
-      await loadBookings();
-      if (viewAppt && viewAppt.id === chargeBooking.id)
-        await loadPayments(chargeBooking.id, chargeBooking?._tz);
+      try {
+        await loadBookings({ throwOnError: true });
+        if (viewAppt && viewAppt.id === chargeBooking.id)
+          await loadPayments(chargeBooking.id, chargeBooking?._tz, {
+            throwOnError: true,
+          });
+      } catch (_refreshError) {
+        setSnackbar({
+          open: true,
+          message: "Charge captured, but the dashboard could not refresh. Refresh to see the latest fee history.",
+          severity: "warning",
+        });
+      }
     } catch (e) {
       if (e?.response?.status === 412 && e?.response?.data?.onboarding_url) {
         setChargeOnboardingUrl(e.response.data.onboarding_url);
@@ -1197,14 +1418,6 @@ export default function ManagerPaymentsView({ connect }) {
       setCharging(false);
     }
   };
-
-  // Load company no-show fee
-  useEffect(() => {
-    api
-      .get(`/admin/company-profile`)
-      .then(({ data }) => setNoShowFee(Number(data.cancellation_fee || 0)))
-      .catch(() => {});
-  }, []);
 
   // Deep-link to open charge
   useEffect(() => {
@@ -1957,6 +2170,20 @@ export default function ManagerPaymentsView({ connect }) {
                         Ref: {p.provider_ref}
                       </Typography>
                     )}
+                    {toLowerSafe(p.type) === "no_show" &&
+                      Number(p?.fee_summary?.remaining_refundable_cents || 0) > 0 &&
+                      viewAppt && (
+                        <Button
+                          size="small"
+                          sx={{ mt: 1, display: "block" }}
+                          onClick={() => {
+                            setHistoryOpen(false);
+                            openRefund(viewAppt, "no_show_fee");
+                          }}
+                        >
+                          Refund no-show fee
+                        </Button>
+                      )}
                   </Paper>
                 ))}
               </Stack>
@@ -2002,11 +2229,20 @@ export default function ManagerPaymentsView({ connect }) {
               <CreditCardIcon color="primary" />
               <Box>
                 <Typography variant="h6" fontWeight={700}>
-                  Charge saved card
+                  {isNoShowFeeCharge ? "Confirm no-show fee" : "Charge saved card"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {chargeBooking
-                    ? `Booking #${chargeBooking.id}`
+                    ? `${
+                        chargeBooking.client?.full_name ||
+                        [
+                          chargeBooking.client?.first_name,
+                          chargeBooking.client?.last_name,
+                        ]
+                          .filter(Boolean)
+                          .join(" ") ||
+                        "Client"
+                      } · Booking #${chargeBooking.id}`
                     : "Select a booking"}
                 </Typography>
                 {chargeBooking && (
@@ -2035,6 +2271,53 @@ export default function ManagerPaymentsView({ connect }) {
               </Alert>
             ) : (
               <>
+                {isNoShowFeeCharge && (
+                  <Stack spacing={1.25} sx={{ mb: 2 }}>
+                    <Alert severity="warning">
+                      This is a separate no-show fee. It does not pay the service balance,
+                      change package entitlement, or mark the booking paid.
+                    </Alert>
+                    {noShowFeeContextError ? (
+                      <Alert severity="error">{noShowFeeContextError}</Alert>
+                    ) : null}
+                    {noShowFeeContext?.accepted_policy?.available ? (
+                      <Paper variant="outlined" sx={{ p: 1.5 }}>
+                        <Typography variant="subtitle2">Accepted booking policy</Typography>
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          {noShowFeeContext.accepted_policy.policy_text}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Accepted {noShowFeeContext.accepted_policy.accepted_at || "date unavailable"}
+                        </Typography>
+                      </Paper>
+                    ) : (
+                      <Alert severity="error">
+                        No verified appointment-linked policy consent is available for this saved-card fee.
+                      </Alert>
+                    )}
+                    {noShowFeeContext?.suggestion?.status === "configured_zero" ? (
+                      <Alert severity="info">
+                        The cancellation-fee setting is zero. Enter an explicit fee only if the accepted policy supports it.
+                      </Alert>
+                    ) : null}
+                    {["currency_mismatch", "unavailable"].includes(
+                      noShowFeeContext?.suggestion?.status,
+                    ) && noShowFeeContext?.suggestion?.message ? (
+                      <Alert severity="info">{noShowFeeContext.suggestion.message}</Alert>
+                    ) : null}
+                    {noShowFeeContext?.fee?.exists ? (
+                      <Alert severity={noShowFeeBlocked ? "warning" : "info"}>
+                        Existing fee state: {noShowFeeState.replaceAll("_", " ")}
+                        {noShowFeeContext?.fee?.amount_cents
+                          ? ` — ${money(
+                              Number(noShowFeeContext.fee.amount_cents) / 100,
+                              noShowFeeContext.fee.currency,
+                            )}`
+                          : ""}
+                      </Alert>
+                    ) : null}
+                  </Stack>
+                )}
                 {chargeOnboardingUrl ? (
                   <Alert severity="warning" sx={{ mb: 2 }}>
                     Stripe onboarding incomplete.{" "}
@@ -2068,6 +2351,7 @@ export default function ManagerPaymentsView({ connect }) {
                       Pending balance: {money(chargeSummary.pendingBalance)}
                       Tip captured: {money(chargeSummary.capturedTip)}
                       Pending tip: {money(chargeSummary.pendingTip)}
+                      No-show fees captured: {money(chargeSummary.capturedNoShow)}
                     </Typography>
                   </Box>
                 )}
@@ -2088,16 +2372,26 @@ export default function ManagerPaymentsView({ connect }) {
                   ))}
                 </RadioGroup>
 
-                {noShowFee > 0 && (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => setAmount(noShowFee.toFixed(2))}
-                    sx={{ mb: 2 }}
-                  >
-                    Quick-fill No-Show Fee ({money(noShowFee)})
-                  </Button>
-                )}
+                {isNoShowFeeCharge &&
+                  noShowFeeContext?.suggestion?.status === "configured_positive" && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() =>
+                        setAmount(
+                          (Number(noShowFeeContext.suggestion.amount_cents) / 100).toFixed(2),
+                        )
+                      }
+                      sx={{ mb: 2 }}
+                    >
+                      Use cancellation-fee suggestion (
+                      {money(
+                        Number(noShowFeeContext.suggestion.amount_cents) / 100,
+                        noShowFeeContext.suggestion.currency,
+                      )}
+                      )
+                    </Button>
+                  )}
 
                 {chargeIntent === "collect" && (
                   <Stack
@@ -2136,7 +2430,7 @@ export default function ManagerPaymentsView({ connect }) {
                 )}
 
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                  <FormLabel>Charge amount</FormLabel>
+                  <FormLabel>{isNoShowFeeCharge ? "No-show fee amount" : "Charge amount"}</FormLabel>
                   <Tooltip
                     title={
                       <Box>
@@ -2198,9 +2492,16 @@ export default function ManagerPaymentsView({ connect }) {
                 pmLoading ||
                 paymentMethods.length === 0 ||
                 connectWarning
+                || noShowFeeBlocked
               }
             >
-              {charging ? <CircularProgress size={20} /> : "Charge"}
+              {charging ? (
+                <CircularProgress size={20} />
+              ) : isNoShowFeeCharge ? (
+                "Charge no-show fee"
+              ) : (
+                "Charge"
+              )}
             </Button>
           </DialogActions>
         </Dialog>
@@ -2329,6 +2630,23 @@ export default function ManagerPaymentsView({ connect }) {
                       {money(refundSummary.capturedTip)}
                     </Typography>
                   </Box>
+                  {refundSummary.capturedNoShow > 0 && (
+                    <>
+                      <Divider
+                        orientation="vertical"
+                        flexItem
+                        sx={{ display: { xs: "none", sm: "block" } }}
+                      />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          No-show fee
+                        </Typography>
+                        <Typography fontWeight={700}>
+                          {money(noShowRemaining)} refundable
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
                   <Divider
                     orientation="vertical"
                     flexItem
@@ -2357,6 +2675,37 @@ export default function ManagerPaymentsView({ connect }) {
                   </Box>
                 </Stack>
 
+                {refundSummary.capturedNoShow > 0 && (
+                  <Stack sx={{ mb: 2 }}>
+                    <FormLabel>Refund obligation</FormLabel>
+                    <RadioGroup
+                      value={refundBucket}
+                      onChange={(event) => {
+                        const nextBucket = event.target.value;
+                        setRefundBucket(nextBucket);
+                        if (nextBucket === "no_show_fee") {
+                          setRefundAuto(true);
+                          setNoShowRefundAmount(
+                            noShowRemaining > 0 ? noShowRemaining.toFixed(2) : "",
+                          );
+                        }
+                      }}
+                    >
+                      <FormControlLabel
+                        value="service"
+                        control={<Radio />}
+                        label="Service and tips"
+                      />
+                      <FormControlLabel
+                        value="no_show_fee"
+                        control={<Radio />}
+                        label={`Separate no-show fee (${money(noShowRemaining)} remaining)`}
+                        disabled={noShowRemaining <= 0}
+                      />
+                    </RadioGroup>
+                  </Stack>
+                )}
+
                 <Stack
                   direction="row"
                   alignItems="center"
@@ -2378,11 +2727,28 @@ export default function ManagerPaymentsView({ connect }) {
                       value="manual"
                       control={<Radio />}
                       label="Manual / offline"
+                      disabled={refundBucket === "no_show_fee"}
                     />
                   </RadioGroup>
                 </Stack>
 
-                {refundAuto ? (
+                {refundBucket === "no_show_fee" ? (
+                  <Stack spacing={1.5} sx={{ mb: 2 }}>
+                    <Alert severity="info">
+                      This refunds only the separate no-show fee to its original card.
+                      Service, tip, package, and booking payment status are unchanged.
+                    </Alert>
+                    <TextField
+                      label={`No-show fee refund (${displayCurrency})`}
+                      type="number"
+                      value={noShowRefundAmount}
+                      onChange={(event) => setNoShowRefundAmount(event.target.value)}
+                      inputProps={{ min: 0, max: noShowRemaining, step: "0.01" }}
+                      helperText={`Up to ${money(noShowRemaining)} available.`}
+                      fullWidth
+                    />
+                  </Stack>
+                ) : refundAuto ? (
                   <>
                     <Stack
                       direction={{ xs: "column", sm: "row" }}

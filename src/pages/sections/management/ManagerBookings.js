@@ -219,9 +219,6 @@ const ManagerBookings = ({ slug, connect }) => {
     severity: "info",
   });
 
-  // Company no-show fee for quick-charge
-  const [noShowFee, setNoShowFee] = useState(null);
-
   // Edit dialog - services for the current employee (fallback to all)
   const [editServices, setEditServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -371,14 +368,6 @@ const ManagerBookings = ({ slug, connect }) => {
     fetchRecruiters();
     fetchBookings();
   }, [fetchDepartments, fetchRecruiters, fetchBookings]);
-
-  // Load company no-show fee once
-  useEffect(() => {
-    api
-      .get("/admin/company-profile")
-      .then(({ data }) => setNoShowFee(Number(data.cancellation_fee || 0)))
-      .catch(() => setNoShowFee(null));
-  }, []);
 
   /* -- Derived: apply Department/Employee filters --------- */
   const visibleRows = useMemo(() => {
@@ -812,7 +801,7 @@ const handleEditSave = async () => {
       .catch(() => setSnackbar({ open: true, message: "Could not copy link.", severity: "error" }));
   };
 
-  const handleCharge = (row, presetAmount = "", presetNote = "") => {
+  const handleCharge = (row, presetAmount = "", presetNote = "", intent = "") => {
     const params = new URLSearchParams({
       appointmentId: String(row.id || ""),
       clientId: String(row.client?.id || ""),
@@ -821,6 +810,7 @@ const handleEditSave = async () => {
     });
     if (presetAmount) params.set("amount", String(presetAmount));
     if (presetNote) params.set("note", presetNote);
+    if (intent) params.set("intent", intent);
     navigate(`/manager/payments?${params.toString()}`);
   };
 
@@ -875,7 +865,7 @@ const RowActions = ({ row }) => {
           {t("manager.bookings.actions.cancel")}
         </MenuItem>
 
-        {row.status !== "no_show" ? (
+        {String(row.status || "").toLowerCase().replace("-", "_") !== "no_show" ? (
           <MenuItem
             onClick={async () => {
               await handleAction(row.id, "no-show", t("manager.bookings.snackbar.noShow"));
@@ -965,18 +955,24 @@ const RowActions = ({ row }) => {
             >
               {t("manager.bookings.actions.chargeCard")}
             </MenuItem>
-            <MenuItem
-              disabled={chargeActionsDisabled}
-              onClick={() => {
-                if (chargeActionsDisabled) return;
-                const fee =
-                  noShowFee != null ? noShowFee : row.no_show_fee || "25.00";
-                handleCharge(row, fee, t("manager.bookings.actions.noShowFee"));
-                handleClose();
-              }}
-            >
-              {t("manager.bookings.actions.chargeNoShow")}
-            </MenuItem>
+            {String(row.status || "").toLowerCase().replace("-", "_") ===
+              "no_show" && (
+              <MenuItem
+                disabled={chargeActionsDisabled}
+                onClick={() => {
+                  if (chargeActionsDisabled) return;
+                  handleCharge(
+                    row,
+                    "",
+                    t("manager.bookings.actions.noShowFee"),
+                    "no_show_fee",
+                  );
+                  handleClose();
+                }}
+              >
+                {t("manager.bookings.actions.chargeNoShow")}
+              </MenuItem>
+            )}
           </>
         )}
       </MuiMenu>
@@ -1676,8 +1672,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
 
 
 

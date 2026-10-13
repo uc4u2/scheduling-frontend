@@ -525,13 +525,23 @@ const ClientsTab = (
               {(monetaryGroups.length ? monetaryGroups : [{
                 currency: k.currency,
                 gross_balance: k.gross_balance,
+                gross_service: k.gross_service,
+                gross_no_show_fees: k.gross_no_show_fees,
                 gross_tips: k.tips_total,
                 confirmed_refunds: k.refunds_total,
                 net_collected: k.net_collected,
               }]).map((money) => (
                 <React.Fragment key={money.currency || "single"}>
                   <Grid item xs={12} md={3}>
-                    <KPI label={`Service amount${money.currency ? ` (${money.currency})` : ""}`} value={fmtMoney(money.gross_balance, money.currency)} />
+                    <KPI
+                      label={`Service amount${money.currency ? ` (${money.currency})` : ""}`}
+                      value={fmtMoney(money.gross_service ?? money.gross_balance, money.currency)}
+                      help={
+                        Number(money.gross_no_show_fees || 0) > 0
+                          ? `Separate no-show fees: ${fmtMoney(money.gross_no_show_fees, money.currency)}`
+                          : undefined
+                      }
+                    />
                   </Grid>
                   <Grid item xs={12} md={3}>
                     <KPI
@@ -652,9 +662,22 @@ const ClientsTab = (
                       <Grid item xs={12} md={6} key={`${currencyGroup.currency || "single"}-${row.bucket}`}>
                         <Box sx={{ p: 1, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                           <Typography variant="subtitle2">{row.bucket}</Typography>
-                          <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                            useFlexGap
+                            flexWrap="wrap"
+                            sx={{ mt: 1 }}
+                          >
                             <Chip size="small" label={`Bookings: ${row.bookings ?? 0}`} />
-                            <Chip size="small" color="primary" label={`Revenue: ${fmtMoney(row.revenue, currencyGroup.currency)}`} />
+                            <Chip size="small" color="primary" label={`Collected: ${fmtMoney(row.revenue, currencyGroup.currency)}`} />
+                            {Number(row.no_show_fee_revenue || 0) > 0 ? (
+                              <>
+                                <Chip size="small" label={`Service: ${fmtMoney(row.service_revenue, currencyGroup.currency)}`} />
+                                <Chip size="small" color="warning" label={`No-show fees: ${fmtMoney(row.no_show_fee_revenue, currencyGroup.currency)}`} />
+                              </>
+                            ) : null}
                           </Stack>
                         </Box>
                       </Grid>
