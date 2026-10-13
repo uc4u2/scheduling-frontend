@@ -1,22 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import {
   Alert,
   Box,
   Button,
+  ButtonBase,
   CircularProgress,
+  Divider,
+  InputAdornment,
   Paper,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/api";
 import { kioskManagerLoginTarget } from "../../utils/kioskHandoff";
-
-const formatMoney = (cents, currency) =>
-  `${(Number(cents || 0) / 100).toFixed(2)} ${currency || ""}`.trim();
+import KioskExperienceShell, {
+  formatKioskMoney,
+  kioskPalette,
+} from "./KioskExperienceShell";
 
 const parseCustomTip = (value) => {
   const normalized = String(value || "").trim();
@@ -24,6 +30,35 @@ const parseCustomTip = (value) => {
   const cents = Math.round(Number(normalized) * 100);
   return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
 };
+
+const TipChoice = ({ selected, label, amount, onClick, ariaLabel }) => (
+  <ButtonBase
+    onClick={onClick}
+    aria-label={ariaLabel || label}
+    aria-pressed={selected}
+    sx={{
+      minHeight: 92,
+      width: "100%",
+      borderRadius: "18px",
+      border: "2px solid",
+      borderColor: selected ? kioskPalette.teal : kioskPalette.border,
+      bgcolor: selected ? kioskPalette.tealSoft : kioskPalette.surface,
+      color: kioskPalette.navy,
+      p: 1.5,
+      transition: "border-color 160ms ease, background-color 160ms ease, transform 160ms ease",
+      "&:hover": { borderColor: kioskPalette.teal, bgcolor: kioskPalette.tealSoft },
+      "&:focus-visible": { outline: `3px solid ${kioskPalette.navy}`, outlineOffset: 3 },
+      "&:active": { transform: "scale(0.98)" },
+    }}
+  >
+    <Stack spacing={0.4} alignItems="center">
+      <Typography sx={{ fontSize: 19, lineHeight: 1.1, fontWeight: 850 }}>{label}</Typography>
+      <Typography variant="body2" color={kioskPalette.navyMuted} fontWeight={650}>
+        {amount}
+      </Typography>
+    </Stack>
+  </ButtonBase>
+);
 
 const KioskPayPage = () => {
   const { token = "" } = useParams();
@@ -73,7 +108,7 @@ const KioskPayPage = () => {
       setError(data?.error || "Unable to verify this checkout yet.");
       return data?.operation || null;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, [navigate, token]);
 
@@ -99,6 +134,11 @@ const KioskPayPage = () => {
   const totalCents = tipBasisCents + tipCents;
   const customInvalid = tipMode === "custom" && customTipCents == null;
   const canInitiate = Boolean(operation?.can_initiate) && !customInvalid;
+
+  const chooseTip = (value) => {
+    setTipMode(value);
+    if (value !== "custom") setCustomTip("");
+  };
 
   const handlePay = async () => {
     if (!canInitiate || submitting) return;
@@ -137,119 +177,201 @@ const KioskPayPage = () => {
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <CircularProgress aria-label="Loading checkout" />
-      </Box>
+      <KioskExperienceShell businessName="Secure checkout">
+        <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
+          <Stack spacing={2} alignItems="center" aria-live="polite">
+            <CircularProgress aria-label="Loading checkout" sx={{ color: kioskPalette.teal }} />
+            <Typography color={kioskPalette.navyMuted}>Preparing your checkout…</Typography>
+          </Stack>
+        </Box>
+      </KioskExperienceShell>
     );
   }
 
   const expired = operation && !operation.can_initiate && operation.state !== "paid";
+  const display = operation?.display || {};
+  const appointmentLine = [display.appointment_date, display.appointment_time].filter(Boolean).join(" at ");
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", px: 2, py: 4 }}>
-      <Box sx={{ maxWidth: 560, mx: "auto" }}>
-        <Stack spacing={3}>
-          <Box textAlign="center">
-            <Typography variant="h5" fontWeight={800}>
-              {operation?.display?.business_name || "Client checkout"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {operation?.display?.service_name || "Review your payment"}
-            </Typography>
-          </Box>
-
-          <Paper variant="outlined" sx={{ p: 3 }}>
-            <Stack spacing={1.5}>
-              <Stack direction="row" justifyContent="space-between" gap={2}>
-                <Typography color="text.secondary">Service</Typography>
-                <Typography fontWeight={700}>{formatMoney(baseCents, currency)}</Typography>
-              </Stack>
-              {extraCents > 0 && (
-                <Stack direction="row" justifyContent="space-between" gap={2}>
-                  <Typography color="text.secondary">Extras</Typography>
-                  <Typography fontWeight={700}>{formatMoney(extraCents, currency)}</Typography>
-                </Stack>
-              )}
-              <Stack direction="row" justifyContent="space-between" gap={2}>
-                <Typography color="text.secondary">Tip</Typography>
-                <Typography fontWeight={700}>{formatMoney(tipCents, currency)}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" gap={2} pt={1}>
-                <Typography fontWeight={800}>Total before Stripe tax</Typography>
-                <Typography fontWeight={800}>{formatMoney(totalCents, currency)}</Typography>
-              </Stack>
-            </Stack>
-          </Paper>
-
-          <Paper variant="outlined" sx={{ p: 3 }}>
-            <Stack spacing={2}>
+    <KioskExperienceShell businessName={display.business_name}>
+      <Paper
+        elevation={0}
+        sx={{
+          border: `1px solid ${kioskPalette.border}`,
+          borderRadius: { xs: "22px", sm: "28px" },
+          overflow: "hidden",
+          boxShadow: "0 24px 70px rgba(16, 36, 62, 0.10)",
+          bgcolor: kioskPalette.surface,
+        }}
+      >
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 0.92fr) minmax(0, 1.08fr)" },
+          }}
+        >
+          <Box sx={{ p: { xs: 2.25, sm: 3.5, md: 4.5 }, bgcolor: "#F9FBFC" }}>
+            <Stack spacing={{ xs: 2.5, sm: 3 }}>
               <Box>
-                <Typography variant="subtitle1" fontWeight={800}>Choose a tip</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Percentages use the {formatMoney(tipBasisCents, currency)} service and extras subtotal.
+                <Typography variant="overline" sx={{ color: kioskPalette.tealDark, fontWeight: 850, letterSpacing: "0.1em" }}>
+                  Payment summary
+                </Typography>
+                <Typography component="h1" sx={{ mt: 0.5, fontSize: { xs: 26, sm: 32 }, lineHeight: 1.12, fontWeight: 850 }}>
+                  {display.service_name || "Your appointment"}
+                </Typography>
+                {appointmentLine && (
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.25 }}>
+                    <CalendarMonthRoundedIcon sx={{ fontSize: 19, color: kioskPalette.teal }} />
+                    <Typography variant="body2" color={kioskPalette.navyMuted}>{appointmentLine}</Typography>
+                  </Stack>
+                )}
+              </Box>
+
+              <Box>
+                <Typography variant="body2" color={kioskPalette.navyMuted} fontWeight={650}>Amount due</Typography>
+                <Typography sx={{ mt: 0.3, fontSize: { xs: 34, sm: 42 }, lineHeight: 1.08, fontWeight: 900 }}>
+                  {formatKioskMoney(tipBasisCents, currency)}
                 </Typography>
               </Box>
-              <ToggleButtonGroup
-                value={tipMode}
-                exclusive
-                onChange={(_, value) => value && setTipMode(value)}
-                aria-label="Tip amount"
-                sx={{ flexWrap: "wrap", gap: 1, "& .MuiToggleButtonGroup-grouped": { m: 0 } }}
-              >
-                <ToggleButton value="none">No tip</ToggleButton>
-                <ToggleButton value="10">10%</ToggleButton>
-                <ToggleButton value="15">15%</ToggleButton>
-                <ToggleButton value="20">20%</ToggleButton>
-                <ToggleButton value="custom">Custom</ToggleButton>
-              </ToggleButtonGroup>
+
+              <Divider sx={{ borderColor: kioskPalette.border }} />
+              <Stack spacing={1.4}>
+                <Stack direction="row" justifyContent="space-between" gap={2}>
+                  <Typography color={kioskPalette.navyMuted}>Service</Typography>
+                  <Typography fontWeight={750}>{formatKioskMoney(baseCents, currency)}</Typography>
+                </Stack>
+                {extraCents > 0 && (
+                  <Stack direction="row" justifyContent="space-between" gap={2}>
+                    <Typography color={kioskPalette.navyMuted}>Extras</Typography>
+                    <Typography fontWeight={750}>{formatKioskMoney(extraCents, currency)}</Typography>
+                  </Stack>
+                )}
+              </Stack>
+
+              <Stack direction="row" spacing={1} alignItems="flex-start">
+                <LockRoundedIcon sx={{ fontSize: 18, color: kioskPalette.teal, mt: 0.15 }} />
+                <Typography variant="caption" color={kioskPalette.navyMuted}>
+                  Card details are entered on Stripe’s secure Checkout. Schedulaa never displays them here.
+                </Typography>
+              </Stack>
+            </Stack>
+          </Box>
+
+          <Box sx={{ p: { xs: 2.25, sm: 3.5, md: 4.5 }, minWidth: 0 }}>
+            <Stack spacing={2.5}>
+              <Box>
+                <Typography component="h2" sx={{ fontSize: { xs: 23, sm: 27 }, fontWeight: 850 }}>
+                  Would you like to leave a tip?
+                </Typography>
+                <Typography sx={{ mt: 0.7 }} variant="body2" color={kioskPalette.navyMuted}>
+                  Percentages are calculated from the {formatKioskMoney(tipBasisCents, currency)} service and extras subtotal.
+                </Typography>
+              </Box>
+
+              <Box role="group" aria-label="Tip amount" sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
+                {[10, 15, 20].map((percent) => (
+                  <TipChoice
+                    key={percent}
+                    selected={tipMode === String(percent)}
+                    label={`${percent}%`}
+                    amount={formatKioskMoney(Math.round(tipBasisCents * percent / 100), currency)}
+                    onClick={() => chooseTip(String(percent))}
+                  />
+                ))}
+                <TipChoice selected={tipMode === "none"} label="No tip" amount={formatKioskMoney(0, currency)} onClick={() => chooseTip("none")} />
+                <TipChoice
+                  selected={tipMode === "custom"}
+                  label="Custom"
+                  amount={tipMode === "custom" && customTipCents != null ? formatKioskMoney(customTipCents, currency) : "Enter amount"}
+                  onClick={() => chooseTip("custom")}
+                />
+              </Box>
+
               {tipMode === "custom" && (
                 <TextField
+                  autoFocus
+                  fullWidth
                   label={`Custom tip (${currency})`}
                   value={customTip}
                   onChange={(event) => setCustomTip(event.target.value)}
                   error={customInvalid}
-                  helperText={customInvalid ? "Enter a non-negative amount with no more than two decimals." : " "}
-                  inputProps={{ inputMode: "decimal", autoComplete: "off" }}
+                  helperText={customInvalid ? "Enter a non-negative amount with no more than two decimals." : "Use the decimal key for cents."}
+                  inputProps={{ inputMode: "decimal", autoComplete: "off", pattern: "[0-9]*[.,]?[0-9]{0,2}" }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">{currency}</InputAdornment> }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": { minHeight: 58, borderRadius: "16px" },
+                    "& .MuiOutlinedInput-root.Mui-focused fieldset": { borderColor: kioskPalette.teal },
+                    "& .MuiInputLabel-root.Mui-focused": { color: kioskPalette.tealDark },
+                  }}
                 />
               )}
+
+              <Paper variant="outlined" sx={{ borderColor: kioskPalette.border, borderRadius: "18px", p: 2, bgcolor: "#FBFCFD" }}>
+                <Stack spacing={1.2}>
+                  <Stack direction="row" justifyContent="space-between" gap={2}>
+                    <Typography color={kioskPalette.navyMuted}>Selected tip</Typography>
+                    <Typography fontWeight={750}>{formatKioskMoney(tipCents, currency)}</Typography>
+                  </Stack>
+                  <Divider sx={{ borderColor: kioskPalette.border }} />
+                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" gap={2}>
+                    <Typography fontWeight={850}>Total before Stripe tax</Typography>
+                    <Typography sx={{ fontSize: { xs: 23, sm: 26 }, fontWeight: 900, whiteSpace: "nowrap" }}>
+                      {formatKioskMoney(totalCents, currency)}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Paper>
+
               {operation?.automatic_tax_enabled && (
-                <Typography variant="caption" color="text.secondary">
-                  Applicable tax is finalized securely by Stripe. The final charged total may differ from the subtotal shown here.
-                </Typography>
+                <Alert severity="info" icon={<ReceiptLongRoundedIcon />} sx={{ borderRadius: "16px" }}>
+                  Applicable tax is finalized by Stripe on the next screen. Your final charged total may be higher.
+                </Alert>
               )}
+              {operation?.state === "awaiting_payment" && (
+                <Alert severity="info" sx={{ borderRadius: "16px" }}>
+                  A secure Checkout is already open. Changing the tip safely closes that unpaid Session before a replacement is created.
+                </Alert>
+              )}
+              {expired && (
+                <Alert severity="warning" sx={{ borderRadius: "16px" }}>
+                  This handoff can no longer start a payment. It can still verify an already-started payment; otherwise return the device to the manager.
+                </Alert>
+              )}
+              {error && <Alert severity="warning" sx={{ borderRadius: "16px" }}>{error}</Alert>}
+
+              <Button
+                variant="contained"
+                size="large"
+                disabled={!canInitiate || submitting}
+                onClick={handlePay}
+                endIcon={!submitting ? <ArrowForwardRoundedIcon /> : null}
+                sx={{
+                  minHeight: 58,
+                  borderRadius: "16px",
+                  bgcolor: kioskPalette.teal,
+                  fontSize: 16,
+                  fontWeight: 800,
+                  textTransform: "none",
+                  boxShadow: "0 12px 28px rgba(11, 143, 131, 0.24)",
+                  "&:hover": { bgcolor: kioskPalette.tealDark },
+                  "&:focus-visible": { outline: `3px solid ${kioskPalette.navy}`, outlineOffset: 3 },
+                }}
+              >
+                {submitting ? "Creating secure checkout…" : "Continue to secure card payment"}
+              </Button>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button fullWidth variant="outlined" onClick={checkStatus} sx={{ minHeight: 48, borderRadius: "14px", textTransform: "none", color: kioskPalette.navy, borderColor: kioskPalette.border }}>
+                  Check payment status
+                </Button>
+                <Button fullWidth color="inherit" onClick={() => window.location.assign(kioskManagerLoginTarget())} sx={{ minHeight: 48, borderRadius: "14px", textTransform: "none", color: kioskPalette.navyMuted }}>
+                  Return to manager
+                </Button>
+              </Stack>
             </Stack>
-          </Paper>
-
-          {operation?.state === "awaiting_payment" && (
-            <Alert severity="info">
-              A secure checkout is already open for this payment. Continuing with a different tip safely replaces the prior unpaid Session.
-            </Alert>
-          )}
-          {expired && (
-            <Alert severity="warning">
-              This handoff can no longer start a new payment. The manager must reopen the booking, but this screen can still check an existing payment outcome.
-            </Alert>
-          )}
-          {error && <Alert severity="warning">{error}</Alert>}
-
-          <Button
-            variant="contained"
-            size="large"
-            disabled={!canInitiate || submitting}
-            onClick={handlePay}
-            sx={{ minHeight: 52 }}
-          >
-            {submitting ? "Creating secure checkout…" : "Continue to secure card payment"}
-          </Button>
-          <Button variant="outlined" onClick={checkStatus} sx={{ minHeight: 48 }}>
-            Check payment status
-          </Button>
-          <Button color="inherit" onClick={() => window.location.assign(kioskManagerLoginTarget())}>
-            Return device to manager
-          </Button>
-        </Stack>
-      </Box>
-    </Box>
+          </Box>
+        </Box>
+      </Paper>
+    </KioskExperienceShell>
   );
 };
 

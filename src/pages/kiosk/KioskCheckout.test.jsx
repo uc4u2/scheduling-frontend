@@ -56,7 +56,7 @@ describe("Kiosk customer checkout recovery", () => {
     expect(screen.getByRole("button", { name: "No tip" })).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "10%" }));
-    expect(screen.getByText("11.00 CAD")).toBeInTheDocument();
+    expect(screen.getAllByText("11.00 CAD")).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: /Continue to secure card payment/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith(

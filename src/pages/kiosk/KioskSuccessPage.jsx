@@ -1,11 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Divider,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 import api from "../../utils/api";
 import { kioskManagerLoginTarget } from "../../utils/kioskHandoff";
-
-const formatMoney = (cents, currency) =>
-  `${(Number(cents || 0) / 100).toFixed(2)} ${currency || ""}`.trim();
+import KioskExperienceShell, {
+  formatKioskMoney,
+  kioskPalette,
+} from "./KioskExperienceShell";
 
 const KioskSuccessPage = () => {
   const [searchParams] = useSearchParams();
@@ -37,7 +49,7 @@ const KioskSuccessPage = () => {
         noAuth: true,
         noCompanyHeader: true,
       });
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return null;
       setOperation(data);
       setError("");
       if (data?.state === "paid") {
@@ -51,7 +63,7 @@ const KioskSuccessPage = () => {
       setStatus("confirming");
       return "confirming";
     } catch (err) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return null;
       const data = err?.response?.data;
       if (data?.operation) setOperation(data.operation);
       setError(data?.error || "Unable to confirm payment yet.");
@@ -87,61 +99,114 @@ const KioskSuccessPage = () => {
     };
   }, [checkStatus, token]);
 
+  const display = operation?.display || {};
+  const paid = status === "paid";
+
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", px: 2, py: 5 }}>
-      <Box sx={{ maxWidth: 560, mx: "auto" }}>
-        <Stack spacing={3} textAlign="center">
-          {status === "paid" ? (
+    <KioskExperienceShell businessName={display.business_name} eyebrow={paid ? "Receipt" : "Payment status"}>
+      <Paper
+        elevation={0}
+        sx={{
+          width: "100%",
+          maxWidth: 680,
+          mx: "auto",
+          p: { xs: 2.5, sm: 4.5, md: 5 },
+          borderRadius: { xs: "22px", sm: "28px" },
+          border: `1px solid ${kioskPalette.border}`,
+          boxShadow: "0 24px 70px rgba(16, 36, 62, 0.10)",
+          textAlign: "center",
+        }}
+      >
+        <Stack spacing={3} alignItems="stretch" aria-live="polite">
+          {paid ? (
             <>
-              <Typography variant="h4" fontWeight={800}>Payment confirmed</Typography>
-              <Typography color="text.secondary">
-                Thank you. Stripe confirmed the payment and Schedulaa recorded the verified amount.
-              </Typography>
-              <Paper variant="outlined" sx={{ p: 3, textAlign: "left" }}>
-                <Stack spacing={1.25}>
-                  <Stack direction="row" justifyContent="space-between" gap={2}>
-                    <Typography color="text.secondary">Charged</Typography>
-                    <Typography fontWeight={800}>
-                      {formatMoney(operation?.total_cents, operation?.currency)}
+              <Box>
+                <Box
+                  sx={{
+                    width: 76,
+                    height: 76,
+                    mx: "auto",
+                    mb: 2,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: "24px",
+                    bgcolor: kioskPalette.tealSoft,
+                    color: kioskPalette.teal,
+                  }}
+                >
+                  <CheckCircleRoundedIcon sx={{ fontSize: 48 }} aria-hidden="true" />
+                </Box>
+                <Typography component="h1" sx={{ fontSize: { xs: 28, sm: 36 }, fontWeight: 900 }}>
+                  Payment confirmed
+                </Typography>
+                <Typography color={kioskPalette.navyMuted} sx={{ mt: 1, maxWidth: 480, mx: "auto" }}>
+                  Thank you. Stripe confirmed the payment and Schedulaa recorded the verified amount.
+                </Typography>
+              </Box>
+
+              <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: "18px", borderColor: kioskPalette.border, textAlign: "left", bgcolor: "#FBFCFD" }}>
+                <Stack spacing={1.4}>
+                  {display.service_name && (
+                    <Stack direction="row" justifyContent="space-between" gap={2}>
+                      <Typography color={kioskPalette.navyMuted}>Service</Typography>
+                      <Typography fontWeight={750} textAlign="right">{display.service_name}</Typography>
+                    </Stack>
+                  )}
+                  <Divider sx={{ borderColor: kioskPalette.border }} />
+                  <Stack direction="row" justifyContent="space-between" alignItems="baseline" gap={2}>
+                    <Typography fontWeight={800}>Amount charged</Typography>
+                    <Typography sx={{ fontSize: { xs: 22, sm: 26 }, fontWeight: 900, whiteSpace: "nowrap" }}>
+                      {formatKioskMoney(operation?.total_cents, operation?.currency)}
                     </Typography>
                   </Stack>
                   {Number(operation?.tax_cents || 0) > 0 && (
                     <Stack direction="row" justifyContent="space-between" gap={2}>
-                      <Typography color="text.secondary">Tax</Typography>
-                      <Typography>{formatMoney(operation.tax_cents, operation.currency)}</Typography>
+                      <Typography color={kioskPalette.navyMuted}>Tax included</Typography>
+                      <Typography fontWeight={700}>{formatKioskMoney(operation.tax_cents, operation.currency)}</Typography>
                     </Stack>
                   )}
-                  <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
-                    Reference: {operation?.receipt_reference || "Recorded by Stripe"}
+                  <Divider sx={{ borderColor: kioskPalette.border }} />
+                  <Typography variant="caption" color={kioskPalette.navyMuted} sx={{ overflowWrap: "anywhere" }}>
+                    Receipt reference: {operation?.receipt_reference || "Recorded by Stripe"}
                   </Typography>
                 </Stack>
               </Paper>
             </>
           ) : status === "confirming" ? (
-            <>
-              <CircularProgress sx={{ mx: "auto" }} aria-label="Confirming payment" />
-              <Typography variant="h5" fontWeight={800}>Confirming payment</Typography>
-              <Typography color="text.secondary">
-                Keep this page open while Stripe confirms the payment.
+            <Box sx={{ py: { xs: 4, sm: 6 } }}>
+              <CircularProgress sx={{ color: kioskPalette.teal }} aria-label="Confirming payment" />
+              <Typography component="h1" sx={{ mt: 2.5, fontSize: { xs: 26, sm: 32 }, fontWeight: 850 }}>
+                Confirming payment
               </Typography>
-            </>
+              <Typography color={kioskPalette.navyMuted} sx={{ mt: 1 }}>
+                Keep this page open while Stripe confirms the final payment status.
+              </Typography>
+            </Box>
           ) : (
-            <Alert severity={status === "cancelled_expired" || status === "invalid" ? "error" : "warning"}>
+            <Alert severity={status === "cancelled_expired" || status === "invalid" ? "error" : "warning"} sx={{ borderRadius: "16px", textAlign: "left" }}>
               {status === "timeout"
                 ? "Payment has not been confirmed yet. Please check the status before trying again."
                 : error || "This payment needs manager reconciliation before another attempt."}
             </Alert>
           )}
 
-          {status !== "paid" && (
+          {!paid && (
             <Button
-              variant="outlined"
+              variant="contained"
               disabled={checking}
+              startIcon={<RefreshRoundedIcon />}
               onClick={() => {
                 attemptsRef.current = 0;
                 checkStatus();
               }}
-              sx={{ minHeight: 48 }}
+              sx={{
+                minHeight: 54,
+                borderRadius: "15px",
+                bgcolor: kioskPalette.teal,
+                fontWeight: 800,
+                textTransform: "none",
+                "&:hover": { bgcolor: kioskPalette.tealDark },
+              }}
             >
               {checking ? "Checking…" : "Check status"}
             </Button>
@@ -149,13 +214,13 @@ const KioskSuccessPage = () => {
           <Button
             color="inherit"
             onClick={() => window.location.assign(kioskManagerLoginTarget())}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: 48, borderRadius: "14px", textTransform: "none", color: kioskPalette.navyMuted }}
           >
             Return device to manager
           </Button>
         </Stack>
-      </Box>
-    </Box>
+      </Paper>
+    </KioskExperienceShell>
   );
 };
 
