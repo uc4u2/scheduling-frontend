@@ -68,6 +68,8 @@ export const buildHostedCheckoutPayload = ({
   selectedShippingRateSnapshot,
   selectedRateId,
   shippingRateQuoteToken,
+  manualShippingEstimateToken,
+  checkoutRequestKey,
   shippingAddressVerificationToken,
   importChargesAcknowledged,
   importChargesNoticeVersion,
@@ -204,6 +206,10 @@ export const buildHostedCheckoutPayload = ({
     policy: { mode: effectivePolicyMode },
   };
 
+  if (productCount > 0 && checkoutRequestKey) {
+    payload.checkout_request_key = String(checkoutRequestKey).trim();
+  }
+
   if (normalizedCurrency) {
     payload.currency = normalizedCurrency;
   }
@@ -289,6 +295,10 @@ export const buildHostedCheckoutPayload = ({
 
   if (productCount > 0 && shippingRateQuoteToken) {
     payload.shipping_rate_quote_token = String(shippingRateQuoteToken).trim();
+  }
+
+  if (productCount > 0 && manualShippingEstimateToken) {
+    payload.manual_shipping_estimate_token = String(manualShippingEstimateToken).trim();
   }
 
   if (productCount > 0 && shippingAddressVerificationToken) {

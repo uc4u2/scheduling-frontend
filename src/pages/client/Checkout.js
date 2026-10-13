@@ -122,6 +122,27 @@ const normalizeDeliveryCountryCode = (value) => {
   return "";
 };
 
+const checkoutRequestKeyFor = (scope, fingerprint) => {
+  const storageKey = `schedulaa_checkout_request:${scope || "public"}`;
+  try {
+    const existing = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+    if (existing?.fingerprint === fingerprint && typeof existing?.key === "string") {
+      return existing.key;
+    }
+    const key = typeof window !== "undefined" && typeof window.crypto?.randomUUID === "function"
+      ? window.crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (token) => {
+          const value = Math.floor(Math.random() * 16);
+          const nibble = token === "x" ? value : (value & 0x3) | 0x8;
+          return nibble.toString(16);
+        });
+    sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, key }));
+    return key;
+  } catch (_error) {
+    return "";
+  }
+};
+
 const EMPTY_SHIPPING_RATES = {
   loading: false,
   available: false,
@@ -131,6 +152,8 @@ const EMPTY_SHIPPING_RATES = {
   selectedRateId: "",
   quoteToken: "",
   quoteExpiresAt: "",
+  manualDecision: null,
+  manualEstimateToken: "",
   dutiesIncluded: false,
   importChargesNoticeVersion: "",
   importChargesNoticeSnapshot: null,
@@ -853,6 +876,7 @@ export function CheckoutFormCore({
     },
   });
   const [shippingRates, setShippingRates] = useState({ ...EMPTY_SHIPPING_RATES });
+  const [shippingEstimateRefreshNonce, setShippingEstimateRefreshNonce] = useState(0);
   const [addressVerification, setAddressVerification] = useState({ ...EMPTY_ADDRESS_VERIFICATION });
   const [addressConfirmationChecked, setAddressConfirmationChecked] = useState(false);
   const [deliveryMethodPolicy, setDeliveryMethodPolicy] = useState({
@@ -868,6 +892,12 @@ export function CheckoutFormCore({
     addressVerificationEnabled: false,
     internationalAddressVerificationMode: "best_effort",
     originCountry: "",
+    manualShippingPricing: {
+      enabled: false,
+      currency: null,
+      flatRateCents: null,
+      freeThresholdCents: null,
+    },
     ...emptyImportNoticeConfig,
   });
   const [importChargesAcknowledged, setImportChargesAcknowledged] = useState(false);
@@ -1314,6 +1344,12 @@ export function CheckoutFormCore({
           addressVerificationEnabled: Boolean(data?.address_verification_enabled),
           internationalAddressVerificationMode: String(data?.international_address_verification_mode || "best_effort"),
           originCountry: normalizeDeliveryCountryCode(data?.origin_country || ""),
+          manualShippingPricing: {
+            enabled: Boolean(data?.manual_shipping_pricing?.enabled),
+            currency: data?.manual_shipping_pricing?.currency || null,
+            flatRateCents: data?.manual_shipping_pricing?.flat_rate_cents ?? null,
+            freeThresholdCents: data?.manual_shipping_pricing?.free_threshold_cents ?? null,
+          },
           internationalDutiesPolicy: String(data?.international_duties_policy || "").trim(),
           dutiesIncluded: Boolean(data?.duties_included),
           importChargesNoticeVersion: String(data?.import_charges_notice_version || "").trim(),
@@ -1339,6 +1375,12 @@ export function CheckoutFormCore({
           addressVerificationEnabled: false,
           internationalAddressVerificationMode: "best_effort",
           originCountry: "",
+          manualShippingPricing: {
+            enabled: false,
+            currency: null,
+            flatRateCents: null,
+            freeThresholdCents: null,
+          },
           ...emptyImportNoticeConfig,
         });
       });
@@ -1355,10 +1397,18 @@ export function CheckoutFormCore({
   const totalTip = tipAllowedNow
     ? serviceItems.reduce((sum, item) => sum + Number(item.tip_amount || 0), 0)
     : 0;
-  const shippingRateTotal =
-    physicalProductItems.length > 0 && selectedShippingRateSnapshot?.amount != null
+  const manualShippingDecision = shippingRates?.manualDecision;
+  const manualShippingKnown = Boolean(
+    manualShippingDecision &&
+      manualShippingDecision.eligible &&
+      manualShippingDecision.shipping_amount_cents != null
+  );
+  const shippingRateTotal = manualShippingKnown
+    ? Number(manualShippingDecision.shipping_amount_cents || 0) / 100
+    : physicalProductItems.length > 0 && selectedShippingRateSnapshot?.amount != null
       ? Number(selectedShippingRateSnapshot.amount || 0)
       : 0;
+  const shippingAmountKnown = manualShippingKnown || Boolean(selectedShippingRateSnapshot?.amount != null);
 
   const totalBeforeDiscount = serviceSubtotal + productSubtotal + packageSubtotal;
   const finalTotal =
@@ -1370,7 +1420,7 @@ export function CheckoutFormCore({
   const showOrderBreakdown =
     totalDiscount > 0 ||
     totalTip > 0 ||
-    shippingRateTotal > 0 ||
+    shippingAmountKnown ||
     Math.abs(finalTotal - totalBeforeDiscount) > 0.005;
   const hasPackageRedemptions = serviceItems.some((item) => Boolean(item.client_package_id));
   const packageOnlyTotal = hasPackageRedemptions && productItems.length === 0 && finalTotal <= 0;
@@ -1698,6 +1748,68 @@ export function CheckoutFormCore({
       .sort((a, b) => (a.product_id - b.product_id) || ((a.variant_id || 0) - (b.variant_id || 0)) || (a.quantity - b.quantity));
     return JSON.stringify(rows);
   }, [productItems]);
+  const manualShippingPricingActive = Boolean(
+    deliveryMethodPolicy.automationMode === "manual" &&
+      deliveryMethodPolicy.manualShippingPricing?.enabled
+  );
+  const checkoutRequestFingerprint = useMemo(() => JSON.stringify({
+    slug: slugLocal || companySlug || "",
+    customer: {
+      name: client?.full_name || guest.name || "",
+      email: client?.email || guest.email || "",
+      phone: client?.phone || productDelivery.shipping?.phone || "",
+    },
+    cart: cart.map((item) => ({
+      id: item.id,
+      type: item.type,
+      quantity: getQuantity(item),
+      product_id: item.product_id,
+      variant_id: item.variant_id,
+      service_id: item.service_id,
+      artist_id: item.artist_id,
+      date: item.date,
+      start_time: item.start_time,
+      addon_ids: item.addon_ids,
+      tip_amount: item.tip_amount,
+      package_template_id: item.package_template_id,
+    })),
+    delivery_method: productDelivery.delivery_method || "",
+    shipping: requiresShippingAddress ? {
+      name: productDelivery.shipping?.name || "",
+      phone: productDelivery.shipping?.phone || "",
+      address1: productDelivery.shipping?.address1 || "",
+      address2: productDelivery.shipping?.address2 || "",
+      city: productDelivery.shipping?.city || "",
+      region: productDelivery.shipping?.region || "",
+      postal_code: productDelivery.shipping?.postal_code || "",
+      country: normalizeDeliveryCountryCode(productDelivery.shipping?.country || ""),
+      instructions: productDelivery.shipping?.instructions || "",
+    } : null,
+  }), [
+    slugLocal,
+    companySlug,
+    cart,
+    client?.full_name,
+    client?.email,
+    client?.phone,
+    guest.name,
+    guest.email,
+    productDelivery.delivery_method,
+    productDelivery.shipping?.name,
+    productDelivery.shipping?.phone,
+    productDelivery.shipping?.address1,
+    productDelivery.shipping?.address2,
+    productDelivery.shipping?.city,
+    productDelivery.shipping?.region,
+    productDelivery.shipping?.postal_code,
+    productDelivery.shipping?.country,
+    productDelivery.shipping?.instructions,
+    requiresShippingAddress,
+  ]);
+  const checkoutRequestKey = useMemo(
+    () => checkoutRequestKeyFor(slugLocal || companySlug, checkoutRequestFingerprint),
+    [slugLocal, companySlug, checkoutRequestFingerprint]
+  );
   const currentDeliveryCountryValue = useMemo(() => {
     const current = normalizeDeliveryCountryCode(productDelivery.shipping?.country);
     if (!current) return "";
@@ -1775,7 +1887,7 @@ export function CheckoutFormCore({
             country: normalizeDeliveryCountryCode(productDelivery.shipping?.country || ""),
             instructions: productDelivery.shipping?.instructions || "",
           },
-          items: physicalProductItems.map((item) => ({
+          items: productItems.map((item) => ({
             product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
             variant_id: item.variant_id != null ? Number(item.variant_id) : undefined,
             quantity: getQuantity(item),
@@ -1784,8 +1896,22 @@ export function CheckoutFormCore({
         if (verificationEnabled && hasAcceptedShippingVerification && addressVerification.token) {
           payload.shipping_address_verification_token = addressVerification.token;
         }
-        const { data } = await apiClient.post(`/public/${slugLocal}/shipping/rates`, payload);
+        const endpoint = manualShippingPricingActive
+          ? `/public/${slugLocal}/shipping/manual-estimate`
+          : `/public/${slugLocal}/shipping/rates`;
+        const { data } = await apiClient.post(endpoint, payload);
         if (cancelled) return;
+        if (manualShippingPricingActive) {
+          setShippingRates({
+            ...EMPTY_SHIPPING_RATES,
+            loading: false,
+            available: false,
+            message: data?.message || "",
+            manualDecision: data || null,
+            manualEstimateToken: data?.estimate_token || "",
+          });
+          return;
+        }
         const rates = Array.isArray(data?.rates) ? data.rates : [];
         const defaultRateId =
           data?.default_rate_id || (rates[0] && (rates[0].rate_id || rates[0].id)) || "";
@@ -1813,8 +1939,13 @@ export function CheckoutFormCore({
         });
       } catch (error) {
         if (cancelled) return;
-        const message = error?.response?.data?.message || error?.response?.data?.error || "Live rates unavailable. You can continue with manual shipping.";
+        const message = error?.response?.data?.message || error?.response?.data?.error || (
+          manualShippingPricingActive
+            ? "Shipping could not be confirmed. Check the address and try again."
+            : "Live rates unavailable. You can continue with manual shipping."
+        );
         setShippingRates({
+          ...EMPTY_SHIPPING_RATES,
           loading: false,
           available: false,
           fallbackManual: Boolean(error?.response?.data?.fallback_manual),
@@ -1840,6 +1971,7 @@ export function CheckoutFormCore({
     };
   }, [
     physicalProductItems,
+    productItems,
     deliveryMethodPolicy.loading,
     deliveryMethodPolicy.source,
     requiresShippingAddress,
@@ -1859,6 +1991,8 @@ export function CheckoutFormCore({
     verificationEnabled,
     hasAcceptedShippingVerification,
     addressVerification.token,
+    manualShippingPricingActive,
+    shippingEstimateRefreshNonce,
   ]);
 
   const persistDeliveryPrefill = () => {
@@ -1892,6 +2026,18 @@ export function CheckoutFormCore({
       !hasAcceptedShippingVerification
     ) {
       setErr("Verify the delivery address before continuing.");
+      return false;
+    }
+    if (requiresShippingAddress && manualShippingPricingActive && shippingRates.loading) {
+      setErr("Confirming shipping. Please wait a moment.");
+      return false;
+    }
+    if (
+      requiresShippingAddress &&
+      manualShippingPricingActive &&
+      (!manualShippingKnown || !shippingRates.manualEstimateToken)
+    ) {
+      setErr(shippingRates.message || "Shipping could not be confirmed for this destination. Refresh the estimate before paying.");
       return false;
     }
     if (
@@ -2491,6 +2637,7 @@ export function CheckoutFormCore({
       shipping: shippingPayload,
       selected_rate_id: shippingRates.selectedRateId || undefined,
       shipping_rate_quote_token: shippingRates.quoteToken || undefined,
+      manual_shipping_estimate_token: shippingRates.manualEstimateToken || undefined,
       selected_shipping_rate_snapshot: selectedShippingRateSnapshot || undefined,
       shipping_address_verification_token: addressVerification.token || undefined,
       import_charges_acknowledged:
@@ -2661,6 +2808,8 @@ export function CheckoutFormCore({
         selectedShippingRateSnapshot,
         selectedRateId: shippingRates.selectedRateId || undefined,
         shippingRateQuoteToken: shippingRates.quoteToken || undefined,
+        manualShippingEstimateToken: shippingRates.manualEstimateToken || undefined,
+        checkoutRequestKey: checkoutRequestKey || undefined,
         shippingAddressVerificationToken: addressVerification.token || undefined,
         importChargesAcknowledged:
           requireImportChargesAcknowledgement && isCrossBorderShipping
@@ -2699,6 +2848,9 @@ export function CheckoutFormCore({
       }
       const message = data?.message || data?.error || ex?.message || "Unable to start Stripe Checkout.";
       setErr(message);
+      if (data?.error === "manual_shipping_requote_required") {
+        setShippingEstimateRefreshNonce((value) => value + 1);
+      }
       setLoading(false);
     }
   };
@@ -2753,6 +2905,8 @@ export function CheckoutFormCore({
         selectedShippingRateSnapshot,
         selectedRateId: shippingRates.selectedRateId || undefined,
         shippingRateQuoteToken: shippingRates.quoteToken || undefined,
+        manualShippingEstimateToken: shippingRates.manualEstimateToken || undefined,
+        checkoutRequestKey: checkoutRequestKey || undefined,
         shippingAddressVerificationToken: addressVerification.token || undefined,
         importChargesAcknowledged:
           requireImportChargesAcknowledgement && isCrossBorderShipping
@@ -2988,19 +3142,21 @@ export function CheckoutFormCore({
                     </Typography>
                   </Stack>
                 )}
-                {Boolean(productOrder?.is_cross_border) && (
-                  <>
-                    {productOrder?.customer_shipping_amount_cents != null ? (
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography color="text.secondary">Shipping paid</Typography>
-                        <Typography fontWeight={600}>
-                          {formatCurrency(
-                            Number(productOrder.customer_shipping_amount_cents || 0) / 100,
+                {productOrder?.customer_shipping_amount_cents != null ? (
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography color="text.secondary">Shipping</Typography>
+                    <Typography fontWeight={600}>
+                      {Number(productOrder.customer_shipping_amount_cents || 0) === 0
+                        ? "Free"
+                        : formatCurrency(
+                            Number(productOrder.customer_shipping_amount_cents) / 100,
                             (productOrder.customer_shipping_currency || displayCurrency || "USD").toUpperCase()
                           )}
-                        </Typography>
-                      </Stack>
-                    ) : null}
+                    </Typography>
+                  </Stack>
+                ) : null}
+                {Boolean(productOrder?.is_cross_border) && (
+                  <>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                       <Typography color="text.secondary">Duties included</Typography>
                       <Typography fontWeight={600}>No</Typography>
@@ -3603,10 +3759,12 @@ export function CheckoutFormCore({
             <Typography>+{formatCurrency(totalTip, currencyCode)}</Typography>
           </ListItem>
         )}
-        {shippingRateTotal > 0 && (
+        {shippingAmountKnown && (
           <ListItem sx={{ justifyContent: "space-between", gap: 2 }}>
             <Typography>Shipping</Typography>
-            <Typography>+{formatCurrency(shippingRateTotal, currencyCode)}</Typography>
+            <Typography>
+              {shippingRateTotal === 0 ? "Free" : `+${formatCurrency(shippingRateTotal, currencyCode)}`}
+            </Typography>
           </ListItem>
         )}
         {isCrossBorderShipping && shippingRateTotal > 0 && (
@@ -3907,9 +4065,23 @@ export function CheckoutFormCore({
                   {currentImportChargesNotice?.additional_note ? ` ${currentImportChargesNotice.additional_note}` : ""}
                 </Alert>
               )}
-              {!verificationEnabled && (productDelivery.delivery_method || "").toLowerCase() === "shipping" && deliveryMethodPolicy.automationMode === "manual" && (
-                <Alert severity="warning">
-                  Shipping is arranged manually by the business. The order total shown now does not include a live carrier rate.
+              {(manualShippingPricingActive || !verificationEnabled) && (productDelivery.delivery_method || "").toLowerCase() === "shipping" && deliveryMethodPolicy.automationMode === "manual" && (
+                <Alert severity={manualShippingPricingActive ? "info" : "warning"}>
+                  {manualShippingPricingActive
+                    ? manualShippingKnown
+                      ? shippingRateTotal === 0
+                        ? "This order qualifies for free shipping."
+                        : `A fixed shipping charge of ${formatCurrency(shippingRateTotal, manualShippingDecision?.currency || currencyCode)} is included in the total.`
+                      : "Shipping will be confirmed after an eligible destination is entered."
+                    : "Shipping is arranged manually by the business. The order total shown now does not include a shipping charge."}
+                </Alert>
+              )}
+              {manualShippingKnown && Number(manualShippingDecision?.remaining_for_free_shipping_cents || 0) > 0 && (
+                <Alert severity="info">
+                  Add {formatCurrency(
+                    Number(manualShippingDecision.remaining_for_free_shipping_cents) / 100,
+                    manualShippingDecision.currency || currencyCode
+                  )} more in eligible physical products to qualify for free shipping.
                 </Alert>
               )}
               {shippingRates.loading && (

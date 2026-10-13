@@ -2123,7 +2123,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     </Grid>
                   </Paper>
                   <Paper sx={{ p: 2 }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
+                    <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                       <Typography variant="subtitle1" fontWeight={600}>Financials</Typography>
                       <Chip
                         label={`Subtotal ${formatCurrencyFromCents(orderDetail.stripe_subtotal_cents, detailCurrency)}`}
@@ -2137,6 +2137,19 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                         variant="outlined"
                         sx={readableChipSx("default")}
                       />
+                      {orderDetail.customer_shipping_amount_cents != null ? (
+                        <Chip
+                          label={Number(orderDetail.customer_shipping_amount_cents || 0) === 0
+                            ? "Shipping Free"
+                            : `Shipping ${formatCurrencyFromCents(
+                                orderDetail.customer_shipping_amount_cents,
+                                orderDetail.customer_shipping_currency || detailCurrency
+                              )}`}
+                          size="small"
+                          variant="outlined"
+                          sx={readableChipSx("default")}
+                        />
+                      ) : null}
                       <Chip
                         label={`Total ${formatCurrencyWithCode(orderDetail.total_amount, detailCurrency)}`}
                         size="small"

@@ -136,4 +136,36 @@ describe("buildHostedCheckoutPayload", () => {
     expect(payload.policy).toEqual({ mode: "pay" });
     expect(payload.card_on_file_consent).toBeUndefined();
   });
+
+  test("passes stable checkout and signed manual-shipping recovery fields", () => {
+    const payload = buildHostedCheckoutPayload({
+      cartItems: [
+        { type: "product", product_id: 48, quantity: 1 },
+      ],
+      policyMode: "pay",
+      currency: "CAD",
+      checkoutRequestKey: "11111111-1111-4111-8111-111111111111",
+      manualShippingEstimateToken: "signed-manual-estimate",
+    });
+
+    expect(payload.checkout_request_key).toBe("11111111-1111-4111-8111-111111111111");
+    expect(payload.manual_shipping_estimate_token).toBe("signed-manual-estimate");
+  });
+
+  test("does not broaden product checkout recovery keys to service-only bookings", () => {
+    const payload = buildHostedCheckoutPayload({
+      cartItems: [{
+        type: "service",
+        service_id: 7,
+        artist_id: 16,
+        date: "2026-07-30",
+        start_time: "10:00",
+      }],
+      policyMode: "pay",
+      currency: "CAD",
+      checkoutRequestKey: "11111111-1111-4111-8111-111111111111",
+    });
+
+    expect(payload.checkout_request_key).toBeUndefined();
+  });
 });

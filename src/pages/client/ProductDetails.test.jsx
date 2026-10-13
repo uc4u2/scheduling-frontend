@@ -288,4 +288,36 @@ describe("ProductDetails", () => {
       expect(button).toBeDisabled();
     });
   });
+
+  test("shows the conditional manual shipping rule without promising destination eligibility", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        id: 78,
+        name: "Shipped Pendant",
+        price: 80,
+        selling_currency: "CAD",
+        qty_on_hand: 5,
+        track_stock: true,
+        is_digital: false,
+        customer_shipping_returns: {
+          delivery_methods: [{ code: "shipping", label: "Shipping" }],
+          manual_shipping_pricing: {
+            enabled: true,
+            currency: "CAD",
+            flat_rate_cents: 1500,
+            free_threshold_cents: 10000,
+          },
+        },
+        images: [],
+      },
+    });
+
+    render(<ProductDetails />);
+
+    expect(await screen.findByRole("heading", { name: "Shipped Pendant" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /shipping & returns/i }));
+    expect(screen.getByText(/standard shipping is ca\$15\.00 per eligible order/i)).toBeInTheDocument();
+    expect(screen.getByText(/may qualify for free shipping/i)).toBeInTheDocument();
+    expect(screen.getByText(/destination eligibility is confirmed during checkout/i)).toBeInTheDocument();
+  });
 });

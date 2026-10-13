@@ -73,6 +73,7 @@ describe("CheckoutFormCore", () => {
     mockLocationSearch = "";
     mockTenantHostMode = "custom";
     window.localStorage.clear();
+    window.sessionStorage.clear();
     mockLoadCart.mockReturnValue([
       {
         id: "107-2026-07-30-10:00",
@@ -487,6 +488,105 @@ describe("CheckoutFormCore", () => {
     const [{ payload }] = mockStartHostedCheckout.mock.calls.slice(-1)[0];
     expect(payload.__payloadArgs.shippingRateQuoteToken).toBe("quote-token-1");
     expect(payload.__payloadArgs.selectedRateId).toBe("rate_1");
+  });
+
+  test("manual shipping uses the server estimate, shows threshold progress, and submits its token", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "product-1",
+        type: "product",
+        product_id: 1,
+        name: "Pendant",
+        price: 80,
+        quantity: 1,
+        is_digital: false,
+      },
+    ]);
+    window.localStorage.setItem(
+      "checkout_product_delivery_prefill",
+      JSON.stringify({
+        delivery_method: "shipping",
+        shipping: {
+          name: "Yousef Jalali",
+          phone: "+12025550123",
+          address1: "123 Main St",
+          city: "Toronto",
+          region: "ON",
+          postal_code: "M5H 2N2",
+          country: "CA",
+        },
+      })
+    );
+    mockApiGet.mockImplementation((url) => {
+      if (String(url).includes("/delivery-methods")) {
+        return Promise.resolve({
+          data: {
+            automation_mode: "manual",
+            allowed_methods: ["pickup", "shipping"],
+            allowed_destination_countries: ["CA"],
+            address_verification_enabled: false,
+            manual_shipping_pricing: {
+              enabled: true,
+              currency: "CAD",
+              flat_rate_cents: 1500,
+              free_threshold_cents: 10000,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    mockApiPost.mockImplementation((url) => {
+      if (String(url).includes("/shipping/manual-estimate")) {
+        return Promise.resolve({
+          data: {
+            eligible: true,
+            reason: "flat_charge",
+            eligible_subtotal_cents: 8000,
+            shipping_amount_cents: 1500,
+            remaining_for_free_shipping_cents: 2000,
+            currency: "CAD",
+            estimate_token: "manual-estimate-token",
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    mockStartHostedCheckout.mockResolvedValue({ sessionId: "cs_test" });
+
+    render(
+      <CheckoutFormCore
+        companySlug="vandaorchidjewels"
+        paymentsEnabled
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "pay" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText(/your name/i), {
+      target: { value: "Yousef Jalali" },
+    });
+    fireEvent.change(screen.getByLabelText(/your email/i), {
+      target: { value: "yousef@example.com" },
+    });
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      expect.stringContaining("/shipping/manual-estimate"),
+      expect.any(Object)
+    ));
+    expect(await screen.findByText(/add ca\$20\.00 more/i)).toBeInTheDocument();
+    expect(screen.getByTestId("checkout-order-total")).toHaveTextContent("CA$95.00");
+
+    fireEvent.click(screen.getByRole("button", { name: /pay now/i }));
+    await waitFor(() => expect(mockStartHostedCheckout).toHaveBeenCalled());
+    const [{ payload }] = mockStartHostedCheckout.mock.calls.slice(-1)[0];
+    expect(payload.__payloadArgs.manualShippingEstimateToken).toBe("manual-estimate-token");
+    expect(payload.__payloadArgs.shippingRateQuoteToken).toBeUndefined();
+    expect(payload.__payloadArgs.checkoutRequestKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
   });
 
   test("service hosted checkout preserves the selected availability row in cart payload", async () => {

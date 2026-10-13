@@ -263,6 +263,70 @@ describe("EasyPostShippingSettingsPanel", () => {
     );
   });
 
+  test("saves optional manual parcel pricing and previews the saved server rule", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        enabled: true,
+        easypost_enabled: false,
+        allow_pickup: true,
+        allow_shipping: true,
+        manual_shipping_pricing_enabled: false,
+        manual_shipping_flat_rate_cents: null,
+        manual_shipping_free_threshold_cents: null,
+        business_currency: "CAD",
+        allowed_destination_countries: ["CA"],
+        country_catalog: [{ code: "CA", label: "Canada" }],
+        package_profiles: [],
+        readiness: { ready: false, checklist: [] },
+        updated_at: "2026-10-13T12:00:00",
+      },
+    });
+    mockApiPost.mockImplementation((url) => {
+      if (url === "/inventory/shipping-settings/manual-pricing-preview") {
+        return Promise.resolve({ data: { eligible: true, shipping_amount_cents: 1500, currency: "CAD", remaining_for_free_shipping_cents: 2000 } });
+      }
+      return Promise.resolve({
+        data: {
+          enabled: true,
+          easypost_enabled: false,
+          allow_pickup: true,
+          allow_shipping: true,
+          manual_shipping_pricing_enabled: true,
+          manual_shipping_flat_rate_cents: 1500,
+          manual_shipping_free_threshold_cents: 10000,
+          manual_shipping_currency: "CAD",
+          business_currency: "CAD",
+          allowed_destination_countries: ["CA"],
+          package_profiles: [],
+          readiness: { ready: false, checklist: [] },
+          updated_at: "2026-10-13T12:01:00",
+        },
+      });
+    });
+
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+    await screen.findByRole("heading", { name: /manual shipping pricing/i });
+    await userEvent.click(screen.getByRole("checkbox", { name: /enable manual shipping pricing/i }));
+    await userEvent.type(screen.getByLabelText(/flat charge/i), "15.00");
+    await userEvent.type(screen.getByLabelText(/free shipping from/i), "100.00");
+    await userEvent.click(screen.getByRole("button", { name: /save shipping settings/i }));
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
+      "/inventory/shipping-settings",
+      expect.objectContaining({
+        expected_updated_at: "2026-10-13T12:00:00",
+        manual_shipping_pricing_enabled: true,
+        manual_shipping_flat_rate_cents: 1500,
+        manual_shipping_free_threshold_cents: 10000,
+        manual_shipping_currency: "CAD",
+      }),
+      expect.any(Object)
+    ));
+
+    await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
+    expect(await screen.findByText(/shipping: ca\$15\.00/i)).toBeInTheDocument();
+  });
+
   test("supports editing and archiving package profiles", async () => {
     mockApiGet.mockResolvedValue({
       data: {

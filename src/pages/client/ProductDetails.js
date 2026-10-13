@@ -443,8 +443,10 @@ const ProductDetails = ({ slugOverride }) => {
         ),
       });
     }
-    const hasShippingReturns =
+    const hasShippingReturns = (
       Array.isArray(shippingReturns?.delivery_methods) && shippingReturns.delivery_methods.length > 0
+    )
+      || Boolean(shippingReturns?.manual_shipping_pricing?.enabled)
       || hasMeaningfulText(shippingReturns?.policy_text)
       || hasMeaningfulText(shippingReturns?.policy_url)
       || hasMeaningfulText(shippingReturns?.international_note)
@@ -466,6 +468,21 @@ const ProductDetails = ({ slugOverride }) => {
             {shippingReturns?.domestic_only ? (
               <Typography variant="body2" color="text.secondary">
                 Available delivery options are domestic only.
+              </Typography>
+            ) : null}
+            {shippingReturns?.manual_shipping_pricing?.enabled ? (
+              <Typography variant="body2" color="text.secondary">
+                Standard shipping is {formatCurrency(
+                  Number(shippingReturns.manual_shipping_pricing.flat_rate_cents || 0) / 100,
+                  shippingReturns.manual_shipping_pricing.currency || currency
+                )} per eligible order
+                {shippingReturns.manual_shipping_pricing.free_threshold_cents != null
+                  ? `; eligible physical-product orders of ${formatCurrency(
+                      Number(shippingReturns.manual_shipping_pricing.free_threshold_cents) / 100,
+                      shippingReturns.manual_shipping_pricing.currency || currency
+                    )} or more may qualify for free shipping.`
+                  : "."}
+                {" "}Destination eligibility is confirmed during checkout. Thresholds use physical-product merchandise before discounts, tax, and shipping.
               </Typography>
             ) : null}
             {safeLines(shippingReturns?.policy_text).map((line, index) => (
@@ -507,7 +524,7 @@ const ProductDetails = ({ slugOverride }) => {
       });
     }
     return rows;
-  }, [product]);
+  }, [currency, product, shippingReturns]);
 
   let body;
   if (loading) {

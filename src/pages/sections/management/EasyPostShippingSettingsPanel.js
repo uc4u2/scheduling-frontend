@@ -84,7 +84,33 @@ const normalizeSettings = (data = {}) => ({
   shipping_label_pickup: data?.shipping_label_pickup || "",
   shipping_label_shipping: data?.shipping_label_shipping || "",
   shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
+  manual_shipping_pricing_enabled: Boolean(data?.manual_shipping_pricing_enabled),
+  manual_shipping_flat_rate_cents: data?.manual_shipping_flat_rate_cents ?? null,
+  manual_shipping_free_threshold_cents: data?.manual_shipping_free_threshold_cents ?? null,
+  manual_shipping_currency: data?.manual_shipping_currency || data?.business_currency || "",
+  business_currency: data?.business_currency || data?.manual_shipping_currency || "",
+  updated_at: data?.updated_at || null,
 });
+
+const centsToInput = (value) => (value == null ? "" : (Number(value) / 100).toFixed(2));
+
+const dollarsToCents = (value, { optional = false } = {}) => {
+  const text = String(value ?? "").trim();
+  if (!text && optional) return null;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(text)) return undefined;
+  const cents = Math.round(Number(text) * 100);
+  if (!Number.isSafeInteger(cents) || cents < 0 || cents > 100000000) return undefined;
+  return cents;
+};
+
+const formatMinorMoney = (cents, currency) => {
+  if (cents == null) return "—";
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD" }).format(Number(cents) / 100);
+  } catch (_error) {
+    return `${currency || ""} ${(Number(cents) / 100).toFixed(2)}`.trim();
+  }
+};
 
 const labelWithHint = (label, hint) => (
   <Stack direction="row" spacing={0.5} alignItems="center">
@@ -276,6 +302,12 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [focusedSection, setFocusedSection] = useState("");
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [copilotWorkflow, setCopilotWorkflow] = useState("review_shipping_setup");
+  const [flatRateInput, setFlatRateInput] = useState("");
+  const [freeThresholdInput, setFreeThresholdInput] = useState("");
+  const [simulatorSubtotal, setSimulatorSubtotal] = useState("80.00");
+  const [simulatorCountry, setSimulatorCountry] = useState("");
+  const [simulatorResult, setSimulatorResult] = useState(null);
+  const [simulatorLoading, setSimulatorLoading] = useState(false);
   const [packageProfileForm, setPackageProfileForm] = useState({
     name: "",
     length_mm: "",
@@ -394,7 +426,11 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     setMessage({ type: "", text: "" });
     try {
       const res = await api.get("/inventory/shipping-settings", { headers });
-      setSettings(normalizeSettings(res?.data));
+      const normalized = normalizeSettings(res?.data);
+      setSettings(normalized);
+      setFlatRateInput(centsToInput(normalized.manual_shipping_flat_rate_cents));
+      setFreeThresholdInput(centsToInput(normalized.manual_shipping_free_threshold_cents));
+      setSimulatorCountry(normalized.origin_country || normalized.allowed_destination_countries?.[0] || "");
     } catch (error) {
       const text = error?.response?.data?.error || error?.message || "Unable to load shipping settings.";
       setMessage({ type: "error", text });
@@ -474,6 +510,16 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     setSaving(true);
     setMessage({ type: "", text: "" });
     try {
+      const flatRateCents = dollarsToCents(flatRateInput);
+      const freeThresholdCents = dollarsToCents(freeThresholdInput, { optional: true });
+      if (settings.manual_shipping_pricing_enabled && flatRateCents === undefined) {
+        setMessage({ type: "error", text: "Enter a valid flat shipping charge with no more than two decimal places." });
+        return;
+      }
+      if (freeThresholdCents === undefined) {
+        setMessage({ type: "error", text: "Enter a valid free-shipping threshold or leave it blank." });
+        return;
+      }
       const payload = {
         enabled: Boolean(settings.enabled),
         easypost_enabled: Boolean(settings.easypost_enabled),
@@ -496,7 +542,18 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         shipping_label_pickup: settings.shipping_label_pickup || null,
         shipping_label_shipping: settings.shipping_label_shipping || null,
         shipping_label_local_delivery: null,
+        expected_updated_at: settings.updated_at || undefined,
+        manual_shipping_pricing_enabled: Boolean(settings.manual_shipping_pricing_enabled),
       };
+      if (settings.manual_shipping_pricing_enabled || flatRateInput.trim()) {
+        payload.manual_shipping_flat_rate_cents = flatRateCents;
+      }
+      if (settings.manual_shipping_pricing_enabled || freeThresholdInput.trim()) {
+        payload.manual_shipping_free_threshold_cents = freeThresholdCents;
+      }
+      if (settings.manual_shipping_pricing_enabled || settings.manual_shipping_currency) {
+        payload.manual_shipping_currency = settings.business_currency || settings.manual_shipping_currency;
+      }
       if (settings.easypost_enabled) {
         Object.assign(payload, {
           origin_name: settings.origin_name || null,
@@ -531,17 +588,47 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
       if (clearApiKey) payload.clear_easypost_api_key = true;
 
       const res = await api.post("/inventory/shipping-settings", payload, { headers });
-      setSettings(normalizeSettings(res?.data));
+      const normalized = normalizeSettings(res?.data);
+      setSettings(normalized);
+      setFlatRateInput(centsToInput(normalized.manual_shipping_flat_rate_cents));
+      setFreeThresholdInput(centsToInput(normalized.manual_shipping_free_threshold_cents));
       setApiKeyInput("");
       setClearApiKey(false);
       setMessage({ type: "success", text: "Shipping settings saved." });
     } catch (error) {
-      const text = error?.response?.data?.error || error?.message || "Unable to save shipping settings.";
+      const text = error?.response?.data?.message || error?.response?.data?.error || error?.message || "Unable to save shipping settings.";
       setMessage({ type: "error", text });
     } finally {
       setSaving(false);
     }
-  }, [settings, deliveryEnabled, savedMethodCodes.length, apiKeyInput, clearApiKey, headers]);
+  }, [settings, deliveryEnabled, savedMethodCodes.length, apiKeyInput, clearApiKey, headers, flatRateInput, freeThresholdInput]);
+
+  const runManualPricingPreview = useCallback(async () => {
+    const eligibleSubtotalCents = dollarsToCents(simulatorSubtotal);
+    if (eligibleSubtotalCents === undefined || !simulatorCountry) {
+      setSimulatorResult({ error: "Enter a valid physical-product subtotal and destination country." });
+      return;
+    }
+    setSimulatorLoading(true);
+    setSimulatorResult(null);
+    try {
+      const response = await api.post(
+        "/inventory/shipping-settings/manual-pricing-preview",
+        {
+          eligible_subtotal_cents: eligibleSubtotalCents,
+          destination_country: simulatorCountry,
+        },
+        { headers }
+      );
+      setSimulatorResult(response?.data || null);
+    } catch (error) {
+      setSimulatorResult({
+        error: error?.response?.data?.message || error?.response?.data?.error || "Unable to preview shipping.",
+      });
+    } finally {
+      setSimulatorLoading(false);
+    }
+  }, [headers, simulatorCountry, simulatorSubtotal]);
 
   const resetPackageProfileForm = useCallback(() => {
     setPackageProfileForm({
@@ -724,7 +811,11 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 <Button
                   size="small"
                   variant={isEasyPostMode ? "contained" : "outlined"}
-                  onClick={() => updateField("easypost_enabled", true)}
+                  onClick={() => setSettings((prev) => ({
+                    ...(prev || {}),
+                    easypost_enabled: true,
+                    manual_shipping_pricing_enabled: false,
+                  }))}
                 >
                   EasyPost rates and labels
                 </Button>
@@ -952,8 +1043,112 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 </Paper>
                 {showManualShippingWarning && (
                   <Alert severity="warning">
-                    Manual fulfillment does not calculate carrier rates. Confirm that shipping is included in your Product price, or use EasyPost rates and labels.
+                    {settings.manual_shipping_pricing_enabled
+                      ? "Manual parcel pricing is active. Checkout uses the saved flat charge and free-shipping threshold; EasyPost carrier charges are not added."
+                      : "Manual fulfillment does not calculate carrier rates. Confirm that shipping is included in your Product price, enable Manual shipping pricing, or use EasyPost rates and labels."}
                   </Alert>
+                )}
+                {!isEasyPostMode && deliveryEnabled && settings.allow_shipping && (
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Stack spacing={1.5}>
+                      <Stack spacing={0.25}>
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          Manual shipping pricing
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Charge one flat parcel-shipping fee per order, with an optional free-shipping threshold. The threshold uses eligible physical products before promotional discounts, shipping, and tax.
+                        </Typography>
+                      </Stack>
+                      <FormControlLabel
+                        control={(
+                          <Switch
+                            checked={Boolean(settings.manual_shipping_pricing_enabled)}
+                            onChange={(event) => updateField("manual_shipping_pricing_enabled", event.target.checked)}
+                          />
+                        )}
+                        label="Enable manual shipping pricing"
+                      />
+                      <Grid container spacing={1.5}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label={`Flat charge (${settings.business_currency || settings.manual_shipping_currency || "business currency"})`}
+                            value={flatRateInput}
+                            onChange={(event) => setFlatRateInput(event.target.value)}
+                            inputProps={{ inputMode: "decimal" }}
+                            helperText="Charged once per shipped order when the free threshold is not met."
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Free shipping from — optional"
+                            value={freeThresholdInput}
+                            onChange={(event) => setFreeThresholdInput(event.target.value)}
+                            inputProps={{ inputMode: "decimal" }}
+                            helperText="Leave blank to always use the flat charge."
+                          />
+                        </Grid>
+                      </Grid>
+                      <Alert severity="info" variant="outlined">
+                        Currency: {settings.business_currency || "Not configured"}. Allowed destinations: {settings.allowed_destination_countries?.length ? settings.allowed_destination_countries.join(", ") : "configure shipping coverage first"}.
+                      </Alert>
+                      <Divider />
+                      <Typography variant="subtitle2" fontWeight={700}>Saved-rule simulator</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Save changes first; this preview is calculated by the same server rule used at checkout.
+                      </Typography>
+                      <Grid container spacing={1.5} alignItems="center">
+                        <Grid item xs={12} sm={5}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Eligible physical-product subtotal"
+                            value={simulatorSubtotal}
+                            onChange={(event) => setSimulatorSubtotal(event.target.value)}
+                            inputProps={{ inputMode: "decimal" }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <TextField
+                            select
+                            fullWidth
+                            size="small"
+                            label="Destination"
+                            value={simulatorCountry}
+                            onChange={(event) => setSimulatorCountry(event.target.value)}
+                          >
+                            {(settings.allowed_destination_countries || []).map((code) => (
+                              <MenuItem key={code} value={code}>{code}</MenuItem>
+                            ))}
+                          </TextField>
+                        </Grid>
+                        <Grid item xs={12} sm={3}>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            onClick={runManualPricingPreview}
+                            disabled={simulatorLoading || !settings.manual_shipping_pricing_enabled}
+                          >
+                            {simulatorLoading ? <CircularProgress size={18} /> : "Preview"}
+                          </Button>
+                        </Grid>
+                      </Grid>
+                      {simulatorResult?.error && <Alert severity="error">{simulatorResult.error}</Alert>}
+                      {simulatorResult?.eligible && (
+                        <Alert severity="success" variant="outlined">
+                          Shipping: {simulatorResult.shipping_amount_cents === 0
+                            ? "Free"
+                            : formatMinorMoney(simulatorResult.shipping_amount_cents, simulatorResult.currency)}
+                          {simulatorResult.remaining_for_free_shipping_cents > 0
+                            ? ` · ${formatMinorMoney(simulatorResult.remaining_for_free_shipping_cents, simulatorResult.currency)} more for free shipping.`
+                            : ""}
+                        </Alert>
+                      )}
+                    </Stack>
+                  </Paper>
                 )}
                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                   <Stack spacing={1.25}>
