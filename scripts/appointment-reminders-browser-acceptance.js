@@ -6,7 +6,8 @@ const puppeteer = require("puppeteer");
 
 const root = path.resolve(__dirname, "..");
 const buildDir = path.join(root, "build");
-const screenshotDir = path.join(root, "docs", "qa", "appointment-reminders");
+const screenshotDir = process.env.APPOINTMENT_REMINDERS_QA_SCREENSHOT_DIR
+  || path.join(root, "docs", "qa", "appointment-reminders");
 const port = Number(process.env.APPOINTMENT_REMINDERS_QA_PORT || 4181);
 const baseUrl = `http://127.0.0.1:${port}`;
 const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
@@ -213,6 +214,9 @@ const runViewport = async (browser, label, viewport) => {
   const { page, state } = await openSettings(browser, viewport);
   await waitForText(page, "Provider accepted");
   await waitForText(page, "Not configured / Coming soon");
+  await waitForText(page, "Email reminder delivery is not active yet.");
+  const pageText = await page.evaluate(() => document.body.innerText);
+  assert(!pageText.includes("Worker/Beat"), `${label}: internal runtime wording is visible`);
   await assertNoPageOverflow(page, label);
   const accessibility = await page.evaluate(() => ({
     enableLabel: document.querySelector('input[aria-label="Enable appointment email reminders"]') !== null,

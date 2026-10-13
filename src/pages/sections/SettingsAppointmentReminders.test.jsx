@@ -79,6 +79,7 @@ describe("SettingsAppointmentReminders", () => {
     expect(screen.getByText("Provider accepted")).toBeInTheDocument();
     expect(screen.getByText(/not the same as confirmed delivery/i)).toBeInTheDocument();
     expect(screen.getByText(/delivery is not active/i)).toBeInTheDocument();
+    expect(screen.queryByText(/worker\/beat/i)).not.toBeInTheDocument();
   });
 
   test("saves an explicit two-stage policy with optimistic version", async () => {

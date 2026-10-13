@@ -251,7 +251,7 @@ export default function SettingsAppointmentReminders() {
         <Stack spacing={2.5}>
           {!runtimeEnabled && (
             <Alert severity="info">
-              Settings can be prepared now. Scheduled delivery is not active until the reminder Worker/Beat feature is enabled.
+              Settings can be prepared now. Email reminder delivery is not active yet.
             </Alert>
           )}
           <Paper variant="outlined" sx={{ p: 2 }}>
