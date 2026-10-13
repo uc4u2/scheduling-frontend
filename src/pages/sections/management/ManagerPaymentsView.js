@@ -1,6 +1,7 @@
 // src/pages/sections/management/ManagerPaymentsView.js
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateTime } from "luxon";
+import { jwtDecode } from "jwt-decode";
 import { getUserTimezone } from "../../../utils/timezone";
 import { isoFromParts } from "../../../utils/datetime";
 import { api, isStripeOnboardingIncomplete } from "../../../utils/api";
@@ -83,6 +84,65 @@ const fmtISO = (isoLike, pattern = "yyyy-LL-dd hh:mm a (z)", zone) => {
 // Transaction helpers
 const toLowerSafe = (value) =>
   value == null ? "" : String(value).toLowerCase();
+
+const currentRecoveryAccountId = () => {
+  if (typeof window === "undefined") return "current";
+  const explicitId =
+    window.localStorage.getItem("user_id") ||
+    window.localStorage.getItem("userId");
+  if (explicitId) return String(explicitId);
+  try {
+    const claims = jwtDecode(window.localStorage.getItem("token") || "");
+    return String(claims?.sub || claims?.identity || claims?.email || "current");
+  } catch (_error) {
+    return "current";
+  }
+};
+
+const noShowRefundRecoveryScope = (booking, feeTxn) => ({
+  companyId: String(booking?.company_id || "current"),
+  accountId: currentRecoveryAccountId(),
+  bookingId: String(booking?.id || ""),
+  transactionId: String(feeTxn?.id || ""),
+});
+
+const noShowRefundRecoveryKeys = (booking, feeTxn) => {
+  const scope = noShowRefundRecoveryScope(booking, feeTxn);
+  return [
+    `schedulaa:noshow-refund:v2:${scope.companyId}:${scope.accountId}:${scope.bookingId}:${scope.transactionId}`,
+    `schedulaa:noshow-refund:${scope.companyId}:${scope.bookingId}:${scope.transactionId}`,
+  ];
+};
+
+const readNoShowRefundRecovery = (booking, feeTxn) => {
+  if (typeof window === "undefined" || !feeTxn?.id) return null;
+  const expectedScope = noShowRefundRecoveryScope(booking, feeTxn);
+  for (const storageKey of noShowRefundRecoveryKeys(booking, feeTxn)) {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(storageKey) || "null");
+      if (!saved?.idempotencyKey || !Number(saved?.amountCents)) continue;
+      if (
+        saved.scope &&
+        Object.entries(expectedScope).some(
+          ([field, value]) => String(saved.scope?.[field] || "") !== value,
+        )
+      ) {
+        continue;
+      }
+      return { ...saved, storageKey, scope: expectedScope };
+    } catch (_error) {
+      // Ignore malformed browser state; the server remains authoritative.
+    }
+  }
+  return null;
+};
+
+const clearNoShowRefundRecovery = (booking, feeTxn) => {
+  if (typeof window === "undefined") return;
+  noShowRefundRecoveryKeys(booking, feeTxn).forEach((key) =>
+    window.localStorage.removeItem(key),
+  );
+};
 
 const summarizeTxns = (rows = []) => {
   const captureStatuses = new Set(["captured", "succeeded", "paid"]);
@@ -738,6 +798,26 @@ export default function ManagerPaymentsView({ connect }) {
           timestamp: p.timestamp || ts,
         };
       });
+      const recoveryBooking =
+        bookings.find((booking) => booking?.id === appointmentId) ||
+        (refundBooking?.id === appointmentId ? refundBooking : { id: appointmentId });
+      decorated.forEach((row) => {
+        if (toLowerSafe(row?.type) !== "no_show" || !row?.fee_summary) return;
+        const saved = readNoShowRefundRecovery(recoveryBooking, row);
+        const recovery = row.fee_summary.refund_recovery;
+        if (
+          saved?.idempotencyKey &&
+          recovery?.idempotency_key === saved.idempotencyKey &&
+          recovery?.state === "succeeded"
+        ) {
+          clearNoShowRefundRecovery(recoveryBooking, row);
+          setSnackbar({
+            open: true,
+            message: "The no-show fee refund was confirmed and recovered.",
+            severity: "success",
+          });
+        }
+      });
       setPayments(decorated);
       setBookings((prev) =>
         prev.map((booking) => {
@@ -927,24 +1007,21 @@ export default function ManagerPaymentsView({ connect }) {
       const feeRemaining = Number(
         feeTxn?.fee_summary?.remaining_refundable_cents || 0,
       );
+      const savedRecovery = readNoShowRefundRecovery(booking, feeTxn);
       const hasServicePayment = rows.some((row) =>
         ["balance", "service", "deposit"].includes(toLowerSafe(row?.type)),
       );
-      if (feeRemaining > 0 && (initialBucket === "no_show_fee" || !hasServicePayment)) {
+      if (
+        savedRecovery ||
+        (feeRemaining > 0 && (initialBucket === "no_show_fee" || !hasServicePayment))
+      ) {
         setRefundBucket("no_show_fee");
-        setNoShowRefundAmount((feeRemaining / 100).toFixed(2));
+        setNoShowRefundAmount(
+          (Number(savedRecovery?.amountCents || feeRemaining) / 100).toFixed(2),
+        );
       }
-      if (feeTxn?.id && typeof window !== "undefined") {
-        const storageKey = `schedulaa:noshow-refund:${booking?.company_id || "current"}:${booking.id}:${feeTxn.id}`;
-        try {
-          const saved = JSON.parse(window.localStorage.getItem(storageKey) || "null");
-          if (saved?.idempotencyKey) setNoShowRefundKey(saved.idempotencyKey);
-          if (saved?.amountCents > 0) {
-            setNoShowRefundAmount((Number(saved.amountCents) / 100).toFixed(2));
-          }
-        } catch (_error) {
-          // A malformed browser recovery record is ignored; the server remains authoritative.
-        }
+      if (savedRecovery?.idempotencyKey) {
+        setNoShowRefundKey(savedRecovery.idempotencyKey);
       }
     } finally {
       setRefundLoading(false);
@@ -976,6 +1053,7 @@ export default function ManagerPaymentsView({ connect }) {
     };
 
     let noShowRecoveryStorageKey = "";
+    let noShowRecoveryFeeTxn = null;
     if (refundBucket === "no_show_fee") {
       if (!refundAuto) {
         setSnackbar({
@@ -988,7 +1066,10 @@ export default function ManagerPaymentsView({ connect }) {
       const feeTxn = payments.find(
         (row) => toLowerSafe(row?.type) === "no_show" && row?.fee_summary,
       );
-      const cents = toCents(noShowRefundAmount);
+      noShowRecoveryFeeTxn = feeTxn;
+      const savedRecovery = readNoShowRefundRecovery(refundBooking, feeTxn);
+      const enteredCents = toCents(noShowRefundAmount);
+      const cents = Number(savedRecovery?.amountCents || enteredCents || 0);
       const remainingCents = Number(
         feeTxn?.fee_summary?.remaining_refundable_cents || 0,
       );
@@ -1000,7 +1081,20 @@ export default function ManagerPaymentsView({ connect }) {
         });
         return;
       }
-      if (cents > remainingCents) {
+      if (
+        savedRecovery?.amountCents &&
+        enteredCents &&
+        Number(savedRecovery.amountCents) !== enteredCents
+      ) {
+        setSnackbar({
+          open: true,
+          message:
+            "A no-show refund outcome is unresolved. Retry its exact amount before starting a different refund.",
+          severity: "warning",
+        });
+        return;
+      }
+      if (!savedRecovery && cents > remainingCents) {
         setSnackbar({
           open: true,
           message: "Amount exceeds the remaining refundable no-show fee.",
@@ -1008,27 +1102,10 @@ export default function ManagerPaymentsView({ connect }) {
         });
         return;
       }
-      noShowRecoveryStorageKey = `schedulaa:noshow-refund:${refundBooking?.company_id || "current"}:${refundBooking.id}:${feeTxn.id}`;
-      let operationKey = noShowRefundKey;
-      if (typeof window !== "undefined") {
-        try {
-          const saved = JSON.parse(
-            window.localStorage.getItem(noShowRecoveryStorageKey) || "null",
-          );
-          if (saved?.idempotencyKey && Number(saved.amountCents) !== cents) {
-            setSnackbar({
-              open: true,
-              message:
-                "A no-show refund outcome is unresolved. Retry its exact amount before starting a different refund.",
-              severity: "warning",
-            });
-            return;
-          }
-          operationKey = operationKey || saved?.idempotencyKey || "";
-        } catch (_error) {
-          // The server-side operation remains authoritative if recovery storage is unavailable.
-        }
-      }
+      const recoveryScope = noShowRefundRecoveryScope(refundBooking, feeTxn);
+      noShowRecoveryStorageKey = noShowRefundRecoveryKeys(refundBooking, feeTxn)[0];
+      let operationKey =
+        savedRecovery?.idempotencyKey || noShowRefundKey || "";
       if (!operationKey) {
         operationKey =
           typeof crypto !== "undefined" && crypto.randomUUID
@@ -1039,7 +1116,11 @@ export default function ManagerPaymentsView({ connect }) {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(
           noShowRecoveryStorageKey,
-          JSON.stringify({ idempotencyKey: operationKey, amountCents: cents }),
+          JSON.stringify({
+            idempotencyKey: operationKey,
+            amountCents: cents,
+            scope: recoveryScope,
+          }),
         );
       }
       payload.refund_bucket = "no_show_fee";
@@ -1139,6 +1220,16 @@ export default function ManagerPaymentsView({ connect }) {
         `/api/payments/refund/${refundBooking.id}`,
         payload,
       );
+      if (refundBucket === "no_show_fee" && res?.data?.success !== true) {
+        setSnackbar({
+          open: true,
+          message:
+            res?.data?.error ||
+            "The no-show fee refund is still pending. Retry the same operation to check its outcome.",
+          severity: "warning",
+        });
+        return;
+      }
       const refundTxn = res?.data?.refund_transaction;
       const successMessage = res?.data?.message || "Refund processed.";
       setSnackbar({ open: true, message: successMessage, severity: "success" });
@@ -1158,7 +1249,7 @@ export default function ManagerPaymentsView({ connect }) {
         setPayments((prev) => [decorated, ...prev]);
       }
       if (noShowRecoveryStorageKey && typeof window !== "undefined") {
-        window.localStorage.removeItem(noShowRecoveryStorageKey);
+        clearNoShowRefundRecovery(refundBooking, noShowRecoveryFeeTxn);
         setNoShowRefundKey("");
       }
       try {
@@ -2171,7 +2262,8 @@ export default function ManagerPaymentsView({ connect }) {
                       </Typography>
                     )}
                     {toLowerSafe(p.type) === "no_show" &&
-                      Number(p?.fee_summary?.remaining_refundable_cents || 0) > 0 &&
+                      (Number(p?.fee_summary?.remaining_refundable_cents || 0) > 0 ||
+                        Boolean(readNoShowRefundRecovery(viewAppt, p))) &&
                       viewAppt && (
                         <Button
                           size="small"

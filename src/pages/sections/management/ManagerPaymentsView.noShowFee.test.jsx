@@ -12,12 +12,14 @@ jest.mock("../../../utils/api", () => ({
   isStripeOnboardingIncomplete: jest.fn(() => false),
 }));
 
+let mockLocationSearch = "?appointmentId=41&intent=no_show_fee";
+
 jest.mock(
   "react-router-dom",
   () => ({
     useLocation: () => ({
       pathname: "/manager/payments",
-      search: "?appointmentId=41&intent=no_show_fee",
+      search: mockLocationSearch,
     }),
   }),
   { virtual: true },
@@ -47,6 +49,8 @@ const booking = {
 describe("ManagerPaymentsView no-show fee confirmation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLocationSearch = "?appointmentId=41&intent=no_show_fee";
+    window.localStorage.clear();
     api.get.mockImplementation((url) => {
       if (url === "/api/manager/payments-and-refunds") {
         return Promise.resolve({
@@ -181,6 +185,144 @@ describe("ManagerPaymentsView no-show fee confirmation", () => {
     expect(
       screen.getByRole("button", { name: "Charge no-show fee" }),
     ).toBeDisabled();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("retries a lost no-show refund response with the same key and amount", async () => {
+    mockLocationSearch = "";
+    api.get.mockImplementation((url) => {
+      if (url === "/api/manager/payments-and-refunds") {
+        return Promise.resolve({
+          data: { items: [booking], company: { display_currency: "CAD" } },
+        });
+      }
+      if (url === "/api/payments/list/41") {
+        return Promise.resolve({
+          data: {
+            transactions: [
+              {
+                id: 501,
+                type: "no_show",
+                status: "captured",
+                amount: 25,
+                currency: "CAD",
+                provider: "stripe_off_session",
+                fee_summary: {
+                  remaining_refundable_cents: 2500,
+                  refund_recovery: null,
+                },
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    api.post
+      .mockRejectedValueOnce({ request: {}, message: "Network Error" })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          replayed: true,
+          refunded_no_show_cents: 2500,
+        },
+      });
+
+    render(<ManagerPaymentsView />);
+    fireEvent.click(await screen.findByRole("button", { name: "View" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Refund no-show fee" }),
+    );
+    const refundButton = await screen.findByRole("button", {
+      name: "Issue refund",
+    });
+    fireEvent.click(refundButton);
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    const firstPayload = api.post.mock.calls[0][1];
+    expect(firstPayload.no_show_refund_cents).toBe(2500);
+    expect(firstPayload.idempotency_key).toBeTruthy();
+    expect(
+      Object.keys(window.localStorage).filter((key) =>
+        key.startsWith("schedulaa:noshow-refund"),
+      ),
+    ).toHaveLength(1);
+
+    fireEvent.click(refundButton);
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
+    expect(api.post.mock.calls[1][1]).toEqual(
+      expect.objectContaining({
+        no_show_refund_cents: 2500,
+        idempotency_key: firstPayload.idempotency_key,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        Object.keys(window.localStorage).filter((key) =>
+          key.startsWith("schedulaa:noshow-refund"),
+        ),
+      ).toHaveLength(0),
+    );
+  });
+
+  it("recognizes a committed refund after reopening with zero remaining", async () => {
+    mockLocationSearch = "";
+    window.localStorage.setItem(
+      "schedulaa:noshow-refund:v2:7:current:41:501",
+      JSON.stringify({
+        idempotencyKey: "refund-response-lost",
+        amountCents: 2500,
+        scope: {
+          companyId: "7",
+          accountId: "current",
+          bookingId: "41",
+          transactionId: "501",
+        },
+      }),
+    );
+    api.get.mockImplementation((url) => {
+      if (url === "/api/manager/payments-and-refunds") {
+        return Promise.resolve({
+          data: { items: [booking], company: { display_currency: "CAD" } },
+        });
+      }
+      if (url === "/api/payments/list/41") {
+        return Promise.resolve({
+          data: {
+            transactions: [
+              {
+                id: 501,
+                type: "no_show",
+                status: "refunded",
+                amount: 25,
+                currency: "CAD",
+                provider: "stripe_off_session",
+                fee_summary: {
+                  remaining_refundable_cents: 0,
+                  refund_recovery: {
+                    idempotency_key: "refund-response-lost",
+                    amount_cents: 2500,
+                    state: "succeeded",
+                  },
+                },
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<ManagerPaymentsView />);
+    fireEvent.click(await screen.findByRole("button", { name: "View" }));
+
+    expect(
+      await screen.findByText("The no-show fee refund was confirmed and recovered."),
+    ).toBeInTheDocument();
+    expect(
+      Object.keys(window.localStorage).filter((key) =>
+        key.startsWith("schedulaa:noshow-refund"),
+      ),
+    ).toHaveLength(0);
     expect(api.post).not.toHaveBeenCalled();
   });
 });
