@@ -1150,18 +1150,38 @@ function footerColumnDuplicatesEmail(footer, email) {
 
 function FooterContactControls({ footer, updateFooter, resolvedContact, onRequestContactJump }) {
   const contact = resolvedContact || {};
+  const configuredFooterEmail = String(footer.contact_email || "").trim();
+  const footerEmail = configuredFooterEmail || String(contact.email || "").trim();
   const rows = [
-    { key: "show_public_email", label: "Show public email", value: contact.email, empty: "No Company Profile email configured" },
     { key: "show_phone", label: "Show phone", value: contact.phone, empty: "No Company Profile phone configured" },
     { key: "show_address", label: "Show address", value: contact.address, empty: "No Company Profile address configured" },
   ];
-  const duplicateEmail = footerColumnDuplicatesEmail(footer, contact.email);
+  const duplicateEmail = footerColumnDuplicatesEmail(footer, footerEmail);
   return (
     <Stack spacing={2}>
       <FormControlLabel
         control={<Switch checked={footer.show_contact_card !== false} onChange={(_, value) => updateFooter({ show_contact_card: value })} />}
         label="Show contact card"
       />
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+        <FormControlLabel
+          sx={{ minWidth: 190, m: 0 }}
+          control={<Switch checked={footer.show_public_email !== false} onChange={(_, value) => updateFooter({ show_public_email: value })} />}
+          label="Show public email"
+        />
+        <TextField
+          size="small"
+          fullWidth
+          type="email"
+          label="Footer email (website only)"
+          value={footer.contact_email ?? contact.email ?? ""}
+          placeholder="No Company Profile email configured"
+          helperText={configuredFooterEmail
+            ? "Footer-only override. Clear and save to use the Company Profile email again."
+            : "Using the Company Profile email as the fallback. Editing this changes only the website footer."}
+          onChange={(event) => updateFooter({ contact_email: event.target.value })}
+        />
+      </Stack>
       {rows.map((row) => (
         <Stack key={row.key} direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
           <FormControlLabel
@@ -1182,7 +1202,7 @@ function FooterContactControls({ footer, updateFooter, resolvedContact, onReques
       ))}
       {duplicateEmail ? (
         <Alert severity="warning" variant="outlined">
-          A Footer Column contains the same email as Company Profile. It is preserved for backward compatibility, but showing both would duplicate the public email.
+          A Footer Column contains the same email as the Contact Card. It is preserved for backward compatibility, but showing both would duplicate the public email.
         </Alert>
       ) : null}
       <Button variant="outlined" size="small" onClick={onRequestContactJump} sx={{ alignSelf: "flex-start" }}>
@@ -1195,7 +1215,7 @@ function FooterContactControls({ footer, updateFooter, resolvedContact, onReques
         <TextField size="small" fullWidth label="Contact CTA destination" value={footer.contact_cta_href || ""} placeholder="/contact" onChange={(event) => updateFooter({ contact_cta_href: event.target.value })} />
       </Stack>
       <Typography variant="caption" color="text.secondary">
-        These settings control presentation only. Public contact values continue to come from Company Profile.
+        The footer email can override Company Profile for this website only. Phone and address continue to come from Company Profile.
       </Typography>
     </Stack>
   );
@@ -1212,9 +1232,10 @@ function FooterPreview({ footer, theme, companySlug, companyName, siteTitle, res
     siteTitle,
   });
   const contact = resolvedContact || {};
+  const footerEmail = String(footer.contact_email || "").trim() || String(contact.email || "").trim();
   const socialLinks = footer.social_placement === "hidden" || footer.social_placement === "header" ? [] : footer.social_links || [];
   const showContactCard = footer.show_contact_card !== false;
-  const duplicateProfileEmail = footerColumnDuplicatesEmail(footer, contact.email);
+  const duplicateProfileEmail = footerColumnDuplicatesEmail(footer, footerEmail);
   return (
     <Box
       sx={{
@@ -1266,7 +1287,7 @@ function FooterPreview({ footer, theme, companySlug, companyName, siteTitle, res
                 <Typography variant="caption" sx={{ textTransform: "uppercase" }}>{footer.contact_eyebrow || "Contact"}</Typography>
                 <Typography variant="body2" sx={{ mt: 0.5 }}>{footer.contact_introduction || "Start a conversation"}</Typography>
                 <Typography variant="subtitle2">{siteTitle || companyName || companySlug}</Typography>
-                {footer.show_public_email !== false && contact.email && !duplicateProfileEmail ? <Typography variant="caption" sx={{ display: "block", mt: 1, overflowWrap: "anywhere" }}>{contact.email}</Typography> : null}
+                {footer.show_public_email !== false && footerEmail && !duplicateProfileEmail ? <Typography variant="caption" sx={{ display: "block", mt: 1, overflowWrap: "anywhere" }}>{footerEmail}</Typography> : null}
                 {footer.show_phone !== false && contact.phone ? <Typography variant="caption" sx={{ display: "block" }}>{contact.phone}</Typography> : null}
                 {footer.show_address !== false && contact.address ? <Typography variant="caption" sx={{ display: "block" }}>{contact.address}</Typography> : null}
                 <Typography variant="caption" sx={{ display: "block", mt: 1 }}>{footer.contact_cta_label || "Contact us"} →</Typography>
@@ -1356,6 +1377,9 @@ function validateConfig(header, footer, { menuSource = "pages" } = {}) {
   });
   if (footer.contact_cta_href && !isValidHref(footer.contact_cta_href)) {
     errors.push("Contact CTA destination needs a valid page path or URL.");
+  }
+  if (footer.contact_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(footer.contact_email).trim())) {
+    errors.push("Footer email must be a valid email address.");
   }
   (header.social_links || []).forEach((item, idx) => {
     if (!isValidHref(item.href || "")) {
@@ -1824,7 +1848,7 @@ export default function WebsiteBrandingCard({
           </CardContent>
         </Card>
         <Card variant="outlined">
-          <CardHeader title="Footer Contact" subheader="Phone, email, and address are shared business contact details." />
+          <CardHeader title="Footer Contact" subheader="Use Company Profile contact details or a website-only footer email." />
           <CardContent>
             {surface === "quiet-harbor" ? (
               <FooterContactControls footer={footer} updateFooter={updateFooter} resolvedContact={resolvedContact} onRequestContactJump={onRequestContactJump} />

@@ -13,10 +13,11 @@ describe("shared footer presentation contract", () => {
     );
   });
 
-  it("normalizes explicit visibility and Contact Card fields without contact values", () => {
+  it("normalizes the footer-only email override without duplicating other contact values", () => {
     const normalized = normalizeFooterConfig({
       show_contact_card: false,
       show_public_email: false,
+      contact_email: " footer@example.com ",
       show_phone: false,
       show_address: false,
       contact_eyebrow: "Reach out",
@@ -29,6 +30,7 @@ describe("shared footer presentation contract", () => {
       expect.objectContaining({
         show_contact_card: false,
         show_public_email: false,
+        contact_email: "footer@example.com",
         show_phone: false,
         show_address: false,
         contact_eyebrow: "Reach out",
@@ -57,6 +59,7 @@ describe("shared footer presentation contract", () => {
         social_links: [],
         show_contact_card: true,
         show_public_email: true,
+        contact_email: null,
         show_phone: true,
         show_address: true,
       })

@@ -95,7 +95,7 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
     expect(onChangeHeader).toHaveBeenCalledWith(expect.objectContaining({ show_brand_text: true }));
   });
 
-  it("shows Quiet Harbor footer visibility controls, resolved values, duplicate warnings, and draft status", () => {
+  it("shows Quiet Harbor footer controls and saves a website-only email override", () => {
     const onChangeFooter = jest.fn();
     render(
       <WebsiteBrandingCard
@@ -137,14 +137,19 @@ describe("WebsiteBrandingCard Modern theme surface", () => {
     expect(screen.getByLabelText("Show public email")).toBeChecked();
     expect(screen.getByLabelText("Show phone")).toBeChecked();
     expect(screen.getByLabelText("Show address")).toBeChecked();
-    expect(screen.getAllByDisplayValue("owner@example.com").length).toBeGreaterThan(0);
-    expect(screen.getByText(/same email as Company Profile/i)).toBeInTheDocument();
+    const footerEmail = screen.getByLabelText("Footer email (website only)");
+    expect(footerEmail).toHaveValue("owner@example.com");
+    expect(footerEmail).not.toHaveAttribute("readonly");
+    expect(screen.getByText(/same email as the Contact Card/i)).toBeInTheDocument();
     expect(screen.getAllByText("Reach out").length).toBeGreaterThan(0);
     expect(screen.getByDisplayValue("Contact our team")).toBeInTheDocument();
     expect(screen.getByText(/\{\{siteTitle\}\}/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText("Show phone"));
     expect(onChangeFooter).toHaveBeenCalledWith(expect.objectContaining({ show_phone: false }));
+
+    fireEvent.change(footerEmail, { target: { value: "community@example.com" } });
+    expect(onChangeFooter).toHaveBeenCalledWith(expect.objectContaining({ contact_email: "community@example.com" }));
 
     fireEvent.click(screen.getByLabelText("Repeat header page navigation in footer"));
     expect(onChangeFooter).toHaveBeenCalledWith(expect.objectContaining({ show_navigation: false }));

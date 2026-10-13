@@ -151,6 +151,7 @@ export const defaultFooterConfig = () => ({
   social_placement: "footer",
   show_contact_card: true,
   show_public_email: true,
+  contact_email: null,
   show_phone: true,
   show_address: true,
   contact_eyebrow: "",
@@ -271,6 +272,10 @@ export const normalizeFooterConfig = (value, { preserveAssets = true } = {}) => 
       value.show_public_email === undefined
         ? base.show_public_email
         : Boolean(value.show_public_email),
+    contact_email:
+      typeof value.contact_email === "string"
+        ? value.contact_email.trim()
+        : base.contact_email,
     show_phone:
       value.show_phone === undefined
         ? base.show_phone
