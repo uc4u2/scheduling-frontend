@@ -52,6 +52,10 @@ describe("ProductDetails", () => {
     delete navigator.share;
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("keeps existing product behavior without empty accordions and formats price with business currency", async () => {
     mockApiGet.mockResolvedValue({
       data: {
@@ -89,6 +93,9 @@ describe("ProductDetails", () => {
   });
 
   test("renders structured accordions, new badge, lightbox, and share fallback", async () => {
+    jest.spyOn(Date, "now").mockReturnValue(
+      new Date("2026-08-25T12:00:00Z").getTime()
+    );
     mockApiGet.mockResolvedValue({
       data: {
         id: 77,
