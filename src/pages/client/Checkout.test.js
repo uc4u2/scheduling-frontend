@@ -11,6 +11,8 @@ const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockNavigate = jest.fn();
 const mockBuildHostedCheckoutPayload = jest.fn((args) => ({ __payloadArgs: args }));
+const mockGetOrCreateCheckoutRequestKey = jest.fn(() => "11111111-1111-4111-8111-111111111111");
+const mockClearCheckoutRequestKey = jest.fn();
 let mockLocationSearch = "";
 let mockTenantHostMode = "custom";
 
@@ -40,6 +42,8 @@ jest.mock("../../utils/hostedCheckout", () => ({
   buildHostedCheckoutPayload: (...args) => mockBuildHostedCheckoutPayload(...args),
   startHostedCheckout: (...args) => mockStartHostedCheckout(...args),
   releasePendingCheckout: (...args) => mockReleasePendingCheckout(...args),
+  getOrCreateCheckoutRequestKey: (...args) => mockGetOrCreateCheckoutRequestKey(...args),
+  clearCheckoutRequestKey: (...args) => mockClearCheckoutRequestKey(...args),
 }));
 
 jest.mock("../../utils/cart", () => ({
@@ -101,6 +105,7 @@ describe("CheckoutFormCore", () => {
     mockStartHostedCheckout.mockImplementation(() => new Promise(() => {}));
     mockReleasePendingCheckout.mockResolvedValue({});
     mockBuildHostedCheckoutPayload.mockImplementation((args) => ({ __payloadArgs: args }));
+    mockGetOrCreateCheckoutRequestKey.mockReturnValue("11111111-1111-4111-8111-111111111111");
   });
 
   test("removing the final service while checkout is loading clears the flow and releases the hold", async () => {
@@ -477,9 +482,7 @@ describe("CheckoutFormCore", () => {
       expect.stringContaining("/shipping/rates"),
       expect.any(Object)
     ));
-    const shippingSummary = (await screen.findAllByText("Shipping", { exact: true }))
-      .find((element) => element.tagName === "P");
-    expect(shippingSummary.parentElement).toHaveTextContent("CA$12.50");
+    expect(await screen.findByTestId("checkout-shipping-total")).toHaveTextContent("CA$12.50");
 
     const payButton = await screen.findByRole("button", { name: /pay/i });
     fireEvent.click(payButton);
@@ -761,6 +764,64 @@ describe("CheckoutFormCore", () => {
     expect(screen.queryByText(/delivery details/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/delivery method/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/not currently available for delivery or pickup/i)).not.toBeInTheDocument();
+  });
+
+  test("preserves an unresolved checkout key but rotates it after verified expiry", async () => {
+    mockLoadCart.mockReturnValue([
+      {
+        id: "product-1",
+        type: "product",
+        product_id: 1,
+        name: "Digital guide",
+        price: 25,
+        quantity: 1,
+        is_digital: true,
+      },
+    ]);
+    mockStartHostedCheckout.mockRejectedValueOnce(new Error("Network connection lost"));
+
+    render(
+      <CheckoutFormCore
+        companySlug="web-design"
+        businessName="Schedulaa Web Design"
+        paymentsEnabled
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        productCheckout={{ enabled: true, mode: "pay", requires_payment_during_checkout: true }}
+        displayCurrency="USD"
+        policy={{ mode: "pay" }}
+        holdMinutes={null}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText(/your name/i), {
+      target: { value: "Jamie Buyer" },
+    });
+    fireEvent.change(screen.getByLabelText(/your email/i), {
+      target: { value: "jamie@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /pay now/i }));
+
+    expect(await screen.findByText(/network connection lost/i)).toBeInTheDocument();
+    expect(mockClearCheckoutRequestKey).not.toHaveBeenCalled();
+    expect(mockBuildHostedCheckoutPayload.mock.calls.at(-1)[0].checkoutRequestKey).toBe(
+      "11111111-1111-4111-8111-111111111111",
+    );
+
+    mockStartHostedCheckout.mockRejectedValueOnce({
+      response: {
+        data: {
+          error: "checkout_session_expired",
+          message: "The provider confirmed the old session expired.",
+        },
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /pay now/i }));
+
+    expect(
+      await screen.findByText(/previous checkout expired and was verified as unpaid/i),
+    ).toBeInTheDocument();
+    expect(mockClearCheckoutRequestKey).toHaveBeenCalledWith({ scope: "web-design" });
   });
 
   test("product-only carts block checkout when online product payments are disabled", async () => {
@@ -1142,8 +1203,6 @@ describe("CheckoutFormCore", () => {
         expect.any(Object)
       )
     );
-    const shippingSummary = (await screen.findAllByText("Shipping", { exact: true }))
-      .find((element) => element.tagName === "P");
-    expect(shippingSummary.parentElement).toHaveTextContent("CA$24.00");
+    expect(await screen.findByTestId("checkout-shipping-total")).toHaveTextContent("CA$24.00");
   });
 });

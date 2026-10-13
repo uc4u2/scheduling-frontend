@@ -5,6 +5,7 @@ import { CartTypes, CartErrorCodes } from "./cart";
 const CHECKOUT_SESSION_KEY = "checkout_stripe_session_id";
 const PENDING_CHECKOUT_KEY = "checkout_pending_checkout_id";
 const PRODUCT_ORDER_KEY = "checkout_product_order_id";
+const CHECKOUT_REQUEST_PREFIX = "schedulaa_checkout_request:";
 
 const normalizePolicyMode = (mode) => {
   const value = (mode || "pay").toLowerCase();
@@ -56,6 +57,40 @@ const sanitizeMetadata = (metadata) => {
 export const CHECKOUT_SESSION_STORAGE_KEY = CHECKOUT_SESSION_KEY;
 export const PENDING_CHECKOUT_STORAGE_KEY = PENDING_CHECKOUT_KEY;
 export const PRODUCT_ORDER_STORAGE_KEY = PRODUCT_ORDER_KEY;
+
+const createRequestUuid = () => {
+  if (typeof window !== "undefined" && typeof window.crypto?.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (token) => {
+    const value = Math.floor(Math.random() * 16);
+    const nibble = token === "x" ? value : (value & 0x3) | 0x8;
+    return nibble.toString(16);
+  });
+};
+
+export const getOrCreateCheckoutRequestKey = ({ scope, fingerprint }) => {
+  const storageKey = `${CHECKOUT_REQUEST_PREFIX}${scope || "public"}`;
+  try {
+    const existing = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+    if (existing?.fingerprint === fingerprint && typeof existing?.key === "string") {
+      return existing.key;
+    }
+    const key = createRequestUuid();
+    sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, key, state: "ready" }));
+    return key;
+  } catch (_error) {
+    return "";
+  }
+};
+
+export const clearCheckoutRequestKey = ({ scope }) => {
+  try {
+    sessionStorage.removeItem(`${CHECKOUT_REQUEST_PREFIX}${scope || "public"}`);
+  } catch {
+    /* ignore storage errors */
+  }
+};
 
 export const buildHostedCheckoutPayload = ({
   cartItems,

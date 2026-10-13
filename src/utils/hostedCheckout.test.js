@@ -1,4 +1,8 @@
-import { buildHostedCheckoutPayload } from "./hostedCheckout";
+import {
+  buildHostedCheckoutPayload,
+  clearCheckoutRequestKey,
+  getOrCreateCheckoutRequestKey,
+} from "./hostedCheckout";
 
 jest.mock("./api", () => ({
   __esModule: true,
@@ -6,6 +10,59 @@ jest.mock("./api", () => ({
 }));
 
 describe("buildHostedCheckoutPayload", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  test("keeps the same checkout operation across response loss and reload", () => {
+    const first = getOrCreateCheckoutRequestKey({
+      scope: "tenant-a",
+      fingerprint: "basket-v1",
+    });
+    const recovered = getOrCreateCheckoutRequestKey({
+      scope: "tenant-a",
+      fingerprint: "basket-v1",
+    });
+
+    expect(recovered).toBe(first);
+    expect(first).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  test("starts a new checkout only after an explicit terminal clear", () => {
+    const first = getOrCreateCheckoutRequestKey({
+      scope: "tenant-a",
+      fingerprint: "basket-v1",
+    });
+
+    clearCheckoutRequestKey({ scope: "tenant-a" });
+
+    const next = getOrCreateCheckoutRequestKey({
+      scope: "tenant-a",
+      fingerprint: "basket-v1",
+    });
+    expect(next).not.toBe(first);
+  });
+
+  test("scopes unresolved operations by tenant and basket fingerprint", () => {
+    const tenantA = getOrCreateCheckoutRequestKey({
+      scope: "tenant-a",
+      fingerprint: "basket-v1",
+    });
+    const tenantB = getOrCreateCheckoutRequestKey({
+      scope: "tenant-b",
+      fingerprint: "basket-v1",
+    });
+    const changedBasket = getOrCreateCheckoutRequestKey({
+      scope: "tenant-a",
+      fingerprint: "basket-v2",
+    });
+
+    expect(tenantB).not.toBe(tenantA);
+    expect(changedBasket).not.toBe(tenantA);
+  });
+
   test("includes variant_id for product lines without trusting browser display fields", () => {
     const payload = buildHostedCheckoutPayload({
       cartItems: [

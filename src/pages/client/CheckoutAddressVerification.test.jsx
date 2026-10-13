@@ -34,6 +34,8 @@ jest.mock("../../utils/hostedCheckout", () => ({
   buildHostedCheckoutPayload: jest.fn(() => ({ items: [{ id: "product-1" }] })),
   startHostedCheckout: jest.fn(),
   releasePendingCheckout: jest.fn(),
+  getOrCreateCheckoutRequestKey: jest.fn(() => "11111111-1111-4111-8111-111111111111"),
+  clearCheckoutRequestKey: jest.fn(),
 }));
 
 jest.mock("../../utils/cart", () => ({

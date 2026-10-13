@@ -1056,7 +1056,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                           Manual shipping pricing
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Charge one flat parcel-shipping fee per order, with an optional free-shipping threshold. The threshold uses eligible physical products before promotional discounts, shipping, and tax.
+                          Charge one flat parcel-shipping fee per order, with an optional free-shipping threshold. The threshold uses configured eligible physical-product selling prices before promotional discounts and shipping. If prices include tax, that embedded tax remains in the threshold basis; tax added later by Stripe does not.
                         </Typography>
                       </Stack>
                       <FormControlLabel

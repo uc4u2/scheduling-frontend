@@ -155,6 +155,8 @@ describe("ClientBookings", () => {
           delivery_method_label: "Shipping",
           total_amount: "158.00",
           currency: "CAD",
+          customer_shipping_amount_cents: 1500,
+          customer_shipping_currency: "CAD",
           shipping: {
             name: "Ava Client",
             address1: "10 Queen St",
@@ -213,8 +215,85 @@ describe("ClientBookings", () => {
     expect(screen.getByText(/line total:\s*CA\$158\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/payment confirmed/i)).toBeInTheDocument();
     expect(screen.getByText(/order confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText(/shipping:\s*CA\$15\.00/i)).toBeInTheDocument();
     expect(screen.queryByText(/checkout\.session\.completed/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/inventory\.committed/i)).not.toBeInTheDocument();
+  });
+
+  test("shows explicit free shipping but not a misleading label for legacy unknown shipping", async () => {
+    api.get
+      .mockResolvedValueOnce({ data: { bookings: [] } })
+      .mockResolvedValueOnce({
+        data: {
+          orders: [
+            {
+              id: 53,
+              display_number: "#53",
+              payment_status: "paid",
+              delivery_method: "shipping",
+              delivery_method_label: "Shipping",
+              total_amount: "100.00",
+              currency: "CAD",
+            },
+            {
+              id: 54,
+              display_number: "#54",
+              payment_status: "paid",
+              delivery_method: "shipping",
+              delivery_method_label: "Shipping",
+              total_amount: "100.00",
+              currency: "CAD",
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 53,
+          display_number: "#53",
+          payment_status: "paid",
+          delivery_method: "shipping",
+          delivery_method_label: "Shipping",
+          total_amount: "100.00",
+          currency: "CAD",
+          customer_shipping_amount_cents: 0,
+          customer_shipping_currency: "CAD",
+          shipping: { country: "CA" },
+          items: [],
+          events: [],
+        },
+      })
+      .mockResolvedValueOnce({ data: { entitlements: [] } });
+
+    render(<ClientBookings />);
+    fireEvent.click(await screen.findByRole("tab", { name: /orders/i }));
+    const viewButtons = await screen.findAllByRole("button", { name: /view/i });
+    fireEvent.click(viewButtons[0]);
+
+    expect(await screen.findByText(/shipping:\s*free/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    api.get
+      .mockResolvedValueOnce({
+        data: {
+          id: 54,
+          display_number: "#54",
+          payment_status: "paid",
+          delivery_method: "shipping",
+          delivery_method_label: "Shipping",
+          total_amount: "100.00",
+          currency: "CAD",
+          customer_shipping_amount_cents: null,
+          shipping: { country: "CA" },
+          items: [],
+          events: [],
+        },
+      })
+      .mockResolvedValueOnce({ data: { entitlements: [] } });
+    fireEvent.click((await screen.findAllByRole("button", { name: /view/i }))[1]);
+
+    await screen.findByText(/shipping details will appear here/i);
+    expect(screen.queryByText(/shipping:\s*free/i)).not.toBeInTheDocument();
   });
 
   test("shows clearer pickup guidance when pickup instructions are not provided", async () => {

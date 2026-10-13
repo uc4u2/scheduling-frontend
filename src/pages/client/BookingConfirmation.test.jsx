@@ -4,10 +4,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import BookingConfirmation from "./BookingConfirmation";
 
 const mockApiGet = jest.fn();
+const mockClearCheckoutRequestKey = jest.fn();
+const mockGetWebsiteShellByHost = jest.fn();
+const mockGetWebsiteShell = jest.fn();
 
 jest.mock("react-router-dom", () => ({
   useParams: () => ({ slug: "tenant", bookingId: undefined }),
   useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/booking-confirmation", search: "?session_id=cs_capture_1" }),
   useSearchParams: () => [new URLSearchParams("session_id=cs_capture_1")],
 }), { virtual: true });
 
@@ -16,10 +20,20 @@ jest.mock("../../utils/api", () => ({
   api: {
     get: (...args) => mockApiGet(...args),
   },
+  publicSite: {
+    getWebsiteShellByHost: (...args) => mockGetWebsiteShellByHost(...args),
+    getWebsiteShell: (...args) => mockGetWebsiteShell(...args),
+  },
 }));
 
 jest.mock("../../utils/cart", () => ({
   clearCart: jest.fn(),
+}));
+
+jest.mock("../../utils/hostedCheckout", () => ({
+  CHECKOUT_SESSION_STORAGE_KEY: "checkout_stripe_session_id",
+  PENDING_CHECKOUT_STORAGE_KEY: "checkout_pending_checkout_id",
+  clearCheckoutRequestKey: (...args) => mockClearCheckoutRequestKey(...args),
 }));
 
 jest.mock("../../utils/tenant", () => ({
@@ -33,6 +47,8 @@ describe("BookingConfirmation card-on-file return states", () => {
     jest.clearAllMocks();
     window.sessionStorage.clear();
     window.localStorage.clear();
+    mockGetWebsiteShellByHost.mockResolvedValue({});
+    mockGetWebsiteShell.mockResolvedValue({});
   });
 
   test("shows the safe failed verification message for capture mode", async () => {
@@ -162,5 +178,8 @@ describe("BookingConfirmation card-on-file return states", () => {
     expect(screen.getByText(/colour: black • size: mini/i)).toBeInTheDocument();
     expect(screen.getByText(/unit:\s*CA\$79\.00/i)).toBeInTheDocument();
     expect(screen.getByText(/products total\s*CA\$158\.00/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockClearCheckoutRequestKey).toHaveBeenCalledWith({ scope: "tenant" });
+    });
   });
 });

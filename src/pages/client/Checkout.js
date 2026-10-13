@@ -5,7 +5,13 @@ import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getActiveCurrency } from "../../utils/currency";
 import { api as apiClient, API_BASE_URL } from "../../utils/api";
 import { CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE } from "../../utils/bookingErrors";
-import { buildHostedCheckoutPayload, startHostedCheckout, releasePendingCheckout } from "../../utils/hostedCheckout";
+import {
+  buildHostedCheckoutPayload,
+  startHostedCheckout,
+  releasePendingCheckout,
+  getOrCreateCheckoutRequestKey,
+  clearCheckoutRequestKey,
+} from "../../utils/hostedCheckout";
 import { CartTypes, loadCart, saveCart, clearCart, setCartTenantContext } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
 
@@ -120,27 +126,6 @@ const normalizeDeliveryCountryCode = (value) => {
   if (token === "US" || token === "USA" || token === "UNITED STATES" || token === "UNITED STATES OF AMERICA") return "US";
   if (token.length === 2 && /^[A-Z]{2}$/.test(token)) return token;
   return "";
-};
-
-const checkoutRequestKeyFor = (scope, fingerprint) => {
-  const storageKey = `schedulaa_checkout_request:${scope || "public"}`;
-  try {
-    const existing = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-    if (existing?.fingerprint === fingerprint && typeof existing?.key === "string") {
-      return existing.key;
-    }
-    const key = typeof window !== "undefined" && typeof window.crypto?.randomUUID === "function"
-      ? window.crypto.randomUUID()
-      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (token) => {
-          const value = Math.floor(Math.random() * 16);
-          const nibble = token === "x" ? value : (value & 0x3) | 0x8;
-          return nibble.toString(16);
-        });
-    sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, key }));
-    return key;
-  } catch (_error) {
-    return "";
-  }
 };
 
 const EMPTY_SHIPPING_RATES = {
@@ -1806,9 +1791,13 @@ export function CheckoutFormCore({
     productDelivery.shipping?.instructions,
     requiresShippingAddress,
   ]);
+  const [checkoutRequestGeneration, setCheckoutRequestGeneration] = useState(0);
   const checkoutRequestKey = useMemo(
-    () => checkoutRequestKeyFor(slugLocal || companySlug, checkoutRequestFingerprint),
-    [slugLocal, companySlug, checkoutRequestFingerprint]
+    () => getOrCreateCheckoutRequestKey({
+      scope: slugLocal || companySlug,
+      fingerprint: checkoutRequestFingerprint,
+    }),
+    [slugLocal, companySlug, checkoutRequestFingerprint, checkoutRequestGeneration]
   );
   const currentDeliveryCountryValue = useMemo(() => {
     const current = normalizeDeliveryCountryCode(productDelivery.shipping?.country);
@@ -2847,7 +2836,19 @@ export function CheckoutFormCore({
         return;
       }
       const message = data?.message || data?.error || ex?.message || "Unable to start Stripe Checkout.";
-      setErr(message);
+      if (data?.error === "checkout_session_expired") {
+        clearCheckoutRequestKey({ scope: slug });
+        setCheckoutRequestGeneration((value) => value + 1);
+        setErr("The previous checkout expired and was verified as unpaid. Select Pay again to start a new checkout.");
+      } else if (data?.error === "checkout_request_in_progress") {
+        setErr("Checkout is still being created. Wait a moment, then select Pay again to recover the same checkout.");
+      } else if (data?.error === "checkout_reconciliation_required") {
+        setErr("Payment status is not confirmed yet. Do not start another payment; check this checkout again shortly.");
+      } else if (data?.error === "checkout_request_conflict") {
+        setErr("This checkout was already submitted with different details. Restore the original basket or wait for its payment status before starting a new purchase.");
+      } else {
+        setErr(message);
+      }
       if (data?.error === "manual_shipping_requote_required") {
         setShippingEstimateRefreshNonce((value) => value + 1);
       }
@@ -2948,7 +2949,17 @@ export function CheckoutFormCore({
         return;
       }
       const message = data?.message || data?.error || ex?.message || "Unable to start Stripe Checkout.";
-      setErr(message);
+      if (data?.error === "checkout_session_expired") {
+        clearCheckoutRequestKey({ scope: slug });
+        setCheckoutRequestGeneration((value) => value + 1);
+        setErr("The previous checkout expired and was verified as incomplete. Select Save card again to start a new checkout.");
+      } else if (data?.error === "checkout_request_in_progress") {
+        setErr("Checkout is still being created. Wait a moment, then try again to recover the same checkout.");
+      } else if (data?.error === "checkout_reconciliation_required") {
+        setErr("Checkout status is not confirmed yet. Do not start another attempt; check again shortly.");
+      } else {
+        setErr(message);
+      }
       setLoading(false);
     }
   };
@@ -3760,7 +3771,7 @@ export function CheckoutFormCore({
           </ListItem>
         )}
         {shippingAmountKnown && (
-          <ListItem sx={{ justifyContent: "space-between", gap: 2 }}>
+          <ListItem data-testid="checkout-shipping-total" sx={{ justifyContent: "space-between", gap: 2 }}>
             <Typography>Shipping</Typography>
             <Typography>
               {shippingRateTotal === 0 ? "Free" : `+${formatCurrency(shippingRateTotal, currencyCode)}`}

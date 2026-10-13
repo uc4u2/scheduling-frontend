@@ -992,6 +992,18 @@ export default function ClientBookings({ tenantSlug: explicitTenantSlug = "" }) 
               {String(selectedOrder.delivery_method || "pickup").toLowerCase() !== "pickup" ? (
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Shipping</Typography>
+                  {selectedOrder?.customer_shipping_amount_cents != null ? (
+                    <Box sx={{ mt: 1, p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5, backgroundColor: "rgba(15, 23, 42, 0.02)" }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Shipping: {Number(selectedOrder.customer_shipping_amount_cents || 0) === 0
+                          ? "Free"
+                          : money(
+                              Number(selectedOrder.customer_shipping_amount_cents) / 100,
+                              selectedOrder.customer_shipping_currency || selectedOrder.currency
+                            )}
+                      </Typography>
+                    </Box>
+                  ) : null}
                   {(() => {
                     const shipment = selectedOrder.latest_shipment || null;
                     const carrier = String(shipment?.carrier || selectedOrder.tracking_company || "").trim();
@@ -1074,9 +1086,6 @@ export default function ClientBookings({ tenantSlug: explicitTenantSlug = "" }) 
                         ) : null}
                         {selectedOrder?.is_cross_border ? (
                           <Box sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5, backgroundColor: "rgba(249, 115, 22, 0.06)" }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              Shipping paid: {money((selectedOrder.customer_shipping_amount_cents || 0) / 100, selectedOrder.customer_shipping_currency || selectedOrder.currency)}
-                            </Typography>
                             <Typography variant="body2" color="text.secondary">
                               Duties included: No
                             </Typography>

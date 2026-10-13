@@ -482,7 +482,7 @@ const ProductDetails = ({ slugOverride }) => {
                       shippingReturns.manual_shipping_pricing.currency || currency
                     )} or more may qualify for free shipping.`
                   : "."}
-                {" "}Destination eligibility is confirmed during checkout. Thresholds use physical-product merchandise before discounts, tax, and shipping.
+                {" "}Destination eligibility is confirmed during checkout. Thresholds use configured physical-product selling prices before discounts and shipping; embedded tax remains included when the business displays tax-inclusive prices.
               </Typography>
             ) : null}
             {safeLines(shippingReturns?.policy_text).map((line, index) => (

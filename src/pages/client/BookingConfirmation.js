@@ -26,6 +26,7 @@ import { formatCurrency } from "../../utils/formatters";
 import {
   CHECKOUT_SESSION_STORAGE_KEY,
   PENDING_CHECKOUT_STORAGE_KEY,
+  clearCheckoutRequestKey,
 } from "../../utils/hostedCheckout";
 
 import {
@@ -304,7 +305,10 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
     if (pendingCheckoutId && stripeSessionStatus === "success") {
       setPendingCheckoutId(null);
     }
-  }, [pendingCheckoutId, stripeSessionStatus]);
+    if (stripeSessionStatus === "success" && slugOverride) {
+      clearCheckoutRequestKey({ scope: slugOverride });
+    }
+  }, [pendingCheckoutId, slugOverride, stripeSessionStatus]);
 
   useEffect(() => {
     try {
