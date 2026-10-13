@@ -85,6 +85,7 @@ import OfflineBookingPaymentDialog from "../../../components/booking/OfflineBook
 import OfflinePaymentHistory from "../../../components/booking/OfflinePaymentHistory";
 import api from "../../../utils/api";
 import { withManagerBookingPaymentBreakdown } from "../../../utils/bookingPaymentBreakdown";
+import { beginKioskCustomerHandoff } from "../../../utils/kioskHandoff";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 import { FIELD_PHOTO_ACCEPT, FIELD_PHOTO_HELP, validateFieldPhoto } from "../../../utils/fieldPhotoUpload";
@@ -1515,6 +1516,7 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
     if (!booking?.id) return;
     try {
       const { data } = await api.post(`/api/manager/bookings/${booking.id}/kiosk-token`, {
+        base_amount_cents: baseCents,
         extra_amount_cents: extraCents,
       });
       const token = data?.token;
@@ -1523,7 +1525,7 @@ function Client360CollectPaymentDialog({ open, booking, clientProfile, onClose, 
         return;
       }
       onClose?.();
-      navigate(`/kiosk/pay/${token}`);
+      beginKioskCustomerHandoff({ token, appointmentId: booking.id });
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.error || "Failed to start kiosk checkout.", { variant: "error" });
     }

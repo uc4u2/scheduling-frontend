@@ -5,6 +5,8 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import api from "./utils/api";
 import { BookingCheckoutPanel } from "./NewManagementDashboard";
 
+const mockBeginKioskHandoff = jest.fn();
+
 jest.setTimeout(60000);
 
 jest.mock("./utils/api", () => ({
@@ -16,6 +18,9 @@ jest.mock("./utils/api", () => ({
     put: jest.fn(),
     delete: jest.fn(),
   },
+}));
+jest.mock("./utils/kioskHandoff", () => ({
+  beginKioskCustomerHandoff: (...args) => mockBeginKioskHandoff(...args),
 }));
 jest.mock("jspdf", () => jest.fn());
 jest.mock("html2canvas", () => jest.fn());
@@ -420,13 +425,19 @@ describe("BookingCheckoutPanel", () => {
     expect(within(dialog).getByText("Pay on this device (Kiosk)")).toBeInTheDocument();
 
     fireEvent.change(within(dialog).getByLabelText("Additional charge"), { target: { value: "7.50" } });
+    fireEvent.change(within(dialog).getByLabelText("Base amount"), { target: { value: "25" } });
     fireEvent.click(within(dialog).getByRole("radio", { name: /Pay on this device \(Kiosk\)/i }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Start kiosk checkout" }));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/api/manager/bookings/11/kiosk-token", {
+        base_amount_cents: 2500,
         extra_amount_cents: 750,
       });
+    });
+    expect(mockBeginKioskHandoff).toHaveBeenCalledWith({
+      token: "kiosk-token",
+      appointmentId: 11,
     });
   });
 

@@ -1,133 +1,202 @@
-import React, { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Box,
-  Typography,
-  Stack,
-  Button,
-  TextField,
-  ToggleButtonGroup,
-  ToggleButton,
   Alert,
+  Box,
+  Button,
+  CircularProgress,
   Paper,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from "@mui/material";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/api";
+import { kioskManagerLoginTarget } from "../../utils/kioskHandoff";
 
-const decodeTokenPayload = (token) => {
-  if (!token || !token.includes(".")) return null;
-  try {
-    const [b64] = token.split(".");
-    const padded = b64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64.length / 4) * 4, "=");
-    const json = atob(padded);
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
+const formatMoney = (cents, currency) =>
+  `${(Number(cents || 0) / 100).toFixed(2)} ${currency || ""}`.trim();
+
+const parseCustomTip = (value) => {
+  const normalized = String(value || "").trim();
+  if (!/^\d+(?:\.\d{0,2})?$/.test(normalized)) return null;
+  const cents = Math.round(Number(normalized) * 100);
+  return Number.isSafeInteger(cents) && cents >= 0 ? cents : null;
 };
-
-const parseAmount = (val) => {
-  if (val == null) return 0;
-  const num = Number(String(val).replace(/[^\d.-]/g, ""));
-  return Number.isFinite(num) ? num : 0;
-};
-
-const toCents = (val) => Math.round(parseAmount(val) * 100);
-
-const formatMoney = (cents, currency) => `${(cents / 100).toFixed(2)} ${currency}`;
 
 const KioskPayPage = () => {
-  const { token } = useParams();
-  const payload = useMemo(() => decodeTokenPayload(token), [token]);
-  const [tipMode, setTipMode] = useState("0");
+  const { token = "" } = useParams();
+  const navigate = useNavigate();
+  const [operation, setOperation] = useState(null);
+  const [tipMode, setTipMode] = useState("none");
   const [customTip, setCustomTip] = useState("");
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const mountedRef = useRef(true);
+  const statusRequestRef = useRef(0);
 
-  const baseCents = Number(payload?.base_cents || 0);
-  const extraCents = Number(payload?.extra_cents || 0);
-  const currency = String(payload?.currency || "USD").toUpperCase();
-  const tipCents =
-    tipMode === "custom"
-      ? toCents(customTip)
-      : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
-  const totalCents = Math.max(0, baseCents + extraCents + tipCents);
+  useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.name = "referrer";
+    meta.content = "no-referrer";
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, []);
+
+  const checkStatus = useCallback(async () => {
+    const requestId = statusRequestRef.current + 1;
+    statusRequestRef.current = requestId;
+    if (!token) {
+      setError("Missing payment token.");
+      setLoading(false);
+      return null;
+    }
+    setError("");
+    try {
+      const { data } = await api.get("/api/kiosk/status", {
+        params: { token },
+        noAuth: true,
+        noCompanyHeader: true,
+      });
+      if (!mountedRef.current || statusRequestRef.current !== requestId) return null;
+      setOperation(data);
+      if (data?.state === "paid") {
+        navigate(`/kiosk/success?token=${encodeURIComponent(token)}`, { replace: true });
+      }
+      return data;
+    } catch (err) {
+      if (!mountedRef.current || statusRequestRef.current !== requestId) return null;
+      const data = err?.response?.data;
+      if (data?.operation) setOperation(data.operation);
+      setError(data?.error || "Unable to verify this checkout yet.");
+      return data?.operation || null;
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, token]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    checkStatus();
+    return () => {
+      mountedRef.current = false;
+      statusRequestRef.current += 1;
+    };
+  }, [checkStatus]);
+
+  const baseCents = Number(operation?.base_cents || 0);
+  const extraCents = Number(operation?.extra_cents || 0);
+  const tipBasisCents = baseCents + extraCents;
+  const currency = String(operation?.currency || "").toUpperCase();
+  const customTipCents = parseCustomTip(customTip);
+  const tipCents = useMemo(() => {
+    if (tipMode === "custom") return customTipCents ?? 0;
+    if (tipMode === "none") return 0;
+    return Math.round(tipBasisCents * (Number(tipMode) / 100));
+  }, [customTipCents, tipBasisCents, tipMode]);
+  const totalCents = tipBasisCents + tipCents;
+  const customInvalid = tipMode === "custom" && customTipCents == null;
+  const canInitiate = Boolean(operation?.can_initiate) && !customInvalid;
 
   const handlePay = async () => {
-    if (!token) return;
+    if (!canInitiate || submitting) return;
     setSubmitting(true);
     setError("");
+    setOperation((current) => current ? { ...current, state: "creating_checkout" } : current);
     try {
       const { data } = await api.post(
         "/api/kiosk/checkout-session",
         { token, tip_cents: tipCents },
         { noAuth: true, noCompanyHeader: true }
       );
+      if (!mountedRef.current) return;
+      if (data?.operation) setOperation(data.operation);
       if (data?.url) {
-        window.location.href = data.url;
+        window.location.assign(data.url);
         return;
       }
-      setError("Checkout link unavailable.");
+      if (data?.operation?.state === "paid") {
+        navigate(`/kiosk/success?token=${encodeURIComponent(token)}`, { replace: true });
+        return;
+      }
+      setError("Checkout is not ready. Check the payment status before trying again.");
     } catch (err) {
-      setError(err?.response?.data?.error || "Unable to start checkout.");
+      if (!mountedRef.current) return;
+      const data = err?.response?.data;
+      if (data?.operation) setOperation(data.operation);
+      setError(
+        data?.error ||
+          "Payment has not been confirmed yet. Please check the status before trying again."
+      );
     } finally {
-      setSubmitting(false);
+      if (mountedRef.current) setSubmitting(false);
     }
   };
 
-  if (!payload) {
+  if (loading) {
     return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="error">Invalid or expired checkout link.</Alert>
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress aria-label="Loading checkout" />
       </Box>
     );
   }
 
+  const expired = operation && !operation.can_initiate && operation.state !== "paid";
+
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", px: 3, py: 6 }}>
-      <Box sx={{ maxWidth: 520, mx: "auto" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", px: 2, py: 4 }}>
+      <Box sx={{ maxWidth: 560, mx: "auto" }}>
         <Stack spacing={3}>
           <Box textAlign="center">
-            <Typography variant="h5" fontWeight={700}>
-              Client checkout
+            <Typography variant="h5" fontWeight={800}>
+              {operation?.display?.business_name || "Client checkout"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Review your total and choose a tip before paying.
+              {operation?.display?.service_name || "Review your payment"}
             </Typography>
           </Box>
 
           <Paper variant="outlined" sx={{ p: 3 }}>
-            <Stack spacing={2}>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Base</Typography>
-                <Typography fontWeight={600}>{formatMoney(baseCents, currency)}</Typography>
+            <Stack spacing={1.5}>
+              <Stack direction="row" justifyContent="space-between" gap={2}>
+                <Typography color="text.secondary">Service</Typography>
+                <Typography fontWeight={700}>{formatMoney(baseCents, currency)}</Typography>
               </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography color="text.secondary">Extras</Typography>
-                <Typography fontWeight={600}>{formatMoney(extraCents, currency)}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
+              {extraCents > 0 && (
+                <Stack direction="row" justifyContent="space-between" gap={2}>
+                  <Typography color="text.secondary">Extras</Typography>
+                  <Typography fontWeight={700}>{formatMoney(extraCents, currency)}</Typography>
+                </Stack>
+              )}
+              <Stack direction="row" justifyContent="space-between" gap={2}>
                 <Typography color="text.secondary">Tip</Typography>
-                <Typography fontWeight={600}>{formatMoney(tipCents, currency)}</Typography>
+                <Typography fontWeight={700}>{formatMoney(tipCents, currency)}</Typography>
               </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography fontWeight={700}>Total</Typography>
-                <Typography fontWeight={700}>{formatMoney(totalCents, currency)}</Typography>
+              <Stack direction="row" justifyContent="space-between" gap={2} pt={1}>
+                <Typography fontWeight={800}>Total before Stripe tax</Typography>
+                <Typography fontWeight={800}>{formatMoney(totalCents, currency)}</Typography>
               </Stack>
             </Stack>
           </Paper>
 
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Stack spacing={2}>
-              <Typography variant="subtitle1" fontWeight={700}>
-                Add a tip
-              </Typography>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={800}>Choose a tip</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Percentages use the {formatMoney(tipBasisCents, currency)} service and extras subtotal.
+                </Typography>
+              </Box>
               <ToggleButtonGroup
                 value={tipMode}
                 exclusive
                 onChange={(_, value) => value && setTipMode(value)}
-                size="small"
+                aria-label="Tip amount"
+                sx={{ flexWrap: "wrap", gap: 1, "& .MuiToggleButtonGroup-grouped": { m: 0 } }}
               >
-                <ToggleButton value="0">0%</ToggleButton>
+                <ToggleButton value="none">No tip</ToggleButton>
                 <ToggleButton value="10">10%</ToggleButton>
                 <ToggleButton value="15">15%</ToggleButton>
                 <ToggleButton value="20">20%</ToggleButton>
@@ -137,24 +206,46 @@ const KioskPayPage = () => {
                 <TextField
                   label={`Custom tip (${currency})`}
                   value={customTip}
-                  onChange={(e) => setCustomTip(e.target.value)}
+                  onChange={(event) => setCustomTip(event.target.value)}
+                  error={customInvalid}
+                  helperText={customInvalid ? "Enter a non-negative amount with no more than two decimals." : " "}
+                  inputProps={{ inputMode: "decimal", autoComplete: "off" }}
                 />
               )}
-              <Typography variant="caption" color="text.secondary">
-                Tax will be calculated at checkout when Stripe Automatic Tax is enabled.
-              </Typography>
+              {operation?.automatic_tax_enabled && (
+                <Typography variant="caption" color="text.secondary">
+                  Applicable tax is finalized securely by Stripe. The final charged total may differ from the subtotal shown here.
+                </Typography>
+              )}
             </Stack>
           </Paper>
 
-          {error && <Alert severity="error">{error}</Alert>}
+          {operation?.state === "awaiting_payment" && (
+            <Alert severity="info">
+              A secure checkout is already open for this payment. Continuing with a different tip safely replaces the prior unpaid Session.
+            </Alert>
+          )}
+          {expired && (
+            <Alert severity="warning">
+              This handoff can no longer start a new payment. The manager must reopen the booking, but this screen can still check an existing payment outcome.
+            </Alert>
+          )}
+          {error && <Alert severity="warning">{error}</Alert>}
 
           <Button
             variant="contained"
             size="large"
-            disabled={submitting}
+            disabled={!canInitiate || submitting}
             onClick={handlePay}
+            sx={{ minHeight: 52 }}
           >
-            Pay by card
+            {submitting ? "Creating secure checkout…" : "Continue to secure card payment"}
+          </Button>
+          <Button variant="outlined" onClick={checkStatus} sx={{ minHeight: 48 }}>
+            Check payment status
+          </Button>
+          <Button color="inherit" onClick={() => window.location.assign(kioskManagerLoginTarget())}>
+            Return device to manager
           </Button>
         </Stack>
       </Box>

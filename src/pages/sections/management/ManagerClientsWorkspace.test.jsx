@@ -8,6 +8,7 @@ jest.setTimeout(60000);
 
 const mockNavigate = jest.fn();
 const mockSnackbar = jest.fn();
+const mockBeginKioskHandoff = jest.fn();
 var mockFinanceApi;
 
 jest.mock("notistack", () => ({
@@ -85,6 +86,10 @@ jest.mock("../../../utils/api", () => ({
     post: jest.fn(),
     get: jest.fn(),
   },
+}));
+
+jest.mock("../../../utils/kioskHandoff", () => ({
+  beginKioskCustomerHandoff: (...args) => mockBeginKioskHandoff(...args),
 }));
 
 jest.mock("../../finance/financeApi", () => {
@@ -218,6 +223,8 @@ const detailPayload = {
         provider: "Schedulaa",
         status: "booked",
         payment_status: "pending",
+        base_amount: 100,
+        currency: "CAD",
         start_iso: "2026-08-05T14:00:00Z",
         notes: "[setup_intent_id=seti_123]",
         offline_correction_recovery_scope: "client-360-correction-201",
@@ -435,5 +442,25 @@ describe("ManagerClientsWorkspace", () => {
     fireEvent.click(within(collectDialog).getByRole("button", { name: "Record payment" }));
     const offlineDialog = await screen.findByRole("dialog", { name: "Record offline payment received" });
     expect(within(offlineDialog).getByDisplayValue("CAD")).toBeDisabled();
+  });
+
+  test("starts the shared Kiosk handoff with the reviewed Client 360 amount", async () => {
+    api.post.mockResolvedValueOnce({ data: { token: "client-360-kiosk-token" } });
+    renderWorkspace();
+    await screen.findByText("Yousef Jalali");
+    const quickActionsToggle = screen.getByRole("button", { name: /Quick Actions/i });
+    if (quickActionsToggle.getAttribute("aria-expanded") !== "true") fireEvent.click(quickActionsToggle);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Collect payment$/i })[0]);
+    const collectDialog = await screen.findByRole("dialog", { name: "Collect Payment" });
+    fireEvent.click(within(collectDialog).getByRole("button", { name: "Start kiosk checkout" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+      "/api/manager/bookings/201/kiosk-token",
+      { base_amount_cents: 10000, extra_amount_cents: 0 },
+    ));
+    expect(mockBeginKioskHandoff).toHaveBeenCalledWith({
+      token: "client-360-kiosk-token",
+      appointmentId: 201,
+    });
   });
 });

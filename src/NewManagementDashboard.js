@@ -105,6 +105,7 @@ import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "./utils/api";
 import { withManagerBookingPaymentBreakdown } from "./utils/bookingPaymentBreakdown";
+import { beginKioskCustomerHandoff } from "./utils/kioskHandoff";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import AllEmployeeSlotsCalendar from "./pages/sections/AllEmployeeSlotsCalendar";
@@ -1344,15 +1345,15 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     if (!booking) return;
     setSelected(booking);
     const baseCandidate =
-      booking?.service?.base_price ??
       booking?.base_price ??
+      booking?.service?.base_price ??
       booking?.amount ??
       booking?.total ??
       0;
     const baseValue = Number.isFinite(Number(baseCandidate)) ? Number(baseCandidate) : 0;
     const hasBase =
-      booking?.service?.base_price != null ||
       booking?.base_price != null ||
+      booking?.service?.base_price != null ||
       booking?.amount != null ||
       booking?.total != null;
     setBaseAmount(baseValue ? String(baseValue) : "");
@@ -1548,9 +1549,11 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
 
   const handleStartKiosk = async () => {
     if (!selected) return;
+    const baseCents = toCents(baseAmount);
     const extraCents = toCents(extraAmount);
     try {
       const { data } = await api.post(`/api/manager/bookings/${selected.id}/kiosk-token`, {
+        base_amount_cents: baseCents,
         extra_amount_cents: extraCents,
       });
       const token = data?.token;
@@ -1563,7 +1566,7 @@ export const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         return;
       }
       setDetailsOpen(false);
-      navigate(`/kiosk/pay/${token}`);
+      beginKioskCustomerHandoff({ token, appointmentId: selected.id });
     } catch (err) {
       setSnackbar({
         open: true,
