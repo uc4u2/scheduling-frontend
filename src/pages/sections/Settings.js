@@ -52,6 +52,7 @@ import ProfessionSettings from "./ProfessionSetting";
 import SettingsTimeTracking from "./SettingsTimeTracking";
 import SettingsBookingReminders from "./SettingsBookingReminders";
 import SettingsBookingEmails from "./SettingsBookingEmails";
+import SettingsAppointmentReminders from "./SettingsAppointmentReminders";
 import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettingsPanel";
 
 import SectionCard from "../../components/ui/SectionCard";
@@ -739,7 +740,12 @@ const Settings = () => {
     },
     {
       label: t("settings.tabs.bookingEmails", "Booking Emails"),
-      content: <SettingsBookingEmails />,
+      content: (
+        <Stack spacing={3}>
+          <SettingsAppointmentReminders />
+          <SettingsBookingEmails />
+        </Stack>
+      ),
     },
   ];
 
