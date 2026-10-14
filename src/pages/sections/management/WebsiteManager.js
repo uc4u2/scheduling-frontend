@@ -119,6 +119,7 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
   const [themes, setThemes] = useState([]);
   const [settings, setSettings] = useState(null);
   const seoSettingsRef = useRef(null);
+  const publishingSectionRef = useRef(null);
   const [pages, setPages] = useState([]);
 
   // page editor
@@ -220,6 +221,14 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
     });
   }, [normalizeDomainSnapshot]);
 
+  const refreshWebsiteSettings = useCallback(async () => {
+    if (!companyId) throw new Error(t("management.website.errors.missingCompany"));
+    const response = await wb.getSettings(companyId);
+    const data = response?.data || response;
+    applySettingsPayload(data);
+    return data;
+  }, [companyId, t, applySettingsPayload]);
+
   const handleSeoSave = useCallback(
     async (seoPayload) => {
       if (!companyId) throw new Error(t("management.website.errors.missingCompany"));
@@ -227,38 +236,10 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
         ? seoPayload
         : { seo: seoPayload };
       const res = await wb.saveSettings(companyId, payload, { publish: false });
-      const data = res?.data || res;
-      const nextSeo = payload.seo || {};
-      const nextFavicon = Object.prototype.hasOwnProperty.call(payload, "favicon_url")
-        ? payload.favicon_url
-        : undefined;
-      const hasSeo = data && typeof data === "object" && "seo" in data;
-      if (hasSeo) {
-        applySettingsPayload(res);
-      } else {
-        const fallback = {
-          ...(settings || {}),
-          ...(data && typeof data === "object" ? data : {}),
-          seo: nextSeo,
-          favicon_url: nextFavicon !== undefined ? nextFavicon : settings?.favicon_url,
-        };
-        fallback.settings = {
-          ...(settings?.settings || {}),
-          ...(fallback.settings || {}),
-          seo: nextSeo,
-          favicon_url: nextFavicon !== undefined ? nextFavicon : settings?.settings?.favicon_url,
-        };
-        fallback.website = {
-          ...(settings?.website || {}),
-          ...(fallback.website || {}),
-          seo: nextSeo,
-          favicon_url: nextFavicon !== undefined ? nextFavicon : settings?.website?.favicon_url,
-        };
-        applySettingsPayload({ data: fallback });
-      }
+      await refreshWebsiteSettings();
       return res;
     },
-    [companyId, t, applySettingsPayload, settings]
+    [companyId, t, refreshWebsiteSettings]
   );
 
   useEffect(() => {
@@ -592,26 +573,39 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
     }
   };
 
-  const publishSite = async () => {
+  const publishSite = async (options = {}) => {
     if (!companyId) return;
-    if (!canPublish) return alert(t("management.website.alerts.pickTheme"));
+    if (!canPublish) {
+      const error = new Error(t("management.website.alerts.pickTheme"));
+      setErr(error.message);
+      throw error;
+    }
     setErr("");
     setMsg("");
     setPublishing(true);
     try {
-      const brandingRes = await wb.saveSettings(companyId, {}, { publish: true });
-      const brandingPayload = brandingRes?.data || brandingRes || {};
-      setSettings((s) => ({ ...(s || {}), ...(brandingPayload || {}) }));
-      const res = await wb.publish(companyId, true);
-      setSettings((s) => ({ ...(s || {}), is_live: !!res.data?.is_live }));
+      await wb.saveSettings(companyId, {}, {
+        publish: true,
+        expectedDraftUpdatedAt: options?.expectedDraftUpdatedAt || undefined,
+      });
+      await wb.publish(companyId, true);
+      const fresh = await refreshWebsiteSettings();
       setMsg(t("management.website.messages.sitePublished"));
+      return fresh;
     } catch (error) {
       console.error("Publish failed", error);
-      setErr(t("management.website.errors.publish"));
+      const message = error?.response?.data?.message || t("management.website.errors.publish");
+      setErr(message);
+      throw error;
     } finally {
       setPublishing(false);
     }
   };
+
+  const reviewPendingWebsiteChanges = useCallback(() => {
+    publishingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    publishingSectionRef.current?.focus?.();
+  }, []);
 
   const editPage = (p) => {
     setEditingId(p.id);
@@ -818,7 +812,11 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
           publicUrlContract={settings?.public_url_contract}
           companyLogoUrl={companyLogoUrl}
           hasDraftChanges={hasDraftChanges}
+          canPublish={canPublish}
           onSave={handleSeoSave}
+          onRefresh={refreshWebsiteSettings}
+          onPublish={publishSite}
+          onReviewChanges={reviewPendingWebsiteChanges}
         />
       </Box>
 
@@ -943,11 +941,12 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
         </Alert>
       </Snackbar>
 
-      <ManagerSection
-        id="theme-publishing"
-        title="Theme & publishing"
-        description="Choose the website theme, open the visual tools, and publish completed draft changes."
-      >
+      <Box ref={publishingSectionRef} tabIndex={-1} sx={{ scrollMarginTop: 16 }}>
+        <ManagerSection
+          id="theme-publishing"
+          title="Theme & publishing"
+          description="Choose the website theme, open the visual tools, and publish completed draft changes."
+        >
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={2}
@@ -999,7 +998,7 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
           />
           <Button
             variant="contained"
-            onClick={publishSite}
+            onClick={() => publishSite().catch(() => {})}
             disabled={!canPublish || publishing}
             fullWidth={isSmDown}
           >
@@ -1023,7 +1022,8 @@ const WebsiteManager = ({ companyId: companyIdProp, focusSeo = false }) => {
             </Button>
           </Stack>
         </Stack>
-      </ManagerSection>
+        </ManagerSection>
+      </Box>
 
       {/* Pages */}
       <ManagerSection

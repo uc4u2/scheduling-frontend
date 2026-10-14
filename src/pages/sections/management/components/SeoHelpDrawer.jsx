@@ -1,15 +1,18 @@
-// src/pages/sections/management/components/SeoHelpDrawer.jsx
 import { useMemo } from "react";
 import {
+  Alert,
   Box,
   Button,
   Divider,
   Drawer,
+  Link,
   Stack,
   Typography,
   useMediaQuery,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import LaunchIcon from "@mui/icons-material/Launch";
+import { useTranslation } from "react-i18next";
 
 const getDrawerAnchor = (provided, isSmall) => {
   if (provided) return provided;
@@ -17,17 +20,19 @@ const getDrawerAnchor = (provided, isSmall) => {
 };
 
 export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
+  const { t } = useTranslation();
   const isSmall = useMediaQuery("(max-width:900px)");
   const drawerAnchor = getDrawerAnchor(anchor, isSmall);
-  const drawerWidth = width ?? (isSmall ? "100%" : 460);
+  const drawerWidth = width ?? (isSmall ? "100%" : 500);
+  const tt = (key, defaultValue) => t(key, { defaultValue });
 
   const sections = useMemo(
     () => [
       {
         title: "Drafts and publishing",
         body: [
-          "Saving SEO creates a draft. Your public site will not change until you click Publish in Website & Pages.",
-          "If you are testing and still see old text, publish first and then refresh your preview.",
+          "Saving SEO creates a draft. Your public site does not change until you publish the website settings.",
+          "Publishing promotes the complete pending website-settings draft, not only one SEO field. Review the warning before you confirm.",
         ],
       },
       {
@@ -35,67 +40,40 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
         body: [
           "Meta title and description are what Google shows most often.",
           "Keep the title under about 60 characters and the description under about 155 characters.",
-          "Use plain language that matches what people search for.",
+          "Search Console verification does not guarantee indexing or ranking.",
         ],
       },
       {
-        title: "Meta keywords",
+        title: "Social sharing and favicon",
         body: [
-          "Keywords are optional. Use 4 to 6 short phrases that describe your services.",
-          "Separate phrases with commas.",
+          "Open Graph controls how links look in WhatsApp, Facebook, Slack, and other previews.",
+          "Use a 1200×630 image. If empty, your homepage hero image is used when available.",
+          "A square favicon of at least 48×48 pixels is recommended.",
         ],
       },
       {
-        title: "Social sharing (Open Graph)",
+        title: "Canonical URL, sitemap, and robots",
         body: [
-          "Open Graph controls how links look in WhatsApp, Facebook, Slack, and SMS previews.",
-          "Set a clear title and a short description. These can be different from your meta title.",
-          "Use a 1200x630 image (PNG or JPG). If empty, your homepage hero image is used.",
-        ],
-      },
-      {
-        title: "Preview domain and canonical",
-        body: [
-          "Previews use your custom domain only after it is verified.",
-          "Until then, previews use your schedulaa.com slug URL.",
-        ],
-      },
-      {
-        title: "Favicon",
-        body: [
-          "Your favicon is the small icon shown in the browser tab.",
-          "If you do not upload one, we use your header logo as a fallback.",
-          "Best size is 32x32 or 48x48 PNG (max 64x64).",
-        ],
-      },
-      {
-        title: "Test preview buttons",
-        body: [
-          "Use the Test buttons to open the live Open Graph preview HTML.",
-          "If bots are still showing old data, publish and try again later. Some platforms cache previews.",
-        ],
-      },
-      {
-        title: "Sitemap and robots",
-        body: [
-          "Your sitemap lives at /sitemap.xml and robots rules at /robots.txt.",
-          "After your custom domain is verified, those files use your custom domain instead of schedulaa.com.",
-          "You can open the links from the SEO & Metadata card to verify what search engines will see.",
-        ],
-      },
-      {
-        title: "Google Search Console",
-        body: [
-          "Open Google Search Console and add your domain or URL property.",
-          "Choose the HTML tag method, then copy only the token value (not the full tag).",
-          "Paste the token here, click Save, then click Verify in Google.",
-          "If you prefer DNS, paste the DNS token and add it as a TXT record at your registrar.",
-          "After verification, submit your sitemap to speed up indexing.",
+          "Schedulaa uses a verified custom domain as the canonical public address. Otherwise it uses the published schedulaa.com tenant URL.",
+          "The sitemap is at /sitemap.xml and robots rules are at /robots.txt on that public address.",
         ],
       },
     ],
     []
   );
+
+  const urlPrefixSteps = [
+    "Open Google Search Console.",
+    "Choose URL prefix, not Domain.",
+    "Copy the exact published website URL shown in the Schedulaa Google Search Console card.",
+    "In Google, choose HTML tag verification.",
+    "Paste the complete meta tag or its token into Schedulaa.",
+    "Save the token, then publish it. Confirm the warning because other pending website settings can also be published.",
+    "Confirm that Schedulaa shows Verification tag published. This describes Schedulaa publication only.",
+    "Return to Google and click Verify.",
+    "Open Sitemaps and submit sitemap.xml.",
+    "Use URL Inspection for important published pages and request indexing when appropriate.",
+  ];
 
   return (
     <Drawer
@@ -108,9 +86,10 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
         "& .MuiDrawer-paper": { zIndex: "inherit" },
       }}
       PaperProps={{
+        "aria-labelledby": "seo-help-title",
         sx: {
           width: drawerWidth,
-          p: 3,
+          p: { xs: 2, sm: 3 },
           maxWidth: "100vw",
           zIndex: "inherit",
         },
@@ -119,12 +98,12 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
       <Stack spacing={2}>
         <Stack direction="row" spacing={1} alignItems="center">
           <HelpOutlineIcon color="action" />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            SEO & Metadata help
+          <Typography id="seo-help-title" variant="h6" sx={{ fontWeight: 700 }}>
+            {tt("management.domainSettings.seo.help.title", "SEO & Google Search Console help")}
           </Typography>
         </Stack>
         <Typography variant="body2" color="text.secondary">
-          Simple explanations for each field and how previews work.
+          {tt("management.domainSettings.seo.help.intro", "A safe step-by-step guide for publishing SEO settings and proving website ownership to Google.")}
         </Typography>
 
         <Divider />
@@ -132,7 +111,7 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
         <Stack spacing={2.5}>
           {sections.map((section) => (
             <Box key={section.title}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>
                 {section.title}
               </Typography>
               <Stack spacing={0.75}>
@@ -144,10 +123,53 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
               </Stack>
             </Box>
           ))}
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+              Google URL-prefix workflow
+            </Typography>
+            <Box component="ol" sx={{ pl: 3, my: 0 }}>
+              {urlPrefixSteps.map((step) => (
+                <Typography component="li" variant="body2" color="text.secondary" key={step} sx={{ mb: 0.75 }}>
+                  {step}
+                </Typography>
+              ))}
+            </Box>
+            <Button
+              sx={{ mt: 1 }}
+              variant="outlined"
+              endIcon={<LaunchIcon />}
+              href="https://search.google.com/search-console/welcome"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Google Search Console
+            </Button>
+          </Box>
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>
+              Advanced Domain-property workflow
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              A Domain property covers all protocols and subdomains and requires a DNS TXT record. Copy the value Google provides, add it at the authoritative DNS provider, wait for DNS visibility, and then verify in Google. Saving a DNS value in Schedulaa is reference-only: it does not change Cloudflare or registrar DNS, and clicking Publish does not add a TXT record.
+            </Typography>
+          </Box>
+
+          <Alert severity="info">
+            Search Console ownership is separate from Google Business Profile and Google Maps. Neither one proves the other, and Schedulaa's published-token badge does not prove Google verification.
+          </Alert>
+
+          <Typography variant="caption" color="text.secondary">
+            Google's interface can change. For current verification details, see{" "}
+            <Link href="https://support.google.com/webmasters/answer/9008080" target="_blank" rel="noopener noreferrer">
+              Google's ownership verification help
+            </Link>.
+          </Typography>
         </Stack>
 
         <Box sx={{ pt: 1 }}>
-          <Button variant="contained" onClick={onClose} fullWidth>
+          <Button variant="contained" onClick={onClose} fullWidth autoFocus>
             Close
           </Button>
         </Box>

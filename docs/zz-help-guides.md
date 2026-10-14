@@ -360,11 +360,13 @@ Sitemap and robots
 - You can open the links from the SEO and Metadata card to verify what search engines will see.
 
 Google Search Console
-- Open Google Search Console and add your domain or URL property.
-- Choose the HTML tag method, then copy only the token value (not the full tag).
-- Paste the token here, click Save, then click Verify in Google.
-- If you prefer DNS, paste the DNS token and add it as a TXT record at your registrar.
-- After verification, submit your sitemap to speed up indexing.
+- Open the Google Search Console card and copy the exact published website URL.
+- In Google Search Console choose a URL-prefix property, paste that URL, and choose the HTML tag method.
+- Paste either Google's full meta tag or the token into Schedulaa. Save stores a draft; it does not publish the tag.
+- Publish only after reviewing the warning that all pending website settings may be included. Wait for Schedulaa to show Verification tag published, then return to Google and click Verify.
+- After Google verifies ownership, open Sitemaps and submit sitemap.xml. Use URL Inspection for important published pages and request indexing when appropriate.
+- For an advanced Domain property, add Google's TXT record at the authoritative DNS provider. Saving the DNS token in Schedulaa is reference-only and does not change DNS.
+- Search Console verification does not guarantee indexing or ranking and does not verify a Google Business Profile or Google Maps listing.
 
 ## Payroll Preview Help
 What each field does, and how it affects gross, taxes, and net pay.

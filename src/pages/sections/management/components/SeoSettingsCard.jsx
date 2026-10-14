@@ -1,7 +1,6 @@
 
 // src/pages/sections/management/components/SeoSettingsCard.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Accordion,
@@ -34,6 +33,7 @@ import { tenantBaseUrl, normalizeDomain, isValidHostname } from "../../../../uti
 import { SearchSnippetPreview, SocialCardPreview } from "../../../../components/seo/SeoPreview";
 import { API_BASE_URL, wb } from "../../../../utils/api";
 import SeoHelpDrawer from "./SeoHelpDrawer";
+import GoogleSearchConsoleCard from "./GoogleSearchConsoleCard";
 
 const MAX_TITLE = 60;
 const MAX_DESCRIPTION = 155;
@@ -183,11 +183,14 @@ const SeoSettingsCard = ({
   publicUrlContract,
   companyLogoUrl,
   hasDraftChanges,
+  canPublish,
   onSave,
+  onRefresh,
+  onPublish,
+  onReviewChanges,
 }) => {
   const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const seo = settings?.seo || {};
   const tt = (key, defaultValue, options = {}) => t(key, { defaultValue, ...options });
 
@@ -359,14 +362,6 @@ const SeoSettingsCard = ({
       return "";
     }
   }, [canonicalHostUrl, slugBaseUrl]);
-  const googleMetaTag = useMemo(() => {
-    if (!googleSiteVerification) return "";
-    return `<meta name="google-site-verification" content="${googleSiteVerification}">`;
-  }, [googleSiteVerification]);
-  const googleDnsRecord = useMemo(() => {
-    if (!googleDnsVerification) return "";
-    return `google-site-verification=${googleDnsVerification}`;
-  }, [googleDnsVerification]);
   const titleRemaining = MAX_TITLE - metaTitle.length;
   const descRemaining = MAX_DESCRIPTION - metaDescription.length;
   const canonicalLocked = !domainVerified;
@@ -649,25 +644,19 @@ const SeoSettingsCard = ({
     return true;
   };
 
-  const handleSubmit = async () => {
-    if (!companyId || saving) return;
-    if (!validate()) return;
-
-    setSaving(true);
-    setError(null);
-    try {
-      let structuredPayload = null;
-      if (structuredDataEnabled) {
-        if (structuredAdvanced && structuredData.trim()) {
-          structuredPayload = JSON.parse(structuredData);
-        } else if (!structuredAdvanced) {
-          structuredPayload = buildStructuredSchema({
-            ...structuredFields,
-            url: structuredFields.url || canonicalHostUrl || slugBaseUrl,
-          });
-        }
+  const buildSavePayload = (verificationOverrides = {}) => {
+    let structuredPayload = null;
+    if (structuredDataEnabled) {
+      if (structuredAdvanced && structuredData.trim()) {
+        structuredPayload = JSON.parse(structuredData);
+      } else if (!structuredAdvanced) {
+        structuredPayload = buildStructuredSchema({
+          ...structuredFields,
+          url: structuredFields.url || canonicalHostUrl || slugBaseUrl,
+        });
       }
-      await onSave?.({
+    }
+    return {
         seo: {
           metaTitle,
           metaDescription,
@@ -675,15 +664,29 @@ const SeoSettingsCard = ({
           ogTitle,
           ogDescription,
           ogImage,
-          googleSiteVerification: googleSiteVerification || null,
-          googleDnsVerification: googleDnsVerification || null,
+          googleSiteVerification: Object.prototype.hasOwnProperty.call(verificationOverrides, "googleSiteVerification")
+            ? verificationOverrides.googleSiteVerification
+            : (googleSiteVerification || null),
+          googleDnsVerification: Object.prototype.hasOwnProperty.call(verificationOverrides, "googleDnsVerification")
+            ? verificationOverrides.googleDnsVerification
+            : (googleDnsVerification || null),
           canonicalMode: canonicalMode === "custom" && !canonicalLocked ? "custom" : "slug",
           canonicalHost: canonicalMode === "custom" ? normalizeDomain(canonicalHost || customDomain) : null,
           structuredDataEnabled,
           structuredData: structuredPayload,
         },
         favicon_url: useLogoFavicon ? null : (faviconUrl || null),
-      });
+      };
+  };
+
+  const handleSubmit = async () => {
+    if (!companyId || saving) return;
+    if (!validate()) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave?.(buildSavePayload());
       setDraftNotice(true);
       enqueueSnackbar(tt("management.domainSettings.seo.notifications.saveSuccess", "SEO settings saved"), {
         variant: "success",
@@ -698,11 +701,16 @@ const SeoSettingsCard = ({
     }
   };
 
-  const showPublishNotice = draftNotice || hasDraftChanges;
-  const handleGoToPublish = () => {
-    navigate("/manager/website/editor");
+  const handleGoogleSave = async (verificationValues) => {
+    if (!companyId) throw new Error("A company is required before saving verification settings.");
+    if (!validate()) throw new Error(error || "Correct the SEO form errors before saving.");
+    const result = await onSave?.(buildSavePayload(verificationValues));
+    setGoogleSiteVerification(verificationValues.googleSiteVerification || "");
+    setGoogleDnsVerification(verificationValues.googleDnsVerification || "");
+    return result;
   };
 
+  const showPublishNotice = draftNotice || hasDraftChanges;
   return (
     <Accordion
       defaultExpanded
@@ -779,9 +787,9 @@ const SeoSettingsCard = ({
             <Button
               size="small"
               variant="outlined"
-              onClick={handleGoToPublish}
+              onClick={onReviewChanges}
             >
-              Go to Publish
+              Review publishing
             </Button>
           </Stack>
         </Alert>
@@ -1344,58 +1352,15 @@ const SeoSettingsCard = ({
               </Typography>
             </Box>
 
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Google Search Console
-                </Typography>
-                <Tooltip
-                  title="Verify your domain in Google Search Console so Google trusts your sitemap and canonical URLs."
-                  arrow
-                  placement="top"
-                >
-                  <IconButton size="small" sx={{ p: 0.25 }}>
-                    <InfoOutlinedIcon fontSize="inherit" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-              <Stack spacing={1.5}>
-                <TextField
-                  size="small"
-                  label={labelWithTip(
-                    "Meta verification token",
-                    "Google Search Console → Verification → HTML tag. Copy the token only."
-                  )}
-                  value={googleSiteVerification}
-                  onChange={(e) => setGoogleSiteVerification(e.target.value.trim())}
-                  placeholder="e.g., abc123XYZ"
-                  helperText="Paste the token, click Save, then return to Google and press Verify."
-                />
-                <TextField
-                  size="small"
-                  label="Meta tag preview"
-                  value={googleMetaTag || "Paste a token to generate the meta tag."}
-                  InputProps={{ readOnly: true }}
-                />
-                <TextField
-                  size="small"
-                  label={labelWithTip(
-                    "DNS TXT token (optional)",
-                    "Google Search Console → DNS method. Copy the TXT token only."
-                  )}
-                  value={googleDnsVerification}
-                  onChange={(e) => setGoogleDnsVerification(e.target.value.trim())}
-                  placeholder="e.g., xyz987TOKEN"
-                  helperText="Add a TXT record at your domain registrar, then click Verify in Google."
-                />
-                <TextField
-                  size="small"
-                  label="DNS TXT record preview"
-                  value={googleDnsRecord || "Paste a DNS token to generate the TXT record."}
-                  InputProps={{ readOnly: true }}
-                />
-              </Stack>
-            </Box>
+            <GoogleSearchConsoleCard
+              settings={settings}
+              publicUrlContract={publicUrlContract || settings?.public_url_contract}
+              canPublish={canPublish}
+              onSave={handleGoogleSave}
+              onRefresh={onRefresh}
+              onPublish={onPublish}
+              onReviewChanges={onReviewChanges}
+            />
 
             <FormControlLabel
               control={
