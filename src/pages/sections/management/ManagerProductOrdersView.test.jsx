@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 import ManagerProductOrdersView from "./ManagerProductOrdersView";
@@ -10,6 +10,7 @@ const mockApiGet = jest.fn();
 const mockApiPost = jest.fn();
 const mockApiPatch = jest.fn();
 const mockCopilotDrawer = jest.fn(() => null);
+const tokenFor = (claims) => `header.${btoa(JSON.stringify(claims)).replace(/=/g, "")}.signature`;
 
 jest.mock("../../../utils/api", () => ({
   api: {
@@ -63,6 +64,7 @@ jest.mock("../../../components/commerce-copilot/CommerceCopilotDrawer", () => (p
 describe("ManagerProductOrdersView", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.sessionStorage.clear();
     mockApiPost.mockResolvedValue({ data: {} });
     mockApiPatch.mockResolvedValue({ data: {} });
     mockApiGet.mockImplementation((url) => {
@@ -521,6 +523,224 @@ describe("ManagerProductOrdersView", () => {
     expect(document.body.textContent).toContain("On hand: 2");
     const quantityInput = screen.getByRole("spinbutton", { name: /quantity/i });
     expect(quantityInput).toHaveAttribute("max", "2");
+  });
+
+  test("reuses the same Stripe refund operation after response loss and page reload", async () => {
+    const token = tokenFor({ sub: "manager-7", company_id: 12 });
+    const detail = {
+      id: 1,
+      company_id: 12,
+      client_name: "Client",
+      delivery_method: "shipping",
+      fulfillment_status: "pending",
+      payment_status: "paid",
+      total_amount: 95,
+      currency: "CAD",
+      stripe_total_cents: 9500,
+      refunded_cents: 0,
+      payment_intent_id: "pi_shared_145",
+      inventory_committed: true,
+      items: [],
+      payments: [{ provider: "stripe", status: "captured", currency: "CAD" }],
+      events: [],
+      company: { id: 12, timezone: "America/Toronto" },
+      latest_shipment: null,
+      parcel_snapshot: null,
+    };
+    mockApiGet.mockImplementation((url) => {
+      if (String(url) === "/inventory/product-orders") {
+        return Promise.resolve({
+          data: {
+            orders: [{ ...detail }],
+            pagination: { total: 1 },
+            company: { id: 12, country_code: "CA" },
+          },
+        });
+      }
+      if (String(url) === "/inventory/shipping-settings") return Promise.resolve({ data: {} });
+      if (String(url) === "/inventory/product-orders/1") return Promise.resolve({ data: detail });
+      return Promise.resolve({ data: {} });
+    });
+    const refundPayloads = [];
+    mockApiPost.mockImplementation((url, payload) => {
+      if (String(url) !== "/inventory/product-orders/1/refund") return Promise.resolve({ data: {} });
+      refundPayloads.push(payload);
+      if (refundPayloads.length === 1) return Promise.reject(new Error("connection lost"));
+      return Promise.resolve({
+        status: 200,
+        data: {
+          message: "Refund recorded",
+          refund_operation: { state: "succeeded", amount_cents: 4000, currency: "CAD" },
+          refund_transaction: {
+            id: 71,
+            amount_cents: 4000,
+            currency: "CAD",
+            provider: "stripe",
+            status: "refunded",
+          },
+        },
+      });
+    });
+
+    const view = render(
+      <ThemeProvider theme={createTheme()}>
+        <ManagerProductOrdersView token={token} connect={{ status: { charges_enabled: true, payouts_enabled: true } }} />
+      </ThemeProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /view/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /actions/i }));
+    fireEvent.click(await screen.findByText(/^refund$/i));
+    fireEvent.change(screen.getByRole("spinbutton", { name: /amount/i }), { target: { value: "40.00" } });
+    fireEvent.click(screen.getByRole("button", { name: /record refund/i }));
+    expect(await screen.findByText(/retry this same refund to check its status/i)).toBeInTheDocument();
+    const firstPayload = refundPayloads[0];
+    expect(firstPayload.idempotency_key).toMatch(/^product-order-refund:1:/);
+
+    view.unmount();
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ManagerProductOrdersView token={token} connect={{ status: { charges_enabled: true, payouts_enabled: true } }} />
+      </ThemeProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /view/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /actions/i }));
+    fireEvent.click(await screen.findByText(/^refund$/i));
+    expect(await screen.findByDisplayValue("40.00")).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /check refund status/i }));
+
+    await waitFor(() => expect(refundPayloads).toHaveLength(2));
+    expect(refundPayloads[1]).toEqual(firstPayload);
+    expect(await screen.findByText(/refund recorded/i)).toBeInTheDocument();
+  }, 30000);
+
+  test("keeps confirmed success when the subsequent order refresh fails", async () => {
+    const token = tokenFor({ sub: "manager-8", company_id: 12 });
+    let failRefresh = false;
+    const detail = {
+      id: 1,
+      company_id: 12,
+      client_name: "Client",
+      delivery_method: "shipping",
+      fulfillment_status: "pending",
+      payment_status: "paid",
+      total_amount: 95,
+      currency: "CAD",
+      stripe_total_cents: 9500,
+      refunded_cents: 0,
+      payment_intent_id: "pi_shared_refresh",
+      inventory_committed: true,
+      items: [],
+      payments: [{ provider: "stripe", status: "captured", currency: "CAD" }],
+      events: [],
+      company: { id: 12, timezone: "America/Toronto" },
+    };
+    mockApiGet.mockImplementation((url) => {
+      if (failRefresh && ["/inventory/product-orders", "/inventory/product-orders/1"].includes(String(url))) {
+        return Promise.reject(new Error("refresh unavailable"));
+      }
+      if (String(url) === "/inventory/product-orders") {
+        return Promise.resolve({ data: { orders: [detail], pagination: { total: 1 }, company: { id: 12 } } });
+      }
+      if (String(url) === "/inventory/shipping-settings") return Promise.resolve({ data: {} });
+      if (String(url) === "/inventory/product-orders/1") return Promise.resolve({ data: detail });
+      return Promise.resolve({ data: {} });
+    });
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) !== "/inventory/product-orders/1/refund") return Promise.resolve({ data: {} });
+      failRefresh = true;
+      return Promise.resolve({
+        status: 200,
+        data: {
+          refund_operation: { state: "succeeded", amount_cents: 4000, currency: "CAD" },
+          refund_transaction: { id: 72, amount_cents: 4000, currency: "CAD", provider: "stripe", status: "refunded" },
+        },
+      });
+    });
+
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <ManagerProductOrdersView token={token} connect={{ status: { charges_enabled: true, payouts_enabled: true } }} />
+      </ThemeProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /view/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /actions/i }));
+    fireEvent.click(await screen.findByText(/^refund$/i));
+    fireEvent.change(screen.getByRole("spinbutton", { name: /amount/i }), { target: { value: "40.00" } });
+    fireEvent.click(screen.getByRole("button", { name: /record refund/i }));
+
+    expect(await screen.findByText(/refund saved, but the latest order totals could not be loaded/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /refresh order/i })).toBeInTheDocument();
+    expect(screen.queryByText(/unable to record refund/i)).not.toBeInTheDocument();
+  });
+
+  test("ignores a delayed refund response after the authenticated account changes", async () => {
+    const firstToken = tokenFor({ sub: "manager-7", company_id: 12 });
+    const secondToken = tokenFor({ sub: "manager-8", company_id: 13 });
+    const detail = {
+      id: 1,
+      company_id: 12,
+      client_name: "Client",
+      delivery_method: "shipping",
+      fulfillment_status: "pending",
+      payment_status: "paid",
+      total_amount: 95,
+      currency: "CAD",
+      stripe_total_cents: 9500,
+      refunded_cents: 0,
+      payment_intent_id: "pi_stale_account",
+      inventory_committed: true,
+      items: [],
+      payments: [{ provider: "stripe", status: "captured", currency: "CAD" }],
+      events: [],
+      company: { id: 12, timezone: "America/Toronto" },
+    };
+    mockApiGet.mockImplementation((url) => {
+      if (String(url) === "/inventory/product-orders") {
+        return Promise.resolve({ data: { orders: [detail], pagination: { total: 1 }, company: { id: 12 } } });
+      }
+      if (String(url) === "/inventory/shipping-settings") return Promise.resolve({ data: {} });
+      if (String(url) === "/inventory/product-orders/1") return Promise.resolve({ data: detail });
+      return Promise.resolve({ data: {} });
+    });
+    let resolveRefund;
+    mockApiPost.mockImplementation((url) => {
+      if (String(url) !== "/inventory/product-orders/1/refund") return Promise.resolve({ data: {} });
+      return new Promise((resolve) => {
+        resolveRefund = resolve;
+      });
+    });
+
+    const view = render(
+      <ThemeProvider theme={createTheme()}>
+        <ManagerProductOrdersView token={firstToken} connect={{ status: { charges_enabled: true, payouts_enabled: true } }} />
+      </ThemeProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /view/i }));
+    fireEvent.click(await screen.findByRole("tab", { name: /actions/i }));
+    fireEvent.click(await screen.findByText(/^refund$/i));
+    fireEvent.change(screen.getByRole("spinbutton", { name: /amount/i }), { target: { value: "40.00" } });
+    fireEvent.click(screen.getByRole("button", { name: /record refund/i }));
+    await waitFor(() => expect(resolveRefund).toEqual(expect.any(Function)));
+
+    view.rerender(
+      <ThemeProvider theme={createTheme()}>
+        <ManagerProductOrdersView token={secondToken} connect={{ status: { charges_enabled: true, payouts_enabled: true } }} />
+      </ThemeProvider>
+    );
+    await act(async () => {
+      resolveRefund({
+        status: 200,
+        data: {
+          message: "Refund recorded",
+          refund_operation: { state: "succeeded", amount_cents: 4000, currency: "CAD" },
+          refund_transaction: { id: 73, amount_cents: 4000, currency: "CAD", provider: "stripe" },
+        },
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(/^refund recorded$/i)).not.toBeInTheDocument();
+    expect(window.sessionStorage.length).toBe(1);
   });
 
   test("opens Commerce Copilot order explanation in preview mode", async () => {

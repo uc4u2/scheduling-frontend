@@ -57,6 +57,13 @@ import { getUserTimezone } from "../../../utils/timezone";
 import { isMobileComplianceMode } from "../../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../../components/mobile/MobileWebOnlyNotice";
 import CommerceCopilotDrawer from "../../../components/commerce-copilot/CommerceCopilotDrawer";
+import {
+  clearProductOrderRefundRecovery,
+  createProductOrderRefundIdempotencyKey,
+  productOrderRefundRecoveryScope,
+  readProductOrderRefundRecovery,
+  saveProductOrderRefundRecovery,
+} from "../../../utils/productOrderRefundRecovery";
 const fulfillmentOptions = [
   { value: "all", label: "All statuses" },
   { value: "pending", label: "Pending" },
@@ -413,6 +420,45 @@ const formatPaymentStatusLabel = (status) =>
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ") || "Pending";
+
+const unresolvedRefundStates = new Set([
+  "submitting",
+  "provider_pending",
+  "outcome_unknown",
+  "reconciliation_required",
+  "reserved",
+]);
+
+const refundFormFromRecovery = (baseForm, recovery) => {
+  const payload = recovery?.payload;
+  if (!payload) return baseForm;
+  const selectedById = new Map(
+    (Array.isArray(payload.restock_items) ? payload.restock_items : [])
+      .map((row) => [String(row?.order_item_id || row?.item_id || row?.product_order_item_id || ""), row]),
+  );
+  const items = {};
+  Object.entries(baseForm.items || {}).forEach(([key, item]) => {
+    const selected = selectedById.get(String(key));
+    items[key] = {
+      ...item,
+      selected: Boolean(selected),
+      quantity: selected?.quantity ?? item.quantity,
+    };
+  });
+  return {
+    ...baseForm,
+    amount: Number.isInteger(payload.amount_cents) ? (payload.amount_cents / 100).toFixed(2) : "",
+    currency: payload.currency || baseForm.currency,
+    provider: "stripe",
+    auto: true,
+    note: payload.note || "",
+    reason: payload.reason || "",
+    restockAll: Boolean(payload.restock_all),
+    items,
+    refundPlatformFee: Boolean(payload.refund_platform_fee),
+    reverseTransfer: Boolean(payload.reverse_transfer),
+  };
+};
 const parseSimpleCsv = (text) => {
   if (!text) return [];
   const lines = text
@@ -604,6 +650,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     reverseTransfer: false,
   });
   const [refundSectionOpen, setRefundSectionOpen] = useState(false);
+  const [refundRecovery, setRefundRecovery] = useState(null);
+  const refundRequestSequenceRef = useRef(0);
   const [showRefundAdvanced, setShowRefundAdvanced] = useState(false);
   const [shippingSettings, setShippingSettings] = useState(null);
   const [shippingSettingsLoading, setShippingSettingsLoading] = useState(false);
@@ -685,6 +733,14 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [fulfillmentSaving, setFulfillmentSaving] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
   const [refundSaving, setRefundSaving] = useState(false);
+  useEffect(() => {
+    // An account/tenant switch invalidates any response still in flight for
+    // the previous authenticated context. Persisted recovery is scoped to the
+    // old claims and will not be loaded for the new context.
+    refundRequestSequenceRef.current += 1;
+    setRefundSaving(false);
+    setRefundRecovery(null);
+  }, [token]);
   const [inventoryResolutionSaving, setInventoryResolutionSaving] = useState("");
   const [showInventoryFailureDetails, setShowInventoryFailureDetails] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -727,6 +783,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     () => formatCurrencyWithCode(outstandingAmount, detailCurrency),
     [outstandingAmount, detailCurrency]
   );
+  const refundRecoveryUnresolved = unresolvedRefundStates.has(refundRecovery?.state);
+  const refundRecoveryFailed = refundRecovery?.state === "failed";
+  const refundRecoveryRefreshFailed = refundRecovery?.state === "succeeded" && refundRecovery?.refreshFailed;
+  const refundInputsLocked = refundRecoveryUnresolved || refundRecoveryFailed || refundRecoveryRefreshFailed;
   const packageProfiles = useMemo(
     () => (Array.isArray(shippingSettings?.package_profiles) ? shippingSettings.package_profiles : []),
     [shippingSettings]
@@ -822,9 +882,11 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
 
       const total = data?.pagination?.total ?? (data?.orders?.length || 0);
       setPagination((prev) => ({ ...prev, total }));
+      return true;
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to load product orders";
       showMessage(message, "error");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -849,7 +911,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   useEffect(() => {
     loadShippingSettings();
   }, [loadShippingSettings]);
-  const fetchOrderDetail = useCallback(async (orderId) => {
+  const fetchOrderDetail = useCallback(async (orderId, options = {}) => {
     if (!orderId) return;
     setDetailLoading(true);
     try {
@@ -912,7 +974,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         setDisplayCurrency(normalizedDetailCurrency);
         setActiveCurrency(normalizedDetailCurrency);
       }
-      setRefundForm({
+      const baseRefundForm = {
         amount: "",
         currency: (normalizedDetailCurrency || "USD").toUpperCase(),
         provider: stripeEligible ? "stripe" : "manual",
@@ -924,7 +986,15 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         items: itemMap,
         refundPlatformFee: false,
         reverseTransfer: false,
+      };
+      const recoveryScope = productOrderRefundRecoveryScope({
+        token,
+        companyId: data?.company_id || data?.company?.id,
+        orderId,
       });
+      const savedRecovery = readProductOrderRefundRecovery(recoveryScope);
+      setRefundRecovery(savedRecovery);
+      setRefundForm(refundFormFromRecovery(baseRefundForm, savedRecovery));
       setRefundSectionOpen(false);
       setShowRefundAdvanced(false);
       setShowInventoryFailureDetails(false);
@@ -932,24 +1002,30 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       setOrderShippingShipmentId("");
       setOrderShippingSelectedRateId("");
       setOrderShippingWarning("");
+      return true;
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to load order details";
-      showMessage(message, "error");
-      setOrderDetail(null);
+      if (!options.quiet) showMessage(message, "error");
+      if (!options.preserveOnError) setOrderDetail(null);
+      return false;
     } finally {
       setDetailLoading(false);
     }
-  }, [headers, showMessage, displayCurrency]);
+  }, [headers, showMessage, displayCurrency, token]);
   useEffect(() => {
     if (detailOpen && selectedOrderId) {
       fetchOrderDetail(selectedOrderId);
     }
   }, [detailOpen, selectedOrderId, fetchOrderDetail]);
   const openOrderDetail = useCallback((orderId) => {
+    refundRequestSequenceRef.current += 1;
+    setRefundSaving(false);
     setSelectedOrderId(orderId);
     setDetailOpen(true);
   }, []);
   const closeDetail = useCallback(() => {
+    refundRequestSequenceRef.current += 1;
+    setRefundSaving(false);
     setDetailOpen(false);
     setSelectedOrderId(null);
     setOrderDetail(null);
@@ -1394,16 +1470,41 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const handleRefundSubmit = useCallback(async () => {
     if (!orderDetail) return;
 
+    const recoveryScope = productOrderRefundRecoveryScope({
+      token,
+      companyId: orderDetail?.company_id || orderDetail?.company?.id,
+      orderId: orderDetail.id,
+    });
+    const storedRecovery = readProductOrderRefundRecovery(recoveryScope);
+    const stateRecoveryMatchesScope = Boolean(
+      recoveryScope
+      && refundRecovery?.scope
+      && Object.entries(recoveryScope).every(
+        ([field, value]) => String(refundRecovery.scope?.[field] || "") === String(value),
+      ),
+    );
+    const activeRecovery = storedRecovery || (stateRecoveryMatchesScope ? refundRecovery : null);
+    const recoveringStripeRefund = Boolean(
+      activeRecovery?.payload?.idempotency_key
+      && activeRecovery?.payload?.provider === "stripe"
+      && unresolvedRefundStates.has(activeRecovery?.state),
+    );
+
+    if (activeRecovery?.state === "failed") {
+      showMessage("This refund attempt failed conclusively. Start a new refund operation to try again.", "warning");
+      return;
+    }
+
     const amountValueRaw = (refundForm.amount ?? "").toString().trim();
     const hasAmount = amountValueRaw.length > 0;
     const numericAmount = Number(amountValueRaw);
 
-    if (refundForm.auto && stripeEligible && connectWarning) {
+    if (!recoveringStripeRefund && refundForm.auto && stripeEligible && connectWarning) {
       showMessage("Stripe onboarding incomplete - finish setup before issuing Stripe refunds.", "warning");
       return;
     }
 
-    if (refundForm.auto && stripeEligible) {
+    if (!recoveringStripeRefund && refundForm.auto && stripeEligible) {
       if (hasAmount) {
         if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
           showMessage("Enter a valid refund amount", "warning");
@@ -1414,7 +1515,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           return;
         }
       }
-    } else {
+    } else if (!recoveringStripeRefund) {
       if (!hasAmount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
         showMessage("Enter a valid refund amount", "warning");
         return;
@@ -1426,6 +1527,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     }
 
     setRefundSaving(true);
+    const requestSequence = ++refundRequestSequenceRef.current;
+    const submittedOrderId = String(orderDetail.id);
+    let submittedRecovery = activeRecovery;
     try {
       const normalizedCurrency = (normalizeCurrency(
         refundForm.currency ||
@@ -1436,54 +1540,87 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           "USD"
       ) || "USD").toUpperCase();
 
-      const payload = {
-        currency: normalizedCurrency,
-      };
+      let payload = recoveringStripeRefund
+        ? { ...activeRecovery.payload }
+        : { currency: normalizedCurrency };
 
-      const trimmedNote = refundForm.note?.trim();
-      const trimmedReason = refundForm.reason?.trim();
-      if (trimmedNote) payload.note = trimmedNote;
-      if (trimmedReason) payload.reason = trimmedReason;
+      if (!recoveringStripeRefund) {
+        const trimmedNote = refundForm.note?.trim();
+        const trimmedReason = refundForm.reason?.trim();
+        if (trimmedNote) payload.note = trimmedNote;
+        if (trimmedReason) payload.reason = trimmedReason;
 
-      if (refundForm.auto && stripeEligible) {
-        payload.auto = true;
-        if (hasAmount) {
-          const cents = Math.round(numericAmount * 100);
-          if (cents > 0) {
-            payload.amount_cents = cents;
+        if (refundForm.auto && stripeEligible) {
+          if (!recoveryScope) {
+            showMessage("Your account context could not be verified. Reload the page before issuing this refund.", "error");
+            return;
           }
+          payload.auto = true;
+          payload.provider = "stripe";
+          payload.idempotency_key = createProductOrderRefundIdempotencyKey(orderDetail.id);
+          if (hasAmount) {
+            const cents = Math.round(numericAmount * 100);
+            if (cents > 0) payload.amount_cents = cents;
+          }
+          if (refundForm.refundPlatformFee) payload.refund_platform_fee = true;
+          if (refundForm.reverseTransfer) payload.reverse_transfer = true;
+        } else {
+          const cents = Math.round(numericAmount * 100);
+          payload.amount_cents = cents;
+          payload.provider = (refundForm.provider || "manual").trim() || "manual";
+          const providerRef = refundForm.provider_ref?.trim();
+          if (providerRef) payload.provider_ref = providerRef;
         }
-        if (refundForm.refundPlatformFee) {
-          payload.refund_platform_fee = true;
-        }
-        if (refundForm.reverseTransfer) {
-          payload.reverse_transfer = true;
-        }
-      } else {
-        const cents = Math.round(numericAmount * 100);
-        payload.amount_cents = cents;
-        payload.provider = (refundForm.provider || "manual").trim() || "manual";
-        const providerRef = refundForm.provider_ref?.trim();
-        if (providerRef) {
-          payload.provider_ref = providerRef;
-        }
-      }
 
-      const restockEntries = Object.values(refundForm.items || {})
-        .filter((item) => item.trackStock && item.selected && Number(item.quantity) > 0)
-        .map((item) => ({
-          order_item_id: item.id,
-          product_id: item.productId,
-          quantity: Number(item.quantity),
-        }));
-      if (restockEntries.length) {
-        payload.restock_items = restockEntries;
-      } else if (refundForm.restockAll) {
-        payload.restock_all = true;
+        const restockEntries = Object.values(refundForm.items || {})
+          .filter((item) => item.trackStock && item.selected && Number(item.quantity) > 0)
+          .map((item) => ({
+            order_item_id: item.id,
+            product_id: item.productId,
+            quantity: Number(item.quantity),
+          }));
+        if (restockEntries.length) payload.restock_items = restockEntries;
+        else if (refundForm.restockAll) payload.restock_all = true;
+
+        if (payload.provider === "stripe") {
+          submittedRecovery = saveProductOrderRefundRecovery(recoveryScope, {
+            idempotencyKey: payload.idempotency_key,
+            payload,
+            state: "submitting",
+            message: "Refund submission is being confirmed.",
+          });
+          setRefundRecovery(submittedRecovery);
+        }
       }
 
       const response = await api.post(`/inventory/product-orders/${orderDetail.id}/refund`, payload, { headers });
+      if (
+        requestSequence !== refundRequestSequenceRef.current
+        || String(selectedOrderId || "") !== submittedOrderId
+      ) return;
+
+      const responseState = response?.data?.refund_operation?.state || response?.data?.payment_state;
+      if (response?.status === 202 || unresolvedRefundStates.has(responseState)) {
+        const pending = saveProductOrderRefundRecovery(recoveryScope, {
+          idempotencyKey: payload.idempotency_key,
+          payload,
+          state: responseState || "provider_pending",
+          message: response?.data?.message || "Refund outcome is still pending.",
+        });
+        setRefundRecovery(pending);
+        showMessage(response?.data?.message || "Refund submitted. Check its status before starting another refund.", "warning");
+        return;
+      }
+
+      if (payload.provider === "stripe") clearProductOrderRefundRecovery(recoveryScope);
       const successMessage = response?.data?.message || "Refund recorded";
+      setRefundRecovery({
+        state: "succeeded",
+        message: successMessage,
+        payload,
+        idempotencyKey: payload.idempotency_key,
+        refreshFailed: false,
+      });
       showMessage(successMessage, "success");
 
       const refundTxn = response?.data?.refund_transaction;
@@ -1548,18 +1685,67 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           items: resetItems,
         };
       });
-      await fetchOrderDetail(orderDetail.id);
-      await loadOrders();
+      const detailRefreshed = await fetchOrderDetail(orderDetail.id, {
+        preserveOnError: true,
+        quiet: true,
+      });
+      const listRefreshed = await loadOrders();
+      if (
+        requestSequence !== refundRequestSequenceRef.current
+        || String(selectedOrderId || "") !== submittedOrderId
+      ) return;
+      if (!detailRefreshed || !listRefreshed) {
+        setRefundRecovery({
+          state: "succeeded",
+          message: "Refund saved, but the order could not be refreshed.",
+          payload,
+          idempotencyKey: payload.idempotency_key,
+          refreshFailed: true,
+        });
+        showMessage("Refund saved. Refresh the order to load the latest totals.", "warning");
+      } else {
+        setRefundRecovery(null);
+      }
     } catch (error) {
+      if (
+        requestSequence !== refundRequestSequenceRef.current
+        || String(selectedOrderId || "") !== submittedOrderId
+      ) return;
       if (isStripeOnboardingIncomplete(error)) {
         showMessage("Stripe onboarding incomplete - finish setup before issuing Stripe refunds.", "warning");
         connectRefreshStatus?.();
       } else {
-        const message = error?.response?.data?.error || error?.message || "Unable to record refund";
-        showMessage(message, "error");
+        const responseData = error?.response?.data || {};
+        const message = responseData?.error || error?.message || "Refund outcome could not be confirmed";
+        const terminalFailure = Boolean(
+          responseData?.refund_operation?.can_start_new
+          || responseData?.code === "PRODUCT_REFUND_PROVIDER_FAILED",
+        );
+        if (submittedRecovery?.payload?.idempotency_key && recoveryScope) {
+          const state = terminalFailure
+            ? "failed"
+            : responseData?.refund_operation?.state
+              || responseData?.payment_state
+              || "outcome_unknown";
+          const saved = saveProductOrderRefundRecovery(recoveryScope, {
+            idempotencyKey: submittedRecovery.idempotencyKey,
+            payload: submittedRecovery.payload,
+            state,
+            message,
+          });
+          setRefundRecovery(saved);
+        }
+        showMessage(
+          terminalFailure
+            ? message
+            : `${message} Retry this same refund to check its status.`,
+          terminalFailure ? "error" : "warning",
+        );
       }
     } finally {
-      setRefundSaving(false);
+      if (requestSequence === refundRequestSequenceRef.current) {
+        setRefundSaving(false);
+      }
     }
   }, [
     orderDetail,
@@ -1573,7 +1759,47 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     connectWarning,
     detailCurrency,
     displayCurrency,
+    token,
+    refundRecovery,
+    selectedOrderId,
+    connectRefreshStatus,
   ]);
+  const handleStartNewRefundOperation = useCallback(() => {
+    if (!orderDetail?.id) return;
+    const recoveryScope = productOrderRefundRecoveryScope({
+      token,
+      companyId: orderDetail?.company_id || orderDetail?.company?.id,
+      orderId: orderDetail.id,
+    });
+    clearProductOrderRefundRecovery(recoveryScope);
+    setRefundRecovery(null);
+    showMessage("A new refund operation can now be submitted.", "info");
+  }, [orderDetail, token, showMessage]);
+  const handleRefreshRefundedOrder = useCallback(async () => {
+    if (!orderDetail?.id) return;
+    const orderId = orderDetail.id;
+    const requestSequence = ++refundRequestSequenceRef.current;
+    setRefundSaving(true);
+    const detailRefreshed = await fetchOrderDetail(orderId, {
+      preserveOnError: true,
+      quiet: true,
+    });
+    const listRefreshed = await loadOrders();
+    if (requestSequence !== refundRequestSequenceRef.current) return;
+    if (detailRefreshed && listRefreshed) {
+      setRefundRecovery(null);
+      showMessage("Order refreshed.", "success");
+    } else {
+      setRefundRecovery((current) => ({
+        ...(current || {}),
+        state: "succeeded",
+        refreshFailed: true,
+        message: "Refund saved, but the order could not be refreshed.",
+      }));
+      showMessage("Refund remains saved. The order refresh is still unavailable.", "warning");
+    }
+    setRefundSaving(false);
+  }, [orderDetail, fetchOrderDetail, loadOrders, showMessage]);
   const handleResolveInventoryIssue = useCallback(
     async (action) => {
       if (!orderDetail?.id || !action) return;
@@ -2953,6 +3179,29 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
                       Refund amount records payment reversal. Restock is optional and only available for orders with committed inventory.
                     </Typography>
+                    {refundRecovery ? (
+                      <Alert
+                        severity={refundRecoveryFailed ? "error" : refundRecoveryRefreshFailed ? "success" : "warning"}
+                        sx={{ mb: 2 }}
+                        action={
+                          refundRecoveryFailed ? (
+                            <Button color="inherit" size="small" onClick={handleStartNewRefundOperation}>
+                              Start new refund
+                            </Button>
+                          ) : refundRecoveryRefreshFailed ? (
+                            <Button color="inherit" size="small" onClick={handleRefreshRefundedOrder}>
+                              Refresh order
+                            </Button>
+                          ) : null
+                        }
+                      >
+                        {refundRecoveryRefreshFailed
+                          ? "Refund saved, but the latest order totals could not be loaded."
+                          : refundRecoveryFailed
+                            ? (refundRecovery.message || "The provider confirmed this refund attempt failed.")
+                            : (refundRecovery.message || "This refund outcome is not confirmed yet. Use the same operation to check status.")}
+                      </Alert>
+                    ) : null}
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={4}>
                         <TextField
@@ -2962,6 +3211,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           type="number"
                           value={refundForm.amount}
                           onChange={(event) => setRefundForm((prev) => ({ ...prev, amount: event.target.value }))}
+                          disabled={refundInputsLocked}
                           InputProps={{ startAdornment: <InputAdornment position="start">{detailCurrency}</InputAdornment> }}
                         />
                         <Typography variant="caption" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -2982,6 +3232,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           onChange={(event) =>
                             setRefundForm((prev) => ({ ...prev, currency: event.target.value.toUpperCase() }))
                           }
+                          disabled={refundInputsLocked}
                         />
                       </Grid>
                       <Grid item xs={12} md={4}>
@@ -2990,7 +3241,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                             <Switch
                               checked={refundForm.auto && stripeEligible}
                               onChange={handleStripeAutoToggle}
-                              disabled={!stripeEligible}
+                              disabled={!stripeEligible || refundInputsLocked}
                             />
                           }
                           label="Refund via Stripe"
@@ -3007,6 +3258,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                             <Switch
                               checked={showRefundAdvanced}
                               onChange={(event) => setShowRefundAdvanced(event.target.checked)}
+                              disabled={refundInputsLocked}
                             />
                           }
                           label="Show advanced refund options"
@@ -3021,7 +3273,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                 onChange={(event) =>
                                   setRefundForm((prev) => ({ ...prev, refundPlatformFee: event.target.checked }))
                                 }
-                                disabled={connectWarning}
+                                disabled={connectWarning || refundInputsLocked}
                               />
                             }
                             label="Refund platform fee"
@@ -3036,7 +3288,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                 onChange={(event) =>
                                   setRefundForm((prev) => ({ ...prev, reverseTransfer: event.target.checked }))
                                 }
-                                disabled={!stripeEligible}
+                                disabled={!stripeEligible || refundInputsLocked}
                               />
                             }
                             label="Reverse transfer to connected account"
@@ -3057,6 +3309,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                               onChange={(event) =>
                                 setRefundForm((prev) => ({ ...prev, provider: event.target.value }))
                               }
+                              disabled={refundInputsLocked}
                             />
                           </Grid>
                           <Grid item xs={12} md={8}>
@@ -3068,6 +3321,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                               onChange={(event) =>
                                 setRefundForm((prev) => ({ ...prev, provider_ref: event.target.value }))
                               }
+                              disabled={refundInputsLocked}
                             />
                           </Grid>
                         </>
@@ -3086,6 +3340,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                     Object.values(refundForm.items || {}).some((item) => item.trackStock && item.selected)
                                   }
                                   onChange={handleRestockAllToggle}
+                                  disabled={refundInputsLocked}
                                 />
                               }
                               label="Select all tracked items"
@@ -3102,7 +3357,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                     <Checkbox
                                       checked={item.selected}
                                       onChange={handleRestockItemToggle(item.id)}
-                                      disabled={!item.trackStock}
+                                      disabled={!item.trackStock || refundInputsLocked}
                                     />
                                   }
                                   label={`${item.name || "Item"}${item.variantLabel ? ` — ${item.variantLabel}` : ""}${item.trackStock ? "" : " (not tracked)"}`}
@@ -3114,7 +3369,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                   value={item.quantity}
                                   onChange={handleRestockQuantityChange(item.id)}
                                   inputProps={{ min: 0, max: item.remainingEligible ?? item.maxQuantity }}
-                                  disabled={!item.trackStock || !item.selected}
+                                  disabled={!item.trackStock || !item.selected || refundInputsLocked}
                                   sx={{ width: 140 }}
                                 />
                                 <Stack spacing={0.25} sx={{ ml: { xs: 0, sm: 2 } }}>
@@ -3152,6 +3407,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           label="Reason"
                           value={refundForm.reason}
                           onChange={(event) => setRefundForm((prev) => ({ ...prev, reason: event.target.value }))}
+                          disabled={refundInputsLocked}
                           placeholder="Optional reason for reporting"
                         />
                       </Grid>
@@ -3162,6 +3418,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           label="Internal note"
                           value={refundForm.note}
                           onChange={(event) => setRefundForm((prev) => ({ ...prev, note: event.target.value }))}
+                          disabled={refundInputsLocked}
                           multiline
                           minRows={2}
                         />
@@ -3172,10 +3429,19 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                         variant="outlined"
                         color="error"
                         onClick={handleRefundSubmit}
-                        disabled={refundSaving || (refundForm.auto && stripeEligible && connectWarning)}
+                        disabled={
+                          refundSaving
+                          || refundRecoveryFailed
+                          || refundRecoveryRefreshFailed
+                          || (!refundRecoveryUnresolved && refundForm.auto && stripeEligible && connectWarning)
+                        }
                         startIcon={<MonetizationOnIcon />}
                       >
-                        {refundSaving ? <CircularProgress size={20} /> : "Record refund"}
+                        {refundSaving
+                          ? <CircularProgress size={20} />
+                          : refundRecoveryUnresolved
+                            ? "Check refund status"
+                            : "Record refund"}
                       </Button>
                     </Stack>
                   </Paper>

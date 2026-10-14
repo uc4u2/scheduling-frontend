@@ -94,8 +94,13 @@ const deliveryMethods = {
 };
 
 const installApiMocks = async (page) => {
+  const refundAcceptance = {
+    requests: [],
+    providerEffects: 0,
+    responseLost: false,
+  };
   await page.setRequestInterception(true);
-  page.on("request", (request) => {
+  page.on("request", async (request) => {
     const url = new URL(request.url());
     const isApiOrigin = url.origin === "http://127.0.0.1:5000"
       || url.hostname === "scheduling-application.onrender.com"
@@ -128,6 +133,69 @@ const installApiMocks = async (page) => {
         role: "manager",
         company_id: 36,
       });
+    } else if (route === "/connect/status") {
+      jsonResponse(request, 200, {
+        connected: true,
+        charges_enabled: true,
+        payouts_enabled: true,
+      });
+    } else if (route === "/inventory/product-orders" && request.method() === "GET") {
+      jsonResponse(request, 200, {
+        orders: [{
+          id: 901,
+          company_id: 36,
+          client_name: "Refund QA Customer",
+          delivery_method: "shipping",
+          fulfillment_status: "pending",
+          payment_status: "paid",
+          total_amount: 95,
+          stripe_total_cents: 9500,
+          refunded_cents: refundAcceptance.providerEffects ? 4000 : 0,
+          currency: "CAD",
+        }],
+        pagination: { total: 1 },
+        company: { id: 36, country_code: "CA" },
+      });
+    } else if (route === "/inventory/product-orders/901" && request.method() === "GET") {
+      jsonResponse(request, 200, {
+        id: 901,
+        company_id: 36,
+        client_name: "Refund QA Customer",
+        delivery_method: "shipping",
+        fulfillment_status: "pending",
+        payment_status: refundAcceptance.providerEffects ? "partially_refunded" : "paid",
+        total_amount: 95,
+        stripe_total_cents: 9500,
+        refunded_cents: refundAcceptance.providerEffects ? 4000 : 0,
+        currency: "CAD",
+        payment_intent_id: "pi_mocked_refund_recovery",
+        inventory_committed: true,
+        items: [],
+        payments: [{ provider: "stripe", status: "captured", currency: "CAD" }],
+        events: [],
+        company: { id: 36, timezone: "America/Toronto" },
+      });
+    } else if (route === "/inventory/product-orders/901/refund" && request.method() === "POST") {
+      const payload = JSON.parse(request.postData() || "{}");
+      refundAcceptance.requests.push(payload);
+      if (!refundAcceptance.responseLost) {
+        refundAcceptance.responseLost = true;
+        refundAcceptance.providerEffects = 1;
+        request.abort("failed");
+      } else {
+        jsonResponse(request, 200, {
+          message: "Refund recovered",
+          idempotent_replay: true,
+          refund_operation: { state: "succeeded", amount_cents: 4000, currency: "CAD" },
+          refund_transaction: {
+            id: 1901,
+            amount_cents: 4000,
+            currency: "CAD",
+            provider: "stripe",
+            status: "refunded",
+          },
+        });
+      }
     } else if (route === "/billing/status") {
       jsonResponse(request, 200, { active: true, status: "active", plan: "pro" });
     } else if (route === "/inventory/shipping-settings") {
@@ -180,6 +248,7 @@ const installApiMocks = async (page) => {
       jsonResponse(request, 200, {});
     }
   });
+  return refundAcceptance;
 };
 
 const waitForText = async (page, text, timeout = 30000) => {
@@ -308,6 +377,80 @@ const openCustomerCheckout = async (browser, viewport, label) => {
   await page.close();
 };
 
+const clickByText = async (page, selector, text) => {
+  const clicked = await page.evaluate((candidateSelector, candidateText) => {
+    const node = [...document.querySelectorAll(candidateSelector)]
+      .find((entry) => entry.textContent.trim().toLowerCase() === candidateText.toLowerCase());
+    if (!node || node.disabled) return false;
+    node.click();
+    return true;
+  }, selector, text);
+  assert(clicked, `Could not click ${selector} labelled "${text}"`);
+};
+
+const openManagerRefundRecovery = async (browser, viewport, label) => {
+  const page = await browser.newPage();
+  await page.setViewport(viewport);
+  const acceptance = await installApiMocks(page);
+  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await page.evaluate(() => {
+    const claims = btoa(JSON.stringify({ sub: "qa-manager-7", company_id: 36 })).replace(/=/g, "");
+    localStorage.setItem("token", `header.${claims}.signature`);
+    localStorage.setItem("role", "manager");
+    localStorage.setItem("company_id", "36");
+  });
+  const route = `${baseUrl}/manager/advanced-management?panel=product-orders`;
+  await page.goto(route, { waitUntil: "networkidle0" });
+  await waitForText(page, "Product Orders");
+  await waitForText(page, "Refund QA Customer");
+  await clickByText(page, "button", "#901");
+  await waitForText(page, "Order #901");
+  await clickByText(page, "button, [role=tab]", "Actions");
+  await waitForText(page, "Add to timeline");
+  await clickByText(page, "button, h6, p, span", "Refund");
+  const amountInputId = await page.evaluate(() => {
+    const labelNode = [...document.querySelectorAll("label")]
+      .find((node) => node.textContent.trim() === "Amount");
+    return labelNode && labelNode.htmlFor ? labelNode.htmlFor : null;
+  });
+  assert(amountInputId, `${label}: refund amount input was unavailable`);
+  await page.evaluate((inputId) => {
+    const input = document.getElementById(inputId);
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(input, "40.00");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, amountInputId);
+  await clickByText(page, "button", "Record refund");
+  await waitForText(page, "Retry this same refund to check its status");
+
+  await page.reload({ waitUntil: "networkidle0" });
+  await waitForText(page, "Product Orders");
+  await waitForText(page, "Refund QA Customer");
+  await clickByText(page, "button", "#901");
+  await waitForText(page, "Order #901");
+  await clickByText(page, "button, [role=tab]", "Actions");
+  await waitForText(page, "Add to timeline");
+  await clickByText(page, "button, h6, p, span", "Refund");
+  await waitForText(page, "Check refund status");
+  await clickByText(page, "button", "Check refund status");
+  await waitForText(page, "Refund recovered");
+
+  assert(acceptance.providerEffects === 1, `${label}: response loss produced more than one provider effect`);
+  assert(acceptance.requests.length === 2, `${label}: expected one submit and one recovery request`);
+  assert(
+    acceptance.requests[0].idempotency_key === acceptance.requests[1].idempotency_key,
+    `${label}: refund recovery rotated its idempotency key`,
+  );
+  assert(
+    JSON.stringify(acceptance.requests[0]) === JSON.stringify(acceptance.requests[1]),
+    `${label}: refund recovery changed its frozen payload`,
+  );
+  await assertNoOverflow(page, `${label} Product Order refund recovery`);
+  await page.screenshot({ path: path.join(screenshotDir, `${label}-refund-recovery.png`), fullPage: true });
+  await page.close();
+};
+
 const main = async () => {
   assert(fs.existsSync(path.join(buildDir, "index.html")), "Run the production build before browser acceptance.");
   assert(fs.existsSync(executablePath), `Chromium executable not found: ${executablePath}`);
@@ -323,6 +466,8 @@ const main = async () => {
     await openManagerSettings(browser, { width: 1440, height: 1000 }, "desktop-1440");
     await openCustomerCheckout(browser, { width: 390, height: 844 }, "mobile-390");
     await openCustomerCheckout(browser, { width: 1440, height: 1000 }, "desktop-1440");
+    await openManagerRefundRecovery(browser, { width: 390, height: 844 }, "mobile-390");
+    await openManagerRefundRecovery(browser, { width: 1440, height: 1000 }, "desktop-1440");
     console.log("Manual shipping browser acceptance passed at mobile and desktop sizes.");
   } finally {
     await browser.close();
