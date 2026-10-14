@@ -281,6 +281,28 @@ const focusHighlightSx = (active) => ({
   scrollMarginTop: 96,
 });
 
+const compactDetailsSx = {
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: 1,
+  overflow: "hidden",
+  "& > summary": {
+    cursor: "pointer",
+    px: 1.5,
+    py: 1.25,
+    minHeight: 48,
+    display: "flex",
+    alignItems: "center",
+    fontWeight: 700,
+    color: "text.primary",
+    backgroundColor: "action.hover",
+  },
+  "&[open] > summary": {
+    borderBottom: "1px solid",
+    borderColor: "divider",
+  },
+};
+
 const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false }) => {
   const token = tokenProp || localStorage.getItem("token") || "";
   const headers = useMemo(
@@ -376,6 +398,10 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     }
     return `Charge ${flatRate} once per shipped order. Shipping becomes free at ${formatMinorMoney(freeThresholdCents, currency)} of eligible physical products.`;
   }, [flatRateInput, freeThresholdInput, settings?.business_currency, settings?.manual_shipping_currency, settings?.manual_shipping_pricing_enabled]);
+  const manualPricingInputValid = useMemo(() => (
+    dollarsToCents(flatRateInput) !== undefined
+    && dollarsToCents(freeThresholdInput, { optional: true }) !== undefined
+  ), [flatRateInput, freeThresholdInput]);
   const inlineSelectMenuProps = useMemo(
     () => ({
       disablePortal: true,
@@ -895,7 +921,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                           const checked = Boolean(settings?.[meta.field]);
                           const customLabel = settings?.[meta.customLabelField] || "";
                           return (
-                            <Grid key={code} item xs={12}>
+                            <Grid key={code} item xs={12} sm={6}>
                               <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, opacity: deliveryEnabled ? 1 : 0.78 }}>
                                 <Stack spacing={1}>
                                   <FormControlLabel
@@ -940,38 +966,26 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                               Shipping coverage
                             </Typography>
                             <Grid container spacing={1.5}>
-                              <Grid item xs={12} md={4}>
-                                <Stack spacing={1}>
-                                  <TextField
-                                    fullWidth
-                                    size="small"
-                                    label="Origin country"
-                                    value={settings.origin_country || ""}
-                                    onChange={(e) => updateField("origin_country", String(e.target.value || "").toUpperCase().slice(0, 2))}
-                                    helperText="Enter the 2-letter country code, for example CA or US."
-                                    inputProps={{ maxLength: 2 }}
-                                  />
-                                  <TextField
-                                    select
-                                    fullWidth
-                                    size="small"
-                                    label="Quick pick country"
-                                    InputLabelProps={{ shrink: true }}
-                                    value=""
-                                    onChange={(e) => updateField("origin_country", e.target.value)}
-                                    SelectProps={{ MenuProps: inlineSelectMenuProps, displayEmpty: true }}
-                                    helperText="Optional: choose from the list instead of typing."
-                                  >
-                                    <MenuItem value="" disabled>Select a country</MenuItem>
-                                    {countryCatalog.map((option) => (
-                                      <MenuItem key={option.code} value={option.code}>
-                                        {option.label} ({option.code})
-                                      </MenuItem>
-                                    ))}
-                                  </TextField>
-                                </Stack>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  select
+                                  fullWidth
+                                  size="small"
+                                  label="Origin country"
+                                  value={settings.origin_country || ""}
+                                  onChange={(e) => updateField("origin_country", e.target.value)}
+                                  SelectProps={{ MenuProps: inlineSelectMenuProps }}
+                                  helperText="The country you ship orders from."
+                                >
+                                  <MenuItem value="" disabled>Select a country</MenuItem>
+                                  {countryCatalog.map((option) => (
+                                    <MenuItem key={option.code} value={option.code}>
+                                      {option.label} ({option.code})
+                                    </MenuItem>
+                                  ))}
+                                </TextField>
                               </Grid>
-                              <Grid item xs={12} md={4}>
+                              <Grid item xs={12} md={6}>
                                 <TextField
                                   select
                                   fullWidth
@@ -986,7 +1000,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                                   <MenuItem value="selected_countries">Selected countries</MenuItem>
                                 </TextField>
                               </Grid>
-                              <Grid item xs={12} md={8}>
+                              {destinationPolicyMode === "selected_countries" && <Grid item xs={12}>
                                 <Autocomplete
                                   multiple
                                   options={countryCatalog}
@@ -1004,7 +1018,6 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                                     updateField("destination_policy_mode", "selected_countries");
                                   }}
                                   isOptionEqualToValue={(option, value) => option.code === value.code}
-                                  disabled={destinationPolicyMode !== "selected_countries"}
                                   renderTags={(value, getTagProps) =>
                                     value.map((option, index) => {
                                       const { key, ...tagProps } = getTagProps({ index });
@@ -1027,7 +1040,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                                     />
                                   )}
                                 />
-                              </Grid>
+                              </Grid>}
                             </Grid>
                             <Typography variant="caption" color="text.secondary">
                               Manual shipping still needs an origin country and destination policy so checkout knows which countries to offer customers.
@@ -1038,33 +1051,14 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     )}
                   </Stack>
                 </Paper>
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                  <Stack spacing={1}>
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      Customer checkout preview
-                    </Typography>
-                    {!deliveryEnabled || previewMethodLabels.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
-                        No delivery options will be shown.
-                      </Typography>
-                    ) : (
-                      <>
-                        <Typography variant="body2" color="text.secondary">
-                          How would you like to receive your order?
-                        </Typography>
-                        <Stack spacing={0.5}>
-                          {previewMethodLabels.map((label) => (
-                            <Typography key={label} variant="body2">
-                              ○ {label}
-                            </Typography>
-                          ))}
-                        </Stack>
-                      </>
-                    )}
-                  </Stack>
-                </Paper>
+                <Alert severity={deliveryEnabled && previewMethodLabels.length ? "info" : "warning"}>
+                  <strong>Customer checkout:</strong>{" "}
+                  {deliveryEnabled && previewMethodLabels.length
+                    ? previewMethodLabels.join(" · ")
+                    : "No delivery options will be shown."}
+                </Alert>
                 {showManualShippingWarning && (
-                  <Alert severity="warning">
+                  <Alert severity={settings.manual_shipping_pricing_enabled ? "info" : "warning"}>
                     {settings.manual_shipping_pricing_enabled
                       ? "Manual parcel pricing is active. Checkout uses the saved flat charge and free-shipping threshold; EasyPost carrier charges are not added."
                       : "Manual fulfillment does not calculate carrier rates. Confirm that shipping is included in your Product price, enable Manual shipping pricing, or use EasyPost rates and labels."}
@@ -1083,7 +1077,18 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       </Stack>
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
                         <Chip size="small" label="1. Shipping coverage" variant="outlined" />
-                        <Chip size="small" label="2. Pricing rule" color="primary" />
+                        <Chip
+                          data-testid="manual-pricing-step-chip"
+                          size="small"
+                          label="2. Pricing rule"
+                          sx={{
+                            bgcolor: "action.selected",
+                            border: "1px solid",
+                            borderColor: "primary.main",
+                            color: "text.primary",
+                            fontWeight: 700,
+                          }}
+                        />
                         <Chip size="small" label="3. Customer policy" variant="outlined" />
                         <Chip size="small" label="4. Review & save" variant="outlined" />
                       </Stack>
@@ -1147,7 +1152,15 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       <Alert severity="info" variant="outlined">
                         Currency: {settings.business_currency || "Not configured"}. Allowed destinations: {settings.allowed_destination_countries?.length ? settings.allowed_destination_countries.join(", ") : "configure shipping coverage first"}.
                       </Alert>
-                      <Alert severity={settings.manual_shipping_pricing_enabled ? "success" : "info"}>
+                      <Alert
+                        severity={
+                          !settings.manual_shipping_pricing_enabled
+                            ? "info"
+                            : manualPricingInputValid
+                              ? "success"
+                              : "warning"
+                        }
+                      >
                         <strong>Current rule:</strong> {manualPricingSummary}
                       </Alert>
                       <Box component="details" sx={{ color: "text.secondary" }}>
@@ -1217,11 +1230,11 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     </Stack>
                   </Paper>
                 )}
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                  <Stack spacing={1.25}>
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      Customer Shipping & Returns information
-                    </Typography>
+                <Box component="details" sx={compactDetailsSx}>
+                  <Typography component="summary" variant="subtitle2">
+                    Customer shipping &amp; returns information
+                  </Typography>
+                  <Stack spacing={1.25} sx={{ p: 1.5 }}>
                     <Typography variant="body2" color="text.secondary">
                       This information appears on public Product pages. Do not include API keys, Package dimensions, carrier credentials, or internal fulfillment notes.
                     </Typography>
@@ -1243,7 +1256,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       onChange={(e) => updateField("customer_shipping_returns_policy_url", e.target.value)}
                     />
                   </Stack>
-                </Paper>
+                </Box>
               </Stack>
             )}
 
@@ -1259,40 +1272,18 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 )}
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Chip
+                    data-testid="easypost-connection-chip"
                     size="small"
-                    color={settings.easypost_connected ? "success" : "default"}
                     label={settings.easypost_connected ? "Connected" : "Not connected"}
-                    sx={
-                      settings.easypost_connected
-                        ? {
-                            fontWeight: 700,
-                            color: "#ffffff",
-                          }
-                        : {
-                            fontWeight: 700,
-                            color: "text.primary",
-                            bgcolor: "grey.100",
-                          }
-                    }
+                    variant={settings.easypost_connected ? STATUS_CHIP_CONTRACT.ready.variant : STATUS_CHIP_CONTRACT.info.variant}
+                    sx={settings.easypost_connected ? STATUS_CHIP_CONTRACT.ready.sx : STATUS_CHIP_CONTRACT.info.sx}
                   />
                   <Chip
+                    data-testid="easypost-address-verification-chip"
                     size="small"
-                    color={settings.address_verification_enabled !== false ? "info" : "default"}
-                    variant={settings.address_verification_enabled !== false ? "filled" : "outlined"}
                     label={settings.address_verification_enabled !== false ? "Address verification enabled" : "Address verification disabled"}
-                    sx={
-                      settings.address_verification_enabled !== false
-                        ? {
-                            bgcolor: "info.main",
-                            color: "#ffffff",
-                            fontWeight: 700,
-                          }
-                        : {
-                            fontWeight: 700,
-                            color: "text.primary",
-                            borderColor: "divider",
-                          }
-                    }
+                    variant={settings.address_verification_enabled !== false ? STATUS_CHIP_CONTRACT.available.variant : STATUS_CHIP_CONTRACT.info.variant}
+                    sx={settings.address_verification_enabled !== false ? STATUS_CHIP_CONTRACT.available.sx : STATUS_CHIP_CONTRACT.info.sx}
                   />
                   {settings.easypost_has_api_key && (
                     <Chip size="small" variant="outlined" label={`Key ••••${settings.easypost_api_key_last4 || ""}`} />
@@ -1315,62 +1306,88 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     Finish the EasyPost website account steps before expecting live rates or label purchase to work in Schedulaa.
                   </Alert>
                 )}
-                <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={4}>
-                    <FormControlLabel
-                      control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} disabled={!isEasyPostMode} />}
-                      label={labelWithHint("Clear stored API key", "Enable this only when rotating/removing the saved EasyPost key for this company.")}
-                    />
-                  </Grid>
-                </Grid>
-                <Box ref={apiKeySectionRef} sx={focusHighlightSx(focusedSection === "api_key")}>
-                <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={8}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={Boolean(settings.address_verification_enabled !== false)}
-                          onChange={(e) => updateField("address_verification_enabled", e.target.checked)}
-                          disabled={!isEasyPostMode}
-                        />
-                      }
-                      label={labelWithHint(
-                        "Verify customer shipping addresses before showing live rates",
-                        "Address verification checks deliverability and may suggest corrections before shipping rates are shown. Pickup and local delivery are not affected."
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={8}>
-                    {hintedTextField({
-                      fullWidth: true,
-                      size: "small",
-                      label: "EasyPost API key",
-                      hint: "Paste your EasyPost API key. It is stored encrypted. Enter a new key to rotate the existing one.",
-                      placeholder: settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key",
-                      value: apiKeyInput,
-                      onChange: (e) => setApiKeyInput(e.target.value),
-                      disabled: !isEasyPostMode,
-                    })}
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing || !isEasyPostMode}>
-                      {testing ? <CircularProgress size={18} /> : "Test connection"}
-                    </Button>
-                  </Grid>
-                </Grid>
+                <Box component="details" data-testid="easypost-connection-section" open sx={compactDetailsSx}>
+                  <Typography component="summary" variant="subtitle2">
+                    Connection &amp; address verification
+                  </Typography>
+                  <Stack spacing={1.25} sx={{ p: 1.5 }}>
+                    <Box ref={apiKeySectionRef} sx={focusHighlightSx(focusedSection === "api_key")}>
+                      <Grid container spacing={1.5} alignItems="center">
+                        <Grid item xs={12} md={8}>
+                          {hintedTextField({
+                            fullWidth: true,
+                            size: "small",
+                            label: "EasyPost API key",
+                            hint: "Paste your EasyPost API key. It is stored encrypted. Enter a new key to rotate the existing one.",
+                            placeholder: settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key",
+                            value: apiKeyInput,
+                            onChange: (e) => setApiKeyInput(e.target.value),
+                            disabled: !isEasyPostMode,
+                          })}
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing || !isEasyPostMode}>
+                            {testing ? <CircularProgress size={18} /> : "Test connection"}
+                          </Button>
+                        </Grid>
+                        <Grid item xs={12} md={8}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(settings.address_verification_enabled !== false)}
+                                onChange={(e) => updateField("address_verification_enabled", e.target.checked)}
+                                disabled={!isEasyPostMode}
+                              />
+                            }
+                            label={labelWithHint(
+                              "Verify customer shipping addresses before showing live rates",
+                              "Address verification checks deliverability and may suggest corrections before shipping rates are shown. Pickup and local delivery are not affected."
+                            )}
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <FormControlLabel
+                            control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} disabled={!isEasyPostMode} />}
+                            label={labelWithHint("Clear stored API key", "Enable this only when rotating/removing the saved EasyPost key for this company.")}
+                          />
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </Stack>
                 </Box>
                 {isEasyPostMode && (
-                <>
+                <Box component="details" data-testid="easypost-origin-section" open sx={compactDetailsSx}>
+                <Typography component="summary" variant="subtitle2">
+                  Origin address &amp; shipping coverage
+                </Typography>
+                <Box sx={{ p: 1.5 }}>
                 <Box ref={originSectionRef} sx={focusHighlightSx(focusedSection === "origin")}>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin name", hint: "Sender/business name used as shipment origin. Example: your store name.", value: settings.origin_name, onChange: (e) => updateField("origin_name", e.target.value), disabled: !isEasyPostMode })}</Grid>
-                  <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin phone", hint: "Contact phone for origin/sender address. Include country code where possible.", value: settings.origin_phone, onChange: (e) => updateField("origin_phone", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin name", hint: "Sender/business name used as shipment origin. Example: your store name.", value: settings.origin_name, onChange: (e) => updateField("origin_name", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin phone", hint: "Contact phone for origin/sender address. Include country code where possible.", value: settings.origin_phone, onChange: (e) => updateField("origin_phone", e.target.value), disabled: !isEasyPostMode })}</Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      label="Origin country"
+                      value={settings.origin_country || ""}
+                      onChange={(e) => updateField("origin_country", e.target.value)}
+                      SelectProps={{ MenuProps: inlineSelectMenuProps }}
+                    >
+                      <MenuItem value="" disabled>Select a country</MenuItem>
+                      {countryCatalog.map((option) => (
+                        <MenuItem key={option.code} value={option.code}>
+                          {option.label} ({option.code})
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
                   <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin address 1", hint: "Primary street address EasyPost uses as shipment origin.", value: settings.origin_address1, onChange: (e) => updateField("origin_address1", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={6}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin address 2", hint: "Optional apartment/suite/unit line for origin address.", value: settings.origin_address2, onChange: (e) => updateField("origin_address2", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin city", hint: "City of the shipment origin address.", value: settings.origin_city, onChange: (e) => updateField("origin_city", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin region", hint: "State/Province/Region code. Example: ON, CA, NY.", value: settings.origin_region, onChange: (e) => updateField("origin_region", e.target.value), disabled: !isEasyPostMode })}</Grid>
                   <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin postal code", hint: "ZIP/Postal code for origin address.", value: settings.origin_postal_code, onChange: (e) => updateField("origin_postal_code", e.target.value), disabled: !isEasyPostMode })}</Grid>
-                  <Grid item xs={12} md={4}>{hintedTextField({ fullWidth: true, size: "small", label: "Origin country", hint: "2-letter country code (ISO-2). Example: US, CA. Checkout country options depend on this even when you ship manually.", value: settings.origin_country, onChange: (e) => updateField("origin_country", e.target.value) })}</Grid>
                 </Grid>
                 </Box>
                 <Box ref={destinationSectionRef} sx={focusHighlightSx(focusedSection === "destinations")}>
@@ -1389,7 +1406,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       <MenuItem value="selected_countries">Selected countries</MenuItem>
                       </TextField>
                   </Grid>
-                  <Grid item xs={12} md={8}>
+                  {destinationPolicyMode === "selected_countries" && <Grid item xs={12} md={8}>
                     <Autocomplete
                       multiple
                       options={Array.isArray(settings.country_catalog) ? settings.country_catalog : []}
@@ -1406,7 +1423,6 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         updateField("destination_policy_mode", "selected_countries");
                       }}
                       isOptionEqualToValue={(option, value) => option.code === value.code}
-                      disabled={destinationPolicyMode !== "selected_countries"}
                       renderTags={(value, getTagProps) =>
                         value.map((option, index) => {
                           const { key, ...tagProps } = getTagProps({ index });
@@ -1429,7 +1445,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         />
                       )}
                     />
-                  </Grid>
+                  </Grid>}
                   <Grid item xs={12} md={8}>
                     <TextField
                       select
@@ -1514,13 +1530,16 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   </Grid>
                 </Grid>
                 </Box>
-                </>
+                </Box>
+                </Box>
                 )}
                 {destinationPolicyMode !== "domestic_only" && (
-                  <>
-                    <Divider />
-                    <Stack spacing={1.5}>
-                      <Typography variant="subtitle2" fontWeight={700}>International duties notice</Typography>
+                  <Box component="details" sx={compactDetailsSx}>
+                    <Typography component="summary" variant="subtitle2">
+                      International duties &amp; customs
+                    </Typography>
+                    <Stack spacing={1.5} sx={{ p: 1.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700}>Duties notice</Typography>
                       <Grid container spacing={1.5}>
                         <Grid item xs={12}>
                           <Alert severity="info">
@@ -1633,11 +1652,13 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                         )}
                       </Grid>
                     </Stack>
-                  </>
+                  </Box>
                 )}
-                <Divider />
-                <Stack spacing={1.5}>
-                  <Typography variant="subtitle2" fontWeight={700}>Customer shipping emails</Typography>
+                <Box component="details" data-testid="easypost-email-section" sx={compactDetailsSx}>
+                  <Typography component="summary" variant="subtitle2">
+                    Customer shipping emails
+                  </Typography>
+                  <Stack spacing={1.5} sx={{ p: 1.5 }}>
                   <Alert severity="info">
                     <Typography variant="body2">Shipping emails use the order&apos;s tracking information.</Typography>
                     <Typography variant="body2">A label purchase alone does not send a shipped email.</Typography>
@@ -1701,10 +1722,13 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       />
                     </Grid>
                   </Grid>
-                </Stack>
-                <Divider />
-                <Stack spacing={1.5} ref={packageProfilesSectionRef} sx={focusHighlightSx(focusedSection === "package_profiles")}>
-                  <Typography variant="subtitle2" fontWeight={700}>Package Profiles</Typography>
+                  </Stack>
+                </Box>
+                <Box component="details" data-testid="easypost-packages-section" sx={compactDetailsSx}>
+                  <Typography component="summary" variant="subtitle2">
+                    Package profiles ({(settings.package_profiles || []).length})
+                  </Typography>
+                  <Stack spacing={1.5} ref={packageProfilesSectionRef} sx={{ p: 1.5, ...focusHighlightSx(focusedSection === "package_profiles") }}>
                   <Typography variant="body2" color="text.secondary">
                     The default package provides parcel dimensions and tare weight for live shipping rates.
                   </Typography>
@@ -1759,7 +1783,14 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                             </Typography>
                           </Stack>
                           <Stack direction="row" spacing={1} alignItems="center">
-                            {profile.is_default && <Chip size="small" color="success" label="Default" />}
+                            {profile.is_default && (
+                              <Chip
+                                size="small"
+                                variant={STATUS_CHIP_CONTRACT.ready.variant}
+                                sx={STATUS_CHIP_CONTRACT.ready.sx}
+                                label="Default"
+                              />
+                            )}
                             {!profile.is_default && (
                               <Button size="small" variant="outlined" onClick={() => setDefaultPackage(profile.id)}>
                                 Set default
@@ -1776,12 +1807,30 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       </Paper>
                     ))}
                   </Stack>
-                </Stack>
+                  </Stack>
+                </Box>
               </Stack>
             )}
 
-            <Stack direction="row" justifyContent="flex-end">
-              <Button variant="contained" onClick={saveSettings} disabled={saving}>
+            <Stack
+              direction="row"
+              justifyContent="flex-end"
+              sx={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 2,
+                py: 1,
+                bgcolor: "background.paper",
+                borderTop: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Button
+                variant="contained"
+                onClick={saveSettings}
+                disabled={saving}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
+              >
                 {saving ? <CircularProgress size={18} /> : "Save shipping settings"}
               </Button>
             </Stack>

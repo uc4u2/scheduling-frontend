@@ -504,7 +504,7 @@ const panels = useMemo(
     {
       key: "easypost-shipping",
 
-      label: t("manager.advanced.panels.easypostShipping", "EasyPost Shipping"),
+      label: t("manager.advanced.panels.deliveryShipping", "Delivery & Shipping"),
 
       icon: <LocalShippingIcon />,
 

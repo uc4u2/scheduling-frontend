@@ -101,6 +101,13 @@ describe("EasyPostShippingSettingsPanel", () => {
     expect(screen.getAllByText(/origin country/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/default package/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/address verification enabled/i)).toBeInTheDocument();
+    expect(screen.getByTestId("easypost-connection-chip")).not.toHaveClass("MuiChip-colorSuccess");
+    expect(screen.getByTestId("easypost-address-verification-chip")).not.toHaveClass("MuiChip-colorInfo");
+
+    expect(screen.getByTestId("easypost-connection-section")).toHaveAttribute("open");
+    expect(screen.getByTestId("easypost-origin-section")).toHaveAttribute("open");
+    expect(screen.getByTestId("easypost-email-section")).not.toHaveAttribute("open");
+    expect(screen.getByTestId("easypost-packages-section")).not.toHaveAttribute("open");
   });
 
   test("shows non-empty help tooltip text for origin fields", async () => {
@@ -263,6 +270,40 @@ describe("EasyPostShippingSettingsPanel", () => {
     );
   });
 
+  test("uses one origin-country selector and only shows country selection for a custom destination policy", async () => {
+    mockApiGet.mockResolvedValue({
+      data: {
+        enabled: true,
+        easypost_enabled: false,
+        allow_shipping: true,
+        origin_country: "CA",
+        destination_policy_mode: "domestic_only",
+        allowed_destination_countries: ["CA"],
+        country_catalog: [
+          { code: "CA", label: "Canada" },
+          { code: "US", label: "United States" },
+        ],
+        package_profiles: [],
+        readiness: { ready: false, checklist: [] },
+      },
+    });
+
+    render(<EasyPostShippingSettingsPanel token="test-token" compact />);
+
+    const originCountry = await screen.findByLabelText(/^origin country$/i);
+    expect(screen.getAllByLabelText(/^origin country$/i)).toHaveLength(1);
+    expect(screen.queryByLabelText(/quick pick country/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/selected destination countries/i)).not.toBeInTheDocument();
+
+    fireEvent.mouseDown(originCountry);
+    await userEvent.click(await screen.findByText("United States (US)"));
+    expect(originCountry).toHaveTextContent(/united states/i);
+
+    fireEvent.mouseDown(screen.getByLabelText(/destination policy/i));
+    await userEvent.click(await screen.findByText("Selected countries"));
+    expect(await screen.findByLabelText(/selected destination countries/i)).toBeInTheDocument();
+  });
+
   test("saves optional manual parcel pricing and previews the saved server rule", async () => {
     mockApiGet.mockResolvedValue({
       data: {
@@ -310,6 +351,7 @@ describe("EasyPostShippingSettingsPanel", () => {
     expect(screen.getByLabelText(/free shipping from/i)).toBeDisabled();
     expect(screen.getByText(/manual shipping pricing is off/i)).toBeInTheDocument();
     expect(screen.getByText(/manual pricing does not buy shipping labels/i)).toBeInTheDocument();
+    expect(screen.getByTestId("manual-pricing-step-chip")).not.toHaveClass("MuiChip-colorPrimary");
     expect(screen.queryByRole("button", { name: /preview rule/i })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("checkbox", { name: /enable manual shipping pricing/i }));
     expect(screen.getByLabelText(/flat charge/i)).toBeEnabled();
