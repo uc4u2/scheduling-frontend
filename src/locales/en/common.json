@@ -4629,6 +4629,19 @@
         },
         "errors": {
           "invalidStructuredData": "Structured data must be valid JSON."
+        },
+        "google": {
+          "title": "Google Search Console",
+          "subtitle": "Verify that you control this published website, then submit its sitemap to Google.",
+          "propertyLabel": "Exact URL-prefix property",
+          "tokenLabel": "HTML verification tag or token",
+          "save": "Save verification settings",
+          "open": "Open Google Search Console",
+          "advancedDns": "Advanced: Verify your entire domain with DNS"
+        },
+        "help": {
+          "title": "SEO & Google Search Console help",
+          "intro": "A safe step-by-step guide for publishing SEO settings and proving website ownership to Google."
         }
       },
       "employeeHelp": {

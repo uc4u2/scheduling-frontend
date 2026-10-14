@@ -52,10 +52,32 @@ Locale examples (marketing)
 - `https://www.schedulaa.com/fa/blog`
 
 Google Search Console verification
-- In SEO & Metadata → Advanced settings, paste the Google verification token.
-- Use the Meta verification token for the HTML tag method in Google Search Console.
-- If you prefer DNS verification, paste the DNS TXT token and add it at your registrar.
-- After verification, submit your sitemap URL in Google Search Console.
+- Open the Google Search Console card in SEO & Metadata. Copy the exact public
+  website URL shown by Schedulaa.
+- In Google Search Console, choose **URL prefix**, paste that exact URL, and
+  choose the **HTML tag** verification method. HTML-tag verification does not
+  work for a Domain property.
+- Paste either Google's complete meta tag or its token into Schedulaa. Schedulaa
+  validates the value and stores only the raw token.
+- Click **Save verification settings**. Saving creates a draft; it does not
+  change the public website.
+- Choose **Publish now** only after reviewing the warning. Website publication
+  promotes all pending website settings, not only the Google tag. Keeping the
+  token as a draft is always safe.
+- Wait until Schedulaa shows **Verification tag published**, then return to
+  Google and click **Verify**. This Schedulaa status proves only that the tag is
+  in published website metadata; it does not prove Google's ownership result.
+- In Search Console, open **Sitemaps** and submit the site's existing
+  `sitemap.xml`. Use **URL Inspection** for important published pages and
+  request indexing when appropriate.
+
+Advanced Domain-property verification
+- A Search Console Domain property requires Google's DNS TXT record at the
+  domain's authoritative DNS provider.
+- Schedulaa may store the TXT value as a private reference, but saving or
+  publishing it does not add DNS, change Cloudflare, or verify the property.
+- Search Console verification does not guarantee indexing or ranking, and it
+  does not establish Google Business Profile or Google Maps ownership.
 
 Testing your preview
 - Use the “Test preview” buttons in SEO & Metadata.
