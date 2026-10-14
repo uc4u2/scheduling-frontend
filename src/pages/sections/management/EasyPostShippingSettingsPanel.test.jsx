@@ -94,7 +94,7 @@ describe("EasyPostShippingSettingsPanel", () => {
     const automationTab = await screen.findByRole("tab", { name: /easypost automation/i });
     fireEvent.click(automationTab);
 
-    expect(await screen.findByText(/easypost shipping automation/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /delivery & shipping/i })).toBeInTheDocument();
     expect(screen.getByText((content) => content.includes("Shipping readiness: Ready"))).toBeInTheDocument();
     expect(screen.getByText(/jewelry mailer/i)).toBeInTheDocument();
     expect(screen.getByText(/^Default$/)).toBeInTheDocument();
@@ -306,9 +306,19 @@ describe("EasyPostShippingSettingsPanel", () => {
 
     render(<EasyPostShippingSettingsPanel token="test-token" compact />);
     await screen.findByRole("heading", { name: /manual shipping pricing/i });
+    expect(screen.getByLabelText(/flat charge/i)).toBeDisabled();
+    expect(screen.getByLabelText(/free shipping from/i)).toBeDisabled();
+    expect(screen.getByText(/manual shipping pricing is off/i)).toBeInTheDocument();
+    expect(screen.getByText(/manual pricing does not buy shipping labels/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /preview rule/i })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("checkbox", { name: /enable manual shipping pricing/i }));
+    expect(screen.getByLabelText(/flat charge/i)).toBeEnabled();
+    expect(screen.getByLabelText(/free shipping from/i)).toBeEnabled();
     await userEvent.type(screen.getByLabelText(/flat charge/i), "15.00");
     await userEvent.type(screen.getByLabelText(/free shipping from/i), "100.00");
+    expect(screen.getByText(/charge ca\$15\.00 once per shipped order/i)).toBeInTheDocument();
+    expect(screen.getByText(/shipping becomes free at ca\$100\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not create an order, payment, or shipping label/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /save shipping settings/i }));
 
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith(
@@ -323,7 +333,7 @@ describe("EasyPostShippingSettingsPanel", () => {
       expect.any(Object)
     ));
 
-    await userEvent.click(screen.getByRole("button", { name: /^preview$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /preview rule/i }));
     expect(await screen.findByText(/shipping: ca\$15\.00/i)).toBeInTheDocument();
   });
 

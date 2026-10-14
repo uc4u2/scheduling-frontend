@@ -322,6 +322,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const originSectionRef = useRef(null);
   const destinationSectionRef = useRef(null);
   const packageProfilesSectionRef = useRef(null);
+  const shippingCoverageSectionRef = useRef(null);
   const isEasyPostMode = Boolean(settings?.easypost_enabled);
   const deliveryEnabled = Boolean(settings?.enabled);
   const savedMethodCodes = useMemo(
@@ -359,6 +360,22 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     const selected = Array.isArray(settings?.allowed_destination_countries) ? settings.allowed_destination_countries : [];
     return countryCatalog.filter((row) => selected.includes(row.code));
   }, [countryCatalog, settings?.allowed_destination_countries]);
+  const manualPricingSummary = useMemo(() => {
+    const currency = settings?.business_currency || settings?.manual_shipping_currency || "business currency";
+    if (!settings?.manual_shipping_pricing_enabled) {
+      return "Manual shipping pricing is off. Your existing fulfillment behavior stays unchanged.";
+    }
+    const flatRateCents = dollarsToCents(flatRateInput);
+    const freeThresholdCents = dollarsToCents(freeThresholdInput, { optional: true });
+    if (flatRateCents === undefined || freeThresholdCents === undefined) {
+      return "Enter valid amounts to review the rule before saving.";
+    }
+    const flatRate = formatMinorMoney(flatRateCents, currency);
+    if (freeThresholdCents == null) {
+      return `Charge ${flatRate} once per shipped order.`;
+    }
+    return `Charge ${flatRate} once per shipped order. Shipping becomes free at ${formatMinorMoney(freeThresholdCents, currency)} of eligible physical products.`;
+  }, [flatRateInput, freeThresholdInput, settings?.business_currency, settings?.manual_shipping_currency, settings?.manual_shipping_pricing_enabled]);
   const inlineSelectMenuProps = useMemo(
     () => ({
       disablePortal: true,
@@ -732,9 +749,14 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   return (
     <Box sx={denseSx}>
       <Stack spacing={2}>
-        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
-          <Typography variant="h6" fontWeight={700}>EasyPost shipping automation</Typography>
-          <Stack direction="row" spacing={1}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.5}
+          alignItems={{ xs: "stretch", md: "center" }}
+          justifyContent="space-between"
+        >
+          <Typography variant="h6" fontWeight={700}>Delivery &amp; shipping</Typography>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
             <Button
               size="small"
               variant="outlined"
@@ -780,7 +802,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         </Stack>
 
         <Typography variant="body2" color="text.secondary">
-          Manage delivery policy and EasyPost automation settings here. This panel is opened from Products -> Delivery setup. Product Orders Actions tab remains unchanged.
+          Choose how customers receive product orders, set optional manual parcel pricing, or connect EasyPost for carrier rates and labels.
         </Typography>
 
         {!settings && !loading && (
@@ -800,7 +822,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
               <Typography variant="subtitle2" fontWeight={700}>
                 How parcel shipping is handled
               </Typography>
-              <Stack direction="row" spacing={1}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <Button
                   size="small"
                   variant={isEasyPostMode ? "outlined" : "contained"}
@@ -912,7 +934,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     {!isEasyPostMode && (
                       <>
                         <Divider />
-                        <Box sx={focusHighlightSx(focusedSection === "origin")}>
+                        <Box ref={shippingCoverageSectionRef} sx={focusHighlightSx(focusedSection === "origin")}>
                           <Stack spacing={1.5}>
                             <Typography variant="subtitle2" fontWeight={700}>
                               Shipping coverage
@@ -1056,9 +1078,37 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                           Manual shipping pricing
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Charge one flat parcel-shipping fee per order, with an optional free-shipping threshold. The threshold uses configured eligible physical-product selling prices before promotional discounts and shipping. If prices include tax, that embedded tax remains in the threshold basis; tax added later by Stripe does not.
+                          Set one parcel-shipping charge per order and optionally reward larger physical-product orders with free shipping.
                         </Typography>
                       </Stack>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                        <Chip size="small" label="1. Shipping coverage" variant="outlined" />
+                        <Chip size="small" label="2. Pricing rule" color="primary" />
+                        <Chip size="small" label="3. Customer policy" variant="outlined" />
+                        <Chip size="small" label="4. Review & save" variant="outlined" />
+                      </Stack>
+                      <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.25}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                          justifyContent="space-between"
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight={700}>Manual pricing does not buy shipping labels.</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              You fulfill the parcel yourself. EasyPost carrier charges are not added while manual fulfillment is selected.
+                            </Typography>
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={() => shippingCoverageSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                          >
+                            Review shipping coverage
+                          </Button>
+                        </Stack>
+                      </Paper>
                       <FormControlLabel
                         control={(
                           <Switch
@@ -1076,6 +1126,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                             label={`Flat charge (${settings.business_currency || settings.manual_shipping_currency || "business currency"})`}
                             value={flatRateInput}
                             onChange={(event) => setFlatRateInput(event.target.value)}
+                            disabled={!settings.manual_shipping_pricing_enabled}
                             inputProps={{ inputMode: "decimal" }}
                             helperText="Charged once per shipped order when the free threshold is not met."
                           />
@@ -1087,6 +1138,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                             label="Free shipping from — optional"
                             value={freeThresholdInput}
                             onChange={(event) => setFreeThresholdInput(event.target.value)}
+                            disabled={!settings.manual_shipping_pricing_enabled}
                             inputProps={{ inputMode: "decimal" }}
                             helperText="Leave blank to always use the flat charge."
                           />
@@ -1095,57 +1147,72 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       <Alert severity="info" variant="outlined">
                         Currency: {settings.business_currency || "Not configured"}. Allowed destinations: {settings.allowed_destination_countries?.length ? settings.allowed_destination_countries.join(", ") : "configure shipping coverage first"}.
                       </Alert>
-                      <Divider />
-                      <Typography variant="subtitle2" fontWeight={700}>Saved-rule simulator</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Save changes first; this preview is calculated by the same server rule used at checkout.
-                      </Typography>
-                      <Grid container spacing={1.5} alignItems="center">
-                        <Grid item xs={12} sm={5}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Eligible physical-product subtotal"
-                            value={simulatorSubtotal}
-                            onChange={(event) => setSimulatorSubtotal(event.target.value)}
-                            inputProps={{ inputMode: "decimal" }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                          <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            label="Destination"
-                            value={simulatorCountry}
-                            onChange={(event) => setSimulatorCountry(event.target.value)}
-                          >
-                            {(settings.allowed_destination_countries || []).map((code) => (
-                              <MenuItem key={code} value={code}>{code}</MenuItem>
-                            ))}
-                          </TextField>
-                        </Grid>
-                        <Grid item xs={12} sm={3}>
-                          <Button
-                            fullWidth
-                            variant="outlined"
-                            onClick={runManualPricingPreview}
-                            disabled={simulatorLoading || !settings.manual_shipping_pricing_enabled}
-                          >
-                            {simulatorLoading ? <CircularProgress size={18} /> : "Preview"}
-                          </Button>
-                        </Grid>
-                      </Grid>
-                      {simulatorResult?.error && <Alert severity="error">{simulatorResult.error}</Alert>}
-                      {simulatorResult?.eligible && (
-                        <Alert severity="success" variant="outlined">
-                          Shipping: {simulatorResult.shipping_amount_cents === 0
-                            ? "Free"
-                            : formatMinorMoney(simulatorResult.shipping_amount_cents, simulatorResult.currency)}
-                          {simulatorResult.remaining_for_free_shipping_cents > 0
-                            ? ` · ${formatMinorMoney(simulatorResult.remaining_for_free_shipping_cents, simulatorResult.currency)} more for free shipping.`
-                            : ""}
-                        </Alert>
+                      <Alert severity={settings.manual_shipping_pricing_enabled ? "success" : "info"}>
+                        <strong>Current rule:</strong> {manualPricingSummary}
+                      </Alert>
+                      <Box component="details" sx={{ color: "text.secondary" }}>
+                        <Typography component="summary" variant="body2" sx={{ cursor: "pointer", fontWeight: 700, color: "text.primary" }}>
+                          How the free-shipping threshold is calculated
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          It uses eligible physical-product selling prices before promotional discounts and shipping. Digital products, services, packages, and tips do not count. If a product price already includes tax, that embedded tax remains part of its selling price; tax added later by Stripe does not count.
+                        </Typography>
+                      </Box>
+                      {settings.manual_shipping_pricing_enabled && (
+                        <>
+                          <Divider />
+                          <Typography variant="subtitle2" fontWeight={700}>Preview this shipping rule</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Save changes first. This uses the same server calculation as checkout and does not create an order, payment, or shipping label.
+                          </Typography>
+                          <Grid container spacing={1.5} alignItems="center">
+                            <Grid item xs={12} sm={5}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Eligible physical-product subtotal"
+                                value={simulatorSubtotal}
+                                onChange={(event) => setSimulatorSubtotal(event.target.value)}
+                                inputProps={{ inputMode: "decimal" }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                              <TextField
+                                select
+                                fullWidth
+                                size="small"
+                                label="Destination"
+                                value={simulatorCountry}
+                                onChange={(event) => setSimulatorCountry(event.target.value)}
+                              >
+                                {(settings.allowed_destination_countries || []).map((code) => (
+                                  <MenuItem key={code} value={code}>{code}</MenuItem>
+                                ))}
+                              </TextField>
+                            </Grid>
+                            <Grid item xs={12} sm={3}>
+                              <Button
+                                fullWidth
+                                variant="outlined"
+                                onClick={runManualPricingPreview}
+                                disabled={simulatorLoading}
+                              >
+                                {simulatorLoading ? <CircularProgress size={18} /> : "Preview rule"}
+                              </Button>
+                            </Grid>
+                          </Grid>
+                          {simulatorResult?.error && <Alert severity="error">{simulatorResult.error}</Alert>}
+                          {simulatorResult?.eligible && (
+                            <Alert severity="success" variant="outlined">
+                              Shipping: {simulatorResult.shipping_amount_cents === 0
+                                ? "Free"
+                                : formatMinorMoney(simulatorResult.shipping_amount_cents, simulatorResult.currency)}
+                              {simulatorResult.remaining_for_free_shipping_cents > 0
+                                ? ` · ${formatMinorMoney(simulatorResult.remaining_for_free_shipping_cents, simulatorResult.currency)} more for free shipping.`
+                                : ""}
+                            </Alert>
+                          )}
+                        </>
                       )}
                     </Stack>
                   </Paper>
@@ -1735,7 +1802,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         sx={{ zIndex: (theme) => theme.zIndex.modal + 3000 }}
       >
         <DialogTitle sx={{ pr: 7, fontWeight: 700 }}>
-          EasyPost Shipping Help
+          Delivery &amp; Shipping Help
           <IconButton
             size="small"
             onClick={() => setHelpOpen(false)}
