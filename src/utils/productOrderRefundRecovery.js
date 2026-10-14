@@ -84,4 +84,3 @@ export function clearProductOrderRefundRecovery(scope) {
   const storageKey = productOrderRefundRecoveryStorageKey(scope);
   if (storageKey) window.sessionStorage.removeItem(storageKey);
 }
-
