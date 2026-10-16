@@ -1,0 +1,12 @@
+---
+description: Mandatory Schedulaa architecture, tenant-safety, and release rules
+globs:
+alwaysApply: true
+---
+
+- Read `AGENTS.md` and the linked central engineering handbook before changing behavior.
+- Rebuild context from Git, code, tests, and current source-of-truth docs; conversation memory is not authoritative.
+- Preserve unrelated work. Use an isolated worktree for concurrent work; never reset, clean, stash, or overwrite another agent's changes.
+- Flask owns authorization, tenant scoping, business rules, money, and website draft/published state. React must not become a second authority.
+- Never print, transfer, or commit credentials. Stop for unresolved tests, destructive data changes, new security risk, or missing production authority.
+- Follow Investigate -> Implement -> Test -> Commit -> Push -> Integrate -> Deploy -> Production Verify -> Report when the complete workflow is authorized.

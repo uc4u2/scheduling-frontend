@@ -1,0 +1,18 @@
+---
+description: React application, API-consumer, localization, and frontend validation rules
+globs:
+  - "src/**/*.js"
+  - "src/**/*.jsx"
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+  - "scripts/**/*.js"
+  - "package.json"
+alwaysApply: false
+---
+
+- Use npm and keep `package-lock.json`; do not generate pnpm/yarn lockfiles.
+- Keep API changes backward-compatible during staggered releases and update all affected consumers/tests.
+- Client-side route or component gating improves UX but never replaces backend permission checks.
+- Preserve URL attribution, accessibility, responsive behavior, explicit website publication, and localization dictionary parity.
+- Never expose draft website data publicly or claim Google/provider state based only on local React state.
+- Run focused tests with `CI=true npm test -- --runInBand --watch=false <paths>`, lint changed files, and run `npm run build` for routing/configuration/cross-cutting UI changes.
