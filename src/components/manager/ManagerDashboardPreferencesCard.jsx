@@ -78,7 +78,6 @@ export default function ManagerDashboardPreferencesCard() {
       title="My mobile dashboard"
       description="Choose the shortcuts shown on your manager workspace on phones and tablets. This changes only your layout, not your permissions."
       contentId="manager-dashboard-preferences-editor"
-      expandLabel="Customize"
       summary={dashboard.loading ? (
         <Chip size="small" variant="outlined" label="Loading layout…" />
       ) : (

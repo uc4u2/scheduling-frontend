@@ -37,13 +37,13 @@ test("keeps the settings section compact until the user chooses to customize", a
     </ThemeProvider>
   );
 
-  const customize = await screen.findByRole("button", { name: /customize/i });
-  expect(customize).toHaveAttribute("aria-expanded", "false");
+  const reviewSettings = await screen.findByRole("button", { name: /review settings/i });
+  expect(reviewSettings).toHaveAttribute("aria-expanded", "false");
   expect(screen.getByText("3 quick actions")).toBeInTheDocument();
   expect(screen.getByText("Workforce shortcuts on")).toBeInTheDocument();
   expect(screen.getByText("Start with a workspace preset")).not.toBeVisible();
 
-  fireEvent.click(customize);
+  fireEvent.click(reviewSettings);
   expect(await screen.findByText("Start with a workspace preset")).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Start with a workspace preset" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Your quick actions" })).toBeInTheDocument();
