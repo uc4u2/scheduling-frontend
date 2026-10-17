@@ -112,4 +112,23 @@ describe("SettingsAiAssistants", () => {
     expect(screen.queryByText(/Connector URL/i)).toBeNull();
     expect(mockActivity).not.toHaveBeenCalled();
   });
+
+  test("links to human approval when an assistant action is waiting", async () => {
+    mockStatus.mockResolvedValue({
+      enabled: true,
+      eligible: true,
+      account: { id: 1, display_name: "Ada Owner" },
+      business: { id: 4, name: "Salon", timezone: "America/Toronto" },
+      permissions: { is_manager: true, is_owner: true, can_manage_integrations: true },
+      scopes_offered: [],
+      providers: [],
+      connections: [],
+      pending_approval_count: 1,
+      mcp_url: "https://example.test/mcp/tenant",
+    });
+    mockActivity.mockResolvedValue({ items: [] });
+    render(<SettingsAiAssistants />);
+    const link = await screen.findByRole("link", { name: /waiting for you/i });
+    expect(link.getAttribute("href")).toBe("/manager/ai-assistant-approvals");
+  });
 });

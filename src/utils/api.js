@@ -813,6 +813,13 @@ export const tenantAssistant = {
         config
       )
       .then((r) => r.data),
+  operations: (config = {}) => api.get("/api/tenant-assistant/operations", config).then((r) => r.data),
+  operation: (operationId, config = {}) =>
+    api.get(`/api/tenant-assistant/operations/${encodeURIComponent(operationId)}`, config).then((r) => r.data),
+  decideOperation: (operationId, payload, config = {}) =>
+    api
+      .post(`/api/tenant-assistant/operations/${encodeURIComponent(operationId)}/decision`, payload, config)
+      .then((r) => r.data),
 };
 
 export const employeeGoogleCalendarIntegration = {

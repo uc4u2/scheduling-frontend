@@ -189,7 +189,7 @@ export default function SettingsAiAssistants() {
       {eligible && !configurationError && (
         <Box>
           <Typography variant="subtitle1">
-            {t("settings.aiAssistants.permissionsHeading", "Read permissions you can approve")}
+            {t("settings.aiAssistants.permissionsHeading", "Permissions you can approve")}
           </Typography>
           <Stack component="ul" spacing={0.5} sx={{ pl: 2, m: 0 }}>
             {(status.scopes_offered || []).map((scope) => (
@@ -204,6 +204,14 @@ export default function SettingsAiAssistants() {
               "Open your assistant and add Schedulaa's connector. When it asks you to sign in, approve this business. A disconnected connection is not turned back on by itself."
             )}
           </Typography>
+          {Number(status.pending_approval_count) > 0 && (
+            <Button component="a" href="/manager/ai-assistant-approvals" variant="contained" sx={{ mt: 1 }}>
+              {t(
+                "settings.aiAssistants.reviewApprovals",
+                `Review ${status.pending_approval_count} assistant action waiting for you`
+              )}
+            </Button>
+          )}
           {status.mcp_url && (
             <Typography variant="body2" sx={{ mt: 1, wordBreak: "break-all" }}>
               {t("settings.aiAssistants.connectorUrl", "Connector URL")}: {status.mcp_url}
