@@ -95,4 +95,21 @@ describe("SettingsAiAssistants", () => {
     expect(await screen.findByText(/Nothing has been connected/i)).toBeTruthy();
     expect(screen.queryByText(/Connector URL/i)).toBeNull();
   });
+
+  test("keeps connector details closed when OAuth issuer configuration is missing", async () => {
+    mockStatus.mockResolvedValue({
+      enabled: true,
+      eligible: true,
+      configuration_error: "issuer_unconfigured",
+      account: { id: 1, display_name: "Ada Owner" },
+      business: { id: 4, name: "Salon", timezone: "America/Toronto" },
+      permissions: { is_manager: true, is_owner: true, can_manage_integrations: true },
+      connections: [],
+      mcp_url: null,
+    });
+    render(<SettingsAiAssistants />);
+    expect(await screen.findByText(/not configured on this Schedulaa deployment/i)).toBeTruthy();
+    expect(screen.queryByText(/Connector URL/i)).toBeNull();
+    expect(mockActivity).not.toHaveBeenCalled();
+  });
 });

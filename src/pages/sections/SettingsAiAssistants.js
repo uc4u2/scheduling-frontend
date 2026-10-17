@@ -48,7 +48,7 @@ export default function SettingsAiAssistants() {
       }
       setUnavailable(false);
       setStatus(payload);
-      if (payload.eligible === true) {
+      if (payload.eligible === true && !payload.configuration_error) {
         const history = await tenantAssistant.activity().catch(() => ({ items: [] }));
         setActivity(history.items || []);
       } else {
@@ -152,6 +152,7 @@ export default function SettingsAiAssistants() {
 
   const eligible = status.eligible === true && status.permissions;
   const business = status.business;
+  const configurationError = status.configuration_error;
 
   return (
     <Stack spacing={2}>
@@ -164,7 +165,15 @@ export default function SettingsAiAssistants() {
           )}
         </Alert>
       )}
-      {eligible && business && (
+      {configurationError && (
+        <Alert severity="warning">
+          {t(
+            "settings.aiAssistants.configurationError",
+            "AI assistant connections are not configured on this Schedulaa deployment yet. No connection can be created."
+          )}
+        </Alert>
+      )}
+      {eligible && !configurationError && business && (
         <Box>
           <Typography variant="subtitle1">
             {t("settings.aiAssistants.businessHeading", "Business to connect")}
@@ -177,7 +186,7 @@ export default function SettingsAiAssistants() {
           </Typography>
         </Box>
       )}
-      {eligible && (
+      {eligible && !configurationError && (
         <Box>
           <Typography variant="subtitle1">
             {t("settings.aiAssistants.permissionsHeading", "Read permissions you can approve")}
@@ -202,7 +211,7 @@ export default function SettingsAiAssistants() {
           )}
         </Box>
       )}
-      {eligible && (
+      {eligible && !configurationError && (
         <Stack spacing={1}>
           <Typography variant="subtitle1">{t("settings.aiAssistants.providers", "Assistants")}</Typography>
           {(status.providers || []).map((provider) => (
@@ -220,7 +229,7 @@ export default function SettingsAiAssistants() {
           ))}
         </Stack>
       )}
-      {eligible && (
+      {eligible && !configurationError && (
         <Stack spacing={1}>
           <Typography variant="subtitle1">{t("settings.aiAssistants.connections", "Connections")}</Typography>
           {(status.connections || []).length === 0 && (
@@ -287,7 +296,7 @@ export default function SettingsAiAssistants() {
           ))}
         </Stack>
       )}
-      {eligible && (
+      {eligible && !configurationError && (
         <Box>
           <Divider sx={{ mb: 1 }} />
           <Typography variant="subtitle1">{t("settings.aiAssistants.activity", "Activity")}</Typography>
