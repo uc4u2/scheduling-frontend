@@ -17,6 +17,19 @@ const previewLines = (preview) => {
     .map(([key, value]) => `${key.replace(/_/g, " ")}: ${value}`);
 };
 
+const recordHref = (target) => {
+  if (!target?.id) return null;
+  if (target.type === "customer") return `/manager/clients/${target.id}`;
+  if (target.type === "website_page" || target.type === "website") return "/manager/website";
+  if (target.type === "service") return "/manager/service-management";
+  return null;
+};
+
+const hostedUrl = (result) => {
+  const value = result?.url;
+  return typeof value === "string" && value.startsWith("https://") ? value : "";
+};
+
 export default function AiAssistantApprovalsPage() {
   const { t } = useTranslation();
   const [items, setItems] = useState([]);
@@ -103,8 +116,19 @@ export default function AiAssistantApprovalsPage() {
             </Stack>
             {item.target?.type && (
               <Typography variant="body2">
-                {item.target.type} #{item.target.id}
+                {recordHref(item.target) ? (
+                  <a href={recordHref(item.target)}>
+                    {item.target.type} #{item.target.id}
+                  </a>
+                ) : (
+                  `${item.target.type} #${item.target.id}`
+                )}
               </Typography>
+            )}
+            {hostedUrl(item.result) && (
+              <Button component="a" href={hostedUrl(item.result)} target="_blank" rel="noopener noreferrer">
+                {t("settings.aiAssistants.approvals.openHostedPage", "Open the Schedulaa checkout page")}
+              </Button>
             )}
             {item.state === "pending_approval" && (
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
