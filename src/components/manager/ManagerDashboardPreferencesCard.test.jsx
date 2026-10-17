@@ -41,7 +41,7 @@ test("keeps the settings section compact until the user chooses to customize", a
   expect(customize).toHaveAttribute("aria-expanded", "false");
   expect(screen.getByText("3 quick actions")).toBeInTheDocument();
   expect(screen.getByText("Workforce shortcuts on")).toBeInTheDocument();
-  expect(screen.queryByText("Start with a workspace preset")).not.toBeInTheDocument();
+  expect(screen.getByText("Start with a workspace preset")).not.toBeVisible();
 
   fireEvent.click(customize);
   expect(await screen.findByText("Start with a workspace preset")).toBeInTheDocument();
@@ -51,6 +51,6 @@ test("keeps the settings section compact until the user chooses to customize", a
 
   fireEvent.click(screen.getByRole("button", { name: /collapse/i }));
   await waitFor(() => {
-    expect(screen.queryByText("Start with a workspace preset")).not.toBeInTheDocument();
+    expect(screen.getByText("Start with a workspace preset")).not.toBeVisible();
   });
 });
