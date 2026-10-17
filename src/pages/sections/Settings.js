@@ -54,6 +54,7 @@ import SettingsBookingReminders from "./SettingsBookingReminders";
 import SettingsBookingEmails from "./SettingsBookingEmails";
 import SettingsAppointmentReminders from "./SettingsAppointmentReminders";
 import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettingsPanel";
+import ManagerDashboardPreferencesCard from "../../components/manager/ManagerDashboardPreferencesCard";
 
 import SectionCard from "../../components/ui/SectionCard";
 import TabShell from "../../components/ui/TabShell";
@@ -704,6 +705,7 @@ const Settings = () => {
       label: t("settings.tabs.workspace"),
       content: (
         <Stack spacing={2}>
+          <ManagerDashboardPreferencesCard />
           {PolicyCard}
           <SettingsTimeTracking />
           <SettingsBookingReminders />

@@ -92,7 +92,7 @@ const MainNav = ({ token, setToken }) => {
   const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
 
   const isAuthenticated = Boolean(token);
   const isManagerArea = location.pathname.startsWith("/manager");
@@ -385,7 +385,7 @@ const MainNav = ({ token, setToken }) => {
   };
 
   const renderLoggedOutCenter = () => (
-    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
+    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: "none", lg: "flex" } }}>
       <Button
         onClick={toggleProductMenu}
         startIcon={<AutoAwesomeIcon fontSize="small" />}
@@ -473,7 +473,7 @@ const MainNav = ({ token, setToken }) => {
   );
 
   const renderRightControls = () => (
-    <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: "none", lg: "flex" } }}>
       {isAuthenticated && loggedInLinks.map((link) => (
         <Button
           key={link.to}
@@ -658,9 +658,9 @@ const MainNav = ({ token, setToken }) => {
           sx={{
             display: "flex",
             alignItems: "center",
-            position: { xs: "absolute", md: "static" },
-            left: { xs: "50%", md: "auto" },
-            transform: { xs: "translateX(-50%)", md: "none" },
+            position: { xs: "absolute", lg: "static" },
+            left: { xs: "50%", lg: "auto" },
+            transform: { xs: "translateX(-50%)", lg: "none" },
           }}
         >
           <Box
@@ -686,7 +686,7 @@ const MainNav = ({ token, setToken }) => {
         </Box>
 
         <IconButton
-          sx={{ display: { xs: "inline-flex", md: "none" }, width: 40, height: 40, flexShrink: 0 }}
+          sx={{ display: { xs: "inline-flex", lg: "none" }, width: 40, height: 40, flexShrink: 0 }}
           onClick={toggleMobile}
           aria-label="Open account navigation"
         >

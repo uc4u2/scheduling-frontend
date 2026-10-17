@@ -15,6 +15,22 @@ Primary goals:
 - No overly rounded pill shapes except where intentionally small status chips need a pill treatment.
 - Reusable themed date/time picker behavior instead of native browser pickers.
 
+## Compact Manager Workspace
+
+- Phone and tablet layouts use an account-owned quick-action arrangement from
+  the backend dashboard-preferences contract.
+- Presets and reordering change presentation only. Never derive authorization
+  from a saved shortcut or expose an action absent from `available_action_ids`.
+- Managers and delegated employees share the compact shell, but labels and
+  actions must reflect the delegated account's current grants.
+- Workforce cards may be shown as a separate operational group; do not duplicate
+  the same action again in Quick actions.
+- The compact navigation drawer uses a clear workspace header, a search field,
+  minimum 44px navigation targets, restrained active states, and the established
+  theme tokens. Search filters only the already-authorized navigation model.
+- Keep the desktop information architecture intact unless a task explicitly
+  authorizes a wider navigation redesign.
+
 ## Theme Files
 
 Primary theme entry points:

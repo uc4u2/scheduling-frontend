@@ -98,6 +98,7 @@ import {
   MoreVert,
   EditOutlined,
   DeleteOutline,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
@@ -170,6 +171,7 @@ import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
 import EmployeeManagementHelpDrawer from "./pages/sections/management/components/EmployeeManagementHelpDrawer";
 import EmployeeProfileAuditTimeline from "./pages/Payroll/EmployeeProfileAuditTimeline";
 import MobileManagerHome from "./components/manager/MobileManagerHome";
+import useManagerDashboardPreferences from "./components/manager/useManagerDashboardPreferences";
 import BusinessFinanceShell from "./pages/finance/BusinessFinanceShell";
 import OwnershipTransferDialog from "./components/manager/OwnershipTransferDialog";
 
@@ -2973,7 +2975,7 @@ const NewManagementDashboard = ({
   const tManager = (key, fallback) => t(key, { defaultValue: fallback });
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
   const isManager = useMemo(() => {
-    if (currentUserInfo?.is_manager) return true;
+    if (currentUserInfo) return Boolean(currentUserInfo.is_manager);
     const stored = (typeof window !== "undefined" && window.localStorage.getItem("role")) || "";
     return String(stored).toLowerCase() === "manager";
   }, [currentUserInfo]);
@@ -2983,8 +2985,19 @@ const NewManagementDashboard = ({
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
   const canManagePayroll = Boolean(currentUserInfo?.can_manage_payroll);
   const hasHrAccess = isManager || canManageOnboarding || canManageOnboardingLimited;
-  const hasSupervisorAccess = isManager || canManageShifts;
   const hasPayrollAccess = isManager || canManagePayroll;
+  const hasManagerWorkspaceAccess = Boolean(
+    isManager
+    || canManageOnboarding
+    || canManageOnboardingLimited
+    || canManageShifts
+    || canManagePayroll
+    || canCollectPaymentsSelf
+  );
+  const dashboardPreferences = useManagerDashboardPreferences({
+    currentUserInfo,
+    enabled: Boolean(currentUserInfo && hasManagerWorkspaceAccess && !supportMode),
+  });
 
   const filteredMenuConfig = useMemo(() => {
     if (isManager) return menuConfig;
@@ -3074,37 +3087,41 @@ const NewManagementDashboard = ({
     keys.add("payments-hub");
     // Allow settings view even when it is hidden from the sidebar.
     keys.add("settings");
-    // Allow the mobile manager home landing route.
-    keys.add("__landing__");
+    // The compact landing is available only to users who have an established
+    // manager-workspace permission. It is not a shortcut around route guards.
+    if (hasManagerWorkspaceAccess) keys.add("__landing__");
     // Allow shift/availability views that are launched from the group header.
     keys.add("available-slots");
     keys.add("available-shifts");
     keys.add("available-shifts-fullscreen");
-    // Allow direct Business Finance section routing inside the grouped shell.
-    [
-      "finance-overview",
-      "finance-clients",
-      "finance-group-daily",
-      "finance-group-field",
-      "finance-group-reports",
-      "finance-group-setup",
-      "finance-quotes",
-      "finance-estimates",
-      "finance-invoices",
-      "finance-work-orders",
-      "finance-inventory",
-      "finance-vendors",
-      "finance-purchases",
-      "finance-field-reports",
-      "finance-reviews",
-      "finance-profitability",
-      "finance-tax-summary",
-      "finance-expenses",
-      "finance-reports",
-      "finance-month-end",
-    ].forEach((key) => keys.add(key));
+    // Virtual Business Finance group routes are available only when the current
+    // database permissions already expose the Finance workspace.
+    if (hasPayrollAccess) {
+      [
+        "finance-overview",
+        "finance-clients",
+        "finance-group-daily",
+        "finance-group-field",
+        "finance-group-reports",
+        "finance-group-setup",
+        "finance-quotes",
+        "finance-estimates",
+        "finance-invoices",
+        "finance-work-orders",
+        "finance-inventory",
+        "finance-vendors",
+        "finance-purchases",
+        "finance-field-reports",
+        "finance-reviews",
+        "finance-profitability",
+        "finance-tax-summary",
+        "finance-expenses",
+        "finance-reports",
+        "finance-month-end",
+      ].forEach((key) => keys.add(key));
+    }
     return Array.from(keys);
-  }, [filteredMenuConfig, supportMode]);
+  }, [filteredMenuConfig, hasManagerWorkspaceAccess, hasPayrollAccess, supportMode]);
   const getInitialSelectedView = () => initialView || localStorage.getItem("manager_selected_view") || "__landing__";
   const getParentGroupKeyForView = (viewKey) =>
     menuItems.find((item) => Array.isArray(item.children) && item.children.some((child) => child.key === viewKey))?.key;
@@ -3153,9 +3170,29 @@ const NewManagementDashboard = ({
   const managerBarHeight = 0; // manager navigation now opens from the shared mobile toolbar
   const headerOffset = navOffset + managerBarHeight;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [navigationQuery, setNavigationQuery] = useState("");
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
   const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
   const previousSelectedViewRef = useRef(selectedView);
+
+  const visibleMenuItems = useMemo(() => {
+    const query = navigationQuery.trim().toLocaleLowerCase();
+    if (!query) return menuItems;
+    return menuItems.reduce((visible, item) => {
+      const itemMatches = [item.label, item.navLabel, item.tooltip]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase().includes(query));
+      if (itemMatches || !Array.isArray(item.children)) {
+        if (itemMatches) visible.push(item);
+        return visible;
+      }
+      const matchingChildren = item.children.filter((child) =>
+        String(child.label || "").toLocaleLowerCase().includes(query)
+      );
+      if (matchingChildren.length) visible.push({ ...item, children: matchingChildren });
+      return visible;
+    }, []);
+  }, [menuItems, navigationQuery]);
 
   useEffect(() => {
     if (!isMobileViewport) return undefined;
@@ -3206,20 +3243,21 @@ const NewManagementDashboard = ({
 
   useEffect(() => {
     if (supportMode) return;
-    if (isManager && !isMobileViewport && selectedView === "__landing__") {
-      setSelectedView("employee-management");
+    if (hasManagerWorkspaceAccess && !isMobileViewport && selectedView === "__landing__") {
+      const desktopDefault = allowedViewKeys.find((key) => key !== "__landing__") || "employee-management";
+      setSelectedView(desktopDefault);
     }
-  }, [isManager, isMobileViewport, selectedView, supportMode]);
+  }, [allowedViewKeys, hasManagerWorkspaceAccess, isMobileViewport, selectedView, supportMode]);
 
   useEffect(() => {
     if (supportMode) return;
-    if (!isManager || !isMobileViewport) return;
+    if (!hasManagerWorkspaceAccess || !isMobileViewport) return;
     if (initialView) return;
     if (location.pathname !== "/manager/dashboard") return;
     if (selectedView !== "__landing__") {
       setSelectedView("__landing__");
     }
-  }, [initialView, isManager, isMobileViewport, location.pathname, selectedView, supportMode]);
+  }, [hasManagerWorkspaceAccess, initialView, isMobileViewport, location.pathname, selectedView, supportMode]);
 
   useEffect(() => {
     if (initialView && initialView !== selectedView) {
@@ -3241,12 +3279,13 @@ const NewManagementDashboard = ({
 
   useEffect(() => {
     if (supportMode) return;
+    if (!currentUserInfo) return;
     if (isManager) return;
     if (!allowedViewKeys.length) return;
     if (!allowedViewKeys.includes(selectedView)) {
       setSelectedView(allowedViewKeys[0]);
     }
-  }, [isManager, allowedViewKeys, selectedView, supportMode]);
+  }, [currentUserInfo, isManager, allowedViewKeys, selectedView, supportMode]);
 
   // Landing activity feed
   useEffect(() => {
@@ -3686,6 +3725,17 @@ const NewManagementDashboard = ({
     }
   };
 
+  const handleDashboardAction = (action) => {
+    if (!action?.viewKey || !allowedViewKeys.includes(action.viewKey)) return;
+    setSelectedView(action.viewKey);
+    const parentGroup = menuItems.find((item) =>
+      Array.isArray(item.children) && item.children.some((child) => child.key === action.viewKey)
+    );
+    setOpenGroups(parentGroup ? { [parentGroup.key]: true } : {});
+    navigate(action.href || viewToPath(action.viewKey));
+    if (isMobileViewport) setMobileDrawerOpen(false);
+  };
+
   const toggleDrawer = () => {
     if (isMobileViewport) {
       setMobileDrawerOpen((prev) => !prev);
@@ -3718,13 +3768,17 @@ const NewManagementDashboard = ({
       : allowedViewKeys[0] || selectedView;
     switch (effectiveView) {
       case "__landing__":
-        if (isManager && isMobileViewport) {
+        if (hasManagerWorkspaceAccess && isMobileViewport) {
           return (
             <MobileManagerHome
               currentUserInfo={currentUserInfo}
               swapRequests={swapRequests}
-              allowedViewKeys={allowedViewKeys}
-              onOpenView={handleNavSelect}
+              dashboardPreferences={dashboardPreferences.preferences}
+              preferencesLoading={dashboardPreferences.loading}
+              preferencesSaving={dashboardPreferences.saving}
+              preferencesError={dashboardPreferences.error}
+              onSavePreferences={dashboardPreferences.save}
+              onOpenAction={handleDashboardAction}
               onEmployeeView={() => navigate("/employee/my-time")}
               canUseEmployeeView={isManager}
             />
@@ -4992,7 +5046,7 @@ const NewManagementDashboard = ({
     my: isMobileViewport ? 0.2 : 0.35,
     px: drawerExpanded ? (isMobileViewport ? 1.25 : 1.5) : 1,
     pl: drawerExpanded ? (isMobileViewport ? 1.25 : 1.5) + depth * 1.5 : 1,
-    minHeight: isMobileViewport ? 38 : 42,
+    minHeight: isMobileViewport ? 44 : 42,
     borderRadius: "6px",
     color: active ? "primary.main" : "text.primary",
     border: "1px solid",
@@ -5055,13 +5109,29 @@ const NewManagementDashboard = ({
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: drawerExpanded ? "flex-end" : "center",
-          px: 1,
-          py: isMobileViewport ? 0.5 : 1,
-          minHeight: isMobileViewport ? 48 : 56,
+          justifyContent: drawerExpanded ? "space-between" : "center",
+          px: isMobileViewport ? 1.5 : 1,
+          py: isMobileViewport ? 1 : 1,
+          minHeight: isMobileViewport ? 64 : 56,
         }}
       >
-        {!isMobileViewport && (
+        {isMobileViewport ? (
+          <>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 850, lineHeight: 1.2 }}>Workspace navigation</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {isManager ? "Manager access" : "Delegated access"}
+              </Typography>
+            </Box>
+            <IconButton
+              aria-label="Close workspace navigation"
+              onClick={() => setMobileDrawerOpen(false)}
+              sx={{ minWidth: 44, minHeight: 44 }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </>
+        ) : (
           <IconButton onClick={() => setIsDrawerOpen((prev) => !prev)} size="small">
             <MenuIcon />
           </IconButton>
@@ -5069,8 +5139,26 @@ const NewManagementDashboard = ({
       </Toolbar>
       <Divider sx={{ borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.1) }} />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", pt: 0.75 }}>
+        {isMobileViewport && (
+          <TextField
+            value={navigationQuery}
+            onChange={(event) => setNavigationQuery(event.target.value)}
+            placeholder="Find a workspace tool"
+            aria-label="Find a workspace tool"
+            size="small"
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ px: 1.5, pt: 0.75, pb: 1 }}
+          />
+        )}
         <List>
-          {isMobileViewport && isManager && (
+          {isMobileViewport && hasManagerWorkspaceAccess && !navigationQuery.trim() && (
             <ListItemButton
               selected={selectedView === "__landing__"}
               onClick={() => handleNavSelect("__landing__")}
@@ -5088,7 +5176,7 @@ const NewManagementDashboard = ({
               )}
             </ListItemButton>
           )}
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const hasChildren = Array.isArray(item.children) && item.children.length > 0;
             const itemActive = selectedView === item.key;
             if (!hasChildren) {
@@ -5190,6 +5278,13 @@ const NewManagementDashboard = ({
               </Box>
             );
           })}
+          {isMobileViewport && visibleMenuItems.length === 0 && (
+            <Box sx={{ px: 2, py: 3, textAlign: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                No tools match your search.
+              </Typography>
+            </Box>
+          )}
         </List>
       </Box>
     </>
