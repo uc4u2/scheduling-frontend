@@ -3787,7 +3787,8 @@
       "integrationActivity": "Integration activity",
       "profession": "Profession",
       "billing": "Billing",
-      "zapier": "Zapier"
+      "zapier": "Zapier",
+      "aiAssistants": "AI assistants"
     },
     "stripeHub": {
       "authRequired": "Please sign in as a manager to view Stripe settings.",

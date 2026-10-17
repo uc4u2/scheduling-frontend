@@ -46,6 +46,7 @@ import ZapierIntegrationPage from "../settings/ZapierIntegrationPage";
 import SettingsXero from "./SettingsXero";
 import SettingsQuickBooks from "./SettingsQuickBooks";
 import SettingsGoogleCalendar from "./SettingsGoogleCalendar";
+import SettingsAiAssistants from "./SettingsAiAssistants";
 import SettingsBillingSubscription from "./SettingsBillingSubscription";
 import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
@@ -106,6 +107,8 @@ const Settings = () => {
       google: 7,
       'google-calendar': 7,
       easypost: 7,
+      'ai-assistants': 7,
+      ai: 7,
       'integration-activity': 7,
       activity: 7,
       'booking-emails': 8,
@@ -142,6 +145,7 @@ const Settings = () => {
     if (tabParam === "xero") return "xero";
     if (tabParam === "quickbooks" || tabParam === "qb") return "quickbooks";
     if (tabParam === "easypost") return "easypost";
+    if (tabParam === "ai" || tabParam === "ai-assistants") return "ai-assistants";
     return "activity";
   }, [tabParam]);
 
@@ -192,6 +196,7 @@ const Settings = () => {
           <Tab value="xero" label={t("settings.tabs.xero", "Xero")} />
           <Tab value="quickbooks" label={t("settings.tabs.quickbooks", "QuickBooks")} />
           <Tab value="easypost" label={t("settings.tabs.easypost", "EasyPost")} />
+          <Tab value="ai-assistants" label={t("settings.tabs.aiAssistants", "AI assistants")} />
         </Tabs>
         <Divider sx={{ my: 1 }} />
         <Box sx={{ pt: 2 }}>
@@ -242,6 +247,19 @@ const Settings = () => {
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <SettingsQuickBooks />
+              </Box>
+            </>
+          )}
+          {integrationExpanded === "ai-assistants" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t(
+                  "settings.integrations.aiAssistantsDescription",
+                  "Connect an assistant you already use to this business. Schedulaa does not add a new chatbot."
+                )}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <SettingsAiAssistants />
               </Box>
             </>
           )}

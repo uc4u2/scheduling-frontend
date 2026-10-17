@@ -790,6 +790,31 @@ export const googleCalendarIntegration = {
     api.post(`/integrations/google-calendar/events/${id}/retry`, {}, config).then((r) => r.data),
 };
 
+export const tenantAssistant = {
+  status: (config = {}) => api.get("/api/tenant-assistant/status", config).then((r) => r.data),
+  activity: (config = {}) => api.get("/api/tenant-assistant/activity", config).then((r) => r.data),
+  disconnect: (connectionId, config = {}) =>
+    api
+      .post(`/api/tenant-assistant/connections/${encodeURIComponent(connectionId)}/disconnect`, {}, config)
+      .then((r) => r.data),
+  protocolTest: (connectionId, config = {}) =>
+    api
+      .post(`/api/tenant-assistant/connections/${encodeURIComponent(connectionId)}/protocol-test`, {}, config)
+      .then((r) => r.data),
+  authorization: (transactionId, config = {}) =>
+    api
+      .get(`/api/tenant-assistant/authorizations/${encodeURIComponent(transactionId)}`, config)
+      .then((r) => r.data),
+  decide: (transactionId, payload, config = {}) =>
+    api
+      .post(
+        `/api/tenant-assistant/authorizations/${encodeURIComponent(transactionId)}/decision`,
+        payload,
+        config
+      )
+      .then((r) => r.data),
+};
+
 export const employeeGoogleCalendarIntegration = {
   status: (config = {}) =>
     api.get("/employee/integrations/google-calendar/status", config).then((r) => r.data),

@@ -224,6 +224,7 @@ import DomainHelpPage from "./landing/pages/help/DomainHelpPage";
 import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
+import AiAssistantConsentPage from "./pages/sections/AiAssistantConsentPage";
 import { buildMarketingUrl } from "./config/origins";
 import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
 import { capturePredictionReferralFromSearch } from "./utils/predictionReferral";
@@ -1366,6 +1367,7 @@ const AppContent = ({ token, setToken }) => {
             }
           />
           <Route path="/manager/support-consent" element={<SupportConsentPage />} />
+          <Route path="/manager/ai-assistant-consent" element={<AiAssistantConsentPage />} />
           <Route path="/manager/onboarding" element={<OnboardingPage />} />
           <Route
             path="/manager/attendance-summaries"
