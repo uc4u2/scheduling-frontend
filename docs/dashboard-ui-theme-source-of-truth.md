@@ -30,6 +30,10 @@ Primary goals:
   actions, available tools, and workforce controls use visibly bordered sections.
   Wide screens use denser multi-column layouts while phones retain single-column
   controls and touch-friendly targets.
+- The longer Cancellation & Reschedule, Time tracking, Dispatch tracking, and
+  Interview reminders panels also start collapsed with truthful status summaries.
+  Expanding or collapsing a panel does not reset unsaved field state; Dispatch
+  remains independently collapsible inside Time tracking.
 - The compact navigation drawer uses a clear workspace header, a search field,
   minimum 44px navigation targets, restrained active states, and the established
   theme tokens. Search filters only the already-authorized navigation model.

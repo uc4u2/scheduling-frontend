@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Grid,
   Snackbar,
@@ -11,7 +12,7 @@ import {
   TextField,
   FormControlLabel,
 } from "@mui/material";
-import SectionCard from "../../components/ui/SectionCard";
+import CollapsibleSectionCard from "../../components/ui/CollapsibleSectionCard";
 import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
 
@@ -140,15 +141,29 @@ const SettingsBookingReminders = () => {
 
   return (
     <>
-      <SectionCard
+      <CollapsibleSectionCard
         title={t("settings.reminders.title", "Interview reminders")}
         description={t(
           "settings.reminders.description",
           "Control whether candidates receive interview reminders and how far ahead they are sent."
         )}
+        contentId="interview-reminder-settings"
+        summary={(
+          <Stack direction="row" gap={0.75} flexWrap="wrap" useFlexGap>
+            <Chip
+              size="small"
+              color={policy?.enabled ? "primary" : "default"}
+              variant="outlined"
+              label={loading ? "Loading policy…" : policy?.enabled ? "Reminders enabled" : "Reminders disabled"}
+            />
+            {!loading && policy?.enabled ? (
+              <Chip size="small" variant="outlined" label={`${policy.minutes_before_start} minutes before start`} />
+            ) : null}
+          </Stack>
+        )}
       >
         {renderBody()}
-      </SectionCard>
+      </CollapsibleSectionCard>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

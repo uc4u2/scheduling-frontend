@@ -17,7 +17,7 @@ import {
   FormControlLabel,
   Typography,
 } from "@mui/material";
-import SectionCard from "../../components/ui/SectionCard";
+import CollapsibleSectionCard from "../../components/ui/CollapsibleSectionCard";
 import { timeTracking } from "../../utils/api";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
@@ -431,9 +431,26 @@ const SettingsTimeTracking = () => {
           ))}
         </Grid>
 
-        <SectionCard
+        <CollapsibleSectionCard
           title="Dispatch tracking"
           description="Trip-only location sharing for On my way, manager dispatch visibility, and optional client tracking links."
+          contentId="dispatch-tracking-settings"
+          summary={(
+            <Stack direction="row" gap={0.75} flexWrap="wrap" useFlexGap>
+              <Chip
+                size="small"
+                color={policy.enable_dispatch_tracking ? "primary" : "default"}
+                variant="outlined"
+                label={policy.enable_dispatch_tracking ? "Trip tracking enabled" : "Trip tracking disabled"}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={policy.auto_send_dispatch_link_to_client ? "Client links automatic" : "Client links manual"}
+              />
+              <Chip size="small" variant="outlined" label={`${policy.dispatch_tracking_retention_days || 30}-day retention`} />
+            </Stack>
+          )}
         >
           <Stack spacing={2}>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -604,7 +621,7 @@ const SettingsTimeTracking = () => {
               Separate from punch-location evidence. This only applies while the employee is On my way for an assigned work order.
             </Alert>
           </Stack>
-        </SectionCard>
+        </CollapsibleSectionCard>
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="flex-start">
           <Button variant="contained" onClick={save} disabled={saving}>
@@ -622,15 +639,40 @@ const SettingsTimeTracking = () => {
 
   return (
     <>
-      <SectionCard
+      <CollapsibleSectionCard
         title={t("settings.timeTracking.title", "Time tracking")}
         description={t(
           "settings.timeTracking.description",
           "Control whether employees can clock in/out, define grace windows, and enforce approval rules."
         )}
+        contentId="time-tracking-settings"
+        summary={(
+          <Stack direction="row" gap={0.75} flexWrap="wrap" useFlexGap>
+            <Chip
+              size="small"
+              color={policy?.enable_time_tracking ? "primary" : "default"}
+              variant="outlined"
+              label={loading ? "Loading policy…" : policy?.enable_time_tracking ? "Clock-in enabled" : "Clock-in disabled"}
+            />
+            {!loading && policy ? (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={policy.require_manager_approval ? "Manager approval required" : "Manager approval optional"}
+              />
+            ) : null}
+            {!loading && policy ? (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={policy.enable_dispatch_tracking ? "Dispatch tracking enabled" : "Dispatch tracking disabled"}
+              />
+            ) : null}
+          </Stack>
+        )}
       >
         {renderBody()}
-      </SectionCard>
+      </CollapsibleSectionCard>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

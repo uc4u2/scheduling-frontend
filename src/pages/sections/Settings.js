@@ -57,6 +57,7 @@ import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettings
 import ManagerDashboardPreferencesCard from "../../components/manager/ManagerDashboardPreferencesCard";
 
 import SectionCard from "../../components/ui/SectionCard";
+import CollapsibleSectionCard from "../../components/ui/CollapsibleSectionCard";
 import TabShell from "../../components/ui/TabShell";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -448,9 +449,18 @@ const Settings = () => {
 
   /* ---------- sections ---------- */
   const PolicyCard = (
-    <SectionCard
+    <CollapsibleSectionCard
       title={t("settings.policy.title")}
       description={t("settings.policy.description")}
+      contentId="cancellation-reschedule-policy-settings"
+      summary={(
+        <Stack direction="row" gap={0.75} flexWrap="wrap" useFlexGap>
+          <Chip size="small" variant="outlined" label={`${cancelWindow || 0}h cancellation notice`} />
+          <Chip size="small" variant="outlined" label={`${resWindow || 0}h reschedule notice`} />
+          <Chip size="small" variant="outlined" label={`${maxCancels || 0} cancellations / month`} />
+          <Chip size="small" variant="outlined" label={`${maxReschedules || 0} reschedules / month`} />
+        </Stack>
+      )}
     >
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} md={3}>
@@ -495,7 +505,7 @@ const Settings = () => {
           {saving ? t("settings.common.saving") : t("settings.policy.actions.save")}
         </Button>
       </Stack>
-    </SectionCard>
+    </CollapsibleSectionCard>
   );
 
   const EmbedCard = (

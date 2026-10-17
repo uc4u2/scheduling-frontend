@@ -78,6 +78,22 @@ export default function ManagerDashboardPreferencesCard() {
         "& .MuiCardHeader-root": {
           borderBottom: expanded ? "1px solid" : 0,
           borderColor: "divider",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "flex-start" },
+          gap: { xs: 1, sm: 2 },
+        },
+        "& .MuiCardHeader-content": {
+          minWidth: 0,
+          width: "100%",
+        },
+        "& .MuiCardHeader-action": {
+          alignSelf: { xs: "stretch", sm: "flex-start" },
+          m: 0,
+          width: { xs: "100%", sm: "auto" },
+        },
+        "& .MuiCardHeader-action .MuiButton-root": {
+          width: { xs: "100%", sm: "auto" },
+          justifyContent: { xs: "space-between", sm: "center" },
         },
         "& .MuiCardContent-root": {
           pt: expanded ? 2.5 : 1.5,
