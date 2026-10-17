@@ -5,7 +5,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  Divider,
   FormControlLabel,
   Grid,
   IconButton,
@@ -30,6 +29,23 @@ const orderedIntersection = (actionIds, availableIds, maxActions) => {
   const available = new Set(availableIds);
   return actionIds.filter((id, index) => available.has(id) && actionIds.indexOf(id) === index).slice(0, maxActions);
 };
+
+const EditorSection = ({ children, ...props }) => (
+  <Paper
+    variant="outlined"
+    {...props}
+    sx={(theme) => ({
+      p: { xs: 1.5, sm: 2 },
+      borderRadius: 1,
+      borderColor: theme.palette.divider,
+      backgroundColor: theme.palette.background.paper,
+      boxShadow: `inset 3px 0 0 ${theme.palette.primary.light}`,
+      ...(typeof props.sx === "object" ? props.sx : {}),
+    })}
+  >
+    {children}
+  </Paper>
+);
 
 export default function ManagerDashboardPreferencesEditor({
   preferences,
@@ -125,11 +141,11 @@ export default function ManagerDashboardPreferencesEditor({
   }
 
   return (
-    <Stack spacing={2.5}>
+    <Stack spacing={1.5}>
       {(error || localError) && <Alert severity="warning">{localError || error}</Alert>}
 
-      <Box>
-        <Typography variant="subtitle1" fontWeight={800}>Start with a workspace preset</Typography>
+      <EditorSection component="section" aria-labelledby="dashboard-presets-heading">
+        <Typography id="dashboard-presets-heading" variant="subtitle1" fontWeight={800}>Start with a workspace preset</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Presets only arrange shortcuts. They never change permissions.
         </Typography>
@@ -139,7 +155,7 @@ export default function ManagerDashboardPreferencesEditor({
             if (!supportedCount) return null;
             const active = presetKey === preset.id;
             return (
-              <Grid item xs={12} sm={6} key={preset.id}>
+              <Grid item xs={12} sm={6} lg={3} key={preset.id}>
                 <Paper
                   component="button"
                   type="button"
@@ -148,8 +164,8 @@ export default function ManagerDashboardPreferencesEditor({
                   aria-pressed={active}
                   sx={(theme) => ({
                     width: "100%",
-                    minHeight: 92,
-                    p: 1.5,
+                    minHeight: 84,
+                    p: 1.25,
                     textAlign: "left",
                     cursor: "pointer",
                     borderRadius: 1,
@@ -169,14 +185,12 @@ export default function ManagerDashboardPreferencesEditor({
             );
           })}
         </Grid>
-      </Box>
+      </EditorSection>
 
-      <Divider />
-
-      <Box>
+      <EditorSection component="section" aria-labelledby="dashboard-actions-heading">
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}>
           <Box>
-            <Typography variant="subtitle1" fontWeight={800}>Your quick actions</Typography>
+            <Typography id="dashboard-actions-heading" variant="subtitle1" fontWeight={800}>Your quick actions</Typography>
             <Typography variant="body2" color="text.secondary">
               Choose and order up to {maxActions}. Only actions allowed for your account are available.
             </Typography>
@@ -195,48 +209,53 @@ export default function ManagerDashboardPreferencesEditor({
           />
         </Stack>
 
-        <Stack spacing={1} sx={{ mt: 1.5 }}>
+        <Grid container spacing={0.75} sx={{ mt: 0.75 }}>
           {actionIds.map((actionId, index) => {
             const action = MANAGER_DASHBOARD_ACTION_BY_ID[actionId];
             if (!action) return null;
             return (
-              <Paper key={actionId} variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Box sx={{ color: "primary.main", display: "grid", placeItems: "center" }}>
-                    <ManagerDashboardActionIcon icon={action.icon} fontSize="small" />
-                  </Box>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography fontWeight={750}>{action.label}</Typography>
-                    <Typography variant="caption" color="text.secondary">{action.section}</Typography>
-                  </Box>
-                  <IconButton size="small" aria-label={`Move ${action.label} up`} onClick={() => move(index, -1)} disabled={index === 0}>
-                    <ArrowUpwardOutlinedIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" aria-label={`Move ${action.label} down`} onClick={() => move(index, 1)} disabled={index === actionIds.length - 1}>
-                    <ArrowDownwardOutlinedIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" aria-label={`Remove ${action.label}`} onClick={() => toggleAction(actionId)}>
-                    <CloseOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
-              </Paper>
+              <Grid item xs={12} md={6} key={actionId}>
+                <Paper variant="outlined" sx={{ p: 1, borderRadius: 1, height: "100%" }}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Box sx={{ color: "primary.main", display: "grid", placeItems: "center" }}>
+                      <ManagerDashboardActionIcon icon={action.icon} fontSize="small" />
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography fontWeight={750}>{action.label}</Typography>
+                      <Typography variant="caption" color="text.secondary">{action.section}</Typography>
+                    </Box>
+                    <IconButton size="small" aria-label={`Move ${action.label} up`} onClick={() => move(index, -1)} disabled={index === 0}>
+                      <ArrowUpwardOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" aria-label={`Move ${action.label} down`} onClick={() => move(index, 1)} disabled={index === actionIds.length - 1}>
+                      <ArrowDownwardOutlinedIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" aria-label={`Remove ${action.label}`} onClick={() => toggleAction(actionId)}>
+                      <CloseOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </Paper>
+              </Grid>
             );
           })}
-        </Stack>
-      </Box>
+        </Grid>
+      </EditorSection>
 
-      <Box>
-        <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>Available tools</Typography>
+      <EditorSection component="section" aria-labelledby="dashboard-tools-heading">
+        <Typography id="dashboard-tools-heading" variant="subtitle1" fontWeight={800}>Available tools</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, mb: 1 }}>
+          Select tools to add them to your ordered quick actions above.
+        </Typography>
         <Grid container spacing={0.75}>
           {availableActions.map((action) => (
-            <Grid item xs={12} sm={6} key={action.id}>
+            <Grid item xs={12} sm={6} lg={4} key={action.id}>
               <FormControlLabel
                 sx={{
                   width: "100%",
                   m: 0,
                   px: 1,
                   py: 0.5,
-                  minHeight: 48,
+                  minHeight: 44,
                   border: "1px solid",
                   borderColor: "divider",
                   borderRadius: 1,
@@ -266,31 +285,39 @@ export default function ManagerDashboardPreferencesEditor({
             </Grid>
           ))}
         </Grid>
-      </Box>
+      </EditorSection>
 
       {workforceAvailable && (
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showWorkforceCards}
-              onChange={(event) => {
-                setShowWorkforceCards(event.target.checked);
-                setPresetKey("custom");
-              }}
-            />
-          }
-          label={
-            <Box>
-              <Typography fontWeight={750}>Show workforce shortcuts</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Shows Shift Management, Time Tracking, Leaves, and Swap Approvals when your permissions allow them.
-              </Typography>
-            </Box>
-          }
-        />
+        <EditorSection component="section" aria-labelledby="dashboard-workforce-heading">
+          <FormControlLabel
+            sx={{ m: 0, alignItems: "center" }}
+            control={
+              <Switch
+                checked={showWorkforceCards}
+                onChange={(event) => {
+                  setShowWorkforceCards(event.target.checked);
+                  setPresetKey("custom");
+                }}
+              />
+            }
+            label={
+              <Box>
+                <Typography id="dashboard-workforce-heading" fontWeight={750}>Show workforce shortcuts</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Shows Shift Management, Time Tracking, Leaves, and Swap Approvals when your permissions allow them.
+                </Typography>
+              </Box>
+            }
+          />
+        </EditorSection>
       )}
 
-      <Stack direction={{ xs: "column-reverse", sm: "row" }} justifyContent="space-between" gap={1}>
+      <Stack
+        direction={{ xs: "column-reverse", sm: "row" }}
+        justifyContent="space-between"
+        gap={1}
+        sx={{ pt: 0.5 }}
+      >
         <Button startIcon={<RestartAltOutlinedIcon />} onClick={restoreDefault} disabled={saving}>
           Restore recommended layout
         </Button>

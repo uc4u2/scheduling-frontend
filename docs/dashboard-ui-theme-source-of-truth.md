@@ -25,6 +25,11 @@ Primary goals:
   actions must reflect the delegated account's current grants.
 - Workforce cards may be shown as a separate operational group; do not duplicate
   the same action again in Quick actions.
+- Workspace Settings keeps the mobile-dashboard editor collapsed by default and
+  shows a concise current-layout summary. When expanded, presets, ordered quick
+  actions, available tools, and workforce controls use visibly bordered sections.
+  Wide screens use denser multi-column layouts while phones retain single-column
+  controls and touch-friendly targets.
 - The compact navigation drawer uses a clear workspace header, a search field,
   minimum 44px navigation targets, restrained active states, and the established
   theme tokens. Search filters only the already-authorized navigation model.
