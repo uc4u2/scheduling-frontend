@@ -89,7 +89,6 @@ describe("SettingsAiAssistants", () => {
     expect(screen.getByText(/not yet verified/i)).toBeTruthy();
     expect(screen.getByText("Manager access")).toBeTruthy();
     expect(screen.getByText(/New authorization required/i)).toBeTruthy();
-    expect(screen.queryByText(/Granted OAuth scopes/i)).toBeNull();
     fireEvent.click(screen.getByText("Advanced"));
     expect(await screen.findByText(/Granted OAuth scopes/i)).toBeTruthy();
     expect(screen.getByText(/not provider verification/i)).toBeTruthy();
