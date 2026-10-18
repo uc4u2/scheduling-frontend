@@ -102,6 +102,30 @@ describe("SettingsAiAssistants", () => {
     await waitFor(() => expect(mockActivity).toHaveBeenCalled());
   });
 
+  test("keeps connection details in the guided setup drawer", async () => {
+    mockStatus.mockResolvedValue({
+      enabled: true,
+      eligible: true,
+      account: { id: 1, display_name: "Ada Owner" },
+      business: { id: 4, name: "Salon", timezone: "America/Toronto" },
+      permissions: { is_manager: true, is_owner: true, can_manage_integrations: true },
+      scopes_offered: [],
+      access_profiles: [{ key: "manager", name: "Manager access", summary: "Request supported manager actions.", scopes: [], requires_reauthorization: true }],
+      connections: [],
+      mcp_url: "https://example.test/mcp/tenant",
+    });
+    mockActivity.mockResolvedValue({ items: [] });
+    render(<SettingsAiAssistants />);
+    expect(await screen.findByText(/Access profiles/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /copy connector url/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /how it works/i }));
+    expect(await screen.findByText(/How AI assistants work with Schedulaa/i)).toBeTruthy();
+    expect(screen.getByText(/Start in your assistant/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /start connection setup/i }));
+    expect(await screen.findByRole("button", { name: /copy connector url/i })).toBeTruthy();
+  });
+
   test("hides connect details for an employee", async () => {
     mockStatus.mockResolvedValue({
       enabled: true,

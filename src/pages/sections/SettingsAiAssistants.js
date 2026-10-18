@@ -13,12 +13,16 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Drawer,
   FormControlLabel,
+  IconButton,
   Radio,
   Stack,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useTranslation } from "react-i18next";
 import { tenantAssistant } from "../../utils/api";
 
@@ -44,6 +48,78 @@ const mutedTextSx = { fontFamily: uiFont, fontSize: "0.875rem", lineHeight: 1.55
 
 const scopePreview = (scopes, details, limit = 4) => scopes.slice(0, limit).map((scope) => details.get(scope) || scope);
 
+function AssistantHelpDrawer({ open, onClose, onStartConnection }) {
+  return (
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{ sx: { width: { xs: "100%", sm: 540 }, maxWidth: "100%" } }}
+    >
+      <Stack sx={{ height: "100%", color: "#172554", fontFamily: uiFont }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ p: { xs: 2, sm: 2.5 }, borderBottom: 1, borderColor: "divider" }}>
+          <Box>
+            <Typography sx={{ ...sectionTitleSx, fontSize: "1.16rem" }}>How AI assistants work with Schedulaa</Typography>
+            <Typography sx={{ ...mutedTextSx, mt: 0.5 }}>
+              Connect an assistant you already use. Schedulaa does not add a new chatbot or see your assistant conversations.
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} aria-label="Close AI assistant help">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+        <Stack spacing={2} sx={{ p: { xs: 2, sm: 2.5 }, overflowY: "auto" }}>
+          <Alert severity="info">
+            Your assistant only receives the access you approve. You can change access or disconnect it here at any time.
+          </Alert>
+          {[
+            {
+              title: "1. Start in your assistant",
+              body: "In Grok, Muse, or another assistant that supports a Schedulaa connection, open its Connect or Connections controls and choose Schedulaa when it is available.",
+            },
+            {
+              title: "2. Sign in and choose access",
+              body: "Your assistant opens the Schedulaa consent page. Sign in, review the plain-language access request, and approve only what you want it to do.",
+            },
+            {
+              title: "3. Ask for everyday business help",
+              body: "After connection, continue chatting in that assistant. Schedulaa applies your current manager permissions and business rules to every request.",
+            },
+          ].map((step) => (
+            <Box key={step.title} sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 1.75, bgcolor: "background.paper" }}>
+              <Typography sx={{ fontFamily: uiFont, fontWeight: 800, color: "#172554" }}>{step.title}</Typography>
+              <Typography sx={{ ...mutedTextSx, mt: 0.5 }}>{step.body}</Typography>
+            </Box>
+          ))}
+          <Box sx={{ borderRadius: 2, p: 1.75, bgcolor: "#f8fbff", border: "1px solid #d7e5fb" }}>
+            <Typography sx={{ fontFamily: uiFont, fontWeight: 800, color: "#172554" }}>Things you can ask for</Typography>
+            <Stack component="ul" spacing={0.65} sx={{ my: 1, pl: 2.25 }}>
+              {[
+                "Find a customer or review their details.",
+                "Create or update a customer, then prepare an estimate.",
+                "Check today’s bookings, staffing, or availability.",
+                "Prepare a website change as a private draft for your approval.",
+              ].map((example) => <Typography key={example} component="li" sx={mutedTextSx}>{example}</Typography>)}
+            </Stack>
+            <Typography sx={{ ...mutedTextSx, fontSize: "0.8rem" }}>
+              Sending messages, charging or refunding, publishing a website, changing payment or tax settings, and other consequential changes still need your in-app approval.
+            </Typography>
+          </Box>
+          <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
+            <Typography sx={{ fontFamily: uiFont, fontWeight: 800, color: "#172554" }}>Need the connection address?</Typography>
+            <Typography sx={{ ...mutedTextSx, mt: 0.5 }}>
+              Choose an access level first. The connection setup then shows the copyable address for your assistant, without changing any existing connection.
+            </Typography>
+            <Button variant="contained" size="small" sx={{ mt: 1.25 }} onClick={() => { onClose(); onStartConnection(); }}>
+              Start connection setup
+            </Button>
+          </Box>
+        </Stack>
+      </Stack>
+    </Drawer>
+  );
+}
+
 export default function SettingsAiAssistants() {
   const { t } = useTranslation();
   const [status, setStatus] = useState(null);
@@ -53,6 +129,7 @@ export default function SettingsAiAssistants() {
   const [message, setMessage] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [accessConnection, setAccessConnection] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [desiredProfileKey, setDesiredProfileKey] = useState("manager");
 
   const copyConnectorUrl = async (url) => {
@@ -240,6 +317,11 @@ export default function SettingsAiAssistants() {
         "& .MuiChip-colorInfo": { bgcolor: "#e9f3ff", borderColor: "#a9ccfb", "& .MuiChip-label": { color: "#164f8e" } },
       }}
     >
+      <AssistantHelpDrawer
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onStartConnection={() => openAccess()}
+      />
       <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3, "& .MuiTypography-root": { fontFamily: uiFont, color: "#172554" }, "& .MuiChip-root": { color: "#19345d", bgcolor: "#eef4ff", border: "1px solid #cadbff", fontWeight: 700, "& .MuiChip-label": { color: "#19345d" } }, "& .MuiChip-colorSuccess": { bgcolor: "#e7f6ed", "& .MuiChip-label": { color: "#17653a" } }, "& .MuiChip-colorWarning": { bgcolor: "#fff5df", "& .MuiChip-label": { color: "#825600" } } } }}>
         <DialogTitle>{accessConnection?.id ? t("settings.aiAssistants.manageAccess", "Manage access") : "Connect an assistant"}</DialogTitle>
         <DialogContent>
@@ -387,13 +469,14 @@ export default function SettingsAiAssistants() {
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.5 }}>
             <Button variant="contained" size="small" onClick={() => openAccess()}>{activeConnections.length ? "Request different access" : "Connect an assistant"}</Button>
+            <Button variant="text" size="small" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>How it works</Button>
             <Typography sx={{ ...mutedTextSx, alignSelf: { sm: "center" } }}>Setup starts in your assistant. This page never changes a connection’s permissions silently.</Typography>
           </Stack>
         </Box>
       )}
       {eligible && !configurationError && (
         <Stack spacing={1.25} sx={sectionSx}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={.75}><Box><Typography sx={sectionTitleSx}>{t("settings.aiAssistants.connections", "Your connections")}</Typography><Typography sx={mutedTextSx}>Connection health and access are shown here. Technical details stay collapsed.</Typography></Box>{status.mcp_url && <Button variant="outlined" size="small" onClick={() => copyConnectorUrl(status.mcp_url)}>Copy connector URL</Button>}</Stack>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={.75}><Box><Typography sx={sectionTitleSx}>{t("settings.aiAssistants.connections", "Your connections")}</Typography><Typography sx={mutedTextSx}>Connection health and access are shown here. Technical details stay collapsed.</Typography></Box></Stack>
           {activeConnections.length === 0 && (
             <Alert severity="info">
               {t("settings.aiAssistants.waiting", "Waiting for authorization. No assistant is connected yet.")}
