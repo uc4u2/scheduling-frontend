@@ -354,7 +354,7 @@ export default function SettingsAiAssistants() {
           <Stack spacing={0.75} sx={{ position: "relative" }}>
             <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ sm: "center" }}>
               <Box>
-                <Typography sx={{ ...sectionTitleSx, fontSize: "1.18rem" }}>{t("settings.aiAssistants.businessHeading", "AI assistant workspace")}</Typography>
+                <Typography sx={{ ...sectionTitleSx, fontSize: "1.18rem" }}>{t("settings.aiAssistants.businessHeading", "Business to connect")}</Typography>
                 <Typography sx={mutedTextSx}>{t("settings.aiAssistants.account", "Signed in as")} {status.account?.display_name}</Typography>
               </Box>
               <Chip size="small" color={activeConnections.length ? "success" : "default"} label={activeConnections.length ? `${activeConnections.length} active connection${activeConnections.length === 1 ? "" : "s"}` : "No active connection"} />
@@ -370,7 +370,7 @@ export default function SettingsAiAssistants() {
         <Box sx={sectionSx}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={.75} alignItems={{ sm: "center" }}>
             <Box><Typography sx={sectionTitleSx}>{t("settings.aiAssistants.accessHeading", "Access profiles")}</Typography><Typography sx={mutedTextSx}>Choose what a new authorization may request. Existing connections never change here.</Typography></Box>
-            {Number(status.pending_approval_count) > 0 && <Button component="a" href="/manager/ai-assistant-approvals" variant="contained" size="small">Review approvals</Button>}
+            {Number(status.pending_approval_count) > 0 && <Button component="a" href="/manager/ai-assistant-approvals" variant="contained" size="small">{`Review ${status.pending_approval_count} action${Number(status.pending_approval_count) === 1 ? "" : "s"} waiting for you`}</Button>}
           </Stack>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.25, mt: 1.5 }}>
             {(status.access_profiles || []).map((profile) => (
